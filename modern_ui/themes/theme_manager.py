@@ -31,52 +31,52 @@ class ThemeManager(QObject):
         """Create dark theme color scheme."""
         return {
             # Main background colors
-            'background_primary': '#2B2B2B',      # Main window background
-            'background_secondary': '#3C3C3C',    # Panel backgrounds
-            'background_tertiary': '#4A4A4A',     # Elevated elements
+            'background_primary': '#1E1E1E',      # Main window background
+            'background_secondary': '#2D2D2D',    # Panel backgrounds
+            'background_tertiary': '#3C3C3C',     # Elevated elements
             
             # Surface colors
-            'surface': '#404040',                  # Cards, dialogs
-            'surface_variant': '#4A4A4A',         # Alternate surface
+            'surface': '#2D2D2D',                  # Cards, dialogs
+            'surface_variant': '#3C3C3C',         # Alternate surface
             
             # Text colors
-            'text_primary': '#FFFFFF',            # Primary text
-            'text_secondary': '#B0B0B0',          # Secondary text
-            'text_disabled': '#707070',           # Disabled text
+            'text_primary': '#EAEAEA',            # Primary text
+            'text_secondary': '#A0A0A0',          # Secondary text
+            'text_disabled': '#6E6E6E',           # Disabled text
             
             # Accent colors
-            'accent_primary': '#0078D4',          # Primary accent (Microsoft Blue)
-            'accent_secondary': '#106EBE',        # Darker accent
-            'accent_hover': '#429CE3',            # Hover state
+            'accent_primary': '#0A84FF',          # Primary accent (Vibrant Blue)
+            'accent_secondary': '#0059B2',        # Darker accent
+            'accent_hover': '#3B9BFF',            # Hover state
             
             # Status colors
-            'success': '#107C10',                 # Success/connected
-            'warning': '#FF8C00',                 # Warning
-            'error': '#D13438',                   # Error/disconnected
-            'info': '#0078D4',                    # Information
+            'success': '#34C759',                 # Success/connected
+            'warning': '#FF9500',                 # Warning
+            'error': '#FF3B30',                   # Error/disconnected
+            'info': '#0A84FF',                    # Information
             
             # Border colors
-            'border_primary': '#5A5A5A',          # Primary borders
-            'border_secondary': '#707070',        # Secondary borders
-            'border_focus': '#0078D4',            # Focused elements
+            'border_primary': '#424242',          # Primary borders
+            'border_secondary': '#525252',        # Secondary borders
+            'border_focus': '#0A84FF',            # Focused elements
             
             # Block colors
-            'block_default': '#4A4A4A',           # Default block color
-            'block_source': '#2D5A27',            # Source blocks (green tint)
-            'block_process': '#1E3A5F',           # Process blocks (blue tint)
-            'block_sink': '#5A2D2D',              # Sink blocks (red tint)
-            'block_selected': '#0078D4',          # Selected blocks
+            'block_default': '#3C3C3C',           # Default block color
+            'block_source': '#2D4A3A',            # Source blocks (green tint)
+            'block_process': '#2D3B55',           # Process blocks (blue tint)
+            'block_sink': '#552D3A',              # Sink blocks (red tint)
+            'block_selected': '#0A84FF',          # Selected blocks
             
             # Connection colors
-            'connection_default': '#808080',      # Default connections
-            'connection_active': '#0078D4',       # Active connections
-            'connection_error': '#D13438',        # Error connections
-            'connection_preview': '#FFD700',      # Connection preview
+            'connection_default': '#7A7A7A',      # Default connections
+            'connection_active': '#0A84FF',       # Active connections
+            'connection_error': '#FF3B30',        # Error connections
+            'connection_preview': '#FFCC00',      # Connection preview
             
             # Grid and canvas
-            'grid_dots': '#505050',               # Grid dot color
-            'canvas_background': '#2B2B2B',       # Canvas background
-            'selection_rectangle': '#0078D4',     # Selection rectangle
+            'grid_dots': '#424242',               # Grid dot color
+            'canvas_background': '#1E1E1E',       # Canvas background
+            'selection_rectangle': '#0A84FF',     # Selection rectangle
         }
     
     def _create_light_theme(self) -> Dict[str, Any]:
@@ -84,51 +84,51 @@ class ThemeManager(QObject):
         return {
             # Main background colors
             'background_primary': '#FFFFFF',      # Main window background
-            'background_secondary': '#F5F5F5',    # Panel backgrounds
-            'background_tertiary': '#E8E8E8',     # Elevated elements
+            'background_secondary': '#F2F2F7',    # Panel backgrounds
+            'background_tertiary': '#E5E5EA',     # Elevated elements
             
             # Surface colors
             'surface': '#FFFFFF',                  # Cards, dialogs
-            'surface_variant': '#F5F5F5',         # Alternate surface
+            'surface_variant': '#F2F2F7',         # Alternate surface
             
             # Text colors
-            'text_primary': '#1F1F1F',            # Primary text
-            'text_secondary': '#616161',          # Secondary text
-            'text_disabled': '#9E9E9E',           # Disabled text
+            'text_primary': '#1C1C1E',            # Primary text
+            'text_secondary': '#636366',          # Secondary text
+            'text_disabled': '#AEAEB2',           # Disabled text
             
             # Accent colors
-            'accent_primary': '#0078D4',          # Primary accent
-            'accent_secondary': '#106EBE',        # Darker accent
-            'accent_hover': '#429CE3',            # Hover state
+            'accent_primary': '#0A84FF',          # Primary accent
+            'accent_secondary': '#0059B2',        # Darker accent
+            'accent_hover': '#3B9BFF',            # Hover state
             
             # Status colors
-            'success': '#107C10',                 # Success/connected
-            'warning': '#FF8C00',                 # Warning
-            'error': '#D13438',                   # Error/disconnected
-            'info': '#0078D4',                    # Information
+            'success': '#34C759',                 # Success/connected
+            'warning': '#FF9500',                 # Warning
+            'error': '#FF3B30',                   # Error/disconnected
+            'info': '#0A84FF',                    # Information
             
             # Border colors
-            'border_primary': '#D1D1D1',          # Primary borders
-            'border_secondary': '#E0E0E0',        # Secondary borders
-            'border_focus': '#0078D4',            # Focused elements
+            'border_primary': '#E1E1E1',          # Primary borders
+            'border_secondary': '#D1D1D6',        # Secondary borders
+            'border_focus': '#0A84FF',            # Focused elements
             
             # Block colors
-            'block_default': '#F0F0F0',           # Default block color
-            'block_source': '#E8F5E8',            # Source blocks (light green)
-            'block_process': '#E8F0FF',           # Process blocks (light blue)
-            'block_sink': '#FFE8E8',              # Sink blocks (light red)
+            'block_default': '#F2F2F7',           # Default block color
+            'block_source': '#EBF9EF',            # Source blocks (light green)
+            'block_process': '#EBF5FF',           # Process blocks (light blue)
+            'block_sink': '#FFF0F0',              # Sink blocks (light red)
             'block_selected': '#CCE7FF',          # Selected blocks
             
             # Connection colors
-            'connection_default': '#666666',      # Default connections
-            'connection_active': '#0078D4',       # Active connections
-            'connection_error': '#D13438',        # Error connections
-            'connection_preview': '#FFD700',      # Connection preview
+            'connection_default': '#8A8A8E',      # Default connections
+            'connection_active': '#0A84FF',       # Active connections
+            'connection_error': '#FF3B30',        # Error connections
+            'connection_preview': '#FFCC00',      # Connection preview
             
             # Grid and canvas
-            'grid_dots': '#D0D0D0',               # Grid dot color
+            'grid_dots': '#D1D1D6',               # Grid dot color
             'canvas_background': '#FFFFFF',       # Canvas background
-            'selection_rectangle': '#0078D4',     # Selection rectangle
+            'selection_rectangle': '#0A84FF',     # Selection rectangle
         }
     
     def get_current_theme(self) -> Dict[str, Any]:

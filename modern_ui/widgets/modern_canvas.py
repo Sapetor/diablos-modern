@@ -4,8 +4,11 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox
+from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer, QPoint, pyqtSignal
+import pyqtgraph as pg
+from scipy import signal
+import numpy as np
 from PyQt5.QtGui import QPainter, QPen, QColor
 
 # Import DSim and helper modules
@@ -324,20 +327,80 @@ class ModernCanvas(QWidget):
     def _handle_right_click(self, pos):
         """Handle right mouse button clicks."""
         try:
-            # Check for block right-clicks (configuration)
-            for block in getattr(self.dsim, 'blocks_list', []):
-                if hasattr(block, 'button') and hasattr(block.button, 'collidepoint'):
-                    point_tuple = (pos.x(), pos.y())
-                    if block.button.collidepoint(point_tuple):
-                        self._configure_block(block)
-                        return
-            
+            clicked_block = self._get_clicked_block(pos)
+            if clicked_block:
+                if clicked_block.block_fn == "BodePlot":
+                    self.show_bode_plot_menu(clicked_block, self.mapToGlobal(pos))
+                else:
+                    # For other blocks, you might want a different context menu
+                    # or the parameter dialog from older versions.
+                    pass
+                return
+
             # Cancel any ongoing line creation
             if self.line_creation_state:
                 self._cancel_line_creation()
                 
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
+
+    def show_bode_plot_menu(self, block, pos):
+        """Show context menu for the BodePlot block."""
+        menu = QMenu(self)
+        plot_action = menu.addAction("Generate Bode Plot")
+        action = menu.exec_(pos)
+        if action == plot_action:
+            self.generate_bode_plot(block)
+
+    def generate_bode_plot(self, bode_block):
+        """Find the connected transfer function, calculate, and plot the Bode diagram."""
+        # 1. Find the connected transfer function block
+        source_block = None
+        for line in self.dsim.line_list:
+            if line.dstblock == bode_block.name:
+                for block in self.dsim.blocks_list:
+                    if block.name == line.srcblock:
+                        if block.block_fn == 'TranFn':
+                            source_block = block
+                            break
+                if source_block:
+                    break
+        
+        if not source_block:
+            QMessageBox.warning(self, "Bode Plot Error", "BodePlot block must be connected to the output of a Transfer Function block.")
+            return
+
+        # 2. Get numerator and denominator
+        num = source_block.params.get('numerator')
+        den = source_block.params.get('denominator')
+
+        if not num or not den:
+            QMessageBox.warning(self, "Bode Plot Error", "Connected Transfer Function has invalid parameters.")
+            return
+
+        # 3. Calculate Bode plot data
+        w, mag, phase = signal.bode((num, den))
+
+        # 4. Display the plot
+        plot_window = QWidget()
+        plot_window.setWindowTitle(f"Bode Plot: {source_block.name}")
+        layout = QVBoxLayout()
+        plot_widget = pg.PlotWidget()
+        layout.addWidget(plot_widget)
+        plot_window.setLayout(layout)
+
+        plot_widget.setLogMode(x=True, y=False)
+        plot_widget.setLabel('left', 'Magnitude', units='dB')
+        plot_widget.setLabel('bottom', 'Frequency', units='rad/s')
+        plot_widget.setTitle(f"Bode Magnitude Plot: {source_block.name}")
+        plot_widget.plot(w, mag)
+        plot_widget.showGrid(x=True, y=True)
+        
+        if not hasattr(self, 'plot_windows'):
+            self.plot_windows = []
+        self.plot_windows.append(plot_window)
+        
+        plot_window.show()
     
     def _get_clicked_block(self, pos):
         for block in reversed(getattr(self.dsim, 'blocks_list', [])):
@@ -630,9 +693,14 @@ class ModernCanvas(QWidget):
                 # Calculate new top-left position for the block
                 new_x = pos.x() - self.drag_offset.x()
                 new_y = pos.y() - self.drag_offset.y()
+
+                # Snap to grid
+                grid_size = 20
+                snapped_x = round(new_x / grid_size) * grid_size
+                snapped_y = round(new_y / grid_size) * grid_size
                 
                 # Update block position using DBlock's relocate_Block method
-                self.dragging_block.relocate_Block(QPoint(new_x, new_y))
+                self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
                 self.dsim.update_lines() # Update lines dynamically during drag
                 self.update()  # Trigger repaint
             
@@ -700,9 +768,25 @@ class ModernCanvas(QWidget):
             
             elif event.key() == Qt.Key_Delete:
                 self.remove_selected_items()
+
+            elif event.key() == Qt.Key_F and (event.modifiers() & Qt.ControlModifier):
+                self.flip_selected_blocks()
                 
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
+
+    def flip_selected_blocks(self):
+        """Flip selected blocks horizontally."""
+        try:
+            for block in self.dsim.blocks_list:
+                if block.selected:
+                    block.flipped = not block.flipped
+                    block.update_Block() # Recalculate port positions
+            self.dsim.update_lines()
+            self.update() # Redraw canvas
+            logger.info("Flipped selected blocks")
+        except Exception as e:
+            logger.error(f"Error flipping blocks: {str(e)}")
 
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
@@ -847,6 +931,9 @@ class ModernCanvas(QWidget):
             # Basic validation checks
             if start_block == end_block:
                 validation_errors.append("Cannot connect a block to itself")
+            
+            if end_block.block_fn == "BodePlot" and start_block.block_fn != "TranFn":
+                validation_errors.append("BodePlot block can only be connected to a Transfer Function.")
             
             # Check if connection already exists
             existing_lines = getattr(self.dsim, 'line_list', [])

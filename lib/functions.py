@@ -728,3 +728,10 @@ class DFunctions:
             aux_vector = np.concatenate((aux_vector, np.atleast_1d(inputs[0])))
         params['vector'] = aux_vector
         return {0: np.array([0.0])}
+
+    def bode_plot(self, time, inputs, params):
+        """
+        Bode plotter block. This function doesn't do anything during simulation.
+        The plotting is handled by a special call from the UI.
+        """
+        return {0: np.array([0.0])}

@@ -9,7 +9,7 @@ import os
 import sys
 from tqdm import tqdm
 from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QInputDialog
-from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter, QCursor, QPainterPath, QPolygonF
+from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter, QCursor, QPainterPath, QPolygonF, QTransform
 from PyQt5.QtCore import Qt, QRect, QPoint, QTimer, QEvent
 import pyqtgraph as pg
 from lib.functions import *
@@ -374,7 +374,7 @@ class DSim:
 
         adder = MenuBlocks(block_fn="Sum", fn_name='adder',
                         io_params={'inputs': 2, 'outputs': 1, 'b_type': 2, 'io_edit': 'input'}, ex_params={'sign': "++"},
-                        b_color='lime_green', coords=(90, 70))
+                        b_color='lime_green', coords=(60, 60))
 
         sigproduct = MenuBlocks(block_fn="SgProd", fn_name='sigproduct',
                         io_params={'inputs': 2, 'outputs': 1, 'b_type': 2, 'io_edit': 'input'}, ex_params={},
@@ -410,13 +410,17 @@ class DSim:
                         io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={'str_name': 'default', '_init_start_': True},
                         b_color='orange', coords=(90, 80))
 
+        bode_plot = MenuBlocks(block_fn="BodePlot", fn_name='bode_plot',
+                        io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={},
+                        b_color='dark_red', coords=(80, 80))
+
 
         # External/general use block
         external = MenuBlocks(block_fn="External", fn_name='external',
                         io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={"filename": '<no filename>'},
                         b_color='light_gray', coords=(140, 80), external=True)
 
-        self.menu_blocks = [step, ramp, sine, noise, integrator, transfer_function, derivative, adder, sigproduct, gain, exponential, mux, demux, terminator, scope, export, external]
+        self.menu_blocks = [step, ramp, sine, noise, integrator, transfer_function, derivative, adder, sigproduct, gain, exponential, mux, demux, terminator, scope, export, bode_plot, external]
 
     def display_menu_blocks(self, painter):
         """
@@ -496,7 +500,8 @@ class DSim:
                 "io_edit": block.io_edit,
                 "fn_name": block.fn_name,
                 "params": block.saving_params(),
-                "external": block.external
+                "external": block.external,
+                "flipped": block.flipped
             }
             blocks_dict.append(block_dict)
 
@@ -600,6 +605,7 @@ class DSim:
         block.height = block_data['coords_height']
         block.selected = block_data['selected']
         block.dragging = block_data['dragging']
+        block.flipped = block_data.get('flipped', False)
         self.blocks_list.append(block)
 
     def update_lines_data(self, line_data):
@@ -1343,6 +1349,7 @@ class DBlock:
     def __init__(self, block_fn, sid, coords, color, in_ports=1, out_ports=1, b_type=2, io_edit=True, fn_name='block', params={}, external=False, username=''):
         logger.debug(f"Initializing DBlock {block_fn}{sid}")
         self.name = block_fn.lower() + str(sid)
+        self.flipped = False
         self.block_fn = block_fn
         self.sid = sid
         self.username = self.name if username == '' else username
@@ -1425,51 +1432,144 @@ class DBlock:
 
         port_spacing = max(self.port_radius * 4, self.height / (max(self.in_ports, self.out_ports) + 1))
 
-        
+        in_x = self.left if not self.flipped else self.left + self.width
+        out_x = self.left + self.width if not self.flipped else self.left
+
         if self.in_ports > 0:
             for i in range(self.in_ports):
                 # Ensure integer coordinates for QPoint
                 port_y = int(self.top + self.height * (i + 1) / (self.in_ports + 1))
-                port_in = QPoint(self.left, port_y)
+                port_in = QPoint(in_x, port_y)
                 self.in_coords.append(port_in)
         if self.out_ports > 0:
             for j in range(self.out_ports):
                 # Ensure integer coordinates for QPoint
                 port_y = int(self.top + self.height * (j + 1) / (self.out_ports + 1))
-                port_out = QPoint(self.left + self.width, port_y)
+                port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
     def draw_Block(self, painter):
         if painter is None:
             return
+
         painter.setBrush(self.b_color)
-        
-        # Draw block border
         border_color = theme_manager.get_color('border_primary')
-        painter.setPen(QPen(border_color, 2)) # 2 pixel wide border
+        painter.setPen(QPen(border_color, 2))
+
+        # Special case for Gain block to draw a triangle
+        if self.block_fn == "Gain":
+            points = QPolygonF()
+            if not self.flipped:
+                points.append(QPoint(self.left, self.top))
+                points.append(QPoint(self.left + self.width, int(self.top + self.height / 2)))
+                points.append(QPoint(self.left, self.top + self.height))
+            else:
+                points.append(QPoint(self.left + self.width, self.top))
+                points.append(QPoint(self.left, int(self.top + self.height / 2)))
+                points.append(QPoint(self.left + self.width, self.top + self.height))
+            painter.drawPolygon(points)
+        else:
+            # Draw rounded rectangle for all other blocks
+            radius = 10
+            painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
+
+        # Draw block-specific icon if available
+        icon_pen = QPen(theme_manager.get_color('text_primary'), 2)
+        painter.setPen(icon_pen)
         
-        # Draw rounded rectangle for the block
-        radius = 10 # Adjust radius for desired roundness
-        painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
+        path = QPainterPath()
+        if self.block_fn == "Step":
+            path.moveTo(0.1, 0.7)
+            path.lineTo(0.5, 0.7)
+            path.lineTo(0.5, 0.3)
+            path.lineTo(0.9, 0.3)
+        elif self.block_fn == "Ramp":
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.9, 0.1)
+        elif self.block_fn == "Sine":
+            path.moveTo(0.1, 0.5)
+            path.quadTo(0.3, 0.1, 0.5, 0.5)
+            path.quadTo(0.7, 0.9, 0.9, 0.5)
+        elif self.block_fn == "BodePlot":
+            path.moveTo(0.1, 0.2)
+            path.lineTo(0.9, 0.8)
+            path.moveTo(0.1, 0.5)
+            path.lineTo(0.9, 0.5)
+            path.moveTo(0.5, 0.1)
+            path.lineTo(0.5, 0.9)
+        elif self.block_fn == "Integr":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 6)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+            painter.drawText(self.rect, Qt.AlignCenter, "1/s")
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Scope":
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.9, 0.9) # x-axis
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.1, 0.1) # y-axis
+            path.moveTo(0.1, 0.6)
+            path.quadTo(0.3, 0.2, 0.5, 0.6)
+            path.quadTo(0.7, 1.0, 0.9, 0.6)
+        elif self.block_fn == "Sum":
+            sign_text = self.params.get('sign', '')
+            if sign_text:
+                font = painter.font()
+                original_size = font.pointSize()
+                font.setPointSize(original_size + 4)
+                painter.setFont(font)
+
+                painter.setPen(theme_manager.get_color('text_primary'))
+                painter.drawText(self.rect, Qt.AlignCenter, sign_text)
+
+                font.setPointSize(original_size)
+                painter.setFont(font)
+
+        if not path.isEmpty():
+            margin = self.width * 0.2
+            transform = QTransform()
+            if self.flipped:
+                transform.translate(self.left + self.width - margin, self.top + margin)
+                transform.scale(-(self.width - 2 * margin), self.height - 2 * margin)
+            else:
+                transform.translate(self.left + margin, self.top + margin)
+                transform.scale(self.width - 2 * margin, self.height - 2 * margin)
+            
+            scaled_path = transform.map(path)
+            painter.drawPath(scaled_path)
 
         # Draw ports
-        painter.setBrush(QColor('black'))
+        port_color = theme_manager.get_color('text_primary')
+        # Input ports (filled)
+        painter.setBrush(port_color)
+        painter.setPen(Qt.NoPen)
         for port_in_location in self.in_coords:
             painter.drawEllipse(port_in_location, self.port_radius, self.port_radius)
 
+        # Output ports (outline)
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(port_color, 2))
         for port_out_location in self.out_coords:
-            painter.drawEllipse(port_out_location, self.port_radius, self.port_radius)
+            painter.drawEllipse(port_out_location, self.port_radius -1, self.port_radius - 1)
         
-        # Draw block function name
-        painter.setPen(QColor('white')) # Use white for better contrast on colored blocks
+        # Draw block name below the block
+        text_color = theme_manager.get_color('text_primary')
+        painter.setPen(text_color)
         painter.setFont(self.font)
-        text_rect = QRect(self.left, self.top, self.width, self.height)
+        text_rect = QRect(self.left, self.top + self.height + 5, self.width, 20)
         painter.drawText(text_rect, Qt.AlignCenter | Qt.TextWordWrap, self.name)
 
         if self.selected:
-            painter.setPen(QPen(QColor('red'), 2))
+            selection_color = theme_manager.get_color('accent_primary')
+            painter.setPen(QPen(selection_color, 2))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(self.rectf)
+            selection_rect = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height + 25)
+            painter.drawRect(selection_rect)
     
     def draw_selected(self, painter):
         painter.setPen(QColor('black'))
