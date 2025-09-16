@@ -1,0 +1,45 @@
+{
+  "simulation": {
+    "default_time": 10.0,
+    "default_timestep": 0.01,
+    "max_simulation_time": 1000.0,
+    "min_timestep": 1e-6,
+    "max_timestep": 1.0,
+    "default_solver": "RK45",
+    "available_solvers": ["FWD_RECT", "BWD_RECT", "TUSTIN", "RK45", "SOLVE_IVP"]
+  },
+  "display": {
+    "window_width": 1280,
+    "window_height": 770,
+    "fps": 60,
+    "canvas_top_limit": 60,
+    "canvas_left_limit": 200,
+    "default_block_width": 120,
+    "default_block_height": 60
+  },
+  "validation": {
+    "check_algebraic_loops": true,
+    "check_unconnected_ports": true,
+    "warn_orphaned_blocks": true,
+    "max_simulation_steps": 1000000
+  },
+  "logging": {
+    "level": "INFO",
+    "log_to_file": true,
+    "log_file": "diablos.log",
+    "log_performance": true,
+    "log_simulation_steps": false
+  },
+  "performance": {
+    "warn_slow_steps": true,
+    "slow_step_threshold": 0.1,
+    "warn_slow_paint": true,
+    "slow_paint_threshold": 0.05,
+    "enable_profiling": false
+  },
+  "external_functions": {
+    "directory": "external",
+    "auto_reload": false,
+    "validate_on_load": true
+  }
+}

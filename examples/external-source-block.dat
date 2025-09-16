@@ -1,0 +1,154 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 720,
+        "fps": 60,
+        "only_one": false,
+        "enable_line_sel": true,
+        "sim_time": 1.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "External",
+            "sid": 0,
+            "username": "External0",
+            "coords_left": 465,
+            "coords_top": 209,
+            "coords_width": 120,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 0,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": [
+                0,
+                0,
+                255
+            ],
+            "b_type": 0,
+            "io_edit": false,
+            "fn_name": "my_function_src",
+            "params": {
+                "filename": "my_function_src",
+                "value_1": 1,
+                "value_2": -1
+            },
+            "external": true
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 0,
+            "username": "Scope0",
+            "coords_left": 673,
+            "coords_top": 165,
+            "coords_width": 60,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": [
+                255,
+                0,
+                0
+            ],
+            "b_type": 3,
+            "io_edit": false,
+            "fn_name": "scope",
+            "params": {
+                "labels": "output_0",
+                "_init_start_": true
+            },
+            "external": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 1,
+            "username": "Scope1",
+            "coords_left": 674,
+            "coords_top": 251,
+            "coords_width": 60,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": [
+                255,
+                0,
+                0
+            ],
+            "b_type": 3,
+            "io_edit": false,
+            "fn_name": "scope",
+            "params": {
+                "labels": "output_1",
+                "_init_start_": true
+            },
+            "external": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "External0",
+            "srcport": 0,
+            "dstblock": "Scope0",
+            "dstport": 0,
+            "points": [
+                [
+                    585,
+                    229.0
+                ],
+                [
+                    653,
+                    229.0
+                ],
+                [
+                    653,
+                    195.0
+                ],
+                [
+                    673,
+                    195.0
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "External0",
+            "srcport": 1,
+            "dstblock": "Scope1",
+            "dstport": 0,
+            "points": [
+                [
+                    585,
+                    249.0
+                ],
+                [
+                    654,
+                    249.0
+                ],
+                [
+                    654,
+                    281.0
+                ],
+                [
+                    674,
+                    281.0
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ]
+}

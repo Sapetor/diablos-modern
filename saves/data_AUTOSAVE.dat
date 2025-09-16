@@ -1,0 +1,149 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "only_one": false,
+        "enable_line_sel": false,
+        "sim_time": 1.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100.0
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 0,
+            "username": "step0",
+            "coords_left": 168,
+            "coords_top": 164,
+            "coords_width": 80,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#0000ff",
+            "b_type": 0,
+            "io_edit": false,
+            "fn_name": "step",
+            "params": {
+                "value": 1.0,
+                "delay": 0.0,
+                "type": "up",
+                "pulse_start_up": true
+            },
+            "external": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 0,
+            "username": "scope0",
+            "coords_left": 596,
+            "coords_top": 175,
+            "coords_width": 80,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ff0000",
+            "b_type": 3,
+            "io_edit": false,
+            "fn_name": "scope",
+            "params": {
+                "labels": "default"
+            },
+            "external": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 0,
+            "username": "tranfn0",
+            "coords_left": 400,
+            "coords_top": 182,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8000ff",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    1
+                ],
+                "denominator": [
+                    1,
+                    2,
+                    1
+                ],
+                "init_conds": 0.0
+            },
+            "external": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "tranfn0",
+            "dstport": 0,
+            "points": [
+                [
+                    248,
+                    204
+                ],
+                [
+                    380,
+                    204
+                ],
+                [
+                    380,
+                    222
+                ],
+                [
+                    400,
+                    222
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "tranfn0",
+            "srcport": 0,
+            "dstblock": "scope0",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    222
+                ],
+                [
+                    576,
+                    222
+                ],
+                [
+                    576,
+                    215
+                ],
+                [
+                    596,
+                    215
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ]
+}
