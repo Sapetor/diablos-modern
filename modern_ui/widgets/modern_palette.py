@@ -5,8 +5,8 @@ Interactive palette with draggable blocks organized by categories.
 import logging
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QScrollArea, QFrame, QPushButton, QButtonGroup, QLineEdit)
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QByteArray
+    QScrollArea, QFrame, QPushButton, QButtonGroup, QLineEdit, QGridLayout)
+from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QByteArray, QRect
 from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont
 from PyQt5.QtSvg import QSvgWidget
 
@@ -37,61 +37,61 @@ class DraggableBlockWidget(QFrame):
     
     def _setup_widget(self):
         """Setup the widget layout and content."""
-        size = 80 # Fixed size for all blocks
-        self.setFixedSize(size, size)
+        self.setFixedSize(100, 100)
         self.setFrameStyle(QFrame.StyledPanel)
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.setAlignment(Qt.AlignCenter)
-
-        # Icon
-        icon_path = self._get_icon_path(self.category_name)
-        with open(icon_path, 'r') as f:
-            svg_content = f.read()
-        text_color = theme_manager.get_color('text_primary')
-        svg_content = svg_content.replace('stroke="currentColor"', f'stroke="{text_color.name()}"')
-        icon = QSvgWidget()
-        icon.load(QByteArray(svg_content.encode('utf-8')))
-        icon.setFixedSize(int(size * 0.4), int(size * 0.4))
-        layout.addWidget(icon)
-        
-        # Block name
-        block_name = getattr(self.menu_block, 'fn_name', 'Unknown')
-        self.name_label = QLabel(block_name)
-        self.name_label.setFont(QFont("Segoe UI", 8))
-        self.name_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.name_label)
-        
-        # Make it look interactive
         self.setCursor(Qt.OpenHandCursor)
 
-    def _get_icon_path(self, category_name):
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        icon_dir = os.path.join(base_path, '..', 'icons')
-        icon_name = f"{category_name.lower()}.svg"
-        return os.path.join(icon_dir, icon_name)
-    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        self._perform_drawing(painter)
+        painter.end()
+
+    def _perform_drawing(self, painter):
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        from lib.lib import DBlock
+        menu_block = self.menu_block
+        
+        block_rect = self.rect().adjusted(5, 5, -5, -25)
+
+        temp_dblock = DBlock(
+            block_fn=menu_block.block_fn,
+            sid=0,
+            coords=block_rect,
+            color=menu_block.b_color,
+            in_ports=menu_block.ins,
+            out_ports=menu_block.outs,
+            b_type=menu_block.b_type,
+            io_edit=menu_block.io_edit,
+            fn_name=menu_block.fn_name,
+            params=menu_block.params,
+            external=menu_block.external
+        )
+        
+        temp_dblock.update_Block()
+        temp_dblock.draw_Block(painter, draw_name=False)
+        
+        painter.setPen(theme_manager.get_color('text_primary'))
+        font = QFont("Segoe UI", 8)
+        painter.setFont(font)
+        name_rect = QRect(0, self.height() - 20, self.width(), 20)
+        painter.drawText(name_rect, Qt.AlignCenter, menu_block.fn_name)
+
     def _apply_styling(self):
         """Apply theme-aware styling."""
         border_color = theme_manager.get_color('border_secondary')
-        hover_color = theme_manager.get_color('surface_secondary')
+        hover_bg_color = theme_manager.get_color('surface_secondary')
         
         self.setStyleSheet(f"""
             DraggableBlockWidget {{
-                background-color: {self.menu_block.b_color.name()};
+                background-color: transparent;
                 border: 1px solid {border_color.name()};
                 border-radius: 10px;
                 margin: 2px;
-                color: white;
             }}
             DraggableBlockWidget:hover {{
-                background-color: {hover_color.name()};
+                background-color: {hover_bg_color.name()};
                 border: 1px solid {theme_manager.get_color('accent_primary').name()};
-            }}
-            QSvgWidget {{
-                background-color: transparent;
             }}
         """)
     
@@ -109,12 +109,10 @@ class DraggableBlockWidget(QFrame):
         if not hasattr(self, 'drag_start_position'):
             return
         
-        # Check if we've moved far enough to start a drag
         if ((event.pos() - self.drag_start_position).manhattanLength() < 
             10):  # Minimum drag distance
             return
         
-        # Start drag operation
         self._start_drag(event)
     
     def mouseReleaseEvent(self, event):
@@ -126,24 +124,19 @@ class DraggableBlockWidget(QFrame):
         try:
             logger.debug(f"Starting drag for block: {getattr(self.menu_block, 'fn_name', 'Unknown')}")
             
-            # Create drag object
             drag = QDrag(self)
             
-            # Create mime data
             mime_data = QMimeData()
             mime_data.setText(f"diablo_block:{getattr(self.menu_block, 'fn_name', 'Unknown')}")
             
-            # Store the menu block in the mime data (custom property)
             drag.menu_block = self.menu_block
             
-            # Create drag pixmap (preview of what's being dragged)
             pixmap = self._create_drag_pixmap()
             drag.setPixmap(pixmap)
             drag.setHotSpot(QPoint(pixmap.width()//2, pixmap.height()//2))
             
             drag.setMimeData(mime_data)
             
-            # Execute drag
             drop_action = drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction)
             
             logger.debug(f"Drag completed with action: {drop_action}")
@@ -154,21 +147,18 @@ class DraggableBlockWidget(QFrame):
     def _create_drag_pixmap(self):
         """Create a pixmap for the drag operation."""
         try:
-            # Create a pixmap of this widget
             pixmap = QPixmap(self.size())
             pixmap.fill(Qt.transparent)
             
-            # Paint the widget onto the pixmap
             painter = QPainter(pixmap)
-            painter.setOpacity(0.8)  # Make it semi-transparent
-            self.render(painter)
+            painter.setOpacity(0.8)
+            self._perform_drawing(painter)
             painter.end()
             
             return pixmap
             
         except Exception as e:
             logger.error(f"Error creating drag pixmap: {str(e)}")
-            # Return a simple fallback pixmap
             pixmap = QPixmap(100, 30)
             pixmap.fill(theme_manager.get_color('accent_primary'))
             return pixmap
@@ -199,10 +189,21 @@ class BlockCategoryWidget(QFrame):
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
         
-        # Add blocks
+        # Add blocks in a grid
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(4)
+        
+        row = 0
+        col = 0
         for block in self.blocks:
             block_widget = DraggableBlockWidget(block, self.category_name)
-            layout.addWidget(block_widget)
+            grid_layout.addWidget(block_widget, row, col)
+            col += 1
+            if col > 1: # 2 blocks per row
+                col = 0
+                row += 1
+        
+        layout.addLayout(grid_layout)
     
     def _apply_styling(self):
         """Apply theme-aware styling."""

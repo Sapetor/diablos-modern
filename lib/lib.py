@@ -410,7 +410,7 @@ class DSim:
                         io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={'str_name': 'default', '_init_start_': True},
                         b_color='orange', coords=(90, 80))
 
-        bode_plot = MenuBlocks(block_fn="BodePlot", fn_name='bode_plot',
+        bodemag = MenuBlocks(block_fn="BodeMag", fn_name='bodemag',
                         io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={},
                         b_color='dark_red', coords=(80, 80))
 
@@ -420,7 +420,7 @@ class DSim:
                         io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={"filename": '<no filename>'},
                         b_color='light_gray', coords=(140, 80), external=True)
 
-        self.menu_blocks = [step, ramp, sine, noise, integrator, transfer_function, derivative, adder, sigproduct, gain, exponential, mux, demux, terminator, scope, export, bode_plot, external]
+        self.menu_blocks = [step, ramp, sine, noise, integrator, transfer_function, derivative, adder, sigproduct, gain, exponential, mux, demux, terminator, scope, export, bodemag, external]
 
     def display_menu_blocks(self, painter):
         """
@@ -1435,20 +1435,21 @@ class DBlock:
         in_x = self.left if not self.flipped else self.left + self.width
         out_x = self.left + self.width if not self.flipped else self.left
 
+        grid_size = 10
         if self.in_ports > 0:
             for i in range(self.in_ports):
-                # Ensure integer coordinates for QPoint
-                port_y = int(self.top + self.height * (i + 1) / (self.in_ports + 1))
+                port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
+                port_y = int(round(port_y_float / grid_size) * grid_size)
                 port_in = QPoint(in_x, port_y)
                 self.in_coords.append(port_in)
         if self.out_ports > 0:
             for j in range(self.out_ports):
-                # Ensure integer coordinates for QPoint
-                port_y = int(self.top + self.height * (j + 1) / (self.out_ports + 1))
+                port_y_float = self.top + self.height * (j + 1) / (self.out_ports + 1)
+                port_y = int(round(port_y_float / grid_size) * grid_size)
                 port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
-    def draw_Block(self, painter):
+    def draw_Block(self, painter, draw_name=True):
         if painter is None:
             return
 
@@ -1490,13 +1491,120 @@ class DBlock:
             path.moveTo(0.1, 0.5)
             path.quadTo(0.3, 0.1, 0.5, 0.5)
             path.quadTo(0.7, 0.9, 0.9, 0.5)
-        elif self.block_fn == "BodePlot":
-            path.moveTo(0.1, 0.2)
-            path.lineTo(0.9, 0.8)
+        elif self.block_fn == "Noise":
             path.moveTo(0.1, 0.5)
-            path.lineTo(0.9, 0.5)
-            path.moveTo(0.5, 0.1)
-            path.lineTo(0.5, 0.9)
+            path.lineTo(0.15, 0.2)
+            path.lineTo(0.2, 0.8)
+            path.lineTo(0.25, 0.3)
+            path.lineTo(0.3, 0.7)
+            path.lineTo(0.35, 0.4)
+            path.lineTo(0.4, 0.6)
+            path.lineTo(0.45, 0.5)
+            path.lineTo(0.5, 0.2)
+            path.lineTo(0.55, 0.8)
+            path.lineTo(0.6, 0.3)
+            path.lineTo(0.65, 0.7)
+            path.lineTo(0.7, 0.4)
+            path.lineTo(0.75, 0.6)
+            path.lineTo(0.8, 0.5)
+            path.lineTo(0.85, 0.2)
+            path.lineTo(0.9, 0.8)
+        elif self.block_fn == "SgProd":
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.moveTo(0.2, 0.8)
+            path.lineTo(0.8, 0.2)
+        elif self.block_fn == "BodeMag":
+            # Draw axes
+            path.moveTo(0.1, 0.9) # x-axis
+            path.lineTo(0.9, 0.9)
+            path.moveTo(0.1, 0.9) # y-axis
+            path.lineTo(0.1, 0.1)
+            # Draw plot line
+            path.moveTo(0.1, 0.4)
+            path.lineTo(0.4, 0.4)
+            path.lineTo(0.6, 0.7)
+            path.lineTo(0.9, 0.7)
+        elif self.block_fn == "Deriv":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+
+            # Draw dy
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
+            painter.drawText(rect_top, Qt.AlignCenter, "dy")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
+
+            # Draw dt
+            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter, "dt")
+
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "BodeMag":
+            # Draw axes
+            path.moveTo(0.1, 0.9) # x-axis
+            path.lineTo(0.9, 0.9)
+            path.moveTo(0.1, 0.9) # y-axis
+            path.lineTo(0.1, 0.1)
+            # Draw plot line
+            path.moveTo(0.1, 0.4)
+            path.lineTo(0.4, 0.4)
+            path.lineTo(0.6, 0.7)
+            path.lineTo(0.9, 0.7)
+        elif self.block_fn == "Deriv":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+
+            # Draw dy
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
+            painter.drawText(rect_top, Qt.AlignCenter, "dy")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
+
+            # Draw dt
+            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter, "dt")
+
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "TranFn":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+
+            # Draw B(s)
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
+            painter.drawText(rect_top, Qt.AlignCenter, "B(s)")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
+
+            # Draw A(s)
+            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter, "A(s)")
+
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "Integr":
             font = painter.font()
             original_size = font.pointSize()
@@ -1557,12 +1665,13 @@ class DBlock:
         for port_out_location in self.out_coords:
             painter.drawEllipse(port_out_location, self.port_radius -1, self.port_radius - 1)
         
-        # Draw block name below the block
-        text_color = theme_manager.get_color('text_primary')
-        painter.setPen(text_color)
-        painter.setFont(self.font)
-        text_rect = QRect(self.left, self.top + self.height + 5, self.width, 20)
-        painter.drawText(text_rect, Qt.AlignCenter | Qt.TextWordWrap, self.name)
+        if draw_name:
+            # Draw block name below the block
+            text_color = theme_manager.get_color('text_primary')
+            painter.setPen(text_color)
+            painter.setFont(self.font)
+            text_rect = QRect(self.left, self.top + self.height + 5, self.width, 20)
+            painter.drawText(text_rect, Qt.AlignCenter | Qt.TextWordWrap, self.name)
 
         if self.selected:
             selection_color = theme_manager.get_color('accent_primary')
@@ -1758,55 +1867,68 @@ class DLine:
         self.srcbottom = 0
         self.dstbottom = 0
         self.points = [QPoint(p.x(), p.y()) if isinstance(p, QPoint) else QPoint(p[0], p[1]) for p in points]
-        self.path, self.points = self.create_trajectory(self.points[0], self.points[1])
         self.cptr = 0  
         self.selected = False  
+        self.modified = False
+        self.selected_segment = -1
+        self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
         self.color = QColor(0, 0, 0)  # Default to black
 
     def toggle_selection(self):
         self.selected = not self.selected
         
-    def create_trajectory(self, start, finish):
+    def create_trajectory(self, start, finish, blocks_list, points=None):
         path = QPainterPath(start)
+        
+        all_points = []
+        if self.modified and points and len(points) > 1:
+            all_points = points
+        else:
+            is_feedback = start.x() > finish.x()
+            
+            if is_feedback:
+                src_block = None
+                for block in blocks_list:
+                    if block.name == self.srcblock:
+                        src_block = block
+                        break
+                
+                if src_block:
+                    p1 = QPoint(start.x() + 20, start.y())
+                    p2 = QPoint(p1.x(), src_block.rect.bottom() + 30)
+                    p3 = QPoint(finish.x() - 20, p2.y())
+                    p4 = QPoint(p3.x(), finish.y())
+                    all_points = [start, p1, p2, p3, p4, finish]
+                else: # fallback for feedback if src_block not found
+                    mid_x = int((start.x() + finish.x()) / 2)
+                    all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
+            else:
+                mid_x = int((start.x() + finish.x()) / 2)
+                all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
 
-        h_src = 20 * (self.total_srcports - self.srcport)
-        h_dst = 20 * (self.total_dstports - self.dstport)
-        v_dst = 20 * (self.total_dstports - self.dstport)
-        b_dst = 25 * max(self.total_dstports, self.total_srcports)
+        # Clean up collinear points
+        clean_points = []
+        if len(all_points) > 0:
+            clean_points.append(all_points[0])
+            for i in range(1, len(all_points) - 1):
+                p1 = all_points[i-1]
+                p2 = all_points[i]
+                p3 = all_points[i+1]
+                if (p1.x() == p2.x() == p3.x()) or (p1.y() == p2.y() == p3.y()):
+                    continue
+                clean_points.append(p2)
+            clean_points.append(all_points[-1])
+        all_points = clean_points
 
-        x1, y1 = start.x(), start.y()
-        x2, y2 = finish.x(), finish.y()
-
-        points = [start]
-
-        if x1 == x2 or (y1 == y2 and x1 < x2):
-            points.append(finish)
-        elif x1 < x2:
-            mid_x = max(x1 + 10, x2 - h_dst)
-            points.append(QPoint(mid_x, y1))
-            points.append(QPoint(mid_x, y2))
-            points.append(finish)
-        elif x1 > x2 and abs(y1 - y2) > b_dst:
-            mid_y = int(0.5 * (y1 + y2))
-            points.append(QPoint(x1 + h_src, y1))
-            points.append(QPoint(x1 + h_src, mid_y))
-            points.append(QPoint(x2 - h_dst, mid_y))
-            points.append(QPoint(x2 - h_dst, y2))
-            points.append(finish)
-        elif x1 > x2 and abs(y1 - y2) <= b_dst:
-            mid_y = max(self.srcbottom, self.dstbottom) + v_dst
-            points.append(QPoint(x1 + h_src, y1))
-            points.append(QPoint(x1 + h_src, mid_y))
-            points.append(QPoint(x2 - h_dst, mid_y))
-            points.append(QPoint(x2 - h_dst, y2))
-            points.append(finish)
-        else: # Should not happen, but as a fallback
-            points.append(finish)
-
-        for p in points[1:]:
-            path.lineTo(p)
-
-        return path, points
+        segments = []
+        path = QPainterPath(all_points[0])
+        for i in range(len(all_points) - 1):
+            p1 = all_points[i]
+            p2 = all_points[i+1]
+            path.lineTo(p2)
+            segments.append(QRect(p1, p2).normalized())
+        
+        return path, all_points, segments
 
     def update_line(self, blocks_list):
         logger.debug(f"Updating line {self.name}")
@@ -1822,19 +1944,38 @@ class DLine:
                     self.total_dstports = block.in_ports
                     self.dstbottom = block.top + block.height
             if start and end:
-                self.path, self.points = self.create_trajectory(start, end)
+                self.points[0] = start
+                self.points[-1] = end
+                self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
+                self.modified = False
 
     def draw_line(self, painter):
         if self.path and not self.path.isEmpty(): # self.path is a QPainterPath
             # Use theme_manager for connection colors
-            connection_color = theme_manager.get_color('connection_default')
-            if self.selected:
-                connection_color = theme_manager.get_color('connection_active')
-            pen = QPen(connection_color, 2)
+            default_connection_color = theme_manager.get_color('connection_default')
+            active_connection_color = theme_manager.get_color('connection_active')
             
+            # Draw the whole line with default color, or active color if fully selected
+            pen_color = active_connection_color if self.selected and self.selected_segment == -1 else default_connection_color
+            pen = QPen(pen_color, 2)
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(self.path)
+
+            # If a segment is selected, draw it highlighted
+            if self.selected and self.selected_segment != -1:
+                if self.selected_segment < len(self.points) - 1:
+                    p1 = self.points[self.selected_segment]
+                    p2 = self.points[self.selected_segment + 1]
+                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine) # Thicker pen
+                    painter.setPen(highlight_pen)
+                    painter.drawLine(p1, p2)
+
+            # Draw intermediate points if the whole line is selected
+            if self.selected and self.selected_segment == -1:
+                painter.setBrush(active_connection_color)
+                for point in self.points[1:-1]:
+                    painter.drawEllipse(point, 4, 4)
 
             # Draw arrowhead
             arrow_size = 10
@@ -1856,39 +1997,45 @@ class DLine:
 
             arrow_polygon = QPolygonF([end_point, arrow_p1, arrow_p2])
             
-            painter.setBrush(connection_color) # Fill arrowhead with line color
+            arrow_color = active_connection_color if self.selected else default_connection_color
+            painter.setBrush(arrow_color) # Fill arrowhead with line color
             painter.setPen(Qt.NoPen) # No border for arrowhead
             painter.drawPolygon(arrow_polygon)
 
-    def collision(self, m_coords):
-        min_dst = 10
-        if isinstance(m_coords, QPoint):
-            m_x, m_y = m_coords.x(), m_coords.y()
-        else:
-            m_x, m_y = m_coords[0], m_coords[1]
+    def collision(self, m_coords, point_radius=5, line_threshold=5):
+        if isinstance(m_coords, tuple):
+            m_coords = QPoint(*m_coords)
 
+        # Check for point collision
+        for i, point in enumerate(self.points):
+            if (m_coords - point).manhattanLength() <= point_radius:
+                return ("point", i)
+
+        # Check for segment collision
         for i in range(len(self.points) - 1):
-            line_A = self.points[i]
-            line_B = self.points[i+1]
-
-            if line_A == m_coords or line_B == m_coords:
-                return True
+            p1 = self.points[i]
+            p2 = self.points[i+1]
             
-            v = line_B - line_A
-            u = QPoint(m_x, m_y) - line_A
+            # Bounding box check
+            if not QRect(p1, p2).normalized().adjusted(-line_threshold, -line_threshold, line_threshold, line_threshold).contains(m_coords):
+                continue
+
+            # Distance from point to line segment
+            v = p2 - p1
+            u = m_coords - p1
             
             length_squared = v.x()**2 + v.y()**2
             if length_squared == 0:
-                distance_squared = u.x()**2 + u.y()**2
+                dist_sq = u.x()**2 + u.y()**2
             else:
-                t = max(0, min(1, (u.x()*v.x() + u.y()*v.y()) / length_squared))
-                projection = line_A + t * v
-                distance_squared = (m_x - projection.x())**2 + (m_y - projection.y())**2
+                t = max(0, min(1, QPoint.dotProduct(u, v) / length_squared))
+                projection = p1 + t * v
+                dist_sq = (m_coords - projection).manhattanLength()
 
-            if distance_squared <= min_dst**2:
-                return True
+            if dist_sq <= line_threshold:
+                return ("segment", i)
 
-        return False
+        return None
 
     def change_color(self, color):
         self.color = color

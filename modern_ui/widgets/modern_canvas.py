@@ -1,5 +1,4 @@
-"""
-Modern Canvas Widget for DiaBloS Phase 2
+"""Modern Canvas Widget for DiaBloS Phase 2
 Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
@@ -27,6 +26,9 @@ class State:
     """State enumeration for canvas interactions."""
     IDLE = "idle"
     DRAGGING = "dragging"
+    DRAGGING_BLOCK = "dragging_block"
+    DRAGGING_LINE_POINT = "dragging_line_point"
+    DRAGGING_LINE_SEGMENT = "dragging_line_segment"
     CONNECTING = "connecting"
     CONFIGURING = "configuring"
 
@@ -240,7 +242,7 @@ class ModernCanvas(QWidget):
             painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
 
             # Draw grid
-            grid_size = 20
+            grid_size = 10
             grid_color = theme_manager.get_color('grid_dots')
             painter.setPen(QPen(grid_color, 1)) # 1 pixel wide dots
 
@@ -309,9 +311,9 @@ class ModernCanvas(QWidget):
                 return
 
             # Check for line clicks
-            clicked_line = self._get_clicked_line(pos)
+            clicked_line, collision_result = self._get_clicked_line(pos)
             if clicked_line:
-                self._handle_line_click(clicked_line, pos)
+                self._handle_line_click(clicked_line, collision_result, pos)
                 return
 
             # Cancel any ongoing line creation if clicking on empty area
@@ -395,13 +397,13 @@ class ModernCanvas(QWidget):
         plot_widget.setTitle(f"Bode Magnitude Plot: {source_block.name}")
         plot_widget.plot(w, mag)
         plot_widget.showGrid(x=True, y=True)
-        
+
         if not hasattr(self, 'plot_windows'):
             self.plot_windows = []
         self.plot_windows.append(plot_window)
-        
         plot_window.show()
-    
+
+
     def _get_clicked_block(self, pos):
         for block in reversed(getattr(self.dsim, 'blocks_list', [])):
             if hasattr(block, 'rect') and block.rect.contains(pos):
@@ -410,38 +412,40 @@ class ModernCanvas(QWidget):
 
     def _get_clicked_line(self, pos):
         for line in getattr(self.dsim, 'line_list', []):
-            if hasattr(line, 'collision') and line.collision(pos):
-                return line
-        return None
+            if hasattr(line, 'collision'):
+                result = line.collision(pos)
+                if result:
+                    return line, result
+        return None, None
 
     def _clear_selections(self):
         for block in getattr(self.dsim, 'blocks_list', []):
             block.selected = False
         for line in getattr(self.dsim, 'line_list', []):
             line.selected = False
+            if hasattr(line, 'selected_segment'):
+                line.selected_segment = -1
         self.update()
 
     def _handle_block_click(self, block, pos):
         """Handle clicking on a block."""
         try:
             logger.debug(f"Block clicked: {getattr(block, 'fn_name', 'Unknown')}")
-
             if QApplication.keyboardModifiers() & Qt.ControlModifier:
                 block.toggle_selection()
             else:
                 self._clear_selections()
                 block.selected = True
-                # Start dragging the block
-                self.start_drag(block, pos)
+
+            # Start dragging the block
+            self.start_drag(block, pos)
 
             # Emit selection signal
             self.block_selected.emit(block)
-            
             self.update()
-
         except Exception as e:
             logger.error(f"Error in _handle_block_click: {str(e)}")
-    
+
     def _check_port_clicks(self, pos):
         """Check for port clicks to create connections. Returns True if a port was clicked."""
         try:
@@ -451,92 +455,80 @@ class ModernCanvas(QWidget):
                     # Convert QPoint to tuple for collision detection
                     point_tuple = (pos.x(), pos.y())
                     port_result = block.port_collision(point_tuple)
-                    
                     if port_result != (-1, -1):
                         port_type, port_index = port_result
                         logger.debug(f"Port clicked: {port_type}{port_index} on block {getattr(block, 'name', 'Unknown')}")
                         self._handle_port_click(block, port_type, port_index, pos)
-                        return True  # Port was clicked
-            
-            return False  # No port was clicked
-                        
+                        return True # Port was clicked
+            return False # No port was clicked
         except Exception as e:
             logger.error(f"Error in _check_port_clicks: {str(e)}")
             return False
-    
+
     def _handle_port_click(self, block, port_type, port_index, pos):
         """Handle port click for connection creation."""
         try:
             block_name = getattr(block, 'name', 'Unknown')
             logger.debug(f"Port clicked on block {block_name}, port: {port_type}{port_index}")
-            
+
             if self.line_creation_state is None:
-                if port_type == 'o':  # Start line from output port
+                if port_type == 'o': # Start line from output port
                     self.state = State.CONNECTING
                     self.line_creation_state = 'start'
                     self.line_start_block = block
                     self.line_start_port = port_index
-                    
                     # Get the output port coordinates
                     if hasattr(block, 'out_coords') and port_index < len(block.out_coords):
                         start_point = block.out_coords[port_index]
                         self.temp_line = (start_point, pos)
-                        logger.info(f"Started line creation from {block_name} output port {port_index}")
-                    
+                    logger.info(f"Started line creation from {block_name} output port {port_index}")
             elif self.line_creation_state == 'start':
-                if port_type == 'i':  # End line at input port
+                if port_type == 'i': # End line at input port
                     logger.info(f"Completing line to {block_name} input port {port_index}")
                     self._finish_line_creation(block, port_index)
                 else:
                     logger.info("Canceling line creation - clicked on output port")
                     self._cancel_line_creation()
-            
             self.update()
-            
         except Exception as e:
             logger.error(f"Error in _handle_port_click: {str(e)}")
-    
+
     def _finish_line_creation(self, end_block, end_port):
         """Complete line creation between two blocks."""
         try:
             start_block_name = getattr(self.line_start_block, 'name', 'Unknown')
             end_block_name = getattr(end_block, 'name', 'Unknown')
-            
             logger.debug(f"Finishing line creation from {start_block_name} to {end_block_name}")
-            
+
             if hasattr(self.dsim, 'add_line'):
                 # Get coordinates for the line
                 start_coords = None
                 end_coords = None
-                
-                if (hasattr(self.line_start_block, 'out_coords') and 
+                if (hasattr(self.line_start_block, 'out_coords') and
                     self.line_start_port < len(self.line_start_block.out_coords)):
                     start_coords = self.line_start_block.out_coords[self.line_start_port]
-                
-                if (hasattr(end_block, 'in_coords') and 
+                if (hasattr(end_block, 'in_coords') and
                     end_port < len(end_block.in_coords)):
                     end_coords = end_block.in_coords[end_port]
-                
+
                 if start_coords and end_coords:
                     # Validate connection before creating
                     is_valid, validation_errors = self._validate_connection(
                         self.line_start_block, self.line_start_port,
                         end_block, end_port
                     )
-                    
                     if not is_valid:
                         error_msg = "\n".join(validation_errors)
                         logger.warning(f"Connection validation failed: {error_msg}")
                         self.simulation_status_changed.emit(f"Connection invalid: {error_msg}")
                         self._cancel_line_creation()
                         return
-                    
+
                     # Create line using DSim's add_line method
                     new_line = self.dsim.add_line(
                         (start_block_name, self.line_start_port, start_coords),
                         (end_block_name, end_port, end_coords)
                     )
-                    
                     if new_line:
                         logger.info(f"Line created: {start_block_name} -> {end_block_name}")
                         self.dsim.update_lines()
@@ -545,13 +537,11 @@ class ModernCanvas(QWidget):
                         logger.warning("Failed to create line")
                 else:
                     logger.error("Could not get port coordinates for line creation")
-            
             self._cancel_line_creation()
-            
         except Exception as e:
             logger.error(f"Error in _finish_line_creation: {str(e)}")
             self._cancel_line_creation()
-    
+
     def _check_line_clicks(self, pos):
         """Check for clicks on connection lines."""
         try:
@@ -560,63 +550,59 @@ class ModernCanvas(QWidget):
                 if hasattr(line, 'points') and self._point_near_line(pos, line):
                     self._handle_line_click(line, pos)
                     return
-                    
         except Exception as e:
             logger.error(f"Error in _check_line_clicks: {str(e)}")
-    
+
     def _point_near_line(self, pos, line):
         """Check if a point is near a line."""
         try:
             if not hasattr(line, 'points') or len(line.points) < 2:
                 return False
-            
-            threshold = 10  # pixels
+
+            threshold = 10 # pixels
             point_tuple = (pos.x(), pos.y())
-            
+
             # Check each segment of the line
             for i in range(len(line.points) - 1):
                 start = line.points[i]
                 end = line.points[i + 1]
-                
+
                 # Convert QPoint to tuple if needed
                 if hasattr(start, 'x'):
                     start = (start.x(), start.y())
                 if hasattr(end, 'x'):
                     end = (end.x(), end.y())
-                
+
                 # Calculate distance from point to line segment
                 distance = self._point_to_line_distance(point_tuple, start, end)
                 if distance <= threshold:
                     return True
-            
             return False
-            
         except Exception as e:
             logger.error(f"Error in _point_near_line: {str(e)}")
             return False
-    
+
     def _point_to_line_distance(self, point, line_start, line_end):
         """Calculate minimum distance from point to line segment."""
         try:
             x0, y0 = point
             x1, y1 = line_start
             x2, y2 = line_end
-            
+
             # Calculate the distance
             A = x0 - x1
             B = y0 - y1
             C = x2 - x1
             D = y2 - y1
-            
+
             dot = A * C + B * D
             len_sq = C * C + D * D
-            
-            if len_sq == 0:
-                # Line start and end are the same point
+
+            if len_sq == 0: # Line start and end are the same point
                 return ((x0 - x1) ** 2 + (y0 - y1) ** 2) ** 0.5
-            
+
             param = dot / len_sq
-            
+
             if param < 0:
                 xx, yy = x1, y1
             elif param > 1:
@@ -624,58 +610,70 @@ class ModernCanvas(QWidget):
             else:
                 xx = x1 + param * C
                 yy = y1 + param * D
-            
+
             dx = x0 - xx
             dy = y0 - yy
             return (dx * dx + dy * dy) ** 0.5
-            
         except Exception as e:
             logger.error(f"Error calculating point to line distance: {str(e)}")
             return float('inf')
-    
-    def _handle_line_click(self, line, pos):
+
+    def _handle_line_click(self, line, collision_result, pos):
         """Handle clicking on a connection line."""
         try:
             line_name = getattr(line, 'name', 'Unknown')
             logger.info(f"Line clicked: {line_name}")
 
-            if QApplication.keyboardModifiers() & Qt.ControlModifier:
-                line.toggle_selection()
-            else:
+            collision_type, collision_index = collision_result
+
+            if not (QApplication.keyboardModifiers() & Qt.ControlModifier):
                 self._clear_selections()
-                line.selected = True
+            
+            line.selected = True
+            line.modified = True # Always allow modification on click
+
+            if collision_type == "point":
+                self.state = State.DRAGGING_LINE_POINT
+                self.dragging_item = (line, collision_index)
+                self.drag_offset = pos
+                line.selected_segment = -1 # A point is selected, not a segment
+                logger.info(f"Dragging point {collision_index} of line {line_name}")
+            elif collision_type == "segment":
+                self.state = State.DRAGGING_LINE_SEGMENT
+                self.dragging_item = (line, collision_index)
+                self.drag_offset = pos
+                line.selected_segment = collision_index # A segment is selected
+                logger.info(f"Dragging segment {collision_index} of line {line_name}")
+            else: # "line" or None
+                line.selected_segment = -1 # The whole line is selected
             
             self.update()
-
         except Exception as e:
             logger.error(f"Error in _handle_line_click: {str(e)}")
-    
+        except Exception as e:
+            logger.error(f"Error in _handle_line_click: {str(e)}")
+
     def _configure_block(self, block):
         """Configure a block (right-click action)."""
         try:
             logger.info(f"Configuring block: {getattr(block, 'fn_name', 'Unknown')}")
-            
             # Use DSim's configuration dialog
             if hasattr(self.dsim, 'configure_block'):
                 self.dsim.configure_block(block)
-            
         except Exception as e:
             logger.error(f"Error configuring block: {str(e)}")
-    
+
     def start_drag(self, block, pos):
         """Start dragging a block."""
         try:
             self.state = State.DRAGGING
             self.dragging_block = block
-            
             # Calculate drag offset based on block's top-left corner
             self.drag_offset = QPoint(pos.x() - block.left, pos.y() - block.top)
-            
             logger.debug(f"Started dragging block: {getattr(block, 'fn_name', 'Unknown')}")
-            
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
-    
+
     def mouseMoveEvent(self, event):
         """Handle mouse move events."""
         try:
@@ -687,7 +685,7 @@ class ModernCanvas(QWidget):
                 return
 
             pos = self.screen_to_world(event.pos())
-            
+
             if self.state == State.DRAGGING and self.dragging_block:
                 # Update block position
                 # Calculate new top-left position for the block
@@ -695,23 +693,82 @@ class ModernCanvas(QWidget):
                 new_y = pos.y() - self.drag_offset.y()
 
                 # Snap to grid
-                grid_size = 20
+                grid_size = 10
                 snapped_x = round(new_x / grid_size) * grid_size
                 snapped_y = round(new_y / grid_size) * grid_size
-                
+
                 # Update block position using DBlock's relocate_Block method
                 self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
                 self.dsim.update_lines() # Update lines dynamically during drag
-                self.update()  # Trigger repaint
-            
+                self.update() # Trigger repaint
+            elif self.state == State.DRAGGING_LINE_POINT and self.dragging_item:
+                line, point_index = self.dragging_item
+                line.points[point_index] = pos
+                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
+                self.update()
+            elif self.state == State.DRAGGING_LINE_SEGMENT and self.dragging_item:
+                line, segment_index = self.dragging_item
+                
+                if not hasattr(line, '_stub_created'):
+                    line._stub_created = False
+
+                p1 = line.points[segment_index]
+                p2 = line.points[segment_index + 1]
+                is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
+                
+                STUB_LENGTH = 20
+
+                if is_horizontal and not line._stub_created:
+                    is_start_segment = (segment_index == 0)
+                    is_end_segment = (segment_index == len(line.points) - 2)
+
+                    if is_start_segment and abs(pos.y() - p1.y()) > 5:
+                        direction = 1 if p2.x() > p1.x() else -1
+                        stub_end = QPoint(p1.x() + direction * STUB_LENGTH, p1.y())
+                        corner = QPoint(p1.x() + direction * STUB_LENGTH, pos.y())
+                        line.points.insert(1, stub_end)
+                        line.points.insert(2, corner)
+                        self.dragging_item = (line, 2)
+                        line._stub_created = True
+                    elif is_end_segment and abs(pos.y() - p2.y()) > 5:
+                        direction = 1 if p1.x() > p2.x() else -1
+                        stub_end = QPoint(p2.x() + direction * STUB_LENGTH, p2.y())
+                        corner = QPoint(p2.x() + direction * STUB_LENGTH, pos.y())
+                        line.points.insert(segment_index + 1, corner)
+                        line.points.insert(segment_index + 2, stub_end)
+                        line._stub_created = True
+
+                current_segment_index = self.dragging_item[1]
+                p1_current = line.points[current_segment_index]
+                p2_current = line.points[current_segment_index + 1]
+                is_horizontal_current = abs(p1_current.x() - p2_current.x()) > abs(p1_current.y() - p2_current.y())
+
+                if is_horizontal_current:
+                    line.points[current_segment_index].setY(pos.y())
+                    line.points[current_segment_index + 1].setY(pos.y())
+                else:
+                    line.points[current_segment_index].setX(pos.x())
+                    line.points[current_segment_index + 1].setX(pos.x())
+
+                for i in range(len(line.points) - 1):
+                    if i > 0:
+                        p_prev = line.points[i-1]
+                        p_curr = line.points[i]
+                        is_prev_horizontal = abs(p_prev.x() - p_curr.x()) > abs(p_prev.y() - p_curr.y())
+                        if is_prev_horizontal:
+                            line.points[i].setY(p_prev.y())
+                        else:
+                            line.points[i].setX(p_prev.x())
+
+                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
+                self.update()
             elif self.line_creation_state == 'start' and self.temp_line:
                 # Update temporary line endpoint
                 self.temp_line = (self.temp_line[0], pos)
                 self.update()
-                
         except Exception as e:
             logger.error(f"Error in mouseMoveEvent: {str(e)}")
-    
+
     def mouseReleaseEvent(self, event):
         """Handle mouse release events."""
         try:
@@ -721,26 +778,32 @@ class ModernCanvas(QWidget):
 
             if self.state == State.DRAGGING:
                 self._finish_drag()
-            
+            elif self.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
+                if self.dragging_item:
+                    line, _ = self.dragging_item
+                    if hasattr(line, '_stub_created'):
+                        del line._stub_created
+                self.state = State.IDLE
+                self.dragging_item = None
+                self.update()
+
         except Exception as e:
             logger.error(f"Error in mouseReleaseEvent: {str(e)}")
-    
+
     def _finish_drag(self):
         """Finish dragging operation."""
         try:
             if self.dragging_block:
                 logger.debug(f"Finished dragging block: {getattr(self.dragging_block, 'fn_name', 'Unknown')}")
-            
-            # Reset drag state
-            self.state = State.IDLE
-            self.dragging_block = None
-            self.drag_offset = None
-            self.dsim.update_lines() # Ensure lines are updated after drag finishes
-            self.update() # Trigger a final repaint
-            
+                # Reset drag state
+                self.state = State.IDLE
+                self.dragging_block = None
+                self.drag_offset = None
+                self.dsim.update_lines() # Ensure lines are updated after drag finishes
+                self.update() # Trigger a final repaint
         except Exception as e:
             logger.error(f"Error finishing drag: {str(e)}")
-    
+
     def _cancel_line_creation(self):
         """Cancel line creation process."""
         try:
@@ -750,12 +813,10 @@ class ModernCanvas(QWidget):
             self.temp_line = None
             self.state = State.IDLE
             self.update()
-            
             logger.debug("Line creation cancelled")
-            
         except Exception as e:
             logger.error(f"Error cancelling line creation: {str(e)}")
-    
+
     def keyPressEvent(self, event):
         """Handle keyboard events."""
         try:
@@ -765,13 +826,10 @@ class ModernCanvas(QWidget):
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
-            
             elif event.key() == Qt.Key_Delete:
                 self.remove_selected_items()
-
             elif event.key() == Qt.Key_F and (event.modifiers() & Qt.ControlModifier):
                 self.flip_selected_blocks()
-                
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
@@ -796,17 +854,14 @@ class ModernCanvas(QWidget):
 
             for block in blocks_to_remove:
                 self.dsim.remove_block_and_lines(block)
-            
             for line in lines_to_remove:
                 if line in self.dsim.line_list:
                     self.dsim.line_list.remove(line)
-
             self.update()
             logger.info(f"Removed {len(blocks_to_remove)} blocks and {len(lines_to_remove)} lines")
-
         except Exception as e:
             logger.error(f"Error removing selected items: {str(e)}")
-    
+
     def clear_canvas(self):
         """Clear all blocks and connections from the canvas."""
         try:
@@ -816,11 +871,11 @@ class ModernCanvas(QWidget):
                 logger.info("Canvas cleared")
         except Exception as e:
             logger.error(f"Error clearing canvas: {str(e)}")
-    
+
     def get_blocks(self):
         """Get all blocks on the canvas."""
         return getattr(self.dsim, 'blocks_list', [])
-    
+
     def get_connections(self):
         """Get all connections on the canvas."""
         return getattr(self.dsim, 'line_list', [])
@@ -845,7 +900,7 @@ class ModernCanvas(QWidget):
             self.zoom_in()
         else:
             self.zoom_out()
-    
+
     # Drag and Drop Events
     def dragEnterEvent(self, event):
         """Handle drag enter events."""
@@ -862,7 +917,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in dragEnterEvent: {str(e)}")
             event.ignore()
-    
+
     def dragMoveEvent(self, event):
         """Handle drag move events."""
         try:
@@ -877,7 +932,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in dragMoveEvent: {str(e)}")
             event.ignore()
-    
+
     def dropEvent(self, event):
         """Handle drop events to create blocks."""
         try:
@@ -886,9 +941,8 @@ class ModernCanvas(QWidget):
                 if mime_text.startswith("diablo_block:"):
                     block_name = mime_text.split(":", 1)[1]
                     drop_pos = self.screen_to_world(event.pos())
-                    
                     logger.info(f"Drop event: Creating {block_name} at ({drop_pos.x()}, {drop_pos.y()})")
-                    
+
                     # Find the corresponding menu block
                     menu_block = self._find_menu_block_by_name(block_name)
                     if menu_block:
@@ -910,7 +964,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in dropEvent: {str(e)}")
             event.ignore()
-    
+
     def _find_menu_block_by_name(self, block_name):
         """Find a menu block by its function name."""
         try:
@@ -922,33 +976,31 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error finding menu block {block_name}: {str(e)}")
             return None
-    
+
     def _validate_connection(self, start_block, start_port, end_block, end_port):
         """Validate a connection between two blocks."""
         try:
             validation_errors = []
-            
+
             # Basic validation checks
             if start_block == end_block:
                 validation_errors.append("Cannot connect a block to itself")
-            
+
             if end_block.block_fn == "BodePlot" and start_block.block_fn != "TranFn":
                 validation_errors.append("BodePlot block can only be connected to a Transfer Function.")
-            
+
             # Check if connection already exists
             existing_lines = getattr(self.dsim, 'line_list', [])
             for line in existing_lines:
                 if (hasattr(line, 'srcblock') and hasattr(line, 'dstblock') and
                     hasattr(line, 'srcport') and hasattr(line, 'dstport')):
-                    
                     start_name = getattr(start_block, 'name', '')
                     end_name = getattr(end_block, 'name', '')
-                    
                     if (line.srcblock == start_name and line.srcport == start_port and
                         line.dstblock == end_name and line.dstport == end_port):
                         validation_errors.append("Connection already exists")
                         break
-            
+
             # Check if input port is already connected
             for line in existing_lines:
                 if (hasattr(line, 'dstblock') and hasattr(line, 'dstport')):
@@ -956,15 +1008,13 @@ class ModernCanvas(QWidget):
                     if line.dstblock == end_name and line.dstport == end_port:
                         validation_errors.append("Input port already connected")
                         break
-            
+
             # Use ValidationHelper if available
             try:
                 all_blocks = getattr(self.dsim, 'blocks_list', [])
                 all_lines = getattr(self.dsim, 'line_list', [])
-                
                 # Create a temporary line list for validation
                 temp_lines = list(all_lines)
-                
                 # Add our proposed connection for validation
                 temp_line = type('TempLine', (), {
                     'srcblock': getattr(start_block, 'name', ''),
@@ -973,19 +1023,17 @@ class ModernCanvas(QWidget):
                     'dstport': end_port
                 })()
                 temp_lines.append(temp_line)
-                
+
                 is_valid, helper_errors = ValidationHelper.validate_block_connections(
                     all_blocks, temp_lines
                 )
-                
                 if not is_valid:
                     validation_errors.extend(helper_errors)
-                    
             except Exception as e:
                 logger.debug(f"ValidationHelper not available or failed: {str(e)}")
-            
+
+
             return len(validation_errors) == 0, validation_errors
-            
         except Exception as e:
             logger.error(f"Error validating connection: {str(e)}")
             return False, [f"Validation error: {str(e)}"]
