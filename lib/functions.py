@@ -344,141 +344,99 @@ class DFunctions:
 
 
     def integrator(self, time, inputs, params, output_only=False, next_add_in_memory=True, dtime=0.01):
-        """
-        Integrator function
-
-        :purpose: Function that integrates the input signal.
-        :description: This is a process type function. It takes the input signal and adds it to an internal variable, weighted by the sampling time. It allows 4 forms of integration, the most complex being the Runge Kutta 45 method.
-        :param time: Value indicating the current period in the simulation.
-        :param inputs: Dictionary that provides one or more entries for the function (if applicable).
-        :param params['init_conds']: Value that contains the initial conditions for the integrator.
-        :param params['method']: ['FWD_EULER/BWD_EULER/TUSTIN/RK45/SOLVE_IVP'] String that contains the method of integration to use.
-        :param params['dtime']: Auxiliary variable that contains the sampling time that the simulation is using (fixed step integration).
-        :param params['mem']: Variable containing the sum of all data, from start to lapse 'time'.
-        :param params['mem_list']: Vector containing the last values of 'mem'.
-        :param params['mem_len']: Variable defining the number of elements contained in 'mem_list'.
-        :param params['nb_loop']: Auxiliary variable indicating the current step of the RK45 method.
-        :param params['RK45_Klist']: Auxiliary vector containing the last values of K1,K2,K3,K4 (RK45 method).
-        :param params['add_in_memory']: Auxiliary variable indicating when the input value is added to 'mem', as well as returning an auxiliary result (method RK45).
-        :param params['aux']: Auxiliary variable containing the sum of 'mem' above, with half a simulation step (method RK45)
-        :param params['_init_start_']: Auxiliary parameter used by the system to perform special functions in the first simulation loop.
-        :param params['_name_']: Auxiliary parameter delivered by the associated block, for error identification.
-        :type time: float
-        :type inputs: dict
-        :type params['init_conds']: numpy.ndarray
-        :type params['method']: str
-        :type params['dtime']: float
-        :type params['mem']: numpy.ndarray
-        :type params['mem_list']: numpy.ndarray
-        :type params['mem_len']: float
-        :type params['nb_loop']: int
-        :type params['RK45_Klist']: numpy.ndarray
-        :type params['add_in_memory']: bool
-        :type params['aux']: numpy.ndarray
-        :type params['_init_start_']: bool
-        :type params['_name_']: str
-        :return: The accumulated value of all inputs since step zero weighted by the sampling time.
-        :rtype: numpy.ndarray
-        :examples: See example in :ref:`examples:sine integration` and :ref:`examples:convergent ode system`.
-        :notes: The 'init_conds' parameter must be set by the user if the input has more than one dimension. You can define a vector value as [a,b,...], with a and b scalar values.
-
-        """
-        logger.debug(f"Integrator function called with time={time}, inputs={inputs}, params={params}")
-
-    # Initialization (this step happens only in the first iteration)
-        if params['_init_start_']:
+        # Initialization (this step happens only in the first iteration)
+        if params.get('_init_start_', True):
             params['dtime'] = dtime
-            params['mem'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))  # Ensure float type
+            params['mem'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
+            params['output'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
             params['mem_list'] = [np.zeros_like(params['mem'])]
             params['mem_len'] = 5.0
             params['_init_start_'] = False
-            params['aux'] = np.zeros_like(params['mem'])  # Initialize 'aux'
+            params['aux'] = np.zeros_like(params['mem'])
 
             if params['method'] == 'RK45':
                 params['nb_loop'] = 0
-                params['RK45_Klist'] = [0, 0, 0, 0]  # K1, K2, K3, K4
+                params['RK45_Klist'] = [0, 0, 0, 0]
 
             params['add_in_memory'] = True
 
         if output_only:
-            old_add_in_memory = params['add_in_memory']
-            params['add_in_memory'] = next_add_in_memory  # Update for next loop
-            if old_add_in_memory:
-                return {0: params['mem']}
+            # The output now returns the value calculated in the previous step,
+            # which is stored in 'output'. This fixes the one-step delay.
+            result = {0: params.get('output', params['mem'])}
+            return result
+        
+        # Checks if the new input vector dimensions match.
+        if isinstance(inputs.get(0), (float, int)):
+            inputs[0] = np.atleast_1d(inputs[0])
+        
+        if params['mem'].shape != inputs.get(0, params['mem']).shape:
+            if params['mem'].size == 1:
+                logger.warning(f"Expanding initial conditions for {params['_name_']} to match input dimensions.")
+                params['mem'] = np.full(inputs[0].shape, params['mem'].item())
             else:
+                logger.error(f"Dimension Error in initial conditions in {params['_name_']}")
+                params['_init_start_'] = True
+                return {'E': True, 'error': f"Dimension mismatch in {params['_name_']}"}
+
+        # Integration process according to chosen method
+        if params['method'] == 'FWD_EULER':
+            if params['add_in_memory']:
+                params['mem'] += params['dtime'] * inputs[0]
+            else:
+                params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * inputs[0])
                 return {0: params['aux']}
-        else:
-            # Checks if the new input vector dimensions match.
-            if isinstance(inputs[0], (float, int)):
-                inputs[0] = np.atleast_1d(inputs[0])
-            
-            if params['mem'].shape != inputs[0].shape:
-                if params['mem'].size == 1:
-                    logger.warning(f"Expanding initial conditions for {params['_name_']} to match input dimensions.")
-                    params['mem'] = np.full(inputs[0].shape, params['mem'].item())
-                else:
-                    logger.error(f"Dimension Error in initial conditions in {params['_name_']}")
-                    params['_init_start_'] = True
-                    return {'E': True, 'error': f"Dimension mismatch in {params['_name_']}"}
-
-            # Integration process according to chosen method
-            if params['method'] == 'FWD_EULER':
-                if params['add_in_memory']:
-                    params['mem'] += params['dtime'] * inputs[0]
-                else:
-                    params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * inputs[0])
-                    return {0: params['aux']}
-            elif params['method'] == 'BWD_EULER':
-                if params['add_in_memory']:
-                    params['mem'] += params['dtime'] * params['mem_list'][-1]
-                else:
-                    params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * params['mem_list'][-1])
-                    return {0: params['aux']}
-            elif params['method'] == 'TUSTIN':
-                if params['add_in_memory']:
-                    params['mem'] += 0.5*params['dtime'] * (inputs[0] + params['mem_list'][-1])
-                else:
-                    params['aux'] = np.array(params['mem'] + 0.25 * params['dtime'] * (inputs[0] + params['mem_list'][-1]))
-                    return {0: params['aux']}
-            elif params['method'] == 'RK45':
-                K_list = params['RK45_Klist']
-                K_list[params['nb_loop']] = params['dtime'] * np.array(inputs[0], dtype=float)
-                params['RK45_Klist'] = K_list
-                K1, K2, K3, K4 = K_list
-
-                if params['nb_loop'] == 0:
-                    params['nb_loop'] += 1
-                    params['aux'] = params['mem'] + 0.5 * K1
-                    return {}
-                elif params['nb_loop'] == 1:
-                    params['nb_loop'] += 1
-                    params['aux'] = params['mem'] + 0.5 * K2
-                    return {}
-                elif params['nb_loop'] == 2:
-                    params['nb_loop'] += 1
-                    params['aux'] = params['mem'] + K3
-                    return {}
-                elif params['nb_loop'] == 3:
-                    params['nb_loop'] = 0
-                    params['mem'] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
-            elif params['method'] == 'SOLVE_IVP':
-                def fun(t, y):
-                    return inputs[0]
-                sol = solve_ivp(fun, [time, time + dtime], params['mem'])
-                params['mem'] = sol.y[:, -1]
-                return {0: params['mem']}
+        elif params['method'] == 'BWD_EULER':
+            if params['add_in_memory']:
+                params['mem'] += params['dtime'] * params['mem_list'][-1]
             else:
-                logger.error(f"Unknown integration method {params['method']} in {params['_name_']}")
-                return {'E': True}
+                params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * params['mem_list'][-1])
+                return {0: params['aux']}
+        elif params['method'] == 'TUSTIN':
+            if params['add_in_memory']:
+                params['mem'] += 0.5*params['dtime'] * (inputs[0] + params['mem_list'][-1])
+            else:
+                params['aux'] = np.array(params['mem'] + 0.25 * params['dtime'] * (inputs[0] + params['mem_list'][-1]))
+                return {0: params['aux']}
+        elif params['method'] == 'RK45':
+            K_list = params['RK45_Klist']
+            K_list[params['nb_loop']] = params['dtime'] * np.array(inputs[0], dtype=float)
+            params['RK45_Klist'] = K_list
+            K1, K2, K3, K4 = K_list
 
-            aux_list = params['mem_list']
-            aux_list.append(inputs[0])
-            if len(aux_list) > params['mem_len']:
-                aux_list = aux_list[-5:]
-            params['mem_list'] = aux_list
+            if params['nb_loop'] == 0:
+                params['nb_loop'] += 1
+                params['aux'] = params['mem'] + 0.5 * K1
+                return {}
+            elif params['nb_loop'] == 1:
+                params['nb_loop'] += 1
+                params['aux'] = params['mem'] + 0.5 * K2
+                return {}
+            elif params['nb_loop'] == 2:
+                params['nb_loop'] += 1
+                params['aux'] = params['mem'] + K3
+                return {}
+            elif params['nb_loop'] == 3:
+                params['nb_loop'] = 0
+                params['mem'] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
+        elif params['method'] == 'SOLVE_IVP':
+            def fun(t, y):
+                return inputs[0]
+            sol = solve_ivp(fun, [time, time + dtime], params['mem'])
+            params['mem'] = sol.y[:, -1]
+            return {0: params['mem']}
+        else:
+            logger.error(f"Unknown integration method {params['method']} in {params['_name_']}")
+            return {'E': True}
 
-            logger.debug(f"Integrator function completed. mem={params['mem']}")
-            return {0: params['mem']} if params['add_in_memory'] else {}
+        aux_list = params['mem_list']
+        aux_list.append(inputs[0])
+        if len(aux_list) > params['mem_len']:
+            aux_list = aux_list[-5:]
+        params['mem_list'] = aux_list
+
+        result = {0: params['mem']} if params['add_in_memory'] else {}
+        return result
 
     def transfer_function(self, time, inputs, params, output_only=False):
         """

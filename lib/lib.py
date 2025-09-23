@@ -695,6 +695,15 @@ class DSim:
             print("*****INIT NEW EXECUTION*****")
 
             for block in self.blocks_list:
+                # Dynamically set b_type for Transfer Functions
+                if block.block_fn == 'TranFn':
+                    num = block.params.get('numerator', [])
+                    den = block.params.get('denominator', [])
+                    if len(den) > len(num):
+                        block.b_type = 1  # Strictly proper, has memory
+                    else:
+                        block.b_type = 2  # Not strictly proper, direct feedthrough
+
                 block.params['dtime'] = self.sim_dt
                 try:
                     missing_file_flag = block.reload_external_data()
@@ -788,6 +797,8 @@ class DSim:
                 else:
                     out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
                 children = self.get_outputs(block.name)
+                block.computed_data = True
+                self.update_global_list(block.name, h_value=0, h_assign=True)
 
             if 'E' in out_value.keys() and out_value['E']:
                 self.execution_failed(out_value.get('error', 'Unknown error'))
@@ -802,19 +813,21 @@ class DSim:
                             mblock.data_recieved += 1
                         mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
                         block.data_sent += 1
-                        logger.info(f"Propagated output from {block.name} to {mblock.name}. {mblock.name} now has {mblock.data_recieved}/{mblock.in_ports} inputs.")
 
-        for b in self.blocks_list:
-            logger.info(f"PRE-WHILE CHECK: Block {b.name}, data_recieved: {b.data_recieved}, in_ports: {b.in_ports}, computed: {b.computed_data}")
+        # Un-compute memory blocks so they are executed in the while loop to update their state
+        for block in self.blocks_list:
+            if block.name in self.memory_blocks:
+                block.computed_data = False
+                for g_block in self.global_computed_list:
+                    if g_block['name'] == block.name:
+                        g_block['computed_data'] = False
 
         # The diagram continues to be executed through the following blocks
         h_count = 1
         while not self.check_global_list():
-            logger.info(f"Starting execution iteration, h_count: {h_count}")
             for block in self.blocks_list:
                 # This part is executed only if the received data is equal to the number of input ports and the block has not been computed yet.
                 if block.data_recieved == block.in_ports and not block.computed_data:
-                    logger.info(f"Executing block: {block.name}, data_recieved: {block.data_recieved}, in_ports: {block.in_ports}, computed_data: {block.computed_data}")
                     # The function is executed (differentiate between internal and external function first)
                     if block.external:
                         try:
@@ -826,6 +839,11 @@ class DSim:
                     else:
                         out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
 
+                    # After execution, for memory blocks, update the 'output' state for the next step
+                    if block.name in self.memory_blocks:
+                        if block.block_fn == 'Integr':
+                            block.params['output'] = block.params['mem']
+
                     # It is checked that the function has not delivered an error
                     if 'E' in out_value.keys() and out_value['E']:
                         self.execution_failed(out_value.get('error', 'Unknown error'))
@@ -835,9 +853,8 @@ class DSim:
                     self.update_global_list(block.name, h_value=h_count, h_assign=True)
                     block.computed_data = True
 
-                    # The blocks that require the processed data from this block are searched.
-                    children = self.get_outputs(block.name)
                     if block.b_type not in [1, 3]:  # Elements that do not deliver a result to children (1 is initial cond.)
+                        children = self.get_outputs(block.name)
                         for mblock in self.blocks_list:
                             is_child, tuple_list = self.children_recognition(block_name=mblock.name, children_list=children)
                             if is_child:
@@ -865,7 +882,6 @@ class DSim:
                         self.execution_failed(self.error_msg)
                         return False
                     else:
-                        logger.info("All remaining uncomputed blocks form a valid loop with memory blocks. Breaking initialization loop.")
                         break
                 except Exception as e:
                     self.error_msg = f"Error during algebraic loop detection: {e}"
@@ -958,11 +974,10 @@ class DSim:
                             is_child, tuple_list = self.children_recognition(mblock.name, children)
                             if is_child:
                                 for tuple_child in tuple_list:
-                                    if tuple_child['dstport'] not in mblock.input_queue:
-                                        mblock.data_recieved += 1
-                                    mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
-                                    block.data_sent += 1
-
+                                                                    if tuple_child['dstport'] not in mblock.input_queue:
+                                                                        mblock.data_recieved += 1
+                                                                    mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
+                                                                    block.data_sent += 1
                     if self.rk45_len and self.rk_counter != 0:
                         block.params['_skip_'] = True
                 except Exception as e:
@@ -986,6 +1001,11 @@ class DSim:
                         else:
                             out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.params)
 
+                        # After execution, for memory blocks, update the 'output' state for the next step
+                        if block.name in self.memory_blocks:
+                            if block.block_fn == 'Integr':
+                                block.params['output'] = block.params['mem']
+
                         # It is checked that the function has not delivered an error
                         if 'E' in out_value.keys() and out_value['E']:
                             self.execution_failed()
@@ -1002,11 +1022,11 @@ class DSim:
                                 is_child, tuple_list = self.children_recognition(block_name=mblock.name, children_list=children)
                                 if is_child:
                                     # Data is sent to each required port of the child block
-                                    for tuple_child in tuple_list:
-                                        if tuple_child['dstport'] not in mblock.input_queue:
-                                            mblock.data_recieved += 1
-                                        mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
-                                        block.data_sent += 1
+                                                                    for tuple_child in tuple_list:
+                                                                        if tuple_child['dstport'] not in mblock.input_queue:
+                                                                            mblock.data_recieved += 1
+                                                                        mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
+                                                                        block.data_sent += 1
                 hier += 1
 
             # The dynamic plot function is called to save the new data, if active
@@ -1297,6 +1317,7 @@ class DSim:
                 labels_list.append(b_labels)
                 b_vectors = block.params['vector']
                 vector_list.append(b_vectors)
+                print(f"DEBUG: Full vector for {block.name}:\n{b_vectors}")
                 print(f"Labels: {b_labels}")
                 print(f"Vector length: {len(b_vectors)}")
                 print(f"Vector type: {type(b_vectors)}")
@@ -1405,6 +1426,8 @@ class DBlock:
         self.l_width = 5
         self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
         logging.debug(f"Block initialized: {self.name}")
+
+
 
 
 
@@ -2053,7 +2076,11 @@ class MenuBlocks(DSim):
         self.b_color = self.set_color(b_color)
         self.size = coords
         self.side_length = (30, 30)
-        self.image = QPixmap(f'./lib/icons/{self.block_fn.lower()}.png').scaled(self.side_length[0], self.side_length[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = QPixmap(f'./lib/icons/{self.block_fn.lower()}.png')
+        if not pixmap.isNull():
+            self.image = pixmap.scaled(self.side_length[0], self.side_length[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            self.image = pixmap
         self.external = external
         self.collision = None
         self.font = QFont('Arial', 10)  
