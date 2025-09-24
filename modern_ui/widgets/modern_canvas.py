@@ -708,58 +708,30 @@ class ModernCanvas(QWidget):
                 self.update()
             elif self.state == State.DRAGGING_LINE_SEGMENT and self.dragging_item:
                 line, segment_index = self.dragging_item
-                
-                if not hasattr(line, '_stub_created'):
-                    line._stub_created = False
-
                 p1 = line.points[segment_index]
                 p2 = line.points[segment_index + 1]
                 is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
-                
-                STUB_LENGTH = 20
 
-                if is_horizontal and not line._stub_created:
-                    is_start_segment = (segment_index == 0)
-                    is_end_segment = (segment_index == len(line.points) - 2)
+                # If the line has only two points and we are dragging a segment, we need to add a new point to create a corner
+                if len(line.points) == 2:
+                    if is_horizontal:
+                        new_point = QPoint(int(p1.x() + (p2.x() - p1.x()) // 2), int(pos.y()))
+                    else:
+                        new_point = QPoint(int(pos.x()), int(p1.y() + (p2.y() - p1.y()) // 2))
+                    line.points.insert(1, new_point)
+                    self.dragging_item = (line, 1 if pos.y() > p1.y() else 0)
+                    segment_index = self.dragging_item[1]
 
-                    if is_start_segment and abs(pos.y() - p1.y()) > 5:
-                        direction = 1 if p2.x() > p1.x() else -1
-                        stub_end = QPoint(p1.x() + direction * STUB_LENGTH, p1.y())
-                        corner = QPoint(p1.x() + direction * STUB_LENGTH, pos.y())
-                        line.points.insert(1, stub_end)
-                        line.points.insert(2, corner)
-                        self.dragging_item = (line, 2)
-                        line._stub_created = True
-                    elif is_end_segment and abs(pos.y() - p2.y()) > 5:
-                        direction = 1 if p1.x() > p2.x() else -1
-                        stub_end = QPoint(p2.x() + direction * STUB_LENGTH, p2.y())
-                        corner = QPoint(p2.x() + direction * STUB_LENGTH, pos.y())
-                        line.points.insert(segment_index + 1, corner)
-                        line.points.insert(segment_index + 2, stub_end)
-                        line._stub_created = True
-
-                current_segment_index = self.dragging_item[1]
-                p1_current = line.points[current_segment_index]
-                p2_current = line.points[current_segment_index + 1]
-                is_horizontal_current = abs(p1_current.x() - p2_current.x()) > abs(p1_current.y() - p2_current.y())
-
-                if is_horizontal_current:
-                    line.points[current_segment_index].setY(pos.y())
-                    line.points[current_segment_index + 1].setY(pos.y())
+                if is_horizontal:
+                    # Move horizontal segment vertically
+                    line.points[segment_index].setY(pos.y())
+                    line.points[segment_index + 1].setY(pos.y())
                 else:
-                    line.points[current_segment_index].setX(pos.x())
-                    line.points[current_segment_index + 1].setX(pos.x())
-
-                for i in range(len(line.points) - 1):
-                    if i > 0:
-                        p_prev = line.points[i-1]
-                        p_curr = line.points[i]
-                        is_prev_horizontal = abs(p_prev.x() - p_curr.x()) > abs(p_prev.y() - p_curr.y())
-                        if is_prev_horizontal:
-                            line.points[i].setY(p_prev.y())
-                        else:
-                            line.points[i].setX(p_prev.x())
-
+                    # Move vertical segment horizontally
+                    line.points[segment_index].setX(pos.x())
+                    line.points[segment_index + 1].setX(pos.x())
+                
+                # Regenerate the trajectory with the updated points
                 line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
                 self.update()
             elif self.line_creation_state == 'start' and self.temp_line:

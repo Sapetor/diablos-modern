@@ -1944,13 +1944,15 @@ class DLine:
         all_points = clean_points
 
         segments = []
+        
         path = QPainterPath(all_points[0])
         for i in range(len(all_points) - 1):
             p1 = all_points[i]
             p2 = all_points[i+1]
             path.lineTo(p2)
             segments.append(QRect(p1, p2).normalized())
-        
+    
+
         return path, all_points, segments
 
     def update_line(self, blocks_list):

@@ -11,41 +11,11 @@
     },
     "blocks_data": [
         {
-            "block_fn": "TranFn",
-            "sid": 0,
-            "username": "tranfn0",
-            "coords_left": 284,
-            "coords_top": 316,
-            "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#8000ff",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "transfer_function",
-            "params": {
-                "numerator": [
-                    1
-                ],
-                "denominator": [
-                    1,
-                    1
-                ],
-                "init_conds": 0.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
             "block_fn": "Step",
             "sid": 0,
             "username": "step0",
-            "coords_left": 151,
-            "coords_top": 357,
+            "coords_left": 80,
+            "coords_top": 70,
             "coords_width": 80,
             "coords_height": 80,
             "coords_height_base": 80,
@@ -70,7 +40,7 @@
             "block_fn": "Scope",
             "sid": 0,
             "username": "scope0",
-            "coords_left": 580,
+            "coords_left": 760,
             "coords_top": 280,
             "coords_width": 80,
             "coords_height": 80,
@@ -78,7 +48,7 @@
             "in_ports": 1,
             "out_ports": 0,
             "dragging": false,
-            "selected": true,
+            "selected": false,
             "b_color": "#ff0000",
             "b_type": 3,
             "io_edit": false,
@@ -90,107 +60,82 @@
             "flipped": false
         },
         {
-            "block_fn": "BodePlot",
+            "block_fn": "Integr",
             "sid": 0,
-            "username": "bodeplot0",
-            "coords_left": 477,
-            "coords_top": 144,
-            "coords_width": 80,
+            "username": "integr0",
+            "coords_left": 413,
+            "coords_top": 105,
+            "coords_width": 100,
             "coords_height": 80,
             "coords_height_base": 80,
             "in_ports": 1,
-            "out_ports": 0,
+            "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#800000",
-            "b_type": 3,
+            "b_color": "#ff00ff",
+            "b_type": 1,
             "io_edit": false,
-            "fn_name": "bode_plot",
-            "params": {},
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": 0.0,
+                "method": "FWD_EULER"
+            },
             "external": false,
             "flipped": false
         }
     ],
     "lines_data": [
         {
-            "name": "Line1",
-            "sid": 1,
+            "name": "Line0",
+            "sid": 0,
             "srcblock": "step0",
             "srcport": 0,
-            "dstblock": "tranfn0",
+            "dstblock": "integr0",
             "dstport": 0,
             "points": [
                 [
-                    231,
-                    397
+                    160,
+                    110
                 ],
                 [
-                    264,
-                    397
+                    286,
+                    110
                 ],
                 [
-                    264,
-                    356
+                    286,
+                    140
                 ],
                 [
-                    284,
-                    356
+                    413,
+                    140
                 ]
             ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "Line2",
-            "sid": 2,
-            "srcblock": "tranfn0",
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "integr0",
             "srcport": 0,
             "dstblock": "scope0",
             "dstport": 0,
             "points": [
                 [
-                    384,
-                    356
+                    513,
+                    140
                 ],
                 [
-                    560,
-                    356
+                    636,
+                    140
                 ],
                 [
-                    560,
+                    636,
                     320
                 ],
                 [
-                    580,
+                    760,
                     320
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line3",
-            "sid": 3,
-            "srcblock": "tranfn0",
-            "srcport": 0,
-            "dstblock": "bodeplot0",
-            "dstport": 0,
-            "points": [
-                [
-                    384,
-                    356
-                ],
-                [
-                    457,
-                    356
-                ],
-                [
-                    457,
-                    184
-                ],
-                [
-                    477,
-                    184
                 ]
             ],
             "cptr": 0,
