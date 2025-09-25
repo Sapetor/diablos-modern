@@ -63,6 +63,7 @@ class ModernCanvas(QWidget):
         self.line_start_block = None
         self.line_start_port = None
         self.temp_line = None
+        self.source_block_for_connection = None
 
         # Zoom and Pan
         self.zoom_factor = 1.0
@@ -331,7 +332,7 @@ class ModernCanvas(QWidget):
         try:
             clicked_block = self._get_clicked_block(pos)
             if clicked_block:
-                if clicked_block.block_fn == "BodePlot":
+                if clicked_block.block_fn == "BodeMag":
                     self.show_bode_plot_menu(clicked_block, self.mapToGlobal(pos))
                 else:
                     # For other blocks, you might want a different context menu
@@ -347,7 +348,7 @@ class ModernCanvas(QWidget):
             logger.error(f"Error in _handle_right_click: {str(e)}")
 
     def show_bode_plot_menu(self, block, pos):
-        """Show context menu for the BodePlot block."""
+        """Show context menu for the BodeMag block."""
         menu = QMenu(self)
         plot_action = menu.addAction("Generate Bode Plot")
         action = menu.exec_(pos)
@@ -369,7 +370,7 @@ class ModernCanvas(QWidget):
                     break
         
         if not source_block:
-            QMessageBox.warning(self, "Bode Plot Error", "BodePlot block must be connected to the output of a Transfer Function block.")
+            QMessageBox.warning(self, "Bode Plot Error", "BodeMag block must be connected to the output of a Transfer Function block.")
             return
 
         # 2. Get numerator and denominator
@@ -425,17 +426,52 @@ class ModernCanvas(QWidget):
             line.selected = False
             if hasattr(line, 'selected_segment'):
                 line.selected_segment = -1
+        self.source_block_for_connection = None
         self.update()
 
     def _handle_block_click(self, block, pos):
         """Handle clicking on a block."""
         try:
             logger.debug(f"Block clicked: {getattr(block, 'fn_name', 'Unknown')}")
+
+            # NEW: Connection logic with Ctrl+Click
+            if QApplication.keyboardModifiers() & Qt.ControlModifier and self.source_block_for_connection and self.source_block_for_connection is not block:
+                source_block = self.source_block_for_connection
+                target_block = block
+
+                if source_block.out_ports > 0:
+                    source_port_index = 0  # Use the first output port
+
+                    # Find an available input port on the target block
+                    connected_input_ports = {line.dstport for line in self.dsim.line_list if line.dstblock == target_block.name}
+                    target_port_index = -1
+                    for i in range(target_block.in_ports):
+                        if i not in connected_input_ports:
+                            target_port_index = i
+                            break
+                    
+                    if target_port_index != -1:
+                        logger.info(f"Creating connection from {source_block.name} to {target_block.name}")
+                        self.line_start_block = source_block
+                        self.line_start_port = source_port_index
+                        self._finish_line_creation(target_block, target_port_index)
+                        # Make target block selected and source for next connection
+                        self.source_block_for_connection.selected = False
+                        target_block.selected = True
+                        self.source_block_for_connection = target_block
+                        self.update()
+                    else:
+                        logger.warning(f"Could not connect: No available input ports on {target_block.name}")
+                    
+                    return # End of connection logic for this click
+
+            # Original logic for selection and dragging
             if QApplication.keyboardModifiers() & Qt.ControlModifier:
                 block.toggle_selection()
             else:
                 self._clear_selections()
                 block.selected = True
+                self.source_block_for_connection = block # Set source for connection
 
             # Start dragging the block
             self.start_drag(block, pos)
@@ -958,8 +994,8 @@ class ModernCanvas(QWidget):
             if start_block == end_block:
                 validation_errors.append("Cannot connect a block to itself")
 
-            if end_block.block_fn == "BodePlot" and start_block.block_fn != "TranFn":
-                validation_errors.append("BodePlot block can only be connected to a Transfer Function.")
+            if end_block.block_fn == "BodeMag" and start_block.block_fn != "TranFn":
+                validation_errors.append("BodeMag block can only be connected to a Transfer Function.")
 
             # Check if connection already exists
             existing_lines = getattr(self.dsim, 'line_list', [])

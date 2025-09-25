@@ -1,4 +1,4 @@
-print("GEMINI: Running diablos_modern.py")
+print("Running diablos_modern.py")
 """
 Modern DiaBloS Application - Phase 1
 Enhanced UI with modern styling, improved layout, and better user experience.

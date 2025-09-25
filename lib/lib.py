@@ -358,7 +358,7 @@ class DSim:
 
         # N-process-type blocks
         integrator = MenuBlocks(block_fn="Integr", fn_name='integrator',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 1, 'io_edit': False}, ex_params={'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True},
+                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 1, 'io_edit': False}, ex_params={'init_conds': 0.0, 'method': 'SOLVE_IVP', '_init_start_': True},
                         b_color='magenta', coords=(100, 80))
 
         transfer_function = MenuBlocks(block_fn="TranFn", fn_name='transfer_function',

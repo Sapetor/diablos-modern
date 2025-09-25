@@ -44,7 +44,7 @@ class ConfigManager:
                 "max_simulation_time": 1000.0,
                 "min_timestep": 1e-6,
                 "max_timestep": 1.0,
-                "default_solver": "RK45",
+                "default_solver": "SOLVE_IVP",
                 "available_solvers": ["FWD_RECT", "BWD_RECT", "TUSTIN", "RK45", "SOLVE_IVP"]
             },
             "display": {
