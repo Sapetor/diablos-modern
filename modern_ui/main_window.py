@@ -140,10 +140,37 @@ class ModernDiaBloSWindow(QMainWindow):
         view_menu.addAction("&Fit to Window\tCtrl+0", self.fit_to_window)
         view_menu.addSeparator()
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.toggle_theme)
+        view_menu.addSeparator()
+        scaling_menu = view_menu.addMenu("UI Scale")
+        action_100 = scaling_menu.addAction("100%")
+        action_100.triggered.connect(lambda: self._set_scaling(1.0))
+        action_125 = scaling_menu.addAction("125%")
+        action_125.triggered.connect(lambda: self._set_scaling(1.25))
+        action_150 = scaling_menu.addAction("150%")
+        action_150.triggered.connect(lambda: self._set_scaling(1.5))
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
         help_menu.addAction("&About DiaBloS", self.show_about)
+
+    def _set_scaling(self, factor):
+        import json
+        config_path = 'config/default_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            config = {}
+
+        if 'display' not in config:
+            config['display'] = {}
+        config['display']['scaling_factor'] = factor
+
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+
+        QMessageBox.information(self, "UI Scaling", 
+                                "The UI scaling factor has been changed. Please restart the application for the changes to take effect.")
     
     def _setup_toolbar(self):
         """Setup modern toolbar."""

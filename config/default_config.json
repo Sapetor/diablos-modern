@@ -3,10 +3,16 @@
     "default_time": 10.0,
     "default_timestep": 0.01,
     "max_simulation_time": 1000.0,
-    "min_timestep": 1e-6,
+    "min_timestep": 1e-06,
     "max_timestep": 1.0,
     "default_solver": "SOLVE_IVP",
-    "available_solvers": ["FWD_RECT", "BWD_RECT", "TUSTIN", "RK45", "SOLVE_IVP"]
+    "available_solvers": [
+      "FWD_RECT",
+      "BWD_RECT",
+      "TUSTIN",
+      "RK45",
+      "SOLVE_IVP"
+    ]
   },
   "display": {
     "window_width": 1280,
@@ -15,7 +21,8 @@
     "canvas_top_limit": 60,
     "canvas_left_limit": 200,
     "default_block_width": 120,
-    "default_block_height": 60
+    "default_block_height": 60,
+    "scaling_factor": 1.0
   },
   "validation": {
     "check_algebraic_loops": true,

@@ -7,7 +7,9 @@ This is the main entry point for the modernized DiaBloS application.
 """
 
 import sys
+import os
 import logging
+import json
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -45,8 +47,15 @@ def setup_application():
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("DiaBloS Project")
     
-    # Set application font
-    font = QFont("Segoe UI", 10)
+    # Load config and set font
+    try:
+        with open('config/default_config.json', 'r') as f:
+            config = json.load(f)
+        scaling_factor = config.get('display', {}).get('scaling_factor', 1.0)
+    except (FileNotFoundError, json.JSONDecodeError):
+        scaling_factor = 1.0
+
+    font = QFont("Segoe UI", int(10 * scaling_factor))
     font.setHintingPreference(QFont.PreferDefaultHinting)
     app.setFont(font)
     
@@ -59,6 +68,9 @@ def setup_application():
 def main():
     """Main application entry point."""
     try:
+        # Enable automatic scaling for high-DPI displays
+        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
         logger.info("Starting Modern DiaBloS Application - Phase 1")
         
         # Set the initial theme to light
@@ -72,7 +84,7 @@ def main():
         window.show()
         
         # Center window on screen
-        screen = app.desktop().screenGeometry()
+        screen = app.primaryScreen().geometry()
         window_size = window.geometry()
         x = (screen.width() - window_size.width()) // 2
         y = (screen.height() - window_size.height()) // 2
