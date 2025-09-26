@@ -13,4 +13,36 @@ GEMINI.md
 __pycache__/
 
 # Saved data
-saves/*_AUTOSAVE.dat
+saves/
+captures/
+
+# Compiled Python files
+*.pyc
+
+# C extensions
+*.so
+*.dll
+*.o
+*.a
+*.obj
+*.lib
+
+# Swap files
+*.swo
+*.swp
+*.swn
+
+# Backup and temporary files
+*.bak
+*.tmp
+
+# OS-specific files
+.DS_Store
+
+# Unneeded files and folders
+*.dat
+buffer.txt
+image.png
+usermodels/
+legacy/
+modern_ui/widgets/modern_palette_old.py
