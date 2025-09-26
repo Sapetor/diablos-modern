@@ -437,7 +437,7 @@ class DSim:
 
     ##### LOADING AND SAVING #####
 
-    def save(self, autosave=False):
+    def save(self, autosave=False, modern_ui_data=None):
         """
         :purpose: Saves blocks, lines and other data in a .dat file.
         :description: Obtaining the location where the file is to be saved, all the important data of the DSim class, each one of the blocks and each one of the lines, are copied into dictionaries, which will then be loaded to the external file by means of the JSON library.
@@ -523,6 +523,10 @@ class DSim:
 
         main_dict = {"sim_data": init_dict, "blocks_data": blocks_dict, "lines_data": lines_dict}
 
+        if modern_ui_data:
+            main_dict["modern_ui_data"] = modern_ui_data
+        main_dict["version"] = "2.0"
+
         with open(file, 'w') as fp:
             json.dump(main_dict, fp, indent=4)
 
@@ -552,9 +556,15 @@ class DSim:
 
         with open(file) as json_file:
             data = json.load(json_file)
+
+        version = data.get("version", "1.0")
+        if version != "2.0":
+            print(f"Warning: Loading a file with version {version}, but the current version is 2.0. Some features may not be supported.")
+
         sim_data = data['sim_data']
         blocks_data = data['blocks_data']
         lines_data = data['lines_data']
+        modern_ui_data = data.get("modern_ui_data")
 
         self.clear_all()
         self.update_sim_data(sim_data)
@@ -567,6 +577,7 @@ class DSim:
         self.filename = os.path.basename(file)  # Keeps the name of the file if you want to save it again later
 
         print("LOADED FROM", file)
+        return modern_ui_data
 
     def update_sim_data(self, data):
         """
@@ -590,16 +601,29 @@ class DSim:
         :param block_data: Dictionary with Block object id, parameters, variables, etc.
         :type block_data: dict
         """
+        menu_block = None
+        for mb in self.menu_blocks:
+            if mb.block_fn == block_data['block_fn']:
+                menu_block = mb
+                break
+
+        loaded_params = block_data['params']
+        if menu_block:
+            default_params = copy.deepcopy(menu_block.params)
+            default_params.update(loaded_params)
+            loaded_params = default_params
+
+        coords = QRect(block_data['coords_left'], block_data['coords_top'], block_data['coords_width'], block_data['coords_height_base'])
         block = DBlock(block_fn=block_data['block_fn'],
                       sid=block_data['sid'],
-                      coords=(block_data['coords_left'], block_data['coords_top'], block_data['coords_width'], block_data['coords_height_base']),
+                      coords=coords,
                       color=block_data['b_color'],
                       in_ports=block_data['in_ports'],
                       out_ports=block_data['out_ports'],
                       b_type=block_data['b_type'],
                       io_edit=block_data['io_edit'],
                       fn_name=block_data['fn_name'],
-                      params=block_data['params'],
+                      params=loaded_params,
                       external=block_data['external'],
                       username=block_data['username'])
         block.height = block_data['coords_height']
@@ -609,6 +633,7 @@ class DSim:
         self.blocks_list.append(block)
 
     def update_lines_data(self, line_data):
+        logger.debug(f"Updating line data: {line_data}")
         """
         :purpose: Updates information related with all the lines saved in a file to the current simulation.
         :param line_data: Dictionary with Line object id, parameters, variables, etc.
@@ -619,8 +644,7 @@ class DSim:
                     srcport=line_data['srcport'],
                     dstblock=line_data['dstblock'],
                     dstport=line_data['dstport'],
-                    points=line_data['points'],
-                    cptr=line_data['cptr'])
+                    points=line_data['points'])
         line.selected = line_data['selected']
         line.update_line(self.blocks_list)
         self.line_list.append(line)
@@ -1431,8 +1455,6 @@ class DBlock:
 
 
 
-
-
     def toggle_selection(self):
         self.selected = not self.selected
 
@@ -1959,16 +1981,21 @@ class DLine:
         logger.debug(f"Updating line {self.name}")
         if blocks_list:
             start, end = None, None
+            src_found, dst_found = False, False
             for block in blocks_list:
                 if block.name == self.srcblock:
                     start = block.out_coords[self.srcport]
                     self.total_srcports = block.out_ports
                     self.srcbottom = block.top + block.height
+                    src_found = True
                 if block.name == self.dstblock:
                     end = block.in_coords[self.dstport]
                     self.total_dstports = block.in_ports
                     self.dstbottom = block.top + block.height
+                    dst_found = True
+            logger.debug(f"src_found: {src_found}, dst_found: {dst_found}")
             if start and end:
+                logger.debug(f"start: {start}, end: {end}")
                 self.points[0] = start
                 self.points[-1] = end
                 self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
@@ -2217,4 +2244,3 @@ class SignalPlot(QWidget):
         for i in range(1, len(ny)):
             new_vec = np.column_stack((new_vec, ny[i]))
         return new_vec
-

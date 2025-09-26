@@ -344,13 +344,24 @@ class ModernDiaBloSWindow(QMainWindow):
     def open_diagram(self):
         """Open diagram."""
         if hasattr(self.dsim, 'open'):
-            self.dsim.open()
+            modern_ui_data = self.dsim.open()
+            if modern_ui_data:
+                theme_manager.set_theme(ThemeType(modern_ui_data.get("theme", "light")))
+                self.set_zoom(modern_ui_data.get("zoom_factor", 1.0))
+                self.main_splitter.setSizes(modern_ui_data.get("main_splitter_sizes", [250, 950]))
+                self.center_splitter.setSizes(modern_ui_data.get("center_splitter_sizes", [600, 200]))
         self.status_message.setText("Diagram opened")
     
     def save_diagram(self):
         """Save diagram."""
+        modern_ui_data = {
+            "theme": theme_manager.current_theme.value,
+            "zoom_factor": self.canvas.zoom_factor,
+            "main_splitter_sizes": self.main_splitter.sizes(),
+            "center_splitter_sizes": self.center_splitter.sizes()
+        }
         if hasattr(self.dsim, 'save'):
-            self.dsim.save()
+            self.dsim.save(modern_ui_data=modern_ui_data)
         self.status_message.setText("Diagram saved")
     
     def start_simulation(self):
