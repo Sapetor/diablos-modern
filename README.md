@@ -2,7 +2,7 @@
 
 A modern, Python-based graphical tool for simulating dynamical systems. This project is an evolution of the original DiaBloS, featuring a completely revamped user interface built with PyQt5 and a focus on a more intuitive, and productive user experience.
 
-![Screenshot of DiaBloS Modern UI](image.png)
+![Screenshot of DiaBloS Modern UI](screenshot.png)
 
 ## Key Features
 
