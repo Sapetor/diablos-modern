@@ -42,7 +42,15 @@ captures/
 # Unneeded files and folders
 *.dat
 buffer.txt
-image.png
 usermodels/
 legacy/
 modern_ui/widgets/modern_palette_old.py
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
