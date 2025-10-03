@@ -467,6 +467,9 @@ class DSim:
             else:
                 file = f'saves/{self.filename}'
 
+        # Ensure the saves directory exists
+        os.makedirs(os.path.dirname(file), exist_ok=True)
+
         # DSim data (Simulator interface)
         init_dict = {
             "wind_width": self.SCREEN_WIDTH,
