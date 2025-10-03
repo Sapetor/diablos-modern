@@ -79,15 +79,17 @@ def main():
         # Setup application
         app = setup_application()
         
-        # Create and show main window
-        window = ModernDiaBloSWindow()
+        # Get available screen geometry (excludes taskbar)
+        screen_geometry = app.primaryScreen().availableGeometry()
+
+        # Create main window with screen-aware sizing
+        window = ModernDiaBloSWindow(screen_geometry)
         window.show()
-        
+
         # Center window on screen
-        screen = app.primaryScreen().geometry()
         window_size = window.geometry()
-        x = (screen.width() - window_size.width()) // 2
-        y = (screen.height() - window_size.height()) // 2
+        x = screen_geometry.x() + (screen_geometry.width() - window_size.width()) // 2
+        y = screen_geometry.y() + (screen_geometry.height() - window_size.height()) // 2
         window.move(x, y)
         
         logger.info("Modern DiaBloS started successfully")

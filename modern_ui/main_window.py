@@ -35,22 +35,25 @@ logger = logging.getLogger(__name__)
 class ModernDiaBloSWindow(QMainWindow):
     """Modern DiaBloS main window with enhanced UI."""
     
-    def __init__(self):
+    def __init__(self, screen_geometry=None):
         super().__init__()
         logger.info("Starting Modern DiaBloS Application")
-        
+
+        # Store screen geometry for responsive sizing
+        self.screen_geometry = screen_geometry
+
         # Core DSim functionality
         self.dsim = DSim()
-        
+
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
-        
+
         # Simulation configuration
         self.sim_config = SimulationConfig()
-        
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
-        
+
         # Setup modern UI
         self._setup_window()
         self._setup_menubar()
@@ -94,10 +97,25 @@ class ModernDiaBloSWindow(QMainWindow):
         self.temp_line = None
     
     def _setup_window(self):
-        """Setup main window properties."""
+        """Setup main window properties with screen-aware sizing."""
         self.setWindowTitle("DiaBloS - Modern Block Diagram Simulator")
-        self.setMinimumSize(1200, 800)
-        self.resize(1400, 900)
+
+        # Calculate responsive window size based on available screen space
+        if self.screen_geometry:
+            # Use 90% of screen width and 90% of screen height for larger window
+            target_width = min(int(self.screen_geometry.width() * 0.90), 1600)
+            target_height = min(int(self.screen_geometry.height() * 0.90), 1000)
+
+            # Set minimum size to 70% of target, but not less than 800x600
+            min_width = max(int(target_width * 0.70), 800)
+            min_height = max(int(target_height * 0.70), 600)
+
+            self.setMinimumSize(min_width, min_height)
+            self.resize(target_width, target_height)
+        else:
+            # Fallback to larger sizes
+            self.setMinimumSize(1200, 800)
+            self.resize(1600, 1000)
         
         # Set modern font
         font = QFont("Segoe UI", 10)
@@ -203,31 +221,55 @@ class ModernDiaBloSWindow(QMainWindow):
         # Create main splitter
         main_splitter = QSplitter(Qt.Horizontal)
         main_splitter.setObjectName("MainSplitter")
+        main_splitter.setChildrenCollapsible(False)  # Prevent panels from collapsing completely
         main_layout.addWidget(main_splitter)
-        
+
         # Left panel (Block Palette)
         self.left_panel = self._create_left_panel()
         main_splitter.addWidget(self.left_panel)
-        
-        # Center area (Canvas + Property Panel)
-        center_splitter = QSplitter(Qt.Vertical)
+
+        # Center area (Canvas + Property Panel on right)
+        center_splitter = QSplitter(Qt.Horizontal)
         center_splitter.setObjectName("CenterSplitter")
-        
+        center_splitter.setChildrenCollapsible(False)  # Prevent panels from collapsing completely
+
         # Canvas area (will contain the drawing canvas)
         self.canvas_area = self._create_canvas_area()
         center_splitter.addWidget(self.canvas_area)
-        
-        # Property panel (bottom)
+
+        # Property panel (right side, vertical)
         self.property_panel = self._create_property_panel()
         center_splitter.addWidget(self.property_panel)
-        
-        # Set initial splitter sizes
-        center_splitter.setSizes([600, 200])  # Canvas larger than properties
-        
+
+        # Set stretch factors: canvas gets priority when resizing
+        center_splitter.setStretchFactor(0, 1)  # Canvas stretches
+        center_splitter.setStretchFactor(1, 0)  # Property panel stays fixed size
+
+        # Set initial splitter sizes based on window width
+        # Property panel should be ~20% of width, canvas gets the rest
+        if self.screen_geometry:
+            total_width = int(self.screen_geometry.width() * 0.90)  # Account for window chrome
+            property_width = int(total_width * 0.20)
+            canvas_width = total_width - property_width
+            center_splitter.setSizes([canvas_width, property_width])
+        else:
+            center_splitter.setSizes([1000, 300])  # Fallback for old behavior
+
         main_splitter.addWidget(center_splitter)
-        
-        # Set main splitter sizes
-        main_splitter.setSizes([250, 950])  # Left panel smaller than center
+
+        # Set stretch factors: center (canvas+properties) gets priority when resizing
+        main_splitter.setStretchFactor(0, 0)  # Left panel stays fixed size
+        main_splitter.setStretchFactor(1, 1)  # Center area stretches
+
+        # Set main splitter sizes based on window width
+        # Left panel should be ~15% of width, center gets the rest
+        if self.screen_geometry:
+            total_width = int(self.screen_geometry.width() * 0.90)
+            left_width = int(total_width * 0.15)
+            center_width = total_width - left_width
+            main_splitter.setSizes([left_width, center_width])
+        else:
+            main_splitter.setSizes([250, 1350])  # Fallback for old behavior
         
         # Store splitters for theme updates
         self.main_splitter = main_splitter
@@ -255,10 +297,18 @@ class ModernDiaBloSWindow(QMainWindow):
         return panel
     
     def _create_canvas_area(self) -> QWidget:
-        """Create modern canvas area."""
+        """Create modern canvas area with responsive sizing."""
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
-        self.canvas.setMinimumSize(800, 600)
+
+        # Set responsive minimum size for canvas
+        if self.screen_geometry:
+            # Minimum size should be reasonable for drawing
+            min_width = max(int(self.screen_geometry.width() * 0.50), 700)
+            min_height = max(int(self.screen_geometry.height() * 0.60), 500)
+            self.canvas.setMinimumSize(min_width, min_height)
+        else:
+            self.canvas.setMinimumSize(900, 700)  # Fallback - larger canvas
         
         # Connect canvas signals
         self.canvas.block_selected.connect(self._on_block_selected)
@@ -268,20 +318,30 @@ class ModernDiaBloSWindow(QMainWindow):
         return self.canvas
     
     def _create_property_panel(self) -> QWidget:
-        """Create modern property panel."""
+        """Create modern property panel on right side with size constraints."""
         panel = QFrame()
         panel.setObjectName("ModernPanel")
         panel.setFrameStyle(QFrame.StyledPanel)
-        
+
+        # Set size constraints for vertical panel on right side
+        # Minimum width: enough to show property labels and controls
+        # Maximum width: 30% of window width to prevent covering canvas
+        panel.setMinimumWidth(250)
+        if self.screen_geometry:
+            max_width = int(self.screen_geometry.width() * 0.30)
+            panel.setMaximumWidth(max_width)
+        else:
+            panel.setMaximumWidth(400)  # Fallback max width
+
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(8, 8, 8, 8)
-        
+
         # Panel title
         title = QLabel("Properties")
         title.setObjectName("PanelTitle")
         title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
         layout.addWidget(title)
-        
+
         # Scroll area for properties
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -291,7 +351,7 @@ class ModernDiaBloSWindow(QMainWindow):
         # Property editor
         self.property_editor = PropertyEditor()
         scroll_area.setWidget(self.property_editor)
-        
+
         return panel
     
     def _setup_statusbar(self):
