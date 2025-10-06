@@ -280,11 +280,23 @@ class ModernDiaBloSWindow(QMainWindow):
         panel = QFrame()
         panel.setObjectName("ModernPanel")
 
-        # Scale panel widths based on screen DPI
+        # Use devicePixelRatio for proper scaling with Qt's high DPI support
         screen = QApplication.primaryScreen()
-        dpi_ratio = screen.logicalDotsPerInch() / 96.0
-        panel.setMinimumWidth(int(200 * dpi_ratio))
-        panel.setMaximumWidth(int(300 * dpi_ratio))
+        device_ratio = screen.devicePixelRatio()
+
+        logger.info(f"Left panel DPI info: devicePixelRatio={device_ratio}")
+
+        # Base sizes that work well
+        min_width = 200
+        max_width = 300
+
+        # Only scale if device ratio is significantly different
+        if device_ratio > 1.25:
+            min_width = int(min_width * 1.2)
+            max_width = int(max_width * 1.2)
+
+        panel.setMinimumWidth(min_width)
+        panel.setMaximumWidth(max_width)
         
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -331,15 +343,27 @@ class ModernDiaBloSWindow(QMainWindow):
         # Minimum width: enough to show property labels and controls
         # Maximum width: 30% of window width to prevent covering canvas
 
-        # Scale panel widths based on screen DPI
+        # Use devicePixelRatio for proper scaling with Qt's high DPI support
         screen = QApplication.primaryScreen()
-        dpi_ratio = screen.logicalDotsPerInch() / 96.0
-        panel.setMinimumWidth(int(250 * dpi_ratio))
+        device_ratio = screen.devicePixelRatio()
+
+        logger.info(f"Right panel DPI info: devicePixelRatio={device_ratio}")
+
+        # Base sizes
+        min_width = 250
+        fallback_max_width = 400
+
+        # Only scale if device ratio is significantly different
+        if device_ratio > 1.25:
+            min_width = int(min_width * 1.2)
+            fallback_max_width = int(fallback_max_width * 1.2)
+
+        panel.setMinimumWidth(min_width)
         if self.screen_geometry:
             max_width = int(self.screen_geometry.width() * 0.30)
             panel.setMaximumWidth(max_width)
         else:
-            panel.setMaximumWidth(int(400 * dpi_ratio))  # Fallback max width
+            panel.setMaximumWidth(fallback_max_width)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(8, 8, 8, 8)

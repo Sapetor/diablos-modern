@@ -78,11 +78,21 @@ class PropertyEditor(QFrame):
                 )
             elif isinstance(value, (list, int, float, str)):
                 widget = QLineEdit(str(value))
-                # Scale based on screen DPI
+                # Use devicePixelRatio for proper scaling with Qt's high DPI support
                 from PyQt5.QtWidgets import QApplication
                 screen = QApplication.primaryScreen()
-                dpi_ratio = screen.logicalDotsPerInch() / 96.0
-                widget.setMinimumWidth(int(180 * dpi_ratio))
+                device_ratio = screen.devicePixelRatio()
+
+                # Base width that works well
+                base_width = 180
+
+                # Only scale if device ratio is significantly different
+                if device_ratio > 1.25:
+                    scaled_width = int(base_width * 1.2)
+                else:
+                    scaled_width = base_width
+
+                widget.setMinimumWidth(scaled_width)
                 widget.editingFinished.connect(
                     lambda w=widget, k=key: self._on_property_changed(k, w.text())
                 )
