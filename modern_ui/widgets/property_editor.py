@@ -17,12 +17,17 @@ class PropertyEditor(QFrame):
         super().__init__(parent)
         self.setObjectName("PropertyEditor")
         self.setFrameStyle(QFrame.StyledPanel)
-        
+
+        # Ensure proper background for property editor
+        self.setAutoFillBackground(True)
+
         self.layout = QFormLayout(self)
         self.layout.setContentsMargins(12, 12, 12, 12)
         self.layout.setSpacing(8)
         self.layout.setVerticalSpacing(12)
-        
+        self.layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+        self.layout.setLabelAlignment(Qt.AlignLeft)
+
         self.logger = logging.getLogger(__name__)
         self.block = None
         
@@ -49,6 +54,9 @@ class PropertyEditor(QFrame):
         """Show a placeholder message when no block is selected."""
         placeholder = QLabel("Select a block to view its properties.")
         placeholder.setAlignment(Qt.AlignCenter)
+        placeholder.setWordWrap(True)
+        # Ensure visible styling
+        placeholder.setStyleSheet("color: palette(text); padding: 20px;")
         self.layout.addRow(placeholder)
         
     def _create_form(self):
@@ -61,7 +69,9 @@ class PropertyEditor(QFrame):
                 continue
                 
             label = QLabel(f"{key.replace('_', ' ').title()}:")
-            
+            # Ensure labels are visible
+            label.setStyleSheet("color: palette(text);")
+
             widget = None
             if isinstance(value, bool):
                 widget = QCheckBox()
@@ -83,16 +93,18 @@ class PropertyEditor(QFrame):
                 screen = QApplication.primaryScreen()
                 device_ratio = screen.devicePixelRatio()
 
-                # Base width that works well
-                base_width = 180
+                # Base width that works well - more generous for visibility
+                base_width = 150
 
-                # Only scale if device ratio is significantly different
+                # Scale for high DPI
                 if device_ratio > 1.25:
-                    scaled_width = int(base_width * 1.2)
+                    scaled_width = int(base_width * 1.3)
                 else:
                     scaled_width = base_width
 
                 widget.setMinimumWidth(scaled_width)
+                # Ensure widget is visible and has proper sizing
+                widget.setSizePolicy(widget.sizePolicy().horizontalPolicy(), widget.sizePolicy().verticalPolicy())
                 widget.editingFinished.connect(
                     lambda w=widget, k=key: self._on_property_changed(k, w.text())
                 )

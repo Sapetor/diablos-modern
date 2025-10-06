@@ -198,32 +198,42 @@ class BlockCategoryWidget(QFrame):
     def _setup_widget(self):
         """Setup the category widget."""
         self.setFrameStyle(QFrame.StyledPanel)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
-        
+
         # Category header
         header = QLabel(self.category_name)
         header.setFont(QFont("Segoe UI", 9, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
-        
-        # Add blocks in a grid
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(4)
-        
-        row = 0
-        col = 0
+
+        # Add blocks in a horizontal flow layout (single column on narrow screens)
+        # Use a simple VBox layout instead of grid to avoid cutting off
+        blocks_container = QWidget()
+        blocks_layout = QHBoxLayout(blocks_container)
+        blocks_layout.setContentsMargins(0, 0, 0, 0)
+        blocks_layout.setSpacing(4)
+
         for block in self.blocks:
             block_widget = DraggableBlockWidget(block, self.category_name, colors=self.colors)
-            grid_layout.addWidget(block_widget, row, col)
-            col += 1
-            if col > 1: # 2 blocks per row
-                col = 0
-                row += 1
-        
-        layout.addLayout(grid_layout)
+            blocks_layout.addWidget(block_widget)
+
+        # Add stretch to left-align blocks
+        blocks_layout.addStretch()
+
+        # Wrap in scroll area to allow horizontal scrolling if needed
+        from PyQt5.QtWidgets import QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidget(blocks_container)
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFrameStyle(QFrame.NoFrame)
+        scroll.setMaximumHeight(130)  # Enough for one row of blocks
+
+        layout.addWidget(scroll)
     
     def _apply_styling(self):
         """Apply theme-aware styling."""

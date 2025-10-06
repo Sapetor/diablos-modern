@@ -349,21 +349,18 @@ class ModernDiaBloSWindow(QMainWindow):
 
         logger.info(f"Right panel DPI info: devicePixelRatio={device_ratio}")
 
-        # Base sizes
-        min_width = 250
-        fallback_max_width = 400
+        # Base sizes - more generous for property editor
+        min_width = 280
+        fallback_max_width = 500
 
-        # Only scale if device ratio is significantly different
+        # Scale for high DPI
         if device_ratio > 1.25:
-            min_width = int(min_width * 1.2)
-            fallback_max_width = int(fallback_max_width * 1.2)
+            min_width = int(min_width * 1.3)
+            fallback_max_width = int(fallback_max_width * 1.3)
 
         panel.setMinimumWidth(min_width)
-        if self.screen_geometry:
-            max_width = int(self.screen_geometry.width() * 0.30)
-            panel.setMaximumWidth(max_width)
-        else:
-            panel.setMaximumWidth(fallback_max_width)
+        # Remove restrictive max width - let it use 20-30% of screen naturally
+        # Don't constrain too much as it causes rendering issues on high DPI
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(8, 8, 8, 8)
