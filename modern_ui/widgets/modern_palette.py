@@ -209,31 +209,21 @@ class BlockCategoryWidget(QFrame):
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
 
-        # Add blocks in a horizontal flow layout (single column on narrow screens)
-        # Use a simple VBox layout instead of grid to avoid cutting off
-        blocks_container = QWidget()
-        blocks_layout = QHBoxLayout(blocks_container)
-        blocks_layout.setContentsMargins(0, 0, 0, 0)
-        blocks_layout.setSpacing(4)
+        # Add blocks in a grid (2 columns)
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(4)
 
+        row = 0
+        col = 0
         for block in self.blocks:
             block_widget = DraggableBlockWidget(block, self.category_name, colors=self.colors)
-            blocks_layout.addWidget(block_widget)
+            grid_layout.addWidget(block_widget, row, col)
+            col += 1
+            if col > 1:  # 2 blocks per row
+                col = 0
+                row += 1
 
-        # Add stretch to left-align blocks
-        blocks_layout.addStretch()
-
-        # Wrap in scroll area to allow horizontal scrolling if needed
-        from PyQt5.QtWidgets import QScrollArea
-        scroll = QScrollArea()
-        scroll.setWidget(blocks_container)
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setFrameStyle(QFrame.NoFrame)
-        scroll.setMaximumHeight(130)  # Enough for one row of blocks
-
-        layout.addWidget(scroll)
+        layout.addLayout(grid_layout)
     
     def _apply_styling(self):
         """Apply theme-aware styling."""

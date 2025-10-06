@@ -286,14 +286,16 @@ class ModernDiaBloSWindow(QMainWindow):
 
         logger.info(f"Left panel DPI info: devicePixelRatio={device_ratio}")
 
-        # Base sizes that work well
-        min_width = 200
-        max_width = 300
+        # Base sizes that work well for 1920x1080
+        min_width = 220
+        max_width = 320
 
-        # Only scale if device ratio is significantly different
+        # For high DPI (2K monitors), need more width to fit 2 columns of scaled blocks
+        # Each block is 100px base, scaled to 120px on high DPI
+        # 2 columns = 240px + spacing (8px) + margins (16px) = ~264px needed
         if device_ratio > 1.25:
-            min_width = int(min_width * 1.2)
-            max_width = int(max_width * 1.2)
+            min_width = 270  # Enough for 2 columns of 120px blocks + spacing
+            max_width = 380  # Allow some breathing room
 
         panel.setMinimumWidth(min_width)
         panel.setMaximumWidth(max_width)
