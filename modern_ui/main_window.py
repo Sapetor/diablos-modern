@@ -71,7 +71,11 @@ class ModernDiaBloSWindow(QMainWindow):
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.safe_update)
         self.update_timer.start(int(1000 / self.dsim.FPS))
-        
+
+        # Schedule initial splitter sizing after window is shown
+        # This ensures we use actual window dimensions, not screen dimensions
+        QTimer.singleShot(0, self._initialize_splitter_sizes)
+
         logger.info("Modern DiaBloS Window initialized successfully")
     
     def _init_state_management(self):
@@ -101,14 +105,26 @@ class ModernDiaBloSWindow(QMainWindow):
         self.setWindowTitle("DiaBloS - Modern Block Diagram Simulator")
 
         # Calculate responsive window size based on available screen space
+        # Following Qt High DPI guidelines: let Qt scale naturally, don't cap aggressively
         if self.screen_geometry:
-            # Use 90% of screen width and 90% of screen height for larger window
-            target_width = min(int(self.screen_geometry.width() * 0.90), 1600)
-            target_height = min(int(self.screen_geometry.height() * 0.90), 1000)
+            screen = QApplication.primaryScreen()
+            device_ratio = screen.devicePixelRatio()
 
-            # Set minimum size to 70% of target, but not less than 800x600
-            min_width = max(int(target_width * 0.70), 800)
-            min_height = max(int(target_height * 0.70), 600)
+            # Use 85% of screen width and height (leave room for taskbar/window chrome)
+            target_width = int(self.screen_geometry.width() * 0.85)
+            target_height = int(self.screen_geometry.height() * 0.85)
+
+            # On high DPI, don't cap the window size - let it be appropriately large
+            # Only cap on standard DPI to avoid giant windows on huge monitors
+            if device_ratio <= 1.25:
+                target_width = min(target_width, 1600)
+                target_height = min(target_height, 1000)
+
+            logger.info(f"Window sizing: devicePixelRatio={device_ratio}, target={target_width}×{target_height}")
+
+            # Set minimum size to 70% of target, but not less than 1000x700
+            min_width = max(int(target_width * 0.70), 1000)
+            min_height = max(int(target_height * 0.70), 700)
 
             self.setMinimumSize(min_width, min_height)
             self.resize(target_width, target_height)
@@ -116,11 +132,11 @@ class ModernDiaBloSWindow(QMainWindow):
             # Fallback to larger sizes
             self.setMinimumSize(1200, 800)
             self.resize(1600, 1000)
-        
+
         # Set modern font
         font = QFont("Segoe UI", 10)
         self.setFont(font)
-        
+
         # Apply modern theme
         self.setObjectName("ModernMainWindow")
     
@@ -245,15 +261,8 @@ class ModernDiaBloSWindow(QMainWindow):
         center_splitter.setStretchFactor(0, 1)  # Canvas stretches
         center_splitter.setStretchFactor(1, 0)  # Property panel stays fixed size
 
-        # Set initial splitter sizes based on window width
-        # Property panel should be ~20% of width, canvas gets the rest
-        if self.screen_geometry:
-            total_width = int(self.screen_geometry.width() * 0.90)  # Account for window chrome
-            property_width = int(total_width * 0.20)
-            canvas_width = total_width - property_width
-            center_splitter.setSizes([canvas_width, property_width])
-        else:
-            center_splitter.setSizes([1000, 300])  # Fallback for old behavior
+        # Don't set splitter sizes here - will be set after window is shown
+        # This ensures calculations use actual window width, not screen width
 
         main_splitter.addWidget(center_splitter)
 
@@ -261,19 +270,47 @@ class ModernDiaBloSWindow(QMainWindow):
         main_splitter.setStretchFactor(0, 0)  # Left panel stays fixed size
         main_splitter.setStretchFactor(1, 1)  # Center area stretches
 
-        # Set main splitter sizes based on window width
-        # Left panel should be ~15% of width, center gets the rest
-        if self.screen_geometry:
-            total_width = int(self.screen_geometry.width() * 0.90)
-            left_width = int(total_width * 0.15)
-            center_width = total_width - left_width
-            main_splitter.setSizes([left_width, center_width])
-        else:
-            main_splitter.setSizes([250, 1350])  # Fallback for old behavior
+        # Store reference to center splitter for initial sizing
+        self._center_splitter_for_init = center_splitter
         
         # Store splitters for theme updates
         self.main_splitter = main_splitter
         self.center_splitter = center_splitter
+
+    def _initialize_splitter_sizes(self):
+        """Initialize splitter sizes based on actual window dimensions.
+        Called after window is shown to ensure accurate sizing."""
+        # Get actual window width (not screen width)
+        actual_width = self.width()
+
+        logger.info(f"Initializing splitters with actual window width: {actual_width}px")
+
+        # Main splitter: left panel gets fixed width, rest goes to center
+        screen = QApplication.primaryScreen()
+        device_ratio = screen.devicePixelRatio()
+
+        # Left panel width based on DPI
+        if device_ratio > 1.25:
+            left_width = 300  # Wider on high DPI for 2 columns
+        else:
+            left_width = 250
+
+        center_width = actual_width - left_width
+        self.main_splitter.setSizes([left_width, center_width])
+
+        # Center splitter: canvas gets 75%, property panel gets 25%
+        property_width = int(center_width * 0.25)
+        canvas_width = center_width - property_width
+
+        # Ensure property panel is at least 300px (or 350px on high DPI)
+        min_property_width = 350 if device_ratio > 1.25 else 300
+        if property_width < min_property_width:
+            property_width = min_property_width
+            canvas_width = center_width - property_width
+
+        self.center_splitter.setSizes([canvas_width, property_width])
+
+        logger.info(f"Splitter sizes: left={left_width}, canvas={canvas_width}, properties={property_width}")
     
     def _create_left_panel(self) -> QWidget:
         """Create modern left panel for block palette."""
