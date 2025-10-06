@@ -12,11 +12,12 @@ from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLa
 from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter, QCursor, QPainterPath, QPolygonF, QTransform
 from PyQt5.QtCore import Qt, QRect, QPoint, QTimer, QEvent
 import pyqtgraph as pg
-from lib.functions import *
+from lib.block_loader import load_blocks
 from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
 import math
 import logging
 from modern_ui.themes.theme_manager import theme_manager
+from lib import functions
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,10 @@ class DSim:
         self.real_time = True               # Boolean indicating whether the simulation runs in real-time or not
         self.error_msg = ""                   # Error message from simulation
         self.dirty = False                  # Boolean indicating whether the diagram has been modified
+
+        self.execution_function = functions
+
+        self.load_all_blocks()
 
     def main_buttons_init(self):
         """
@@ -216,7 +221,7 @@ class DSim:
             height = int(float(block.size[1]))
             block_collision = QRect(mouse_x, mouse_y, width, height)
 
-        new_block = DBlock(block.block_fn, sid, block_collision, block.b_color, block.ins, block.outs, block.b_type, block.io_edit, block.fn_name, copy.deepcopy(block.params), block.external)
+        new_block = DBlock(block.block_fn, sid, block_collision, block.b_color, block.ins, block.outs, block.b_type, block.io_edit, block.fn_name, copy.deepcopy(block.params), block.external, block_class=block.block_class, colors=self.colors)
         self.blocks_list.append(new_block)
         self.dirty = True
         logger.debug(f"New block created: {new_block.name}")
@@ -331,96 +336,90 @@ class DSim:
 
     ##### MENU BLOCKS #####
 
-    def menu_blocks_init(self):
+    def load_all_blocks(self):
         """
         :purpose: Function that initializes all types of blocks available in the menu.
-        :description: From the MenuBlocks class, base blocks are generated for the functions already defined in lib.functions.py. Then they are accumulated in a list so that they are available in the interface menu.
+        :description: From the block files, base blocks are generated. Then they are accumulated in a list so that they are available in the interface menu.
         """
-        # block_fn, fn_name, {# inputs, # output, execution hierarchy}, {<specific argument/parameters>}, color, (width, height), allows_io_change
+        self.menu_blocks = []
+        block_classes = load_blocks()
 
-        # source-type blocks
-        step = MenuBlocks(block_fn="Step", fn_name='step',
-                        io_params={'inputs': 0, 'outputs': 1, 'b_type': 0, 'io_edit': False}, ex_params={'value': 1.0, 'delay': 0.0, 'type': 'up', 'pulse_start_up': True, '_init_start_': True},
-                        b_color='blue', coords=(80, 80))
+        # Define color map for categories
+        category_colors = {
+            "Sources": "blue",
+            "Math": "lime_green",
+            "Control": "magenta",
+            "Filters": "cyan",
+            "Sinks": "red",
+            "Routing": "orange",
+            "Other": "light_gray"
+        }
 
-        ramp = MenuBlocks(block_fn="Ramp", fn_name='ramp',
-                        io_params={'inputs': 0, 'outputs': 1, 'b_type': 0, 'io_edit': False}, ex_params={'slope': 1.0, 'delay': 0.0},
-                        b_color='light_blue', coords=(80, 80))
+        # Simple categorization based on block names
+        source_keywords = ['step', 'ramp', 'sine', 'square', 'constant', 'source']
+        math_keywords = ['sum', 'gain', 'multiply', 'add', 'subtract', 'divide', 'abs', 'sqrt']
+        control_keywords = ['integr', 'deriv', 'pid', 'controller', 'delay']
+        filter_keywords = ['filter', 'lowpass', 'highpass', 'bandpass']
+        sink_keywords = ['scope', 'display', 'sink', 'plot', 'output', 'term']
 
-        sine = MenuBlocks(block_fn="Sine", fn_name='sine',
-                        io_params={'inputs': 0, 'outputs': 1, 'b_type': 0, 'io_edit': False}, ex_params={'amplitude': 1.0, 'omega': 1.0, 'init_angle': 0},
-                        b_color='cyan', coords=(80, 80))
+        for block_class in block_classes:
+            block = block_class()
+            
+            b_type = 2
+            if not block.inputs:
+                b_type = 0
+            elif block.block_name.lower() in ['integr', 'integrator']:
+                b_type = 1
 
-        noise = MenuBlocks(block_fn="Noise", fn_name='noise',
-                        io_params={'inputs': 0, 'outputs': 1, 'b_type': 0, 'io_edit': False}, ex_params={'sigma': 1, 'mu': 0},
-                        b_color='purple', coords=(80, 80))
+            io_params = {
+                'inputs': len(block.inputs), 
+                'outputs': len(block.outputs), 
+                'b_type': b_type,
+                'io_edit': False
+            }
+            
+            ex_params = {}
+            for param_name, param_props in block.params.items():
+                ex_params[param_name] = param_props['default']
 
+            # Determine block category and color
+            if hasattr(block, 'category'):
+                category = block.category
+            else:
+                block_name_lower = block.block_name.lower()
+                category = "Other"
+                if any(keyword in block_name_lower for keyword in source_keywords):
+                    category = "Sources"
+                elif any(keyword in block_name_lower for keyword in math_keywords):
+                    category = "Math"
+                elif any(keyword in block_name_lower for keyword in control_keywords):
+                    category = "Control"
+                elif any(keyword in block_name_lower for keyword in filter_keywords):
+                    category = "Filters"
+                elif any(keyword in block_name_lower for keyword in sink_keywords):
+                    category = "Sinks"
 
-        # N-process-type blocks
-        integrator = MenuBlocks(block_fn="Integr", fn_name='integrator',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 1, 'io_edit': False}, ex_params={'init_conds': 0.0, 'method': 'SOLVE_IVP', '_init_start_': True},
-                        b_color='magenta', coords=(100, 80))
+            if hasattr(block, 'color'):
+                color = block.color
+            else:
+                color = category_colors.get(category, "light_gray")
 
-        transfer_function = MenuBlocks(block_fn="TranFn", fn_name='transfer_function',
-                                   io_params={'inputs': 1, 'outputs': 1, 'b_type': 1, 'io_edit': False},
-                                   ex_params={'numerator': [1], 'denominator': [1, 1], 'init_conds': 0.0, '_init_start_': True},
-                                   b_color='purple', coords=(100, 80))
-        
+            if hasattr(block, 'fn_name'):
+                fn_name = block.fn_name
+            else:
+                fn_name = block.block_name.lower()
 
-        # Z-process-type blocks
-        derivative = MenuBlocks(block_fn="Deriv", fn_name='derivative',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={'_init_start_': True},
-                        b_color=(255, 0, 200), coords=(100, 80))
-
-        adder = MenuBlocks(block_fn="Sum", fn_name='adder',
-                        io_params={'inputs': 2, 'outputs': 1, 'b_type': 2, 'io_edit': 'input'}, ex_params={'sign': "++"},
-                        b_color='lime_green', coords=(60, 60))
-
-        sigproduct = MenuBlocks(block_fn="SgProd", fn_name='sigproduct',
-                        io_params={'inputs': 2, 'outputs': 1, 'b_type': 2, 'io_edit': 'input'}, ex_params={},
-                        b_color='green', coords=(90, 70))
-
-        gain = MenuBlocks(block_fn="Gain", fn_name='gain',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={'gain': 1.0},
-                        b_color=(255, 216, 0), coords=(80, 80))
-
-        exponential = MenuBlocks(block_fn="Exp", fn_name='exponential',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={'a': 1.0, 'b': 1.0},
-                        b_color='yellow', coords=(80, 80))  # a*e^bx
-
-        mux = MenuBlocks(block_fn="Mux", fn_name="mux",
-                        io_params={'inputs': 2, 'outputs': 1, 'b_type': 2, 'io_edit': 'input'}, ex_params={},
-                        b_color=(190, 0, 255), coords=(80, 80))
-
-        demux = MenuBlocks(block_fn="Demux", fn_name="demux",
-                        io_params={'inputs': 1, 'outputs': 2, 'b_type': 2, 'io_edit': 'output'}, ex_params={'output_shape': 1},
-                        b_color=(170, 0, 255), coords=(80, 80))
-
-
-        # Terminal-type blocks
-        terminator = MenuBlocks(block_fn="Term", fn_name='terminator',
-                        io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={},
-                        b_color=(255, 106, 0), coords=(80, 80))
-
-        scope = MenuBlocks(block_fn="Scope", fn_name='scope',
-                        io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={'labels': 'default', '_init_start_': True},
-                        b_color='red', coords=(80, 80))
-
-        export = MenuBlocks(block_fn="Export", fn_name="export",
-                        io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={'str_name': 'default', '_init_start_': True},
-                        b_color='orange', coords=(90, 80))
-
-        bodemag = MenuBlocks(block_fn="BodeMag", fn_name='bodemag',
-                        io_params={'inputs': 1, 'outputs': 0, 'b_type': 3, 'io_edit': False}, ex_params={},
-                        b_color='dark_red', coords=(80, 80))
-
-
-        # External/general use block
-        external = MenuBlocks(block_fn="External", fn_name='external',
-                        io_params={'inputs': 1, 'outputs': 1, 'b_type': 2, 'io_edit': False}, ex_params={"filename": '<no filename>'},
-                        b_color='light_gray', coords=(140, 80), external=True)
-
-        self.menu_blocks = [step, ramp, sine, noise, integrator, transfer_function, derivative, adder, sigproduct, gain, exponential, mux, demux, terminator, scope, export, bodemag, external]
+            menu_block = MenuBlocks(
+                block_fn=block.block_name,
+                fn_name=fn_name,
+                io_params=io_params,
+                ex_params=ex_params,
+                b_color=color,
+                coords=(80, 80),
+                block_class=block_class,
+                colors=self.colors
+            )
+            self.menu_blocks.append(menu_block)
 
     def display_menu_blocks(self, painter):
         """
@@ -536,7 +535,7 @@ class DSim:
         if not autosave:
             self.filename = os.path.basename(file)  # Keeps the name of the file if you want to save it again later
 
-        print("SAVED AS", file)
+        logger.info(f"SAVED AS {file}")
 
     def open(self):
         """
@@ -562,7 +561,7 @@ class DSim:
 
         version = data.get("version", "1.0")
         if version != "2.0":
-            print(f"Warning: Loading a file with version {version}, but the current version is 2.0. Some features may not be supported.")
+            logger.warning(f"Loading a file with version {version}, but the current version is 2.0. Some features may not be supported.")
 
         sim_data = data['sim_data']
         blocks_data = data['blocks_data']
@@ -579,7 +578,7 @@ class DSim:
 
         self.filename = os.path.basename(file)  # Keeps the name of the file if you want to save it again later
 
-        print("LOADED FROM", file)
+        logger.info(f"LOADED FROM {file}")
         return modern_ui_data
 
     def update_sim_data(self, data):
@@ -688,7 +687,7 @@ class DSim:
                 self.real_time = values['real_time']
                 return self.sim_time
             except ValueError:
-                print("Invalid input. Using default values.")
+                logger.warning("Invalid input. Using default values.")
                 return self.sim_time
         else:
             return -1
@@ -701,7 +700,7 @@ class DSim:
         try:
             logger.debug("Starting execution initialization...")
             # The class containing the functions for the execution is called
-            self.execution_function = DFunctions()
+
             self.execution_stop = False                         # Prevent execution from stopping before executing in error
             self.error_msg = ""                                 # Clear any previous error message
             self.time_step = 0                                  # First iteration of the time which will be incrementing self.sim_dt seconds
@@ -719,7 +718,7 @@ class DSim:
             if self.save(True) == 1:
                 return False
 
-            print("*****INIT NEW EXECUTION*****")
+            logger.debug("*****INIT NEW EXECUTION*****")
 
             for block in self.blocks_list:
                 # Dynamically set b_type for Transfer Functions
@@ -744,7 +743,7 @@ class DSim:
             if not self.check_diagram_integrity():
                 logger.error("Diagram integrity check failed")
                 return False
-            print("Initializing execution...")
+            logger.debug("Initializing execution...")
 
             # Generation of a checklist for the computation of functions
             self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
@@ -756,8 +755,7 @@ class DSim:
             logger.error(f"Error during execution initialization: {str(e)}")
             return False
 
-        print("*****EXECUTION START*****")
-        logger.info("*****EXECUTION START*****")
+        logger.debug("*****EXECUTION START*****")
 
         # Initialization of the progress bar
         self.pbar = tqdm(desc='SIMULATION PROGRESS', total=int(self.execution_time/self.sim_dt), unit='itr')
@@ -776,7 +774,7 @@ class DSim:
                 den = block.params.get('denominator', [])
                 if len(den) > len(num):
                     self.memory_blocks.add(block.name)
-        logger.info(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
+        logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
 
         # Check for integrators using Runge-Kutta 45 and initialize counter
         self.rk45_len = self.count_rk45_ints()
@@ -784,7 +782,7 @@ class DSim:
 
         # The block diagram starts with looking for source type blocks
         for block in self.blocks_list:
-            logger.info(f"Initial processing of block: {block.name}, b_type: {block.b_type}")
+            logger.debug(f"Initial processing of block: {block.name}, b_type: {block.b_type}")
             children = {}
             out_value = {}
             if block.b_type == 0:
@@ -792,12 +790,12 @@ class DSim:
                 if block.external:
                     try:
                         out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
-                    except:
-                        print("ERROR FOUND IN EXTERNAL FUNCTION",block.file_function)
-                        self.execution_failed(out_value.get('error', 'Unknown error'))
+                    except Exception as e:
+                        logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
+                        self.execution_failed(str(e))
                         return False
                 else:
-                    out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
+                    out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
                 block.computed_data = True
                 block.hierarchy = 0
                 self.update_global_list(block.name, h_value=0, h_assign=True)
@@ -810,19 +808,23 @@ class DSim:
                     'params': block.params,
                     'output_only': True
                 }
-                if block.block_fn == 'Integr':
+                if block.block_fn == 'Integrator':
                     kwargs['next_add_in_memory'] = False
                     kwargs['dtime'] = self.sim_dt
                 
                 if block.external:
                     try:
                         out_value = getattr(block.file_function, block.fn_name)(**kwargs)
-                    except:
-                        print("ERROR FOUND IN EXTERNAL FUNCTION", block.file_function)
-                        self.execution_failed(out_value.get('error', 'Unknown error'))
+                    except Exception as e:
+                        logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
+                        self.execution_failed(str(e))
                         return False
                 else:
-                    out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
+                    # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
+                    if block.block_instance:
+                        out_value = block.block_instance.execute(**kwargs)
+                    else:
+                        out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
                 children = self.get_outputs(block.name)
                 block.computed_data = True
                 self.update_global_list(block.name, h_value=0, h_assign=True)
@@ -859,16 +861,20 @@ class DSim:
                     if block.external:
                         try:
                             out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
-                        except:
-                            print("ERROR FOUND IN EXTERNAL FUNCTION", block.file_function)
+                        except Exception as e:
+                            logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
                             self.execution_failed()
                             return False
                     else:
-                        out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
+                        # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
+                        if block.block_instance:
+                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
+                        else:
+                            out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
 
                     # After execution, for memory blocks, update the 'output' state for the next step
                     if block.name in self.memory_blocks:
-                        if block.block_fn == 'Integr':
+                        if block.block_fn == 'Integrator':
                             block.params['output'] = block.params['mem']
 
                     # It is checked that the function has not delivered an error
@@ -977,7 +983,7 @@ class DSim:
                             'params': block.params,
                             'output_only': True
                         }
-                        if block.block_fn == 'Integr':
+                        if block.block_fn == 'Integrator':
                             add_in_memory = not self.rk45_len or self.rk_counter == 3
                             kwargs['next_add_in_memory'] = add_in_memory
                             kwargs['dtime'] = self.sim_dt
@@ -990,7 +996,11 @@ class DSim:
                                 self.execution_failed()
                                 return
                         else:
-                            out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
+                            # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
+                            if block.block_instance:
+                                out_value = block.block_instance.execute(**kwargs)
+                            else:
+                                out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
 
                         if 'E' in out_value and out_value['E']:
                             self.execution_failed()
@@ -1021,16 +1031,19 @@ class DSim:
                         if block.external:
                             try:
                                 out_value = getattr(block.file_function, block.fn_name)(self.time_step, block.input_queue, block.params)
-                            except:
-                                print("ERROR FOUND IN EXTERNAL FUNCTION", block.file_function)
+                            except Exception as e:
+                                logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
                                 self.execution_failed()
                                 return
                         else:
-                            out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.params)
-
+                            # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
+                            if block.block_instance:
+                                out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
+                            else:
+                                out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.params)
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
-                            if block.block_fn == 'Integr':
+                            if block.block_fn == 'Integrator':
                                 block.params['output'] = block.params['mem']
 
                         # It is checked that the function has not delivered an error
@@ -1070,13 +1083,13 @@ class DSim:
 
                 # Scope
                 if not self.dynamic_plot:
-                    print("Calling pyqtPlotScope...")
+                    logger.debug("Calling pyqtPlotScope...")
                     self.pyqtPlotScope()
-                    print("pyqtPlotScope call finished.")
+                    logger.debug("pyqtPlotScope call finished.")
 
                 # Resets the initialization of the blocks with special initial executions
                 self.reset_memblocks()
-                print("*****EXECUTION DONE*****")
+                logger.debug("*****EXECUTION DONE*****")
 
             self.rk_counter += 1
         
@@ -1092,16 +1105,16 @@ class DSim:
         self.reset_memblocks()               # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
         self.pbar.close()                    # Finishes the progress bar
         self.error_msg = msg
-        print("*****EXECUTION STOPPED*****")
+        logger.error("*****EXECUTION STOPPED*****")
 
     def check_diagram_integrity(self):
-        print("*****Checking diagram integrity*****")
+        logger.debug("*****Checking diagram integrity*****")
         error_trigger = False
         for block in self.blocks_list:
             inputs, outputs = self.get_neighbors(block.name)
-            
+
             if block.in_ports == 1 and len(inputs) < block.in_ports:
-                print(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
+                logger.error(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
                 error_trigger = True
             elif block.in_ports > 1:
                 in_vector = np.zeros(block.in_ports)
@@ -1109,11 +1122,11 @@ class DSim:
                     in_vector[tupla['dstport']] += 1
                 finders = np.where(in_vector == 0)
                 if len(finders[0]) > 0:
-                    print(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
+                    logger.error(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
                     error_trigger = True
-                    
+
             if block.out_ports == 1 and len(outputs) < block.out_ports:
-                print(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
+                logger.error(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
                 error_trigger = True
             elif block.out_ports > 1:
                 out_vector = np.zeros(block.out_ports)
@@ -1121,13 +1134,13 @@ class DSim:
                     out_vector[tupla['srcport']] += 1
                 finders = np.where(out_vector == 0)
                 if len(finders[0]) > 0:
-                    print(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
+                    logger.error(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
                     error_trigger = True
-                    
+
         if error_trigger:
-            print("Diagram integrity check failed.")
+            logger.error("Diagram integrity check failed.")
             return False
-        print("NO ISSUES FOUND IN DIAGRAM")
+        logger.debug("NO ISSUES FOUND IN DIAGRAM")
         return True
 
     def count_rk45_ints(self):
@@ -1135,7 +1148,7 @@ class DSim:
         :purpose: Checks all integrators and looks if there's at least one that use 'RK45' as integration method.
         """
         for block in self.blocks_list:
-            if block.block_fn == 'Integr' and block.params['method'] == 'RK45':
+            if block.block_fn == 'Integrator' and block.params['method'] == 'RK45':
                 return True
             elif block.block_fn == 'External' and 'method' in block.params.keys() and block.params['method'] == 'RK45':
                 return True
@@ -1295,16 +1308,16 @@ class DSim:
         :purpose: Plots the data saved in Scope blocks without needing to execute the simulation again.
         """
         if self.dirty:
-            print("ERROR: The diagram has been modified. Please run the simulation again.")
+            logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         try:
             scope_lengths = [len(x.params['vector']) for x in self.blocks_list if x.block_fn == 'Scope']
             if scope_lengths and scope_lengths[0] > 0:
                 self.pyqtPlotScope()
             else:
-                print("ERROR: NOT ENOUGH SAMPLES TO PLOT")
+                logger.error("ERROR: NOT ENOUGH SAMPLES TO PLOT")
         except Exception as e:
-            print(f"ERROR: GRAPH HAS NOT BEEN SIMULATED YET: {str(e)}")
+            logger.error(f"ERROR: GRAPH HAS NOT BEEN SIMULATED YET: {str(e)}")
 
     def export_data(self):
         """
@@ -1325,7 +1338,7 @@ class DSim:
                         vec_dict[labels[i]] = vector[:, i]
         if export_toggle:
             np.savez('saves/' + self.filename[:-4], t=self.timeline, **vec_dict)
-            print("DATA EXPORTED TO", 'saves/' + self.filename[:-4] + '.npz')
+            logger.info("DATA EXPORTED TO " + 'saves/' + self.filename[:-4] + '.npz')
 
     # Pyqtgraph functions
     def pyqtPlotScope(self):
@@ -1333,34 +1346,34 @@ class DSim:
         :purpose: Plots the data saved in Scope blocks using pyqtgraph.
         :description: This function is executed while the simulation has stopped. It looks for Scope blocks, from which takes their 'vec_labels' parameter to get the labels of each vector and the 'vector' parameter containing the vector (or matrix if the input for the Scope block was a vector) and initializes a SignalPlot class object that uses pyqtgraph to show a graph.
         """
-       
-        print("Attempting to plot...")
+
+        logger.debug("Attempting to plot...")
         labels_list = []
         vector_list = []
         for block in self.blocks_list:
             if block.block_fn == 'Scope':
-                print(f"Found Scope block: {block.name}")
+                logger.debug(f"Found Scope block: {block.name}")
                 b_labels = block.params['vec_labels']
                 labels_list.append(b_labels)
                 b_vectors = block.params['vector']
                 vector_list.append(b_vectors)
-                print(f"DEBUG: Full vector for {block.name}:\n{b_vectors}")
-                print(f"Labels: {b_labels}")
-                print(f"Vector length: {len(b_vectors)}")
-                print(f"Vector type: {type(b_vectors)}")
-                print(f"Vector sample: {b_vectors[:5]}")
+                logger.debug(f"Full vector for {block.name}:\n{b_vectors}")
+                logger.debug(f"Labels: {b_labels}")
+                logger.debug(f"Vector length: {len(b_vectors)}")
+                logger.debug(f"Vector type: {type(b_vectors)}")
+                logger.debug(f"Vector sample: {b_vectors[:5]}")
 
         if labels_list and vector_list:
-            print("Creating SignalPlot...")
+            logger.debug("Creating SignalPlot...")
             self.plotty = SignalPlot(self.sim_dt, labels_list, len(self.timeline))
             try:
                 self.plotty.loop(new_t=self.timeline.astype(float), new_y=[np.array(v).astype(float) for v in vector_list])
                 self.plotty.show()
-                print("SignalPlot should be visible now.")
+                logger.debug("SignalPlot should be visible now.")
             except Exception as e:
-                print(f"Error in plotting: {e}")
+                logger.error(f"Error in plotting: {e}")
         else:
-            print("No data to plot.")
+            logger.debug("No data to plot.")
 
     def dynamic_pyqtPlotScope(self, step):
         """
@@ -1390,11 +1403,11 @@ class DSim:
                 self.plotty.loop(new_t=self.timeline, new_y=vector_list)
             else:
                 self.dynamic_plot = False
-                print("DYNAMIC PLOT: OFF")
+                logger.info("DYNAMIC PLOT: OFF")
 
 
 class DBlock:
-    def __init__(self, block_fn, sid, coords, color, in_ports=1, out_ports=1, b_type=2, io_edit=True, fn_name='block', params={}, external=False, username=''):
+    def __init__(self, block_fn, sid, coords, color, in_ports=1, out_ports=1, b_type=2, io_edit=True, fn_name='block', params={}, external=False, username='', block_class=None, colors=None):
         logger.debug(f"Initializing DBlock {block_fn}{sid}")
         self.name = block_fn.lower() + str(sid)
         self.flipped = False
@@ -1409,7 +1422,10 @@ class DBlock:
         self.height = self.rect.height()
         self.height_base = self.height
 
-        self.b_color = color if isinstance(color, QColor) else QColor(color)
+        if colors and color in colors:
+            self.b_color = colors[color]
+        else:
+            self.b_color = QColor(color)
         self.image = QPixmap() # Initialize as null QPixmap since no icons are available
 
 
@@ -1453,6 +1469,11 @@ class DBlock:
         self.l_width = 5
         self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
         logging.debug(f"Block initialized: {self.name}")
+
+        if block_class:
+            self.block_instance = block_class()
+        else:
+            self.block_instance = None
 
 
 
@@ -1505,8 +1526,9 @@ class DBlock:
         border_color = theme_manager.get_color('border_primary')
         painter.setPen(QPen(border_color, 2))
 
-        # Special case for Gain block to draw a triangle
+        # Draw block shape
         if self.block_fn == "Gain":
+            # Draw a triangle for the Gain block
             points = QPolygonF()
             if not self.flipped:
                 points.append(QPoint(self.left, self.top))
@@ -1518,7 +1540,7 @@ class DBlock:
                 points.append(QPoint(self.left + self.width, self.top + self.height))
             painter.drawPolygon(points)
         else:
-            # Draw rounded rectangle for all other blocks
+            # Draw a rounded rectangle for all other blocks
             radius = 10
             painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
 
@@ -1539,29 +1561,60 @@ class DBlock:
             path.moveTo(0.1, 0.5)
             path.quadTo(0.3, 0.1, 0.5, 0.5)
             path.quadTo(0.7, 0.9, 0.9, 0.5)
-        elif self.block_fn == "Noise":
-            path.moveTo(0.1, 0.5)
-            path.lineTo(0.15, 0.2)
-            path.lineTo(0.2, 0.8)
-            path.lineTo(0.25, 0.3)
-            path.lineTo(0.3, 0.7)
-            path.lineTo(0.35, 0.4)
-            path.lineTo(0.4, 0.6)
-            path.lineTo(0.45, 0.5)
-            path.lineTo(0.5, 0.2)
-            path.lineTo(0.55, 0.8)
-            path.lineTo(0.6, 0.3)
-            path.lineTo(0.65, 0.7)
-            path.lineTo(0.7, 0.4)
-            path.lineTo(0.75, 0.6)
-            path.lineTo(0.8, 0.5)
-            path.lineTo(0.85, 0.2)
-            path.lineTo(0.9, 0.8)
         elif self.block_fn == "SgProd":
             path.moveTo(0.2, 0.2)
             path.lineTo(0.8, 0.8)
             path.moveTo(0.2, 0.8)
             path.lineTo(0.8, 0.2)
+        elif self.block_fn == "TranFn":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+
+            # Draw B(s)
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
+            painter.drawText(rect_top, Qt.AlignCenter, "B(s)")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
+
+            # Draw A(s)
+            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter, "A(s)")
+
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Demux":
+            # Draw a stylized demultiplexer symbol
+            path.moveTo(0.2, 0.5)  # Input line
+            path.lineTo(0.4, 0.5)
+            path.moveTo(0.4, 0.2)  # Main body
+            path.lineTo(0.4, 0.8)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.4, 0.2)
+            path.moveTo(0.8, 0.3)  # Output line 1
+            path.lineTo(1.0, 0.3)
+            path.moveTo(0.8, 0.7)  # Output line 2
+            path.lineTo(1.0, 0.7)
+        elif self.block_fn == "Mux":
+            # Draw a stylized multiplexer symbol
+            path.moveTo(0.2, 0.3)  # Input line 1
+            path.lineTo(0.4, 0.3)
+            path.moveTo(0.2, 0.7)  # Input line 2
+            path.lineTo(0.4, 0.7)
+            path.moveTo(0.4, 0.2)  # Main body
+            path.lineTo(0.8, 0.4)
+            path.lineTo(0.8, 0.6)
+            path.lineTo(0.4, 0.8)
+            path.lineTo(0.4, 0.2)
+            path.moveTo(0.8, 0.5)  # Output line
+            path.lineTo(1.0, 0.5)
         elif self.block_fn == "BodeMag":
             # Draw axes
             path.moveTo(0.1, 0.9) # x-axis
@@ -1653,14 +1706,27 @@ class DBlock:
             font.setItalic(False)
             font.setPointSize(original_size)
             painter.setFont(font)
-        elif self.block_fn == "Integr":
+        elif self.block_fn == "Integrator":
+            # Use 1/s notation (transfer function representation)
             font = painter.font()
             original_size = font.pointSize()
-            font.setPointSize(original_size + 6)
+            font.setPointSize(original_size + 4)
             font.setItalic(True)
             painter.setFont(font)
             painter.setPen(theme_manager.get_color('text_primary'))
-            painter.drawText(self.rect, Qt.AlignCenter, "1/s")
+
+            # Draw 1
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2 - 2)
+            painter.drawText(rect_top, Qt.AlignCenter | Qt.AlignBottom, "1")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 15, line_y, self.left + self.width - 15, line_y)
+
+            # Draw s
+            rect_bottom = QRect(self.left, self.top + self.height // 2 + 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter | Qt.AlignTop, "s")
+
             font.setItalic(False)
             font.setPointSize(original_size)
             painter.setFont(font)
@@ -1673,19 +1739,75 @@ class DBlock:
             path.quadTo(0.3, 0.2, 0.5, 0.6)
             path.quadTo(0.7, 1.0, 0.9, 0.6)
         elif self.block_fn == "Sum":
-            sign_text = self.params.get('sign', '')
-            if sign_text:
-                font = painter.font()
-                original_size = font.pointSize()
-                font.setPointSize(original_size + 4)
-                painter.setFont(font)
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 4)
+            painter.setFont(font)
+            sign_text = self.params.get('sign', '++')
+            painter.drawText(self.rect, Qt.AlignCenter, sign_text)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "SgProd":
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.moveTo(0.2, 0.8)
+            path.lineTo(0.8, 0.2)
 
-                painter.setPen(theme_manager.get_color('text_primary'))
-                painter.drawText(self.rect, Qt.AlignCenter, sign_text)
 
-                font.setPointSize(original_size)
-                painter.setFont(font)
-
+        elif self.block_fn == "Noise":
+            # Draw a random/noisy signal
+            path.moveTo(0.1, 0.5)
+            path.lineTo(0.2, 0.3)
+            path.lineTo(0.3, 0.7)
+            path.lineTo(0.4, 0.4)
+            path.lineTo(0.5, 0.6)
+            path.lineTo(0.6, 0.2)
+            path.lineTo(0.7, 0.8)
+            path.lineTo(0.8, 0.5)
+            path.lineTo(0.9, 0.6)
+        elif self.block_fn == "Exp":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 4)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color('text_primary'))
+            painter.drawText(self.rect, Qt.AlignCenter, "eˣ")
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Term":
+            # Draw a ground/terminator symbol
+            path.moveTo(0.5, 0.2)
+            path.lineTo(0.5, 0.6)
+            path.moveTo(0.2, 0.6)
+            path.lineTo(0.8, 0.6)
+            path.moveTo(0.3, 0.75)
+            path.lineTo(0.7, 0.75)
+            path.moveTo(0.4, 0.9)
+            path.lineTo(0.6, 0.9)
+        elif self.block_fn == "Export":
+            # Draw an arrow pointing out of a box
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.2, 0.8)
+            path.lineTo(0.2, 0.2)
+            path.moveTo(0.5, 0.5)
+            path.lineTo(1.0, 0.5)
+            path.moveTo(0.8, 0.3)
+            path.lineTo(1.0, 0.5)
+            path.lineTo(0.8, 0.7)
+        elif self.block_fn == "External":
+            # Draw a stylized letter 'E'
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.2)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.6, 0.5)
+            path.moveTo(0.2, 0.8)
+            path.lineTo(0.8, 0.8)
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.2, 0.8)
         if not path.isEmpty():
             margin = self.width * 0.2
             transform = QTransform()
@@ -1718,8 +1840,8 @@ class DBlock:
             text_color = theme_manager.get_color('text_primary')
             painter.setPen(text_color)
             painter.setFont(self.font)
-            text_rect = QRect(self.left, self.top + self.height + 5, self.width, 20)
-            painter.drawText(text_rect, Qt.AlignCenter | Qt.TextWordWrap, self.name)
+            text_rect = QRect(self.left, self.top + self.height, self.width, 25)
+            painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, self.username)
 
         if self.selected:
             selection_color = theme_manager.get_color('accent_primary')
@@ -2095,9 +2217,8 @@ class DLine:
     def change_color(self, color):
         self.color = color
 
-class MenuBlocks(DSim):
-    def __init__(self, block_fn, fn_name, io_params, ex_params, b_color, coords, external=False):
-        super().__init__()
+class MenuBlocks:
+    def __init__(self, block_fn, fn_name, io_params, ex_params, b_color, coords, external=False, block_class=None, colors=None):
         self.block_fn = block_fn
         self.fn_name = fn_name
         self.ins = io_params['inputs']
@@ -2105,7 +2226,7 @@ class MenuBlocks(DSim):
         self.b_type = io_params['b_type']
         self.io_edit = io_params['io_edit']
         self.params = ex_params
-        self.b_color = self.set_color(b_color)
+        self.b_color = b_color
         self.size = coords
         self.side_length = (30, 30)
         pixmap = QPixmap(f'./lib/icons/{self.block_fn.lower()}.png')
@@ -2115,7 +2236,9 @@ class MenuBlocks(DSim):
             self.image = pixmap
         self.external = external
         self.collision = None
-        self.font = QFont('Arial', 10)  
+        self.font = QFont('Arial', 10)
+        self.block_class = block_class
+        self.colors = colors
 
     def draw_menublock(self, painter, pos):
         self.collision = QRect(40, 80 + 40*pos, self.side_length[0], self.side_length[1])
@@ -2124,7 +2247,7 @@ class MenuBlocks(DSim):
             painter.drawPixmap(self.collision.topLeft(), self.image)
         
         painter.setFont(self.font)
-        painter.setPen(self.colors['black'])
+        painter.setPen(theme_manager.get_color('text_primary'))
         text_rect = QRect(90, 80 + 40*pos, 100, 30)
         painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, self.fn_name)
 
@@ -2225,7 +2348,7 @@ class SignalPlot(QWidget):
                 if i < len(new_y):
                     curve.setData(new_t, new_y[i])
         except Exception as e:
-            print(f"Error updating plot: {e}")
+            logger.error(f"Error updating plot: {e}")
 
 
     def sort_labels(self, labels):

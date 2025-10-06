@@ -46,6 +46,11 @@ usermodels/
 legacy/
 modern_ui/widgets/modern_palette_old.py
 
+# Temporary and patch files
+*.patch
+merge_instructions.txt
+test_*.py
+
 # Distribution / packaging
 build/
 dist/

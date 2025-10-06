@@ -26,10 +26,11 @@ class DraggableBlockWidget(QFrame):
     
     block_drag_started = pyqtSignal(object, object)  # menu_block, position
     
-    def __init__(self, menu_block, category_name, parent=None):
+    def __init__(self, menu_block, category_name, colors, parent=None):
         super().__init__(parent)
         self.menu_block = menu_block
         self.category_name = category_name
+        self.colors = colors
         
         # Setup widget
         self._setup_widget()
@@ -65,7 +66,8 @@ class DraggableBlockWidget(QFrame):
             io_edit=menu_block.io_edit,
             fn_name=menu_block.fn_name,
             params=menu_block.params,
-            external=menu_block.external
+            external=menu_block.external,
+            colors=self.colors
         )
         
         temp_dblock.update_Block()
@@ -167,10 +169,11 @@ class DraggableBlockWidget(QFrame):
 class BlockCategoryWidget(QFrame):
     """Widget for a category of blocks."""
     
-    def __init__(self, category_name, blocks, parent=None):
+    def __init__(self, category_name, blocks, colors, parent=None):
         super().__init__(parent)
         self.category_name = category_name
         self.blocks = blocks
+        self.colors = colors
         
         self._setup_widget()
         self._apply_styling()
@@ -196,7 +199,7 @@ class BlockCategoryWidget(QFrame):
         row = 0
         col = 0
         for block in self.blocks:
-            block_widget = DraggableBlockWidget(block, self.category_name)
+            block_widget = DraggableBlockWidget(block, self.category_name, colors=self.colors)
             grid_layout.addWidget(block_widget, row, col)
             col += 1
             if col > 1: # 2 blocks per row
@@ -234,11 +237,10 @@ class ModernBlockPalette(QWidget):
     
     block_drag_started = pyqtSignal(object)  # Emitted when a block drag starts
     
-    def __init__(self, parent=None):
+    def __init__(self, dsim, parent=None):
         super().__init__(parent)
         
-        # Initialize DSim to get menu blocks
-        self.dsim = DSim()
+        self.dsim = dsim
         
         # Setup widget
         self._setup_widget()
@@ -249,7 +251,7 @@ class ModernBlockPalette(QWidget):
         theme_manager.theme_changed.connect(self._apply_styling)
         
         logger.info("Modern block palette initialized")
-    
+
     def _setup_widget(self):
         """Setup the main widget layout."""
         layout = QVBoxLayout(self)
@@ -294,13 +296,10 @@ class ModernBlockPalette(QWidget):
                         else:
                             block_widget.hide()
                 category_widget.setVisible(category_visible)
-    
+
     def _load_blocks(self):
         """Load blocks from DSim and organize them into categories."""
         try:
-            # Initialize DSim menu blocks
-            self.dsim.menu_blocks_init()
-            
             # Get menu blocks from DSim
             menu_blocks = getattr(self.dsim, 'menu_blocks', [])
             
@@ -314,7 +313,7 @@ class ModernBlockPalette(QWidget):
             
             # Create category widgets
             for category_name, blocks in categories.items():
-                category_widget = BlockCategoryWidget(category_name, blocks)
+                category_widget = BlockCategoryWidget(category_name, blocks, colors=self.dsim.colors)
                 self.blocks_layout.addWidget(category_widget)
             
             # Add stretch to push categories to top
@@ -334,29 +333,51 @@ class ModernBlockPalette(QWidget):
             "Control": [],
             "Filters": [],
             "Sinks": [],
+            "Routing": [],
             "Other": []
         }
-        
-        # Simple categorization based on block names
+
+        # Simple categorization based on block names (fallback)
         source_keywords = ['step', 'ramp', 'sine', 'square', 'constant', 'source']
-        math_keywords = ['sum', 'gain', 'multiply', 'add', 'subtract', 'divide', 'abs', 'sqrt']
-        control_keywords = ['integrator', 'derivative', 'pid', 'controller', 'delay']
+        math_keywords = ['sum', 'gain', 'multiply', 'add', 'subtract', 'divide', 'abs', 'sqrt', 'product']
+        control_keywords = ['integrator', 'derivative', 'pid', 'controller', 'delay', 'transfer']
         filter_keywords = ['filter', 'lowpass', 'highpass', 'bandpass']
-        sink_keywords = ['scope', 'display', 'sink', 'plot', 'output']
-        
+        sink_keywords = ['scope', 'display', 'sink', 'plot', 'output', 'export', 'term']
+        routing_keywords = ['mux', 'demux', 'switch', 'selector']
+
         for block in menu_blocks:
-            block_name = getattr(block, 'fn_name', '').lower()
-            
-            if any(keyword in block_name for keyword in source_keywords):
-                categories["Sources"].append(block)
-            elif any(keyword in block_name for keyword in math_keywords):
-                categories["Math"].append(block)
-            elif any(keyword in block_name for keyword in control_keywords):
-                categories["Control"].append(block)
-            elif any(keyword in block_name for keyword in filter_keywords):
-                categories["Filters"].append(block)
-            elif any(keyword in block_name for keyword in sink_keywords):
-                categories["Sinks"].append(block)
+            # Check if block has a block_class with category property
+            category = None
+            if hasattr(block, 'block_class') and block.block_class:
+                try:
+                    temp_instance = block.block_class()
+                    if hasattr(temp_instance, 'category'):
+                        category = temp_instance.category
+                except:
+                    pass
+
+            # If no category property, use keyword-based categorization
+            if not category:
+                block_name = getattr(block, 'fn_name', '').lower()
+
+                if any(keyword in block_name for keyword in source_keywords):
+                    category = "Sources"
+                elif any(keyword in block_name for keyword in math_keywords):
+                    category = "Math"
+                elif any(keyword in block_name for keyword in control_keywords):
+                    category = "Control"
+                elif any(keyword in block_name for keyword in filter_keywords):
+                    category = "Filters"
+                elif any(keyword in block_name for keyword in sink_keywords):
+                    category = "Sinks"
+                elif any(keyword in block_name for keyword in routing_keywords):
+                    category = "Routing"
+                else:
+                    category = "Other"
+
+            # Add block to the appropriate category
+            if category in categories:
+                categories[category].append(block)
             else:
                 categories["Other"].append(block)
         

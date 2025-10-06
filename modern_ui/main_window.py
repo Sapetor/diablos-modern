@@ -65,7 +65,7 @@ class ModernDiaBloSWindow(QMainWindow):
         
         # Initialize DSim components
         self.dsim.main_buttons_init()
-        self.dsim.menu_blocks_init()
+
         
         # Setup update timer
         self.update_timer = QTimer(self)
@@ -292,7 +292,7 @@ class ModernDiaBloSWindow(QMainWindow):
         layout.addWidget(title)
         
         # Modern block palette widget (Phase 2)
-        self.block_palette = ModernBlockPalette()
+        self.block_palette = ModernBlockPalette(self.dsim)
         layout.addWidget(self.block_palette)
         return panel
     

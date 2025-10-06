@@ -189,7 +189,7 @@ class ModernCanvas(QWidget):
                 return False
                 
         except Exception as e:
-            logger.error(f"Error starting simulation: {str(e)}")
+            logger.error(f"Error starting simulation: {str(e)}", exc_info=True)
             self.simulation_status_changed.emit(f"Error: {str(e)}")
             return False
     
