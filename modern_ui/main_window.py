@@ -279,8 +279,12 @@ class ModernDiaBloSWindow(QMainWindow):
         """Create modern left panel for block palette."""
         panel = QFrame()
         panel.setObjectName("ModernPanel")
-        panel.setMinimumWidth(200)
-        panel.setMaximumWidth(300)
+
+        # Scale panel widths based on screen DPI
+        screen = QApplication.primaryScreen()
+        dpi_ratio = screen.logicalDotsPerInch() / 96.0
+        panel.setMinimumWidth(int(200 * dpi_ratio))
+        panel.setMaximumWidth(int(300 * dpi_ratio))
         
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -326,12 +330,16 @@ class ModernDiaBloSWindow(QMainWindow):
         # Set size constraints for vertical panel on right side
         # Minimum width: enough to show property labels and controls
         # Maximum width: 30% of window width to prevent covering canvas
-        panel.setMinimumWidth(250)
+
+        # Scale panel widths based on screen DPI
+        screen = QApplication.primaryScreen()
+        dpi_ratio = screen.logicalDotsPerInch() / 96.0
+        panel.setMinimumWidth(int(250 * dpi_ratio))
         if self.screen_geometry:
             max_width = int(self.screen_geometry.width() * 0.30)
             panel.setMaximumWidth(max_width)
         else:
-            panel.setMaximumWidth(400)  # Fallback max width
+            panel.setMaximumWidth(int(400 * dpi_ratio))  # Fallback max width
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(8, 8, 8, 8)

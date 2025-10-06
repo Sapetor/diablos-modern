@@ -38,7 +38,14 @@ class DraggableBlockWidget(QFrame):
     
     def _setup_widget(self):
         """Setup the widget layout and content."""
-        self.setFixedSize(100, 100)
+        # Scale size based on screen DPI
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        dpi_ratio = screen.logicalDotsPerInch() / 96.0  # 96 is standard DPI
+        base_size = 100
+        scaled_size = int(base_size * dpi_ratio)
+
+        self.setFixedSize(scaled_size, scaled_size)
         self.setFrameStyle(QFrame.StyledPanel)
         self.setCursor(Qt.OpenHandCursor)
 
