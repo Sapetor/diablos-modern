@@ -356,20 +356,30 @@ class ModernDiaBloSWindow(QMainWindow):
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
 
-        # Set responsive minimum size for canvas
-        if self.screen_geometry:
-            # Minimum size should be reasonable for drawing
-            min_width = max(int(self.screen_geometry.width() * 0.50), 700)
-            min_height = max(int(self.screen_geometry.height() * 0.60), 500)
-            self.canvas.setMinimumSize(min_width, min_height)
-        else:
-            self.canvas.setMinimumSize(900, 700)  # Fallback - larger canvas
-        
+        # Set a reasonable minimum size for canvas that works on all displays
+        # Don't base on screen width - use absolute values that allow property panel to fit
+        # The splitter will handle making it larger as needed
+        screen = QApplication.primaryScreen()
+        device_ratio = screen.devicePixelRatio()
+
+        # Base minimum size (enough for basic diagram work)
+        min_width = 700
+        min_height = 500
+
+        # Scale slightly for high DPI, but keep it reasonable
+        if device_ratio > 1.25:
+            min_width = 800
+            min_height = 600
+
+        self.canvas.setMinimumSize(min_width, min_height)
+
+        logger.info(f"Canvas minimum size: {min_width}×{min_height}")
+
         # Connect canvas signals
         self.canvas.block_selected.connect(self._on_block_selected)
         self.canvas.connection_created.connect(self._on_connection_created)
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
-        
+
         return self.canvas
     
     def _create_property_panel(self) -> QWidget:
