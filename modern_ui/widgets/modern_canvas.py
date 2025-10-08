@@ -4,7 +4,7 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 
 import logging
 from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu, QVBoxLayout
-from PyQt5.QtCore import Qt, QTimer, QPoint, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QPoint, QRect, pyqtSignal
 import pyqtgraph as pg
 from scipy import signal
 import numpy as np
