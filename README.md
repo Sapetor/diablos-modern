@@ -112,11 +112,11 @@ See [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md#adding-new-blocks) for step-by-
 
 ## Block Types
 
-DiaBloS includes 18+ built-in block types:
+DiaBloS includes 20+ built-in block types:
 
 **Sources**: Step, Ramp, Sine, Noise, Exponential
 **Math**: Sum, Product, Gain
-**Control**: Integrator, Derivative, Transfer Function
+**Control**: Integrator, Derivative, Transfer Function, State Space
 **Analysis**: Bode Plot, Root Locus
 **Utilities**: Scope, Export, Mux, Demux, Terminator
 **Advanced**: External (custom Python code)
