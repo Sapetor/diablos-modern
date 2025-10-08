@@ -1043,8 +1043,8 @@ class ModernCanvas(QWidget):
                     'fn_name': block.fn_name,
                     'params': copy.deepcopy(block.params),
                     'external': block.external,
-                    'flipped': block.flipped,
-                    'block_class': block.block_class
+                    'flipped': getattr(block, 'flipped', False),
+                    'block_class': getattr(block, 'block_class', None)
                 }
                 self.clipboard_blocks.append(block_data)
 
