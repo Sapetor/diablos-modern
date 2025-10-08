@@ -59,11 +59,20 @@ python diablos_modern.py
 
 ### Keyboard Shortcuts
 
+**Selection:**
+- **Click**: Select single block
+- **Shift+Click**: Add block to selection (multi-select)
+- **Ctrl+Click**: Toggle block selection on/off
+- **Click empty area**: Deselect all
+
+**Editing:**
 - **Ctrl+C / Cmd+C**: Copy selected block(s)
 - **Ctrl+V / Cmd+V**: Paste block(s) with offset
 - **Ctrl+F / Cmd+F**: Flip selected block(s) horizontally
 - **Delete**: Remove selected block(s) or connection(s)
 - **Escape**: Cancel current operation
+
+**Tip:** Select multiple blocks with Shift+Click, then delete them all at once with Delete!
 
 ## Documentation
 

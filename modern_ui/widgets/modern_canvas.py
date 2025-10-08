@@ -57,6 +57,7 @@ class ModernCanvas(QWidget):
         self.state = State.IDLE
         self.dragging_block = None
         self.drag_offset = None
+        self.drag_offsets = {}  # For multi-block dragging
         
         # Connection management
         self.line_creation_state = None
@@ -324,8 +325,10 @@ class ModernCanvas(QWidget):
             if self.line_creation_state:
                 self._cancel_line_creation()
             else:
-                # If no item was clicked, clear all selections
-                self._clear_selections()
+                # If no item was clicked, clear all selections (unless Shift is held for multi-select)
+                modifiers = QApplication.keyboardModifiers()
+                if not (modifiers & Qt.ShiftModifier):
+                    self._clear_selections()
 
         except Exception as e:
             logger.error(f"Error in _handle_left_click: {str(e)}")
@@ -589,8 +592,10 @@ class ModernCanvas(QWidget):
         try:
             logger.debug(f"Block clicked: {getattr(block, 'fn_name', 'Unknown')}")
 
-            # NEW: Connection logic with Ctrl+Click
-            if QApplication.keyboardModifiers() & Qt.ControlModifier and self.source_block_for_connection and self.source_block_for_connection is not block:
+            modifiers = QApplication.keyboardModifiers()
+
+            # NEW: Connection logic with Ctrl+Click (only when a source is already selected)
+            if (modifiers & Qt.ControlModifier) and self.source_block_for_connection and self.source_block_for_connection is not block:
                 source_block = self.source_block_for_connection
                 target_block = block
 
@@ -604,7 +609,7 @@ class ModernCanvas(QWidget):
                         if i not in connected_input_ports:
                             target_port_index = i
                             break
-                    
+
                     if target_port_index != -1:
                         logger.info(f"Creating connection from {source_block.name} to {target_block.name}")
                         self.line_start_block = source_block
@@ -617,18 +622,27 @@ class ModernCanvas(QWidget):
                         self.update()
                     else:
                         logger.warning(f"Could not connect: No available input ports on {target_block.name}")
-                    
+
                     return # End of connection logic for this click
 
-            # Original logic for selection and dragging
-            if QApplication.keyboardModifiers() & Qt.ControlModifier:
+            # Selection logic based on modifiers
+            if modifiers & Qt.ShiftModifier:
+                # Shift+Click: Add to selection (don't clear others)
+                block.selected = True
+                logger.info(f"Added {block.name} to selection (multi-select)")
+            elif modifiers & Qt.ControlModifier:
+                # Ctrl+Click (when no source block): Toggle selection
                 block.toggle_selection()
+                if block.selected:
+                    self.source_block_for_connection = block
+                logger.info(f"Toggled selection for {block.name}")
             else:
+                # Normal click: Clear all and select only this block
                 self._clear_selections()
                 block.selected = True
                 self.source_block_for_connection = block # Set source for connection
 
-            # Start dragging the block
+            # Start dragging the block (or all selected blocks)
             self.start_drag(block, pos)
 
             # Emit selection signal
@@ -855,13 +869,20 @@ class ModernCanvas(QWidget):
             logger.error(f"Error configuring block: {str(e)}")
 
     def start_drag(self, block, pos):
-        """Start dragging a block."""
+        """Start dragging a block (or multiple selected blocks)."""
         try:
             self.state = State.DRAGGING
             self.dragging_block = block
             # Calculate drag offset based on block's top-left corner
             self.drag_offset = QPoint(pos.x() - block.left, pos.y() - block.top)
-            logger.debug(f"Started dragging block: {getattr(block, 'fn_name', 'Unknown')}")
+
+            # Store offsets for all selected blocks (for multi-block drag)
+            self.drag_offsets = {}
+            for b in self.dsim.blocks_list:
+                if b.selected:
+                    self.drag_offsets[b] = QPoint(pos.x() - b.left, pos.y() - b.top)
+
+            logger.debug(f"Started dragging {len(self.drag_offsets)} block(s)")
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
 
@@ -878,18 +899,30 @@ class ModernCanvas(QWidget):
             pos = self.screen_to_world(event.pos())
 
             if self.state == State.DRAGGING and self.dragging_block:
-                # Update block position
-                # Calculate new top-left position for the block
-                new_x = pos.x() - self.drag_offset.x()
-                new_y = pos.y() - self.drag_offset.y()
-
-                # Snap to grid
+                # Update all selected block positions
                 grid_size = 10
-                snapped_x = round(new_x / grid_size) * grid_size
-                snapped_y = round(new_y / grid_size) * grid_size
 
-                # Update block position using DBlock's relocate_Block method
-                self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
+                # If multiple blocks are selected, drag them all
+                if hasattr(self, 'drag_offsets') and len(self.drag_offsets) > 0:
+                    for block, offset in self.drag_offsets.items():
+                        # Calculate new position for this block
+                        new_x = pos.x() - offset.x()
+                        new_y = pos.y() - offset.y()
+
+                        # Snap to grid
+                        snapped_x = round(new_x / grid_size) * grid_size
+                        snapped_y = round(new_y / grid_size) * grid_size
+
+                        # Update block position
+                        block.relocate_Block(QPoint(snapped_x, snapped_y))
+                else:
+                    # Fallback: drag single block (legacy behavior)
+                    new_x = pos.x() - self.drag_offset.x()
+                    new_y = pos.y() - self.drag_offset.y()
+                    snapped_x = round(new_x / grid_size) * grid_size
+                    snapped_y = round(new_y / grid_size) * grid_size
+                    self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
+
                 self.dsim.update_lines() # Update lines dynamically during drag
                 self.update() # Trigger repaint
             elif self.state == State.DRAGGING_LINE_POINT and self.dragging_item:
