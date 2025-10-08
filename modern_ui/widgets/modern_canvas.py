@@ -1033,7 +1033,6 @@ class ModernCanvas(QWidget):
             for block in selected_blocks:
                 block_data = {
                     'block_fn': block.block_fn,
-                    'username': block.username,
                     'coords': QRect(block.left, block.top, block.width, block.height_base),
                     'color': block.b_color.name(),
                     'in_ports': block.in_ports,
@@ -1089,6 +1088,7 @@ class ModernCanvas(QWidget):
                         break
 
                 # Create new block with unique ID
+                # Note: username='' makes it default to the new name (block_fn + sid)
                 new_block = DBlock(
                     block_fn=block_fn,
                     sid=sid,
@@ -1101,7 +1101,7 @@ class ModernCanvas(QWidget):
                     fn_name=block_data['fn_name'],
                     params=block_data['params'].copy(),
                     external=block_data['external'],
-                    username=block_data['username'],
+                    username='',  # Let it default to new name
                     block_class=block_class,
                     colors=self.dsim.colors
                 )
