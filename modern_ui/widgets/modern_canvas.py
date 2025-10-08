@@ -944,11 +944,13 @@ class ModernCanvas(QWidget):
             # Calculate drag offset based on block's top-left corner
             self.drag_offset = QPoint(pos.x() - block.left, pos.y() - block.top)
 
-            # Store offsets for all selected blocks (for multi-block drag)
+            # Store RELATIVE offsets from the clicked block to all other selected blocks
+            # This maintains relative positions when dragging multiple blocks
             self.drag_offsets = {}
             for b in self.dsim.blocks_list:
                 if b.selected:
-                    self.drag_offsets[b] = QPoint(pos.x() - b.left, pos.y() - b.top)
+                    # Store offset from clicked block to this block
+                    self.drag_offsets[b] = QPoint(b.left - block.left, b.top - block.top)
 
             logger.debug(f"Started dragging {len(self.drag_offsets)} block(s)")
         except Exception as e:
@@ -976,26 +978,25 @@ class ModernCanvas(QWidget):
                 # Update all selected block positions
                 grid_size = 10
 
-                # If multiple blocks are selected, drag them all
-                if hasattr(self, 'drag_offsets') and len(self.drag_offsets) > 0:
-                    for block, offset in self.drag_offsets.items():
-                        # Calculate new position for this block
-                        new_x = pos.x() - offset.x()
-                        new_y = pos.y() - offset.y()
+                # Calculate new position for the clicked block
+                new_x = pos.x() - self.drag_offset.x()
+                new_y = pos.y() - self.drag_offset.y()
 
-                        # Snap to grid
-                        snapped_x = round(new_x / grid_size) * grid_size
-                        snapped_y = round(new_y / grid_size) * grid_size
+                # Snap clicked block to grid
+                snapped_x = round(new_x / grid_size) * grid_size
+                snapped_y = round(new_y / grid_size) * grid_size
 
-                        # Update block position
-                        block.relocate_Block(QPoint(snapped_x, snapped_y))
-                else:
-                    # Fallback: drag single block (legacy behavior)
-                    new_x = pos.x() - self.drag_offset.x()
-                    new_y = pos.y() - self.drag_offset.y()
-                    snapped_x = round(new_x / grid_size) * grid_size
-                    snapped_y = round(new_y / grid_size) * grid_size
-                    self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
+                # Move clicked block to snapped position
+                self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
+
+                # If multiple blocks are selected, move them all by maintaining relative positions
+                if hasattr(self, 'drag_offsets') and len(self.drag_offsets) > 1:
+                    for block, relative_offset in self.drag_offsets.items():
+                        if block is not self.dragging_block:
+                            # Position this block relative to the clicked block
+                            block_x = snapped_x + relative_offset.x()
+                            block_y = snapped_y + relative_offset.y()
+                            block.relocate_Block(QPoint(block_x, block_y))
 
                 self.dsim.update_lines() # Update lines dynamically during drag
                 self.update() # Trigger repaint
