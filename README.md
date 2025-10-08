@@ -53,8 +53,17 @@ python diablos_modern.py
 1.  **Add Blocks**: Drag blocks from the **Block Palette** on the left onto the main canvas
 2.  **Connect Blocks**: Click output port → click input port to create connections
 3.  **Edit Properties**: Click a block to edit its parameters in the **Properties** panel
-4.  **Run Simulation**: Click the **Play** button to start simulation
-5.  **View Results**: Use `Scope` blocks to visualize outputs
+4.  **Copy/Paste**: Select blocks and use `Ctrl+C` / `Ctrl+V` (or `Cmd+C` / `Cmd+V` on Mac) to duplicate
+5.  **Run Simulation**: Click the **Play** button to start simulation
+6.  **View Results**: Use `Scope` blocks to visualize outputs
+
+### Keyboard Shortcuts
+
+- **Ctrl+C / Cmd+C**: Copy selected block(s)
+- **Ctrl+V / Cmd+V**: Paste block(s) with offset
+- **Ctrl+F / Cmd+F**: Flip selected block(s) horizontally
+- **Delete**: Remove selected block(s) or connection(s)
+- **Escape**: Cancel current operation
 
 ## Documentation
 

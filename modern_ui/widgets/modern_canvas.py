@@ -70,7 +70,10 @@ class ModernCanvas(QWidget):
         self.pan_offset = QPoint(0, 0)
         self.panning = False
         self.last_pan_pos = QPoint(0, 0)
-        
+
+        # Clipboard for copy-paste
+        self.clipboard_blocks = []
+
         # Setup canvas
         self._setup_canvas()
         
@@ -980,6 +983,9 @@ class ModernCanvas(QWidget):
     def keyPressEvent(self, event):
         """Handle keyboard events."""
         try:
+            # Check for Control/Command modifier (works on both Mac and Windows/Linux)
+            ctrl_pressed = event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier)
+
             if event.key() == Qt.Key_Escape:
                 # Cancel any ongoing operations
                 if self.line_creation_state:
@@ -988,8 +994,12 @@ class ModernCanvas(QWidget):
                     self._finish_drag()
             elif event.key() == Qt.Key_Delete:
                 self.remove_selected_items()
-            elif event.key() == Qt.Key_F and (event.modifiers() & Qt.ControlModifier):
+            elif event.key() == Qt.Key_F and ctrl_pressed:
                 self.flip_selected_blocks()
+            elif event.key() == Qt.Key_C and ctrl_pressed:
+                self.copy_selected_blocks()
+            elif event.key() == Qt.Key_V and ctrl_pressed:
+                self.paste_blocks()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
@@ -1005,6 +1015,104 @@ class ModernCanvas(QWidget):
             logger.info("Flipped selected blocks")
         except Exception as e:
             logger.error(f"Error flipping blocks: {str(e)}")
+
+    def copy_selected_blocks(self):
+        """Copy selected blocks to clipboard."""
+        try:
+            import copy
+
+            # Find all selected blocks
+            selected_blocks = [block for block in self.dsim.blocks_list if block.selected]
+
+            if not selected_blocks:
+                logger.info("No blocks selected to copy")
+                return
+
+            # Deep copy the block data (not the actual block objects)
+            self.clipboard_blocks = []
+            for block in selected_blocks:
+                block_data = {
+                    'block_fn': block.block_fn,
+                    'username': block.username,
+                    'coords': QRect(block.left, block.top, block.width, block.height_base),
+                    'color': block.b_color.name(),
+                    'in_ports': block.in_ports,
+                    'out_ports': block.out_ports,
+                    'b_type': block.b_type,
+                    'io_edit': block.io_edit,
+                    'fn_name': block.fn_name,
+                    'params': copy.deepcopy(block.params),
+                    'external': block.external,
+                    'flipped': block.flipped,
+                    'block_class': block.block_class
+                }
+                self.clipboard_blocks.append(block_data)
+
+            logger.info(f"Copied {len(self.clipboard_blocks)} block(s) to clipboard")
+        except Exception as e:
+            logger.error(f"Error copying blocks: {str(e)}")
+
+    def paste_blocks(self):
+        """Paste blocks from clipboard."""
+        try:
+            if not self.clipboard_blocks:
+                logger.info("Clipboard is empty")
+                return
+
+            # Deselect all current blocks
+            for block in self.dsim.blocks_list:
+                block.selected = False
+
+            # Paste offset (so pasted blocks don't overlap exactly)
+            paste_offset = QPoint(30, 30)
+
+            # Create new blocks from clipboard
+            pasted_blocks = []
+            for block_data in self.clipboard_blocks:
+                # Offset the position
+                new_coords = block_data['coords'].translated(paste_offset)
+
+                # Import DBlock class
+                from lib.simulation.block import DBlock
+
+                # Create new block with a new unique ID
+                new_block = DBlock(
+                    block_fn=block_data['block_fn'],
+                    sid=len(self.dsim.blocks_list),  # Temporary, will be adjusted
+                    coords=new_coords,
+                    color=block_data['color'],
+                    in_ports=block_data['in_ports'],
+                    out_ports=block_data['out_ports'],
+                    b_type=block_data['b_type'],
+                    io_edit=block_data['io_edit'],
+                    fn_name=block_data['fn_name'],
+                    params=block_data['params'].copy(),
+                    external=block_data['external'],
+                    username=block_data['username'],
+                    block_class=block_data['block_class'],
+                    colors=self.dsim.colors
+                )
+                new_block.flipped = block_data['flipped']
+                new_block.selected = True  # Select the pasted blocks
+
+                # Add to blocks list
+                self.dsim.blocks_list.append(new_block)
+                pasted_blocks.append(new_block)
+
+            # Mark as dirty
+            self.dsim.dirty = True
+
+            # Redraw canvas
+            self.update()
+
+            logger.info(f"Pasted {len(pasted_blocks)} block(s)")
+
+            # Emit signal for first pasted block if any
+            if pasted_blocks:
+                self.block_selected.emit(pasted_blocks[0])
+
+        except Exception as e:
+            logger.error(f"Error pasting blocks: {str(e)}")
 
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
