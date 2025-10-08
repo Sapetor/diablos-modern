@@ -1,17 +1,24 @@
 # DiaBloS - Modern
 
-A modern, Python-based graphical tool for simulating dynamical systems. This project is an evolution of the original DiaBloS, featuring a completely revamped user interface built with PyQt5 and a focus on a more intuitive, and productive user experience.
+A modern, Python-based graphical tool for simulating dynamical systems. This project is an evolution of the original DiaBloS, featuring a completely revamped user interface built with PyQt5, a clean **MVC architecture**, and comprehensive testing infrastructure.
 
 ![Screenshot of DiaBloS Modern UI](screenshot.png)
 
 ## Key Features
 
-- **Modern, Themable UI**: Switch between light and dark modes instantly.
-- **Interactive Canvas**: A zoomable, pannable canvas for building your simulations.
-- **Drag-and-Drop**: Easily add new blocks by dragging them from the palette.
-- **Streamlined Property Editing**: Select a block and edit its parameters directly in a panel that automatically applies changes.
-- **Dynamic Layout**: UI panels can be resized, and the property editor adjusts its height to fit the content.
-- **Stable Simulation Engine**: Leverages the original, battle-tested simulation core with significant enhancements for stability and error handling.
+### User Experience
+- **Modern, Themable UI**: Switch between light and dark modes instantly
+- **Interactive Canvas**: Zoomable, pannable canvas for building simulations
+- **Drag-and-Drop**: Easily add blocks by dragging from the palette
+- **Streamlined Property Editing**: Edit block parameters directly with auto-apply
+- **Dynamic Layout**: Resizable panels with responsive design
+
+### Technical Excellence
+- **MVC Architecture**: Clean separation of Model, View, and Controller layers
+- **Type-Safe Code**: Comprehensive type hints throughout the codebase
+- **Test Infrastructure**: Unit test framework with pytest ready for contributors
+- **Extensible Design**: Plugin-based block system with automatic discovery
+- **Professional Quality**: Follows Python best practices and coding standards
 
 ## Getting Started
 
@@ -30,7 +37,7 @@ A modern, Python-based graphical tool for simulating dynamical systems. This pro
 
 2.  Install the required dependencies:
     ```bash
-    pip install pygame numpy matplotlib tk tqdm pyqtgraph pyqt5 scipy
+    pip install -r requirements.txt
     ```
 
 ### Running the Application
@@ -43,12 +50,90 @@ python diablos_modern.py
 
 ## Basic Usage
 
-1.  **Add Blocks**: Drag blocks from the **Block Palette** on the left onto the main canvas.
-2.  **Connect Blocks**: Click on an output port (right side of a block) and then on an input port (left side of a block) to create a connection.
-3.  **Edit Properties**: Click on a block to select it. Its properties will appear in the **Properties** panel at the bottom. Edit the values directly; changes are saved automatically.
-4.  **Run Simulation**: Click the **Play** button in the toolbar to run the simulation.
-5.  **View Plots**: If you have a `Scope` block in your diagram, the plot will appear once the simulation is finished.
+1.  **Add Blocks**: Drag blocks from the **Block Palette** on the left onto the main canvas
+2.  **Connect Blocks**: Click output port → click input port to create connections
+3.  **Edit Properties**: Click a block to edit its parameters in the **Properties** panel
+4.  **Run Simulation**: Click the **Play** button to start simulation
+5.  **View Results**: Use `Scope` blocks to visualize outputs
+
+## Documentation
+
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - MVC design, data flow, extension points
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - How to add blocks, contribute, best practices
+- **[Testing Guide](tests/README.md)** - Running tests, writing tests, coverage
+
+## For Developers
+
+### Quick Start
+
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=lib --cov=modern_ui --cov-report=html
+
+# Format code
+black lib/ modern_ui/ tests/
+
+# Type checking
+mypy lib/ modern_ui/
+```
+
+### Architecture Overview
+
+DiaBloS Modern follows a clean **MVC (Model-View-Controller)** architecture:
+
+- **Model** (`lib/models/`) - Data management (blocks, connections, state)
+- **Engine** (`lib/engine/`) - Business logic (validation, execution)
+- **Services** (`lib/services/`) - File I/O and external operations
+- **View** (`modern_ui/`) - User interface components
+- **Controller** (`lib/lib.py`) - Coordination and delegation
+
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+
+### Adding a New Block
+
+1. Create `blocks/my_block.py` with your block class
+2. Add execution function to `lib/functions.py`
+3. Restart application - block auto-discovered!
+
+See [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md#adding-new-blocks) for step-by-step guide.
+
+### Code Quality
+
+- **Type Hints**: All core files have comprehensive type annotations
+- **Test Framework**: Pytest infrastructure with fixtures for unit testing
+- **Documentation**: Google-style docstrings throughout
+- **Standards**: Follows PEP 8 and Python best practices
+
+## Block Types
+
+DiaBloS includes 18+ built-in block types:
+
+**Sources**: Step, Ramp, Sine, Noise, Exponential
+**Math**: Sum, Product, Gain
+**Control**: Integrator, Derivative, Transfer Function
+**Analysis**: Bode Plot, Root Locus
+**Utilities**: Scope, Export, Mux, Demux, Terminator
+**Advanced**: External (custom Python code)
+
+## Contributing
+
+We welcome contributions! Please see [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md#contributing) for:
+
+- Development workflow
+- Code style guidelines
+- Testing requirements
+- Pull request process
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+Built with: PyQt5, NumPy, Matplotlib, SciPy, PyQtGraph

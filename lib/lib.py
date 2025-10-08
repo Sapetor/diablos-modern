@@ -4,20 +4,24 @@ import numpy as np
 import copy
 import time
 import json
-import importlib
 import os
 import sys
 from tqdm import tqdm
-from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QInputDialog
-from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter, QCursor, QPainterPath, QPolygonF, QTransform
-from PyQt5.QtCore import Qt, QRect, QPoint, QTimer, QEvent
+from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
+from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter
+from PyQt5.QtCore import Qt, QRect, QPoint, QEvent
 import pyqtgraph as pg
 from lib.block_loader import load_blocks
 from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
-import math
 import logging
 from modern_ui.themes.theme_manager import theme_manager
 from lib import functions
+
+# Import refactored classes from new modules
+from lib.simulation.block import DBlock
+from lib.simulation.connection import DLine
+from lib.simulation.menu_block import MenuBlocks
+from lib.ui.button import Button
 
 logger = logging.getLogger(__name__)
 
@@ -59,67 +63,63 @@ class DSim:
     
 
     def __init__(self):
-        logger.debug("Initializing DSim")
+        logger.debug("Initializing DSim with MVC architecture")
+
+        # Initialize MVC components
+        from lib.models.simulation_model import SimulationModel
+        from lib.engine.simulation_engine import SimulationEngine
+        from lib.services.file_service import FileService
+
+        self.model = SimulationModel()
+        self.engine = SimulationEngine(self.model)
+        self.file_service = FileService(self.model)
+
+        # Screen/UI parameters
         self.SCREEN_WIDTH = 1280
         self.SCREEN_HEIGHT = 720 + 50
-
         self.canvas_top_limit = 60
         self.canvas_left_limit = 200
-
-        self.colors = {
-            'black': QColor(0, 0, 0),
-            'red': QColor(255, 0, 0),
-            'green': QColor(0, 255, 0),
-            'blue': QColor(0, 0, 255),
-            'yellow': QColor(255, 255, 0),
-            'magenta': QColor(255, 0, 255),
-            'cyan': QColor(0, 255, 255),
-            'purple': QColor(128, 0, 255),
-            'orange': QColor(255, 128, 0),
-            'aqua': QColor(0, 255, 128),
-            'pink': QColor(255, 0, 128),
-            'lime_green': QColor(128, 255, 0),
-            'light_blue': QColor(0, 128, 255),
-            'dark_red': QColor(128, 0, 0),
-            'dark_green': QColor(0, 128, 0),
-            'dark_blue': QColor(0, 0, 128),
-            'dark_gray': QColor(64, 64, 64),
-            'gray': QColor(128, 128, 128),
-            'light_gray': QColor(192, 192, 192),
-            'white': QColor(255, 255, 255)
-        }
-
         self.FPS = 60
+        self.l_width = 5
+        self.ls_width = 5
 
-        self.l_width = 5                    # Line width in selected mode
-        self.ls_width = 5                   # Line-block spacing width in selected mode
+        # Delegate commonly used properties to model for backward compatibility
+        self.colors = self.model.colors
+        self.menu_blocks = self.model.menu_blocks
+        self.blocks_list = self.model.blocks_list
+        self.line_list = self.model.line_list
 
-        self.filename = 'data.dat'          # Saved Filename by default
-        self.sim_time = 1.0                 # Default simulation time
-        self.sim_dt = 0.01                  # Base sampling time for simulation (Default: 10ms)
-        self.plot_trange = 100              # Window width for dynamic plot (Default: 100 samples)
+        # UI state
+        self.line_creation = 0
+        self.only_one = False
+        self.enable_line_selection = False
+        self.holding_CTRL = False
+        self.ss_count = 0
 
-        self.menu_blocks = []               # List of base blocks
-        self.blocks_list = []               # List of blocks
-        self.line_list = []                 # List of lines
+        # Delegate simulation parameters to engine
+        self.sim_time = self.engine.sim_time
+        self.sim_dt = self.engine.sim_dt
+        self.plot_trange = 100
 
-        self.line_creation = 0              # Boolean (3 states) for creation of a line
-        self.only_one = False               # Boolean to prevent more than one block from being able to perform an operation
-        self.enable_line_selection = False  # Boolean to indicate whether it is possible to select a line or not
-        self.holding_CTRL = False           # Boolean to control the state of the CTRL key
-        self.execution_initialized = False  # Boolean to indicate if the graph was executed at least once
-        self.ss_count = 0                   # Screenshot counter
-        
-        self.execution_pause = False        # Boolean indicating whether execution was paused at some point in time or not
-        self.execution_stop = False         # Boolean indicating whether the execution was completely stopped or not
-        self.dynamic_plot = False           # Boolean indicating whether the plot is displayed dynamically advancing or not
-        self.real_time = True               # Boolean indicating whether the simulation runs in real-time or not
-        self.error_msg = ""                   # Error message from simulation
-        self.dirty = False                  # Boolean indicating whether the diagram has been modified
+        # Execution state (delegate to engine)
+        self.execution_initialized = self.engine.execution_initialized
+        self.execution_pause = self.engine.execution_pause
+        self.execution_stop = self.engine.execution_stop
+        self.error_msg = self.engine.error_msg
+        self.real_time = self.engine.real_time
+        self.dynamic_plot = False
+
+        # Delegate filename to file service
+        self.filename = self.file_service.filename
+        self.dirty = self.model.dirty
 
         self.execution_function = functions
 
-        self.load_all_blocks()
+        # Legacy execution tracking (still needed for complex execution methods)
+        self.global_computed_list = []
+        self.timeline = []
+        self.outs = []
+        self.plotty = None
 
     def main_buttons_init(self):
         """
@@ -182,93 +182,20 @@ class DSim:
     ##### ADD OR REMOVE BLOCKS AND LINES #####
 
     def add_block(self, block, m_pos):
-        """
-        :purpose: Function that adds a block to the interface, with a unique ID.
-        :description: From a visible list of MenuBlocks objects, a complete Block instance is created, which is available for editing its parameters or connecting to other blocks.
-        :param block: Base-block containing the base parameters for each type of block.
-        :param m_pos: Coordinates (x, y) to locate the upper left corner of the future block.
-        :type block: BaseBlock class
-        :type m_pos: tuple
-        :bugs: Under a wrongly configured MenuBlock, the resulting block may not have the correct qualities or parameters.
-        """
-        logger.debug(f"Adding new block of type {block.block_fn} at position {m_pos}")
-        logger.debug(f"m_pos type: {type(m_pos)}, m_pos.x(): {m_pos.x()} (type: {type(m_pos.x())}), m_pos.y(): {m_pos.y()} (type: {type(m_pos.y())})")
-        logger.debug(f"block.side_length: {block.side_length} (types: {type(block.side_length[0])}, {type(block.side_length[1])})")
-        
-        id_list = [int(b_elem.name[len(b_elem.block_fn):]) for b_elem in self.blocks_list if b_elem.block_fn == block.block_fn]
-        sid = max(id_list) + 1 if id_list else 0
-
-        try:
-            # Ensure all values are integers
-            mouse_x = int(m_pos.x() - block.side_length[0] // 2)
-            mouse_y = int(m_pos.y() - block.side_length[1] // 2)
-            logger.debug(f"Calculated mouse_x: {mouse_x} (type: {type(mouse_x)}), mouse_y: {mouse_y} (type: {type(mouse_y)})")
-            logger.debug(f"block.size: {block.size} (types: {type(block.size[0])}, {type(block.size[1])})")
-            
-            # Ensure block size values are integers too
-            width = int(block.size[0])
-            height = int(block.size[1])
-            logger.debug(f"Final values - mouse_x: {mouse_x}, mouse_y: {mouse_y}, width: {width}, height: {height}")
-            
-            block_collision = QRect(mouse_x, mouse_y, width, height)
-            logger.debug(f"QRect created successfully: {block_collision}")
-        except Exception as e:
-            logger.error(f"Error creating QRect: {str(e)}")
-            # Fallback with explicit integer conversion
-            mouse_x = int(float(m_pos.x()) - float(block.side_length[0]) // 2)
-            mouse_y = int(float(m_pos.y()) - float(block.side_length[1]) // 2)
-            width = int(float(block.size[0]))
-            height = int(float(block.size[1]))
-            block_collision = QRect(mouse_x, mouse_y, width, height)
-
-        new_block = DBlock(block.block_fn, sid, block_collision, block.b_color, block.ins, block.outs, block.b_type, block.io_edit, block.fn_name, copy.deepcopy(block.params), block.external, block_class=block.block_class, colors=self.colors)
-        self.blocks_list.append(new_block)
-        self.dirty = True
-        logger.debug(f"New block created: {new_block.name}")
+        """Add a block to the diagram. Delegates to model."""
+        new_block = self.model.add_block(block, m_pos)
+        self.dirty = self.model.dirty
         return new_block
     def add_line(self, srcData, dstData):
-        """
-        :purpose: Function that adds a line to the interface, with a unique ID.
-        :description: Based on the existence of one or more blocks, this function creates a line between the last selected ports.
-        :param srcData: Triplet containing 'block name', 'port number', 'port coordinates' of an output port (starting point for the line).
-        :param dstData: Triplet containing 'block name', 'port number', 'port coordinates' of an input port (finish point for the line).
-        :type srcData: triplet
-        :type dstData: triplet
-        """
-    
-        if srcData is None or dstData is None:
-            logger.debug("Error: Invalid line data")
-            return None
+        """Add a connection line between two blocks. Delegates to model."""
+        new_line = self.model.add_line(srcData, dstData)
+        self.dirty = self.model.dirty
+        return new_line
 
-        id_list = [int(line.name[4:]) for line in self.line_list]
-        sid = max(id_list) + 1 if id_list else 0
-
-        try:
-            line = DLine(sid, srcblock=srcData[0], srcport=srcData[1],
-                 dstblock=dstData[0], dstport=dstData[1],
-                 points=(srcData[2], dstData[2]))
-            #line.color = QColor(list(self.colors.values())[sid % len(self.colors)])  # Assign a color from the color list
-            line.color = QColor(255,0,0)  # Assign red to lines
-
-            self.line_list.append(line)
-            self.dirty = True
-            logger.debug(f"Line created: {line.name}")
-            logger.debug(f"Current line_list: {[l.name for l in self.line_list]}")
-            return line
-        except Exception as e:
-            logger.error(f"Error creating line: {e}")
-            return None
-
-    def remove_block_and_lines(self,block):
-        """
-        :purpose: Function to remove blocks or lines.
-        :description: Removes a block or a line depending on whether it is selected or not.
-        :notes: Lines associated to a block being removed are also removed.
-        """
-        self.blocks_list.remove(block)
-        self.line_list = [line for line in self.line_list if not self.check_line_block(line, [block.name])]
-        self.dirty = True
-        logger.debug(f"Removed block {block.name} and associated lines")
+    def remove_block_and_lines(self, block):
+        """Remove a block and its associated lines. Delegates to model."""
+        self.model.remove_block(block)
+        self.dirty = self.model.dirty
 
     def check_line_block(self, line, b_del_list):
         """
@@ -615,6 +542,10 @@ class DSim:
             default_params.update(loaded_params)
             loaded_params = default_params
 
+        # Use fn_name from menu_block to ensure we have the correct function name,
+        # not the potentially outdated one from saved file
+        fn_name = menu_block.fn_name if menu_block else block_data.get('fn_name', block_data['block_fn'].lower())
+
         coords = QRect(block_data['coords_left'], block_data['coords_top'], block_data['coords_width'], block_data['coords_height_base'])
         block = DBlock(block_fn=block_data['block_fn'],
                       sid=block_data['sid'],
@@ -624,10 +555,12 @@ class DSim:
                       out_ports=block_data['out_ports'],
                       b_type=block_data['b_type'],
                       io_edit=block_data['io_edit'],
-                      fn_name=block_data['fn_name'],
+                      fn_name=fn_name,
                       params=loaded_params,
                       external=block_data['external'],
-                      username=block_data['username'])
+                      username=block_data['username'],
+                      block_class=menu_block.block_class if menu_block else None,
+                      colors=self.colors)
         block.height = block_data['coords_height']
         block.selected = block_data['selected']
         block.dragging = block_data['dragging']
@@ -652,15 +585,17 @@ class DSim:
         self.line_list.append(line)
 
     def clear_all(self):
-        """
-        :purpose: Cleans the screen from all blocks, lines and some main variables.
-        """
-        self.blocks_list = []
-        self.line_list = []
+        """Clear all blocks and lines from the diagram. Delegates to model."""
+        self.model.clear_all()
+        # Update references
+        self.blocks_list = self.model.blocks_list
+        self.line_list = self.model.line_list
+        self.dirty = self.model.dirty
+
+        # Reset UI state
         self.line_creation = 0
         self.only_one = False
         self.enable_line_selection = False
-        self.buttons_list[6].active = False  # Disable plot button
         self.ss_count = 0
         self.filename = 'data.dat'
         self.sim_time = 1.0
@@ -953,7 +888,6 @@ class DSim:
         :purpose: Continues with the execution sequence in loop until time runs out or an special event stops it.
         :description: This is the second stage of the network simulation. Here the reading of the complete graph will be done cyclically until the time is up, the user indicates that it is finished (by pressing Stop) or simply until one of the blocks gives error. At the end, the data saved in blocks like 'Scope' and 'External_data', will be exported to other libraries to perform their functions.
         """
-        #print(f"\nExecuting time step: {self.time_step}")
         try:
             if self.execution_pause:
                 return
@@ -1076,7 +1010,6 @@ class DSim:
             if self.time_step > self.execution_time + self.sim_dt:  # seconds
                 self.execution_initialized = False                  # The execution loop is terminated
                 self.pbar.close()                                   # The progress bar ends
-                #print("SIMULATION TIME:", round(time.time() - self.execution_time_start, 5), 'SECONDS')
 
                 # Export
                 self.export_data()
@@ -1405,888 +1338,6 @@ class DSim:
                 self.dynamic_plot = False
                 logger.info("DYNAMIC PLOT: OFF")
 
-
-class DBlock:
-    def __init__(self, block_fn, sid, coords, color, in_ports=1, out_ports=1, b_type=2, io_edit=True, fn_name='block', params={}, external=False, username='', block_class=None, colors=None):
-        logger.debug(f"Initializing DBlock {block_fn}{sid}")
-        self.name = block_fn.lower() + str(sid)
-        self.flipped = False
-        self.block_fn = block_fn
-        self.sid = sid
-        self.username = self.name if username == '' else username
-
-        self.rect = coords
-        self.left = self.rect.left()
-        self.top = self.rect.top()
-        self.width = self.rect.width()
-        self.height = self.rect.height()
-        self.height_base = self.height
-
-        if colors and color in colors:
-            self.b_color = colors[color]
-        else:
-            self.b_color = QColor(color)
-        self.image = QPixmap() # Initialize as null QPixmap since no icons are available
-
-
-        self.params = params.copy()
-        self.initial_params = params.copy()
-        self.init_params_list = [key for key in params.keys() if not (key.startswith('_') and key.endswith('_'))]
-        logger.debug(f"Initialized block {self.name} with params: {self.params}")
-
-        self.fn_name = fn_name
-        
-        self.external = external
-
-        self.port_radius = 8
-        self.in_ports = in_ports
-        self.out_ports = out_ports
-
-        self.params.update({'_name_': self.name, '_inputs_': self.in_ports, '_outputs_': self.out_ports})
-        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
-
-        self.in_coords = []
-        self.out_coords = []
-        self.io_edit = io_edit
-        self.update_Block()
-
-        self.b_type = b_type
-        self.dragging = False
-        self.selected = False
-
-        self.font_size = 14
-        self.font = QFont()
-        self.font.setPointSize(self.font_size)
-
-        self.hierarchy = -1
-        self.data_recieved = 0
-        self.computed_data = False
-        self.data_sent = 0
-        self.input_queue = {}
-
-        # These should be set to match your DSim class attributes
-        self.ls_width = 5
-        self.l_width = 5
-        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
-        logging.debug(f"Block initialized: {self.name}")
-
-        if block_class:
-            self.block_instance = block_class()
-        else:
-            self.block_instance = None
-
-
-
-
-
-    def toggle_selection(self):
-        self.selected = not self.selected
-
-   
-    def update_Block(self):
-        self.in_coords = []
-        self.out_coords = []
-        self.input_queue = {}
-        for i in range(self.in_ports):
-            self.input_queue[i] = None
-
-        port_height = max(self.out_ports, self.in_ports) * self.port_radius * 2
-        if port_height > self.height:
-            self.height = port_height + 10
-        elif port_height < self.height_base:
-            self.height = self.height_base
-        elif port_height < self.height:
-            self.height = port_height + 10
-        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
-
-        port_spacing = max(self.port_radius * 4, self.height / (max(self.in_ports, self.out_ports) + 1))
-
-        in_x = self.left if not self.flipped else self.left + self.width
-        out_x = self.left + self.width if not self.flipped else self.left
-
-        grid_size = 10
-        if self.in_ports > 0:
-            for i in range(self.in_ports):
-                port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
-                port_in = QPoint(in_x, port_y)
-                self.in_coords.append(port_in)
-        if self.out_ports > 0:
-            for j in range(self.out_ports):
-                port_y_float = self.top + self.height * (j + 1) / (self.out_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
-                port_out = QPoint(out_x, port_y)
-                self.out_coords.append(port_out)
-
-    def draw_Block(self, painter, draw_name=True):
-        if painter is None:
-            return
-
-        painter.setBrush(self.b_color)
-        border_color = theme_manager.get_color('border_primary')
-        painter.setPen(QPen(border_color, 2))
-
-        # Draw block shape
-        if self.block_fn == "Gain":
-            # Draw a triangle for the Gain block
-            points = QPolygonF()
-            if not self.flipped:
-                points.append(QPoint(self.left, self.top))
-                points.append(QPoint(self.left + self.width, int(self.top + self.height / 2)))
-                points.append(QPoint(self.left, self.top + self.height))
-            else:
-                points.append(QPoint(self.left + self.width, self.top))
-                points.append(QPoint(self.left, int(self.top + self.height / 2)))
-                points.append(QPoint(self.left + self.width, self.top + self.height))
-            painter.drawPolygon(points)
-        else:
-            # Draw a rounded rectangle for all other blocks
-            radius = 10
-            painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
-
-        # Draw block-specific icon if available
-        icon_pen = QPen(theme_manager.get_color('text_primary'), 2)
-        painter.setPen(icon_pen)
-        
-        path = QPainterPath()
-        if self.block_fn == "Step":
-            path.moveTo(0.1, 0.7)
-            path.lineTo(0.5, 0.7)
-            path.lineTo(0.5, 0.3)
-            path.lineTo(0.9, 0.3)
-        elif self.block_fn == "Ramp":
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.9, 0.1)
-        elif self.block_fn == "Sine":
-            path.moveTo(0.1, 0.5)
-            path.quadTo(0.3, 0.1, 0.5, 0.5)
-            path.quadTo(0.7, 0.9, 0.9, 0.5)
-        elif self.block_fn == "SgProd":
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.8)
-            path.lineTo(0.8, 0.2)
-        elif self.block_fn == "TranFn":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 2)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-
-            # Draw B(s)
-            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
-            painter.drawText(rect_top, Qt.AlignCenter, "B(s)")
-
-            # Draw divisor line
-            line_y = self.top + self.height // 2
-            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
-
-            # Draw A(s)
-            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
-            painter.drawText(rect_bottom, Qt.AlignCenter, "A(s)")
-
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "Demux":
-            # Draw a stylized demultiplexer symbol
-            path.moveTo(0.2, 0.5)  # Input line
-            path.lineTo(0.4, 0.5)
-            path.moveTo(0.4, 0.2)  # Main body
-            path.lineTo(0.4, 0.8)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.3)  # Output line 1
-            path.lineTo(1.0, 0.3)
-            path.moveTo(0.8, 0.7)  # Output line 2
-            path.lineTo(1.0, 0.7)
-        elif self.block_fn == "Mux":
-            # Draw a stylized multiplexer symbol
-            path.moveTo(0.2, 0.3)  # Input line 1
-            path.lineTo(0.4, 0.3)
-            path.moveTo(0.2, 0.7)  # Input line 2
-            path.lineTo(0.4, 0.7)
-            path.moveTo(0.4, 0.2)  # Main body
-            path.lineTo(0.8, 0.4)
-            path.lineTo(0.8, 0.6)
-            path.lineTo(0.4, 0.8)
-            path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.5)  # Output line
-            path.lineTo(1.0, 0.5)
-        elif self.block_fn == "BodeMag":
-            # Draw axes
-            path.moveTo(0.1, 0.9) # x-axis
-            path.lineTo(0.9, 0.9)
-            path.moveTo(0.1, 0.9) # y-axis
-            path.lineTo(0.1, 0.1)
-            # Draw plot line
-            path.moveTo(0.1, 0.4)
-            path.lineTo(0.4, 0.4)
-            path.lineTo(0.6, 0.7)
-            path.lineTo(0.9, 0.7)
-        elif self.block_fn == "Deriv":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 2)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-
-            # Draw dy
-            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
-            painter.drawText(rect_top, Qt.AlignCenter, "dy")
-
-            # Draw divisor line
-            line_y = self.top + self.height // 2
-            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
-
-            # Draw dt
-            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
-            painter.drawText(rect_bottom, Qt.AlignCenter, "dt")
-
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "BodeMag":
-            # Draw axes
-            path.moveTo(0.1, 0.9) # x-axis
-            path.lineTo(0.9, 0.9)
-            path.moveTo(0.1, 0.9) # y-axis
-            path.lineTo(0.1, 0.1)
-            # Draw plot line
-            path.moveTo(0.1, 0.4)
-            path.lineTo(0.4, 0.4)
-            path.lineTo(0.6, 0.7)
-            path.lineTo(0.9, 0.7)
-        elif self.block_fn == "Deriv":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 2)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-
-            # Draw dy
-            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
-            painter.drawText(rect_top, Qt.AlignCenter, "dy")
-
-            # Draw divisor line
-            line_y = self.top + self.height // 2
-            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
-
-            # Draw dt
-            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
-            painter.drawText(rect_bottom, Qt.AlignCenter, "dt")
-
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "TranFn":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 2)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-
-            # Draw B(s)
-            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
-            painter.drawText(rect_top, Qt.AlignCenter, "B(s)")
-
-            # Draw divisor line
-            line_y = self.top + self.height // 2
-            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
-
-            # Draw A(s)
-            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
-            painter.drawText(rect_bottom, Qt.AlignCenter, "A(s)")
-
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "Integrator":
-            # Use 1/s notation (transfer function representation)
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 4)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-
-            # Draw 1
-            rect_top = QRect(self.left, self.top, self.width, self.height // 2 - 2)
-            painter.drawText(rect_top, Qt.AlignCenter | Qt.AlignBottom, "1")
-
-            # Draw divisor line
-            line_y = self.top + self.height // 2
-            painter.drawLine(self.left + 15, line_y, self.left + self.width - 15, line_y)
-
-            # Draw s
-            rect_bottom = QRect(self.left, self.top + self.height // 2 + 2, self.width, self.height // 2)
-            painter.drawText(rect_bottom, Qt.AlignCenter | Qt.AlignTop, "s")
-
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "Scope":
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.9, 0.9) # x-axis
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.1, 0.1) # y-axis
-            path.moveTo(0.1, 0.6)
-            path.quadTo(0.3, 0.2, 0.5, 0.6)
-            path.quadTo(0.7, 1.0, 0.9, 0.6)
-        elif self.block_fn == "Sum":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 4)
-            painter.setFont(font)
-            sign_text = self.params.get('sign', '++')
-            painter.drawText(self.rect, Qt.AlignCenter, sign_text)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "SgProd":
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.8)
-            path.lineTo(0.8, 0.2)
-
-
-        elif self.block_fn == "Noise":
-            # Draw a random/noisy signal
-            path.moveTo(0.1, 0.5)
-            path.lineTo(0.2, 0.3)
-            path.lineTo(0.3, 0.7)
-            path.lineTo(0.4, 0.4)
-            path.lineTo(0.5, 0.6)
-            path.lineTo(0.6, 0.2)
-            path.lineTo(0.7, 0.8)
-            path.lineTo(0.8, 0.5)
-            path.lineTo(0.9, 0.6)
-        elif self.block_fn == "Exp":
-            font = painter.font()
-            original_size = font.pointSize()
-            font.setPointSize(original_size + 4)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
-            painter.drawText(self.rect, Qt.AlignCenter, "eˣ")
-            font.setItalic(False)
-            font.setPointSize(original_size)
-            painter.setFont(font)
-        elif self.block_fn == "Term":
-            # Draw a ground/terminator symbol
-            path.moveTo(0.5, 0.2)
-            path.lineTo(0.5, 0.6)
-            path.moveTo(0.2, 0.6)
-            path.lineTo(0.8, 0.6)
-            path.moveTo(0.3, 0.75)
-            path.lineTo(0.7, 0.75)
-            path.moveTo(0.4, 0.9)
-            path.lineTo(0.6, 0.9)
-        elif self.block_fn == "Export":
-            # Draw an arrow pointing out of a box
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.2, 0.8)
-            path.lineTo(0.2, 0.2)
-            path.moveTo(0.5, 0.5)
-            path.lineTo(1.0, 0.5)
-            path.moveTo(0.8, 0.3)
-            path.lineTo(1.0, 0.5)
-            path.lineTo(0.8, 0.7)
-        elif self.block_fn == "External":
-            # Draw a stylized letter 'E'
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.2)
-            path.moveTo(0.2, 0.5)
-            path.lineTo(0.6, 0.5)
-            path.moveTo(0.2, 0.8)
-            path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.2, 0.8)
-        if not path.isEmpty():
-            margin = self.width * 0.2
-            transform = QTransform()
-            if self.flipped:
-                transform.translate(self.left + self.width - margin, self.top + margin)
-                transform.scale(-(self.width - 2 * margin), self.height - 2 * margin)
-            else:
-                transform.translate(self.left + margin, self.top + margin)
-                transform.scale(self.width - 2 * margin, self.height - 2 * margin)
-            
-            scaled_path = transform.map(path)
-            painter.drawPath(scaled_path)
-
-        # Draw ports
-        port_color = theme_manager.get_color('text_primary')
-        # Input ports (filled)
-        painter.setBrush(port_color)
-        painter.setPen(Qt.NoPen)
-        for port_in_location in self.in_coords:
-            painter.drawEllipse(port_in_location, self.port_radius, self.port_radius)
-
-        # Output ports (outline)
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(port_color, 2))
-        for port_out_location in self.out_coords:
-            painter.drawEllipse(port_out_location, self.port_radius -1, self.port_radius - 1)
-        
-        if draw_name:
-            # Draw block name below the block
-            text_color = theme_manager.get_color('text_primary')
-            painter.setPen(text_color)
-            painter.setFont(self.font)
-            text_rect = QRect(self.left, self.top + self.height, self.width, 25)
-            painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, self.username)
-
-        if self.selected:
-            selection_color = theme_manager.get_color('accent_primary')
-            painter.setPen(QPen(selection_color, 2))
-            painter.setBrush(Qt.NoBrush)
-            selection_rect = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height + 25)
-            painter.drawRect(selection_rect)
-    
-    def draw_selected(self, painter):
-        painter.setPen(QColor('black'))
-        painter.setFont(self.font)
-        painter.drawText(QRect(self.left, self.top - self.ls_width - 20, self.width, 20), Qt.AlignCenter, self.username)
-        
-        pen = QPen(QColor('black'), self.l_width)
-        painter.setPen(pen)
-        painter.drawLine(self.left - self.ls_width, self.top - self.ls_width, self.left + self.width + self.ls_width, self.top - self.ls_width)
-        painter.drawLine(self.left - self.ls_width, self.top - self.ls_width, self.left - self.ls_width, self.top + self.height + self.ls_width)
-        painter.drawLine(self.left + self.width + self.ls_width, self.top + self.height + self.ls_width, self.left + self.width + 5, self.top - self.ls_width)
-        painter.drawLine(self.left + self.width + self.ls_width, self.top + self.height + self.ls_width, self.left - self.ls_width, self.top + self.height + self.ls_width)
-        
-        if self.external:
-            painter.drawText(QRect(self.left, self.top + self.height + 15, self.width, 20), Qt.AlignCenter, self.params['filename'])
-
-    def port_collision(self, pos):
-        if isinstance(pos, tuple):
-            pos = QPoint(*pos)
-        
-        enlarged_radius = self.port_radius * 2  # Increase the clickable area
-
-        for i, coord in enumerate(self.in_coords):
-            if (pos - coord).manhattanLength() <= enlarged_radius:
-                return ("i", i)
-        
-        for i, coord in enumerate(self.out_coords):
-            if (pos - coord).manhattanLength() <= enlarged_radius:
-                return ("o", i)
-        
-        return (-1, -1)
-
-    def relocate_Block(self, new_pos):
-        logger.debug(f"Relocating block {self.name} to {new_pos}")
-        self.left = new_pos.x()
-        self.top = new_pos.y()
-        self.rect.moveTo(self.left, self.top) # Update the QRect used for collision detection
-        self.rectf.moveTopLeft(QPoint(self.left, self.top)) # Update the QRectF
-        self.update_Block()
-
-    def resize_Block(self, new_coords):
-        self.width = new_coords[0]
-        self.height = new_coords[1]
-        self.update_Block()
-
-    def change_port_numbers(self):
-        logger.debug(f"Changing port numbers for block: {self.name}")
-        
-        if self.io_edit == 'both':
-            # Inputs and outputs can be edited
-            dialog = PortDialog(self.name, {'inputs': self.in_ports, 'outputs': self.out_ports})
-            if dialog.exec_():
-                new_io = dialog.get_values()
-                self.in_ports = int(new_io['inputs'])
-                self.out_ports = int(new_io['outputs'])
-                logger.debug(f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}")
-
-        elif self.io_edit == 'input':
-            # Only inputs can be edited
-            dialog = PortDialog(self.name, {'inputs': self.in_ports})
-            if dialog.exec_():
-                new_io = dialog.get_values()
-                self.in_ports = int(new_io['inputs'])
-                logger.debug(f"Changed input ports to {self.in_ports}")
-
-        elif self.io_edit == 'output':
-            # Only outputs can be edited
-            dialog = PortDialog(self.name, {'outputs': self.out_ports})
-            if dialog.exec_():
-                new_io = dialog.get_values()
-                self.out_ports = int(new_io['outputs'])
-                logger.debug(f"Changed output ports to {self.out_ports}")
-
-        else:
-            logger.debug(f"Port number change not allowed for block: {self.name}")
-            return
-
-        self.update_Block()
-
-        # To maintain the data in the parameters for the functions
-        self.params['_inputs_'] = self.in_ports
-        self.params['_outputs_'] = self.out_ports
-
-        logger.debug(f"Port numbers updated for block: {self.name}")
-
-    def saving_params(self):
-        ed_dict = {}
-        for key in self.params.keys():
-            if key in self.init_params_list:
-                if isinstance(self.params[key], np.ndarray):
-                    arraylist = self.params[key]
-                    ed_dict[key] = arraylist.tolist()
-                else:
-                    ed_dict[key] = self.params[key]
-        return ed_dict
-
-    def loading_params(self, new_params):
-        try:
-            for key in new_params.keys():
-                if isinstance(new_params[key], list):
-                    new_params[key] = np.array(new_params[key])
-            return new_params
-        except:
-            return new_params
-
-    def change_params(self):
-        logger.info(f"change_params called for block {self.name}")
-        if not self.initial_params:
-            return
-
-        ed_dict = {'Name': self.username}
-        for key, value in self.initial_params.items():
-            if not (key.startswith('_') and key.endswith('_')):
-                ed_dict[key] = self.params.get(key, value)  # Use current value if available
-
-        if len(ed_dict) <= 1:  # Only 'Name' is present
-            return
-
-        dialog = ParamDialog(self.name, ed_dict)
-        if dialog.exec_():
-            new_inputs = dialog.get_values()
-            
-            if new_inputs['Name'] == '--':
-                self.username = self.name
-            else:
-                self.username = new_inputs['Name']
-            new_inputs.pop('Name')
-
-            if new_inputs:
-                for key, value in new_inputs.items():
-                    if key in self.params:
-                        self.params[key] = value
-                        self.initial_params[key] = value
-
-        if self.external:
-            self.load_external_data(params_reset=False)
-
-        if self.block_fn == 'TranFn':
-            num = self.params.get('numerator', [])
-            den = self.params.get('denominator', [])
-            if len(den) > len(num):
-                self.b_type = 1
-            else:
-                self.b_type = 2
-            self.params['_init_start_'] = True
-
-        logger.debug(f"Final parameters for {self.name}: {self.params}")
-        self.dirty = True
-
-    def load_external_data(self, params_reset=False):
-        # Implement this method based on your specific requirements for loading external data
-        pass
-
-    def reload_external_data(self):
-        # Implement this method based on your specific requirements for reloading external data
-        pass
-
-    def update_params(self, new_params):
-        if new_params:
-            for key, value in new_params.items():
-                if key in self.params:
-                    self.params[key] = value
-
-        if self.block_fn == 'TranFn':
-            num = self.params.get('numerator', [])
-            den = self.params.get('denominator', [])
-            if len(den) > len(num):
-                self.b_type = 1
-            else:
-                self.b_type = 2
-            self.params['_init_start_'] = True
-
-        logger.debug(f"Final parameters for {self.name}: {self.params}")
-        self.dirty = True
-
-class DLine:
-    def __init__(self, sid, srcblock, srcport, dstblock, dstport, points):
-        self.name = "Line" + str(sid)
-        self.sid = sid
-        self.srcblock = srcblock
-        self.srcport = srcport
-        self.dstblock = dstblock
-        self.dstport = dstport
-        self.total_srcports = 1
-        self.total_dstports = 1
-        self.srcbottom = 0
-        self.dstbottom = 0
-        self.points = [QPoint(p.x(), p.y()) if isinstance(p, QPoint) else QPoint(p[0], p[1]) for p in points]
-        self.cptr = 0  
-        self.selected = False  
-        self.modified = False
-        self.selected_segment = -1
-        self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
-        self.color = QColor(0, 0, 0)  # Default to black
-
-    def toggle_selection(self):
-        self.selected = not self.selected
-        
-    def create_trajectory(self, start, finish, blocks_list, points=None):
-        path = QPainterPath(start)
-        
-        all_points = []
-        if self.modified and points and len(points) > 1:
-            all_points = points
-        else:
-            is_feedback = start.x() > finish.x()
-            
-            if is_feedback:
-                src_block = None
-                for block in blocks_list:
-                    if block.name == self.srcblock:
-                        src_block = block
-                        break
-                
-                if src_block:
-                    p1 = QPoint(start.x() + 20, start.y())
-                    p2 = QPoint(p1.x(), src_block.rect.bottom() + 30)
-                    p3 = QPoint(finish.x() - 20, p2.y())
-                    p4 = QPoint(p3.x(), finish.y())
-                    all_points = [start, p1, p2, p3, p4, finish]
-                else: # fallback for feedback if src_block not found
-                    mid_x = int((start.x() + finish.x()) / 2)
-                    all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
-            else:
-                mid_x = int((start.x() + finish.x()) / 2)
-                all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
-
-        # Clean up collinear points
-        clean_points = []
-        if len(all_points) > 0:
-            clean_points.append(all_points[0])
-            for i in range(1, len(all_points) - 1):
-                p1 = all_points[i-1]
-                p2 = all_points[i]
-                p3 = all_points[i+1]
-                if (p1.x() == p2.x() == p3.x()) or (p1.y() == p2.y() == p3.y()):
-                    continue
-                clean_points.append(p2)
-            clean_points.append(all_points[-1])
-        all_points = clean_points
-
-        segments = []
-        
-        path = QPainterPath(all_points[0])
-        for i in range(len(all_points) - 1):
-            p1 = all_points[i]
-            p2 = all_points[i+1]
-            path.lineTo(p2)
-            segments.append(QRect(p1, p2).normalized())
-    
-
-        return path, all_points, segments
-
-    def update_line(self, blocks_list):
-        logger.debug(f"Updating line {self.name}")
-        if blocks_list:
-            start, end = None, None
-            src_found, dst_found = False, False
-            for block in blocks_list:
-                if block.name == self.srcblock:
-                    start = block.out_coords[self.srcport]
-                    self.total_srcports = block.out_ports
-                    self.srcbottom = block.top + block.height
-                    src_found = True
-                if block.name == self.dstblock:
-                    end = block.in_coords[self.dstport]
-                    self.total_dstports = block.in_ports
-                    self.dstbottom = block.top + block.height
-                    dst_found = True
-            logger.debug(f"src_found: {src_found}, dst_found: {dst_found}")
-            if start and end:
-                logger.debug(f"start: {start}, end: {end}")
-                self.points[0] = start
-                self.points[-1] = end
-                self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
-                self.modified = False
-
-    def draw_line(self, painter):
-        if self.path and not self.path.isEmpty(): # self.path is a QPainterPath
-            # Use theme_manager for connection colors
-            default_connection_color = theme_manager.get_color('connection_default')
-            active_connection_color = theme_manager.get_color('connection_active')
-            
-            # Draw the whole line with default color, or active color if fully selected
-            pen_color = active_connection_color if self.selected and self.selected_segment == -1 else default_connection_color
-            pen = QPen(pen_color, 2)
-            painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
-            painter.drawPath(self.path)
-
-            # If a segment is selected, draw it highlighted
-            if self.selected and self.selected_segment != -1:
-                if self.selected_segment < len(self.points) - 1:
-                    p1 = self.points[self.selected_segment]
-                    p2 = self.points[self.selected_segment + 1]
-                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine) # Thicker pen
-                    painter.setPen(highlight_pen)
-                    painter.drawLine(p1, p2)
-
-            # Draw intermediate points if the whole line is selected
-            if self.selected and self.selected_segment == -1:
-                painter.setBrush(active_connection_color)
-                for point in self.points[1:-1]:
-                    painter.drawEllipse(point, 4, 4)
-
-            # Draw arrowhead
-            arrow_size = 10
-            
-            end_point = self.path.pointAtPercent(1.0)
-            if self.path.length() > 0:
-                point_before_end = self.path.pointAtPercent(1.0 - (arrow_size / self.path.length()))
-            else:
-                point_before_end = end_point
-
-            # Calculate angle
-            dx = end_point.x() - point_before_end.x()
-            dy = end_point.y() - point_before_end.y()
-            angle = math.atan2(dy, dx) # Angle in radians
-
-            # Arrowhead points
-            arrow_p1 = end_point + QPoint(int(-arrow_size * math.cos(angle - math.pi / 6)), int(-arrow_size * math.sin(angle - math.pi / 6)))
-            arrow_p2 = end_point + QPoint(int(-arrow_size * math.cos(angle + math.pi / 6)), int(-arrow_size * math.sin(angle + math.pi / 6)))
-
-            arrow_polygon = QPolygonF([end_point, arrow_p1, arrow_p2])
-            
-            arrow_color = active_connection_color if self.selected else default_connection_color
-            painter.setBrush(arrow_color) # Fill arrowhead with line color
-            painter.setPen(Qt.NoPen) # No border for arrowhead
-            painter.drawPolygon(arrow_polygon)
-
-    def collision(self, m_coords, point_radius=5, line_threshold=5):
-        if isinstance(m_coords, tuple):
-            m_coords = QPoint(*m_coords)
-
-        # Check for point collision
-        for i, point in enumerate(self.points):
-            if (m_coords - point).manhattanLength() <= point_radius:
-                return ("point", i)
-
-        # Check for segment collision
-        for i in range(len(self.points) - 1):
-            p1 = self.points[i]
-            p2 = self.points[i+1]
-            
-            # Bounding box check
-            if not QRect(p1, p2).normalized().adjusted(-line_threshold, -line_threshold, line_threshold, line_threshold).contains(m_coords):
-                continue
-
-            # Distance from point to line segment
-            v = p2 - p1
-            u = m_coords - p1
-            
-            length_squared = v.x()**2 + v.y()**2
-            if length_squared == 0:
-                dist_sq = u.x()**2 + u.y()**2
-            else:
-                t = max(0, min(1, QPoint.dotProduct(u, v) / length_squared))
-                projection = p1 + t * v
-                dist_sq = (m_coords - projection).manhattanLength()
-
-            if dist_sq <= line_threshold:
-                return ("segment", i)
-
-        return None
-
-    def change_color(self, color):
-        self.color = color
-
-class MenuBlocks:
-    def __init__(self, block_fn, fn_name, io_params, ex_params, b_color, coords, external=False, block_class=None, colors=None):
-        self.block_fn = block_fn
-        self.fn_name = fn_name
-        self.ins = io_params['inputs']
-        self.outs = io_params['outputs']
-        self.b_type = io_params['b_type']
-        self.io_edit = io_params['io_edit']
-        self.params = ex_params
-        self.b_color = b_color
-        self.size = coords
-        self.side_length = (30, 30)
-        pixmap = QPixmap(f'./lib/icons/{self.block_fn.lower()}.png')
-        if not pixmap.isNull():
-            self.image = pixmap.scaled(self.side_length[0], self.side_length[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        else:
-            self.image = pixmap
-        self.external = external
-        self.collision = None
-        self.font = QFont('Arial', 10)
-        self.block_class = block_class
-        self.colors = colors
-
-    def draw_menublock(self, painter, pos):
-        self.collision = QRect(40, 80 + 40*pos, self.side_length[0], self.side_length[1])
-        painter.fillRect(self.collision, self.b_color)
-        if not self.image.isNull():
-            painter.drawPixmap(self.collision.topLeft(), self.image)
-        
-        painter.setFont(self.font)
-        painter.setPen(theme_manager.get_color('text_primary'))
-        text_rect = QRect(90, 80 + 40*pos, 100, 30)
-        painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, self.fn_name)
-
-class Button:
-    def __init__(self, name, coords, active=True):
-        self.name = name
-        self.text = name.strip('_')  # Remove underscores for display
-        self.collision = QRect(*coords) if isinstance(coords, tuple) else coords
-        self.pressed = False
-        self.active = active
-        self.font = QFont()
-        self.font.setPointSize(12)  # Adjust font size as needed
-        self.collision = QRect(*coords)
-
-    def draw_button(self, painter):
-        if painter is None:
-            return
-        if not self.active:
-            bg_color = QColor(240, 240, 240)
-            text_color = QColor(128, 128, 128)
-        else:
-            bg_color = QColor(200, 200, 200) if self.pressed else QColor(220, 220, 220)
-            text_color = QColor(0, 0, 0)
-
-        painter.setBrush(bg_color)
-        painter.setPen(Qt.NoPen)
-        painter.drawRect(self.collision)
-
-        painter.setFont(self.font)
-        painter.setPen(text_color)
-        painter.drawText(self.collision, Qt.AlignCenter, self.text)
-
-        if self.active:
-            painter.setPen(QPen(QColor(100, 100, 100), 1))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawRect(self.collision)
-
-    def contains(self, point):
-        return self.collision.contains(point)
 
 class SignalPlot(QWidget):
     """

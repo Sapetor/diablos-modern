@@ -334,6 +334,8 @@ class ModernCanvas(QWidget):
             if clicked_block:
                 if clicked_block.block_fn == "BodeMag":
                     self.show_bode_plot_menu(clicked_block, self.mapToGlobal(pos))
+                elif clicked_block.block_fn == "RootLocus":
+                    self.show_root_locus_menu(clicked_block, self.mapToGlobal(pos))
                 else:
                     # For other blocks, you might want a different context menu
                     # or the parameter dialog from older versions.
@@ -343,7 +345,7 @@ class ModernCanvas(QWidget):
             # Cancel any ongoing line creation
             if self.line_creation_state:
                 self._cancel_line_creation()
-                
+
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
 
@@ -403,6 +405,156 @@ class ModernCanvas(QWidget):
             self.plot_windows = []
         self.plot_windows.append(plot_window)
         plot_window.show()
+
+    def show_root_locus_menu(self, block, pos):
+        """Show context menu for the RootLocus block."""
+        menu = QMenu(self)
+        plot_action = menu.addAction("Generate Root Locus Plot")
+        action = menu.exec_(pos)
+        if action == plot_action:
+            self.generate_root_locus(block)
+
+    def generate_root_locus(self, rootlocus_block):
+        """Find the connected transfer function, calculate, and plot the root locus."""
+        # 1. Find the connected transfer function block
+        source_block = None
+        for line in self.dsim.line_list:
+            if line.dstblock == rootlocus_block.name:
+                for block in self.dsim.blocks_list:
+                    if block.name == line.srcblock:
+                        if block.block_fn == 'TranFn':
+                            source_block = block
+                            break
+                if source_block:
+                    break
+
+        if not source_block:
+            QMessageBox.warning(self, "Root Locus Error", "RootLocus block must be connected to the output of a Transfer Function block.")
+            return
+
+        # 2. Get numerator and denominator
+        num = source_block.params.get('numerator')
+        den = source_block.params.get('denominator')
+
+        if not num or not den:
+            QMessageBox.warning(self, "Root Locus Error", "Connected Transfer Function has invalid parameters.")
+            return
+
+        # 3. Calculate root locus using scipy
+        try:
+            # Ensure num and den are numpy arrays
+            num = np.atleast_1d(num)
+            den = np.atleast_1d(den)
+
+            # Pad numerator to same length as denominator
+            if len(num) < len(den):
+                num = np.pad(num, (len(den) - len(num), 0), 'constant')
+            elif len(den) < len(num):
+                den = np.pad(den, (len(num) - len(den), 0), 'constant')
+
+            # Calculate root locus for gains from 0 to a reasonable maximum
+            # Characteristic equation: 1 + K*G(s) = 0
+            # => den(s) + K*num(s) = 0
+            k_values = np.concatenate([
+                np.linspace(0, 1, 150),           # Fine detail near K=0
+                np.linspace(1, 10, 150),          # Fine detail 1-10
+                np.logspace(1, 4, 400)            # Logarithmic from 10 to 10000
+            ])
+
+            # Store roots for each K value to track branches
+            all_roots = []
+            for k in k_values:
+                # Characteristic equation: den(s) + k*num(s) = 0
+                char_poly = den + k * num
+                roots = np.roots(char_poly)
+                all_roots.append(roots)
+
+            # Convert to numpy array for easier manipulation
+            all_roots = np.array(all_roots)  # Shape: (num_k_values, num_poles)
+
+            # Track branches: for each pole, follow its path as K increases
+            num_poles = all_roots.shape[1]
+
+            # Sort roots at each K to maintain branch continuity
+            # Start with the first set of roots
+            sorted_roots = [all_roots[0]]
+            for i in range(1, len(all_roots)):
+                current = all_roots[i]
+                previous = sorted_roots[-1]
+
+                # Match each current root to the closest previous root
+                # This helps maintain branch continuity
+                matched = []
+                available = list(range(len(current)))
+
+                for prev_root in previous:
+                    if not available:
+                        break
+                    # Find closest root
+                    distances = [abs(current[j] - prev_root) for j in available]
+                    closest_idx = available[np.argmin(distances)]
+                    matched.append(current[closest_idx])
+                    available.remove(closest_idx)
+
+                # Add any remaining unmatched roots
+                for idx in available:
+                    matched.append(current[idx])
+
+                sorted_roots.append(np.array(matched))
+
+            sorted_roots = np.array(sorted_roots)
+
+            # 4. Display the plot
+            plot_window = QWidget()
+            plot_window.setWindowTitle(f"Root Locus: {source_block.name}")
+            layout = QVBoxLayout()
+            plot_widget = pg.PlotWidget()
+            layout.addWidget(plot_widget)
+            plot_window.setLayout(layout)
+
+            plot_widget.setLabel('left', 'Imaginary Axis', units='rad/s')
+            plot_widget.setLabel('bottom', 'Real Axis', units='1/s')
+            plot_widget.setTitle(f"Root Locus Plot: {source_block.name}")
+
+            # Plot each branch as a continuous line
+            colors = [(100, 149, 237), (237, 100, 100), (100, 237, 149),
+                     (237, 149, 100), (149, 100, 237), (237, 237, 100)]
+
+            for pole_idx in range(num_poles):
+                branch_real = sorted_roots[:, pole_idx].real
+                branch_imag = sorted_roots[:, pole_idx].imag
+                color = colors[pole_idx % len(colors)]
+                plot_widget.plot(branch_real, branch_imag,
+                               pen=pg.mkPen(color, width=2),
+                               name=f'Branch {pole_idx+1}' if pole_idx == 0 else None)
+
+            # Mark the open-loop poles (roots of denominator at K=0)
+            poles = np.roots(den)
+            plot_widget.plot(poles.real, poles.imag, pen=None, symbol='x', symbolSize=12,
+                           symbolPen=pg.mkPen('r', width=3), name='Poles')
+
+            # Mark the open-loop zeros (roots of numerator)
+            if np.any(num):  # Only if numerator is not all zeros
+                zeros = np.roots(num)
+                if len(zeros) > 0:
+                    plot_widget.plot(zeros.real, zeros.imag, pen=None, symbol='o', symbolSize=12,
+                                   symbolPen=pg.mkPen('g', width=3), symbolBrush=None, name='Zeros')
+
+            # Add axes lines
+            plot_widget.addLine(x=0, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
+            plot_widget.addLine(y=0, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
+
+            plot_widget.showGrid(x=True, y=True)
+            plot_widget.addLegend()
+
+            if not hasattr(self, 'plot_windows'):
+                self.plot_windows = []
+            self.plot_windows.append(plot_window)
+            plot_window.show()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Root Locus Error", f"Error calculating root locus: {str(e)}")
+            logger.error(f"Root locus calculation error: {str(e)}")
 
 
     def _get_clicked_block(self, pos):
@@ -996,6 +1148,9 @@ class ModernCanvas(QWidget):
 
             if end_block.block_fn == "BodeMag" and start_block.block_fn != "TranFn":
                 validation_errors.append("BodeMag block can only be connected to a Transfer Function.")
+
+            if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
+                validation_errors.append("RootLocus block can only be connected to a Transfer Function.")
 
             # Check if connection already exists
             existing_lines = getattr(self.dsim, 'line_list', [])

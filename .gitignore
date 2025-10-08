@@ -49,7 +49,18 @@ modern_ui/widgets/modern_palette_old.py
 # Temporary and patch files
 *.patch
 merge_instructions.txt
-test_*.py
+
+# Testing artifacts (keep test files, exclude artifacts)
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # Distribution / packaging
 build/
@@ -59,3 +70,4 @@ dist/
 # Virtual environments
 venv/
 env/
+.venv/

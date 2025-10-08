@@ -67,7 +67,7 @@ class DraggableBlockWidget(QFrame):
     def _perform_drawing(self, painter):
         painter.setRenderHint(QPainter.Antialiasing)
 
-        from lib.lib import DBlock
+        from lib.simulation.block import DBlock
         menu_block = self.menu_block
         
         block_rect = self.rect().adjusted(5, 5, -5, -25)
