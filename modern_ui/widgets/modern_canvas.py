@@ -1075,10 +1075,17 @@ class ModernCanvas(QWidget):
                 # Import DBlock class
                 from lib.simulation.block import DBlock
 
-                # Create new block with a new unique ID
+                # Calculate unique ID for this block type (same logic as SimulationModel.add_block)
+                block_fn = block_data['block_fn']
+                id_list = [int(b_elem.name[len(b_elem.block_fn):])
+                           for b_elem in self.dsim.blocks_list
+                           if b_elem.block_fn == block_fn]
+                sid = max(id_list) + 1 if id_list else 0
+
+                # Create new block with unique ID
                 new_block = DBlock(
-                    block_fn=block_data['block_fn'],
-                    sid=len(self.dsim.blocks_list),  # Temporary, will be adjusted
+                    block_fn=block_fn,
+                    sid=sid,
                     coords=new_coords,
                     color=block_data['color'],
                     in_ports=block_data['in_ports'],
