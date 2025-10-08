@@ -53,9 +53,10 @@ python diablos_modern.py
 1.  **Add Blocks**: Drag blocks from the **Block Palette** on the left onto the main canvas
 2.  **Connect Blocks**: Click output port → click input port to create connections
 3.  **Edit Properties**: Click a block to edit its parameters in the **Properties** panel
-4.  **Copy/Paste**: Select blocks and use `Ctrl+C` / `Ctrl+V` (or `Cmd+C` / `Cmd+V` on Mac) to duplicate
-5.  **Run Simulation**: Click the **Play** button to start simulation
-6.  **View Results**: Use `Scope` blocks to visualize outputs
+4.  **Select Multiple Blocks**: Shift+Click blocks or draw a selection rectangle by clicking and dragging on empty canvas
+5.  **Copy/Paste**: Select blocks and use `Ctrl+C` / `Ctrl+V` (or `Cmd+C` / `Cmd+V` on Mac) to duplicate
+6.  **Run Simulation**: Click the **Play** button to start simulation
+7.  **View Results**: Use `Scope` blocks to visualize outputs
 
 ### Keyboard Shortcuts
 
@@ -63,6 +64,8 @@ python diablos_modern.py
 - **Click**: Select single block
 - **Shift+Click**: Add block to selection (multi-select)
 - **Ctrl+Click**: Toggle block selection on/off
+- **Click and drag on empty area**: Draw a rectangle to select multiple blocks
+- **Shift + drag rectangle**: Add blocks to existing selection
 - **Click empty area**: Deselect all
 
 **Editing:**

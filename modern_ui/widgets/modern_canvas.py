@@ -75,6 +75,11 @@ class ModernCanvas(QWidget):
         # Clipboard for copy-paste
         self.clipboard_blocks = []
 
+        # Rectangle selection
+        self.selection_rect_start = None
+        self.selection_rect_end = None
+        self.is_rect_selecting = False
+
         # Setup canvas
         self._setup_canvas()
         
@@ -268,7 +273,26 @@ class ModernCanvas(QWidget):
                 painter.setPen(pen)
                 start_point, end_point = self.temp_line
                 painter.drawLine(start_point, end_point)
-            
+
+            # Draw rectangle selection
+            if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
+                # Calculate normalized rectangle
+                x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
+                y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
+                x2 = max(self.selection_rect_start.x(), self.selection_rect_end.x())
+                y2 = max(self.selection_rect_start.y(), self.selection_rect_end.y())
+
+                selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
+
+                # Draw semi-transparent blue fill
+                fill_color = QColor(100, 149, 237, 50)  # Cornflower blue with alpha
+                painter.fillRect(selection_rect, fill_color)
+
+                # Draw blue border
+                border_pen = QPen(QColor(100, 149, 237), 2, Qt.DashLine)
+                painter.setPen(border_pen)
+                painter.drawRect(selection_rect)
+
             painter.end()
             
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -325,10 +349,19 @@ class ModernCanvas(QWidget):
             if self.line_creation_state:
                 self._cancel_line_creation()
             else:
-                # If no item was clicked, clear all selections (unless Shift is held for multi-select)
+                # If no item was clicked, start rectangle selection
                 modifiers = QApplication.keyboardModifiers()
+
+                # Start rectangle selection
+                self.is_rect_selecting = True
+                self.selection_rect_start = pos
+                self.selection_rect_end = pos
+
+                # Clear existing selection unless Shift is held
                 if not (modifiers & Qt.ShiftModifier):
                     self._clear_selections()
+
+                logger.debug(f"Started rectangle selection at ({pos.x()}, {pos.y()})")
 
         except Exception as e:
             logger.error(f"Error in _handle_left_click: {str(e)}")
@@ -586,6 +619,41 @@ class ModernCanvas(QWidget):
                 line.selected_segment = -1
         self.source_block_for_connection = None
         self.update()
+
+    def _finalize_rect_selection(self):
+        """Finalize rectangle selection and select blocks within the rectangle."""
+        try:
+            if not self.selection_rect_start or not self.selection_rect_end:
+                return
+
+            # Create QRect from start and end points
+            # Normalize the rectangle (in case user dragged from bottom-right to top-left)
+            x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
+            y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
+            x2 = max(self.selection_rect_start.x(), self.selection_rect_end.x())
+            y2 = max(self.selection_rect_start.y(), self.selection_rect_end.y())
+
+            selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
+
+            # Select all blocks whose rectangles intersect with the selection rectangle
+            selected_count = 0
+            for block in getattr(self.dsim, 'blocks_list', []):
+                if hasattr(block, 'rect') and selection_rect.intersects(block.rect):
+                    block.selected = True
+                    selected_count += 1
+
+            logger.info(f"Rectangle selection completed: {selected_count} block(s) selected")
+
+            # Reset rectangle selection state
+            self.is_rect_selecting = False
+            self.selection_rect_start = None
+            self.selection_rect_end = None
+
+            # Redraw canvas
+            self.update()
+
+        except Exception as e:
+            logger.error(f"Error finalizing rectangle selection: {str(e)}")
 
     def _handle_block_click(self, block, pos):
         """Handle clicking on a block."""
@@ -898,6 +966,12 @@ class ModernCanvas(QWidget):
 
             pos = self.screen_to_world(event.pos())
 
+            # Update rectangle selection
+            if self.is_rect_selecting:
+                self.selection_rect_end = pos
+                self.update()
+                return
+
             if self.state == State.DRAGGING and self.dragging_block:
                 # Update all selected block positions
                 grid_size = 10
@@ -971,6 +1045,11 @@ class ModernCanvas(QWidget):
             if event.button() == Qt.MiddleButton:
                 self.panning = False
                 self.setCursor(Qt.ArrowCursor)
+
+            # Finalize rectangle selection
+            if self.is_rect_selecting and event.button() == Qt.LeftButton:
+                self._finalize_rect_selection()
+                return
 
             if self.state == State.DRAGGING:
                 self._finish_drag()
