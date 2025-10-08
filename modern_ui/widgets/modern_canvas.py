@@ -705,9 +705,14 @@ class ModernCanvas(QWidget):
                     self.source_block_for_connection = block
                 logger.info(f"Toggled selection for {block.name}")
             else:
-                # Normal click: Clear all and select only this block
-                self._clear_selections()
-                block.selected = True
+                # Normal click: If clicking on unselected block, clear all and select only this block
+                # If clicking on already-selected block, keep all selections (for multi-block drag)
+                if not block.selected:
+                    self._clear_selections()
+                    block.selected = True
+                    logger.info(f"Selected {block.name}")
+                else:
+                    logger.info(f"Clicked on already-selected block {block.name}, keeping selection for drag")
                 self.source_block_for_connection = block # Set source for connection
 
             # Start dragging the block (or all selected blocks)
