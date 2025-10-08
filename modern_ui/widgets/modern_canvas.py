@@ -1043,8 +1043,7 @@ class ModernCanvas(QWidget):
                     'fn_name': block.fn_name,
                     'params': copy.deepcopy(block.params),
                     'external': block.external,
-                    'flipped': getattr(block, 'flipped', False),
-                    'block_class': getattr(block, 'block_class', None)
+                    'flipped': getattr(block, 'flipped', False)
                 }
                 self.clipboard_blocks.append(block_data)
 
@@ -1082,6 +1081,13 @@ class ModernCanvas(QWidget):
                            if b_elem.block_fn == block_fn]
                 sid = max(id_list) + 1 if id_list else 0
 
+                # Find the corresponding MenuBlock to get block_class
+                block_class = None
+                for menu_block in self.dsim.menu_blocks:
+                    if menu_block.block_fn == block_fn:
+                        block_class = menu_block.block_class
+                        break
+
                 # Create new block with unique ID
                 new_block = DBlock(
                     block_fn=block_fn,
@@ -1096,7 +1102,7 @@ class ModernCanvas(QWidget):
                     params=block_data['params'].copy(),
                     external=block_data['external'],
                     username=block_data['username'],
-                    block_class=block_data['block_class'],
+                    block_class=block_class,
                     colors=self.dsim.colors
                 )
                 new_block.flipped = block_data['flipped']

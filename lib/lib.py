@@ -195,6 +195,7 @@ class DSim:
     def remove_block_and_lines(self, block):
         """Remove a block and its associated lines. Delegates to model."""
         self.model.remove_block(block)
+        self.line_list = self.model.line_list  # Sync line_list after removal
         self.dirty = self.model.dirty
 
     def check_line_block(self, line, b_del_list):
