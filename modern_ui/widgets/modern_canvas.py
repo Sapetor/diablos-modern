@@ -276,6 +276,9 @@ class ModernCanvas(QWidget):
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
+                # Save painter state before drawing selection
+                painter.save()
+
                 # Calculate normalized rectangle
                 x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
                 y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
@@ -291,7 +294,11 @@ class ModernCanvas(QWidget):
                 # Draw blue border
                 border_pen = QPen(QColor(100, 149, 237), 2, Qt.DashLine)
                 painter.setPen(border_pen)
+                painter.setBrush(Qt.NoBrush)  # Explicitly set no brush for border
                 painter.drawRect(selection_rect)
+
+                # Restore painter state
+                painter.restore()
 
             painter.end()
             
