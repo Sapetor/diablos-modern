@@ -38,22 +38,13 @@ class DraggableBlockWidget(QFrame):
     
     def _setup_widget(self):
         """Setup the widget layout and content."""
-        # Use devicePixelRatio for proper scaling with Qt's high DPI support
-        from PyQt5.QtWidgets import QApplication
-        screen = QApplication.primaryScreen()
-        device_ratio = screen.devicePixelRatio()
+        # Get platform configuration for consistent sizing
+        from modern_ui.platform_config import get_platform_config
+        config = get_platform_config()
 
-        # Base size that works well on standard DPI
-        base_size = 100
+        scaled_size = config.palette_block_size
 
-        # Only scale if device ratio is significantly different from 1.0
-        # Qt already handles basic scaling, so we only adjust if needed
-        if device_ratio > 1.25:
-            scaled_size = int(base_size * 1.2)  # Modest increase for high DPI
-        else:
-            scaled_size = base_size
-
-        logger.debug(f"Block widget sizing: devicePixelRatio={device_ratio}, base={base_size}, scaled={scaled_size}")
+        logger.debug(f"Block widget sizing: size={scaled_size}px")
 
         self.setFixedSize(scaled_size, scaled_size)
         self.setFrameStyle(QFrame.StyledPanel)

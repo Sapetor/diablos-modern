@@ -6,7 +6,7 @@ Features modern layout, theming, and enhanced user interface.
 import sys
 import logging
 import ast
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QMenuBar, QStatusBar, QLabel, QFrame,
                              QApplication, QMessageBox, QScrollArea)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -26,6 +26,7 @@ from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
+from modern_ui.platform_config import get_platform_config
 
 # Setup logging
 LoggingHelper.setup_logging(level="INFO", log_file="diablos_modern.log")
@@ -104,30 +105,27 @@ class ModernDiaBloSWindow(QMainWindow):
         """Setup main window properties with screen-aware sizing."""
         self.setWindowTitle("DiaBloS - Modern Block Diagram Simulator")
 
+        # Get platform configuration
+        config = get_platform_config()
+
         # Calculate responsive window size based on available screen space
-        # Following Qt High DPI guidelines: let Qt scale naturally, don't cap aggressively
         if self.screen_geometry:
-            screen = QApplication.primaryScreen()
-            device_ratio = screen.devicePixelRatio()
+            target_width = int(self.screen_geometry.width() * config.window_width_percent)
+            target_height = int(self.screen_geometry.height() * config.window_height_percent)
 
-            # Use 85% of screen width and height (leave room for taskbar/window chrome)
-            target_width = int(self.screen_geometry.width() * 0.85)
-            target_height = int(self.screen_geometry.height() * 0.85)
-
-            # On high DPI, don't cap the window size - let it be appropriately large
-            # Only cap on standard DPI to avoid giant windows on huge monitors
-            if device_ratio <= 1.25:
+            # On standard DPI, cap window size to avoid giant windows
+            if config.should_cap_window_size:
                 target_width = min(target_width, 1600)
                 target_height = min(target_height, 1000)
 
-            logger.info(f"Window sizing: devicePixelRatio={device_ratio}, target={target_width}×{target_height}")
-
-            # Set minimum size to 70% of target, but not less than 1000x700
-            min_width = max(int(target_width * 0.70), 1000)
-            min_height = max(int(target_height * 0.70), 700)
+            # Set minimum size
+            min_width = max(int(target_width * 0.70), config.window_min_width)
+            min_height = max(int(target_height * 0.70), config.window_min_height)
 
             self.setMinimumSize(min_width, min_height)
             self.resize(target_width, target_height)
+
+            logger.info(f"Window sizing: target={target_width}×{target_height}, min={min_width}×{min_height}")
         else:
             # Fallback to larger sizes
             self.setMinimumSize(1200, 800)
@@ -280,30 +278,23 @@ class ModernDiaBloSWindow(QMainWindow):
     def _initialize_splitter_sizes(self):
         """Initialize splitter sizes based on actual window dimensions.
         Called after window is shown to ensure accurate sizing."""
-        # Get actual window width (not screen width)
+        # Get platform configuration and actual window width
+        config = get_platform_config()
         actual_width = self.width()
 
         logger.info(f"Initializing splitters with actual window width: {actual_width}px")
 
         # Main splitter: left panel gets fixed width, rest goes to center
-        screen = QApplication.primaryScreen()
-        device_ratio = screen.devicePixelRatio()
-
-        # Left panel width based on DPI
-        if device_ratio > 1.25:
-            left_width = 300  # Wider on high DPI for 2 columns
-        else:
-            left_width = 250
-
+        left_width = config.splitter_left_width
         center_width = actual_width - left_width
         self.main_splitter.setSizes([left_width, center_width])
 
-        # Center splitter: canvas gets 75%, property panel gets 25%
-        property_width = int(center_width * 0.25)
+        # Center splitter: canvas gets most space, property panel gets configured percentage
+        property_width = int(center_width * config.splitter_property_percent)
         canvas_width = center_width - property_width
 
-        # Ensure property panel is at least 300px (or 350px on high DPI)
-        min_property_width = 350 if device_ratio > 1.25 else 300
+        # Ensure property panel is at least minimum width
+        min_property_width = config.splitter_property_min_width
         if property_width < min_property_width:
             property_width = min_property_width
             canvas_width = center_width - property_width
@@ -317,25 +308,11 @@ class ModernDiaBloSWindow(QMainWindow):
         panel = QFrame()
         panel.setObjectName("ModernPanel")
 
-        # Use devicePixelRatio for proper scaling with Qt's high DPI support
-        screen = QApplication.primaryScreen()
-        device_ratio = screen.devicePixelRatio()
+        # Get platform configuration
+        config = get_platform_config()
 
-        logger.info(f"Left panel DPI info: devicePixelRatio={device_ratio}")
-
-        # Base sizes that work well for 1920x1080
-        min_width = 220
-        max_width = 320
-
-        # For high DPI (2K monitors), need more width to fit 2 columns of scaled blocks
-        # Each block is 100px base, scaled to 120px on high DPI
-        # 2 columns = 240px + spacing (8px) + margins (16px) = ~264px needed
-        if device_ratio > 1.25:
-            min_width = 270  # Enough for 2 columns of 120px blocks + spacing
-            max_width = 380  # Allow some breathing room
-
-        panel.setMinimumWidth(min_width)
-        panel.setMaximumWidth(max_width)
+        panel.setMinimumWidth(config.left_panel_min_width)
+        panel.setMaximumWidth(config.left_panel_max_width)
         
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -356,24 +333,12 @@ class ModernDiaBloSWindow(QMainWindow):
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
 
-        # Set a reasonable minimum size for canvas that works on all displays
-        # Don't base on screen width - use absolute values that allow property panel to fit
-        # The splitter will handle making it larger as needed
-        screen = QApplication.primaryScreen()
-        device_ratio = screen.devicePixelRatio()
+        # Get platform configuration
+        config = get_platform_config()
 
-        # Base minimum size (enough for basic diagram work)
-        min_width = 700
-        min_height = 500
+        self.canvas.setMinimumSize(config.canvas_min_width, config.canvas_min_height)
 
-        # Scale slightly for high DPI, but keep it reasonable
-        if device_ratio > 1.25:
-            min_width = 800
-            min_height = 600
-
-        self.canvas.setMinimumSize(min_width, min_height)
-
-        logger.info(f"Canvas minimum size: {min_width}×{min_height}")
+        logger.info(f"Canvas minimum size: {config.canvas_min_width}×{config.canvas_min_height}")
 
         # Connect canvas signals
         self.canvas.block_selected.connect(self._on_block_selected)
@@ -388,28 +353,11 @@ class ModernDiaBloSWindow(QMainWindow):
         panel.setObjectName("ModernPanel")
         panel.setFrameStyle(QFrame.StyledPanel)
 
-        # Set size constraints for vertical panel on right side
-        # Minimum width: enough to show property labels and controls
-        # Maximum width: 30% of window width to prevent covering canvas
+        # Get platform configuration
+        config = get_platform_config()
 
-        # Use devicePixelRatio for proper scaling with Qt's high DPI support
-        screen = QApplication.primaryScreen()
-        device_ratio = screen.devicePixelRatio()
-
-        logger.info(f"Right panel DPI info: devicePixelRatio={device_ratio}")
-
-        # Base sizes - more generous for property editor
-        min_width = 280
-        fallback_max_width = 500
-
-        # Scale for high DPI
-        if device_ratio > 1.25:
-            min_width = int(min_width * 1.3)
-            fallback_max_width = int(fallback_max_width * 1.3)
-
-        panel.setMinimumWidth(min_width)
+        panel.setMinimumWidth(config.property_panel_min_width)
         # Remove restrictive max width - let it use 20-30% of screen naturally
-        # Don't constrain too much as it causes rendering issues on high DPI
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(8, 8, 8, 8)
