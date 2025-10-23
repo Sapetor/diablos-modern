@@ -57,6 +57,7 @@ python diablos_modern.py
 5.  **Copy/Paste**: Select blocks and use `Ctrl+C` / `Ctrl+V` (or `Cmd+C` / `Cmd+V` on Mac) to duplicate
 6.  **Run Simulation**: Click the **Play** button to start simulation
 7.  **View Results**: Use `Scope` blocks to visualize outputs
+8.  **Export Data**: Click **Export to CSV...** button in the plot window to save data for post-processing
 
 ### Keyboard Shortcuts
 
@@ -82,6 +83,7 @@ python diablos_modern.py
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - MVC design, data flow, extension points
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - How to add blocks, contribute, best practices
 - **[Testing Guide](tests/README.md)** - Running tests, writing tests, coverage
+- **[CSV Export Feature](docs/CSV_EXPORT_FEATURE.md)** - Export plot data to CSV for post-processing
 
 ## For Developers
 

@@ -7,9 +7,9 @@ import json
 import os
 import sys
 from tqdm import tqdm
-from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton
+from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter
-from PyQt5.QtCore import Qt, QRect, QPoint, QEvent
+from PyQt5.QtCore import Qt, QRect, QPoint, QEvent, QTimer
 import pyqtgraph as pg
 from lib.block_loader import load_blocks
 from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
@@ -1360,16 +1360,32 @@ class SignalPlot(QWidget):
         self.plot_items = []
         self.curves = []
 
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        # Store data for export
+        self.labels = labels
+        self.timeline = None
+        self.data_vectors = None
 
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
+
+        # Create plot area
+        plot_layout = QVBoxLayout()
         for label in labels:
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
             curve = plot_widget.plot(pen='y')
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
-            layout.addWidget(plot_widget)
+            plot_layout.addWidget(plot_widget)
+
+        main_layout.addLayout(plot_layout)
+
+        # Add export button at bottom
+        from lib.ui.button import Button
+        self.export_button = QPushButton("Export to CSV...")
+        self.export_button.setToolTip("Export plot data to CSV file")
+        self.export_button.clicked.connect(self.export_to_csv)
+        main_layout.addWidget(self.export_button)
 
         self.resize(800, 600)
 
@@ -1396,12 +1412,167 @@ class SignalPlot(QWidget):
         :purpose: Updates the time and scope vectors and plot them.
         """
         try:
+            # Store data for export
+            self.timeline = new_t
+            self.data_vectors = new_y
+
             for i, curve in enumerate(self.curves):
                 if i < len(new_y):
                     curve.setData(new_t, new_y[i])
         except Exception as e:
             logger.error(f"Error updating plot: {e}")
 
+    def export_to_csv(self):
+        """
+        Export plot data to CSV file with user selection of which scopes to include.
+        """
+        import csv
+        from datetime import datetime
+
+        # Check if we have data to export
+        if self.timeline is None or self.data_vectors is None:
+            QMessageBox.warning(self, "No Data", "No plot data available to export.")
+            return
+
+        # Create scope selection dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Select Scopes to Export")
+        dialog_layout = QVBoxLayout()
+
+        # Instructions
+        instruction_label = QLabel("Select which scope blocks to include in the CSV export:")
+        dialog_layout.addWidget(instruction_label)
+
+        # Create checkboxes for each scope
+        checkboxes = []
+        for i, label in enumerate(self.labels):
+            # labels can be either a string or a list of strings
+            if isinstance(label, str):
+                scope_name = label
+            elif isinstance(label, list):
+                scope_name = f"Scope {i} ({', '.join(label[:3])}{'...' if len(label) > 3 else ''})"
+            else:
+                scope_name = f"Scope {i}"
+
+            checkbox = QWidget()
+            checkbox_layout = QHBoxLayout()
+            checkbox_layout.setContentsMargins(0, 0, 0, 0)
+
+            from PyQt5.QtWidgets import QCheckBox
+            cb = QCheckBox(scope_name)
+            cb.setChecked(True)  # Default to all selected
+            checkbox_layout.addWidget(cb)
+            checkbox.setLayout(checkbox_layout)
+
+            checkboxes.append(cb)
+            dialog_layout.addWidget(checkbox)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        select_all_btn = QPushButton("Select All")
+        deselect_all_btn = QPushButton("Deselect All")
+        ok_btn = QPushButton("Export")
+        cancel_btn = QPushButton("Cancel")
+
+        select_all_btn.clicked.connect(lambda: [cb.setChecked(True) for cb in checkboxes])
+        deselect_all_btn.clicked.connect(lambda: [cb.setChecked(False) for cb in checkboxes])
+        ok_btn.clicked.connect(dialog.accept)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        button_layout.addWidget(select_all_btn)
+        button_layout.addWidget(deselect_all_btn)
+        button_layout.addStretch()
+        button_layout.addWidget(ok_btn)
+        button_layout.addWidget(cancel_btn)
+
+        dialog_layout.addLayout(button_layout)
+        dialog.setLayout(dialog_layout)
+        dialog.setMinimumWidth(400)
+
+        # Show dialog and get result
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        # Get selected scopes
+        selected_indices = [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
+
+        if not selected_indices:
+            QMessageBox.warning(self, "No Selection", "Please select at least one scope to export.")
+            return
+
+        # Get save file path
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"plot_data_{timestamp}.csv"
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Plot Data to CSV",
+            default_filename,
+            "CSV Files (*.csv);;All Files (*)"
+        )
+
+        if not filepath:
+            return
+
+        # Export data to CSV
+        try:
+            with open(filepath, 'w', newline='') as csvfile:
+                writer = csv.writer(csvfile)
+
+                # Build header row
+                header = ['time']
+                column_data = []
+
+                for idx in selected_indices:
+                    label = self.labels[idx]
+                    vector = self.data_vectors[idx]
+
+                    # Handle multi-dimensional vectors
+                    if isinstance(label, list):
+                        # Multiple signals in this scope
+                        for i, sig_label in enumerate(label):
+                            header.append(sig_label)
+                            # Extract column from 2D array
+                            if len(vector.shape) > 1:
+                                column_data.append(vector[:, i])
+                            else:
+                                column_data.append(vector)
+                    else:
+                        # Single signal
+                        header.append(label)
+                        column_data.append(vector.flatten() if hasattr(vector, 'flatten') else vector)
+
+                # Write header
+                writer.writerow(header)
+
+                # Write data rows
+                num_rows = len(self.timeline)
+                for row_idx in range(num_rows):
+                    row = [self.timeline[row_idx]]
+                    for col_data in column_data:
+                        if row_idx < len(col_data):
+                            row.append(col_data[row_idx])
+                        else:
+                            row.append('')  # Handle mismatched lengths
+                    writer.writerow(row)
+
+            # Log success and update button text briefly
+            logger.info(f"Plot data exported to {filepath} ({num_rows} rows, {len(header)} columns)")
+
+            # Briefly change button text to show success
+            original_text = self.export_button.text()
+            self.export_button.setText(f"✓ Exported to {os.path.basename(filepath)}")
+            self.export_button.setEnabled(False)
+
+            # Reset button after 3 seconds
+            QTimer.singleShot(3000, lambda: (
+                self.export_button.setText(original_text),
+                self.export_button.setEnabled(True)
+            ))
+
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Failed to export data:\n{str(e)}")
+            logger.error(f"Failed to export plot data: {e}")
 
     def sort_labels(self, labels):
         """

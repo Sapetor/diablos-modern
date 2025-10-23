@@ -37,6 +37,7 @@ captures/
 # Backup and temporary files
 *.bak
 *.tmp
+*.csv
 
 # OS-specific files
 .DS_Store
