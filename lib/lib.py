@@ -1375,6 +1375,15 @@ class SignalPlot(QWidget):
         for label in labels:
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
+
+            # Explicitly configure x-axis to ensure labels are shown
+            plot_widget.setLabel('bottom', 'Time', units='s')
+            plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
+            plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
+
+            # Set minimum height for plot widget to ensure x-axis labels have room
+            plot_widget.setMinimumHeight(200)
+
             curve = plot_widget.plot(pen='y')
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
