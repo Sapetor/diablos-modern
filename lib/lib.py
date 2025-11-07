@@ -1370,6 +1370,7 @@ class SignalPlot(QWidget):
 
         # Create plot area
         plot_layout = QVBoxLayout()
+        plot_layout.setSpacing(10)  # Add spacing between plots
         for label in labels:
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
@@ -1379,6 +1380,9 @@ class SignalPlot(QWidget):
             plot_layout.addWidget(plot_widget)
 
         main_layout.addLayout(plot_layout)
+
+        # Add spacing before the export button to prevent it from overlapping the x-axis
+        main_layout.addSpacing(10)
 
         # Add export button at bottom
         from lib.ui.button import Button
