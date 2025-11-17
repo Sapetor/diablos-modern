@@ -41,7 +41,7 @@ class DBlock:
                  io_edit: Union[bool, str] = True, fn_name: str = 'block',
                  params: Optional[Dict[str, Any]] = None, external: bool = False,
                  username: str = '', block_class: Optional[Any] = None,
-                 colors: Optional[Dict[str, QColor]] = None) -> None:
+                 colors: Optional[Dict[str, QColor]] = None, category: str = 'Other') -> None:
         """
         Initialize a block instance.
 
@@ -60,12 +60,14 @@ class DBlock:
             username: User-defined block name
             block_class: Block class for instantiation
             colors: Color palette dictionary
+            category: Block category (Sources, Math, Control, Sinks, Other)
         """
         if params is None:
             params = {}
 
         logger.debug(f"Initializing DBlock {block_fn}{sid}")
         self.name: str = block_fn.lower() + str(sid)
+        self.category: str = category  # Store category for theme-aware rendering
         self.flipped: bool = False
         self.block_fn: str = block_fn
         self.sid: int = sid
@@ -175,7 +177,7 @@ class DBlock:
 
     def draw_Block(self, painter: Optional[QPainter], draw_name: bool = True) -> None:
         """
-        Draw this block on the canvas.
+        Draw this block on the canvas with modern styling, shadows, and depth.
 
         Args:
             painter: QPainter instance for rendering
@@ -184,11 +186,65 @@ class DBlock:
         if painter is None:
             return
 
-        painter.setBrush(self.b_color)
-        border_color = theme_manager.get_color('border_primary')
-        painter.setPen(QPen(border_color, 2))
+        # Draw shadow for depth (offset slightly down and right)
+        shadow_offset = 3
+        shadow_color = theme_manager.get_color('block_shadow')
+        shadow_color.setAlpha(80)  # Semi-transparent shadow
 
-        # Draw block shape
+        painter.setBrush(shadow_color)
+        painter.setPen(Qt.NoPen)
+
+        if self.block_fn == "Gain":
+            # Shadow for triangle
+            shadow_points = QPolygonF()
+            if not self.flipped:
+                shadow_points.append(QPoint(self.left + shadow_offset, self.top + shadow_offset))
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, int(self.top + self.height / 2) + shadow_offset))
+                shadow_points.append(QPoint(self.left + shadow_offset, self.top + self.height + shadow_offset))
+            else:
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, self.top + shadow_offset))
+                shadow_points.append(QPoint(self.left + shadow_offset, int(self.top + self.height / 2) + shadow_offset))
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, self.top + self.height + shadow_offset))
+            painter.drawPolygon(shadow_points)
+        else:
+            # Shadow for rounded rectangle
+            radius = 12
+            shadow_rect = QRect(self.left + shadow_offset, self.top + shadow_offset, self.width, self.height)
+            painter.drawRoundedRect(shadow_rect, radius, radius)
+
+        # Determine border color based on block category
+        # Get category-specific colors if available
+        category_color = self.b_color
+        border_color = theme_manager.get_color('border_primary')
+
+        # Try to get category-specific border color
+        if hasattr(self, 'category'):
+            category_lower = self.category.lower() if isinstance(self.category, str) else str(self.category).lower()
+            if 'source' in category_lower:
+                border_color = theme_manager.get_color('block_source_border')
+            elif 'math' in category_lower:
+                border_color = theme_manager.get_color('block_process_border')
+            elif 'control' in category_lower:
+                border_color = theme_manager.get_color('block_control_border')
+            elif 'sink' in category_lower:
+                border_color = theme_manager.get_color('block_sink_border')
+            else:
+                border_color = theme_manager.get_color('block_other_border')
+
+        # Override border if selected
+        if self.selected:
+            border_color = theme_manager.get_color('block_selected')
+            # Optionally brighten the background for selected blocks
+            if not self.selected:
+                painter.setBrush(category_color)
+            else:
+                # Create a lighter version for selected state
+                painter.setBrush(self.b_color)
+
+        # Draw main block shape
+        painter.setBrush(self.b_color)
+        painter.setPen(QPen(border_color, 3 if self.selected else 2))
+
         if self.block_fn == "Gain":
             # Draw a triangle for the Gain block
             points = QPolygonF()
@@ -202,8 +258,8 @@ class DBlock:
                 points.append(QPoint(self.left + self.width, self.top + self.height))
             painter.drawPolygon(points)
         else:
-            # Draw a rounded rectangle for all other blocks
-            radius = 10
+            # Draw a rounded rectangle for all other blocks with softer corners
+            radius = 12
             painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
 
         # Draw block-specific icon if available
@@ -467,34 +523,52 @@ class DBlock:
             scaled_path = transform.map(path)
             painter.drawPath(scaled_path)
 
-        # Draw ports
-        port_color = theme_manager.get_color('text_primary')
-        # Input ports (filled)
-        painter.setBrush(port_color)
-        painter.setPen(Qt.NoPen)
+        # Draw ports with improved styling
+        port_input_color = theme_manager.get_color('port_input')
+        port_output_color = theme_manager.get_color('port_output')
+
+        # Input ports (filled circles with border)
+        painter.setBrush(port_input_color)
+        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1.5))
         for port_in_location in self.in_coords:
             painter.drawEllipse(port_in_location, self.port_radius, self.port_radius)
 
-        # Output ports (outline)
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(port_color, 2))
+        # Output ports (filled circles with border, different color)
+        painter.setBrush(port_output_color)
+        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1.5))
         for port_out_location in self.out_coords:
-            painter.drawEllipse(port_out_location, self.port_radius -1, self.port_radius - 1)
-        
+            painter.drawEllipse(port_out_location, self.port_radius, self.port_radius)
+
         if draw_name:
-            # Draw block name below the block
+            # Draw block name below the block with better typography
             text_color = theme_manager.get_color('text_primary')
             painter.setPen(text_color)
-            painter.setFont(self.font)
-            text_rect = QRect(self.left, self.top + self.height, self.width, 25)
+            font = self.font
+            font.setWeight(500)  # Medium weight
+            painter.setFont(font)
+            text_rect = QRect(self.left, self.top + self.height + 2, self.width, 28)
             painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, self.username)
 
+        # Enhanced selection visualization
         if self.selected:
-            selection_color = theme_manager.get_color('accent_primary')
-            painter.setPen(QPen(selection_color, 2))
+            selection_color = theme_manager.get_color('block_selected')
+
+            # Draw selection outline with rounded corners
+            painter.setPen(QPen(selection_color, 3, Qt.SolidLine))
             painter.setBrush(Qt.NoBrush)
-            selection_rect = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height + 25)
-            painter.drawRect(selection_rect)
+
+            # Selection rectangle with padding
+            padding = 4
+            selection_rect = QRect(
+                self.left - padding,
+                self.top - padding,
+                self.width + 2 * padding,
+                self.height + 2 * padding
+            )
+            painter.drawRoundedRect(selection_rect, 14, 14)
+
+            # Optional: Draw corner handles for resize (can be added later)
+            # For now, just the glowing outline effect
     
     def draw_selected(self, painter):
         painter.setPen(QColor('black'))

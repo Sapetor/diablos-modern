@@ -251,14 +251,8 @@ class ModernCanvas(QWidget):
             # Clear canvas with theme-appropriate background
             painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
 
-            # Draw grid
-            grid_size = 10
-            grid_color = theme_manager.get_color('grid_dots')
-            painter.setPen(QPen(grid_color, 1)) # 1 pixel wide dots
-
-            for x in range(0, self.width(), grid_size):
-                for y in range(0, self.height(), grid_size):
-                    painter.drawPoint(x, y)
+            # Draw sophisticated grid system
+            self._draw_grid(painter)
             
             # Draw DSim elements
             if hasattr(self.dsim, 'display_blocks'):
@@ -310,7 +304,40 @@ class ModernCanvas(QWidget):
                 
         except Exception as e:
             logger.error(f"Error in canvas paintEvent: {str(e)}")
-    
+
+    def _draw_grid(self, painter):
+        """Draw a sophisticated grid system with dots at intervals."""
+        try:
+            # Grid configuration
+            small_grid_size = 20  # Small dot spacing (20px)
+            large_grid_size = 100  # Large dot spacing (100px for emphasis)
+
+            # Get theme colors
+            small_dot_color = theme_manager.get_color('grid_dots')
+            large_dot_color = theme_manager.get_color('grid_dots')
+            large_dot_color.setAlpha(180)  # Make large dots slightly more visible
+
+            # Calculate visible area bounds (considering zoom and pan)
+            visible_rect = self.rect()
+
+            # Draw small dots
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(small_dot_color)
+            for x in range(0, self.width(), small_grid_size):
+                for y in range(0, self.height(), small_grid_size):
+                    # Only draw small dots if not on a large grid intersection
+                    if x % large_grid_size != 0 or y % large_grid_size != 0:
+                        painter.drawEllipse(QPoint(x, y), 1, 1)
+
+            # Draw larger dots at major grid intersections
+            painter.setBrush(large_dot_color)
+            for x in range(0, self.width(), large_grid_size):
+                for y in range(0, self.height(), large_grid_size):
+                    painter.drawEllipse(QPoint(x, y), 2, 2)
+
+        except Exception as e:
+            logger.error(f"Error drawing grid: {str(e)}")
+
     def mousePressEvent(self, event):
         """Handle mouse press events."""
         try:
