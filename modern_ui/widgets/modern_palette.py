@@ -79,7 +79,8 @@ class DraggableBlockWidget(QFrame):
         )
         
         temp_dblock.update_Block()
-        temp_dblock.draw_Block(painter, draw_name=False)
+        # Don't draw ports in palette to avoid clipping issues
+        temp_dblock.draw_Block(painter, draw_name=False, draw_ports=False)
         
         painter.setPen(theme_manager.get_color('text_primary'))
         font = QFont("Segoe UI", 8)
