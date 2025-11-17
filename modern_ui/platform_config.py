@@ -255,7 +255,7 @@ class PlatformConfig:
         )
 
         logger.info(f"Palette width calculation (logical pixels): "
-                   f"blocks={(block_size}+{widget_margin*2})×{columns}={blocks_width}px + "
+                   f"blocks=({block_size}+{widget_margin*2})×{columns}={blocks_width}px + "
                    f"spacing={spacing_width}px + "
                    f"category_pad={category_padding_width}px + "
                    f"container_pad={container_padding_width}px + "
