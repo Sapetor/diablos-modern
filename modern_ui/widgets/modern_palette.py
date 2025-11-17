@@ -290,19 +290,32 @@ class ModernBlockPalette(QWidget):
     def _filter_blocks(self, text):
         """Filter blocks based on search text."""
         text = text.lower()
+
         for i in range(self.blocks_layout.count()):
             category_widget = self.blocks_layout.itemAt(i).widget()
             if isinstance(category_widget, BlockCategoryWidget):
                 category_visible = False
-                for j in range(category_widget.layout().count()):
-                    block_widget = category_widget.layout().itemAt(j).widget()
-                    if isinstance(block_widget, DraggableBlockWidget):
-                        block_name = getattr(block_widget.menu_block, 'fn_name', '').lower()
-                        if text in block_name:
-                            block_widget.show()
-                            category_visible = True
-                        else:
-                            block_widget.hide()
+
+                # Get the grid layout (it's the second item in the category's layout)
+                category_layout = category_widget.layout()
+                if category_layout and category_layout.count() >= 2:
+                    grid_item = category_layout.itemAt(1)  # 0=header, 1=grid
+                    if grid_item:
+                        grid_layout = grid_item.layout()
+                        if grid_layout:
+                            # Iterate through grid layout items
+                            for j in range(grid_layout.count()):
+                                block_widget = grid_layout.itemAt(j).widget()
+                                if isinstance(block_widget, DraggableBlockWidget):
+                                    block_name = getattr(block_widget.menu_block, 'fn_name', '').lower()
+                                    # Show block if search text matches or if search is empty
+                                    if not text or text in block_name:
+                                        block_widget.show()
+                                        category_visible = True
+                                    else:
+                                        block_widget.hide()
+
+                # Show/hide entire category based on whether any blocks are visible
                 category_widget.setVisible(category_visible)
 
     def _load_blocks(self):
