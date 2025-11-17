@@ -54,7 +54,10 @@ class DLine:
         self.total_dstports: int = 1
         self.srcbottom: int = 0
         self.dstbottom: int = 0
-        self.points: List[QPoint] = [QPoint(p.x(), p.y()) if isinstance(p, QPoint) else QPoint(p[0], p[1]) for p in points]
+        self.points: List[QPoint] = [
+            QPoint(int(p.x()), int(p.y())) if isinstance(p, QPoint) else QPoint(int(p[0]), int(p[1]))
+            for p in points
+        ]
         self.cptr: int = 0
         self.selected: bool = False
         self.modified: bool = False
