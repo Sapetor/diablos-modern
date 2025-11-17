@@ -250,13 +250,16 @@ class PlatformConfig:
         container_padding_width = container_padding * 2
         # 5. Scrollbar and borders
         extra_width = scrollbar + borders
+        # 6. Right-side safety margin to prevent scrollbar crowding
+        right_margin = 12
 
         required_width = (
             blocks_width +
             spacing_width +
             category_padding_width +
             container_padding_width +
-            extra_width
+            extra_width +
+            right_margin
         )
 
         logger.info(f"Palette width calculation (logical pixels): "
@@ -264,7 +267,8 @@ class PlatformConfig:
                    f"spacing={spacing_width}px + "
                    f"category_pad={category_padding_width}px + "
                    f"container_pad={container_padding_width}px + "
-                   f"scrollbar+borders={extra_width}px = "
+                   f"scrollbar+borders={extra_width}px + "
+                   f"right_margin={right_margin}px = "
                    f"{required_width}px")
 
         return required_width
