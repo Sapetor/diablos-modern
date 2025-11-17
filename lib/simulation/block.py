@@ -526,21 +526,70 @@ class DBlock:
             scaled_path = transform.map(path)
             painter.drawPath(scaled_path)
 
-        # Draw ports with improved styling
+        # Draw ports with modern styling
+        from PyQt5.QtGui import QRadialGradient
+
         port_input_color = theme_manager.get_color('port_input')
         port_output_color = theme_manager.get_color('port_output')
 
-        # Input ports (filled circles with border)
-        painter.setBrush(port_input_color)
-        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1.5))
-        for port_in_location in self.in_coords:
-            painter.drawEllipse(port_in_location, self.port_radius, self.port_radius)
+        # Make ports slightly smaller for a cleaner look
+        port_draw_radius = self.port_radius - 1
 
-        # Output ports (filled circles with border, different color)
-        painter.setBrush(port_output_color)
-        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1.5))
+        # Input ports with radial gradient and glossy effect
+        for port_in_location in self.in_coords:
+            # Create radial gradient for depth
+            gradient = QRadialGradient(port_in_location.x(), port_in_location.y(), port_draw_radius)
+
+            # Lighter center, darker edge for depth
+            lighter_input = port_input_color.lighter(130)
+            gradient.setColorAt(0.0, lighter_input)
+            gradient.setColorAt(0.7, port_input_color)
+            gradient.setColorAt(1.0, port_input_color.darker(110))
+
+            painter.setBrush(gradient)
+            painter.setPen(QPen(port_input_color.darker(140), 2.0))
+            painter.drawEllipse(port_in_location, port_draw_radius, port_draw_radius)
+
+            # Add subtle highlight for glossy effect
+            painter.setPen(Qt.NoPen)
+            highlight_color = QColor(255, 255, 255, 50)
+            painter.setBrush(highlight_color)
+            highlight_offset = int(port_draw_radius * 0.3)
+            highlight_size = int(port_draw_radius * 0.4)
+            painter.drawEllipse(
+                port_in_location.x() - highlight_offset,
+                port_in_location.y() - highlight_offset,
+                highlight_size,
+                highlight_size
+            )
+
+        # Output ports with radial gradient and glossy effect
         for port_out_location in self.out_coords:
-            painter.drawEllipse(port_out_location, self.port_radius, self.port_radius)
+            # Create radial gradient for depth
+            gradient = QRadialGradient(port_out_location.x(), port_out_location.y(), port_draw_radius)
+
+            # Lighter center, darker edge for depth
+            lighter_output = port_output_color.lighter(130)
+            gradient.setColorAt(0.0, lighter_output)
+            gradient.setColorAt(0.7, port_output_color)
+            gradient.setColorAt(1.0, port_output_color.darker(110))
+
+            painter.setBrush(gradient)
+            painter.setPen(QPen(port_output_color.darker(140), 2.0))
+            painter.drawEllipse(port_out_location, port_draw_radius, port_draw_radius)
+
+            # Add subtle highlight for glossy effect
+            painter.setPen(Qt.NoPen)
+            highlight_color = QColor(255, 255, 255, 50)
+            painter.setBrush(highlight_color)
+            highlight_offset = int(port_draw_radius * 0.3)
+            highlight_size = int(port_draw_radius * 0.4)
+            painter.drawEllipse(
+                port_out_location.x() - highlight_offset,
+                port_out_location.y() - highlight_offset,
+                highlight_size,
+                highlight_size
+            )
 
         if draw_name:
             # Draw block name below the block with better typography
