@@ -12,9 +12,15 @@ class ModernStyles:
     
     @staticmethod
     def _replace_theme_variables(qss: str) -> str:
-        """Replace theme variables in QSS with actual colors."""
+        """Replace theme variables in QSS with actual colors.
+
+        Replaces variables in order of length (longest first) to avoid
+        partial replacements (e.g., @surface inside @surface_variant).
+        """
         theme_vars = theme_manager.get_qss_variables()
-        for var, color in theme_vars.items():
+        # Sort by key length (longest first) to avoid partial replacements
+        sorted_vars = sorted(theme_vars.items(), key=lambda x: len(x[0]), reverse=True)
+        for var, color in sorted_vars:
             qss = qss.replace(var, color)
         return qss
     
@@ -74,7 +80,6 @@ class ModernStyles:
             font-weight: 500;
             text-align: center;
             min-width: 60px;
-            transition: all 0.2s ease;
         }
 
         QToolButton:hover {
@@ -85,7 +90,6 @@ class ModernStyles:
         QToolButton:pressed {
             background-color: @accent_pressed;
             color: white;
-            transform: scale(0.98);
         }
 
         QToolButton:checked {
@@ -97,7 +101,6 @@ class ModernStyles:
         QToolButton:disabled {
             color: @text_disabled;
             background-color: transparent;
-            opacity: 0.5;
         }
         """
         return cls._replace_theme_variables(qss)
@@ -216,7 +219,6 @@ class ModernStyles:
             font-weight: 500;
             min-width: 80px;
             min-height: 32px;
-            transition: all 0.2s ease;
         }
 
         QPushButton:hover {
@@ -248,7 +250,6 @@ class ModernStyles:
             background-color: @background_secondary;
             color: @text_disabled;
             border-color: @border_primary;
-            opacity: 0.5;
         }
 
         /* Input fields */
