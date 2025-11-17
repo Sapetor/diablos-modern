@@ -96,9 +96,9 @@ class PlatformConfig:
 
     @property
     def left_panel_max_width(self) -> int:
-        """Maximum width for left panel - allow some flexibility."""
-        # Allow 50% more than minimum for user resizing
-        return int(self.calculate_palette_width() * 1.5)
+        """Maximum width for left panel - allow some flexibility for user resizing."""
+        # Allow some extra space for user resizing
+        return self.calculate_palette_width() + 50
 
     # Canvas
 
@@ -168,15 +168,13 @@ class PlatformConfig:
 
     @property
     def palette_block_size(self) -> int:
-        """Size of blocks in the palette (DPI-scaled)."""
-        base_size = 100
-        # Scale with DPI ratio for consistent physical size
-        scaled_size = int(base_size * self.device_ratio)
+        """Size of blocks in the palette (logical pixels).
 
-        # But cap at reasonable sizes for usability
-        if self.is_retina_small:
-            return min(scaled_size, 120)
-        return min(scaled_size, 140)
+        Note: Qt's High DPI support automatically scales this value based on
+        the Windows display scale setting. We use logical pixels here and let
+        Qt handle the physical pixel scaling.
+        """
+        return 100
 
     @property
     def palette_grid_columns(self) -> int:
@@ -185,51 +183,84 @@ class PlatformConfig:
 
     @property
     def palette_grid_spacing(self) -> int:
-        """Spacing between blocks in palette grid (DPI-scaled)."""
-        return max(4, int(4 * self.device_ratio))
+        """Spacing between blocks in palette grid (logical pixels)."""
+        return 4
 
     @property
     def palette_container_padding(self) -> int:
-        """Padding inside palette container (DPI-scaled)."""
-        return max(8, int(8 * self.device_ratio))
+        """Padding inside palette container (logical pixels)."""
+        return 8
 
     @property
     def palette_scrollbar_width(self) -> int:
-        """Estimated scrollbar width (DPI-scaled)."""
-        return max(12, int(12 * self.device_ratio))
+        """Estimated scrollbar width (logical pixels)."""
+        return 14
+
+    @property
+    def palette_widget_margin(self) -> int:
+        """Margin around each block widget from stylesheet (logical pixels)."""
+        return 2
+
+    @property
+    def palette_panel_border(self) -> int:
+        """Estimated border width of palette panel and category widgets (logical pixels)."""
+        return 6
 
     def calculate_palette_width(self) -> int:
         """
         Calculate the required width for the palette panel based on actual measurements.
 
-        Formula: (block_size × columns) + (spacing × (columns-1)) +
-                 (padding × 2) + scrollbar + safety_margin
+        This uses logical pixels. Qt's High DPI support automatically scales these
+        values to physical pixels based on Windows display scale settings.
+
+        Formula breakdown:
+        - Block widgets: block_size × columns
+        - Widget margins: (widget_margin × 2) × columns (left + right margins per block)
+        - Grid spacing: grid_spacing × (columns - 1)
+        - Category padding: category_padding × 2 (left + right)
+        - Container padding: container_padding × 2 (left + right)
+        - Scrollbar: scrollbar_width
+        - Panel borders: panel_border
 
         Returns:
-            int: Required palette width in pixels
+            int: Required palette width in logical pixels
         """
         block_size = self.palette_block_size
         columns = self.palette_grid_columns
-        spacing = self.palette_grid_spacing
-        padding = self.palette_container_padding
+        grid_spacing = self.palette_grid_spacing
+        widget_margin = self.palette_widget_margin
+        category_padding = self.palette_container_padding  # Categories use same padding
+        container_padding = self.palette_container_padding
         scrollbar = self.palette_scrollbar_width
+        borders = self.palette_panel_border
 
-        # Add 20px safety margin for borders and unexpected spacing
-        safety_margin = max(20, int(20 * self.device_ratio))
+        # Calculate width from innermost to outermost
+        # 1. Blocks with their margins
+        blocks_width = (block_size + (widget_margin * 2)) * columns
+        # 2. Grid spacing between columns
+        spacing_width = grid_spacing * (columns - 1)
+        # 3. Category widget padding
+        category_padding_width = category_padding * 2
+        # 4. Container padding
+        container_padding_width = container_padding * 2
+        # 5. Scrollbar and borders
+        extra_width = scrollbar + borders
 
         required_width = (
-            (block_size * columns) +  # Total block width
-            (spacing * (columns - 1)) +  # Spacing between columns
-            (padding * 2) +  # Left and right padding
-            scrollbar +  # Scrollbar width
-            safety_margin  # Safety margin
+            blocks_width +
+            spacing_width +
+            category_padding_width +
+            container_padding_width +
+            extra_width
         )
 
-        logger.info(f"Palette width calculation: "
-                   f"block={block_size}px × {columns} + "
-                   f"spacing={spacing}px + padding={padding * 2}px + "
-                   f"scrollbar={scrollbar}px + margin={safety_margin}px = "
-                   f"{required_width}px (DPI={self.device_ratio})")
+        logger.info(f"Palette width calculation (logical pixels): "
+                   f"blocks={(block_size}+{widget_margin*2})×{columns}={blocks_width}px + "
+                   f"spacing={spacing_width}px + "
+                   f"category_pad={category_padding_width}px + "
+                   f"container_pad={container_padding_width}px + "
+                   f"scrollbar+borders={extra_width}px = "
+                   f"{required_width}px")
 
         return required_width
 
