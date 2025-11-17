@@ -70,8 +70,18 @@ class DLine:
 
     def create_trajectory(self, start: QPoint, finish: QPoint, blocks_list: List,
                          points: Optional[List[QPoint]] = None) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
-        path = QPainterPath(start)
+        """
+        Create a smooth Bezier curve trajectory between start and finish points.
 
+        Args:
+            start: Starting point (output port)
+            finish: Ending point (input port)
+            blocks_list: List of blocks for collision detection
+            points: Optional custom waypoints for modified paths
+
+        Returns:
+            Tuple of (QPainterPath, waypoints, collision segments)
+        """
         all_points = []
         if self.modified and points and len(points) > 1:
             all_points = points
@@ -112,14 +122,99 @@ class DLine:
             clean_points.append(all_points[-1])
         all_points = clean_points
 
+        # Create smooth Bezier curve path
+        path = QPainterPath(all_points[0])
         segments = []
 
-        path = QPainterPath(all_points[0])
+        # Curve radius for smooth transitions (adjust for smoothness)
+        curve_radius = 25
+
         for i in range(len(all_points) - 1):
             p1 = all_points[i]
-            p2 = all_points[i+1]
-            path.lineTo(p2)
-            segments.append(QRect(p1, p2).normalized())
+            p2 = all_points[i + 1]
+
+            # Calculate direction of this segment
+            dx = p2.x() - p1.x()
+            dy = p2.y() - p1.y()
+
+            # Determine if this is a horizontal or vertical segment
+            is_horizontal = abs(dx) > abs(dy)
+
+            if i == 0:
+                # First segment - start from port, add initial straight section
+                if is_horizontal:
+                    # Horizontal start
+                    start_straight = min(abs(dx) * 0.3, curve_radius)
+                    path.lineTo(p1.x() + (start_straight if dx > 0 else -start_straight), p1.y())
+                else:
+                    # Vertical start
+                    start_straight = min(abs(dy) * 0.3, curve_radius)
+                    path.lineTo(p1.x(), p1.y() + (start_straight if dy > 0 else -start_straight))
+
+            # Check if we need a curve (direction changes at next point)
+            if i < len(all_points) - 2:
+                next_p = all_points[i + 2]
+                next_dx = next_p.x() - p2.x()
+                next_dy = next_p.y() - p2.y()
+                next_is_horizontal = abs(next_dx) > abs(next_dy)
+
+                # If direction changes, create a smooth curve around p2
+                if is_horizontal != next_is_horizontal:
+                    # Calculate control points for smooth transition
+                    control_distance = min(curve_radius, abs(dx) * 0.5, abs(dy) * 0.5)
+
+                    if is_horizontal:
+                        # Currently horizontal, turning vertical
+                        before_corner = QPoint(
+                            p2.x() - (control_distance if dx > 0 else -control_distance),
+                            p2.y()
+                        )
+                        after_corner = QPoint(
+                            p2.x(),
+                            p2.y() + (control_distance if next_dy > 0 else -control_distance)
+                        )
+                    else:
+                        # Currently vertical, turning horizontal
+                        before_corner = QPoint(
+                            p2.x(),
+                            p2.y() - (control_distance if dy > 0 else -control_distance)
+                        )
+                        after_corner = QPoint(
+                            p2.x() + (control_distance if next_dx > 0 else -control_distance),
+                            p2.y()
+                        )
+
+                    # Draw to point before corner
+                    path.lineTo(before_corner)
+
+                    # Create cubic Bezier curve around the corner
+                    # Control points pull the curve towards p2
+                    control1 = QPoint(p2.x(), before_corner.y()) if is_horizontal else QPoint(before_corner.x(), p2.y())
+                    control2 = QPoint(after_corner.x(), p2.y()) if is_horizontal else QPoint(p2.x(), after_corner.y())
+
+                    path.cubicTo(control1, control2, after_corner)
+
+                    segments.append(QRect(p1, p2).normalized())
+                else:
+                    # Same direction, just continue
+                    path.lineTo(p2)
+                    segments.append(QRect(p1, p2).normalized())
+            else:
+                # Last segment - smooth arrival at destination port
+                if is_horizontal:
+                    # Horizontal end
+                    end_straight = min(abs(dx) * 0.3, curve_radius)
+                    end_point = QPoint(p2.x() - (end_straight if dx > 0 else -end_straight), p2.y())
+                    path.lineTo(end_point)
+                    path.lineTo(p2)
+                else:
+                    # Vertical end
+                    end_straight = min(abs(dy) * 0.3, curve_radius)
+                    end_point = QPoint(p2.x(), p2.y() - (end_straight if dy > 0 else -end_straight))
+                    path.lineTo(end_point)
+                    path.lineTo(p2)
+
+                segments.append(QRect(p1, p2).normalized())
 
         return path, all_points, segments
 
@@ -148,26 +243,59 @@ class DLine:
                 self.modified = False
 
     def draw_line(self, painter: QPainter) -> None:
-        if self.path and not self.path.isEmpty():  # self.path is a QPainterPath
+        """Draw the connection line with smooth Bezier curves and modern styling."""
+        if self.path and not self.path.isEmpty():
+            # Save painter state
+            painter.save()
+
+            # Enable antialiasing for smooth curves
+            painter.setRenderHint(QPainter.Antialiasing, True)
+
             # Use theme_manager for connection colors
             default_connection_color = theme_manager.get_color('connection_default')
             active_connection_color = theme_manager.get_color('connection_active')
 
-            # Draw the whole line with default color, or active color if fully selected
-            pen_color = active_connection_color if self.selected and self.selected_segment == -1 else default_connection_color
-            pen = QPen(pen_color, 2)
+            # Determine line color and width based on selection state
+            is_selected = self.selected and self.selected_segment == -1
+            pen_color = active_connection_color if is_selected else default_connection_color
+            line_width = 2.5 if is_selected else 2.0
+
+            # Draw subtle glow/shadow for selected connections
+            if is_selected:
+                # Draw outer glow
+                glow_color = QColor(active_connection_color)
+                glow_color.setAlpha(40)
+                glow_pen = QPen(glow_color, line_width + 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(glow_pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawPath(self.path)
+
+            # Draw main connection line
+            pen = QPen(pen_color, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(self.path)
 
-            # If a segment is selected, draw it highlighted
+            # If a specific segment is selected, highlight it
             if self.selected and self.selected_segment != -1:
                 if self.selected_segment < len(self.points) - 1:
                     p1 = self.points[self.selected_segment]
                     p2 = self.points[self.selected_segment + 1]
-                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine)  # Thicker pen
+
+                    # Draw glow for segment
+                    segment_glow_color = QColor(active_connection_color)
+                    segment_glow_color.setAlpha(60)
+                    glow_pen = QPen(segment_glow_color, 6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                    painter.setPen(glow_pen)
+                    painter.drawLine(p1, p2)
+
+                    # Draw segment highlight
+                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
                     painter.setPen(highlight_pen)
                     painter.drawLine(p1, p2)
+
+            # Restore painter state
+            painter.restore()
 
             # Draw intermediate points if the whole line is selected
             if self.selected and self.selected_segment == -1:
