@@ -173,8 +173,10 @@ class PlatformConfig:
         Note: Qt's High DPI support automatically scales this value based on
         the Windows display scale setting. We use logical pixels here and let
         Qt handle the physical pixel scaling.
+
+        Reduced from 100px to 85px to look better at high DPI settings (125%, 150%).
         """
-        return 100
+        return 85
 
     @property
     def palette_grid_columns(self) -> int:
@@ -188,8 +190,11 @@ class PlatformConfig:
 
     @property
     def palette_container_padding(self) -> int:
-        """Padding inside palette container (logical pixels)."""
-        return 8
+        """Padding inside palette container (logical pixels).
+
+        Reduced to 4px to minimize the left-side gap and balance spacing.
+        """
+        return 4
 
     @property
     def palette_scrollbar_width(self) -> int:
