@@ -188,11 +188,15 @@ class BlockCategoryWidget(QFrame):
     
     def _setup_widget(self):
         """Setup the category widget."""
+        from modern_ui.platform_config import get_platform_config
+        config = get_platform_config()
+
         self.setFrameStyle(QFrame.StyledPanel)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
+        padding = config.palette_container_padding
+        layout.setContentsMargins(padding, padding, padding, padding)
+        layout.setSpacing(config.palette_grid_spacing)
 
         # Category header
         header = QLabel(self.category_name)
@@ -202,7 +206,7 @@ class BlockCategoryWidget(QFrame):
 
         # Add blocks in a grid (2 columns)
         grid_layout = QGridLayout()
-        grid_layout.setSpacing(4)
+        grid_layout.setSpacing(config.palette_grid_spacing)
 
         row = 0
         col = 0
@@ -262,27 +266,31 @@ class ModernBlockPalette(QWidget):
 
     def _setup_widget(self):
         """Setup the main widget layout."""
+        from modern_ui.platform_config import get_platform_config
+        config = get_platform_config()
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setSpacing(config.palette_grid_spacing)
 
         # Search bar
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search blocks...")
         self.search_bar.textChanged.connect(self._filter_blocks)
         layout.addWidget(self.search_bar)
-        
+
         # Create scroll area for blocks
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        
+
         # Container for block categories
         self.blocks_container = QWidget()
         self.blocks_layout = QVBoxLayout(self.blocks_container)
-        self.blocks_layout.setContentsMargins(4, 4, 4, 4)
-        self.blocks_layout.setSpacing(8)
+        padding = config.palette_container_padding
+        self.blocks_layout.setContentsMargins(padding, padding, padding, padding)
+        self.blocks_layout.setSpacing(config.palette_grid_spacing * 2)  # Double spacing between categories
         
         scroll_area.setWidget(self.blocks_container)
         layout.addWidget(scroll_area)

@@ -90,21 +90,15 @@ class PlatformConfig:
 
     @property
     def left_panel_min_width(self) -> int:
-        """Minimum width for left panel (block palette)."""
-        if self.is_retina_small:
-            return 230
-        elif self.is_high_dpi:
-            return 270
-        return 220
+        """Minimum width for left panel (block palette) - calculated dynamically."""
+        # Use calculated width to ensure blocks fit properly
+        return self.calculate_palette_width()
 
     @property
     def left_panel_max_width(self) -> int:
-        """Maximum width for left panel."""
-        if self.is_retina_small:
-            return 330
-        elif self.is_high_dpi:
-            return 380
-        return 320
+        """Maximum width for left panel - allow some flexibility."""
+        # Allow 50% more than minimum for user resizing
+        return int(self.calculate_palette_width() * 1.5)
 
     # Canvas
 
@@ -150,12 +144,9 @@ class PlatformConfig:
 
     @property
     def splitter_left_width(self) -> int:
-        """Initial width for left splitter panel."""
-        if self.is_retina_small:
-            return 250
-        elif self.is_high_dpi:
-            return 300
-        return 250
+        """Initial width for left splitter panel - calculated to fit palette."""
+        # Use the calculated palette width as the initial splitter size
+        return self.calculate_palette_width()
 
     @property
     def splitter_property_percent(self) -> float:
@@ -177,12 +168,70 @@ class PlatformConfig:
 
     @property
     def palette_block_size(self) -> int:
-        """Size of blocks in the palette."""
+        """Size of blocks in the palette (DPI-scaled)."""
+        base_size = 100
+        # Scale with DPI ratio for consistent physical size
+        scaled_size = int(base_size * self.device_ratio)
+
+        # But cap at reasonable sizes for usability
         if self.is_retina_small:
-            return 95
-        elif self.is_high_dpi:
-            return int(100 * 1.2)
-        return 100
+            return min(scaled_size, 120)
+        return min(scaled_size, 140)
+
+    @property
+    def palette_grid_columns(self) -> int:
+        """Number of columns in the palette grid."""
+        return 2
+
+    @property
+    def palette_grid_spacing(self) -> int:
+        """Spacing between blocks in palette grid (DPI-scaled)."""
+        return max(4, int(4 * self.device_ratio))
+
+    @property
+    def palette_container_padding(self) -> int:
+        """Padding inside palette container (DPI-scaled)."""
+        return max(8, int(8 * self.device_ratio))
+
+    @property
+    def palette_scrollbar_width(self) -> int:
+        """Estimated scrollbar width (DPI-scaled)."""
+        return max(12, int(12 * self.device_ratio))
+
+    def calculate_palette_width(self) -> int:
+        """
+        Calculate the required width for the palette panel based on actual measurements.
+
+        Formula: (block_size × columns) + (spacing × (columns-1)) +
+                 (padding × 2) + scrollbar + safety_margin
+
+        Returns:
+            int: Required palette width in pixels
+        """
+        block_size = self.palette_block_size
+        columns = self.palette_grid_columns
+        spacing = self.palette_grid_spacing
+        padding = self.palette_container_padding
+        scrollbar = self.palette_scrollbar_width
+
+        # Add 20px safety margin for borders and unexpected spacing
+        safety_margin = max(20, int(20 * self.device_ratio))
+
+        required_width = (
+            (block_size * columns) +  # Total block width
+            (spacing * (columns - 1)) +  # Spacing between columns
+            (padding * 2) +  # Left and right padding
+            scrollbar +  # Scrollbar width
+            safety_margin  # Safety margin
+        )
+
+        logger.info(f"Palette width calculation: "
+                   f"block={block_size}px × {columns} + "
+                   f"spacing={spacing}px + padding={padding * 2}px + "
+                   f"scrollbar={scrollbar}px + margin={safety_margin}px = "
+                   f"{required_width}px (DPI={self.device_ratio})")
+
+        return required_width
 
 
 # Global singleton instance
