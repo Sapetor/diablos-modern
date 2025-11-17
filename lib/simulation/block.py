@@ -80,7 +80,10 @@ class DBlock:
         self.height: int = self.rect.height()
         self.height_base: int = self.height
 
-        if colors and color in colors:
+        # Handle color - can be either a QColor object or a string
+        if isinstance(color, QColor):
+            self.b_color: QColor = color
+        elif colors and color in colors:
             self.b_color: QColor = colors[color]
         else:
             self.b_color: QColor = QColor(color)
