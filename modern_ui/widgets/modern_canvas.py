@@ -66,6 +66,7 @@ class ModernCanvas(QWidget):
         self.line_start_port = None
         self.temp_line = None
         self.source_block_for_connection = None
+        self.default_routing_mode = "bezier"  # Default routing mode for new connections
 
         # Zoom and Pan
         self.zoom_factor = 1.0
@@ -983,7 +984,9 @@ class ModernCanvas(QWidget):
                         (end_block_name, end_port, end_coords)
                     )
                     if new_line:
-                        logger.info(f"Line created: {start_block_name} -> {end_block_name}")
+                        # Set the default routing mode for the new connection
+                        new_line.routing_mode = self.default_routing_mode
+                        logger.info(f"Line created: {start_block_name} -> {end_block_name} (routing: {self.default_routing_mode})")
                         self.dsim.update_lines()
                         self.connection_created.emit(self.line_start_block, end_block)
                     else:
@@ -1638,6 +1641,21 @@ class ModernCanvas(QWidget):
         edit_label_action = menu.addAction("Edit Label...")
         edit_label_action.triggered.connect(lambda: self._edit_connection_label(line))
 
+        # Routing mode submenu
+        routing_menu = menu.addMenu("Routing Mode")
+
+        # Bezier mode
+        bezier_action = routing_menu.addAction("Bezier (Curved)")
+        bezier_action.setCheckable(True)
+        bezier_action.setChecked(line.routing_mode == "bezier")
+        bezier_action.triggered.connect(lambda: self._set_connection_routing_mode(line, "bezier"))
+
+        # Orthogonal mode
+        orthogonal_action = routing_menu.addAction("Orthogonal (Manhattan)")
+        orthogonal_action.setCheckable(True)
+        orthogonal_action.setChecked(line.routing_mode == "orthogonal")
+        orthogonal_action.triggered.connect(lambda: self._set_connection_routing_mode(line, "orthogonal"))
+
         menu.addSeparator()
 
         delete_action = menu.addAction("Delete Connection")
@@ -1877,6 +1895,16 @@ class ModernCanvas(QWidget):
             self.update()
             logger.info(f"Updated connection label: {line.name} -> '{text}'")
 
+    def _set_connection_routing_mode(self, line, mode):
+        """Change the routing mode for a connection."""
+        if mode in ["bezier", "orthogonal"]:
+            line.set_routing_mode(mode)
+            # Force update of the line path
+            line.update_line(self.dsim.blocks_list)
+            self._capture_state()  # Capture state for undo
+            self.update()
+            logger.info(f"Changed routing mode for {line.name} to {mode}")
+
     def _update_hover_states(self, pos):
         """Update hover states for blocks, ports, and connections."""
         needs_repaint = False
@@ -2101,7 +2129,9 @@ class ModernCanvas(QWidget):
                     'srcport': line.srcport,
                     'dstblock': line.dstblock,
                     'dstport': line.dstport,
-                    'selected': line.selected
+                    'selected': line.selected,
+                    'routing_mode': line.routing_mode if hasattr(line, 'routing_mode') else 'bezier',
+                    'label': line.label if hasattr(line, 'label') else ''
                 }
                 state['lines'].append(line_data)
 
@@ -2201,6 +2231,13 @@ class ModernCanvas(QWidget):
                     if line:
                         line.selected = line_data.get('selected', False)
                         line.name = line_data['name']
+                        # Restore routing mode and label
+                        if 'routing_mode' in line_data:
+                            line.routing_mode = line_data['routing_mode']
+                        if 'label' in line_data:
+                            line.label = line_data['label']
+                        # Recalculate path with restored routing mode
+                        line.update_line(self.dsim.blocks_list)
 
             self.update()
             return True

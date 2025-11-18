@@ -45,6 +45,9 @@ class ModernDiaBloSWindow(QMainWindow):
         # Store screen geometry for responsive sizing
         self.screen_geometry = screen_geometry
 
+        # Default routing mode for new connections
+        self.default_routing_mode = "bezier"
+
         # Core DSim functionality
         self.dsim = DSim()
 
@@ -197,7 +200,22 @@ class ModernDiaBloSWindow(QMainWindow):
         action_125.triggered.connect(lambda: self._set_scaling(1.25))
         action_150 = scaling_menu.addAction("150%")
         action_150.triggered.connect(lambda: self._set_scaling(1.5))
-        
+
+        # Default Connection Routing submenu
+        view_menu.addSeparator()
+        routing_menu = view_menu.addMenu("Default Connection Routing")
+
+        # Bezier mode (default)
+        self.bezier_routing_action = routing_menu.addAction("Bezier (Curved)")
+        self.bezier_routing_action.setCheckable(True)
+        self.bezier_routing_action.setChecked(True)
+        self.bezier_routing_action.triggered.connect(lambda: self._set_default_routing_mode("bezier"))
+
+        # Orthogonal mode
+        self.orthogonal_routing_action = routing_menu.addAction("Orthogonal (Manhattan)")
+        self.orthogonal_routing_action.setCheckable(True)
+        self.orthogonal_routing_action.triggered.connect(lambda: self._set_default_routing_mode("orthogonal"))
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
         help_menu.addAction("&Keyboard Shortcuts", self.show_keyboard_shortcuts)
@@ -220,9 +238,24 @@ class ModernDiaBloSWindow(QMainWindow):
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
 
-        QMessageBox.information(self, "UI Scaling", 
+        QMessageBox.information(self, "UI Scaling",
                                 "The UI scaling factor has been changed. Please restart the application for the changes to take effect.")
-    
+
+    def _set_default_routing_mode(self, mode):
+        """Set the default routing mode for new connections."""
+        if mode in ["bezier", "orthogonal"]:
+            self.default_routing_mode = mode
+
+            # Update menu checkmarks
+            self.bezier_routing_action.setChecked(mode == "bezier")
+            self.orthogonal_routing_action.setChecked(mode == "orthogonal")
+
+            # Pass the setting to the canvas
+            if hasattr(self, 'canvas'):
+                self.canvas.default_routing_mode = mode
+
+            logger.info(f"Default connection routing mode set to: {mode}")
+
     def _setup_toolbar(self):
         """Setup modern toolbar."""
         self.toolbar = ModernToolBar(self)
@@ -357,6 +390,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
+
+        # Set default routing mode for new connections
+        self.canvas.default_routing_mode = self.default_routing_mode
 
         # Get platform configuration
         config = get_platform_config()
