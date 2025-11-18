@@ -560,7 +560,27 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.redo()
             self.status_message.setText("Redo")
 
-    def select_all(self): pass
+    def select_all(self):
+        """Select all blocks in the diagram."""
+        if hasattr(self, 'canvas'):
+            # Deselect all lines first
+            for line in self.canvas.dsim.line_list:
+                line.selected = False
+
+            # Select all blocks
+            selected_count = 0
+            for block in self.canvas.dsim.blocks_list:
+                block.selected = True
+                selected_count += 1
+
+            # Update canvas to show selection
+            self.canvas.update()
+
+            if selected_count > 0:
+                self.status_message.setText(f"Selected {selected_count} block(s)")
+            else:
+                self.status_message.setText("No blocks to select")
+
     def zoom_in(self):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_in()
@@ -570,7 +590,65 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_out()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-    def fit_to_window(self): pass
+    def fit_to_window(self):
+        """Fit all blocks to window by auto-zooming and panning."""
+        if not hasattr(self, 'canvas'):
+            return
+
+        from PyQt5.QtCore import QPoint
+
+        # Get all blocks
+        blocks = self.canvas.dsim.blocks_list
+        if not blocks:
+            self.status_message.setText("No blocks to fit")
+            return
+
+        # Calculate bounding box of all blocks
+        min_x = min_y = float('inf')
+        max_x = max_y = float('-inf')
+
+        for block in blocks:
+            min_x = min(min_x, block.left)
+            min_y = min(min_y, block.top)
+            max_x = max(max_x, block.left + block.width)
+            max_y = max(max_y, block.top + block.height)
+
+        # Add padding around blocks
+        padding = 100
+        min_x -= padding
+        min_y -= padding
+        max_x += padding
+        max_y += padding
+
+        # Calculate diagram dimensions
+        diagram_width = max_x - min_x
+        diagram_height = max_y - min_y
+
+        # Get canvas dimensions
+        canvas_width = self.canvas.width()
+        canvas_height = self.canvas.height()
+
+        # Calculate zoom to fit
+        zoom_x = canvas_width / diagram_width if diagram_width > 0 else 1.0
+        zoom_y = canvas_height / diagram_height if diagram_height > 0 else 1.0
+        new_zoom = min(zoom_x, zoom_y, 2.0)  # Cap at 200% max zoom
+
+        # Apply zoom
+        self.canvas.zoom_factor = max(0.1, min(new_zoom, 2.0))  # Clamp between 10% and 200%
+
+        # Calculate center point of diagram
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+
+        # Calculate pan offset to center the diagram
+        offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
+        offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
+        self.canvas.pan_offset = QPoint(int(offset_x), int(offset_y))
+
+        # Update display
+        self.canvas.update()
+        self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+        self.status_message.setText(f"Fit {len(blocks)} block(s) to window")
     
     def show_about(self):
         """Show about dialog."""
