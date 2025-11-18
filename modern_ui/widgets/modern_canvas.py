@@ -374,9 +374,8 @@ class ModernCanvas(QWidget):
 
     def _draw_hover_effects(self, painter):
         """Draw hover effects for ports, blocks, and connections."""
+        painter.save()
         try:
-            painter.save()
-
             # Draw hovered port (highest priority)
             if self.hovered_port:
                 block, port_idx, is_output = self.hovered_port
@@ -426,10 +425,11 @@ class ModernCanvas(QWidget):
                     painter.setBrush(Qt.NoBrush)
                     painter.drawPath(line.path)
 
-            painter.restore()
-
         except Exception as e:
             logger.error(f"Error drawing hover effects: {str(e)}")
+        finally:
+            # Always restore painter state even if there's an exception
+            painter.restore()
 
     def mousePressEvent(self, event):
         """Handle mouse press events."""
@@ -2055,6 +2055,11 @@ class ModernCanvas(QWidget):
             # Clear current diagram
             self.dsim.blocks_list.clear()
             self.dsim.line_list.clear()
+
+            # Clear hover state (old objects are now invalid)
+            self.hovered_block = None
+            self.hovered_line = None
+            self.hovered_port = None
 
             # Restore blocks
             for block_data in state['blocks']:
