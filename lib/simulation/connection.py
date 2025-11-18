@@ -125,99 +125,83 @@ class DLine:
             clean_points.append(all_points[-1])
         all_points = clean_points
 
-        # Create smooth Bezier curve path
+        # Create smooth Bezier curve path with rounded corners
         path = QPainterPath(all_points[0])
         segments = []
 
-        # Curve radius for smooth transitions (adjust for smoothness)
-        curve_radius = 25
+        # Radius for smooth corner curves
+        corner_radius = 20
 
         for i in range(len(all_points) - 1):
-            p1 = all_points[i]
-            p2 = all_points[i + 1]
+            current = all_points[i]
+            next_point = all_points[i + 1]
 
-            # Calculate direction of this segment
-            dx = p2.x() - p1.x()
-            dy = p2.y() - p1.y()
+            # Calculate segment direction
+            dx = next_point.x() - current.x()
+            dy = next_point.y() - current.y()
+            segment_length = max(abs(dx), abs(dy))
 
-            # Determine if this is a horizontal or vertical segment
-            is_horizontal = abs(dx) > abs(dy)
-
-            if i == 0:
-                # First segment - start from port, add initial straight section
-                if is_horizontal:
-                    # Horizontal start
-                    start_straight = min(abs(dx) * 0.3, curve_radius)
-                    path.lineTo(p1.x() + (start_straight if dx > 0 else -start_straight), p1.y())
-                else:
-                    # Vertical start
-                    start_straight = min(abs(dy) * 0.3, curve_radius)
-                    path.lineTo(p1.x(), p1.y() + (start_straight if dy > 0 else -start_straight))
-
-            # Check if we need a curve (direction changes at next point)
+            # Determine if we should add a curve at the END of this segment
+            # (i.e., if the next segment changes direction)
+            should_curve_at_end = False
             if i < len(all_points) - 2:
-                next_p = all_points[i + 2]
-                next_dx = next_p.x() - p2.x()
-                next_dy = next_p.y() - p2.y()
+                # There's another segment after this one
+                next_next = all_points[i + 2]
+                next_dx = next_next.x() - next_point.x()
+                next_dy = next_next.y() - next_point.y()
+
+                # Check if direction changes (horizontal to vertical or vice versa)
+                this_is_horizontal = abs(dx) > abs(dy)
                 next_is_horizontal = abs(next_dx) > abs(next_dy)
+                should_curve_at_end = (this_is_horizontal != next_is_horizontal)
 
-                # If direction changes, create a smooth curve around p2
-                if is_horizontal != next_is_horizontal:
-                    # Calculate control points for smooth transition
-                    control_distance = min(curve_radius, abs(dx) * 0.5, abs(dy) * 0.5)
+            if should_curve_at_end:
+                # Calculate how much space we have for the curve
+                available_space = min(segment_length / 2, corner_radius)
 
-                    if is_horizontal:
-                        # Currently horizontal, turning vertical
-                        before_corner = QPoint(
-                            p2.x() - (control_distance if dx > 0 else -control_distance),
-                            p2.y()
-                        )
-                        after_corner = QPoint(
-                            p2.x(),
-                            p2.y() + (control_distance if next_dy > 0 else -control_distance)
-                        )
-                    else:
-                        # Currently vertical, turning horizontal
-                        before_corner = QPoint(
-                            p2.x(),
-                            p2.y() - (control_distance if dy > 0 else -control_distance)
-                        )
-                        after_corner = QPoint(
-                            p2.x() + (control_distance if next_dx > 0 else -control_distance),
-                            p2.y()
-                        )
-
-                    # Draw to point before corner
-                    path.lineTo(before_corner)
-
-                    # Create cubic Bezier curve around the corner
-                    # Control points pull the curve towards p2
-                    control1 = QPoint(p2.x(), before_corner.y()) if is_horizontal else QPoint(before_corner.x(), p2.y())
-                    control2 = QPoint(after_corner.x(), p2.y()) if is_horizontal else QPoint(p2.x(), after_corner.y())
-
-                    path.cubicTo(control1, control2, after_corner)
-
-                    segments.append(QRect(p1, p2).normalized())
+                # Draw straight line to point before corner
+                if abs(dx) > abs(dy):
+                    # Horizontal segment
+                    pre_corner = QPoint(
+                        next_point.x() - int(available_space * (1 if dx > 0 else -1)),
+                        next_point.y()
+                    )
                 else:
-                    # Same direction, just continue
-                    path.lineTo(p2)
-                    segments.append(QRect(p1, p2).normalized())
+                    # Vertical segment
+                    pre_corner = QPoint(
+                        next_point.x(),
+                        next_point.y() - int(available_space * (1 if dy > 0 else -1))
+                    )
+
+                path.lineTo(pre_corner)
+
+                # Now create curved transition to next segment
+                # Peek at next segment to determine curve direction
+                next_segment_dx = next_dx
+                next_segment_dy = next_dy
+                next_available = min(max(abs(next_segment_dx), abs(next_segment_dy)) / 2, corner_radius)
+
+                if abs(next_segment_dx) > abs(next_segment_dy):
+                    # Next segment is horizontal
+                    post_corner = QPoint(
+                        next_point.x() + int(next_available * (1 if next_segment_dx > 0 else -1)),
+                        next_point.y()
+                    )
+                else:
+                    # Next segment is vertical
+                    post_corner = QPoint(
+                        next_point.x(),
+                        next_point.y() + int(next_available * (1 if next_segment_dy > 0 else -1))
+                    )
+
+                # Create smooth quadratic curve through the corner
+                path.quadTo(next_point, post_corner)
             else:
-                # Last segment - smooth arrival at destination port
-                if is_horizontal:
-                    # Horizontal end
-                    end_straight = min(abs(dx) * 0.3, curve_radius)
-                    end_point = QPoint(p2.x() - (end_straight if dx > 0 else -end_straight), p2.y())
-                    path.lineTo(end_point)
-                    path.lineTo(p2)
-                else:
-                    # Vertical end
-                    end_straight = min(abs(dy) * 0.3, curve_radius)
-                    end_point = QPoint(p2.x(), p2.y() - (end_straight if dy > 0 else -end_straight))
-                    path.lineTo(end_point)
-                    path.lineTo(p2)
+                # No curve needed, just draw straight line
+                path.lineTo(next_point)
 
-                segments.append(QRect(p1, p2).normalized())
+            # Add segment for collision detection
+            segments.append(QRect(current, next_point).normalized())
 
         return path, all_points, segments
 
