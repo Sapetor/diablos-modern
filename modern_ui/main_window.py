@@ -548,8 +548,18 @@ class ModernDiaBloSWindow(QMainWindow):
         """)
     
     # Menu action handlers (simplified for Phase 1)
-    def undo_action(self): pass
-    def redo_action(self): pass
+    def undo_action(self):
+        """Undo last action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.undo()
+            self.status_message.setText("Undo")
+
+    def redo_action(self):
+        """Redo last undone action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.redo()
+            self.status_message.setText("Redo")
+
     def select_all(self): pass
     def zoom_in(self):
         if hasattr(self, 'canvas'):
