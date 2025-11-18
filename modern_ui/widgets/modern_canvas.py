@@ -401,23 +401,21 @@ class ModernCanvas(QWidget):
             logger.error(f"Error in _handle_left_click: {str(e)}")
     
     def _handle_right_click(self, pos):
-        """Handle right mouse button clicks."""
+        """Handle right mouse button clicks - show context menus."""
         try:
+            # Check what was clicked and show appropriate context menu
             clicked_block = self._get_clicked_block(pos)
-            if clicked_block:
-                if clicked_block.block_fn == "BodeMag":
-                    self.show_bode_plot_menu(clicked_block, self.mapToGlobal(pos))
-                elif clicked_block.block_fn == "RootLocus":
-                    self.show_root_locus_menu(clicked_block, self.mapToGlobal(pos))
-                else:
-                    # For other blocks, you might want a different context menu
-                    # or the parameter dialog from older versions.
-                    pass
-                return
+            clicked_line = self._get_clicked_line(pos)
 
-            # Cancel any ongoing line creation
-            if self.line_creation_state:
-                self._cancel_line_creation()
+            if clicked_block:
+                # Show block context menu
+                self._show_block_context_menu(clicked_block, pos)
+            elif clicked_line:
+                # Show connection context menu
+                self._show_connection_context_menu(clicked_line, pos)
+            else:
+                # Show canvas context menu
+                self._show_canvas_context_menu(pos)
 
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
@@ -1278,6 +1276,299 @@ class ModernCanvas(QWidget):
 
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
+
+    def _show_block_context_menu(self, block, pos):
+        """Show context menu for a block."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """)
+
+        # Ensure block is selected
+        if not block.selected:
+            self._clear_selections()
+            block.selected = True
+            self.update()
+
+        # Block actions
+        delete_action = menu.addAction("Delete")
+        delete_action.setShortcut("Del")
+        delete_action.triggered.connect(self.remove_selected_items)
+
+        duplicate_action = menu.addAction("Duplicate")
+        duplicate_action.setShortcut("Ctrl+D")
+        duplicate_action.triggered.connect(lambda: self._duplicate_block(block))
+
+        menu.addSeparator()
+
+        copy_action = menu.addAction("Copy")
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self._copy_selected_blocks)
+
+        cut_action = menu.addAction("Cut")
+        cut_action.setShortcut("Ctrl+X")
+        cut_action.triggered.connect(self._cut_selected_blocks)
+
+        menu.addSeparator()
+
+        properties_action = menu.addAction("Properties...")
+        properties_action.triggered.connect(lambda: self._show_block_properties(block))
+
+        # Show menu at cursor position (convert world to screen coordinates)
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    def _show_connection_context_menu(self, line, pos):
+        """Show context menu for a connection line."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+        """)
+
+        # Ensure line is selected
+        if not line.selected:
+            self._clear_line_selections()
+            line.selected = True
+            self.update()
+
+        delete_action = menu.addAction("Delete Connection")
+        delete_action.setShortcut("Del")
+        delete_action.triggered.connect(lambda: self._delete_line(line))
+
+        highlight_action = menu.addAction("Highlight Path")
+        highlight_action.triggered.connect(lambda: self._highlight_connection_path(line))
+
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    def _show_canvas_context_menu(self, pos):
+        """Show context menu for empty canvas area."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """)
+
+        # Paste (only enabled if clipboard has blocks)
+        paste_action = menu.addAction("Paste")
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.setEnabled(len(self.clipboard_blocks) > 0)
+        paste_action.triggered.connect(lambda: self._paste_blocks(pos))
+
+        menu.addSeparator()
+
+        select_all_action = menu.addAction("Select All")
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self._select_all_blocks)
+
+        clear_selection_action = menu.addAction("Clear Selection")
+        clear_selection_action.setShortcut("Esc")
+        clear_selection_action.triggered.connect(self._clear_selections)
+
+        menu.addSeparator()
+
+        # Zoom submenu
+        zoom_menu = menu.addMenu("Zoom")
+        zoom_in_action = zoom_menu.addAction("Zoom In")
+        zoom_in_action.setShortcut("Ctrl++")
+        zoom_in_action.triggered.connect(self.zoom_in)
+
+        zoom_out_action = zoom_menu.addAction("Zoom Out")
+        zoom_out_action.setShortcut("Ctrl+-")
+        zoom_out_action.triggered.connect(self.zoom_out)
+
+        zoom_fit_action = zoom_menu.addAction("Fit All")
+        zoom_fit_action.setShortcut("Ctrl+0")
+        zoom_fit_action.triggered.connect(self.zoom_to_fit)
+
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    # Helper methods for context menu actions
+    def _duplicate_block(self, block):
+        """Duplicate a block."""
+        try:
+            offset = 30  # Offset for duplicated block
+            new_coords = QRect(
+                block.coords.x() + offset,
+                block.coords.y() + offset,
+                block.coords.width(),
+                block.coords.height()
+            )
+
+            new_block = self.dsim.add_new_block(
+                block.block_fn,
+                new_coords,
+                block.b_color,
+                block.in_ports,
+                block.out_ports,
+                block.b_type,
+                block.io_edit,
+                block.fn_name,
+                block.params.copy() if hasattr(block, 'params') else {},
+                block.external
+            )
+
+            if new_block:
+                logger.info(f"Duplicated block: {block.fn_name} -> {new_block.name}")
+                self._clear_selections()
+                new_block.selected = True
+                self.update()
+
+        except Exception as e:
+            logger.error(f"Error duplicating block: {str(e)}")
+
+    def _copy_selected_blocks(self):
+        """Copy selected blocks to clipboard."""
+        try:
+            self.clipboard_blocks = []
+            for block in self.dsim.blocks_list:
+                if block.selected:
+                    self.clipboard_blocks.append({
+                        'block_fn': block.block_fn,
+                        'color': block.b_color,
+                        'in_ports': block.in_ports,
+                        'out_ports': block.out_ports,
+                        'b_type': block.b_type,
+                        'io_edit': block.io_edit,
+                        'fn_name': block.fn_name,
+                        'params': block.params.copy() if hasattr(block, 'params') else {},
+                        'external': block.external,
+                        'coords': block.coords
+                    })
+            logger.info(f"Copied {len(self.clipboard_blocks)} blocks to clipboard")
+        except Exception as e:
+            logger.error(f"Error copying blocks: {str(e)}")
+
+    def _cut_selected_blocks(self):
+        """Cut selected blocks to clipboard."""
+        self._copy_selected_blocks()
+        self.remove_selected_items()
+
+    def _paste_blocks(self, pos):
+        """Paste blocks from clipboard at specified position."""
+        try:
+            if not self.clipboard_blocks:
+                return
+
+            # Calculate offset from first block's position to paste position
+            if self.clipboard_blocks:
+                first_block_coords = self.clipboard_blocks[0]['coords']
+                offset_x = pos.x() - first_block_coords.x()
+                offset_y = pos.y() - first_block_coords.y()
+
+                self._clear_selections()
+                for block_data in self.clipboard_blocks:
+                    new_coords = QRect(
+                        block_data['coords'].x() + offset_x,
+                        block_data['coords'].y() + offset_y,
+                        block_data['coords'].width(),
+                        block_data['coords'].height()
+                    )
+
+                    new_block = self.dsim.add_new_block(
+                        block_data['block_fn'],
+                        new_coords,
+                        block_data['color'],
+                        block_data['in_ports'],
+                        block_data['out_ports'],
+                        block_data['b_type'],
+                        block_data['io_edit'],
+                        block_data['fn_name'],
+                        block_data['params'],
+                        block_data['external']
+                    )
+
+                    if new_block:
+                        new_block.selected = True
+
+                logger.info(f"Pasted {len(self.clipboard_blocks)} blocks")
+                self.update()
+
+        except Exception as e:
+            logger.error(f"Error pasting blocks: {str(e)}")
+
+    def _select_all_blocks(self):
+        """Select all blocks on canvas."""
+        for block in self.dsim.blocks_list:
+            block.selected = True
+        self.update()
+
+    def _show_block_properties(self, block):
+        """Show properties dialog for a block."""
+        # Emit signal to show properties in property panel
+        self.block_selected.emit(block)
+
+    def _delete_line(self, line):
+        """Delete a specific connection line."""
+        try:
+            if line in self.dsim.line_list:
+                self.dsim.line_list.remove(line)
+                logger.info(f"Deleted connection: {line.name}")
+                self.update()
+        except Exception as e:
+            logger.error(f"Error deleting line: {str(e)}")
+
+    def _clear_line_selections(self):
+        """Clear all line selections."""
+        for line in self.dsim.line_list:
+            line.selected = False
+
+    def _highlight_connection_path(self, line):
+        """Temporarily highlight a connection path."""
+        # This could be enhanced with animation
+        line.selected = True
+        self.update()
 
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
