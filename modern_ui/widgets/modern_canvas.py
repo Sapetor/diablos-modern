@@ -80,6 +80,20 @@ class ModernCanvas(QWidget):
         self.selection_rect_end = None
         self.is_rect_selecting = False
 
+        # Hover tracking for visual feedback
+        self.hovered_block = None
+        self.hovered_port = None  # Tuple: (block, port_index, is_output)
+        self.hovered_line = None
+
+        # Grid snapping
+        self.grid_size = 20  # Snap to 20px grid
+        self.snap_enabled = True
+
+        # Undo/Redo system
+        self.undo_stack = []
+        self.redo_stack = []
+        self.max_undo_steps = 50
+
         # Setup canvas
         self._setup_canvas()
         
@@ -294,6 +308,9 @@ class ModernCanvas(QWidget):
                 # Restore painter state
                 painter.restore()
 
+            # Draw hover effects
+            self._draw_hover_effects(painter)
+
             painter.end()
             
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -337,6 +354,65 @@ class ModernCanvas(QWidget):
 
         except Exception as e:
             logger.error(f"Error drawing grid: {str(e)}")
+
+    def _draw_hover_effects(self, painter):
+        """Draw hover effects for ports, blocks, and connections."""
+        try:
+            painter.save()
+
+            # Draw hovered port (highest priority)
+            if self.hovered_port:
+                block, port_idx, is_output = self.hovered_port
+                port_list = block.out_coords if is_output else block.in_coords
+                if port_idx < len(port_list):
+                    port_pos = port_list[port_idx]
+
+                    # Draw pulsing glow around hovered port
+                    glow_color = theme_manager.get_color('accent_primary')
+                    glow_color.setAlpha(100)
+                    painter.setBrush(glow_color)
+                    painter.setPen(Qt.NoPen)
+                    painter.drawEllipse(port_pos, 12, 12)
+
+                    # Draw brighter center
+                    center_color = theme_manager.get_color('accent_primary')
+                    center_color.setAlpha(180)
+                    painter.setBrush(center_color)
+                    painter.drawEllipse(port_pos, 8, 8)
+
+            # Draw hovered block outline
+            elif self.hovered_block and not self.hovered_block.selected:
+                block = self.hovered_block
+                hover_color = theme_manager.get_color('accent_secondary')
+                hover_color.setAlpha(120)
+
+                # Draw glowing outline
+                painter.setPen(QPen(hover_color, 2.5, Qt.SolidLine))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRoundedRect(
+                    block.left - 2,
+                    block.top - 2,
+                    block.width + 4,
+                    block.height + 4,
+                    8, 8
+                )
+
+            # Draw hovered connection highlight
+            elif self.hovered_line and not self.hovered_line.selected:
+                line = self.hovered_line
+                if line.path and not line.path.isEmpty():
+                    hover_color = theme_manager.get_color('accent_secondary')
+                    hover_color.setAlpha(150)
+
+                    # Draw thicker line underneath
+                    painter.setPen(QPen(hover_color, 3.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                    painter.setBrush(Qt.NoBrush)
+                    painter.drawPath(line.path)
+
+            painter.restore()
+
+        except Exception as e:
+            logger.error(f"Error drawing hover effects: {str(e)}")
 
     def mousePressEvent(self, event):
         """Handle mouse press events."""
@@ -834,6 +910,9 @@ class ModernCanvas(QWidget):
                         self._cancel_line_creation()
                         return
 
+                    # Push undo state before creating connection
+                    self._push_undo("Connect")
+
                     # Create line using DSim's add_line method
                     new_line = self.dsim.add_line(
                         (start_block_name, self.line_start_port, start_coords),
@@ -994,7 +1073,7 @@ class ModernCanvas(QWidget):
             logger.error(f"Error starting drag: {str(e)}")
 
     def mouseMoveEvent(self, event):
-        """Handle mouse move events."""
+        """Handle mouse move events with hover detection."""
         try:
             if self.panning:
                 delta = event.pos() - self.last_pan_pos
@@ -1005,6 +1084,10 @@ class ModernCanvas(QWidget):
 
             pos = self.screen_to_world(event.pos())
 
+            # Update hover states (only when not dragging/selecting)
+            if self.state == State.IDLE and not self.is_rect_selecting:
+                self._update_hover_states(pos)
+
             # Update rectangle selection
             if self.is_rect_selecting:
                 self.selection_rect_end = pos
@@ -1012,16 +1095,18 @@ class ModernCanvas(QWidget):
                 return
 
             if self.state == State.DRAGGING and self.dragging_block:
-                # Update all selected block positions
-                grid_size = 10
-
+                # Update all selected block positions with grid snapping
                 # Calculate new position for the clicked block
                 new_x = pos.x() - self.drag_offset.x()
                 new_y = pos.y() - self.drag_offset.y()
 
-                # Snap clicked block to grid
-                snapped_x = round(new_x / grid_size) * grid_size
-                snapped_y = round(new_y / grid_size) * grid_size
+                # Snap to grid if enabled
+                if self.snap_enabled:
+                    snapped_x = round(new_x / self.grid_size) * self.grid_size
+                    snapped_y = round(new_y / self.grid_size) * self.grid_size
+                else:
+                    snapped_x = new_x
+                    snapped_y = new_y
 
                 # Move clicked block to snapped position
                 self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
@@ -1108,6 +1193,10 @@ class ModernCanvas(QWidget):
         try:
             if self.dragging_block:
                 logger.debug(f"Finished dragging block: {getattr(self.dragging_block, 'fn_name', 'Unknown')}")
+
+                # Push undo state after moving blocks
+                self._push_undo("Move")
+
                 # Reset drag state
                 self.state = State.IDLE
                 self.dragging_block = None
@@ -1135,6 +1224,7 @@ class ModernCanvas(QWidget):
         try:
             # Check for Control/Command modifier (works on both Mac and Windows/Linux)
             ctrl_pressed = event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier)
+            shift_pressed = event.modifiers() & Qt.ShiftModifier
 
             if event.key() == Qt.Key_Escape:
                 # Cancel any ongoing operations
@@ -1144,6 +1234,15 @@ class ModernCanvas(QWidget):
                     self._finish_drag()
             elif event.key() == Qt.Key_Delete:
                 self.remove_selected_items()
+            elif event.key() == Qt.Key_Z and ctrl_pressed and shift_pressed:
+                # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
+                self.redo()
+            elif event.key() == Qt.Key_Z and ctrl_pressed:
+                # Ctrl+Z: Undo
+                self.undo()
+            elif event.key() == Qt.Key_Y and ctrl_pressed:
+                # Ctrl+Y: Redo
+                self.redo()
             elif event.key() == Qt.Key_F and ctrl_pressed:
                 self.flip_selected_blocks()
             elif event.key() == Qt.Key_C and ctrl_pressed:
@@ -1206,6 +1305,9 @@ class ModernCanvas(QWidget):
             if not self.clipboard_blocks:
                 logger.info("Clipboard is empty")
                 return
+
+            # Push undo state before pasting
+            self._push_undo("Paste")
 
             # Deselect all current blocks
             for block in self.dsim.blocks_list:
@@ -1438,6 +1540,9 @@ class ModernCanvas(QWidget):
     def _duplicate_block(self, block):
         """Duplicate a block."""
         try:
+            # Push undo state before duplication
+            self._push_undo("Duplicate")
+
             offset = 30  # Offset for duplicated block
             new_coords = QRect(
                 block.coords.x() + offset,
@@ -1501,6 +1606,9 @@ class ModernCanvas(QWidget):
             if not self.clipboard_blocks:
                 return
 
+            # Push undo state before pasting
+            self._push_undo("Paste")
+
             # Calculate offset from first block's position to paste position
             if self.clipboard_blocks:
                 first_block_coords = self.clipboard_blocks[0]['coords']
@@ -1553,6 +1661,9 @@ class ModernCanvas(QWidget):
         """Delete a specific connection line."""
         try:
             if line in self.dsim.line_list:
+                # Push undo state before deleting line
+                self._push_undo("Delete Connection")
+
                 self.dsim.line_list.remove(line)
                 logger.info(f"Deleted connection: {line.name}")
                 self.update()
@@ -1570,11 +1681,239 @@ class ModernCanvas(QWidget):
         line.selected = True
         self.update()
 
+    def _update_hover_states(self, pos):
+        """Update hover states for blocks, ports, and connections."""
+        needs_repaint = False
+
+        # Check for hovered port first (highest priority)
+        new_hovered_port = None
+        for block in self.dsim.blocks_list:
+            # Check output ports
+            for i, port_pos in enumerate(block.out_coords):
+                if self._point_near_port(pos, port_pos):
+                    new_hovered_port = (block, i, True)  # True = output port
+                    break
+            # Check input ports
+            if not new_hovered_port:
+                for i, port_pos in enumerate(block.in_coords):
+                    if self._point_near_port(pos, port_pos):
+                        new_hovered_port = (block, i, False)  # False = input port
+                        break
+            if new_hovered_port:
+                break
+
+        if new_hovered_port != self.hovered_port:
+            self.hovered_port = new_hovered_port
+            needs_repaint = True
+
+        # Check for hovered block (if no port is hovered)
+        if not new_hovered_port:
+            new_hovered_block = self._get_clicked_block(pos)
+            if new_hovered_block != self.hovered_block:
+                self.hovered_block = new_hovered_block
+                needs_repaint = True
+        else:
+            if self.hovered_block is not None:
+                self.hovered_block = None
+                needs_repaint = True
+
+        # Check for hovered line (if no block/port is hovered)
+        if not new_hovered_port and not self.hovered_block:
+            new_hovered_line = self._get_clicked_line(pos)
+            if new_hovered_line != self.hovered_line:
+                self.hovered_line = new_hovered_line
+                needs_repaint = True
+        else:
+            if self.hovered_line is not None:
+                self.hovered_line = None
+                needs_repaint = True
+
+        if needs_repaint:
+            self.update()
+
+    def _point_near_port(self, point, port_pos, threshold=12):
+        """Check if a point is near a port position."""
+        dx = point.x() - port_pos.x()
+        dy = point.y() - port_pos.y()
+        return (dx * dx + dy * dy) < (threshold * threshold)
+
+    # Undo/Redo System
+    def _capture_state(self):
+        """Capture current diagram state for undo/redo."""
+        try:
+            state = {
+                'blocks': [],
+                'lines': []
+            }
+
+            # Capture all blocks
+            for block in self.dsim.blocks_list:
+                block_data = {
+                    'name': block.name,
+                    'block_fn': block.block_fn,
+                    'coords': (block.coords.x(), block.coords.y(), block.coords.width(), block.coords.height()),
+                    'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
+                    'in_ports': block.in_ports,
+                    'out_ports': block.out_ports,
+                    'b_type': block.b_type,
+                    'io_edit': block.io_edit,
+                    'fn_name': block.fn_name,
+                    'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
+                    'external': block.external,
+                    'selected': block.selected
+                }
+                state['blocks'].append(block_data)
+
+            # Capture all connections
+            for line in self.dsim.line_list:
+                line_data = {
+                    'name': line.name,
+                    'srcblock': line.srcblock,
+                    'srcport': line.srcport,
+                    'dstblock': line.dstblock,
+                    'dstport': line.dstport,
+                    'selected': line.selected
+                }
+                state['lines'].append(line_data)
+
+            return state
+
+        except Exception as e:
+            logger.error(f"Error capturing state: {str(e)}")
+            return None
+
+    def _restore_state(self, state):
+        """Restore diagram state from snapshot."""
+        try:
+            if not state:
+                return False
+
+            # Clear current diagram
+            self.dsim.blocks_list.clear()
+            self.dsim.line_list.clear()
+
+            # Restore blocks
+            for block_data in state['blocks']:
+                coords = QRect(*block_data['coords'])
+                block = self.dsim.add_new_block(
+                    block_data['block_fn'],
+                    coords,
+                    QColor(block_data['color']),
+                    block_data['in_ports'],
+                    block_data['out_ports'],
+                    block_data['b_type'],
+                    block_data['io_edit'],
+                    block_data['fn_name'],
+                    block_data['params'],
+                    block_data['external']
+                )
+                if block:
+                    block.selected = block_data.get('selected', False)
+                    # Restore original name
+                    block.name = block_data['name']
+
+            # Restore connections
+            for line_data in state['lines']:
+                # Find blocks by name
+                src_block = None
+                dst_block = None
+                for block in self.dsim.blocks_list:
+                    if block.name == line_data['srcblock']:
+                        src_block = block
+                    if block.name == line_data['dstblock']:
+                        dst_block = block
+
+                if src_block and dst_block:
+                    src_port_pos = src_block.out_coords[line_data['srcport']]
+                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
+
+                    line = self.dsim.add_line(
+                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
+                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
+                    )
+                    if line:
+                        line.selected = line_data.get('selected', False)
+                        line.name = line_data['name']
+
+            self.update()
+            return True
+
+        except Exception as e:
+            logger.error(f"Error restoring state: {str(e)}")
+            return False
+
+    def _push_undo(self, description="Action"):
+        """Push current state to undo stack."""
+        try:
+            state = self._capture_state()
+            if state:
+                self.undo_stack.append({'state': state, 'description': description})
+
+                # Limit stack size
+                if len(self.undo_stack) > self.max_undo_steps:
+                    self.undo_stack.pop(0)
+
+                # Clear redo stack when new action is performed
+                self.redo_stack.clear()
+
+                logger.debug(f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})")
+
+        except Exception as e:
+            logger.error(f"Error pushing undo: {str(e)}")
+
+    def undo(self):
+        """Undo the last action."""
+        try:
+            if not self.undo_stack:
+                logger.info("Nothing to undo")
+                return
+
+            # Capture current state for redo
+            current_state = self._capture_state()
+            if current_state:
+                self.redo_stack.append({'state': current_state, 'description': 'Redo'})
+
+            # Pop and restore previous state
+            undo_item = self.undo_stack.pop()
+            if self._restore_state(undo_item['state']):
+                logger.info(f"Undone: {undo_item['description']}")
+            else:
+                logger.error("Failed to undo")
+
+        except Exception as e:
+            logger.error(f"Error in undo: {str(e)}")
+
+    def redo(self):
+        """Redo the last undone action."""
+        try:
+            if not self.redo_stack:
+                logger.info("Nothing to redo")
+                return
+
+            # Capture current state for undo
+            current_state = self._capture_state()
+            if current_state:
+                self.undo_stack.append({'state': current_state, 'description': 'Undo'})
+
+            # Pop and restore redo state
+            redo_item = self.redo_stack.pop()
+            if self._restore_state(redo_item['state']):
+                logger.info(f"Redone: {redo_item['description']}")
+            else:
+                logger.error("Failed to redo")
+
+        except Exception as e:
+            logger.error(f"Error in redo: {str(e)}")
+
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
         try:
             blocks_to_remove = [block for block in self.dsim.blocks_list if block.selected]
             lines_to_remove = [line for line in self.dsim.line_list if line.selected]
+
+            # Push undo state before deletion
+            if blocks_to_remove or lines_to_remove:
+                self._push_undo("Delete")
 
             for block in blocks_to_remove:
                 self.dsim.remove_block_and_lines(block)
