@@ -864,6 +864,23 @@ class DBlock:
                         self.params[key] = value
                         self.initial_params[key] = value
 
+                # Check if block supports dynamic port configuration
+                if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
+                    try:
+                        # Get new input configuration based on updated params
+                        new_inputs_config = self.block_instance.get_inputs(self.params)
+                        new_input_count = len(new_inputs_config)
+
+                        # Update port count if it changed
+                        if new_input_count != self.in_ports:
+                            logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+                            self.in_ports = new_input_count
+                            self.params['_inputs_'] = new_input_count
+                            # Update block geometry and port positions
+                            self.update_Block()
+                    except Exception as e:
+                        logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
+
         if self.external:
             self.load_external_data(params_reset=False)
 
@@ -892,6 +909,23 @@ class DBlock:
             for key, value in new_params.items():
                 if key in self.params:
                     self.params[key] = value
+
+        # Check if block supports dynamic port configuration
+        if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
+            try:
+                # Get new input configuration based on updated params
+                new_inputs = self.block_instance.get_inputs(self.params)
+                new_input_count = len(new_inputs)
+
+                # Update port count if it changed
+                if new_input_count != self.in_ports:
+                    logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+                    self.in_ports = new_input_count
+                    self.params['_inputs_'] = new_input_count
+                    # Update block geometry and port positions
+                    self.update_Block()
+            except Exception as e:
+                logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
 
         if self.block_fn == 'TranFn':
             num = self.params.get('numerator', [])
