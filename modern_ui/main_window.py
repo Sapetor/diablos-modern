@@ -653,7 +653,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def _on_error_clicked(self, error):
         """Handle error item click - navigate to error location."""
         try:
-            from PyQt5.QtCore import QRectF, QPointF
+            from PyQt5.QtCore import QPoint
 
             # Get affected blocks from the error
             affected_blocks = error.blocks if hasattr(error, 'blocks') else []
@@ -662,21 +662,28 @@ class ModernDiaBloSWindow(QMainWindow):
                 logger.warning("No blocks associated with this error")
                 return
 
+            # First, deselect all blocks
+            for block in self.canvas.dsim.blocks_list:
+                block.selected = False
+
             # Calculate bounding box of all affected blocks
             min_x = min_y = float('inf')
             max_x = max_y = float('-inf')
 
             for block in affected_blocks:
-                # Get block position
-                x = block.x
-                y = block.y
-                w = block.w
-                h = block.h
+                # Get block position using correct attribute names
+                x = block.left
+                y = block.top
+                w = block.width
+                h = block.height
 
                 min_x = min(min_x, x)
                 min_y = min(min_y, y)
                 max_x = max(max_x, x + w)
                 max_y = max(max_y, y + h)
+
+                # Select the affected blocks for visibility
+                block.selected = True
 
             # Add padding
             padding = 50
@@ -693,12 +700,10 @@ class ModernDiaBloSWindow(QMainWindow):
             canvas_width = self.canvas.width()
             canvas_height = self.canvas.height()
 
-            # Calculate new offset to center the error
-            self.canvas.offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
-            self.canvas.offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
-
-            # Select the affected blocks for visibility
-            self.canvas.selected_blocks = set(affected_blocks)
+            # Calculate new pan offset to center the error (using QPoint)
+            new_offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
+            new_offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
+            self.canvas.pan_offset = QPoint(int(new_offset_x), int(new_offset_y))
 
             # Update canvas to show the changes
             self.canvas.update()

@@ -3,7 +3,7 @@ Validates block diagrams for integrity errors before simulation.
 """
 
 import logging
-from typing import List, Dict, Tuple, Set
+from typing import List, Set
 from enum import Enum
 
 logger = logging.getLogger(__name__)
