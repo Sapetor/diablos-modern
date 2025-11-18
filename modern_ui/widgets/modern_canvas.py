@@ -506,7 +506,7 @@ class ModernCanvas(QWidget):
         try:
             # Check what was clicked and show appropriate context menu
             clicked_block = self._get_clicked_block(pos)
-            clicked_line = self._get_clicked_line(pos)
+            clicked_line, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
 
             if clicked_block:
                 # Show block context menu
@@ -1867,9 +1867,9 @@ class ModernCanvas(QWidget):
 
         # Check for hovered line (if no block/port is hovered)
         if not new_hovered_port and not self.hovered_block:
-            new_hovered_line = self._get_clicked_line(pos)
-            if new_hovered_line != self.hovered_line:
-                self.hovered_line = new_hovered_line
+            line_result, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
+            if line_result != self.hovered_line:
+                self.hovered_line = line_result
                 needs_repaint = True
         else:
             if self.hovered_line is not None:
