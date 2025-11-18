@@ -131,6 +131,23 @@ class DBlock:
 
         if block_class:
             self.block_instance = block_class()
+
+            # Check if block supports dynamic port configuration and update accordingly
+            if hasattr(self.block_instance, 'get_inputs'):
+                try:
+                    # Get initial input configuration based on default params
+                    initial_inputs = self.block_instance.get_inputs(self.params)
+                    initial_input_count = len(initial_inputs)
+
+                    # Update port count if different from default
+                    if initial_input_count != self.in_ports:
+                        logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
+                        self.in_ports = initial_input_count
+                        self.params['_inputs_'] = initial_input_count
+                        # Update block geometry and port positions
+                        self.update_Block()
+                except Exception as e:
+                    logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
         else:
             self.block_instance = None
 
