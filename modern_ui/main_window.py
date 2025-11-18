@@ -75,6 +75,15 @@ class ModernDiaBloSWindow(QMainWindow):
         self.update_timer.timeout.connect(self.safe_update)
         self.update_timer.start(int(1000 / self.dsim.FPS))
 
+        # Setup auto-save timer (every 2 minutes)
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.timeout.connect(self._auto_save)
+        self.autosave_timer.start(2 * 60 * 1000)  # 2 minutes in milliseconds
+        self.autosave_path = 'config/.autosave.diablos'
+
+        # Check for auto-save file on startup
+        QTimer.singleShot(500, self._check_autosave_recovery)
+
         # Schedule initial splitter sizing after window is shown
         # This ensures we use actual window dimensions, not screen dimensions
         QTimer.singleShot(0, self._initialize_splitter_sizes)
@@ -749,6 +758,7 @@ class ModernDiaBloSWindow(QMainWindow):
         """Handle application shutdown."""
         logger.info("Modern DiaBloS closing...")
         self.stop_simulation()
+        self._cleanup_autosave()  # Clean up auto-save file on normal exit
         self.perf_helper.log_stats()
         event.accept()
         logger.info("Modern DiaBloS closed successfully")
@@ -1095,3 +1105,167 @@ class ModernDiaBloSWindow(QMainWindow):
         self._save_recent_files([])
         self._update_recent_files_menu()
         self.status_message.setText("Recent files cleared")
+
+    # Auto-Save and Recovery
+    def _auto_save(self):
+        """Auto-save the current diagram to a temporary file."""
+        try:
+            # Only auto-save if there are blocks or connections
+            if not self.canvas.dsim.blocks_list and not self.canvas.dsim.line_list:
+                return
+
+            # Create config directory if it doesn't exist
+            os.makedirs('config', exist_ok=True)
+
+            # Save current state to autosave file
+            import pickle
+            with open(self.autosave_path, 'wb') as f:
+                state = {
+                    'blocks': [],
+                    'lines': []
+                }
+
+                # Capture blocks
+                for block in self.canvas.dsim.blocks_list:
+                    block_data = {
+                        'name': block.name,
+                        'block_fn': block.block_fn,
+                        'coords': (block.left, block.top, block.width, block.height),
+                        'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
+                        'in_ports': block.in_ports,
+                        'out_ports': block.out_ports,
+                        'b_type': block.b_type,
+                        'io_edit': block.io_edit,
+                        'fn_name': block.fn_name,
+                        'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
+                        'external': block.external
+                    }
+                    state['blocks'].append(block_data)
+
+                # Capture connections
+                for line in self.canvas.dsim.line_list:
+                    line_data = {
+                        'name': line.name,
+                        'srcblock': line.srcblock,
+                        'srcport': line.srcport,
+                        'dstblock': line.dstblock,
+                        'dstport': line.dstport
+                    }
+                    state['lines'].append(line_data)
+
+                pickle.dump(state, f)
+
+            logger.debug("Auto-save completed")
+
+        except Exception as e:
+            logger.error(f"Error during auto-save: {str(e)}")
+
+    def _check_autosave_recovery(self):
+        """Check if there's an auto-save file and offer recovery."""
+        try:
+            if not os.path.exists(self.autosave_path):
+                return
+
+            # Ask user if they want to recover
+            reply = QMessageBox.question(
+                self,
+                "Recover Auto-Saved Diagram?",
+                "An auto-saved diagram was found. This may be from an unexpected shutdown.\n\n"
+                "Would you like to recover it?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+
+            if reply == QMessageBox.Yes:
+                self._recover_autosave()
+            else:
+                # User declined, remove autosave file
+                os.remove(self.autosave_path)
+                logger.info("Auto-save file deleted (user declined recovery)")
+
+        except Exception as e:
+            logger.error(f"Error checking auto-save recovery: {str(e)}")
+
+    def _recover_autosave(self):
+        """Recover diagram from auto-save file."""
+        try:
+            import pickle
+            from PyQt5.QtCore import QRect
+            from PyQt5.QtGui import QColor
+
+            with open(self.autosave_path, 'rb') as f:
+                state = pickle.load(f)
+
+            # Clear current diagram
+            self.canvas.dsim.blocks_list.clear()
+            self.canvas.dsim.line_list.clear()
+
+            # Restore blocks
+            for block_data in state['blocks']:
+                coords = QRect(*block_data['coords'])
+                block = self.canvas.dsim.add_new_block(
+                    block_data['block_fn'],
+                    coords,
+                    QColor(block_data['color']),
+                    block_data['in_ports'],
+                    block_data['out_ports'],
+                    block_data['b_type'],
+                    block_data['io_edit'],
+                    block_data['fn_name'],
+                    block_data['params'],
+                    block_data['external']
+                )
+                if block:
+                    block.name = block_data['name']
+
+            # Restore connections
+            for line_data in state['lines']:
+                # Find blocks by name
+                src_block = None
+                dst_block = None
+                for block in self.canvas.dsim.blocks_list:
+                    if block.name == line_data['srcblock']:
+                        src_block = block
+                    if block.name == line_data['dstblock']:
+                        dst_block = block
+
+                if src_block and dst_block:
+                    src_port_pos = src_block.out_coords[line_data['srcport']]
+                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
+
+                    line = self.canvas.dsim.add_line(
+                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
+                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
+                    )
+                    if line:
+                        line.name = line_data['name']
+
+            # Remove autosave file after successful recovery
+            os.remove(self.autosave_path)
+
+            self.canvas.update()
+            self.status_message.setText("Diagram recovered from auto-save")
+            logger.info("Diagram successfully recovered from auto-save")
+
+            QMessageBox.information(
+                self,
+                "Recovery Successful",
+                "Your diagram has been successfully recovered from the auto-save file."
+            )
+
+        except Exception as e:
+            logger.error(f"Error recovering from auto-save: {str(e)}")
+            QMessageBox.warning(
+                self,
+                "Recovery Failed",
+                f"Failed to recover diagram from auto-save:\n{str(e)}"
+            )
+
+    def _cleanup_autosave(self):
+        """Clean up auto-save file on normal shutdown."""
+        try:
+            if os.path.exists(self.autosave_path):
+                os.remove(self.autosave_path)
+                logger.debug("Auto-save file cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up auto-save: {str(e)}")
