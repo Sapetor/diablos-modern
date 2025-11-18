@@ -26,6 +26,7 @@ from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
+from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -329,7 +330,13 @@ class ModernDiaBloSWindow(QMainWindow):
         return panel
     
     def _create_canvas_area(self) -> QWidget:
-        """Create modern canvas area with responsive sizing."""
+        """Create modern canvas area with responsive sizing and error panel."""
+        # Create container widget
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(4)
+
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
 
@@ -345,7 +352,16 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.connection_created.connect(self._on_connection_created)
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
 
-        return self.canvas
+        # Add canvas to container
+        container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
+
+        # Create error panel
+        self.error_panel = ErrorPanel()
+        self.error_panel.error_clicked.connect(self._on_error_clicked)
+        self.error_panel.setMaximumHeight(200)  # Limit height
+        container_layout.addWidget(self.error_panel, 0)  # Error panel doesn't stretch
+
+        return container
     
     def _create_property_panel(self) -> QWidget:
         """Create modern property panel on right side with size constraints."""
@@ -624,7 +640,7 @@ class ModernDiaBloSWindow(QMainWindow):
                             converted_value = float(new_value)
                         else:
                             converted_value = str(new_value)
-                            
+
                         block.update_params({prop_name: converted_value})
                         self.canvas.dsim.dirty = True
                         logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
@@ -633,6 +649,65 @@ class ModernDiaBloSWindow(QMainWindow):
                     break
         except Exception as e:
             logger.error(f"Error updating property: {e}")
+
+    def _on_error_clicked(self, error):
+        """Handle error item click - navigate to error location."""
+        try:
+            from PyQt5.QtCore import QRectF, QPointF
+
+            # Get affected blocks from the error
+            affected_blocks = error.blocks if hasattr(error, 'blocks') else []
+
+            if not affected_blocks:
+                logger.warning("No blocks associated with this error")
+                return
+
+            # Calculate bounding box of all affected blocks
+            min_x = min_y = float('inf')
+            max_x = max_y = float('-inf')
+
+            for block in affected_blocks:
+                # Get block position
+                x = block.x
+                y = block.y
+                w = block.w
+                h = block.h
+
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x + w)
+                max_y = max(max_y, y + h)
+
+            # Add padding
+            padding = 50
+            min_x -= padding
+            min_y -= padding
+            max_x += padding
+            max_y += padding
+
+            # Calculate center point
+            center_x = (min_x + max_x) / 2
+            center_y = (min_y + max_y) / 2
+
+            # Pan canvas to center on the error location
+            canvas_width = self.canvas.width()
+            canvas_height = self.canvas.height()
+
+            # Calculate new offset to center the error
+            self.canvas.offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
+            self.canvas.offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
+
+            # Select the affected blocks for visibility
+            self.canvas.selected_blocks = set(affected_blocks)
+
+            # Update canvas to show the changes
+            self.canvas.update()
+
+            logger.info(f"Navigated to error location at ({center_x}, {center_y})")
+            self.status_message.setText(f"Showing error: {error.message}")
+
+        except Exception as e:
+            logger.error(f"Error navigating to error location: {str(e)}")
     
     def _on_block_drag_started(self, menu_block):
         """Handle block drag started from palette."""
@@ -694,10 +769,54 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def start_simulation(self):
         """Start simulation with validation."""
-        if hasattr(self, 'canvas'):
-            self.canvas.start_simulation()
-        else:
+        if not hasattr(self, 'canvas'):
             self.status_message.setText("Canvas not available")
+            return
+
+        # Run diagram validation first
+        from lib.diagram_validator import ErrorSeverity
+
+        logger.info("Running pre-simulation validation...")
+        errors = self.canvas.run_validation()
+
+        # Check for critical errors that block simulation
+        has_errors = any(e.severity == ErrorSeverity.ERROR for e in errors)
+
+        if errors:
+            # Show error panel with results
+            self.error_panel.set_errors(errors)
+
+            if has_errors:
+                # Critical errors found - don't start simulation
+                error_count = sum(1 for e in errors if e.severity == ErrorSeverity.ERROR)
+                self.status_message.setText(f"Cannot start simulation: {error_count} error(s) found")
+                logger.warning(f"Simulation blocked by {error_count} validation error(s)")
+
+                # Show a message box for critical errors
+                QMessageBox.warning(
+                    self,
+                    "Validation Errors",
+                    f"Cannot start simulation due to {error_count} validation error(s).\n\n"
+                    f"Please fix the errors shown in the error panel before running."
+                )
+                return
+            else:
+                # Only warnings - allow simulation but notify user
+                warning_count = sum(1 for e in errors if e.severity == ErrorSeverity.WARNING)
+                logger.info(f"Starting simulation with {warning_count} warning(s)")
+                self.status_message.setText(f"Starting simulation with {warning_count} warning(s)...")
+        else:
+            # No errors or warnings - clear error panel
+            self.error_panel.clear()
+            logger.info("Validation passed - no errors or warnings")
+            self.status_message.setText("Starting simulation...")
+
+        # Clear validation indicators from canvas before starting
+        # (errors will be shown in panel, don't need red borders during simulation)
+        self.canvas.clear_validation()
+
+        # Start the simulation
+        self.canvas.start_simulation()
     
     def stop_simulation(self):
         """Stop simulation."""

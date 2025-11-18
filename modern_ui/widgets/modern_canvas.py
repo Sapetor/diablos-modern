@@ -101,6 +101,12 @@ class ModernCanvas(QWidget):
         self.resize_start_rect = None  # Original block rect before resize
         self.resize_start_pos = None  # Mouse position at start of resize
 
+        # Validation system
+        self.validation_errors = []
+        self.blocks_with_errors = set()
+        self.blocks_with_warnings = set()
+        self.show_validation_errors = False
+
         # Setup canvas
         self._setup_canvas()
         
@@ -317,6 +323,10 @@ class ModernCanvas(QWidget):
 
             # Draw hover effects
             self._draw_hover_effects(painter)
+
+            # Draw validation error indicators
+            if self.show_validation_errors:
+                self._draw_validation_errors(painter)
 
             painter.end()
             
@@ -1887,6 +1897,108 @@ class ModernCanvas(QWidget):
             'right': Qt.SizeHorCursor,
         }
         self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+
+    # Validation System
+    def run_validation(self):
+        """Run diagram validation and update error visualization."""
+        try:
+            from lib.diagram_validator import DiagramValidator
+
+            validator = DiagramValidator(self.dsim)
+            self.validation_errors = validator.validate()
+
+            # Update sets of blocks with errors/warnings
+            self.blocks_with_errors = validator.get_blocks_with_errors()
+            self.blocks_with_warnings = validator.get_blocks_with_warnings()
+
+            # Enable error visualization
+            self.show_validation_errors = True
+
+            # Trigger repaint
+            self.update()
+
+            logger.info(f"Validation complete: {len(self.validation_errors)} issues found")
+            return self.validation_errors
+
+        except Exception as e:
+            logger.error(f"Error running validation: {str(e)}")
+            return []
+
+    def clear_validation(self):
+        """Clear validation errors and hide indicators."""
+        self.validation_errors = []
+        self.blocks_with_errors = set()
+        self.blocks_with_warnings = set()
+        self.show_validation_errors = False
+        self.update()
+
+    def _draw_validation_errors(self, painter):
+        """Draw visual indicators for validation errors."""
+        try:
+            painter.save()
+
+            # Draw error indicators on blocks
+            for block in self.blocks_with_errors:
+                self._draw_block_error_indicator(painter, block, is_error=True)
+
+            for block in self.blocks_with_warnings:
+                if block not in self.blocks_with_errors:  # Don't double-draw
+                    self._draw_block_error_indicator(painter, block, is_error=False)
+
+            painter.restore()
+
+        except Exception as e:
+            logger.error(f"Error drawing validation errors: {str(e)}")
+
+    def _draw_block_error_indicator(self, painter, block, is_error=True):
+        """Draw error/warning indicator on a specific block."""
+        try:
+            # Choose color based on severity
+            if is_error:
+                indicator_color = QColor(220, 53, 69)  # Red for errors
+                border_width = 3
+            else:
+                indicator_color = QColor(255, 193, 7)  # Yellow/orange for warnings
+                border_width = 2
+
+            # Draw pulsing border around block
+            painter.setPen(QPen(indicator_color, border_width, Qt.SolidLine))
+            painter.setBrush(Qt.NoBrush)
+
+            # Draw outline around block
+            padding = 4
+            error_rect = QRect(
+                block.left - padding,
+                block.top - padding,
+                block.width + 2 * padding,
+                block.height + 2 * padding
+            )
+            painter.drawRoundedRect(error_rect, 10, 10)
+
+            # Draw error/warning icon in top-right corner
+            icon_size = 16
+            icon_x = block.left + block.width - icon_size - 2
+            icon_y = block.top + 2
+
+            # Draw icon background circle
+            icon_bg = QColor(indicator_color)
+            icon_bg.setAlpha(200)
+            painter.setBrush(icon_bg)
+            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.drawEllipse(icon_x, icon_y, icon_size, icon_size)
+
+            # Draw exclamation mark
+            painter.setPen(QPen(QColor(255, 255, 255), 2))
+            # Vertical line
+            painter.drawLine(
+                icon_x + icon_size // 2, icon_y + 3,
+                icon_x + icon_size // 2, icon_y + icon_size - 6
+            )
+            # Dot
+            painter.drawPoint(icon_x + icon_size // 2, icon_y + icon_size - 3)
+
+        except Exception as e:
+            logger.error(f"Error drawing block error indicator: {str(e)}")
 
     # Undo/Redo System
     def _capture_state(self):
