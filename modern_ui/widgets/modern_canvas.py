@@ -311,8 +311,15 @@ class ModernCanvas(QWidget):
                 else:
                     line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
 
-                # Draw a thicker preview line with dashed pattern
-                pen = QPen(line_color, 3, Qt.DashLine)
+                # Save painter state
+                painter.save()
+
+                # Enable antialiasing for smooth preview
+                painter.setRenderHint(QPainter.Antialiasing, True)
+
+                # Draw with solid line (not dashed) to avoid shadow artifacts
+                pen = QPen(line_color, 2, Qt.SolidLine)
+                pen.setCapStyle(Qt.RoundCap)
                 painter.setPen(pen)
 
                 # Draw curved Bezier preview
@@ -337,7 +344,10 @@ class ModernCanvas(QWidget):
                 # Draw endpoint indicator
                 painter.setBrush(line_color)
                 painter.setPen(Qt.NoPen)
-                painter.drawEllipse(end_point, 5, 5)
+                painter.drawEllipse(end_point, 4, 4)
+
+                # Restore painter state
+                painter.restore()
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
