@@ -59,6 +59,7 @@ class ModernCanvas(QWidget):
         self.dragging_block = None
         self.drag_offset = None
         self.drag_offsets = {}  # For multi-block dragging
+        self.drag_start_positions = {}  # Track starting positions for undo
         
         # Connection management
         self.line_creation_state = None
@@ -154,13 +155,16 @@ class ModernCanvas(QWidget):
                 new_block = self.dsim.add_block(menu_block, position)
                 if new_block:
                     logger.info(f"Successfully added {block_name}")
-                    
+
+                    # Capture state for undo
+                    self._push_undo("Add Block")
+
                     # Emit signal
                     self.block_selected.emit(new_block)
-                    
+
                     # Trigger repaint
                     self.update()
-                    
+
                     return new_block
                 else:
                     logger.error(f"Failed to create block {block_name}")
@@ -1130,10 +1134,13 @@ class ModernCanvas(QWidget):
             # Store RELATIVE offsets from the clicked block to all other selected blocks
             # This maintains relative positions when dragging multiple blocks
             self.drag_offsets = {}
+            self.drag_start_positions = {}  # Track starting positions for undo threshold
             for b in self.dsim.blocks_list:
                 if b.selected:
                     # Store offset from clicked block to this block
                     self.drag_offsets[b] = QPoint(b.left - block.left, b.top - block.top)
+                    # Store starting position
+                    self.drag_start_positions[b] = (b.left, b.top)
 
             logger.debug(f"Started dragging {len(self.drag_offsets)} block(s)")
         except Exception as e:
@@ -1344,13 +1351,27 @@ class ModernCanvas(QWidget):
             if self.dragging_block:
                 logger.debug(f"Finished dragging block: {getattr(self.dragging_block, 'fn_name', 'Unknown')}")
 
-                # Push undo state after moving blocks
-                self._push_undo("Move")
+                # Only push undo if blocks actually moved significantly (threshold: 5 pixels)
+                moved_significantly = False
+                move_threshold = 5  # pixels
+
+                for block, start_pos in self.drag_start_positions.items():
+                    start_left, start_top = start_pos
+                    distance = abs(block.left - start_left) + abs(block.top - start_top)
+                    if distance >= move_threshold:
+                        moved_significantly = True
+                        break
+
+                if moved_significantly:
+                    self._push_undo("Move")
+                else:
+                    logger.debug("Block moved less than threshold, not capturing undo")
 
                 # Reset drag state
                 self.state = State.IDLE
                 self.dragging_block = None
                 self.drag_offset = None
+                self.drag_start_positions = {}
                 self.dsim.update_lines() # Ensure lines are updated after drag finishes
                 self.update() # Trigger a final repaint
         except Exception as e:
@@ -1359,11 +1380,24 @@ class ModernCanvas(QWidget):
     def _finish_resize(self):
         """Finish resizing operation."""
         try:
-            if self.resizing_block:
+            if self.resizing_block and self.resize_start_rect:
                 logger.debug(f"Finished resizing block: {getattr(self.resizing_block, 'fn_name', 'Unknown')}")
 
-                # Push undo state after resizing
-                self._push_undo("Resize")
+                # Only push undo if block actually resized significantly (threshold: 5 pixels)
+                block = self.resizing_block
+                start_rect = self.resize_start_rect
+                resize_threshold = 5  # pixels
+
+                # Check if size or position changed significantly
+                size_change = (abs(block.width - start_rect.width()) +
+                              abs(block.height - start_rect.height()))
+                pos_change = (abs(block.left - start_rect.left()) +
+                             abs(block.top - start_rect.top()))
+
+                if size_change >= resize_threshold or pos_change >= resize_threshold:
+                    self._push_undo("Resize")
+                else:
+                    logger.debug("Block resized less than threshold, not capturing undo")
 
                 # Reset resize state
                 self.state = State.IDLE
