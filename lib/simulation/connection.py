@@ -64,6 +64,7 @@ class DLine:
         self.selected_segment: int = -1
         self.path: QPainterPath
         self.segments: List[QRect]
+        self.routing_mode: str = "bezier"  # "bezier" or "orthogonal"
         self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
         self.color: QColor = QColor(0, 0, 0)  # Default to black
         self.label: str = ""  # Connection label for signal names
@@ -72,10 +73,124 @@ class DLine:
         """Toggle the selection state of this line."""
         self.selected = not self.selected
 
+    def _create_orthogonal_route(self, start: QPoint, finish: QPoint, blocks_list: List) -> List[QPoint]:
+        """
+        Create an orthogonal (Manhattan-style) route from start to finish, avoiding blocks.
+
+        Args:
+            start: Starting point (output port)
+            finish: Ending point (input port)
+            blocks_list: List of blocks to avoid
+
+        Returns:
+            List of waypoints forming an orthogonal path
+        """
+        # Simple orthogonal routing with collision avoidance
+        waypoints = [start]
+
+        # Create expanded block rectangles for collision detection (add margin)
+        margin = 20
+        obstacles = []
+        for block in blocks_list:
+            # Don't avoid source and destination blocks
+            if block.name in [self.srcblock, self.dstblock]:
+                continue
+            obstacles.append(QRect(
+                block.left - margin,
+                block.top - margin,
+                block.width + 2 * margin,
+                block.height + 2 * margin
+            ))
+
+        # Check if straight orthogonal path is clear
+        is_feedback = start.x() > finish.x()
+
+        if is_feedback:
+            # Feedback connection - route around source block
+            src_block = None
+            for block in blocks_list:
+                if block.name == self.srcblock:
+                    src_block = block
+                    break
+
+            if src_block:
+                # Route to the right, down, left, then to destination
+                clearance = 30
+                right_point = QPoint(start.x() + clearance, start.y())
+                bottom_point = QPoint(right_point.x(), src_block.top + src_block.height + clearance)
+                left_point = QPoint(finish.x() - clearance, bottom_point.y())
+
+                waypoints.extend([right_point, bottom_point, left_point, QPoint(left_point.x(), finish.y())])
+            else:
+                # Fallback: simple mid-point routing
+                mid_x = int((start.x() + finish.x()) / 2)
+                waypoints.extend([QPoint(mid_x, start.y()), QPoint(mid_x, finish.y())])
+        else:
+            # Forward connection
+            mid_x = int((start.x() + finish.x()) / 2)
+
+            # Check if vertical segment at mid_x would collide with any blocks
+            collision = False
+            min_y = min(start.y(), finish.y())
+            max_y = max(start.y(), finish.y())
+
+            for obstacle in obstacles:
+                # Check if vertical line at mid_x intersects obstacle
+                if obstacle.left() <= mid_x <= obstacle.right():
+                    if obstacle.top() <= max_y and obstacle.bottom() >= min_y:
+                        collision = True
+                        break
+
+            if not collision:
+                # Simple two-segment path
+                waypoints.extend([QPoint(mid_x, start.y()), QPoint(mid_x, finish.y())])
+            else:
+                # Route around the obstacle
+                # Try routing above or below
+                route_above = True
+                min_obstacle_top = float('inf')
+                max_obstacle_bottom = float('-inf')
+
+                for obstacle in obstacles:
+                    if obstacle.left() <= mid_x <= obstacle.right():
+                        min_obstacle_top = min(min_obstacle_top, obstacle.top())
+                        max_obstacle_bottom = max(max_obstacle_bottom, obstacle.bottom())
+
+                # Decide whether to route above or below
+                if min_obstacle_top != float('inf'):
+                    space_above = min_obstacle_top - start.y()
+                    space_below = finish.y() - max_obstacle_bottom
+                    route_above = space_above > space_below
+
+                if route_above and min_obstacle_top != float('inf'):
+                    # Route above obstacles
+                    detour_y = min_obstacle_top - margin
+                    waypoints.extend([
+                        QPoint(start.x() + 20, start.y()),
+                        QPoint(start.x() + 20, detour_y),
+                        QPoint(finish.x() - 20, detour_y),
+                        QPoint(finish.x() - 20, finish.y())
+                    ])
+                elif max_obstacle_bottom != float('-inf'):
+                    # Route below obstacles
+                    detour_y = max_obstacle_bottom + margin
+                    waypoints.extend([
+                        QPoint(start.x() + 20, start.y()),
+                        QPoint(start.x() + 20, detour_y),
+                        QPoint(finish.x() - 20, detour_y),
+                        QPoint(finish.x() - 20, finish.y())
+                    ])
+                else:
+                    # Fallback to simple routing
+                    waypoints.extend([QPoint(mid_x, start.y()), QPoint(mid_x, finish.y())])
+
+        waypoints.append(finish)
+        return waypoints
+
     def create_trajectory(self, start: QPoint, finish: QPoint, blocks_list: List,
                          points: Optional[List[QPoint]] = None) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
         """
-        Create a smooth Bezier curve trajectory between start and finish points.
+        Create a trajectory between start and finish points using the selected routing mode.
 
         Args:
             start: Starting point (output port)
@@ -89,6 +204,9 @@ class DLine:
         all_points = []
         if self.modified and points and len(points) > 1:
             all_points = points
+        elif self.routing_mode == "orthogonal":
+            # Use orthogonal routing
+            all_points = self._create_orthogonal_route(start, finish, blocks_list)
         else:
             is_feedback = start.x() > finish.x()
 
@@ -126,12 +244,12 @@ class DLine:
             clean_points.append(all_points[-1])
         all_points = clean_points
 
-        # Create smooth Bezier curve path with rounded corners
+        # Create path based on routing mode
         path = QPainterPath(all_points[0])
         segments = []
 
-        # Radius for smooth corner curves
-        corner_radius = 20
+        # Radius for smooth corner curves (only used in bezier mode)
+        corner_radius = 20 if self.routing_mode == "bezier" else 0
 
         for i in range(len(all_points) - 1):
             current = all_points[i]
@@ -407,3 +525,24 @@ class DLine:
             color: New QColor for this line
         """
         self.color = color
+
+    def set_routing_mode(self, mode: str) -> None:
+        """
+        Set the routing mode for this connection.
+
+        Args:
+            mode: Either "bezier" or "orthogonal"
+        """
+        if mode in ["bezier", "orthogonal"]:
+            self.routing_mode = mode
+            # Force recalculation of path when mode changes
+            self.modified = False
+
+    def toggle_routing_mode(self) -> None:
+        """Toggle between bezier and orthogonal routing modes."""
+        if self.routing_mode == "bezier":
+            self.routing_mode = "orthogonal"
+        else:
+            self.routing_mode = "bezier"
+        # Force recalculation of path when mode changes
+        self.modified = False
