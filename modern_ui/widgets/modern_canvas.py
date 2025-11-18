@@ -2126,25 +2126,58 @@ class ModernCanvas(QWidget):
             self.hovered_line = None
             self.hovered_port = None
 
-            # Restore blocks
+            # Restore blocks by directly creating DBlock instances
+            from lib.simulation.block import DBlock
+            from PyQt5.QtGui import QColor
+
             for block_data in state['blocks']:
-                coords = QRect(*block_data['coords'])
-                block = self.dsim.add_new_block(
-                    block_data['block_fn'],
-                    coords,
-                    QColor(block_data['color']),
-                    block_data['in_ports'],
-                    block_data['out_ports'],
-                    block_data['b_type'],
-                    block_data['io_edit'],
-                    block_data['fn_name'],
-                    block_data['params'],
-                    block_data['external']
-                )
-                if block:
+                try:
+                    coords = QRect(*block_data['coords'])
+
+                    # Find the block class if it's a known block type
+                    block_class = None
+                    block_fn = block_data['block_fn']
+
+                    # Try to import the block class
+                    try:
+                        module_name = f"blocks.{block_fn.lower()}"
+                        class_name = f"{block_fn.capitalize()}Block"
+                        module = __import__(module_name, fromlist=[class_name])
+                        block_class = getattr(module, class_name, None)
+                    except (ImportError, AttributeError):
+                        logger.debug(f"Could not import block class for {block_fn}")
+                        block_class = None
+
+                    # Extract sid from name (e.g., "step0" -> 0)
+                    name = block_data['name']
+                    sid = int(name[len(block_fn):]) if len(name) > len(block_fn) else 0
+
+                    # Create DBlock directly
+                    block = DBlock(
+                        block_data['block_fn'],
+                        sid,
+                        coords,
+                        QColor(block_data['color']),
+                        block_data['in_ports'],
+                        block_data['out_ports'],
+                        block_data['b_type'],
+                        block_data['io_edit'],
+                        block_data['fn_name'],
+                        block_data['params'],
+                        block_data['external'],
+                        block_class=block_class
+                    )
+
+                    # Restore selection state and original name
                     block.selected = block_data.get('selected', False)
-                    # Restore original name
-                    block.name = block_data['name']
+                    block.name = name
+
+                    # Add to blocks list
+                    self.dsim.blocks_list.append(block)
+
+                except Exception as e:
+                    logger.error(f"Error restoring block {block_data.get('name', 'unknown')}: {str(e)}")
+                    continue
 
             # Restore connections
             for line_data in state['lines']:
