@@ -1362,7 +1362,8 @@ class ModernCanvas(QWidget):
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
-            elif event.key() == Qt.Key_Delete:
+            elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+                # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
             elif event.key() == Qt.Key_Z and ctrl_pressed and shift_pressed:
                 # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
@@ -1542,7 +1543,7 @@ class ModernCanvas(QWidget):
 
         # Block actions
         delete_action = menu.addAction("Delete")
-        delete_action.setShortcut("Del")
+        delete_action.setShortcut("Del")  # Shows "Del" but accepts both Del and Backspace
         delete_action.triggered.connect(self.remove_selected_items)
 
         duplicate_action = menu.addAction("Duplicate")
