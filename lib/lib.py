@@ -23,6 +23,10 @@ from lib.simulation.connection import DLine
 from lib.simulation.menu_block import MenuBlocks
 from lib.ui.button import Button
 
+# Import block size configuration
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.block_sizes import get_block_size
+
 logger = logging.getLogger(__name__)
 
 
@@ -250,6 +254,9 @@ class DSim:
             return
         for b_elem in self.blocks_list:
             b_elem.draw_Block(painter)
+            # Draw resize handles for selected blocks
+            if b_elem.selected:
+                b_elem.draw_resize_handles(painter)
 
     def port_availability(self, dst_line):
         """
@@ -337,13 +344,16 @@ class DSim:
             else:
                 fn_name = block.block_name.lower()
 
+            # Get block-specific size from configuration
+            block_size = get_block_size(block.block_name)
+
             menu_block = MenuBlocks(
                 block_fn=block.block_name,
                 fn_name=fn_name,
                 io_params=io_params,
                 ex_params=ex_params,
                 b_color=color,
-                coords=(80, 80),
+                coords=block_size,  # Use configured block size
                 block_class=block_class,
                 colors=self.colors
             )
