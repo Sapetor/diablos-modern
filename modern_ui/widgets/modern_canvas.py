@@ -288,12 +288,51 @@ class ModernCanvas(QWidget):
             if hasattr(self.dsim, 'display_lines'):
                 self.dsim.display_lines(painter)
             
-            # Draw temporary connection line
+            # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:
-                pen = QPen(theme_manager.get_color('accent_primary'), 2, Qt.DashLine)
-                painter.setPen(pen)
                 start_point, end_point = self.temp_line
-                painter.drawLine(start_point, end_point)
+
+                # Check if hovering over valid target port
+                is_valid_target = False
+                if self.hovered_port:
+                    hovered_block, port_idx, is_output = self.hovered_port
+                    # Valid if hovering over an input port (not output)
+                    if not is_output:
+                        is_valid_target = True
+
+                # Choose color based on validity
+                if is_valid_target:
+                    line_color = QColor(76, 175, 80)  # Green for valid
+                else:
+                    line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
+
+                # Draw a thicker preview line with dashed pattern
+                pen = QPen(line_color, 3, Qt.DashLine)
+                painter.setPen(pen)
+
+                # Draw curved Bezier preview
+                from PyQt5.QtGui import QPainterPath
+                path = QPainterPath()
+                path.moveTo(start_point)
+
+                # Calculate control points for smooth curve
+                dx = end_point.x() - start_point.x()
+                dy = end_point.y() - start_point.y()
+                distance = (dx * dx + dy * dy) ** 0.5
+
+                # Control point offset based on distance
+                offset = min(distance * 0.5, 100)
+
+                cp1 = QPoint(int(start_point.x() + offset), start_point.y())
+                cp2 = QPoint(int(end_point.x() - offset), end_point.y())
+
+                path.cubicTo(cp1, cp2, end_point)
+                painter.drawPath(path)
+
+                # Draw endpoint indicator
+                painter.setBrush(line_color)
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(end_point, 5, 5)
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
