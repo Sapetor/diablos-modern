@@ -2015,7 +2015,7 @@ class ModernCanvas(QWidget):
                 block_data = {
                     'name': block.name,
                     'block_fn': block.block_fn,
-                    'coords': (block.coords.x(), block.coords.y(), block.coords.width(), block.coords.height()),
+                    'coords': (block.left, block.top, block.width, block.height),
                     'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
                     'in_ports': block.in_ports,
                     'out_ports': block.out_ports,
