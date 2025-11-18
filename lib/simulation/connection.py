@@ -66,6 +66,7 @@ class DLine:
         self.segments: List[QRect]
         self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
         self.color: QColor = QColor(0, 0, 0)  # Default to black
+        self.label: str = ""  # Connection label for signal names
 
     def toggle_selection(self) -> None:
         """Toggle the selection state of this line."""
@@ -290,6 +291,10 @@ class DLine:
                 for point in self.points[1:-1]:
                     painter.drawEllipse(point, 4, 4)
 
+            # Draw connection label if present
+            if self.label:
+                self._draw_label(painter)
+
             # Draw arrowhead
             arrow_size = 10
 
@@ -314,6 +319,49 @@ class DLine:
             painter.setBrush(arrow_color)  # Fill arrowhead with line color
             painter.setPen(Qt.NoPen)  # No border for arrowhead
             painter.drawPolygon(arrow_polygon)
+
+    def _draw_label(self, painter: QPainter) -> None:
+        """Draw the connection label at the midpoint of the line."""
+        if not self.label or len(self.points) < 2:
+            return
+
+        painter.save()
+
+        # Find midpoint of the line
+        mid_index = len(self.points) // 2
+        label_pos = self.points[mid_index]
+
+        # Draw label background
+        from PyQt5.QtGui import QFont, QFontMetrics
+        font = QFont("Arial", 9)
+        painter.setFont(font)
+
+        metrics = QFontMetrics(font)
+        text_width = metrics.horizontalAdvance(self.label)
+        text_height = metrics.height()
+
+        # Background rectangle
+        padding = 4
+        bg_rect = QRect(
+            label_pos.x() - text_width // 2 - padding,
+            label_pos.y() - text_height // 2 - padding,
+            text_width + 2 * padding,
+            text_height + 2 * padding
+        )
+
+        # Draw semi-transparent background
+        bg_color = theme_manager.get_color('canvas_background')
+        bg_color.setAlpha(230)
+        painter.setBrush(bg_color)
+        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1))
+        painter.drawRoundedRect(bg_rect, 3, 3)
+
+        # Draw text
+        text_color = theme_manager.get_color('text_primary')
+        painter.setPen(text_color)
+        painter.drawText(bg_rect, Qt.AlignCenter, self.label)
+
+        painter.restore()
 
     def collision(self, m_coords: Union[QPoint, Tuple[int, int]], point_radius: int = 5,
                   line_threshold: int = 5) -> Optional[Tuple[str, int]]:

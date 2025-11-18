@@ -1634,6 +1634,12 @@ class ModernCanvas(QWidget):
             line.selected = True
             self.update()
 
+        # Edit Label action
+        edit_label_action = menu.addAction("Edit Label...")
+        edit_label_action.triggered.connect(lambda: self._edit_connection_label(line))
+
+        menu.addSeparator()
+
         delete_action = menu.addAction("Delete Connection")
         delete_action.setShortcut("Del")
         delete_action.triggered.connect(lambda: self._delete_line(line))
@@ -1850,6 +1856,26 @@ class ModernCanvas(QWidget):
         # This could be enhanced with animation
         line.selected = True
         self.update()
+
+    def _edit_connection_label(self, line):
+        """Edit the label of a connection."""
+        from PyQt5.QtWidgets import QInputDialog
+
+        # Get current label
+        current_label = line.label if hasattr(line, 'label') else ""
+
+        # Show input dialog
+        text, ok = QInputDialog.getText(
+            self,
+            "Edit Connection Label",
+            f"Enter label for connection {line.srcblock} → {line.dstblock}:",
+            text=current_label
+        )
+
+        if ok:
+            line.label = text
+            self.update()
+            logger.info(f"Updated connection label: {line.name} -> '{text}'")
 
     def _update_hover_states(self, pos):
         """Update hover states for blocks, ports, and connections."""
