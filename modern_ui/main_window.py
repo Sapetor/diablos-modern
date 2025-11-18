@@ -4,6 +4,7 @@ Features modern layout, theming, and enhanced user interface.
 """
 
 import sys
+import os
 import logging
 import ast
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -142,12 +143,18 @@ class ModernDiaBloSWindow(QMainWindow):
     def _setup_menubar(self):
         """Setup modern menu bar."""
         menubar = self.menuBar()
-        
+
         # File menu
         file_menu = menubar.addMenu("&File")
         file_menu.addAction("&New\tCtrl+N", self.new_diagram)
         file_menu.addAction("&Open\tCtrl+O", self.open_diagram)
         file_menu.addAction("&Save\tCtrl+S", self.save_diagram)
+        file_menu.addSeparator()
+
+        # Recent Files submenu
+        self.recent_files_menu = file_menu.addMenu("Recent Files")
+        self._update_recent_files_menu()
+
         file_menu.addSeparator()
         file_menu.addAction("E&xit\tAlt+F4", self.close)
         
@@ -184,6 +191,8 @@ class ModernDiaBloSWindow(QMainWindow):
         
         # Help menu
         help_menu = menubar.addMenu("&Help")
+        help_menu.addAction("&Keyboard Shortcuts", self.show_keyboard_shortcuts)
+        help_menu.addSeparator()
         help_menu.addAction("&About DiaBloS", self.show_about)
 
     def _set_scaling(self, factor):
@@ -650,9 +659,84 @@ class ModernDiaBloSWindow(QMainWindow):
         self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
         self.status_message.setText(f"Fit {len(blocks)} block(s) to window")
     
+    def show_keyboard_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        from PyQt5.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QPushButton
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Keyboard Shortcuts")
+        dialog.setMinimumSize(600, 500)
+
+        layout = QVBoxLayout()
+
+        # Create table
+        table = QTableWidget()
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.horizontalHeader().setStretchLastSection(True)
+
+        # Define shortcuts (category, shortcut, description)
+        shortcuts = [
+            ("File Operations", "", ""),
+            ("", "Ctrl+N", "New Diagram"),
+            ("", "Ctrl+O", "Open Diagram"),
+            ("", "Ctrl+S", "Save Diagram"),
+            ("", "", ""),
+            ("Editing", "", ""),
+            ("", "Ctrl+Z / Cmd+Z", "Undo"),
+            ("", "Ctrl+Y / Cmd+Shift+Z", "Redo"),
+            ("", "Ctrl+A", "Select All"),
+            ("", "Ctrl+C", "Copy"),
+            ("", "Ctrl+V", "Paste"),
+            ("", "Ctrl+D", "Duplicate"),
+            ("", "Delete / Backspace", "Delete Selected"),
+            ("", "Ctrl+F", "Flip Block"),
+            ("", "", ""),
+            ("View", "", ""),
+            ("", "Ctrl++", "Zoom In"),
+            ("", "Ctrl+-", "Zoom Out"),
+            ("", "Ctrl+0", "Fit to Window"),
+            ("", "Middle Mouse", "Pan Canvas"),
+            ("", "", ""),
+            ("Simulation", "", ""),
+            ("", "F5", "Run Simulation"),
+            ("", "F6", "Pause Simulation"),
+            ("", "F7", "Stop Simulation"),
+            ("", "", ""),
+            ("Canvas", "", ""),
+            ("", "Esc", "Cancel Operation"),
+            ("", "Right Click", "Context Menu"),
+        ]
+
+        table.setRowCount(len(shortcuts))
+
+        for i, (category, shortcut, action) in enumerate(shortcuts):
+            if category:  # Category header
+                cat_item = QTableWidgetItem(category)
+                cat_item.setFont(QFont("Arial", 10, QFont.Bold))
+                table.setItem(i, 0, cat_item)
+                table.setSpan(i, 0, 1, 2)
+            else:
+                table.setItem(i, 0, QTableWidgetItem(shortcut))
+                table.setItem(i, 1, QTableWidgetItem(action))
+
+        table.resizeColumnsToContents()
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionMode(QTableWidget.NoSelection)
+
+        layout.addWidget(table)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
     def show_about(self):
         """Show about dialog."""
-        QMessageBox.about(self, "About DiaBloS", 
+        QMessageBox.about(self, "About DiaBloS",
                          "DiaBloS - Modern Block Diagram Simulator\n"
                          "Phase 2: Interactive Block Canvas\n"
                          "✅ Modern UI Foundation\n"
@@ -917,3 +1001,97 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.stop_simulation()
         self.toolbar.set_simulation_state(False, False)
         self.status_message.setText("Simulation stopped")
+
+    # Recent Files Management
+    def _load_recent_files(self):
+        """Load recent files list from config."""
+        import json
+        config_path = 'config/recent_files.json'
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    data = json.load(f)
+                    return data.get('recent_files', [])
+        except Exception as e:
+            logger.error(f"Error loading recent files: {e}")
+        return []
+
+    def _save_recent_files(self, recent_files):
+        """Save recent files list to config."""
+        import json
+        config_path = 'config/recent_files.json'
+        try:
+            os.makedirs('config', exist_ok=True)
+            with open(config_path, 'w') as f:
+                json.dump({'recent_files': recent_files}, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving recent files: {e}")
+
+    def _add_recent_file(self, filepath):
+        """Add a file to the recent files list."""
+        if not filepath:
+            return
+
+        recent_files = self._load_recent_files()
+
+        # Remove if already in list
+        if filepath in recent_files:
+            recent_files.remove(filepath)
+
+        # Add to front
+        recent_files.insert(0, filepath)
+
+        # Keep only last 10
+        recent_files = recent_files[:10]
+
+        self._save_recent_files(recent_files)
+        self._update_recent_files_menu()
+
+    def _update_recent_files_menu(self):
+        """Update the recent files menu."""
+        self.recent_files_menu.clear()
+
+        recent_files = self._load_recent_files()
+
+        if not recent_files:
+            action = self.recent_files_menu.addAction("No recent files")
+            action.setEnabled(False)
+            return
+
+        for filepath in recent_files:
+            # Show only filename, but store full path
+            filename = os.path.basename(filepath)
+            action = self.recent_files_menu.addAction(filename)
+            action.setData(filepath)
+            action.triggered.connect(lambda checked, path=filepath: self._open_recent_file(path))
+
+        self.recent_files_menu.addSeparator()
+        clear_action = self.recent_files_menu.addAction("Clear Recent Files")
+        clear_action.triggered.connect(self._clear_recent_files)
+
+    def _open_recent_file(self, filepath):
+        """Open a file from the recent files list."""
+        if os.path.exists(filepath):
+            # TODO: Implement actual file opening logic
+            # For now, just add to recent files
+            self._add_recent_file(filepath)
+            self.status_message.setText(f"Opened: {os.path.basename(filepath)}")
+            logger.info(f"Opening recent file: {filepath}")
+        else:
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"The file '{filepath}' no longer exists."
+            )
+            # Remove from recent files
+            recent_files = self._load_recent_files()
+            if filepath in recent_files:
+                recent_files.remove(filepath)
+                self._save_recent_files(recent_files)
+                self._update_recent_files_menu()
+
+    def _clear_recent_files(self):
+        """Clear the recent files list."""
+        self._save_recent_files([])
+        self._update_recent_files_menu()
+        self.status_message.setText("Recent files cleared")
