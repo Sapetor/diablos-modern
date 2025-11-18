@@ -639,6 +639,86 @@ class DBlock:
         if self.external:
             painter.drawText(QRect(self.left, self.top + self.height + 15, self.width, 20), Qt.AlignCenter, self.params['filename'])
 
+    def draw_resize_handles(self, painter):
+        """Draw resize handles on the corners and edges of selected blocks."""
+        if not self.selected:
+            return
+
+        # Import resize handle size from config
+        try:
+            from config.block_sizes import RESIZE_HANDLE_SIZE
+            handle_size = RESIZE_HANDLE_SIZE
+        except ImportError:
+            handle_size = 8
+
+        # Handle styling
+        handle_color = theme_manager.get_color('accent_primary')
+        border_color = theme_manager.get_color('border_primary')
+
+        painter.save()
+        painter.setPen(QPen(border_color, 1))
+        painter.setBrush(handle_color)
+
+        # Define handle positions
+        half_handle = handle_size // 2
+        handles = {
+            'top_left': (self.left - half_handle, self.top - half_handle),
+            'top_right': (self.left + self.width - half_handle, self.top - half_handle),
+            'bottom_left': (self.left - half_handle, self.top + self.height - half_handle),
+            'bottom_right': (self.left + self.width - half_handle, self.top + self.height - half_handle),
+            # Edge handles for more precise resizing
+            'top': (self.left + self.width//2 - half_handle, self.top - half_handle),
+            'bottom': (self.left + self.width//2 - half_handle, self.top + self.height - half_handle),
+            'left': (self.left - half_handle, self.top + self.height//2 - half_handle),
+            'right': (self.left + self.width - half_handle, self.top + self.height//2 - half_handle),
+        }
+
+        # Draw handles
+        for handle_name, (x, y) in handles.items():
+            painter.drawRect(x, y, handle_size, handle_size)
+
+        painter.restore()
+
+    def get_resize_handle_at(self, pos):
+        """
+        Check if a position is over a resize handle.
+
+        Args:
+            pos: QPoint position to check
+
+        Returns:
+            Handle name if over a handle, None otherwise
+        """
+        if not self.selected:
+            return None
+
+        try:
+            from config.block_sizes import RESIZE_HANDLE_SIZE
+            handle_size = RESIZE_HANDLE_SIZE
+        except ImportError:
+            handle_size = 8
+
+        # Define handle positions
+        half_handle = handle_size // 2
+        handles = {
+            'top_left': (self.left - half_handle, self.top - half_handle),
+            'top_right': (self.left + self.width - half_handle, self.top - half_handle),
+            'bottom_left': (self.left - half_handle, self.top + self.height - half_handle),
+            'bottom_right': (self.left + self.width - half_handle, self.top + self.height - half_handle),
+            'top': (self.left + self.width//2 - half_handle, self.top - half_handle),
+            'bottom': (self.left + self.width//2 - half_handle, self.top + self.height - half_handle),
+            'left': (self.left - half_handle, self.top + self.height//2 - half_handle),
+            'right': (self.left + self.width - half_handle, self.top + self.height//2 - half_handle),
+        }
+
+        # Check if position is within any handle
+        for handle_name, (x, y) in handles.items():
+            if (x <= pos.x() <= x + handle_size and
+                y <= pos.y() <= y + handle_size):
+                return handle_name
+
+        return None
+
     def port_collision(self, pos):
         if isinstance(pos, tuple):
             pos = QPoint(*pos)
@@ -663,10 +743,37 @@ class DBlock:
         self.rectf.moveTopLeft(QPoint(self.left, self.top)) # Update the QRectF
         self.update_Block()
 
-    def resize_Block(self, new_coords):
-        self.width = new_coords[0]
-        self.height = new_coords[1]
+    def resize_Block(self, new_width, new_height):
+        """
+        Resize the block to new dimensions.
+
+        Args:
+            new_width: New width in pixels
+            new_height: New height in pixels
+        """
+        # Clamp to minimum and maximum sizes
+        try:
+            from config.block_sizes import clamp_block_size
+            new_width, new_height = clamp_block_size(new_width, new_height)
+        except ImportError:
+            # Fallback min/max if config not available
+            new_width = max(50, min(new_width, 300))
+            new_height = max(40, min(new_height, 300))
+
+        # Update dimensions
+        self.width = new_width
+        self.height = new_height
+        self.height_base = new_height
+
+        # Update rect properties
+        self.rect = QRect(self.left, self.top, self.width, self.height)
+        self.rectf = QRect(self.left - self.port_radius, self.top,
+                          self.width + 2 * self.port_radius, self.height)
+
+        # Update port positions
         self.update_Block()
+
+        logger.debug(f"Resized block {self.name} to {new_width}x{new_height}")
 
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")

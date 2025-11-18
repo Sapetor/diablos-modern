@@ -31,6 +31,7 @@ class State:
     DRAGGING_LINE_SEGMENT = "dragging_line_segment"
     CONNECTING = "connecting"
     CONFIGURING = "configuring"
+    RESIZING = "resizing"
 
 
 class ModernCanvas(QWidget):
@@ -93,6 +94,12 @@ class ModernCanvas(QWidget):
         self.undo_stack = []
         self.redo_stack = []
         self.max_undo_steps = 50
+
+        # Block resizing
+        self.resizing_block = None
+        self.resize_handle = None  # Which handle is being dragged
+        self.resize_start_rect = None  # Original block rect before resize
+        self.resize_start_pos = None  # Mouse position at start of resize
 
         # Setup canvas
         self._setup_canvas()
@@ -437,7 +444,15 @@ class ModernCanvas(QWidget):
     def _handle_left_click(self, pos):
         """Handle left mouse button clicks."""
         try:
-            # IMPORTANT: Check for port clicks FIRST, before block clicks
+            # Check for resize handles FIRST on selected blocks
+            for block in self.dsim.blocks_list:
+                if block.selected:
+                    handle = block.get_resize_handle_at(pos)
+                    if handle:
+                        self._start_resize(block, handle, pos)
+                        return
+
+            # Check for port clicks (before block clicks)
             # This allows clicking on ports to create connections instead of dragging blocks
             port_clicked = self._check_port_clicks(pos)
             if port_clicked:
@@ -1072,6 +1087,84 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
 
+    def _start_resize(self, block, handle, pos):
+        """Start resizing a block."""
+        try:
+            self.state = State.RESIZING
+            self.resizing_block = block
+            self.resize_handle = handle
+            self.resize_start_pos = pos
+            self.resize_start_rect = QRect(block.left, block.top, block.width, block.height)
+
+            logger.debug(f"Started resizing block {block.name} from handle {handle}")
+        except Exception as e:
+            logger.error(f"Error starting resize: {str(e)}")
+
+    def _perform_resize(self, pos):
+        """Perform the resize operation based on current mouse position."""
+        try:
+            if not self.resizing_block or not self.resize_handle:
+                return
+
+            block = self.resizing_block
+            handle = self.resize_handle
+            start_rect = self.resize_start_rect
+
+            # Calculate delta from start position
+            delta_x = pos.x() - self.resize_start_pos.x()
+            delta_y = pos.y() - self.resize_start_pos.y()
+
+            # Calculate new position and size based on handle
+            new_left = start_rect.left()
+            new_top = start_rect.top()
+            new_width = start_rect.width()
+            new_height = start_rect.height()
+
+            if 'left' in handle:
+                new_left = start_rect.left() + delta_x
+                new_width = start_rect.width() - delta_x
+            elif 'right' in handle:
+                new_width = start_rect.width() + delta_x
+
+            if 'top' in handle:
+                new_top = start_rect.top() + delta_y
+                new_height = start_rect.height() - delta_y
+            elif 'bottom' in handle:
+                new_height = start_rect.height() + delta_y
+
+            # Apply minimum size constraints
+            try:
+                from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
+                min_width = MIN_BLOCK_WIDTH
+                min_height = MIN_BLOCK_HEIGHT
+            except ImportError:
+                min_width = 50
+                min_height = 40
+
+            # Ensure minimum size
+            if new_width < min_width:
+                if 'left' in handle:
+                    new_left = start_rect.right() - min_width
+                new_width = min_width
+
+            if new_height < min_height:
+                if 'top' in handle:
+                    new_top = start_rect.bottom() - min_height
+                new_height = min_height
+
+            # Update block position and size
+            block.left = new_left
+            block.top = new_top
+            block.resize_Block(new_width, new_height)
+            block.rect.moveTo(new_left, new_top)
+
+            # Update connected lines
+            self.dsim.update_lines()
+            self.update()
+
+        except Exception as e:
+            logger.error(f"Error performing resize: {str(e)}")
+
     def mouseMoveEvent(self, event):
         """Handle mouse move events with hover detection."""
         try:
@@ -1122,6 +1215,9 @@ class ModernCanvas(QWidget):
 
                 self.dsim.update_lines() # Update lines dynamically during drag
                 self.update() # Trigger repaint
+            elif self.state == State.RESIZING and self.resizing_block:
+                # Calculate the resize delta
+                self._perform_resize(pos)
             elif self.state == State.DRAGGING_LINE_POINT and self.dragging_item:
                 line, point_index = self.dragging_item
                 line.points[point_index] = pos
@@ -1176,6 +1272,8 @@ class ModernCanvas(QWidget):
 
             if self.state == State.DRAGGING:
                 self._finish_drag()
+            elif self.state == State.RESIZING:
+                self._finish_resize()
             elif self.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
                 if self.dragging_item:
                     line, _ = self.dragging_item
@@ -1205,6 +1303,28 @@ class ModernCanvas(QWidget):
                 self.update() # Trigger a final repaint
         except Exception as e:
             logger.error(f"Error finishing drag: {str(e)}")
+
+    def _finish_resize(self):
+        """Finish resizing operation."""
+        try:
+            if self.resizing_block:
+                logger.debug(f"Finished resizing block: {getattr(self.resizing_block, 'fn_name', 'Unknown')}")
+
+                # Push undo state after resizing
+                self._push_undo("Resize")
+
+                # Reset resize state
+                self.state = State.IDLE
+                self.resizing_block = None
+                self.resize_handle = None
+                self.resize_start_rect = None
+                self.resize_start_pos = None
+
+                # Ensure lines are updated after resize
+                self.dsim.update_lines()
+                self.update()
+        except Exception as e:
+            logger.error(f"Error finishing resize: {str(e)}")
 
     def _cancel_line_creation(self):
         """Cancel line creation process."""
@@ -1685,26 +1805,43 @@ class ModernCanvas(QWidget):
         """Update hover states for blocks, ports, and connections."""
         needs_repaint = False
 
-        # Check for hovered port first (highest priority)
-        new_hovered_port = None
+        # Check for resize handles on selected blocks (highest priority)
+        resize_handle = None
         for block in self.dsim.blocks_list:
-            # Check output ports
-            for i, port_pos in enumerate(block.out_coords):
-                if self._point_near_port(pos, port_pos):
-                    new_hovered_port = (block, i, True)  # True = output port
+            if block.selected:
+                handle = block.get_resize_handle_at(pos)
+                if handle:
+                    resize_handle = handle
+                    self._set_resize_cursor(handle)
                     break
-            # Check input ports
-            if not new_hovered_port:
-                for i, port_pos in enumerate(block.in_coords):
-                    if self._point_near_port(pos, port_pos):
-                        new_hovered_port = (block, i, False)  # False = input port
-                        break
-            if new_hovered_port:
-                break
 
-        if new_hovered_port != self.hovered_port:
-            self.hovered_port = new_hovered_port
-            needs_repaint = True
+        # Initialize variables
+        new_hovered_port = None
+
+        if not resize_handle:
+            # Check for hovered port
+            for block in self.dsim.blocks_list:
+                # Check output ports
+                for i, port_pos in enumerate(block.out_coords):
+                    if self._point_near_port(pos, port_pos):
+                        new_hovered_port = (block, i, True)  # True = output port
+                        break
+                # Check input ports
+                if not new_hovered_port:
+                    for i, port_pos in enumerate(block.in_coords):
+                        if self._point_near_port(pos, port_pos):
+                            new_hovered_port = (block, i, False)  # False = input port
+                            break
+                if new_hovered_port:
+                    break
+
+            if new_hovered_port != self.hovered_port:
+                self.hovered_port = new_hovered_port
+                needs_repaint = True
+
+            # Reset cursor if not over resize handle or port
+            if not new_hovered_port:
+                self.setCursor(Qt.ArrowCursor)
 
         # Check for hovered block (if no port is hovered)
         if not new_hovered_port:
@@ -1736,6 +1873,20 @@ class ModernCanvas(QWidget):
         dx = point.x() - port_pos.x()
         dy = point.y() - port_pos.y()
         return (dx * dx + dy * dy) < (threshold * threshold)
+
+    def _set_resize_cursor(self, handle):
+        """Set the appropriate cursor for a resize handle."""
+        cursor_map = {
+            'top_left': Qt.SizeFDiagCursor,
+            'top_right': Qt.SizeBDiagCursor,
+            'bottom_left': Qt.SizeBDiagCursor,
+            'bottom_right': Qt.SizeFDiagCursor,
+            'top': Qt.SizeVerCursor,
+            'bottom': Qt.SizeVerCursor,
+            'left': Qt.SizeHorCursor,
+            'right': Qt.SizeHorCursor,
+        }
+        self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
 
     # Undo/Redo System
     def _capture_state(self):

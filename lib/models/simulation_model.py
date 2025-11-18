@@ -5,6 +5,8 @@ Manages blocks, lines, and diagram state.
 
 import logging
 import copy
+import sys
+import os
 from typing import List, Dict, Optional, Tuple, Any
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QRect, QPoint
@@ -12,6 +14,10 @@ from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.block_loader import load_blocks
 from lib.simulation.menu_block import MenuBlocks
+
+# Import block size configuration
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config.block_sizes import get_block_size
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +143,9 @@ class SimulationModel:
             category = getattr(block, 'category', 'Other')
             block_color = self._get_category_color(category)
 
+            # Get block-specific size from configuration
+            block_size = get_block_size(block.block_name)
+
             menu_block = MenuBlocks(
                 block_fn=block.block_name,
                 fn_name=fn_name,
@@ -148,7 +157,7 @@ class SimulationModel:
                 },
                 ex_params=ex_params,
                 b_color=block_color,
-                coords=(100, 80),  # More balanced aspect ratio
+                coords=block_size,  # Use configured block size
                 external=getattr(block, 'external', False),
                 block_class=block_class,
                 colors=self.colors
