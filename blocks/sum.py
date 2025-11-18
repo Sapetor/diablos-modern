@@ -41,7 +41,10 @@ class SumBlock(BaseBlock):
         if params is None:
             params = self.params
 
-        sign_string = params.get('sign', {}).get('default', '++')
+        # Get the sign string - params is a flat dict like {'sign': '++'}
+        sign_string = params.get('sign', '++')
+
+        # Handle case where sign might still be wrapped in a dict (initialization)
         if isinstance(sign_string, dict):
             sign_string = sign_string.get('default', '++')
 
