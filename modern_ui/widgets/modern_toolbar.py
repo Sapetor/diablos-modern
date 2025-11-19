@@ -208,8 +208,12 @@ class ModernToolBar(QToolBar):
         """Update label colors for proper contrast."""
         text_color = theme_manager.get_color('text_primary').name()
         label_style = f"QLabel {{ color: {text_color}; }}"
-        self.status_label.setStyleSheet(label_style)
-        self.zoom_label.setStyleSheet(label_style)
+
+        # Only update labels that have been created
+        if hasattr(self, 'status_label'):
+            self.status_label.setStyleSheet(label_style)
+        if hasattr(self, 'zoom_label'):
+            self.zoom_label.setStyleSheet(label_style)
         if hasattr(self, 'zoom_text_label'):
             self.zoom_text_label.setStyleSheet(label_style)
     
