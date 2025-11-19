@@ -59,16 +59,16 @@ class CommandPalette(QDialog):
         self.search_input.returnPressed.connect(self._on_item_selected)
         layout.addWidget(self.search_input)
 
-        # Results list - very compact, just show names
+        # Results list - very compact, show only 2-3 items
         self.results_list = QListWidget()
-        self.results_list.setMinimumHeight(120)  # Show ~4 items
-        self.results_list.setMaximumHeight(160)
+        self.results_list.setMinimumHeight(70)  # Show ~2-3 items
+        self.results_list.setMaximumHeight(90)
         self.results_list.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.results_list)
 
         # Set dialog size - very compact and minimal
-        self.setFixedWidth(320)
-        self.setFixedHeight(200)
+        self.setFixedWidth(280)
+        self.setFixedHeight(150)
 
     def _apply_theme(self):
         """Apply current theme styling - minimalist with transparency."""
@@ -222,16 +222,23 @@ class CommandPalette(QDialog):
             super().keyPressEvent(event)
 
     def showEvent(self, event):
-        """When shown, position in center of parent and focus search."""
+        """When shown, position near cursor and focus search."""
         super().showEvent(event)
 
-        # Center on parent
+        # Position near cursor with offset
+        from PyQt5.QtGui import QCursor
+        cursor_pos = QCursor.pos()
+
+        # Offset slightly to the right and down so it doesn't cover what user clicked
+        offset_x = 10
+        offset_y = 10
+
+        # Convert to parent widget coordinates if we have a parent
         if self.parent():
-            parent_rect = self.parent().geometry()
-            self.move(
-                parent_rect.center().x() - self.width() // 2,
-                parent_rect.center().y() - self.height() // 2
-            )
+            cursor_pos = self.parent().mapFromGlobal(cursor_pos)
+            self.move(cursor_pos.x() + offset_x, cursor_pos.y() + offset_y)
+        else:
+            self.move(cursor_pos.x() + offset_x, cursor_pos.y() + offset_y)
 
         # Clear previous search and focus
         self.search_input.clear()
