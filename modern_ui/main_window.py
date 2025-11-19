@@ -789,8 +789,8 @@ class ModernDiaBloSWindow(QMainWindow):
                 'name': f'Add {block_name} Block',
                 'type': 'block',
                 'description': description,
-                'callback': lambda bn=block_name: self._add_block_from_palette(bn),
-                'data': {'block_type': block_name}
+                'callback': lambda bn=block_name.lower(): self._add_block_from_palette(bn),
+                'data': {'block_type': block_name.lower()}
             })
 
         # Add application actions

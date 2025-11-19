@@ -166,44 +166,25 @@ class CommandPalette(QDialog):
         self.results_list.clear()
 
         for cmd in self.filtered_commands:
-            item = QListWidgetItem()
+            # Create item with icon and text
+            icon = self._get_type_icon(cmd['type'])
+            name = cmd['name']
+            description = cmd.get('description', '')
 
-            # Create custom widget for item
-            widget = QWidget()
-            layout = QHBoxLayout(widget)
-            layout.setContentsMargins(4, 4, 4, 4)
+            # Format: icon + name (+ description if present)
+            if description:
+                display_text = f"{icon}  {name}\n    {description}"
+            else:
+                display_text = f"{icon}  {name}"
 
-            # Icon/type indicator
-            type_label = QLabel(self._get_type_icon(cmd['type']))
-            type_label.setFixedWidth(30)
-            type_font = QFont("Segoe UI", 14)
-            type_label.setFont(type_font)
-            layout.addWidget(type_label)
-
-            # Name and description
-            info_layout = QVBoxLayout()
-            info_layout.setSpacing(2)
-
-            name_label = QLabel(cmd['name'])
-            name_font = QFont("Segoe UI", 10, QFont.Bold)
-            name_label.setFont(name_font)
-            info_layout.addWidget(name_label)
-
-            if 'description' in cmd and cmd['description']:
-                desc_label = QLabel(cmd['description'])
-                desc_font = QFont("Segoe UI", 9)
-                desc_label.setFont(desc_font)
-                desc_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
-                info_layout.addWidget(desc_label)
-
-            layout.addLayout(info_layout, 1)
-
-            # Set item properties
-            item.setSizeHint(widget.sizeHint())
+            item = QListWidgetItem(display_text)
             item.setData(Qt.UserRole, cmd)
 
+            # Set item font
+            font = QFont("Segoe UI", 10)
+            item.setFont(font)
+
             self.results_list.addItem(item)
-            self.results_list.setItemWidget(item, widget)
 
         # Select first item
         if self.results_list.count() > 0:
