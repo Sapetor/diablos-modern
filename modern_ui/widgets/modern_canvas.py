@@ -75,6 +75,9 @@ class ModernCanvas(QWidget):
         self.panning = False
         self.last_pan_pos = QPoint(0, 0)
 
+        # Grid visibility
+        self.grid_visible = True
+
         # Clipboard for copy-paste
         self.clipboard_blocks = []
 
@@ -402,6 +405,9 @@ class ModernCanvas(QWidget):
 
     def _draw_grid(self, painter):
         """Draw a sophisticated grid system with dots at intervals."""
+        if not self.grid_visible:
+            return
+
         try:
             # Grid configuration
             small_grid_size = 20  # Small dot spacing (20px)
@@ -2420,6 +2426,12 @@ class ModernCanvas(QWidget):
 
     def zoom_out(self):
         self.set_zoom(self.zoom_factor / 1.1)
+
+    def toggle_grid(self):
+        """Toggle grid visibility."""
+        self.grid_visible = not self.grid_visible
+        self.update()
+        logger.info(f"Grid visibility: {self.grid_visible}")
 
     def wheelEvent(self, event):
         """Handle mouse wheel events for zooming."""
