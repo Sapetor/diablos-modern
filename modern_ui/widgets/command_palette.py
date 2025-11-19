@@ -32,7 +32,7 @@ class CommandPalette(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)  # Enable transparency
 
         self.commands: List[Dict[str, Any]] = []
         self.filtered_commands: List[Dict[str, Any]] = []
@@ -46,87 +46,74 @@ class CommandPalette(QDialog):
     def _setup_ui(self):
         """Setup the UI components."""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
 
-        # Search input
+        # Search input - minimal
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Type to search blocks, commands, files...")
-        self.search_input.setMinimumHeight(40)
-        font = QFont("Segoe UI", 11)
+        self.search_input.setPlaceholderText("Search...")
+        self.search_input.setMinimumHeight(32)
+        font = QFont("Segoe UI", 10)
         self.search_input.setFont(font)
         self.search_input.textChanged.connect(self._on_search_changed)
         self.search_input.returnPressed.connect(self._on_item_selected)
         layout.addWidget(self.search_input)
 
-        # Results list - compact size for experienced users
+        # Results list - very compact, just show names
         self.results_list = QListWidget()
-        self.results_list.setMinimumHeight(180)  # Show ~5-6 items
-        self.results_list.setMaximumHeight(240)
+        self.results_list.setMinimumHeight(120)  # Show ~4 items
+        self.results_list.setMaximumHeight(160)
         self.results_list.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.results_list)
 
-        # Status bar
-        self.status_label = QLabel("")
-        self.status_label.setMinimumHeight(24)
-        self.status_label.setAlignment(Qt.AlignCenter)
-        status_font = QFont("Segoe UI", 9)
-        self.status_label.setFont(status_font)
-        layout.addWidget(self.status_label)
-
-        # Set dialog size - more compact
-        self.setMinimumWidth(500)
-        self.setMaximumWidth(600)
+        # Set dialog size - very compact and minimal
+        self.setFixedWidth(320)
+        self.setFixedHeight(200)
 
     def _apply_theme(self):
-        """Apply current theme styling."""
-        bg_color = theme_manager.get_color('surface').name()
-        input_bg = theme_manager.get_color('surface_variant').name()
+        """Apply current theme styling - minimalist with transparency."""
+        bg_color = theme_manager.get_color('surface')
         text_color = theme_manager.get_color('text_primary').name()
-        text_secondary = theme_manager.get_color('text_secondary').name()
-        border_color = theme_manager.get_color('border_primary').name()
         accent_color = theme_manager.get_color('accent').name()
+
+        # Create semi-transparent background
+        bg_rgba = f"rgba({bg_color.red()}, {bg_color.green()}, {bg_color.blue()}, 0.95)"
 
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {bg_color};
-                border: 2px solid {border_color};
-                border-radius: 8px;
+                background-color: {bg_rgba};
+                border: 1px solid rgba(128, 128, 128, 0.3);
+                border-radius: 6px;
             }}
             QLineEdit {{
-                background-color: {input_bg};
+                background-color: rgba(255, 255, 255, 0.05);
                 color: {text_color};
-                border: none;
-                border-bottom: 2px solid {border_color};
-                padding: 8px 12px;
-                font-size: 11pt;
+                border: 1px solid rgba(128, 128, 128, 0.2);
+                border-radius: 3px;
+                padding: 6px 10px;
+                font-size: 10pt;
             }}
             QLineEdit:focus {{
-                border-bottom: 2px solid {accent_color};
+                border: 1px solid {accent_color};
             }}
             QListWidget {{
-                background-color: {bg_color};
+                background-color: transparent;
                 color: {text_color};
                 border: none;
                 outline: none;
-                padding: 4px;
+                padding: 0px;
             }}
             QListWidget::item {{
-                padding: 8px 12px;
-                border-radius: 4px;
-                margin: 2px 4px;
+                padding: 6px 10px;
+                border-radius: 3px;
+                margin: 1px 0px;
             }}
             QListWidget::item:hover {{
-                background-color: {input_bg};
+                background-color: rgba(255, 255, 255, 0.08);
             }}
             QListWidget::item:selected {{
                 background-color: {accent_color};
                 color: white;
-            }}
-            QLabel {{
-                color: {text_secondary};
-                padding: 4px;
-                background-color: {input_bg};
             }}
         """)
 
@@ -166,22 +153,14 @@ class CommandPalette(QDialog):
         self.results_list.clear()
 
         for cmd in self.filtered_commands:
-            # Create item with icon and text
-            icon = self._get_type_icon(cmd['type'])
+            # Just show the name - plain and minimal
             name = cmd['name']
-            description = cmd.get('description', '')
 
-            # Format: icon + name (+ description if present)
-            if description:
-                display_text = f"{icon}  {name}\n    {description}"
-            else:
-                display_text = f"{icon}  {name}"
-
-            item = QListWidgetItem(display_text)
+            item = QListWidgetItem(name)
             item.setData(Qt.UserRole, cmd)
 
             # Set item font
-            font = QFont("Segoe UI", 10)
+            font = QFont("Segoe UI", 9)
             item.setFont(font)
 
             self.results_list.addItem(item)
@@ -189,11 +168,6 @@ class CommandPalette(QDialog):
         # Select first item
         if self.results_list.count() > 0:
             self.results_list.setCurrentRow(0)
-
-        # Update status
-        count = len(self.filtered_commands)
-        total = len(self.commands)
-        self.status_label.setText(f"Showing {count} of {total} items")
 
     def _get_type_icon(self, cmd_type: str) -> str:
         """Get emoji icon for command type."""

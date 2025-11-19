@@ -424,6 +424,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.block_selected.connect(self._on_block_selected)
         self.canvas.connection_created.connect(self._on_connection_created)
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
+        self.canvas.command_palette_requested.connect(self.show_command_palette)
 
         # Add canvas to container
         container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
