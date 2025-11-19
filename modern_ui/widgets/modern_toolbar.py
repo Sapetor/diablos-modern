@@ -145,11 +145,11 @@ class ModernToolBar(QToolBar):
         zoom_layout = QHBoxLayout(zoom_widget)
         zoom_layout.setContentsMargins(4, 0, 4, 0)
         zoom_layout.setSpacing(8)
-        
+
         # Zoom label
-        zoom_label = QLabel("Zoom:")
-        zoom_layout.addWidget(zoom_label)
-        
+        self.zoom_text_label = QLabel("Zoom:")
+        zoom_layout.addWidget(self.zoom_text_label)
+
         # Zoom slider
         self.zoom_slider = QSlider(Qt.Horizontal)
         self.zoom_slider.setMinimum(25)  # 25%
@@ -159,12 +159,15 @@ class ModernToolBar(QToolBar):
         self.zoom_slider.setToolTip("Zoom level")
         self.zoom_slider.valueChanged.connect(self._on_zoom_changed)
         zoom_layout.addWidget(self.zoom_slider)
-        
+
         # Zoom percentage label
         self.zoom_label = QLabel("100%")
         self.zoom_label.setMinimumWidth(40)
         zoom_layout.addWidget(self.zoom_label)
-        
+
+        # Apply initial theme colors
+        self._update_label_colors()
+
         return zoom_widget
     
     def _on_zoom_changed(self, value: int):
@@ -189,7 +192,7 @@ class ModernToolBar(QToolBar):
         self.stop_action.setIcon(self._create_icon("⏹️"))
         self.plot_action.setIcon(self._create_icon("📊"))
         self.capture_action.setIcon(self._create_icon("📷"))
-        
+
         # Update theme icon based on current theme
         if theme_manager.current_theme.value == "dark":
             self.theme_action.setIcon(self._create_icon("☀️"))
@@ -197,6 +200,18 @@ class ModernToolBar(QToolBar):
         else:
             self.theme_action.setIcon(self._create_icon("🌙"))
             self.theme_action.setToolTip("Switch to dark theme")
+
+        # Update label colors
+        self._update_label_colors()
+
+    def _update_label_colors(self):
+        """Update label colors for proper contrast."""
+        text_color = theme_manager.get_color('text_primary').name()
+        label_style = f"QLabel {{ color: {text_color}; }}"
+        self.status_label.setStyleSheet(label_style)
+        self.zoom_label.setStyleSheet(label_style)
+        if hasattr(self, 'zoom_text_label'):
+            self.zoom_text_label.setStyleSheet(label_style)
     
     def set_status(self, message: str):
         """Update status message."""

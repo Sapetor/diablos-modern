@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QMenuBar, QStatusBar, QLabel, QFrame,
                              QApplication, QMessageBox, QScrollArea)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -598,6 +598,9 @@ class ModernDiaBloSWindow(QMainWindow):
         # Update statusbar label colors
         self._update_statusbar_colors()
 
+        # Update menubar colors
+        self._update_menubar_colors()
+
         # Update canvas area styling
         self.canvas_area.setStyleSheet(f"""
             #CanvasArea {{
@@ -621,7 +624,60 @@ class ModernDiaBloSWindow(QMainWindow):
         # Apply to all statusbar labels (including "Zoom:" and "|" separators)
         for widget in self.statusBar().findChildren(QLabel):
             widget.setStyleSheet(statusbar_style)
-    
+
+    def _update_menubar_colors(self):
+        """Update menubar colors for proper contrast."""
+        bg_color = theme_manager.get_color('surface').name()
+        text_color = theme_manager.get_color('text_primary').name()
+        hover_bg = theme_manager.get_color('accent_primary').name()
+        hover_bg_alpha = theme_manager.get_color('accent_primary')
+        hover_bg_alpha.setAlpha(30)
+        disabled_color = theme_manager.get_color('text_disabled').name()
+
+        menubar_style = f"""
+            QMenuBar {{
+                background-color: {bg_color};
+                color: {text_color};
+                border-bottom: 1px solid {theme_manager.get_color('border_primary').name()};
+            }}
+            QMenuBar::item {{
+                background-color: transparent;
+                padding: 4px 10px;
+            }}
+            QMenuBar::item:selected {{
+                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
+                border-radius: 4px;
+            }}
+            QMenuBar::item:pressed {{
+                background-color: {hover_bg};
+                border-radius: 4px;
+            }}
+            QMenu {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+            }}
+            QMenu::item:selected {{
+                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
+            }}
+            QMenu::item:disabled {{
+                color: {disabled_color};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """
+
+        self.menuBar().setStyleSheet(menubar_style)
+
     # Menu action handlers (simplified for Phase 1)
     def undo_action(self):
         """Undo last action."""
