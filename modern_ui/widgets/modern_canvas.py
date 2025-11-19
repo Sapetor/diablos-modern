@@ -2434,11 +2434,37 @@ class ModernCanvas(QWidget):
         logger.info(f"Grid visibility: {self.grid_visible}")
 
     def wheelEvent(self, event):
-        """Handle mouse wheel events for zooming."""
-        if event.angleDelta().y() > 0:
-            self.zoom_in()
+        """Handle mouse wheel events for zooming and scrolling.
+
+        - Plain scroll: Pan the canvas (for MacBook trackpad users)
+        - Ctrl/Cmd + scroll: Zoom in/out
+        """
+        modifiers = event.modifiers()
+
+        # Check if Ctrl (or Cmd on macOS) is pressed
+        if modifiers & (Qt.ControlModifier | Qt.MetaModifier):
+            # Zoom mode
+            if event.angleDelta().y() > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
         else:
-            self.zoom_out()
+            # Pan/scroll mode - pan the canvas with touchpad scrolling
+            delta_x = event.angleDelta().x()
+            delta_y = event.angleDelta().y()
+
+            # Scale the delta for smoother scrolling
+            scroll_sensitivity = 0.5
+            pan_delta = QPoint(
+                int(delta_x * scroll_sensitivity),
+                int(delta_y * scroll_sensitivity)
+            )
+
+            # Apply panning offset
+            self.pan_offset += pan_delta
+            self.update()
+
+            logger.debug(f"Canvas panned by {pan_delta}, new offset: {self.pan_offset}")
 
     # Drag and Drop Events
     def dragEnterEvent(self, event):
