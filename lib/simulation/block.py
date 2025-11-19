@@ -182,16 +182,26 @@ class DBlock:
         out_x = self.left + self.width if not self.flipped else self.left
 
         grid_size = 10
+
+        # For Gain block (triangle), don't snap ports to grid to ensure perfect alignment with triangle geometry
+        use_grid_snap = self.block_fn != "Gain"
+
         if self.in_ports > 0:
             for i in range(self.in_ports):
                 port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
+                if use_grid_snap:
+                    port_y = int(round(port_y_float / grid_size) * grid_size)
+                else:
+                    port_y = int(port_y_float)
                 port_in = QPoint(in_x, port_y)
                 self.in_coords.append(port_in)
         if self.out_ports > 0:
             for j in range(self.out_ports):
                 port_y_float = self.top + self.height * (j + 1) / (self.out_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
+                if use_grid_snap:
+                    port_y = int(round(port_y_float / grid_size) * grid_size)
+                else:
+                    port_y = int(port_y_float)
                 port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
