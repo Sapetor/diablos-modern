@@ -1,0 +1,289 @@
+"""
+Command Palette - Quick search for blocks, commands, and files.
+"""
+
+import logging
+from typing import List, Dict, Any, Callable
+from PyQt5.QtWidgets import (
+    QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem,
+    QLabel, QWidget, QHBoxLayout
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QKeyEvent, QFont, QColor, QPalette
+from modern_ui.themes.theme_manager import theme_manager
+
+logger = logging.getLogger(__name__)
+
+
+class CommandPalette(QDialog):
+    """
+    Quick search/command palette for fast access to blocks, commands, and files.
+
+    Opens with Ctrl+P, allows searching for:
+    - Block types to add to canvas
+    - Application commands (New, Open, Save, Run, etc.)
+    - Recent files
+    - Actions and settings
+    """
+
+    # Signals
+    command_selected = pyqtSignal(str, dict)  # command_type, data
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+
+        self.commands: List[Dict[str, Any]] = []
+        self.filtered_commands: List[Dict[str, Any]] = []
+
+        self._setup_ui()
+        self._apply_theme()
+
+        # Connect to theme changes
+        theme_manager.theme_changed.connect(self._apply_theme)
+
+    def _setup_ui(self):
+        """Setup the UI components."""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Search input
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Type to search blocks, commands, files...")
+        self.search_input.setMinimumHeight(40)
+        font = QFont("Segoe UI", 11)
+        self.search_input.setFont(font)
+        self.search_input.textChanged.connect(self._on_search_changed)
+        self.search_input.returnPressed.connect(self._on_item_selected)
+        layout.addWidget(self.search_input)
+
+        # Results list
+        self.results_list = QListWidget()
+        self.results_list.setMinimumHeight(300)
+        self.results_list.setMaximumHeight(500)
+        self.results_list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        layout.addWidget(self.results_list)
+
+        # Status bar
+        self.status_label = QLabel("")
+        self.status_label.setMinimumHeight(24)
+        self.status_label.setAlignment(Qt.AlignCenter)
+        status_font = QFont("Segoe UI", 9)
+        self.status_label.setFont(status_font)
+        layout.addWidget(self.status_label)
+
+        # Set dialog size
+        self.setMinimumWidth(600)
+        self.setMaximumWidth(800)
+
+    def _apply_theme(self):
+        """Apply current theme styling."""
+        bg_color = theme_manager.get_color('surface').name()
+        input_bg = theme_manager.get_color('surface_variant').name()
+        text_color = theme_manager.get_color('text_primary').name()
+        text_secondary = theme_manager.get_color('text_secondary').name()
+        border_color = theme_manager.get_color('border_primary').name()
+        accent_color = theme_manager.get_color('accent').name()
+
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {bg_color};
+                border: 2px solid {border_color};
+                border-radius: 8px;
+            }}
+            QLineEdit {{
+                background-color: {input_bg};
+                color: {text_color};
+                border: none;
+                border-bottom: 2px solid {border_color};
+                padding: 8px 12px;
+                font-size: 11pt;
+            }}
+            QLineEdit:focus {{
+                border-bottom: 2px solid {accent_color};
+            }}
+            QListWidget {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: none;
+                outline: none;
+                padding: 4px;
+            }}
+            QListWidget::item {{
+                padding: 8px 12px;
+                border-radius: 4px;
+                margin: 2px 4px;
+            }}
+            QListWidget::item:hover {{
+                background-color: {input_bg};
+            }}
+            QListWidget::item:selected {{
+                background-color: {accent_color};
+                color: white;
+            }}
+            QLabel {{
+                color: {text_secondary};
+                padding: 4px;
+                background-color: {input_bg};
+            }}
+        """)
+
+    def set_commands(self, commands: List[Dict[str, Any]]):
+        """
+        Set available commands for the palette.
+
+        Args:
+            commands: List of command dictionaries with keys:
+                - 'name': Display name
+                - 'type': Command type ('block', 'action', 'file', 'setting')
+                - 'description': Optional description
+                - 'callback': Function to call when selected
+                - 'data': Optional data to pass to callback
+        """
+        self.commands = commands
+        self.filtered_commands = commands
+        self._update_results()
+
+    def _on_search_changed(self, text: str):
+        """Filter commands based on search text."""
+        text = text.lower().strip()
+
+        if not text:
+            self.filtered_commands = self.commands
+        else:
+            self.filtered_commands = [
+                cmd for cmd in self.commands
+                if text in cmd['name'].lower() or
+                   (cmd.get('description', '').lower().find(text) != -1)
+            ]
+
+        self._update_results()
+
+    def _update_results(self):
+        """Update the results list with filtered commands."""
+        self.results_list.clear()
+
+        for cmd in self.filtered_commands:
+            item = QListWidgetItem()
+
+            # Create custom widget for item
+            widget = QWidget()
+            layout = QHBoxLayout(widget)
+            layout.setContentsMargins(4, 4, 4, 4)
+
+            # Icon/type indicator
+            type_label = QLabel(self._get_type_icon(cmd['type']))
+            type_label.setFixedWidth(30)
+            type_font = QFont("Segoe UI", 14)
+            type_label.setFont(type_font)
+            layout.addWidget(type_label)
+
+            # Name and description
+            info_layout = QVBoxLayout()
+            info_layout.setSpacing(2)
+
+            name_label = QLabel(cmd['name'])
+            name_font = QFont("Segoe UI", 10, QFont.Bold)
+            name_label.setFont(name_font)
+            info_layout.addWidget(name_label)
+
+            if 'description' in cmd and cmd['description']:
+                desc_label = QLabel(cmd['description'])
+                desc_font = QFont("Segoe UI", 9)
+                desc_label.setFont(desc_font)
+                desc_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
+                info_layout.addWidget(desc_label)
+
+            layout.addLayout(info_layout, 1)
+
+            # Set item properties
+            item.setSizeHint(widget.sizeHint())
+            item.setData(Qt.UserRole, cmd)
+
+            self.results_list.addItem(item)
+            self.results_list.setItemWidget(item, widget)
+
+        # Select first item
+        if self.results_list.count() > 0:
+            self.results_list.setCurrentRow(0)
+
+        # Update status
+        count = len(self.filtered_commands)
+        total = len(self.commands)
+        self.status_label.setText(f"Showing {count} of {total} items")
+
+    def _get_type_icon(self, cmd_type: str) -> str:
+        """Get emoji icon for command type."""
+        icons = {
+            'block': '🔷',
+            'action': '⚡',
+            'file': '📄',
+            'setting': '⚙️',
+            'recent': '🕐'
+        }
+        return icons.get(cmd_type, '•')
+
+    def _on_item_selected(self):
+        """Handle Enter key press to execute selected command."""
+        current_item = self.results_list.currentItem()
+        if current_item:
+            cmd = current_item.data(Qt.UserRole)
+            self._execute_command(cmd)
+
+    def _on_item_double_clicked(self, item):
+        """Handle double-click on item."""
+        cmd = item.data(Qt.UserRole)
+        self._execute_command(cmd)
+
+    def _execute_command(self, cmd: Dict[str, Any]):
+        """Execute the selected command."""
+        logger.info(f"Executing command: {cmd['name']} ({cmd['type']})")
+
+        # Call callback if provided
+        if 'callback' in cmd and callable(cmd['callback']):
+            cmd['callback']()
+
+        # Emit signal with command type and data
+        self.command_selected.emit(cmd['type'], cmd.get('data', {}))
+
+        # Close palette
+        self.close()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard navigation."""
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        elif event.key() == Qt.Key_Down:
+            current_row = self.results_list.currentRow()
+            if current_row < self.results_list.count() - 1:
+                self.results_list.setCurrentRow(current_row + 1)
+        elif event.key() == Qt.Key_Up:
+            current_row = self.results_list.currentRow()
+            if current_row > 0:
+                self.results_list.setCurrentRow(current_row - 1)
+        else:
+            super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        """When shown, position in center of parent and focus search."""
+        super().showEvent(event)
+
+        # Center on parent
+        if self.parent():
+            parent_rect = self.parent().geometry()
+            self.move(
+                parent_rect.center().x() - self.width() // 2,
+                parent_rect.center().y() - self.height() // 2
+            )
+
+        # Clear previous search and focus
+        self.search_input.clear()
+        self.search_input.setFocus()
+
+    def show_palette(self):
+        """Show the command palette."""
+        self.show()
+        self.raise_()
+        self.activateWindow()
