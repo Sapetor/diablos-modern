@@ -453,25 +453,28 @@ class ModernDiaBloSWindow(QMainWindow):
     def _setup_statusbar(self):
         """Setup modern status bar."""
         statusbar = self.statusBar()
-        
+
         # Status message
         self.status_message = QLabel("Ready")
         statusbar.addWidget(self.status_message)
-        
+
         # Add permanent widgets
         statusbar.addPermanentWidget(QLabel("Zoom:"))
         self.zoom_status = QLabel("100%")
         statusbar.addPermanentWidget(self.zoom_status)
-        
+
         statusbar.addPermanentWidget(QLabel("|"))
-        
+
         self.cursor_status = QLabel("Cursor: (0, 0)")
         statusbar.addPermanentWidget(self.cursor_status)
-        
+
         statusbar.addPermanentWidget(QLabel("|"))
-        
+
         self.theme_status = QLabel("Dark Theme")
         statusbar.addPermanentWidget(self.theme_status)
+
+        # Apply initial theme colors to statusbar labels
+        self._update_statusbar_colors()
     
     def _setup_connections(self):
         """Setup signal connections."""
@@ -591,7 +594,10 @@ class ModernDiaBloSWindow(QMainWindow):
         # Update status bar
         theme_name = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
         self.theme_status.setText(theme_name)
-        
+
+        # Update statusbar label colors
+        self._update_statusbar_colors()
+
         # Update canvas area styling
         self.canvas_area.setStyleSheet(f"""
             #CanvasArea {{
@@ -600,6 +606,21 @@ class ModernDiaBloSWindow(QMainWindow):
                 border-radius: 6px;
             }}
         """)
+
+    def _update_statusbar_colors(self):
+        """Update statusbar label colors for proper contrast."""
+        text_color = theme_manager.get_color('text_primary').name()
+        statusbar_style = f"QLabel {{ color: {text_color}; }}"
+
+        # Update known labels
+        self.status_message.setStyleSheet(statusbar_style)
+        self.zoom_status.setStyleSheet(statusbar_style)
+        self.cursor_status.setStyleSheet(statusbar_style)
+        self.theme_status.setStyleSheet(statusbar_style)
+
+        # Apply to all statusbar labels (including "Zoom:" and "|" separators)
+        for widget in self.statusBar().findChildren(QLabel):
+            widget.setStyleSheet(statusbar_style)
     
     # Menu action handlers (simplified for Phase 1)
     def undo_action(self):
