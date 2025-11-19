@@ -182,16 +182,26 @@ class DBlock:
         out_x = self.left + self.width if not self.flipped else self.left
 
         grid_size = 10
+
+        # For Gain block (triangle), don't snap ports to grid to ensure perfect alignment with triangle geometry
+        use_grid_snap = self.block_fn != "Gain"
+
         if self.in_ports > 0:
             for i in range(self.in_ports):
                 port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
+                if use_grid_snap:
+                    port_y = int(round(port_y_float / grid_size) * grid_size)
+                else:
+                    port_y = int(port_y_float)
                 port_in = QPoint(in_x, port_y)
                 self.in_coords.append(port_in)
         if self.out_ports > 0:
             for j in range(self.out_ports):
                 port_y_float = self.top + self.height * (j + 1) / (self.out_ports + 1)
-                port_y = int(round(port_y_float / grid_size) * grid_size)
+                if use_grid_snap:
+                    port_y = int(round(port_y_float / grid_size) * grid_size)
+                else:
+                    port_y = int(port_y_float)
                 port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
@@ -284,7 +294,9 @@ class DBlock:
             painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
 
         # Draw block-specific icon if available
-        icon_pen = QPen(theme_manager.get_color('text_primary'), 2)
+        # Use dark color for icons to contrast with bright block backgrounds
+        # This works well in both light and dark modes since block colors are vibrant
+        icon_pen = QPen(QColor('#1F2937'), 2)
         painter.setPen(icon_pen)
         
         path = QPainterPath()
@@ -311,7 +323,8 @@ class DBlock:
             font.setPointSize(original_size + 2)
             font.setItalic(True)
             painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
 
             # Draw B(s)
             rect_top = QRect(self.left, self.top, self.width, self.height // 2)
@@ -389,7 +402,8 @@ class DBlock:
             font.setPointSize(original_size + 2)
             font.setItalic(True)
             painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
 
             # Draw dy
             rect_top = QRect(self.left, self.top, self.width, self.height // 2)
@@ -412,7 +426,8 @@ class DBlock:
             font.setPointSize(original_size + 2)
             font.setItalic(True)
             painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
 
             # Draw B(s)
             rect_top = QRect(self.left, self.top, self.width, self.height // 2)
@@ -436,7 +451,8 @@ class DBlock:
             font.setPointSize(original_size + 4)
             font.setItalic(True)
             painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
 
             # Draw 1
             rect_top = QRect(self.left, self.top, self.width, self.height // 2 - 2)
@@ -494,7 +510,8 @@ class DBlock:
             font.setPointSize(original_size + 4)
             font.setItalic(True)
             painter.setFont(font)
-            painter.setPen(theme_manager.get_color('text_primary'))
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
             painter.drawText(self.rect, Qt.AlignCenter, "eˣ")
             font.setItalic(False)
             font.setPointSize(original_size)

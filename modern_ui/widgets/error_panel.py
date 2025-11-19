@@ -106,6 +106,9 @@ class ErrorPanel(QWidget):
         self._setup_ui()
         self._apply_styling()
 
+        # Connect to theme changes
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
     def _setup_ui(self):
         """Setup the UI components."""
         layout = QVBoxLayout(self)
@@ -250,3 +253,10 @@ class ErrorPanel(QWidget):
         """Clear all errors and hide panel."""
         self.set_errors([])
         self.hide()
+
+    def _on_theme_changed(self):
+        """Handle theme changes."""
+        self._apply_styling()
+        # Re-create error widgets to apply new theme colors
+        if self.errors:
+            self.set_errors(self.errors)

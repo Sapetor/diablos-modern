@@ -28,83 +28,85 @@ class ThemeManager(QObject):
         }
     
     def _create_dark_theme(self) -> Dict[str, Any]:
-        """Create dark theme color scheme with refined, professional colors."""
+        """Create dark theme color scheme with refined, professional colors and better contrast."""
         return {
-            # Main background colors - Softer, less harsh
-            'background_primary': '#1A1D23',      # Main window background (slight blue tint)
-            'background_secondary': '#252A31',    # Panel backgrounds
-            'background_tertiary': '#2F353D',     # Elevated elements
+            # Main background colors - Darker for better contrast
+            'background_primary': '#0F1419',      # Main window background (darker)
+            'background_secondary': '#1A1F26',    # Panel backgrounds
+            'background_tertiary': '#252A32',     # Elevated elements
 
             # Surface colors
-            'surface': '#252A31',                  # Cards, dialogs
-            'surface_variant': '#2F353D',         # Alternate surface
-            'surface_elevated': '#343A43',        # Highly elevated elements
+            'surface': '#1A1F26',                  # Cards, dialogs
+            'surface_primary': '#1A1F26',          # Primary surface
+            'surface_secondary': '#252A32',        # Secondary surface
+            'surface_variant': '#252A32',         # Alternate surface
+            'surface_elevated': '#2F353D',        # Highly elevated elements
 
-            # Text colors - Better contrast
-            'text_primary': '#E8E9ED',            # Primary text (softer white)
-            'text_secondary': '#A0A4B0',          # Secondary text
-            'text_disabled': '#5F6370',           # Disabled text
-            'text_inverse': '#1A1D23',            # Inverse text (for light backgrounds)
+            # Text colors - Excellent contrast
+            'text_primary': '#F0F1F4',            # Primary text (brighter white)
+            'text_secondary': '#B4B8C0',          # Secondary text (lighter)
+            'text_disabled': '#6B7280',           # Disabled text
+            'text_inverse': '#0F1419',            # Inverse text (for light backgrounds)
 
-            # Accent colors - Refined blue palette
-            'accent_primary': '#4C9EFF',          # Primary accent (softer, more professional blue)
+            # Accent colors - Vibrant and clear
+            'accent_primary': '#60A5FA',          # Primary accent (brighter blue)
             'accent_secondary': '#3B82F6',        # Darker accent
-            'accent_hover': '#60A5FF',            # Hover state
+            'accent_hover': '#7CB8FF',            # Hover state
             'accent_pressed': '#2563EB',          # Pressed state
 
-            # Status colors - Softer, more professional
-            'success': '#3ECF8E',                 # Success (softer green)
-            'success_bg': '#1C3D30',              # Success background
-            'warning': '#F59E0B',                 # Warning (softer orange)
-            'warning_bg': '#3D2F1C',              # Warning background
-            'error': '#EF5A6F',                   # Error (softer red)
-            'error_bg': '#3D1C24',                # Error background
-            'info': '#4C9EFF',                    # Information
-            'info_bg': '#1C2F3D',                 # Info background
+            # Status colors - Vibrant and clear
+            'success': '#10B981',                 # Success (emerald)
+            'success_bg': '#064E3B',              # Success background
+            'warning': '#F59E0B',                 # Warning (amber)
+            'warning_bg': '#78350F',              # Warning background
+            'error': '#EF4444',                   # Error (red)
+            'error_bg': '#7F1D1D',                # Error background
+            'info': '#60A5FA',                    # Information
+            'info_bg': '#1E3A8A',                 # Info background
 
-            # Border colors - Subtle but visible
-            'border_primary': '#383E47',          # Primary borders
-            'border_secondary': '#484E57',        # Secondary borders
-            'border_focus': '#4C9EFF',            # Focused elements
-            'border_hover': '#5A6270',            # Hover state
+            # Border colors - More visible
+            'border_primary': '#374151',          # Primary borders (lighter)
+            'border_secondary': '#4B5563',        # Secondary borders (lighter)
+            'border_focus': '#60A5FA',            # Focused elements
+            'border_hover': '#6B7280',            # Hover state
 
-            # Block colors - Sophisticated, muted tones with better contrast
-            'block_default': '#2F353D',           # Default block color
-            'block_default_border': '#484E57',    # Default border
+            # Block colors - Vibrant, clear tones with excellent contrast
+            'block_default': '#252A32',           # Default block color
+            'block_default_border': '#4B5563',    # Default border
 
-            # Source blocks - Soft emerald/teal
-            'block_source': '#2D4B4A',            # Source blocks
-            'block_source_accent': '#3ECF8E',     # Source accent
-            'block_source_border': '#3A5F5E',     # Source border
+            # Source blocks - Vibrant emerald/teal
+            'block_source': '#064E3B',            # Source blocks (darker)
+            'block_source_accent': '#10B981',     # Source accent (brighter)
+            'block_source_border': '#059669',     # Source border
 
-            # Math/Process blocks - Soft blue
-            'block_process': '#2D3D55',           # Process blocks
-            'block_process_accent': '#4C9EFF',    # Process accent
-            'block_process_border': '#3B4D6B',    # Process border
+            # Math/Process blocks - Vibrant blue
+            'block_process': '#1E3A8A',           # Process blocks (darker)
+            'block_process_accent': '#60A5FA',    # Process accent (brighter)
+            'block_process_border': '#3B82F6',    # Process border
 
-            # Control blocks - Soft purple
-            'block_control': '#3D2D55',           # Control blocks
+            # Control blocks - Vibrant purple
+            'block_control': '#5B21B6',           # Control blocks (darker)
             'block_control_accent': '#A78BFA',    # Control accent
-            'block_control_border': '#4D3B6B',    # Control border
+            'block_control_border': '#8B5CF6',    # Control border
 
-            # Sink blocks - Soft red/rose
-            'block_sink': '#552D3A',              # Sink blocks
-            'block_sink_accent': '#EF5A6F',       # Sink accent
-            'block_sink_border': '#6B3B4D',       # Sink border
+            # Sink blocks - Vibrant red/rose
+            'block_sink': '#7F1D1D',              # Sink blocks (darker)
+            'block_sink_accent': '#EF4444',       # Sink accent (brighter)
+            'block_sink_border': '#DC2626',       # Sink border
 
-            # Other blocks - Soft amber
-            'block_other': '#554A2D',             # Other blocks
+            # Other blocks - Vibrant amber
+            'block_other': '#78350F',             # Other blocks (darker)
             'block_other_accent': '#F59E0B',      # Other accent
-            'block_other_border': '#6B5E3B',      # Other border
+            'block_other_border': '#D97706',      # Other border
 
             # Selection and interaction
-            'block_selected': '#4C9EFF',          # Selected blocks border
-            'block_selected_bg': '#2D3D55',       # Selected blocks background
-            'block_hover': '#343A43',             # Hover state
-            'block_shadow': '#0F1216',            # Shadow color for depth
+            'block_selected': '#60A5FA',          # Selected blocks border (brighter)
+            'block_selected_bg': '#1E3A8A',       # Selected blocks background
+            'block_hover': '#2F353D',             # Hover state
+            'block_shadow': '#000000',            # Shadow color for depth
 
-            # Connection colors - More subtle
-            'connection_default': '#6B7280',      # Default connections
+            # Connection colors - Improved visibility and contrast
+            'connection_default': '#8B95A5',      # Default connections (lighter gray for better visibility)
             'connection_active': '#4C9EFF',       # Active connections
             'connection_selected': '#60A5FF',     # Selected connections
             'connection_error': '#EF5A6F',        # Error connections
@@ -112,17 +114,17 @@ class ThemeManager(QObject):
             'connection_shadow': '#0F1216',       # Connection shadow
 
             # Port colors
-            'port_input': '#4C9EFF',              # Input ports
-            'port_output': '#3ECF8E',             # Output ports
-            'port_hover': '#60A5FF',              # Port hover
+            'port_input': '#60A5FA',              # Input ports (brighter)
+            'port_output': '#10B981',             # Output ports (brighter)
+            'port_hover': '#7CB8FF',              # Port hover
 
             # Grid and canvas
-            'grid_dots': '#2F353D',               # Grid dot color (very subtle)
-            'grid_lines': '#383E47',              # Grid lines (optional)
-            'canvas_background': '#1A1D23',       # Canvas background
-            'canvas_background_alt': '#1F2329',   # Alternate canvas (for patterns)
-            'selection_rectangle': '#4C9EFF',     # Selection rectangle
-            'selection_rectangle_fill': '#4C9EFF1A',  # Selection fill (with alpha)
+            'grid_dots': '#252A32',               # Grid dot color (subtle but visible)
+            'grid_lines': '#374151',              # Grid lines (optional)
+            'canvas_background': '#0F1419',       # Canvas background (darker)
+            'canvas_background_alt': '#1A1F26',   # Alternate canvas (for patterns)
+            'selection_rectangle': '#60A5FA',     # Selection rectangle
+            'selection_rectangle_fill': '#60A5FA1A',  # Selection fill (with alpha)
         }
     
     def _create_light_theme(self) -> Dict[str, Any]:
@@ -135,6 +137,8 @@ class ThemeManager(QObject):
 
             # Surface colors
             'surface': '#FFFFFF',                  # Cards, dialogs
+            'surface_primary': '#FAFBFC',          # Primary surface
+            'surface_secondary': '#F3F4F6',        # Secondary surface
             'surface_variant': '#F9FAFB',         # Alternate surface
             'surface_elevated': '#FFFFFF',        # Highly elevated elements
 
@@ -201,12 +205,12 @@ class ThemeManager(QObject):
             'block_hover': '#F3F4F6',             # Hover state
             'block_shadow': '#00000015',          # Shadow color for depth (with alpha)
 
-            # Connection colors - Clear and visible
-            'connection_default': '#9CA3AF',      # Default connections
-            'connection_active': '#2563EB',       # Active connections
-            'connection_selected': '#3B82F6',     # Selected connections
+            # Connection colors - Vibrant and clear (matching preview aesthetics)
+            'connection_default': '#2563EB',      # Default connections (blue like preview)
+            'connection_active': '#1D4ED8',       # Active connections (darker blue)
+            'connection_selected': '#3B82F6',     # Selected connections (bright blue)
             'connection_error': '#EF4444',        # Error connections
-            'connection_preview': '#F59E0B',      # Connection preview
+            'connection_preview': '#2563EB',      # Connection preview (consistent with default)
             'connection_shadow': '#00000010',     # Connection shadow
 
             # Port colors

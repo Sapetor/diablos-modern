@@ -6,13 +6,14 @@ Dynamically creates a form to edit the properties of a selected block.
 import logging
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QComboBox, QCheckBox, QFrame, QFormLayout
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
+from modern_ui.themes.theme_manager import theme_manager
 
 
 class PropertyEditor(QFrame):
     """A widget that dynamically creates a form to edit block properties."""
-    
+
     property_changed = pyqtSignal(str, str, object)  # block_name, prop_name, new_value
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("PropertyEditor")
@@ -30,6 +31,10 @@ class PropertyEditor(QFrame):
 
         self.logger = logging.getLogger(__name__)
         self.block = None
+
+        # Connect to theme changes
+        theme_manager.theme_changed.connect(self._update_theme)
+        self._update_theme()
         
     def set_block(self, block):
         """Set the block to be edited and create the property form."""
@@ -55,8 +60,9 @@ class PropertyEditor(QFrame):
         placeholder = QLabel("Select a block to view its properties.")
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
-        # Ensure visible styling
-        placeholder.setStyleSheet("color: palette(text); padding: 20px;")
+        # Use theme-aware styling
+        text_color = theme_manager.get_color('text_secondary').name()
+        placeholder.setStyleSheet(f"color: {text_color}; padding: 20px;")
         self.layout.addRow(placeholder)
         
     def _create_form(self):
@@ -69,8 +75,9 @@ class PropertyEditor(QFrame):
                 continue
                 
             label = QLabel(f"{key.replace('_', ' ').title()}:")
-            # Ensure labels are visible
-            label.setStyleSheet("color: palette(text);")
+            # Use theme-aware styling
+            text_color = theme_manager.get_color('text_primary').name()
+            label.setStyleSheet(f"color: {text_color};")
 
             widget = None
             if isinstance(value, bool):
@@ -119,10 +126,59 @@ class PropertyEditor(QFrame):
         """Emit a signal for a changed property."""
         if self.block is None:
             return
-            
+
         block_name = getattr(self.block, 'name', 'Unknown')
         self.logger.debug(f"Property changed: {block_name}.{prop_name} = {new_value}")
         self.property_changed.emit(block_name, prop_name, new_value)
+
+    def _update_theme(self):
+        """Update styling when theme changes."""
+        bg_color = theme_manager.get_color('surface').name()
+        text_color = theme_manager.get_color('text_primary').name()
+        border_color = theme_manager.get_color('border_primary').name()
+        input_bg = theme_manager.get_color('surface_variant').name()
+
+        self.setStyleSheet(f"""
+            PropertyEditor {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+            }}
+            QLineEdit {{
+                background-color: {input_bg};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {theme_manager.get_color('border_focus').name()};
+            }}
+            QComboBox {{
+                background-color: {input_bg};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QComboBox:focus {{
+                border: 1px solid {theme_manager.get_color('border_focus').name()};
+            }}
+            QCheckBox {{
+                color: {text_color};
+            }}
+            QLabel {{
+                color: {text_color};
+            }}
+        """)
+
+        # Re-create form if block is set to apply new colors to existing widgets
+        if self.block:
+            self._clear_form()
+            self._create_form()
+        else:
+            self._clear_form()
+            self._show_placeholder()
 
     def sizeHint(self):
         """Provide a dynamic size hint based on the number of properties."""
