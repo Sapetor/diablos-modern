@@ -844,7 +844,8 @@ class ModernDiaBloSWindow(QMainWindow):
         if not hasattr(self, 'canvas'):
             return
 
-        from PyQt5.QtCore import QPoint, QCursor
+        from PyQt5.QtCore import QPoint
+        from PyQt5.QtGui import QCursor
 
         # Get current mouse position in global coordinates
         global_pos = QCursor.pos()
