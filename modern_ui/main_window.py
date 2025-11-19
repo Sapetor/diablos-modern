@@ -27,6 +27,7 @@ from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
+from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.platform_config import get_platform_config
 
@@ -68,6 +69,9 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_layout()
         self._setup_statusbar()
         self._setup_connections()
+
+        # Create toast notification (after canvas is created)
+        self.toast = ToastNotification(self.canvas)
         
         # Initialize DSim components
         self.dsim.main_buttons_init()
@@ -191,6 +195,13 @@ class ModernDiaBloSWindow(QMainWindow):
         view_menu.addAction("Zoom &Out\tCtrl+-", self.zoom_out)
         view_menu.addAction("&Fit to Window\tCtrl+0", self.fit_to_window)
         view_menu.addSeparator()
+
+        # Grid toggle
+        self.grid_toggle_action = view_menu.addAction("Show &Grid\tCtrl+G", self.toggle_grid)
+        self.grid_toggle_action.setCheckable(True)
+        self.grid_toggle_action.setChecked(True)
+        view_menu.addSeparator()
+
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.toggle_theme)
         view_menu.addSeparator()
         scaling_menu = view_menu.addMenu("UI Scale")
@@ -684,12 +695,14 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.undo()
             self.status_message.setText("Undo")
+            self.toast.show_message("⟲ Undo")
 
     def redo_action(self):
         """Redo last undone action."""
         if hasattr(self, 'canvas'):
             self.canvas.redo()
             self.status_message.setText("Redo")
+            self.toast.show_message("⟳ Redo")
 
     def select_all(self):
         """Select all blocks in the diagram."""
@@ -716,11 +729,24 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_in()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
 
     def zoom_out(self):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_out()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
+
+    def toggle_grid(self):
+        """Toggle grid visibility."""
+        if hasattr(self, 'canvas'):
+            self.canvas.toggle_grid()
+            self.grid_toggle_action.setChecked(self.canvas.grid_visible)
+            status = "shown" if self.canvas.grid_visible else "hidden"
+            self.status_message.setText(f"Grid {status}")
+            icon = "⊞" if self.canvas.grid_visible else "⊟"
+            self.toast.show_message(f"{icon} Grid {status.capitalize()}")
+
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
         if not hasattr(self, 'canvas'):
