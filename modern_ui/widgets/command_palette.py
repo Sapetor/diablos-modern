@@ -59,10 +59,10 @@ class CommandPalette(QDialog):
         self.search_input.returnPressed.connect(self._on_item_selected)
         layout.addWidget(self.search_input)
 
-        # Results list
+        # Results list - compact size for experienced users
         self.results_list = QListWidget()
-        self.results_list.setMinimumHeight(300)
-        self.results_list.setMaximumHeight(500)
+        self.results_list.setMinimumHeight(180)  # Show ~5-6 items
+        self.results_list.setMaximumHeight(240)
         self.results_list.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.results_list)
 
@@ -74,9 +74,9 @@ class CommandPalette(QDialog):
         self.status_label.setFont(status_font)
         layout.addWidget(self.status_label)
 
-        # Set dialog size
-        self.setMinimumWidth(600)
-        self.setMaximumWidth(800)
+        # Set dialog size - more compact
+        self.setMinimumWidth(500)
+        self.setMaximumWidth(600)
 
     def _apply_theme(self):
         """Apply current theme styling."""
