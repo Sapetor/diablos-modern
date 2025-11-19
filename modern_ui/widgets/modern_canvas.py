@@ -322,6 +322,9 @@ class ModernCanvas(QWidget):
                 pen.setCapStyle(Qt.RoundCap)
                 painter.setPen(pen)
 
+                # Explicitly set no brush to prevent fill artifacts
+                painter.setBrush(Qt.NoBrush)
+
                 # Draw curved Bezier preview
                 from PyQt5.QtGui import QPainterPath
                 path = QPainterPath()
