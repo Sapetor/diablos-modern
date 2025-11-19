@@ -245,18 +245,88 @@ class DSim:
         for line in self.line_list:
             line.update_line(self.blocks_list)
 
-    def display_blocks(self, painter):
+    def display_blocks(self, painter, draw_ports=True):
         """
         :purpose: Draws blocks defined in the main list on the screen.
+        :param painter: A layer in a pygame canvas where the figure is drawn.
+        :param draw_ports: Whether to draw ports (default True for backward compatibility)
+        """
+        if painter is None:
+            return
+        for b_elem in self.blocks_list:
+            b_elem.draw_Block(painter, draw_ports=draw_ports)
+            # Draw resize handles for selected blocks
+            if b_elem.selected:
+                b_elem.draw_resize_handles(painter)
+
+    def display_ports(self, painter):
+        """
+        :purpose: Draws only the ports for all blocks.
         :param painter: A layer in a pygame canvas where the figure is drawn.
         """
         if painter is None:
             return
         for b_elem in self.blocks_list:
-            b_elem.draw_Block(painter)
-            # Draw resize handles for selected blocks
-            if b_elem.selected:
-                b_elem.draw_resize_handles(painter)
+            # Draw only the ports by calling the port drawing code directly
+            from PyQt5.QtGui import QRadialGradient, QColor
+            from PyQt5.QtCore import Qt
+            from PyQt5.QtGui import QPen
+            from modern_ui.themes.theme_manager import theme_manager
+
+            port_input_color = theme_manager.get_color('port_input')
+            port_output_color = theme_manager.get_color('port_output')
+
+            port_draw_radius = b_elem.port_radius - 1
+
+            # Input ports with radial gradient and glossy effect
+            for port_in_location in b_elem.in_coords:
+                gradient = QRadialGradient(port_in_location.x(), port_in_location.y(), port_draw_radius)
+                lighter_input = port_input_color.lighter(130)
+                gradient.setColorAt(0.0, lighter_input)
+                gradient.setColorAt(0.7, port_input_color)
+                gradient.setColorAt(1.0, port_input_color.darker(110))
+
+                painter.setBrush(gradient)
+                painter.setPen(QPen(port_input_color.darker(140), 2.0))
+                painter.drawEllipse(port_in_location, port_draw_radius, port_draw_radius)
+
+                # Add subtle highlight for glossy effect
+                painter.setPen(Qt.NoPen)
+                highlight_color = QColor(255, 255, 255, 50)
+                painter.setBrush(highlight_color)
+                highlight_offset = int(port_draw_radius * 0.3)
+                highlight_size = int(port_draw_radius * 0.4)
+                painter.drawEllipse(
+                    port_in_location.x() - highlight_offset,
+                    port_in_location.y() - highlight_offset,
+                    highlight_size,
+                    highlight_size
+                )
+
+            # Output ports with radial gradient and glossy effect
+            for port_out_location in b_elem.out_coords:
+                gradient = QRadialGradient(port_out_location.x(), port_out_location.y(), port_draw_radius)
+                lighter_output = port_output_color.lighter(130)
+                gradient.setColorAt(0.0, lighter_output)
+                gradient.setColorAt(0.7, port_output_color)
+                gradient.setColorAt(1.0, port_output_color.darker(110))
+
+                painter.setBrush(gradient)
+                painter.setPen(QPen(port_output_color.darker(140), 2.0))
+                painter.drawEllipse(port_out_location, port_draw_radius, port_draw_radius)
+
+                # Add subtle highlight for glossy effect
+                painter.setPen(Qt.NoPen)
+                highlight_color = QColor(255, 255, 255, 50)
+                painter.setBrush(highlight_color)
+                highlight_offset = int(port_draw_radius * 0.3)
+                highlight_size = int(port_draw_radius * 0.4)
+                painter.drawEllipse(
+                    port_out_location.x() - highlight_offset,
+                    port_out_location.y() - highlight_offset,
+                    highlight_size,
+                    highlight_size
+                )
 
     def port_availability(self, dst_line):
         """
