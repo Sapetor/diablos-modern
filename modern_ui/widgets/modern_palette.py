@@ -62,7 +62,8 @@ class DraggableBlockWidget(QFrame):
         from modern_ui.themes.theme_manager import ThemeType
         menu_block = self.menu_block
 
-        block_rect = self.rect().adjusted(5, 5, -5, -25)
+        # Adjust block rect to leave more margin for ports (10px on sides for port circles)
+        block_rect = self.rect().adjusted(12, 12, -12, -30)
 
         temp_dblock = DBlock(
             block_fn=menu_block.block_fn,
@@ -450,10 +451,21 @@ class ModernBlockPalette(QWidget):
     
     def _apply_styling(self):
         """Apply theme-aware styling."""
+        from modern_ui.themes.theme_manager import ThemeType
+
         bg_color = theme_manager.get_color('surface_primary')
         text_color = theme_manager.get_color('text_primary')
         border_color = theme_manager.get_color('border_primary')
         search_bg_color = theme_manager.get_color('surface_secondary')
+
+        # Use theme-appropriate colors for search box
+        if theme_manager.current_theme == ThemeType.DARK:
+            search_input_bg = search_bg_color.name()
+            search_input_text = text_color.name()
+        else:
+            # Light gray background with dark text for light mode
+            search_input_bg = '#E0E0E0'
+            search_input_text = '#111827'
 
         self.setStyleSheet(f"""
             ModernBlockPalette {{
@@ -462,8 +474,8 @@ class ModernBlockPalette(QWidget):
                 border-radius: 6px;
             }}
             QLineEdit {{
-                background-color: #E0E0E0;
-                color: {text_color.name()};
+                background-color: {search_input_bg};
+                color: {search_input_text};
                 border: 1px solid {border_color.name()};
                 border-radius: 4px;
                 padding: 5px;
