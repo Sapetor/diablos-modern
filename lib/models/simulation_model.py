@@ -5,6 +5,8 @@ Manages blocks, lines, and diagram state.
 
 import logging
 import copy
+import sys
+import os
 from typing import List, Dict, Optional, Tuple, Any
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QRect, QPoint
@@ -12,6 +14,10 @@ from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.block_loader import load_blocks
 from lib.simulation.menu_block import MenuBlocks
+
+# Import block size configuration
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config.block_sizes import get_block_size
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +74,34 @@ class SimulationModel:
         # Load available block types
         self.load_all_blocks()
 
+    def _get_category_color(self, category: str) -> QColor:
+        """
+        Get theme-aware color for a block category.
+
+        Args:
+            category: Block category (Sources, Math, Control, Sinks, Other)
+
+        Returns:
+            QColor from theme manager for the category
+        """
+        from modern_ui.themes.theme_manager import theme_manager
+
+        category_lower = category.lower() if isinstance(category, str) else str(category).lower()
+
+        if 'source' in category_lower:
+            return theme_manager.get_color('block_source')
+        elif 'math' in category_lower:
+            return theme_manager.get_color('block_process')
+        elif 'control' in category_lower:
+            return theme_manager.get_color('block_control')
+        elif 'sink' in category_lower:
+            return theme_manager.get_color('block_sink')
+        else:
+            return theme_manager.get_color('block_other')
+
     def load_all_blocks(self) -> None:
         """
-        Load all available block types from the blocks/ directory.
+        Load all available block types from the blocks/ directory with theme-aware colors.
         Creates MenuBlock instances for each available block type.
         """
         self.menu_blocks = []
@@ -103,11 +134,17 @@ class SimulationModel:
                         ex_params[param_name] = param_info
 
             # Determine function name
-            # Check if block defines a custom fn_name property, otherwise use block_name.lower()
             if hasattr(block, 'fn_name'):
                 fn_name = block.fn_name
             else:
                 fn_name = block.block_name.lower()
+
+            # Get category and determine theme-aware color
+            category = getattr(block, 'category', 'Other')
+            block_color = self._get_category_color(category)
+
+            # Get block-specific size from configuration
+            block_size = get_block_size(block.block_name)
 
             menu_block = MenuBlocks(
                 block_fn=block.block_name,
@@ -119,12 +156,15 @@ class SimulationModel:
                     'io_edit': io_edit
                 },
                 ex_params=ex_params,
-                b_color=block.color,
-                coords=(100, 80),  # More balanced aspect ratio (1.25:1 instead of 2:1)
+                b_color=block_color,
+                coords=block_size,  # Use configured block size
                 external=getattr(block, 'external', False),
                 block_class=block_class,
                 colors=self.colors
             )
+
+            # Store category on menu block for later reference
+            menu_block.category = category
             self.menu_blocks.append(menu_block)
 
     def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
@@ -166,17 +206,18 @@ class SimulationModel:
             height = int(float(block.size[1]))
             block_collision = QRect(mouse_x, mouse_y, width, height)
 
-        # Create the block instance
+        # Create the block instance with category information
+        category = getattr(block, 'category', 'Other')
         new_block = DBlock(
             block.block_fn, sid, block_collision, block.b_color,
             block.ins, block.outs, block.b_type, block.io_edit,
             block.fn_name, copy.deepcopy(block.params), block.external,
-            block_class=block.block_class, colors=self.colors
+            block_class=block.block_class, colors=self.colors, category=category
         )
 
         self.blocks_list.append(new_block)
         self.dirty = True
-        logger.debug(f"New block created: {new_block.name}")
+        logger.debug(f"New block created: {new_block.name} (category: {category})")
         return new_block
 
     def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],

@@ -4,6 +4,7 @@ Features modern layout, theming, and enhanced user interface.
 """
 
 import sys
+import os
 import logging
 import ast
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -26,6 +27,7 @@ from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
+from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -42,6 +44,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Store screen geometry for responsive sizing
         self.screen_geometry = screen_geometry
+
+        # Default routing mode for new connections
+        self.default_routing_mode = "bezier"
 
         # Core DSim functionality
         self.dsim = DSim()
@@ -72,6 +77,15 @@ class ModernDiaBloSWindow(QMainWindow):
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.safe_update)
         self.update_timer.start(int(1000 / self.dsim.FPS))
+
+        # Setup auto-save timer (every 2 minutes)
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.timeout.connect(self._auto_save)
+        self.autosave_timer.start(2 * 60 * 1000)  # 2 minutes in milliseconds
+        self.autosave_path = 'config/.autosave.diablos'
+
+        # Check for auto-save file on startup
+        QTimer.singleShot(500, self._check_autosave_recovery)
 
         # Schedule initial splitter sizing after window is shown
         # This ensures we use actual window dimensions, not screen dimensions
@@ -141,12 +155,18 @@ class ModernDiaBloSWindow(QMainWindow):
     def _setup_menubar(self):
         """Setup modern menu bar."""
         menubar = self.menuBar()
-        
+
         # File menu
         file_menu = menubar.addMenu("&File")
         file_menu.addAction("&New\tCtrl+N", self.new_diagram)
         file_menu.addAction("&Open\tCtrl+O", self.open_diagram)
         file_menu.addAction("&Save\tCtrl+S", self.save_diagram)
+        file_menu.addSeparator()
+
+        # Recent Files submenu
+        self.recent_files_menu = file_menu.addMenu("Recent Files")
+        self._update_recent_files_menu()
+
         file_menu.addSeparator()
         file_menu.addAction("E&xit\tAlt+F4", self.close)
         
@@ -180,9 +200,26 @@ class ModernDiaBloSWindow(QMainWindow):
         action_125.triggered.connect(lambda: self._set_scaling(1.25))
         action_150 = scaling_menu.addAction("150%")
         action_150.triggered.connect(lambda: self._set_scaling(1.5))
-        
+
+        # Default Connection Routing submenu
+        view_menu.addSeparator()
+        routing_menu = view_menu.addMenu("Default Connection Routing")
+
+        # Bezier mode (default)
+        self.bezier_routing_action = routing_menu.addAction("Bezier (Curved)")
+        self.bezier_routing_action.setCheckable(True)
+        self.bezier_routing_action.setChecked(True)
+        self.bezier_routing_action.triggered.connect(lambda: self._set_default_routing_mode("bezier"))
+
+        # Orthogonal mode
+        self.orthogonal_routing_action = routing_menu.addAction("Orthogonal (Manhattan)")
+        self.orthogonal_routing_action.setCheckable(True)
+        self.orthogonal_routing_action.triggered.connect(lambda: self._set_default_routing_mode("orthogonal"))
+
         # Help menu
         help_menu = menubar.addMenu("&Help")
+        help_menu.addAction("&Keyboard Shortcuts", self.show_keyboard_shortcuts)
+        help_menu.addSeparator()
         help_menu.addAction("&About DiaBloS", self.show_about)
 
     def _set_scaling(self, factor):
@@ -201,9 +238,24 @@ class ModernDiaBloSWindow(QMainWindow):
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
 
-        QMessageBox.information(self, "UI Scaling", 
+        QMessageBox.information(self, "UI Scaling",
                                 "The UI scaling factor has been changed. Please restart the application for the changes to take effect.")
-    
+
+    def _set_default_routing_mode(self, mode):
+        """Set the default routing mode for new connections."""
+        if mode in ["bezier", "orthogonal"]:
+            self.default_routing_mode = mode
+
+            # Update menu checkmarks
+            self.bezier_routing_action.setChecked(mode == "bezier")
+            self.orthogonal_routing_action.setChecked(mode == "orthogonal")
+
+            # Pass the setting to the canvas
+            if hasattr(self, 'canvas'):
+                self.canvas.default_routing_mode = mode
+
+            logger.info(f"Default connection routing mode set to: {mode}")
+
     def _setup_toolbar(self):
         """Setup modern toolbar."""
         self.toolbar = ModernToolBar(self)
@@ -329,9 +381,18 @@ class ModernDiaBloSWindow(QMainWindow):
         return panel
     
     def _create_canvas_area(self) -> QWidget:
-        """Create modern canvas area with responsive sizing."""
+        """Create modern canvas area with responsive sizing and error panel."""
+        # Create container widget
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(4)
+
         # Create the modern canvas widget
         self.canvas = ModernCanvas(self.dsim)
+
+        # Set default routing mode for new connections
+        self.canvas.default_routing_mode = self.default_routing_mode
 
         # Get platform configuration
         config = get_platform_config()
@@ -345,7 +406,16 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.connection_created.connect(self._on_connection_created)
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
 
-        return self.canvas
+        # Add canvas to container
+        container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
+
+        # Create error panel
+        self.error_panel = ErrorPanel()
+        self.error_panel.error_clicked.connect(self._on_error_clicked)
+        self.error_panel.setMaximumHeight(200)  # Limit height
+        container_layout.addWidget(self.error_panel, 0)  # Error panel doesn't stretch
+
+        return container
     
     def _create_property_panel(self) -> QWidget:
         """Create modern property panel on right side with size constraints."""
@@ -532,9 +602,39 @@ class ModernDiaBloSWindow(QMainWindow):
         """)
     
     # Menu action handlers (simplified for Phase 1)
-    def undo_action(self): pass
-    def redo_action(self): pass
-    def select_all(self): pass
+    def undo_action(self):
+        """Undo last action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.undo()
+            self.status_message.setText("Undo")
+
+    def redo_action(self):
+        """Redo last undone action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.redo()
+            self.status_message.setText("Redo")
+
+    def select_all(self):
+        """Select all blocks in the diagram."""
+        if hasattr(self, 'canvas'):
+            # Deselect all lines first
+            for line in self.canvas.dsim.line_list:
+                line.selected = False
+
+            # Select all blocks
+            selected_count = 0
+            for block in self.canvas.dsim.blocks_list:
+                block.selected = True
+                selected_count += 1
+
+            # Update canvas to show selection
+            self.canvas.update()
+
+            if selected_count > 0:
+                self.status_message.setText(f"Selected {selected_count} block(s)")
+            else:
+                self.status_message.setText("No blocks to select")
+
     def zoom_in(self):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_in()
@@ -544,11 +644,144 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_out()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-    def fit_to_window(self): pass
+    def fit_to_window(self):
+        """Fit all blocks to window by auto-zooming and panning."""
+        if not hasattr(self, 'canvas'):
+            return
+
+        from PyQt5.QtCore import QPoint
+
+        # Get all blocks
+        blocks = self.canvas.dsim.blocks_list
+        if not blocks:
+            self.status_message.setText("No blocks to fit")
+            return
+
+        # Calculate bounding box of all blocks
+        min_x = min_y = float('inf')
+        max_x = max_y = float('-inf')
+
+        for block in blocks:
+            min_x = min(min_x, block.left)
+            min_y = min(min_y, block.top)
+            max_x = max(max_x, block.left + block.width)
+            max_y = max(max_y, block.top + block.height)
+
+        # Add padding around blocks
+        padding = 100
+        min_x -= padding
+        min_y -= padding
+        max_x += padding
+        max_y += padding
+
+        # Calculate diagram dimensions
+        diagram_width = max_x - min_x
+        diagram_height = max_y - min_y
+
+        # Get canvas dimensions
+        canvas_width = self.canvas.width()
+        canvas_height = self.canvas.height()
+
+        # Calculate zoom to fit
+        zoom_x = canvas_width / diagram_width if diagram_width > 0 else 1.0
+        zoom_y = canvas_height / diagram_height if diagram_height > 0 else 1.0
+        new_zoom = min(zoom_x, zoom_y, 2.0)  # Cap at 200% max zoom
+
+        # Apply zoom
+        self.canvas.zoom_factor = max(0.1, min(new_zoom, 2.0))  # Clamp between 10% and 200%
+
+        # Calculate center point of diagram
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+
+        # Calculate pan offset to center the diagram
+        offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
+        offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
+        self.canvas.pan_offset = QPoint(int(offset_x), int(offset_y))
+
+        # Update display
+        self.canvas.update()
+        self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+        self.status_message.setText(f"Fit {len(blocks)} block(s) to window")
     
+    def show_keyboard_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        from PyQt5.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QPushButton
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Keyboard Shortcuts")
+        dialog.setMinimumSize(600, 500)
+
+        layout = QVBoxLayout()
+
+        # Create table
+        table = QTableWidget()
+        table.setColumnCount(2)
+        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
+        table.horizontalHeader().setStretchLastSection(True)
+
+        # Define shortcuts (category, shortcut, description)
+        shortcuts = [
+            ("File Operations", "", ""),
+            ("", "Ctrl+N", "New Diagram"),
+            ("", "Ctrl+O", "Open Diagram"),
+            ("", "Ctrl+S", "Save Diagram"),
+            ("", "", ""),
+            ("Editing", "", ""),
+            ("", "Ctrl+Z / Cmd+Z", "Undo"),
+            ("", "Ctrl+Y / Cmd+Shift+Z", "Redo"),
+            ("", "Ctrl+A", "Select All"),
+            ("", "Ctrl+C", "Copy"),
+            ("", "Ctrl+V", "Paste"),
+            ("", "Ctrl+D", "Duplicate"),
+            ("", "Delete / Backspace", "Delete Selected"),
+            ("", "Ctrl+F", "Flip Block"),
+            ("", "", ""),
+            ("View", "", ""),
+            ("", "Ctrl++", "Zoom In"),
+            ("", "Ctrl+-", "Zoom Out"),
+            ("", "Ctrl+0", "Fit to Window"),
+            ("", "Middle Mouse", "Pan Canvas"),
+            ("", "", ""),
+            ("Simulation", "", ""),
+            ("", "F5", "Run Simulation"),
+            ("", "F6", "Pause Simulation"),
+            ("", "F7", "Stop Simulation"),
+            ("", "", ""),
+            ("Canvas", "", ""),
+            ("", "Esc", "Cancel Operation"),
+            ("", "Right Click", "Context Menu"),
+        ]
+
+        table.setRowCount(len(shortcuts))
+
+        for i, (category, shortcut, action) in enumerate(shortcuts):
+            if category:  # Category header
+                cat_item = QTableWidgetItem(category)
+                cat_item.setFont(QFont("Arial", 10, QFont.Bold))
+                table.setItem(i, 0, cat_item)
+                table.setSpan(i, 0, 1, 2)
+            else:
+                table.setItem(i, 0, QTableWidgetItem(shortcut))
+                table.setItem(i, 1, QTableWidgetItem(action))
+
+        table.resizeColumnsToContents()
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionMode(QTableWidget.NoSelection)
+
+        layout.addWidget(table)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
     def show_about(self):
         """Show about dialog."""
-        QMessageBox.about(self, "About DiaBloS", 
+        QMessageBox.about(self, "About DiaBloS",
                          "DiaBloS - Modern Block Diagram Simulator\n"
                          "Phase 2: Interactive Block Canvas\n"
                          "✅ Modern UI Foundation\n"
@@ -561,6 +794,7 @@ class ModernDiaBloSWindow(QMainWindow):
         """Handle application shutdown."""
         logger.info("Modern DiaBloS closing...")
         self.stop_simulation()
+        self._cleanup_autosave()  # Clean up auto-save file on normal exit
         self.perf_helper.log_stats()
         event.accept()
         logger.info("Modern DiaBloS closed successfully")
@@ -624,7 +858,7 @@ class ModernDiaBloSWindow(QMainWindow):
                             converted_value = float(new_value)
                         else:
                             converted_value = str(new_value)
-                            
+
                         block.update_params({prop_name: converted_value})
                         self.canvas.dsim.dirty = True
                         logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
@@ -633,6 +867,70 @@ class ModernDiaBloSWindow(QMainWindow):
                     break
         except Exception as e:
             logger.error(f"Error updating property: {e}")
+
+    def _on_error_clicked(self, error):
+        """Handle error item click - navigate to error location."""
+        try:
+            from PyQt5.QtCore import QPoint
+
+            # Get affected blocks from the error
+            affected_blocks = error.blocks if hasattr(error, 'blocks') else []
+
+            if not affected_blocks:
+                logger.warning("No blocks associated with this error")
+                return
+
+            # First, deselect all blocks
+            for block in self.canvas.dsim.blocks_list:
+                block.selected = False
+
+            # Calculate bounding box of all affected blocks
+            min_x = min_y = float('inf')
+            max_x = max_y = float('-inf')
+
+            for block in affected_blocks:
+                # Get block position using correct attribute names
+                x = block.left
+                y = block.top
+                w = block.width
+                h = block.height
+
+                min_x = min(min_x, x)
+                min_y = min(min_y, y)
+                max_x = max(max_x, x + w)
+                max_y = max(max_y, y + h)
+
+                # Select the affected blocks for visibility
+                block.selected = True
+
+            # Add padding
+            padding = 50
+            min_x -= padding
+            min_y -= padding
+            max_x += padding
+            max_y += padding
+
+            # Calculate center point
+            center_x = (min_x + max_x) / 2
+            center_y = (min_y + max_y) / 2
+
+            # Pan canvas to center on the error location
+            canvas_width = self.canvas.width()
+            canvas_height = self.canvas.height()
+
+            # Calculate new pan offset to center the error (using QPoint)
+            new_offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
+            new_offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
+            self.canvas.pan_offset = QPoint(int(new_offset_x), int(new_offset_y))
+
+            # Update canvas to show the changes
+            self.canvas.update()
+
+            logger.info(f"Navigated to error location at ({center_x}, {center_y})")
+            self.status_message.setText(f"Showing error: {error.message}")
+
+        except Exception as e:
+            logger.error(f"Error navigating to error location: {str(e)}")
     
     def _on_block_drag_started(self, menu_block):
         """Handle block drag started from palette."""
@@ -694,10 +992,54 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def start_simulation(self):
         """Start simulation with validation."""
-        if hasattr(self, 'canvas'):
-            self.canvas.start_simulation()
-        else:
+        if not hasattr(self, 'canvas'):
             self.status_message.setText("Canvas not available")
+            return
+
+        # Run diagram validation first
+        from lib.diagram_validator import ErrorSeverity
+
+        logger.info("Running pre-simulation validation...")
+        errors = self.canvas.run_validation()
+
+        # Check for critical errors that block simulation
+        has_errors = any(e.severity == ErrorSeverity.ERROR for e in errors)
+
+        if errors:
+            # Show error panel with results
+            self.error_panel.set_errors(errors)
+
+            if has_errors:
+                # Critical errors found - don't start simulation
+                error_count = sum(1 for e in errors if e.severity == ErrorSeverity.ERROR)
+                self.status_message.setText(f"Cannot start simulation: {error_count} error(s) found")
+                logger.warning(f"Simulation blocked by {error_count} validation error(s)")
+
+                # Show a message box for critical errors
+                QMessageBox.warning(
+                    self,
+                    "Validation Errors",
+                    f"Cannot start simulation due to {error_count} validation error(s).\n\n"
+                    f"Please fix the errors shown in the error panel before running."
+                )
+                return
+            else:
+                # Only warnings - allow simulation but notify user
+                warning_count = sum(1 for e in errors if e.severity == ErrorSeverity.WARNING)
+                logger.info(f"Starting simulation with {warning_count} warning(s)")
+                self.status_message.setText(f"Starting simulation with {warning_count} warning(s)...")
+        else:
+            # No errors or warnings - clear error panel
+            self.error_panel.clear()
+            logger.info("Validation passed - no errors or warnings")
+            self.status_message.setText("Starting simulation...")
+
+        # Clear validation indicators from canvas before starting
+        # (errors will be shown in panel, don't need red borders during simulation)
+        self.canvas.clear_validation()
+
+        # Start the simulation
+        self.canvas.start_simulation()
     
     def stop_simulation(self):
         """Stop simulation."""
@@ -705,3 +1047,261 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.stop_simulation()
         self.toolbar.set_simulation_state(False, False)
         self.status_message.setText("Simulation stopped")
+
+    # Recent Files Management
+    def _load_recent_files(self):
+        """Load recent files list from config."""
+        import json
+        config_path = 'config/recent_files.json'
+        try:
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    data = json.load(f)
+                    return data.get('recent_files', [])
+        except Exception as e:
+            logger.error(f"Error loading recent files: {e}")
+        return []
+
+    def _save_recent_files(self, recent_files):
+        """Save recent files list to config."""
+        import json
+        config_path = 'config/recent_files.json'
+        try:
+            os.makedirs('config', exist_ok=True)
+            with open(config_path, 'w') as f:
+                json.dump({'recent_files': recent_files}, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving recent files: {e}")
+
+    def _add_recent_file(self, filepath):
+        """Add a file to the recent files list."""
+        if not filepath:
+            return
+
+        recent_files = self._load_recent_files()
+
+        # Remove if already in list
+        if filepath in recent_files:
+            recent_files.remove(filepath)
+
+        # Add to front
+        recent_files.insert(0, filepath)
+
+        # Keep only last 10
+        recent_files = recent_files[:10]
+
+        self._save_recent_files(recent_files)
+        self._update_recent_files_menu()
+
+    def _update_recent_files_menu(self):
+        """Update the recent files menu."""
+        self.recent_files_menu.clear()
+
+        recent_files = self._load_recent_files()
+
+        if not recent_files:
+            action = self.recent_files_menu.addAction("No recent files")
+            action.setEnabled(False)
+            return
+
+        for filepath in recent_files:
+            # Show only filename, but store full path
+            filename = os.path.basename(filepath)
+            action = self.recent_files_menu.addAction(filename)
+            action.setData(filepath)
+            action.triggered.connect(lambda checked, path=filepath: self._open_recent_file(path))
+
+        self.recent_files_menu.addSeparator()
+        clear_action = self.recent_files_menu.addAction("Clear Recent Files")
+        clear_action.triggered.connect(self._clear_recent_files)
+
+    def _open_recent_file(self, filepath):
+        """Open a file from the recent files list."""
+        if os.path.exists(filepath):
+            # TODO: Implement actual file opening logic
+            # For now, just add to recent files
+            self._add_recent_file(filepath)
+            self.status_message.setText(f"Opened: {os.path.basename(filepath)}")
+            logger.info(f"Opening recent file: {filepath}")
+        else:
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"The file '{filepath}' no longer exists."
+            )
+            # Remove from recent files
+            recent_files = self._load_recent_files()
+            if filepath in recent_files:
+                recent_files.remove(filepath)
+                self._save_recent_files(recent_files)
+                self._update_recent_files_menu()
+
+    def _clear_recent_files(self):
+        """Clear the recent files list."""
+        self._save_recent_files([])
+        self._update_recent_files_menu()
+        self.status_message.setText("Recent files cleared")
+
+    # Auto-Save and Recovery
+    def _auto_save(self):
+        """Auto-save the current diagram to a temporary file."""
+        try:
+            # Only auto-save if there are blocks or connections
+            if not self.canvas.dsim.blocks_list and not self.canvas.dsim.line_list:
+                return
+
+            # Create config directory if it doesn't exist
+            os.makedirs('config', exist_ok=True)
+
+            # Save current state to autosave file
+            import pickle
+            with open(self.autosave_path, 'wb') as f:
+                state = {
+                    'blocks': [],
+                    'lines': []
+                }
+
+                # Capture blocks
+                for block in self.canvas.dsim.blocks_list:
+                    block_data = {
+                        'name': block.name,
+                        'block_fn': block.block_fn,
+                        'coords': (block.left, block.top, block.width, block.height),
+                        'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
+                        'in_ports': block.in_ports,
+                        'out_ports': block.out_ports,
+                        'b_type': block.b_type,
+                        'io_edit': block.io_edit,
+                        'fn_name': block.fn_name,
+                        'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
+                        'external': block.external
+                    }
+                    state['blocks'].append(block_data)
+
+                # Capture connections
+                for line in self.canvas.dsim.line_list:
+                    line_data = {
+                        'name': line.name,
+                        'srcblock': line.srcblock,
+                        'srcport': line.srcport,
+                        'dstblock': line.dstblock,
+                        'dstport': line.dstport
+                    }
+                    state['lines'].append(line_data)
+
+                pickle.dump(state, f)
+
+            logger.debug("Auto-save completed")
+
+        except Exception as e:
+            logger.error(f"Error during auto-save: {str(e)}")
+
+    def _check_autosave_recovery(self):
+        """Check if there's an auto-save file and offer recovery."""
+        try:
+            if not os.path.exists(self.autosave_path):
+                return
+
+            # Ask user if they want to recover
+            reply = QMessageBox.question(
+                self,
+                "Recover Auto-Saved Diagram?",
+                "An auto-saved diagram was found. This may be from an unexpected shutdown.\n\n"
+                "Would you like to recover it?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+
+            if reply == QMessageBox.Yes:
+                self._recover_autosave()
+            else:
+                # User declined, remove autosave file
+                os.remove(self.autosave_path)
+                logger.info("Auto-save file deleted (user declined recovery)")
+
+        except Exception as e:
+            logger.error(f"Error checking auto-save recovery: {str(e)}")
+
+    def _recover_autosave(self):
+        """Recover diagram from auto-save file."""
+        try:
+            import pickle
+            from PyQt5.QtCore import QRect
+            from PyQt5.QtGui import QColor
+
+            with open(self.autosave_path, 'rb') as f:
+                state = pickle.load(f)
+
+            # Clear current diagram
+            self.canvas.dsim.blocks_list.clear()
+            self.canvas.dsim.line_list.clear()
+
+            # Restore blocks
+            for block_data in state['blocks']:
+                coords = QRect(*block_data['coords'])
+                block = self.canvas.dsim.add_new_block(
+                    block_data['block_fn'],
+                    coords,
+                    QColor(block_data['color']),
+                    block_data['in_ports'],
+                    block_data['out_ports'],
+                    block_data['b_type'],
+                    block_data['io_edit'],
+                    block_data['fn_name'],
+                    block_data['params'],
+                    block_data['external']
+                )
+                if block:
+                    block.name = block_data['name']
+
+            # Restore connections
+            for line_data in state['lines']:
+                # Find blocks by name
+                src_block = None
+                dst_block = None
+                for block in self.canvas.dsim.blocks_list:
+                    if block.name == line_data['srcblock']:
+                        src_block = block
+                    if block.name == line_data['dstblock']:
+                        dst_block = block
+
+                if src_block and dst_block:
+                    src_port_pos = src_block.out_coords[line_data['srcport']]
+                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
+
+                    line = self.canvas.dsim.add_line(
+                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
+                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
+                    )
+                    if line:
+                        line.name = line_data['name']
+
+            # Remove autosave file after successful recovery
+            os.remove(self.autosave_path)
+
+            self.canvas.update()
+            self.status_message.setText("Diagram recovered from auto-save")
+            logger.info("Diagram successfully recovered from auto-save")
+
+            QMessageBox.information(
+                self,
+                "Recovery Successful",
+                "Your diagram has been successfully recovered from the auto-save file."
+            )
+
+        except Exception as e:
+            logger.error(f"Error recovering from auto-save: {str(e)}")
+            QMessageBox.warning(
+                self,
+                "Recovery Failed",
+                f"Failed to recover diagram from auto-save:\n{str(e)}"
+            )
+
+    def _cleanup_autosave(self):
+        """Clean up auto-save file on normal shutdown."""
+        try:
+            if os.path.exists(self.autosave_path):
+                os.remove(self.autosave_path)
+                logger.debug("Auto-save file cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up auto-save: {str(e)}")

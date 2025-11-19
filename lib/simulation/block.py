@@ -41,7 +41,7 @@ class DBlock:
                  io_edit: Union[bool, str] = True, fn_name: str = 'block',
                  params: Optional[Dict[str, Any]] = None, external: bool = False,
                  username: str = '', block_class: Optional[Any] = None,
-                 colors: Optional[Dict[str, QColor]] = None) -> None:
+                 colors: Optional[Dict[str, QColor]] = None, category: str = 'Other') -> None:
         """
         Initialize a block instance.
 
@@ -60,12 +60,14 @@ class DBlock:
             username: User-defined block name
             block_class: Block class for instantiation
             colors: Color palette dictionary
+            category: Block category (Sources, Math, Control, Sinks, Other)
         """
         if params is None:
             params = {}
 
         logger.debug(f"Initializing DBlock {block_fn}{sid}")
         self.name: str = block_fn.lower() + str(sid)
+        self.category: str = category  # Store category for theme-aware rendering
         self.flipped: bool = False
         self.block_fn: str = block_fn
         self.sid: int = sid
@@ -78,7 +80,10 @@ class DBlock:
         self.height: int = self.rect.height()
         self.height_base: int = self.height
 
-        if colors and color in colors:
+        # Handle color - can be either a QColor object or a string
+        if isinstance(color, QColor):
+            self.b_color: QColor = color
+        elif colors and color in colors:
             self.b_color: QColor = colors[color]
         else:
             self.b_color: QColor = QColor(color)
@@ -126,6 +131,23 @@ class DBlock:
 
         if block_class:
             self.block_instance = block_class()
+
+            # Check if block supports dynamic port configuration and update accordingly
+            if hasattr(self.block_instance, 'get_inputs'):
+                try:
+                    # Get initial input configuration based on default params
+                    initial_inputs = self.block_instance.get_inputs(self.params)
+                    initial_input_count = len(initial_inputs)
+
+                    # Update port count if different from default
+                    if initial_input_count != self.in_ports:
+                        logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
+                        self.in_ports = initial_input_count
+                        self.params['_inputs_'] = initial_input_count
+                        # Update block geometry and port positions
+                        self.update_Block()
+                except Exception as e:
+                    logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
         else:
             self.block_instance = None
 
@@ -173,22 +195,77 @@ class DBlock:
                 port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
-    def draw_Block(self, painter: Optional[QPainter], draw_name: bool = True) -> None:
+    def draw_Block(self, painter: Optional[QPainter], draw_name: bool = True, draw_ports: bool = True) -> None:
         """
-        Draw this block on the canvas.
+        Draw this block on the canvas with modern styling, shadows, and depth.
 
         Args:
             painter: QPainter instance for rendering
             draw_name: Whether to draw the block name/label
+            draw_ports: Whether to draw the input/output port connectors
         """
         if painter is None:
             return
 
-        painter.setBrush(self.b_color)
-        border_color = theme_manager.get_color('border_primary')
-        painter.setPen(QPen(border_color, 2))
+        # Draw shadow for depth (offset slightly down and right)
+        shadow_offset = 3
+        shadow_color = theme_manager.get_color('block_shadow')
+        shadow_color.setAlpha(80)  # Semi-transparent shadow
 
-        # Draw block shape
+        painter.setBrush(shadow_color)
+        painter.setPen(Qt.NoPen)
+
+        if self.block_fn == "Gain":
+            # Shadow for triangle
+            shadow_points = QPolygonF()
+            if not self.flipped:
+                shadow_points.append(QPoint(self.left + shadow_offset, self.top + shadow_offset))
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, int(self.top + self.height / 2) + shadow_offset))
+                shadow_points.append(QPoint(self.left + shadow_offset, self.top + self.height + shadow_offset))
+            else:
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, self.top + shadow_offset))
+                shadow_points.append(QPoint(self.left + shadow_offset, int(self.top + self.height / 2) + shadow_offset))
+                shadow_points.append(QPoint(self.left + self.width + shadow_offset, self.top + self.height + shadow_offset))
+            painter.drawPolygon(shadow_points)
+        else:
+            # Shadow for rounded rectangle
+            radius = 12
+            shadow_rect = QRect(self.left + shadow_offset, self.top + shadow_offset, self.width, self.height)
+            painter.drawRoundedRect(shadow_rect, radius, radius)
+
+        # Determine border color based on block category
+        # Get category-specific colors if available
+        category_color = self.b_color
+        border_color = theme_manager.get_color('border_primary')
+
+        # Try to get category-specific border color
+        if hasattr(self, 'category'):
+            category_lower = self.category.lower() if isinstance(self.category, str) else str(self.category).lower()
+            if 'source' in category_lower:
+                border_color = theme_manager.get_color('block_source_border')
+            elif 'math' in category_lower:
+                border_color = theme_manager.get_color('block_process_border')
+            elif 'control' in category_lower:
+                border_color = theme_manager.get_color('block_control_border')
+            elif 'sink' in category_lower:
+                border_color = theme_manager.get_color('block_sink_border')
+            else:
+                border_color = theme_manager.get_color('block_other_border')
+
+        # Override border if selected
+        if self.selected:
+            border_color = theme_manager.get_color('block_selected')
+            # Optionally brighten the background for selected blocks
+            if not self.selected:
+                painter.setBrush(category_color)
+            else:
+                # Create a lighter version for selected state
+                painter.setBrush(self.b_color)
+
+        # Draw main block shape
+        painter.setBrush(self.b_color)
+        painter.setPen(QPen(border_color, 3 if self.selected else 2))
+
         if self.block_fn == "Gain":
             # Draw a triangle for the Gain block
             points = QPolygonF()
@@ -202,8 +279,8 @@ class DBlock:
                 points.append(QPoint(self.left + self.width, self.top + self.height))
             painter.drawPolygon(points)
         else:
-            # Draw a rounded rectangle for all other blocks
-            radius = 10
+            # Draw a rounded rectangle for all other blocks with softer corners
+            radius = 12
             painter.drawRoundedRect(QRect(self.left, self.top, self.width, self.height), radius, radius)
 
         # Draw block-specific icon if available
@@ -467,34 +544,102 @@ class DBlock:
             scaled_path = transform.map(path)
             painter.drawPath(scaled_path)
 
-        # Draw ports
-        port_color = theme_manager.get_color('text_primary')
-        # Input ports (filled)
-        painter.setBrush(port_color)
-        painter.setPen(Qt.NoPen)
-        for port_in_location in self.in_coords:
-            painter.drawEllipse(port_in_location, self.port_radius, self.port_radius)
+        # Draw ports with modern styling (only if requested)
+        if draw_ports:
+            from PyQt5.QtGui import QRadialGradient
 
-        # Output ports (outline)
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(port_color, 2))
-        for port_out_location in self.out_coords:
-            painter.drawEllipse(port_out_location, self.port_radius -1, self.port_radius - 1)
-        
+            port_input_color = theme_manager.get_color('port_input')
+            port_output_color = theme_manager.get_color('port_output')
+
+            # Make ports slightly smaller for a cleaner look
+            port_draw_radius = self.port_radius - 1
+
+            # Input ports with radial gradient and glossy effect
+            for port_in_location in self.in_coords:
+                # Create radial gradient for depth
+                gradient = QRadialGradient(port_in_location.x(), port_in_location.y(), port_draw_radius)
+
+                # Lighter center, darker edge for depth
+                lighter_input = port_input_color.lighter(130)
+                gradient.setColorAt(0.0, lighter_input)
+                gradient.setColorAt(0.7, port_input_color)
+                gradient.setColorAt(1.0, port_input_color.darker(110))
+
+                painter.setBrush(gradient)
+                painter.setPen(QPen(port_input_color.darker(140), 2.0))
+                painter.drawEllipse(port_in_location, port_draw_radius, port_draw_radius)
+
+                # Add subtle highlight for glossy effect
+                painter.setPen(Qt.NoPen)
+                highlight_color = QColor(255, 255, 255, 50)
+                painter.setBrush(highlight_color)
+                highlight_offset = int(port_draw_radius * 0.3)
+                highlight_size = int(port_draw_radius * 0.4)
+                painter.drawEllipse(
+                    port_in_location.x() - highlight_offset,
+                    port_in_location.y() - highlight_offset,
+                    highlight_size,
+                    highlight_size
+                )
+
+            # Output ports with radial gradient and glossy effect
+            for port_out_location in self.out_coords:
+                # Create radial gradient for depth
+                gradient = QRadialGradient(port_out_location.x(), port_out_location.y(), port_draw_radius)
+
+                # Lighter center, darker edge for depth
+                lighter_output = port_output_color.lighter(130)
+                gradient.setColorAt(0.0, lighter_output)
+                gradient.setColorAt(0.7, port_output_color)
+                gradient.setColorAt(1.0, port_output_color.darker(110))
+
+                painter.setBrush(gradient)
+                painter.setPen(QPen(port_output_color.darker(140), 2.0))
+                painter.drawEllipse(port_out_location, port_draw_radius, port_draw_radius)
+
+                # Add subtle highlight for glossy effect
+                painter.setPen(Qt.NoPen)
+                highlight_color = QColor(255, 255, 255, 50)
+                painter.setBrush(highlight_color)
+                highlight_offset = int(port_draw_radius * 0.3)
+                highlight_size = int(port_draw_radius * 0.4)
+                painter.drawEllipse(
+                    port_out_location.x() - highlight_offset,
+                    port_out_location.y() - highlight_offset,
+                    highlight_size,
+                    highlight_size
+                )
+
         if draw_name:
-            # Draw block name below the block
+            # Draw block name below the block with better typography
             text_color = theme_manager.get_color('text_primary')
             painter.setPen(text_color)
-            painter.setFont(self.font)
-            text_rect = QRect(self.left, self.top + self.height, self.width, 25)
+            font = self.font
+            font.setWeight(500)  # Medium weight
+            painter.setFont(font)
+            text_rect = QRect(self.left, self.top + self.height + 2, self.width, 28)
             painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, self.username)
 
+        # Enhanced selection visualization
         if self.selected:
-            selection_color = theme_manager.get_color('accent_primary')
-            painter.setPen(QPen(selection_color, 2))
+            selection_color = theme_manager.get_color('block_selected')
+
+            # Draw selection outline with rounded corners
+            painter.setPen(QPen(selection_color, 3, Qt.SolidLine))
             painter.setBrush(Qt.NoBrush)
-            selection_rect = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height + 25)
-            painter.drawRect(selection_rect)
+
+            # Selection rectangle with padding
+            padding = 4
+            selection_rect = QRect(
+                self.left - padding,
+                self.top - padding,
+                self.width + 2 * padding,
+                self.height + 2 * padding
+            )
+            painter.drawRoundedRect(selection_rect, 14, 14)
+
+            # Optional: Draw corner handles for resize (can be added later)
+            # For now, just the glowing outline effect
     
     def draw_selected(self, painter):
         painter.setPen(QColor('black'))
@@ -510,6 +655,86 @@ class DBlock:
         
         if self.external:
             painter.drawText(QRect(self.left, self.top + self.height + 15, self.width, 20), Qt.AlignCenter, self.params['filename'])
+
+    def draw_resize_handles(self, painter):
+        """Draw resize handles on the corners and edges of selected blocks."""
+        if not self.selected:
+            return
+
+        # Import resize handle size from config
+        try:
+            from config.block_sizes import RESIZE_HANDLE_SIZE
+            handle_size = RESIZE_HANDLE_SIZE
+        except ImportError:
+            handle_size = 8
+
+        # Handle styling
+        handle_color = theme_manager.get_color('accent_primary')
+        border_color = theme_manager.get_color('border_primary')
+
+        painter.save()
+        painter.setPen(QPen(border_color, 1))
+        painter.setBrush(handle_color)
+
+        # Define handle positions
+        half_handle = handle_size // 2
+        handles = {
+            'top_left': (self.left - half_handle, self.top - half_handle),
+            'top_right': (self.left + self.width - half_handle, self.top - half_handle),
+            'bottom_left': (self.left - half_handle, self.top + self.height - half_handle),
+            'bottom_right': (self.left + self.width - half_handle, self.top + self.height - half_handle),
+            # Edge handles for more precise resizing
+            'top': (self.left + self.width//2 - half_handle, self.top - half_handle),
+            'bottom': (self.left + self.width//2 - half_handle, self.top + self.height - half_handle),
+            'left': (self.left - half_handle, self.top + self.height//2 - half_handle),
+            'right': (self.left + self.width - half_handle, self.top + self.height//2 - half_handle),
+        }
+
+        # Draw handles
+        for handle_name, (x, y) in handles.items():
+            painter.drawRect(x, y, handle_size, handle_size)
+
+        painter.restore()
+
+    def get_resize_handle_at(self, pos):
+        """
+        Check if a position is over a resize handle.
+
+        Args:
+            pos: QPoint position to check
+
+        Returns:
+            Handle name if over a handle, None otherwise
+        """
+        if not self.selected:
+            return None
+
+        try:
+            from config.block_sizes import RESIZE_HANDLE_SIZE
+            handle_size = RESIZE_HANDLE_SIZE
+        except ImportError:
+            handle_size = 8
+
+        # Define handle positions
+        half_handle = handle_size // 2
+        handles = {
+            'top_left': (self.left - half_handle, self.top - half_handle),
+            'top_right': (self.left + self.width - half_handle, self.top - half_handle),
+            'bottom_left': (self.left - half_handle, self.top + self.height - half_handle),
+            'bottom_right': (self.left + self.width - half_handle, self.top + self.height - half_handle),
+            'top': (self.left + self.width//2 - half_handle, self.top - half_handle),
+            'bottom': (self.left + self.width//2 - half_handle, self.top + self.height - half_handle),
+            'left': (self.left - half_handle, self.top + self.height//2 - half_handle),
+            'right': (self.left + self.width - half_handle, self.top + self.height//2 - half_handle),
+        }
+
+        # Check if position is within any handle
+        for handle_name, (x, y) in handles.items():
+            if (x <= pos.x() <= x + handle_size and
+                y <= pos.y() <= y + handle_size):
+                return handle_name
+
+        return None
 
     def port_collision(self, pos):
         if isinstance(pos, tuple):
@@ -535,10 +760,37 @@ class DBlock:
         self.rectf.moveTopLeft(QPoint(self.left, self.top)) # Update the QRectF
         self.update_Block()
 
-    def resize_Block(self, new_coords):
-        self.width = new_coords[0]
-        self.height = new_coords[1]
+    def resize_Block(self, new_width, new_height):
+        """
+        Resize the block to new dimensions.
+
+        Args:
+            new_width: New width in pixels
+            new_height: New height in pixels
+        """
+        # Clamp to minimum and maximum sizes
+        try:
+            from config.block_sizes import clamp_block_size
+            new_width, new_height = clamp_block_size(new_width, new_height)
+        except ImportError:
+            # Fallback min/max if config not available
+            new_width = max(50, min(new_width, 300))
+            new_height = max(40, min(new_height, 300))
+
+        # Update dimensions
+        self.width = new_width
+        self.height = new_height
+        self.height_base = new_height
+
+        # Update rect properties
+        self.rect = QRect(self.left, self.top, self.width, self.height)
+        self.rectf = QRect(self.left - self.port_radius, self.top,
+                          self.width + 2 * self.port_radius, self.height)
+
+        # Update port positions
         self.update_Block()
+
+        logger.debug(f"Resized block {self.name} to {new_width}x{new_height}")
 
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")
@@ -629,6 +881,23 @@ class DBlock:
                         self.params[key] = value
                         self.initial_params[key] = value
 
+                # Check if block supports dynamic port configuration
+                if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
+                    try:
+                        # Get new input configuration based on updated params
+                        new_inputs_config = self.block_instance.get_inputs(self.params)
+                        new_input_count = len(new_inputs_config)
+
+                        # Update port count if it changed
+                        if new_input_count != self.in_ports:
+                            logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+                            self.in_ports = new_input_count
+                            self.params['_inputs_'] = new_input_count
+                            # Update block geometry and port positions
+                            self.update_Block()
+                    except Exception as e:
+                        logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
+
         if self.external:
             self.load_external_data(params_reset=False)
 
@@ -657,6 +926,23 @@ class DBlock:
             for key, value in new_params.items():
                 if key in self.params:
                     self.params[key] = value
+
+        # Check if block supports dynamic port configuration
+        if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
+            try:
+                # Get new input configuration based on updated params
+                new_inputs = self.block_instance.get_inputs(self.params)
+                new_input_count = len(new_inputs)
+
+                # Update port count if it changed
+                if new_input_count != self.in_ports:
+                    logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+                    self.in_ports = new_input_count
+                    self.params['_inputs_'] = new_input_count
+                    # Update block geometry and port positions
+                    self.update_Block()
+            except Exception as e:
+                logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
 
         if self.block_fn == 'TranFn':
             num = self.params.get('numerator', [])
