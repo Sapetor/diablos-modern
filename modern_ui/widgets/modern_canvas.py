@@ -36,11 +36,12 @@ class State:
 
 class ModernCanvas(QWidget):
     """Modern canvas widget for DiaBloS block diagram editing."""
-    
+
     # Signals
     block_selected = pyqtSignal(object)  # Emitted when a block is selected
     connection_created = pyqtSignal(object, object)  # Emitted when a connection is made
     simulation_status_changed = pyqtSignal(str)  # Emitted when simulation status changes
+    command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
@@ -74,6 +75,9 @@ class ModernCanvas(QWidget):
         self.pan_offset = QPoint(0, 0)
         self.panning = False
         self.last_pan_pos = QPoint(0, 0)
+
+        # Grid visibility
+        self.grid_visible = True
 
         # Clipboard for copy-paste
         self.clipboard_blocks = []
@@ -285,13 +289,17 @@ class ModernCanvas(QWidget):
 
             # Draw sophisticated grid system
             self._draw_grid(painter)
-            
-            # Draw DSim elements
+
+            # Draw DSim elements in proper order: blocks -> lines -> ports
+            # This ensures ports appear on top of connection lines
             if hasattr(self.dsim, 'display_blocks'):
-                self.dsim.display_blocks(painter)
-            
+                self.dsim.display_blocks(painter, draw_ports=False)
+
             if hasattr(self.dsim, 'display_lines'):
                 self.dsim.display_lines(painter)
+
+            if hasattr(self.dsim, 'display_ports'):
+                self.dsim.display_ports(painter)
             
             # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:
@@ -321,6 +329,9 @@ class ModernCanvas(QWidget):
                 pen = QPen(line_color, 2, Qt.SolidLine)
                 pen.setCapStyle(Qt.RoundCap)
                 painter.setPen(pen)
+
+                # Explicitly set no brush to prevent fill artifacts
+                painter.setBrush(Qt.NoBrush)
 
                 # Draw curved Bezier preview
                 from PyQt5.QtGui import QPainterPath
@@ -395,6 +406,9 @@ class ModernCanvas(QWidget):
 
     def _draw_grid(self, painter):
         """Draw a sophisticated grid system with dots at intervals."""
+        if not self.grid_visible:
+            return
+
         try:
             # Grid configuration
             small_grid_size = 20  # Small dot spacing (20px)
@@ -496,15 +510,33 @@ class ModernCanvas(QWidget):
 
             pos = self.screen_to_world(event.pos())
             logger.debug(f"Canvas mouse press at ({pos.x()}, {pos.y()})")
-            
+
             if event.button() == Qt.LeftButton:
                 self._handle_left_click(pos)
             elif event.button() == Qt.RightButton:
                 self._handle_right_click(pos)
-                
+
         except Exception as e:
             logger.error(f"Error in canvas mousePressEvent: {str(e)}")
-    
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle mouse double-click events."""
+        try:
+            if event.button() == Qt.LeftButton:
+                pos = self.screen_to_world(event.pos())
+
+                # Check if double-clicked on empty space (not on block or line)
+                clicked_block = self._get_clicked_block(pos)
+                clicked_line, _ = self._get_clicked_line(pos)
+
+                if not clicked_block and not clicked_line:
+                    # Double-clicked on empty space - open command palette
+                    logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
+                    self.command_palette_requested.emit()
+
+        except Exception as e:
+            logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
+
     def _handle_left_click(self, pos):
         """Handle left mouse button clicks."""
         try:
@@ -2200,6 +2232,9 @@ class ModernCanvas(QWidget):
             self.hovered_line = None
             self.hovered_port = None
 
+            # Clear validation errors when state is restored (undo/redo)
+            self.clear_validation()
+
             # Restore blocks by directly creating DBlock instances
             from lib.simulation.block import DBlock
             from PyQt5.QtGui import QColor
@@ -2368,6 +2403,10 @@ class ModernCanvas(QWidget):
             for line in lines_to_remove:
                 if line in self.dsim.line_list:
                     self.dsim.line_list.remove(line)
+
+            # Clear validation errors when blocks are removed
+            self.clear_validation()
+
             self.update()
             logger.info(f"Removed {len(blocks_to_remove)} blocks and {len(lines_to_remove)} lines")
         except Exception as e:
@@ -2378,6 +2417,8 @@ class ModernCanvas(QWidget):
         try:
             if hasattr(self.dsim, 'clear_all'):
                 self.dsim.clear_all()
+                # Clear validation errors when canvas is cleared
+                self.clear_validation()
                 self.update()
                 logger.info("Canvas cleared")
         except Exception as e:
@@ -2405,12 +2446,44 @@ class ModernCanvas(QWidget):
     def zoom_out(self):
         self.set_zoom(self.zoom_factor / 1.1)
 
+    def toggle_grid(self):
+        """Toggle grid visibility."""
+        self.grid_visible = not self.grid_visible
+        self.update()
+        logger.info(f"Grid visibility: {self.grid_visible}")
+
     def wheelEvent(self, event):
-        """Handle mouse wheel events for zooming."""
-        if event.angleDelta().y() > 0:
-            self.zoom_in()
+        """Handle mouse wheel events for zooming and scrolling.
+
+        - Plain scroll: Pan the canvas (for MacBook trackpad users)
+        - Ctrl/Cmd + scroll: Zoom in/out
+        """
+        modifiers = event.modifiers()
+
+        # Check if Ctrl (or Cmd on macOS) is pressed
+        if modifiers & (Qt.ControlModifier | Qt.MetaModifier):
+            # Zoom mode
+            if event.angleDelta().y() > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
         else:
-            self.zoom_out()
+            # Pan/scroll mode - pan the canvas with touchpad scrolling
+            delta_x = event.angleDelta().x()
+            delta_y = event.angleDelta().y()
+
+            # Scale the delta for smoother scrolling
+            scroll_sensitivity = 0.5
+            pan_delta = QPoint(
+                int(delta_x * scroll_sensitivity),
+                int(delta_y * scroll_sensitivity)
+            )
+
+            # Apply panning offset
+            self.pan_offset += pan_delta
+            self.update()
+
+            logger.debug(f"Canvas panned by {pan_delta}, new offset: {self.pan_offset}")
 
     # Drag and Drop Events
     def dragEnterEvent(self, event):

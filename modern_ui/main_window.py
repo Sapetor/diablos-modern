@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QMenuBar, QStatusBar, QLabel, QFrame,
                              QApplication, QMessageBox, QScrollArea)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -27,7 +27,9 @@ from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
+from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
+from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -68,7 +70,15 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_layout()
         self._setup_statusbar()
         self._setup_connections()
-        
+
+        # Create toast notification (after canvas is created)
+        self.toast = ToastNotification(self.canvas)
+
+        # Create command palette
+        self.command_palette = CommandPalette(self)
+        self.command_palette.command_selected.connect(self._on_command_executed)
+        self._setup_command_palette()
+
         # Initialize DSim components
         self.dsim.main_buttons_init()
 
@@ -176,6 +186,8 @@ class ModernDiaBloSWindow(QMainWindow):
         edit_menu.addAction("&Redo\tCtrl+Y", self.redo_action)
         edit_menu.addSeparator()
         edit_menu.addAction("Select &All\tCtrl+A", self.select_all)
+        edit_menu.addSeparator()
+        edit_menu.addAction("Command &Palette\tCtrl+P", self.show_command_palette)
         
         # Simulation menu
         sim_menu = menubar.addMenu("&Simulation")
@@ -191,6 +203,13 @@ class ModernDiaBloSWindow(QMainWindow):
         view_menu.addAction("Zoom &Out\tCtrl+-", self.zoom_out)
         view_menu.addAction("&Fit to Window\tCtrl+0", self.fit_to_window)
         view_menu.addSeparator()
+
+        # Grid toggle
+        self.grid_toggle_action = view_menu.addAction("Show &Grid\tCtrl+G", self.toggle_grid)
+        self.grid_toggle_action.setCheckable(True)
+        self.grid_toggle_action.setChecked(True)
+        view_menu.addSeparator()
+
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.toggle_theme)
         view_menu.addSeparator()
         scaling_menu = view_menu.addMenu("UI Scale")
@@ -405,6 +424,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.block_selected.connect(self._on_block_selected)
         self.canvas.connection_created.connect(self._on_connection_created)
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
+        self.canvas.command_palette_requested.connect(self.show_command_palette)
 
         # Add canvas to container
         container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
@@ -453,25 +473,28 @@ class ModernDiaBloSWindow(QMainWindow):
     def _setup_statusbar(self):
         """Setup modern status bar."""
         statusbar = self.statusBar()
-        
+
         # Status message
         self.status_message = QLabel("Ready")
         statusbar.addWidget(self.status_message)
-        
+
         # Add permanent widgets
         statusbar.addPermanentWidget(QLabel("Zoom:"))
         self.zoom_status = QLabel("100%")
         statusbar.addPermanentWidget(self.zoom_status)
-        
+
         statusbar.addPermanentWidget(QLabel("|"))
-        
+
         self.cursor_status = QLabel("Cursor: (0, 0)")
         statusbar.addPermanentWidget(self.cursor_status)
-        
+
         statusbar.addPermanentWidget(QLabel("|"))
-        
+
         self.theme_status = QLabel("Dark Theme")
         statusbar.addPermanentWidget(self.theme_status)
+
+        # Apply initial theme colors to statusbar labels
+        self._update_statusbar_colors()
     
     def _setup_connections(self):
         """Setup signal connections."""
@@ -591,7 +614,13 @@ class ModernDiaBloSWindow(QMainWindow):
         # Update status bar
         theme_name = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
         self.theme_status.setText(theme_name)
-        
+
+        # Update statusbar label colors
+        self._update_statusbar_colors()
+
+        # Update menubar colors
+        self._update_menubar_colors()
+
         # Update canvas area styling
         self.canvas_area.setStyleSheet(f"""
             #CanvasArea {{
@@ -600,19 +629,89 @@ class ModernDiaBloSWindow(QMainWindow):
                 border-radius: 6px;
             }}
         """)
-    
+
+    def _update_statusbar_colors(self):
+        """Update statusbar label colors for proper contrast."""
+        text_color = theme_manager.get_color('text_primary').name()
+        statusbar_style = f"QLabel {{ color: {text_color}; }}"
+
+        # Update known labels
+        self.status_message.setStyleSheet(statusbar_style)
+        self.zoom_status.setStyleSheet(statusbar_style)
+        self.cursor_status.setStyleSheet(statusbar_style)
+        self.theme_status.setStyleSheet(statusbar_style)
+
+        # Apply to all statusbar labels (including "Zoom:" and "|" separators)
+        for widget in self.statusBar().findChildren(QLabel):
+            widget.setStyleSheet(statusbar_style)
+
+    def _update_menubar_colors(self):
+        """Update menubar colors for proper contrast."""
+        bg_color = theme_manager.get_color('surface').name()
+        text_color = theme_manager.get_color('text_primary').name()
+        hover_bg = theme_manager.get_color('accent_primary').name()
+        hover_bg_alpha = theme_manager.get_color('accent_primary')
+        hover_bg_alpha.setAlpha(30)
+        disabled_color = theme_manager.get_color('text_disabled').name()
+
+        menubar_style = f"""
+            QMenuBar {{
+                background-color: {bg_color};
+                color: {text_color};
+                border-bottom: 1px solid {theme_manager.get_color('border_primary').name()};
+            }}
+            QMenuBar::item {{
+                background-color: transparent;
+                padding: 4px 10px;
+            }}
+            QMenuBar::item:selected {{
+                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
+                border-radius: 4px;
+            }}
+            QMenuBar::item:pressed {{
+                background-color: {hover_bg};
+                border-radius: 4px;
+            }}
+            QMenu {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 4px;
+            }}
+            QMenu::item:selected {{
+                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
+            }}
+            QMenu::item:disabled {{
+                color: {disabled_color};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """
+
+        self.menuBar().setStyleSheet(menubar_style)
+
     # Menu action handlers (simplified for Phase 1)
     def undo_action(self):
         """Undo last action."""
         if hasattr(self, 'canvas'):
             self.canvas.undo()
             self.status_message.setText("Undo")
+            self.toast.show_message("⟲ Undo")
 
     def redo_action(self):
         """Redo last undone action."""
         if hasattr(self, 'canvas'):
             self.canvas.redo()
             self.status_message.setText("Redo")
+            self.toast.show_message("⟳ Redo")
 
     def select_all(self):
         """Select all blocks in the diagram."""
@@ -639,11 +738,146 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_in()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
 
     def zoom_out(self):
         if hasattr(self, 'canvas'):
             self.canvas.zoom_out()
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
+            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
+
+    def toggle_grid(self):
+        """Toggle grid visibility."""
+        if hasattr(self, 'canvas'):
+            self.canvas.toggle_grid()
+            self.grid_toggle_action.setChecked(self.canvas.grid_visible)
+            status = "shown" if self.canvas.grid_visible else "hidden"
+            self.status_message.setText(f"Grid {status}")
+            icon = "⊞" if self.canvas.grid_visible else "⊟"
+            self.toast.show_message(f"{icon} Grid {status.capitalize()}")
+
+    def show_command_palette(self):
+        """Show the command palette for quick access."""
+        if hasattr(self, 'command_palette'):
+            self.command_palette.show_palette()
+
+    def _setup_command_palette(self):
+        """Setup command palette with available commands."""
+        commands = []
+
+        # Add block types dynamically from menu_blocks
+        # This ensures we use the correct fn_name for each block
+        if hasattr(self, 'canvas') and hasattr(self.canvas.dsim, 'menu_blocks'):
+            block_descriptions = {
+                'constant': 'Constant value source',
+                'step': 'Step input signal',
+                'ramp': 'Ramp input signal',
+                'gain': 'Amplify signal by constant',
+                'sum': 'Add or subtract signals',
+                'integrator': 'Integrate signal over time',
+                'deriv': 'Differentiate signal',
+                'tranfn': 'Transfer function block',
+                'scope': 'Display signal values',
+                'mux': 'Multiplex signals',
+                'demux': 'Demultiplex signals',
+                'abs': 'Absolute value',
+                'exp': 'Exponential function',
+                'sqrt': 'Square root',
+                'sin': 'Sine function',
+                'cos': 'Cosine function',
+            }
+
+            for menu_block in self.canvas.dsim.menu_blocks:
+                fn_name = menu_block.fn_name
+                block_fn = menu_block.block_fn
+                description = block_descriptions.get(fn_name.lower(), f'{block_fn} block')
+
+                commands.append({
+                    'name': f'Add {block_fn} Block',
+                    'type': 'block',
+                    'description': description,
+                    'callback': lambda mb=menu_block: self._add_block_from_palette_menu(mb),
+                    'data': {'block_type': fn_name}
+                })
+
+        # Add application actions
+        actions = [
+            ('New Diagram', 'Create a new diagram', self.new_diagram),
+            ('Open Diagram', 'Open an existing diagram', self.open_diagram),
+            ('Save Diagram', 'Save current diagram', self.save_diagram),
+            ('Run Simulation', 'Start the simulation', self.start_simulation),
+            ('Pause Simulation', 'Pause the simulation', self.pause_simulation),
+            ('Stop Simulation', 'Stop the simulation', self.stop_simulation),
+            ('Show Plots', 'Display simulation plots', self.show_plots),
+            ('Zoom In', 'Increase canvas zoom', self.zoom_in),
+            ('Zoom Out', 'Decrease canvas zoom', self.zoom_out),
+            ('Fit to Window', 'Fit all blocks in view', self.fit_to_window),
+            ('Toggle Theme', 'Switch between light/dark mode', self.toggle_theme),
+            ('Toggle Grid', 'Show/hide canvas grid', self.toggle_grid),
+        ]
+
+        for action_name, description, callback in actions:
+            commands.append({
+                'name': action_name,
+                'type': 'action',
+                'description': description,
+                'callback': callback,
+                'data': {}
+            })
+
+        # Add recent files
+        if hasattr(self, 'recent_files') and self.recent_files:
+            for file_path in self.recent_files[:5]:  # Show top 5 recent files
+                import os
+                file_name = os.path.basename(file_path)
+                commands.append({
+                    'name': file_name,
+                    'type': 'recent',
+                    'description': file_path,
+                    'callback': lambda fp=file_path: self._open_file(fp),
+                    'data': {'file_path': file_path}
+                })
+
+        self.command_palette.set_commands(commands)
+
+    def _add_block_from_palette_menu(self, menu_block):
+        """Add a block to the canvas from command palette."""
+        if not hasattr(self, 'canvas'):
+            return
+
+        from PyQt5.QtCore import QPoint
+        from PyQt5.QtGui import QCursor
+
+        # Get current mouse position in global coordinates
+        global_pos = QCursor.pos()
+
+        # Convert to canvas widget coordinates
+        canvas_widget_pos = self.canvas.mapFromGlobal(global_pos)
+
+        # Check if mouse is within canvas bounds
+        if self.canvas.rect().contains(canvas_widget_pos):
+            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
+            canvas_x = int((canvas_widget_pos.x() - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
+            canvas_y = int((canvas_widget_pos.y() - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
+            canvas_pos = QPoint(canvas_x, canvas_y)
+        else:
+            # Fallback: add at center of visible canvas area
+            center_x = self.canvas.width() // 2
+            center_y = self.canvas.height() // 2
+
+            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
+            canvas_x = int((center_x - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
+            canvas_y = int((center_y - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
+            canvas_pos = QPoint(canvas_x, canvas_y)
+
+        # Add the block using the canvas method
+        self.canvas.add_block_from_palette(menu_block, canvas_pos)
+        self.toast.show_message(f"✅ Added {menu_block.block_fn} block")
+
+    def _on_command_executed(self, command_type: str, data: dict):
+        """Handle command palette command execution."""
+        logger.info(f"Command executed: {command_type}, data: {data}")
+
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
         if not hasattr(self, 'canvas'):
