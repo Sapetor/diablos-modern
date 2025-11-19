@@ -37,6 +37,8 @@ class ThemeManager(QObject):
 
             # Surface colors
             'surface': '#1A1F26',                  # Cards, dialogs
+            'surface_primary': '#1A1F26',          # Primary surface
+            'surface_secondary': '#252A32',        # Secondary surface
             'surface_variant': '#252A32',         # Alternate surface
             'surface_elevated': '#2F353D',        # Highly elevated elements
 
@@ -135,6 +137,8 @@ class ThemeManager(QObject):
 
             # Surface colors
             'surface': '#FFFFFF',                  # Cards, dialogs
+            'surface_primary': '#FAFBFC',          # Primary surface
+            'surface_secondary': '#F3F4F6',        # Secondary surface
             'surface_variant': '#F9FAFB',         # Alternate surface
             'surface_elevated': '#FFFFFF',        # Highly elevated elements
 

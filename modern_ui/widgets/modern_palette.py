@@ -59,8 +59,9 @@ class DraggableBlockWidget(QFrame):
         painter.setRenderHint(QPainter.Antialiasing)
 
         from lib.simulation.block import DBlock
+        from modern_ui.themes.theme_manager import ThemeType
         menu_block = self.menu_block
-        
+
         block_rect = self.rect().adjusted(5, 5, -5, -25)
 
         temp_dblock = DBlock(
@@ -77,12 +78,30 @@ class DraggableBlockWidget(QFrame):
             external=menu_block.external,
             colors=self.colors
         )
-        
+
         temp_dblock.update_Block()
-        # Don't draw ports in palette to avoid clipping issues
-        temp_dblock.draw_Block(painter, draw_name=False, draw_ports=False)
-        
-        painter.setPen(theme_manager.get_color('text_primary'))
+
+        # In dark mode, temporarily override text_primary to use dark color for block icons
+        original_theme = None
+        if theme_manager.current_theme == ThemeType.DARK:
+            original_theme = theme_manager.themes[ThemeType.DARK]['text_primary']
+            theme_manager.themes[ThemeType.DARK]['text_primary'] = '#1F2937'
+
+        # Draw block with ports for better visualization
+        temp_dblock.draw_Block(painter, draw_name=False, draw_ports=True)
+
+        # Restore original theme color if we changed it
+        if original_theme:
+            theme_manager.themes[ThemeType.DARK]['text_primary'] = original_theme
+
+        # Use dark text color in dark mode for better contrast on bright block colors
+        if theme_manager.current_theme == ThemeType.DARK:
+            # Use dark text for palette blocks in dark mode
+            painter.setPen(QColor('#1F2937'))  # Dark gray for good contrast
+        else:
+            # Use standard text color in light mode
+            painter.setPen(theme_manager.get_color('text_primary'))
+
         font = QFont("Segoe UI", 8)
         painter.setFont(font)
         name_rect = QRect(0, self.height() - 20, self.width(), 20)
