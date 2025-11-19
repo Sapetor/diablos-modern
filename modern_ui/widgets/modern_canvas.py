@@ -31,6 +31,7 @@ class State:
     DRAGGING_LINE_SEGMENT = "dragging_line_segment"
     CONNECTING = "connecting"
     CONFIGURING = "configuring"
+    RESIZING = "resizing"
 
 
 class ModernCanvas(QWidget):
@@ -58,6 +59,7 @@ class ModernCanvas(QWidget):
         self.dragging_block = None
         self.drag_offset = None
         self.drag_offsets = {}  # For multi-block dragging
+        self.drag_start_positions = {}  # Track starting positions for undo
         
         # Connection management
         self.line_creation_state = None
@@ -65,6 +67,7 @@ class ModernCanvas(QWidget):
         self.line_start_port = None
         self.temp_line = None
         self.source_block_for_connection = None
+        self.default_routing_mode = "bezier"  # Default routing mode for new connections
 
         # Zoom and Pan
         self.zoom_factor = 1.0
@@ -79,6 +82,32 @@ class ModernCanvas(QWidget):
         self.selection_rect_start = None
         self.selection_rect_end = None
         self.is_rect_selecting = False
+
+        # Hover tracking for visual feedback
+        self.hovered_block = None
+        self.hovered_port = None  # Tuple: (block, port_index, is_output)
+        self.hovered_line = None
+
+        # Grid snapping
+        self.grid_size = 20  # Snap to 20px grid
+        self.snap_enabled = True
+
+        # Undo/Redo system
+        self.undo_stack = []
+        self.redo_stack = []
+        self.max_undo_steps = 50
+
+        # Block resizing
+        self.resizing_block = None
+        self.resize_handle = None  # Which handle is being dragged
+        self.resize_start_rect = None  # Original block rect before resize
+        self.resize_start_pos = None  # Mouse position at start of resize
+
+        # Validation system
+        self.validation_errors = []
+        self.blocks_with_errors = set()
+        self.blocks_with_warnings = set()
+        self.show_validation_errors = False
 
         # Setup canvas
         self._setup_canvas()
@@ -126,13 +155,16 @@ class ModernCanvas(QWidget):
                 new_block = self.dsim.add_block(menu_block, position)
                 if new_block:
                     logger.info(f"Successfully added {block_name}")
-                    
+
+                    # Capture state for undo
+                    self._push_undo("Add Block")
+
                     # Emit signal
                     self.block_selected.emit(new_block)
-                    
+
                     # Trigger repaint
                     self.update()
-                    
+
                     return new_block
                 else:
                     logger.error(f"Failed to create block {block_name}")
@@ -251,14 +283,8 @@ class ModernCanvas(QWidget):
             # Clear canvas with theme-appropriate background
             painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
 
-            # Draw grid
-            grid_size = 10
-            grid_color = theme_manager.get_color('grid_dots')
-            painter.setPen(QPen(grid_color, 1)) # 1 pixel wide dots
-
-            for x in range(0, self.width(), grid_size):
-                for y in range(0, self.height(), grid_size):
-                    painter.drawPoint(x, y)
+            # Draw sophisticated grid system
+            self._draw_grid(painter)
             
             # Draw DSim elements
             if hasattr(self.dsim, 'display_blocks'):
@@ -267,12 +293,61 @@ class ModernCanvas(QWidget):
             if hasattr(self.dsim, 'display_lines'):
                 self.dsim.display_lines(painter)
             
-            # Draw temporary connection line
+            # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:
-                pen = QPen(theme_manager.get_color('accent_primary'), 2, Qt.DashLine)
-                painter.setPen(pen)
                 start_point, end_point = self.temp_line
-                painter.drawLine(start_point, end_point)
+
+                # Check if hovering over valid target port
+                is_valid_target = False
+                if self.hovered_port:
+                    hovered_block, port_idx, is_output = self.hovered_port
+                    # Valid if hovering over an input port (not output)
+                    if not is_output:
+                        is_valid_target = True
+
+                # Choose color based on validity
+                if is_valid_target:
+                    line_color = QColor(76, 175, 80)  # Green for valid
+                else:
+                    line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
+
+                # Save painter state
+                painter.save()
+
+                # Enable antialiasing for smooth preview
+                painter.setRenderHint(QPainter.Antialiasing, True)
+
+                # Draw with solid line (not dashed) to avoid shadow artifacts
+                pen = QPen(line_color, 2, Qt.SolidLine)
+                pen.setCapStyle(Qt.RoundCap)
+                painter.setPen(pen)
+
+                # Draw curved Bezier preview
+                from PyQt5.QtGui import QPainterPath
+                path = QPainterPath()
+                path.moveTo(start_point)
+
+                # Calculate control points for smooth curve
+                dx = end_point.x() - start_point.x()
+                dy = end_point.y() - start_point.y()
+                distance = (dx * dx + dy * dy) ** 0.5
+
+                # Control point offset based on distance
+                offset = min(distance * 0.5, 100)
+
+                cp1 = QPoint(int(start_point.x() + offset), start_point.y())
+                cp2 = QPoint(int(end_point.x() - offset), end_point.y())
+
+                path.cubicTo(cp1, cp2, end_point)
+                painter.drawPath(path)
+
+                # Draw endpoint indicator
+                painter.setBrush(line_color)
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(end_point, 4, 4)
+
+                # Restore painter state
+                painter.restore()
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
@@ -300,6 +375,13 @@ class ModernCanvas(QWidget):
                 # Restore painter state
                 painter.restore()
 
+            # Draw hover effects
+            self._draw_hover_effects(painter)
+
+            # Draw validation error indicators
+            if self.show_validation_errors:
+                self._draw_validation_errors(painter)
+
             painter.end()
             
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -310,7 +392,99 @@ class ModernCanvas(QWidget):
                 
         except Exception as e:
             logger.error(f"Error in canvas paintEvent: {str(e)}")
-    
+
+    def _draw_grid(self, painter):
+        """Draw a sophisticated grid system with dots at intervals."""
+        try:
+            # Grid configuration
+            small_grid_size = 20  # Small dot spacing (20px)
+            large_grid_size = 100  # Large dot spacing (100px for emphasis)
+
+            # Get theme colors
+            small_dot_color = theme_manager.get_color('grid_dots')
+            large_dot_color = theme_manager.get_color('grid_dots')
+            large_dot_color.setAlpha(180)  # Make large dots slightly more visible
+
+            # Calculate visible area bounds (considering zoom and pan)
+            visible_rect = self.rect()
+
+            # Draw small dots
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(small_dot_color)
+            for x in range(0, self.width(), small_grid_size):
+                for y in range(0, self.height(), small_grid_size):
+                    # Only draw small dots if not on a large grid intersection
+                    if x % large_grid_size != 0 or y % large_grid_size != 0:
+                        painter.drawEllipse(QPoint(x, y), 1, 1)
+
+            # Draw larger dots at major grid intersections
+            painter.setBrush(large_dot_color)
+            for x in range(0, self.width(), large_grid_size):
+                for y in range(0, self.height(), large_grid_size):
+                    painter.drawEllipse(QPoint(x, y), 2, 2)
+
+        except Exception as e:
+            logger.error(f"Error drawing grid: {str(e)}")
+
+    def _draw_hover_effects(self, painter):
+        """Draw hover effects for ports, blocks, and connections."""
+        painter.save()
+        try:
+            # Draw hovered port (highest priority)
+            if self.hovered_port:
+                block, port_idx, is_output = self.hovered_port
+                port_list = block.out_coords if is_output else block.in_coords
+                if port_idx < len(port_list):
+                    port_pos = port_list[port_idx]
+
+                    # Draw pulsing glow around hovered port
+                    glow_color = theme_manager.get_color('accent_primary')
+                    glow_color.setAlpha(100)
+                    painter.setBrush(glow_color)
+                    painter.setPen(Qt.NoPen)
+                    painter.drawEllipse(port_pos, 12, 12)
+
+                    # Draw brighter center
+                    center_color = theme_manager.get_color('accent_primary')
+                    center_color.setAlpha(180)
+                    painter.setBrush(center_color)
+                    painter.drawEllipse(port_pos, 8, 8)
+
+            # Draw hovered block outline
+            elif self.hovered_block and not self.hovered_block.selected:
+                block = self.hovered_block
+                hover_color = theme_manager.get_color('accent_secondary')
+                hover_color.setAlpha(120)
+
+                # Draw glowing outline
+                painter.setPen(QPen(hover_color, 2.5, Qt.SolidLine))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawRoundedRect(
+                    block.left - 2,
+                    block.top - 2,
+                    block.width + 4,
+                    block.height + 4,
+                    8, 8
+                )
+
+            # Draw hovered connection highlight
+            elif self.hovered_line and not self.hovered_line.selected:
+                line = self.hovered_line
+                if line.path and not line.path.isEmpty():
+                    hover_color = theme_manager.get_color('accent_secondary')
+                    hover_color.setAlpha(150)
+
+                    # Draw thicker line underneath
+                    painter.setPen(QPen(hover_color, 3.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+                    painter.setBrush(Qt.NoBrush)
+                    painter.drawPath(line.path)
+
+        except Exception as e:
+            logger.error(f"Error drawing hover effects: {str(e)}")
+        finally:
+            # Always restore painter state even if there's an exception
+            painter.restore()
+
     def mousePressEvent(self, event):
         """Handle mouse press events."""
         try:
@@ -334,7 +508,15 @@ class ModernCanvas(QWidget):
     def _handle_left_click(self, pos):
         """Handle left mouse button clicks."""
         try:
-            # IMPORTANT: Check for port clicks FIRST, before block clicks
+            # Check for resize handles FIRST on selected blocks
+            for block in self.dsim.blocks_list:
+                if block.selected:
+                    handle = block.get_resize_handle_at(pos)
+                    if handle:
+                        self._start_resize(block, handle, pos)
+                        return
+
+            # Check for port clicks (before block clicks)
             # This allows clicking on ports to create connections instead of dragging blocks
             port_clicked = self._check_port_clicks(pos)
             if port_clicked:
@@ -374,23 +556,21 @@ class ModernCanvas(QWidget):
             logger.error(f"Error in _handle_left_click: {str(e)}")
     
     def _handle_right_click(self, pos):
-        """Handle right mouse button clicks."""
+        """Handle right mouse button clicks - show context menus."""
         try:
+            # Check what was clicked and show appropriate context menu
             clicked_block = self._get_clicked_block(pos)
-            if clicked_block:
-                if clicked_block.block_fn == "BodeMag":
-                    self.show_bode_plot_menu(clicked_block, self.mapToGlobal(pos))
-                elif clicked_block.block_fn == "RootLocus":
-                    self.show_root_locus_menu(clicked_block, self.mapToGlobal(pos))
-                else:
-                    # For other blocks, you might want a different context menu
-                    # or the parameter dialog from older versions.
-                    pass
-                return
+            clicked_line, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
 
-            # Cancel any ongoing line creation
-            if self.line_creation_state:
-                self._cancel_line_creation()
+            if clicked_block:
+                # Show block context menu
+                self._show_block_context_menu(clicked_block, pos)
+            elif clicked_line:
+                # Show connection context menu
+                self._show_connection_context_menu(clicked_line, pos)
+            else:
+                # Show canvas context menu
+                self._show_canvas_context_menu(pos)
 
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
@@ -809,13 +989,18 @@ class ModernCanvas(QWidget):
                         self._cancel_line_creation()
                         return
 
+                    # Push undo state before creating connection
+                    self._push_undo("Connect")
+
                     # Create line using DSim's add_line method
                     new_line = self.dsim.add_line(
                         (start_block_name, self.line_start_port, start_coords),
                         (end_block_name, end_port, end_coords)
                     )
                     if new_line:
-                        logger.info(f"Line created: {start_block_name} -> {end_block_name}")
+                        # Set the default routing mode for the new connection
+                        new_line.routing_mode = self.default_routing_mode
+                        logger.info(f"Line created: {start_block_name} -> {end_block_name} (routing: {self.default_routing_mode})")
                         self.dsim.update_lines()
                         self.connection_created.emit(self.line_start_block, end_block)
                     else:
@@ -959,17 +1144,98 @@ class ModernCanvas(QWidget):
             # Store RELATIVE offsets from the clicked block to all other selected blocks
             # This maintains relative positions when dragging multiple blocks
             self.drag_offsets = {}
+            self.drag_start_positions = {}  # Track starting positions for undo threshold
             for b in self.dsim.blocks_list:
                 if b.selected:
                     # Store offset from clicked block to this block
                     self.drag_offsets[b] = QPoint(b.left - block.left, b.top - block.top)
+                    # Store starting position
+                    self.drag_start_positions[b] = (b.left, b.top)
 
             logger.debug(f"Started dragging {len(self.drag_offsets)} block(s)")
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
 
+    def _start_resize(self, block, handle, pos):
+        """Start resizing a block."""
+        try:
+            self.state = State.RESIZING
+            self.resizing_block = block
+            self.resize_handle = handle
+            self.resize_start_pos = pos
+            self.resize_start_rect = QRect(block.left, block.top, block.width, block.height)
+
+            logger.debug(f"Started resizing block {block.name} from handle {handle}")
+        except Exception as e:
+            logger.error(f"Error starting resize: {str(e)}")
+
+    def _perform_resize(self, pos):
+        """Perform the resize operation based on current mouse position."""
+        try:
+            if not self.resizing_block or not self.resize_handle:
+                return
+
+            block = self.resizing_block
+            handle = self.resize_handle
+            start_rect = self.resize_start_rect
+
+            # Calculate delta from start position
+            delta_x = pos.x() - self.resize_start_pos.x()
+            delta_y = pos.y() - self.resize_start_pos.y()
+
+            # Calculate new position and size based on handle
+            new_left = start_rect.left()
+            new_top = start_rect.top()
+            new_width = start_rect.width()
+            new_height = start_rect.height()
+
+            if 'left' in handle:
+                new_left = start_rect.left() + delta_x
+                new_width = start_rect.width() - delta_x
+            elif 'right' in handle:
+                new_width = start_rect.width() + delta_x
+
+            if 'top' in handle:
+                new_top = start_rect.top() + delta_y
+                new_height = start_rect.height() - delta_y
+            elif 'bottom' in handle:
+                new_height = start_rect.height() + delta_y
+
+            # Apply minimum size constraints
+            try:
+                from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
+                min_width = MIN_BLOCK_WIDTH
+                min_height = MIN_BLOCK_HEIGHT
+            except ImportError:
+                min_width = 50
+                min_height = 40
+
+            # Ensure minimum size
+            if new_width < min_width:
+                if 'left' in handle:
+                    new_left = start_rect.right() - min_width
+                new_width = min_width
+
+            if new_height < min_height:
+                if 'top' in handle:
+                    new_top = start_rect.bottom() - min_height
+                new_height = min_height
+
+            # Update block position and size
+            block.left = new_left
+            block.top = new_top
+            block.resize_Block(new_width, new_height)
+            block.rect.moveTo(new_left, new_top)
+
+            # Update connected lines
+            self.dsim.update_lines()
+            self.update()
+
+        except Exception as e:
+            logger.error(f"Error performing resize: {str(e)}")
+
     def mouseMoveEvent(self, event):
-        """Handle mouse move events."""
+        """Handle mouse move events with hover detection."""
         try:
             if self.panning:
                 delta = event.pos() - self.last_pan_pos
@@ -980,6 +1246,10 @@ class ModernCanvas(QWidget):
 
             pos = self.screen_to_world(event.pos())
 
+            # Update hover states (only when not dragging/selecting)
+            if self.state == State.IDLE and not self.is_rect_selecting:
+                self._update_hover_states(pos)
+
             # Update rectangle selection
             if self.is_rect_selecting:
                 self.selection_rect_end = pos
@@ -987,16 +1257,18 @@ class ModernCanvas(QWidget):
                 return
 
             if self.state == State.DRAGGING and self.dragging_block:
-                # Update all selected block positions
-                grid_size = 10
-
+                # Update all selected block positions with grid snapping
                 # Calculate new position for the clicked block
                 new_x = pos.x() - self.drag_offset.x()
                 new_y = pos.y() - self.drag_offset.y()
 
-                # Snap clicked block to grid
-                snapped_x = round(new_x / grid_size) * grid_size
-                snapped_y = round(new_y / grid_size) * grid_size
+                # Snap to grid if enabled
+                if self.snap_enabled:
+                    snapped_x = round(new_x / self.grid_size) * self.grid_size
+                    snapped_y = round(new_y / self.grid_size) * self.grid_size
+                else:
+                    snapped_x = new_x
+                    snapped_y = new_y
 
                 # Move clicked block to snapped position
                 self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
@@ -1012,6 +1284,9 @@ class ModernCanvas(QWidget):
 
                 self.dsim.update_lines() # Update lines dynamically during drag
                 self.update() # Trigger repaint
+            elif self.state == State.RESIZING and self.resizing_block:
+                # Calculate the resize delta
+                self._perform_resize(pos)
             elif self.state == State.DRAGGING_LINE_POINT and self.dragging_item:
                 line, point_index = self.dragging_item
                 line.points[point_index] = pos
@@ -1066,6 +1341,8 @@ class ModernCanvas(QWidget):
 
             if self.state == State.DRAGGING:
                 self._finish_drag()
+            elif self.state == State.RESIZING:
+                self._finish_resize()
             elif self.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
                 if self.dragging_item:
                     line, _ = self.dragging_item
@@ -1083,14 +1360,67 @@ class ModernCanvas(QWidget):
         try:
             if self.dragging_block:
                 logger.debug(f"Finished dragging block: {getattr(self.dragging_block, 'fn_name', 'Unknown')}")
+
+                # Only push undo if blocks actually moved significantly (threshold: 5 pixels)
+                moved_significantly = False
+                move_threshold = 5  # pixels
+
+                for block, start_pos in self.drag_start_positions.items():
+                    start_left, start_top = start_pos
+                    distance = abs(block.left - start_left) + abs(block.top - start_top)
+                    if distance >= move_threshold:
+                        moved_significantly = True
+                        break
+
+                if moved_significantly:
+                    self._push_undo("Move")
+                else:
+                    logger.debug("Block moved less than threshold, not capturing undo")
+
                 # Reset drag state
                 self.state = State.IDLE
                 self.dragging_block = None
                 self.drag_offset = None
+                self.drag_start_positions = {}
                 self.dsim.update_lines() # Ensure lines are updated after drag finishes
                 self.update() # Trigger a final repaint
         except Exception as e:
             logger.error(f"Error finishing drag: {str(e)}")
+
+    def _finish_resize(self):
+        """Finish resizing operation."""
+        try:
+            if self.resizing_block and self.resize_start_rect:
+                logger.debug(f"Finished resizing block: {getattr(self.resizing_block, 'fn_name', 'Unknown')}")
+
+                # Only push undo if block actually resized significantly (threshold: 5 pixels)
+                block = self.resizing_block
+                start_rect = self.resize_start_rect
+                resize_threshold = 5  # pixels
+
+                # Check if size or position changed significantly
+                size_change = (abs(block.width - start_rect.width()) +
+                              abs(block.height - start_rect.height()))
+                pos_change = (abs(block.left - start_rect.left()) +
+                             abs(block.top - start_rect.top()))
+
+                if size_change >= resize_threshold or pos_change >= resize_threshold:
+                    self._push_undo("Resize")
+                else:
+                    logger.debug("Block resized less than threshold, not capturing undo")
+
+                # Reset resize state
+                self.state = State.IDLE
+                self.resizing_block = None
+                self.resize_handle = None
+                self.resize_start_rect = None
+                self.resize_start_pos = None
+
+                # Ensure lines are updated after resize
+                self.dsim.update_lines()
+                self.update()
+        except Exception as e:
+            logger.error(f"Error finishing resize: {str(e)}")
 
     def _cancel_line_creation(self):
         """Cancel line creation process."""
@@ -1110,6 +1440,7 @@ class ModernCanvas(QWidget):
         try:
             # Check for Control/Command modifier (works on both Mac and Windows/Linux)
             ctrl_pressed = event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier)
+            shift_pressed = event.modifiers() & Qt.ShiftModifier
 
             if event.key() == Qt.Key_Escape:
                 # Cancel any ongoing operations
@@ -1117,8 +1448,18 @@ class ModernCanvas(QWidget):
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
-            elif event.key() == Qt.Key_Delete:
+            elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+                # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
+            elif event.key() == Qt.Key_Z and ctrl_pressed and shift_pressed:
+                # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
+                self.redo()
+            elif event.key() == Qt.Key_Z and ctrl_pressed:
+                # Ctrl+Z: Undo
+                self.undo()
+            elif event.key() == Qt.Key_Y and ctrl_pressed:
+                # Ctrl+Y: Redo
+                self.redo()
             elif event.key() == Qt.Key_F and ctrl_pressed:
                 self.flip_selected_blocks()
             elif event.key() == Qt.Key_C and ctrl_pressed:
@@ -1181,6 +1522,9 @@ class ModernCanvas(QWidget):
             if not self.clipboard_blocks:
                 logger.info("Clipboard is empty")
                 return
+
+            # Push undo state before pasting
+            self._push_undo("Paste")
 
             # Deselect all current blocks
             for block in self.dsim.blocks_list:
@@ -1252,11 +1596,772 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
 
+    def _show_block_context_menu(self, block, pos):
+        """Show context menu for a block."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """)
+
+        # Ensure block is selected
+        if not block.selected:
+            self._clear_selections()
+            block.selected = True
+            self.update()
+
+        # Block actions
+        delete_action = menu.addAction("Delete")
+        delete_action.setShortcut("Del")  # Shows "Del" but accepts both Del and Backspace
+        delete_action.triggered.connect(self.remove_selected_items)
+
+        duplicate_action = menu.addAction("Duplicate")
+        duplicate_action.setShortcut("Ctrl+D")
+        duplicate_action.triggered.connect(lambda: self._duplicate_block(block))
+
+        menu.addSeparator()
+
+        copy_action = menu.addAction("Copy")
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self._copy_selected_blocks)
+
+        cut_action = menu.addAction("Cut")
+        cut_action.setShortcut("Ctrl+X")
+        cut_action.triggered.connect(self._cut_selected_blocks)
+
+        menu.addSeparator()
+
+        properties_action = menu.addAction("Properties...")
+        properties_action.triggered.connect(lambda: self._show_block_properties(block))
+
+        # Show menu at cursor position (convert world to screen coordinates)
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    def _show_connection_context_menu(self, line, pos):
+        """Show context menu for a connection line."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+        """)
+
+        # Ensure line is selected
+        if not line.selected:
+            self._clear_line_selections()
+            line.selected = True
+            self.update()
+
+        # Edit Label action
+        edit_label_action = menu.addAction("Edit Label...")
+        edit_label_action.triggered.connect(lambda: self._edit_connection_label(line))
+
+        # Routing mode submenu
+        routing_menu = menu.addMenu("Routing Mode")
+
+        # Bezier mode
+        bezier_action = routing_menu.addAction("Bezier (Curved)")
+        bezier_action.setCheckable(True)
+        bezier_action.setChecked(line.routing_mode == "bezier")
+        bezier_action.triggered.connect(lambda: self._set_connection_routing_mode(line, "bezier"))
+
+        # Orthogonal mode
+        orthogonal_action = routing_menu.addAction("Orthogonal (Manhattan)")
+        orthogonal_action.setCheckable(True)
+        orthogonal_action.setChecked(line.routing_mode == "orthogonal")
+        orthogonal_action.triggered.connect(lambda: self._set_connection_routing_mode(line, "orthogonal"))
+
+        menu.addSeparator()
+
+        delete_action = menu.addAction("Delete Connection")
+        delete_action.setShortcut("Del")
+        delete_action.triggered.connect(lambda: self._delete_line(line))
+
+        highlight_action = menu.addAction("Highlight Path")
+        highlight_action.triggered.connect(lambda: self._highlight_connection_path(line))
+
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    def _show_canvas_context_menu(self, pos):
+        """Show context menu for empty canvas area."""
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: {theme_manager.get_color('surface_secondary').name()};
+                color: {theme_manager.get_color('text_primary').name()};
+                border: 1px solid {theme_manager.get_color('border_primary').name()};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 24px 6px 12px;
+                border-radius: 2px;
+            }}
+            QMenu::item:selected {{
+                background-color: {theme_manager.get_color('accent_primary').name()};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background-color: {theme_manager.get_color('border_secondary').name()};
+                margin: 4px 8px;
+            }}
+        """)
+
+        # Paste (only enabled if clipboard has blocks)
+        paste_action = menu.addAction("Paste")
+        paste_action.setShortcut("Ctrl+V")
+        paste_action.setEnabled(len(self.clipboard_blocks) > 0)
+        paste_action.triggered.connect(lambda: self._paste_blocks(pos))
+
+        menu.addSeparator()
+
+        select_all_action = menu.addAction("Select All")
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self._select_all_blocks)
+
+        clear_selection_action = menu.addAction("Clear Selection")
+        clear_selection_action.setShortcut("Esc")
+        clear_selection_action.triggered.connect(self._clear_selections)
+
+        menu.addSeparator()
+
+        # Zoom submenu
+        zoom_menu = menu.addMenu("Zoom")
+        zoom_in_action = zoom_menu.addAction("Zoom In")
+        zoom_in_action.setShortcut("Ctrl++")
+        zoom_in_action.triggered.connect(self.zoom_in)
+
+        zoom_out_action = zoom_menu.addAction("Zoom Out")
+        zoom_out_action.setShortcut("Ctrl+-")
+        zoom_out_action.triggered.connect(self.zoom_out)
+
+        zoom_fit_action = zoom_menu.addAction("Fit All")
+        zoom_fit_action.setShortcut("Ctrl+0")
+        zoom_fit_action.triggered.connect(self.zoom_to_fit)
+
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        menu.exec_(screen_pos)
+
+    # Helper methods for context menu actions
+    def _duplicate_block(self, block):
+        """Duplicate a block."""
+        try:
+            # Push undo state before duplication
+            self._push_undo("Duplicate")
+
+            offset = 30  # Offset for duplicated block
+            new_coords = QRect(
+                block.coords.x() + offset,
+                block.coords.y() + offset,
+                block.coords.width(),
+                block.coords.height()
+            )
+
+            new_block = self.dsim.add_new_block(
+                block.block_fn,
+                new_coords,
+                block.b_color,
+                block.in_ports,
+                block.out_ports,
+                block.b_type,
+                block.io_edit,
+                block.fn_name,
+                block.params.copy() if hasattr(block, 'params') else {},
+                block.external
+            )
+
+            if new_block:
+                logger.info(f"Duplicated block: {block.fn_name} -> {new_block.name}")
+                self._clear_selections()
+                new_block.selected = True
+                self.update()
+
+        except Exception as e:
+            logger.error(f"Error duplicating block: {str(e)}")
+
+    def _copy_selected_blocks(self):
+        """Copy selected blocks to clipboard."""
+        try:
+            self.clipboard_blocks = []
+            for block in self.dsim.blocks_list:
+                if block.selected:
+                    self.clipboard_blocks.append({
+                        'block_fn': block.block_fn,
+                        'color': block.b_color,
+                        'in_ports': block.in_ports,
+                        'out_ports': block.out_ports,
+                        'b_type': block.b_type,
+                        'io_edit': block.io_edit,
+                        'fn_name': block.fn_name,
+                        'params': block.params.copy() if hasattr(block, 'params') else {},
+                        'external': block.external,
+                        'coords': block.coords
+                    })
+            logger.info(f"Copied {len(self.clipboard_blocks)} blocks to clipboard")
+        except Exception as e:
+            logger.error(f"Error copying blocks: {str(e)}")
+
+    def _cut_selected_blocks(self):
+        """Cut selected blocks to clipboard."""
+        self._copy_selected_blocks()
+        self.remove_selected_items()
+
+    def _paste_blocks(self, pos):
+        """Paste blocks from clipboard at specified position."""
+        try:
+            if not self.clipboard_blocks:
+                return
+
+            # Push undo state before pasting
+            self._push_undo("Paste")
+
+            # Calculate offset from first block's position to paste position
+            if self.clipboard_blocks:
+                first_block_coords = self.clipboard_blocks[0]['coords']
+                offset_x = pos.x() - first_block_coords.x()
+                offset_y = pos.y() - first_block_coords.y()
+
+                self._clear_selections()
+                for block_data in self.clipboard_blocks:
+                    new_coords = QRect(
+                        block_data['coords'].x() + offset_x,
+                        block_data['coords'].y() + offset_y,
+                        block_data['coords'].width(),
+                        block_data['coords'].height()
+                    )
+
+                    new_block = self.dsim.add_new_block(
+                        block_data['block_fn'],
+                        new_coords,
+                        block_data['color'],
+                        block_data['in_ports'],
+                        block_data['out_ports'],
+                        block_data['b_type'],
+                        block_data['io_edit'],
+                        block_data['fn_name'],
+                        block_data['params'],
+                        block_data['external']
+                    )
+
+                    if new_block:
+                        new_block.selected = True
+
+                logger.info(f"Pasted {len(self.clipboard_blocks)} blocks")
+                self.update()
+
+        except Exception as e:
+            logger.error(f"Error pasting blocks: {str(e)}")
+
+    def _select_all_blocks(self):
+        """Select all blocks on canvas."""
+        for block in self.dsim.blocks_list:
+            block.selected = True
+        self.update()
+
+    def _show_block_properties(self, block):
+        """Show properties dialog for a block."""
+        # Emit signal to show properties in property panel
+        self.block_selected.emit(block)
+
+    def _delete_line(self, line):
+        """Delete a specific connection line."""
+        try:
+            if line in self.dsim.line_list:
+                # Push undo state before deleting line
+                self._push_undo("Delete Connection")
+
+                self.dsim.line_list.remove(line)
+                logger.info(f"Deleted connection: {line.name}")
+                self.update()
+        except Exception as e:
+            logger.error(f"Error deleting line: {str(e)}")
+
+    def _clear_line_selections(self):
+        """Clear all line selections."""
+        for line in self.dsim.line_list:
+            line.selected = False
+
+    def _highlight_connection_path(self, line):
+        """Temporarily highlight a connection path."""
+        # This could be enhanced with animation
+        line.selected = True
+        self.update()
+
+    def _edit_connection_label(self, line):
+        """Edit the label of a connection."""
+        from PyQt5.QtWidgets import QInputDialog
+
+        # Get current label
+        current_label = line.label if hasattr(line, 'label') else ""
+
+        # Show input dialog
+        text, ok = QInputDialog.getText(
+            self,
+            "Edit Connection Label",
+            f"Enter label for connection {line.srcblock} → {line.dstblock}:",
+            text=current_label
+        )
+
+        if ok:
+            line.label = text
+            self.update()
+            logger.info(f"Updated connection label: {line.name} -> '{text}'")
+
+    def _set_connection_routing_mode(self, line, mode):
+        """Change the routing mode for a connection."""
+        if mode in ["bezier", "orthogonal"]:
+            line.set_routing_mode(mode)
+            # Force update of the line path
+            line.update_line(self.dsim.blocks_list)
+            self._capture_state()  # Capture state for undo
+            self.update()
+            logger.info(f"Changed routing mode for {line.name} to {mode}")
+
+    def _update_hover_states(self, pos):
+        """Update hover states for blocks, ports, and connections."""
+        needs_repaint = False
+
+        # Check for resize handles on selected blocks (highest priority)
+        resize_handle = None
+        for block in self.dsim.blocks_list:
+            if block.selected:
+                handle = block.get_resize_handle_at(pos)
+                if handle:
+                    resize_handle = handle
+                    self._set_resize_cursor(handle)
+                    break
+
+        # Initialize variables
+        new_hovered_port = None
+
+        if not resize_handle:
+            # Check for hovered port
+            for block in self.dsim.blocks_list:
+                # Check output ports
+                for i, port_pos in enumerate(block.out_coords):
+                    if self._point_near_port(pos, port_pos):
+                        new_hovered_port = (block, i, True)  # True = output port
+                        break
+                # Check input ports
+                if not new_hovered_port:
+                    for i, port_pos in enumerate(block.in_coords):
+                        if self._point_near_port(pos, port_pos):
+                            new_hovered_port = (block, i, False)  # False = input port
+                            break
+                if new_hovered_port:
+                    break
+
+            if new_hovered_port != self.hovered_port:
+                self.hovered_port = new_hovered_port
+                needs_repaint = True
+
+            # Reset cursor if not over resize handle or port
+            if not new_hovered_port:
+                self.setCursor(Qt.ArrowCursor)
+
+        # Check for hovered block (if no port is hovered)
+        if not new_hovered_port:
+            new_hovered_block = self._get_clicked_block(pos)
+            if new_hovered_block != self.hovered_block:
+                self.hovered_block = new_hovered_block
+                needs_repaint = True
+        else:
+            if self.hovered_block is not None:
+                self.hovered_block = None
+                needs_repaint = True
+
+        # Check for hovered line (if no block/port is hovered)
+        if not new_hovered_port and not self.hovered_block:
+            line_result, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
+            if line_result != self.hovered_line:
+                self.hovered_line = line_result
+                needs_repaint = True
+        else:
+            if self.hovered_line is not None:
+                self.hovered_line = None
+                needs_repaint = True
+
+        if needs_repaint:
+            self.update()
+
+    def _point_near_port(self, point, port_pos, threshold=12):
+        """Check if a point is near a port position."""
+        dx = point.x() - port_pos.x()
+        dy = point.y() - port_pos.y()
+        return (dx * dx + dy * dy) < (threshold * threshold)
+
+    def _set_resize_cursor(self, handle):
+        """Set the appropriate cursor for a resize handle."""
+        cursor_map = {
+            'top_left': Qt.SizeFDiagCursor,
+            'top_right': Qt.SizeBDiagCursor,
+            'bottom_left': Qt.SizeBDiagCursor,
+            'bottom_right': Qt.SizeFDiagCursor,
+            'top': Qt.SizeVerCursor,
+            'bottom': Qt.SizeVerCursor,
+            'left': Qt.SizeHorCursor,
+            'right': Qt.SizeHorCursor,
+        }
+        self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+
+    # Validation System
+    def run_validation(self):
+        """Run diagram validation and update error visualization."""
+        try:
+            from lib.diagram_validator import DiagramValidator
+
+            validator = DiagramValidator(self.dsim)
+            self.validation_errors = validator.validate()
+
+            # Update sets of blocks with errors/warnings
+            self.blocks_with_errors = validator.get_blocks_with_errors()
+            self.blocks_with_warnings = validator.get_blocks_with_warnings()
+
+            # Enable error visualization
+            self.show_validation_errors = True
+
+            # Trigger repaint
+            self.update()
+
+            logger.info(f"Validation complete: {len(self.validation_errors)} issues found")
+            return self.validation_errors
+
+        except Exception as e:
+            logger.error(f"Error running validation: {str(e)}")
+            return []
+
+    def clear_validation(self):
+        """Clear validation errors and hide indicators."""
+        self.validation_errors = []
+        self.blocks_with_errors = set()
+        self.blocks_with_warnings = set()
+        self.show_validation_errors = False
+        self.update()
+
+    def _draw_validation_errors(self, painter):
+        """Draw visual indicators for validation errors."""
+        try:
+            painter.save()
+
+            # Draw error indicators on blocks
+            for block in self.blocks_with_errors:
+                self._draw_block_error_indicator(painter, block, is_error=True)
+
+            for block in self.blocks_with_warnings:
+                if block not in self.blocks_with_errors:  # Don't double-draw
+                    self._draw_block_error_indicator(painter, block, is_error=False)
+
+            painter.restore()
+
+        except Exception as e:
+            logger.error(f"Error drawing validation errors: {str(e)}")
+
+    def _draw_block_error_indicator(self, painter, block, is_error=True):
+        """Draw error/warning indicator on a specific block."""
+        try:
+            # Choose color based on severity
+            if is_error:
+                indicator_color = QColor(220, 53, 69)  # Red for errors
+                border_width = 3
+            else:
+                indicator_color = QColor(255, 193, 7)  # Yellow/orange for warnings
+                border_width = 2
+
+            # Draw pulsing border around block
+            painter.setPen(QPen(indicator_color, border_width, Qt.SolidLine))
+            painter.setBrush(Qt.NoBrush)
+
+            # Draw outline around block
+            padding = 4
+            error_rect = QRect(
+                block.left - padding,
+                block.top - padding,
+                block.width + 2 * padding,
+                block.height + 2 * padding
+            )
+            painter.drawRoundedRect(error_rect, 10, 10)
+
+            # Draw error/warning icon in top-right corner
+            icon_size = 16
+            icon_x = block.left + block.width - icon_size - 2
+            icon_y = block.top + 2
+
+            # Draw icon background circle
+            icon_bg = QColor(indicator_color)
+            icon_bg.setAlpha(200)
+            painter.setBrush(icon_bg)
+            painter.setPen(QPen(QColor(255, 255, 255), 1))
+            painter.drawEllipse(icon_x, icon_y, icon_size, icon_size)
+
+            # Draw exclamation mark
+            painter.setPen(QPen(QColor(255, 255, 255), 2))
+            # Vertical line
+            painter.drawLine(
+                icon_x + icon_size // 2, icon_y + 3,
+                icon_x + icon_size // 2, icon_y + icon_size - 6
+            )
+            # Dot
+            painter.drawPoint(icon_x + icon_size // 2, icon_y + icon_size - 3)
+
+        except Exception as e:
+            logger.error(f"Error drawing block error indicator: {str(e)}")
+
+    # Undo/Redo System
+    def _capture_state(self):
+        """Capture current diagram state for undo/redo."""
+        try:
+            state = {
+                'blocks': [],
+                'lines': []
+            }
+
+            # Capture all blocks
+            for block in self.dsim.blocks_list:
+                block_data = {
+                    'name': block.name,
+                    'block_fn': block.block_fn,
+                    'coords': (block.left, block.top, block.width, block.height),
+                    'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
+                    'in_ports': block.in_ports,
+                    'out_ports': block.out_ports,
+                    'b_type': block.b_type,
+                    'io_edit': block.io_edit,
+                    'fn_name': block.fn_name,
+                    'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
+                    'external': block.external,
+                    'selected': block.selected
+                }
+                state['blocks'].append(block_data)
+
+            # Capture all connections
+            for line in self.dsim.line_list:
+                line_data = {
+                    'name': line.name,
+                    'srcblock': line.srcblock,
+                    'srcport': line.srcport,
+                    'dstblock': line.dstblock,
+                    'dstport': line.dstport,
+                    'selected': line.selected,
+                    'routing_mode': line.routing_mode if hasattr(line, 'routing_mode') else 'bezier',
+                    'label': line.label if hasattr(line, 'label') else ''
+                }
+                state['lines'].append(line_data)
+
+            return state
+
+        except Exception as e:
+            logger.error(f"Error capturing state: {str(e)}")
+            return None
+
+    def _restore_state(self, state):
+        """Restore diagram state from snapshot."""
+        try:
+            if not state:
+                return False
+
+            # Clear current diagram
+            self.dsim.blocks_list.clear()
+            self.dsim.line_list.clear()
+
+            # Clear hover state (old objects are now invalid)
+            self.hovered_block = None
+            self.hovered_line = None
+            self.hovered_port = None
+
+            # Restore blocks by directly creating DBlock instances
+            from lib.simulation.block import DBlock
+            from PyQt5.QtGui import QColor
+
+            for block_data in state['blocks']:
+                try:
+                    coords = QRect(*block_data['coords'])
+
+                    # Find the block class if it's a known block type
+                    block_class = None
+                    block_fn = block_data['block_fn']
+
+                    # Try to import the block class
+                    try:
+                        module_name = f"blocks.{block_fn.lower()}"
+                        class_name = f"{block_fn.capitalize()}Block"
+                        module = __import__(module_name, fromlist=[class_name])
+                        block_class = getattr(module, class_name, None)
+                    except (ImportError, AttributeError):
+                        logger.debug(f"Could not import block class for {block_fn}")
+                        block_class = None
+
+                    # Extract sid from name (e.g., "step0" -> 0)
+                    name = block_data['name']
+                    sid = int(name[len(block_fn):]) if len(name) > len(block_fn) else 0
+
+                    # Create DBlock directly
+                    block = DBlock(
+                        block_data['block_fn'],
+                        sid,
+                        coords,
+                        QColor(block_data['color']),
+                        block_data['in_ports'],
+                        block_data['out_ports'],
+                        block_data['b_type'],
+                        block_data['io_edit'],
+                        block_data['fn_name'],
+                        block_data['params'],
+                        block_data['external'],
+                        block_class=block_class
+                    )
+
+                    # Restore selection state and original name
+                    block.selected = block_data.get('selected', False)
+                    block.name = name
+
+                    # Add to blocks list
+                    self.dsim.blocks_list.append(block)
+
+                except Exception as e:
+                    logger.error(f"Error restoring block {block_data.get('name', 'unknown')}: {str(e)}")
+                    continue
+
+            # Restore connections
+            for line_data in state['lines']:
+                # Find blocks by name
+                src_block = None
+                dst_block = None
+                for block in self.dsim.blocks_list:
+                    if block.name == line_data['srcblock']:
+                        src_block = block
+                    if block.name == line_data['dstblock']:
+                        dst_block = block
+
+                if src_block and dst_block:
+                    src_port_pos = src_block.out_coords[line_data['srcport']]
+                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
+
+                    line = self.dsim.add_line(
+                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
+                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
+                    )
+                    if line:
+                        line.selected = line_data.get('selected', False)
+                        line.name = line_data['name']
+                        # Restore routing mode and label
+                        if 'routing_mode' in line_data:
+                            line.routing_mode = line_data['routing_mode']
+                        if 'label' in line_data:
+                            line.label = line_data['label']
+                        # Recalculate path with restored routing mode
+                        line.update_line(self.dsim.blocks_list)
+
+            self.update()
+            return True
+
+        except Exception as e:
+            logger.error(f"Error restoring state: {str(e)}")
+            return False
+
+    def _push_undo(self, description="Action"):
+        """Push current state to undo stack."""
+        try:
+            state = self._capture_state()
+            if state:
+                self.undo_stack.append({'state': state, 'description': description})
+
+                # Limit stack size
+                if len(self.undo_stack) > self.max_undo_steps:
+                    self.undo_stack.pop(0)
+
+                # Clear redo stack when new action is performed
+                self.redo_stack.clear()
+
+                logger.debug(f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})")
+
+        except Exception as e:
+            logger.error(f"Error pushing undo: {str(e)}")
+
+    def undo(self):
+        """Undo the last action."""
+        try:
+            if not self.undo_stack:
+                logger.info("Nothing to undo")
+                return
+
+            # Capture current state for redo
+            current_state = self._capture_state()
+            if current_state:
+                self.redo_stack.append({'state': current_state, 'description': 'Redo'})
+
+            # Pop and restore previous state
+            undo_item = self.undo_stack.pop()
+            if self._restore_state(undo_item['state']):
+                logger.info(f"Undone: {undo_item['description']}")
+            else:
+                logger.error("Failed to undo")
+
+        except Exception as e:
+            logger.error(f"Error in undo: {str(e)}")
+
+    def redo(self):
+        """Redo the last undone action."""
+        try:
+            if not self.redo_stack:
+                logger.info("Nothing to redo")
+                return
+
+            # Capture current state for undo
+            current_state = self._capture_state()
+            if current_state:
+                self.undo_stack.append({'state': current_state, 'description': 'Undo'})
+
+            # Pop and restore redo state
+            redo_item = self.redo_stack.pop()
+            if self._restore_state(redo_item['state']):
+                logger.info(f"Redone: {redo_item['description']}")
+            else:
+                logger.error("Failed to redo")
+
+        except Exception as e:
+            logger.error(f"Error in redo: {str(e)}")
+
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
         try:
             blocks_to_remove = [block for block in self.dsim.blocks_list if block.selected]
             lines_to_remove = [line for line in self.dsim.line_list if line.selected]
+
+            # Push undo state before deletion
+            if blocks_to_remove or lines_to_remove:
+                self._push_undo("Delete")
 
             for block in blocks_to_remove:
                 self.dsim.remove_block_and_lines(block)
