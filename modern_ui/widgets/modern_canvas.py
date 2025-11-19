@@ -285,13 +285,17 @@ class ModernCanvas(QWidget):
 
             # Draw sophisticated grid system
             self._draw_grid(painter)
-            
-            # Draw DSim elements
+
+            # Draw DSim elements in proper order: blocks -> lines -> ports
+            # This ensures ports appear on top of connection lines
             if hasattr(self.dsim, 'display_blocks'):
-                self.dsim.display_blocks(painter)
-            
+                self.dsim.display_blocks(painter, draw_ports=False)
+
             if hasattr(self.dsim, 'display_lines'):
                 self.dsim.display_lines(painter)
+
+            if hasattr(self.dsim, 'display_ports'):
+                self.dsim.display_ports(painter)
             
             # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:

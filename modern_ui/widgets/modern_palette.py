@@ -4,10 +4,10 @@ Interactive palette with draggable blocks organized by categories.
 
 import logging
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QScrollArea, QFrame, QPushButton, QButtonGroup, QLineEdit, QGridLayout)
 from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QByteArray, QRect
-from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont
+from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor
 from PyQt5.QtSvg import QSvgWidget
 
 # Import DSim modules
@@ -91,8 +91,9 @@ class DraggableBlockWidget(QFrame):
     def _apply_styling(self):
         """Apply theme-aware styling."""
         border_color = theme_manager.get_color('border_secondary')
-        hover_bg_color = theme_manager.get_color('surface_secondary')
-        
+        hover_bg_color = theme_manager.get_color('accent_primary')
+        hover_bg_color.setAlpha(30)  # Semi-transparent accent color for better text contrast
+
         self.setStyleSheet(f"""
             DraggableBlockWidget {{
                 background-color: transparent;
@@ -101,8 +102,8 @@ class DraggableBlockWidget(QFrame):
                 margin: 2px;
             }}
             DraggableBlockWidget:hover {{
-                background-color: {hover_bg_color.name()};
-                border: 1px solid {theme_manager.get_color('accent_primary').name()};
+                background-color: {hover_bg_color.name(QColor.HexArgb)};
+                border: 2px solid {theme_manager.get_color('accent_primary').name()};
             }}
         """)
     
