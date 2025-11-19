@@ -509,15 +509,38 @@ class ModernCanvas(QWidget):
 
             pos = self.screen_to_world(event.pos())
             logger.debug(f"Canvas mouse press at ({pos.x()}, {pos.y()})")
-            
+
             if event.button() == Qt.LeftButton:
                 self._handle_left_click(pos)
             elif event.button() == Qt.RightButton:
                 self._handle_right_click(pos)
-                
+
         except Exception as e:
             logger.error(f"Error in canvas mousePressEvent: {str(e)}")
-    
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle mouse double-click events."""
+        try:
+            if event.button() == Qt.LeftButton:
+                pos = self.screen_to_world(event.pos())
+
+                # Check if double-clicked on empty space (not on block or line)
+                clicked_block = self._get_clicked_block(pos)
+                clicked_line, _ = self._get_clicked_line(pos)
+
+                if not clicked_block and not clicked_line:
+                    # Double-clicked on empty space - open command palette
+                    logger.info("Double-clicked on empty canvas - opening command palette")
+                    # Emit signal to main window to show command palette
+                    if hasattr(self.parent(), 'show_command_palette'):
+                        self.parent().show_command_palette()
+                    elif hasattr(self.parent().parent(), 'show_command_palette'):
+                        # Try parent's parent (in case canvas is in a container)
+                        self.parent().parent().show_command_palette()
+
+        except Exception as e:
+            logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
+
     def _handle_left_click(self, pos):
         """Handle left mouse button clicks."""
         try:
