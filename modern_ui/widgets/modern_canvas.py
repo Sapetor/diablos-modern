@@ -36,11 +36,12 @@ class State:
 
 class ModernCanvas(QWidget):
     """Modern canvas widget for DiaBloS block diagram editing."""
-    
+
     # Signals
     block_selected = pyqtSignal(object)  # Emitted when a block is selected
     connection_created = pyqtSignal(object, object)  # Emitted when a connection is made
     simulation_status_changed = pyqtSignal(str)  # Emitted when simulation status changes
+    command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
@@ -530,13 +531,8 @@ class ModernCanvas(QWidget):
 
                 if not clicked_block and not clicked_line:
                     # Double-clicked on empty space - open command palette
-                    logger.info("Double-clicked on empty canvas - opening command palette")
-                    # Emit signal to main window to show command palette
-                    if hasattr(self.parent(), 'show_command_palette'):
-                        self.parent().show_command_palette()
-                    elif hasattr(self.parent().parent(), 'show_command_palette'):
-                        # Try parent's parent (in case canvas is in a container)
-                        self.parent().parent().show_command_palette()
+                    logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
+                    self.command_palette_requested.emit()
 
         except Exception as e:
             logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
