@@ -2200,6 +2200,9 @@ class ModernCanvas(QWidget):
             self.hovered_line = None
             self.hovered_port = None
 
+            # Clear validation errors when state is restored (undo/redo)
+            self.clear_validation()
+
             # Restore blocks by directly creating DBlock instances
             from lib.simulation.block import DBlock
             from PyQt5.QtGui import QColor
@@ -2368,6 +2371,10 @@ class ModernCanvas(QWidget):
             for line in lines_to_remove:
                 if line in self.dsim.line_list:
                     self.dsim.line_list.remove(line)
+
+            # Clear validation errors when blocks are removed
+            self.clear_validation()
+
             self.update()
             logger.info(f"Removed {len(blocks_to_remove)} blocks and {len(lines_to_remove)} lines")
         except Exception as e:
@@ -2378,6 +2385,8 @@ class ModernCanvas(QWidget):
         try:
             if hasattr(self.dsim, 'clear_all'):
                 self.dsim.clear_all()
+                # Clear validation errors when canvas is cleared
+                self.clear_validation()
                 self.update()
                 logger.info("Canvas cleared")
         except Exception as e:
