@@ -29,6 +29,7 @@ from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.property_editor import PropertyEditor
 from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
+from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -72,7 +73,12 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
-        
+
+        # Create command palette
+        self.command_palette = CommandPalette(self)
+        self.command_palette.command_selected.connect(self._on_command_executed)
+        self._setup_command_palette()
+
         # Initialize DSim components
         self.dsim.main_buttons_init()
 
@@ -180,6 +186,8 @@ class ModernDiaBloSWindow(QMainWindow):
         edit_menu.addAction("&Redo\tCtrl+Y", self.redo_action)
         edit_menu.addSeparator()
         edit_menu.addAction("Select &All\tCtrl+A", self.select_all)
+        edit_menu.addSeparator()
+        edit_menu.addAction("Command &Palette\tCtrl+P", self.show_command_palette)
         
         # Simulation menu
         sim_menu = menubar.addMenu("&Simulation")
@@ -746,6 +754,119 @@ class ModernDiaBloSWindow(QMainWindow):
             self.status_message.setText(f"Grid {status}")
             icon = "⊞" if self.canvas.grid_visible else "⊟"
             self.toast.show_message(f"{icon} Grid {status.capitalize()}")
+
+    def show_command_palette(self):
+        """Show the command palette for quick access."""
+        if hasattr(self, 'command_palette'):
+            self.command_palette.show_palette()
+
+    def _setup_command_palette(self):
+        """Setup command palette with available commands."""
+        commands = []
+
+        # Add block types
+        block_types = [
+            ('Constant', 'Constant value source'),
+            ('Step', 'Step input signal'),
+            ('Ramp', 'Ramp input signal'),
+            ('Gain', 'Amplify signal by constant'),
+            ('Sum', 'Add or subtract signals'),
+            ('Integrator', 'Integrate signal over time'),
+            ('Deriv', 'Differentiate signal'),
+            ('TranFn', 'Transfer function block'),
+            ('Scope', 'Display signal values'),
+            ('Mux', 'Multiplex signals'),
+            ('Demux', 'Demultiplex signals'),
+            ('Abs', 'Absolute value'),
+            ('Exp', 'Exponential function'),
+            ('Sqrt', 'Square root'),
+            ('Sin', 'Sine function'),
+            ('Cos', 'Cosine function'),
+        ]
+
+        for block_name, description in block_types:
+            commands.append({
+                'name': f'Add {block_name} Block',
+                'type': 'block',
+                'description': description,
+                'callback': lambda bn=block_name: self._add_block_from_palette(bn),
+                'data': {'block_type': block_name}
+            })
+
+        # Add application actions
+        actions = [
+            ('New Diagram', 'Create a new diagram', self.new_diagram),
+            ('Open Diagram', 'Open an existing diagram', self.open_diagram),
+            ('Save Diagram', 'Save current diagram', self.save_diagram),
+            ('Run Simulation', 'Start the simulation', self.start_simulation),
+            ('Pause Simulation', 'Pause the simulation', self.pause_simulation),
+            ('Stop Simulation', 'Stop the simulation', self.stop_simulation),
+            ('Show Plots', 'Display simulation plots', self.show_plots),
+            ('Zoom In', 'Increase canvas zoom', self.zoom_in),
+            ('Zoom Out', 'Decrease canvas zoom', self.zoom_out),
+            ('Fit to Window', 'Fit all blocks in view', self.fit_to_window),
+            ('Toggle Theme', 'Switch between light/dark mode', self.toggle_theme),
+            ('Toggle Grid', 'Show/hide canvas grid', self.toggle_grid),
+        ]
+
+        for action_name, description, callback in actions:
+            commands.append({
+                'name': action_name,
+                'type': 'action',
+                'description': description,
+                'callback': callback,
+                'data': {}
+            })
+
+        # Add recent files
+        if hasattr(self, 'recent_files') and self.recent_files:
+            for file_path in self.recent_files[:5]:  # Show top 5 recent files
+                import os
+                file_name = os.path.basename(file_path)
+                commands.append({
+                    'name': file_name,
+                    'type': 'recent',
+                    'description': file_path,
+                    'callback': lambda fp=file_path: self._open_file(fp),
+                    'data': {'file_path': file_path}
+                })
+
+        self.command_palette.set_commands(commands)
+
+    def _add_block_from_palette(self, block_type: str):
+        """Add a block to the canvas from command palette."""
+        if not hasattr(self, 'canvas'):
+            return
+
+        # Find the menu block for this block type
+        menu_block = None
+        for mb in self.canvas.dsim.menu_blocks:
+            if mb.fn_name == block_type:
+                menu_block = mb
+                break
+
+        if not menu_block:
+            logger.warning(f"Menu block not found for type: {block_type}")
+            return
+
+        # Add block at center of visible canvas area
+        # Account for pan and zoom
+        from PyQt5.QtCore import QPoint
+        center_x = self.canvas.width() // 2
+        center_y = self.canvas.height() // 2
+
+        # Convert screen coordinates to canvas coordinates (undo pan and zoom)
+        canvas_x = int((center_x - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
+        canvas_y = int((center_y - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
+        canvas_pos = QPoint(canvas_x, canvas_y)
+
+        # Add the block using the canvas method
+        self.canvas.add_block_from_palette(menu_block, canvas_pos)
+        self.toast.show_message(f"✅ Added {block_type} block")
+
+    def _on_command_executed(self, command_type: str, data: dict):
+        """Handle command palette command execution."""
+        logger.info(f"Command executed: {command_type}, data: {data}")
 
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
