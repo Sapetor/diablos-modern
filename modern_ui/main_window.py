@@ -764,34 +764,40 @@ class ModernDiaBloSWindow(QMainWindow):
         """Setup command palette with available commands."""
         commands = []
 
-        # Add block types
-        block_types = [
-            ('Constant', 'Constant value source'),
-            ('Step', 'Step input signal'),
-            ('Ramp', 'Ramp input signal'),
-            ('Gain', 'Amplify signal by constant'),
-            ('Sum', 'Add or subtract signals'),
-            ('Integrator', 'Integrate signal over time'),
-            ('Deriv', 'Differentiate signal'),
-            ('TranFn', 'Transfer function block'),
-            ('Scope', 'Display signal values'),
-            ('Mux', 'Multiplex signals'),
-            ('Demux', 'Demultiplex signals'),
-            ('Abs', 'Absolute value'),
-            ('Exp', 'Exponential function'),
-            ('Sqrt', 'Square root'),
-            ('Sin', 'Sine function'),
-            ('Cos', 'Cosine function'),
-        ]
+        # Add block types dynamically from menu_blocks
+        # This ensures we use the correct fn_name for each block
+        if hasattr(self, 'canvas') and hasattr(self.canvas.dsim, 'menu_blocks'):
+            block_descriptions = {
+                'constant': 'Constant value source',
+                'step': 'Step input signal',
+                'ramp': 'Ramp input signal',
+                'gain': 'Amplify signal by constant',
+                'sum': 'Add or subtract signals',
+                'integrator': 'Integrate signal over time',
+                'deriv': 'Differentiate signal',
+                'tranfn': 'Transfer function block',
+                'scope': 'Display signal values',
+                'mux': 'Multiplex signals',
+                'demux': 'Demultiplex signals',
+                'abs': 'Absolute value',
+                'exp': 'Exponential function',
+                'sqrt': 'Square root',
+                'sin': 'Sine function',
+                'cos': 'Cosine function',
+            }
 
-        for block_name, description in block_types:
-            commands.append({
-                'name': f'Add {block_name} Block',
-                'type': 'block',
-                'description': description,
-                'callback': lambda bn=block_name.lower(): self._add_block_from_palette(bn),
-                'data': {'block_type': block_name.lower()}
-            })
+            for menu_block in self.canvas.dsim.menu_blocks:
+                fn_name = menu_block.fn_name
+                block_fn = menu_block.block_fn
+                description = block_descriptions.get(fn_name.lower(), f'{block_fn} block')
+
+                commands.append({
+                    'name': f'Add {block_fn} Block',
+                    'type': 'block',
+                    'description': description,
+                    'callback': lambda mb=menu_block: self._add_block_from_palette_menu(mb),
+                    'data': {'block_type': fn_name}
+                })
 
         # Add application actions
         actions = [
@@ -833,36 +839,38 @@ class ModernDiaBloSWindow(QMainWindow):
 
         self.command_palette.set_commands(commands)
 
-    def _add_block_from_palette(self, block_type: str):
+    def _add_block_from_palette_menu(self, menu_block):
         """Add a block to the canvas from command palette."""
         if not hasattr(self, 'canvas'):
             return
 
-        # Find the menu block for this block type
-        menu_block = None
-        for mb in self.canvas.dsim.menu_blocks:
-            if mb.fn_name == block_type:
-                menu_block = mb
-                break
+        from PyQt5.QtCore import QPoint, QCursor
 
-        if not menu_block:
-            logger.warning(f"Menu block not found for type: {block_type}")
-            return
+        # Get current mouse position in global coordinates
+        global_pos = QCursor.pos()
 
-        # Add block at center of visible canvas area
-        # Account for pan and zoom
-        from PyQt5.QtCore import QPoint
-        center_x = self.canvas.width() // 2
-        center_y = self.canvas.height() // 2
+        # Convert to canvas widget coordinates
+        canvas_widget_pos = self.canvas.mapFromGlobal(global_pos)
 
-        # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-        canvas_x = int((center_x - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
-        canvas_y = int((center_y - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
-        canvas_pos = QPoint(canvas_x, canvas_y)
+        # Check if mouse is within canvas bounds
+        if self.canvas.rect().contains(canvas_widget_pos):
+            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
+            canvas_x = int((canvas_widget_pos.x() - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
+            canvas_y = int((canvas_widget_pos.y() - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
+            canvas_pos = QPoint(canvas_x, canvas_y)
+        else:
+            # Fallback: add at center of visible canvas area
+            center_x = self.canvas.width() // 2
+            center_y = self.canvas.height() // 2
+
+            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
+            canvas_x = int((center_x - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
+            canvas_y = int((center_y - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
+            canvas_pos = QPoint(canvas_x, canvas_y)
 
         # Add the block using the canvas method
         self.canvas.add_block_from_palette(menu_block, canvas_pos)
-        self.toast.show_message(f"✅ Added {block_type} block")
+        self.toast.show_message(f"✅ Added {menu_block.block_fn} block")
 
     def _on_command_executed(self, command_type: str, data: dict):
         """Handle command palette command execution."""
