@@ -113,7 +113,7 @@ class DBlock:
         self.dragging: bool = False
         self.selected: bool = False
 
-        self.font_size: int = 14
+        self.font_size: int = 11  # Reduced from 14 for better fit
         self.font: QFont = QFont()
         self.font.setPointSize(self.font_size)
 
@@ -572,7 +572,7 @@ class DBlock:
             text_color = theme_manager.get_color('text_primary')
             painter.setPen(text_color)
             font = self.font
-            font.setWeight(500)  # Medium weight
+            font.setWeight(400)  # Normal weight (not bold)
             painter.setFont(font)
             text_rect = QRect(self.left, self.top + self.height + 2, self.width, 28)
             painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, self.username)
