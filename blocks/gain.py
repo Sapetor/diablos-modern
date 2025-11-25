@@ -1,6 +1,10 @@
 
+import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
+
 
 class GainBlock(BaseBlock):
     """
@@ -41,12 +45,19 @@ class GainBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    @property
+    def use_port_grid_snap(self):
+        """
+        Gain block uses triangular shape, so ports should not snap to grid
+        for perfect alignment with triangle geometry.
+        """
+        return False
+
     def execute(self, time, inputs, params):
         try:
             input_value = np.array(inputs[0], dtype=float)
             gain_value = np.array(params['gain'], dtype=float)
             return {0: np.dot(gain_value, input_value)}
-        except (ValueError, TypeError):
-            # In the future, this should raise a custom exception
-            print(f"ERROR: Invalid input or gain type in gain block. Expected numeric.")
-            return {'E': True}
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid input or gain type in gain block. Expected numeric. Error: {str(e)}")
+            return {'error': True}

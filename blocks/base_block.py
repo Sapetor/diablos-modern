@@ -42,3 +42,41 @@ class BaseBlock(ABC):
         :return: A dictionary of output values, keyed by port index.
         """
         pass
+
+    @property
+    def use_port_grid_snap(self):
+        """
+        Whether port positions should snap to grid.
+
+        Some blocks (like triangular gain blocks) need precise port alignment
+        without grid snapping for proper visual geometry.
+
+        :return: True to snap ports to grid, False otherwise.
+        """
+        return True  # Default: use grid snapping
+
+    @property
+    def requires_inputs(self):
+        """
+        Whether this block requires all inputs to be connected.
+
+        Source blocks typically don't require inputs, while most other blocks do.
+        Override this in subclasses for custom behavior.
+
+        :return: True if inputs must be connected, False otherwise.
+        """
+        # Default: blocks require inputs unless they're Sources
+        return getattr(self, 'category', 'Other') not in ['Sources']
+
+    @property
+    def requires_outputs(self):
+        """
+        Whether this block requires outputs to be connected.
+
+        Sink blocks and utility blocks typically don't require outputs to be connected.
+        Override this in subclasses for custom behavior.
+
+        :return: True if outputs must be connected, False otherwise.
+        """
+        # Default: blocks require outputs unless they're Sinks or Other
+        return getattr(self, 'category', 'Other') not in ['Sinks', 'Other']
