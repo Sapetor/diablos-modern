@@ -814,6 +814,9 @@ class ModernCanvas(QWidget):
             QMessageBox.critical(self, "Root Locus Error", f"Error calculating root locus: {str(e)}")
             logger.error(f"Root locus calculation error: {str(e)}")
 
+    def generate_root_locus_plot(self, rootlocus_block):
+        """Wrapper method to maintain naming consistency with generate_bode_plot."""
+        self.generate_root_locus(rootlocus_block)
 
     def _get_clicked_block(self, pos):
         for block in reversed(getattr(self.dsim, 'blocks_list', [])):
@@ -1683,6 +1686,16 @@ class ModernCanvas(QWidget):
         properties_action = menu.addAction("Properties...")
         properties_action.triggered.connect(lambda: self._show_block_properties(block))
 
+        # Add special actions for analysis blocks
+        if block.block_fn == "BodeMag":
+            menu.addSeparator()
+            bode_action = menu.addAction("Generate Bode Plot")
+            bode_action.triggered.connect(lambda: self.generate_bode_plot(block))
+        elif block.block_fn == "RootLocus":
+            menu.addSeparator()
+            rlocus_action = menu.addAction("Generate Root Locus Plot")
+            rlocus_action.triggered.connect(lambda: self.generate_root_locus_plot(block))
+
         # Show menu at cursor position
         screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
@@ -1815,10 +1828,10 @@ class ModernCanvas(QWidget):
 
             offset = 30  # Offset for duplicated block
             new_coords = QRect(
-                block.coords.x() + offset,
-                block.coords.y() + offset,
-                block.coords.width(),
-                block.coords.height()
+                block.rect.x() + offset,
+                block.rect.y() + offset,
+                block.rect.width(),
+                block.rect.height()
             )
 
             new_block = self.dsim.add_new_block(
@@ -1859,7 +1872,7 @@ class ModernCanvas(QWidget):
                         'fn_name': block.fn_name,
                         'params': block.params.copy() if hasattr(block, 'params') else {},
                         'external': block.external,
-                        'coords': block.coords
+                        'coords': block.rect
                     })
             logger.info(f"Copied {len(self.clipboard_blocks)} blocks to clipboard")
         except Exception as e:
@@ -2445,6 +2458,30 @@ class ModernCanvas(QWidget):
 
     def zoom_out(self):
         self.set_zoom(self.zoom_factor / 1.1)
+
+    def zoom_to_fit(self):
+        """Zoom to fit all blocks in the view."""
+        if not self.dsim.blocks_list:
+            return
+
+        # Calculate bounding box of all blocks
+        min_x = min(block.left for block in self.dsim.blocks_list)
+        min_y = min(block.top for block in self.dsim.blocks_list)
+        max_x = max(block.left + block.width for block in self.dsim.blocks_list)
+        max_y = max(block.top + block.height for block in self.dsim.blocks_list)
+
+        # Add padding
+        padding = 50
+        bbox_width = max_x - min_x + 2 * padding
+        bbox_height = max_y - min_y + 2 * padding
+
+        # Calculate zoom factor to fit
+        width_ratio = self.width() / bbox_width if bbox_width > 0 else 1.0
+        height_ratio = self.height() / bbox_height if bbox_height > 0 else 1.0
+        target_zoom = min(width_ratio, height_ratio, 1.0)  # Don't zoom in beyond 100%
+
+        self.set_zoom(target_zoom)
+        logger.info(f"Zoomed to fit: {len(self.dsim.blocks_list)} blocks")
 
     def toggle_grid(self):
         """Toggle grid visibility."""
