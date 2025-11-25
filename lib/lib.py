@@ -24,7 +24,6 @@ from lib.simulation.menu_block import MenuBlocks
 from lib.ui.button import Button
 
 # Import block size configuration
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.block_sizes import get_block_size
 
 logger = logging.getLogger(__name__)
@@ -261,72 +260,18 @@ class DSim:
 
     def display_ports(self, painter):
         """
-        :purpose: Draws only the ports for all blocks.
-        :param painter: A layer in a pygame canvas where the figure is drawn.
+        Draw only the ports for all blocks on a separate rendering layer.
+
+        This allows ports to be rendered on top of connections for better visibility.
+        Delegates to each block's draw_ports() method for consistent rendering.
+
+        :param painter: QPainter instance for rendering
+        :type painter: QPainter
         """
         if painter is None:
             return
         for b_elem in self.blocks_list:
-            # Draw only the ports by calling the port drawing code directly
-            from PyQt5.QtGui import QRadialGradient, QColor
-            from PyQt5.QtCore import Qt
-            from PyQt5.QtGui import QPen
-            from modern_ui.themes.theme_manager import theme_manager
-
-            port_input_color = theme_manager.get_color('port_input')
-            port_output_color = theme_manager.get_color('port_output')
-
-            port_draw_radius = b_elem.port_radius - 1
-
-            # Input ports with radial gradient and glossy effect
-            for port_in_location in b_elem.in_coords:
-                gradient = QRadialGradient(port_in_location.x(), port_in_location.y(), port_draw_radius)
-                lighter_input = port_input_color.lighter(130)
-                gradient.setColorAt(0.0, lighter_input)
-                gradient.setColorAt(0.7, port_input_color)
-                gradient.setColorAt(1.0, port_input_color.darker(110))
-
-                painter.setBrush(gradient)
-                painter.setPen(QPen(port_input_color.darker(140), 2.0))
-                painter.drawEllipse(port_in_location, port_draw_radius, port_draw_radius)
-
-                # Add subtle highlight for glossy effect
-                painter.setPen(Qt.NoPen)
-                highlight_color = QColor(255, 255, 255, 50)
-                painter.setBrush(highlight_color)
-                highlight_offset = int(port_draw_radius * 0.3)
-                highlight_size = int(port_draw_radius * 0.4)
-                painter.drawEllipse(
-                    port_in_location.x() - highlight_offset,
-                    port_in_location.y() - highlight_offset,
-                    highlight_size,
-                    highlight_size
-                )
-
-            # Output ports with radial gradient and glossy effect
-            for port_out_location in b_elem.out_coords:
-                gradient = QRadialGradient(port_out_location.x(), port_out_location.y(), port_draw_radius)
-                lighter_output = port_output_color.lighter(130)
-                gradient.setColorAt(0.0, lighter_output)
-                gradient.setColorAt(0.7, port_output_color)
-                gradient.setColorAt(1.0, port_output_color.darker(110))
-
-                painter.setBrush(gradient)
-                painter.setPen(QPen(port_output_color.darker(140), 2.0))
-                painter.drawEllipse(port_out_location, port_draw_radius, port_draw_radius)
-
-                # Add subtle highlight for glossy effect
-                painter.setPen(Qt.NoPen)
-                highlight_color = QColor(255, 255, 255, 50)
-                painter.setBrush(highlight_color)
-                highlight_offset = int(port_draw_radius * 0.3)
-                highlight_size = int(port_draw_radius * 0.4)
-                painter.drawEllipse(
-                    port_out_location.x() - highlight_offset,
-                    port_out_location.y() - highlight_offset,
-                    highlight_size,
-                    highlight_size
-                )
+            b_elem.draw_ports(painter)
 
     def port_availability(self, dst_line):
         """
@@ -1456,14 +1401,8 @@ class SignalPlot(QWidget):
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
 
-            # Explicitly configure x-axis to ensure labels are shown
-            plot_widget.setLabel('bottom', 'Time')
-            plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
-            plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
-            plot_widget.getAxis('bottom').enableAutoSIPrefix(False)  # Disable SI scaling
-
-            # Set minimum height for plot widget to ensure x-axis labels have room
-            plot_widget.setMinimumHeight(200)
+            # Configure axes for better visibility
+            self._configure_plot_axes(plot_widget)
 
             curve = plot_widget.plot(pen='y')
             self.plot_items.append(plot_widget)
@@ -1484,6 +1423,24 @@ class SignalPlot(QWidget):
 
         self.resize(800, 600)
 
+    def _configure_plot_axes(self, plot_widget):
+        """
+        Configure plot widget axes for better visibility and consistent appearance.
+
+        Sets up the x-axis (time) with proper labels, styling, and ensures
+        sufficient space for axis labels to be displayed.
+
+        :param plot_widget: The PlotWidget to configure
+        :type plot_widget: pg.PlotWidget
+        """
+        # Configure x-axis to ensure labels are shown
+        plot_widget.setLabel('bottom', 'Time')
+        plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
+        plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
+        plot_widget.getAxis('bottom').enableAutoSIPrefix(False)  # Disable SI scaling
+
+        # Set minimum height for plot widget to ensure x-axis labels have room
+        plot_widget.setMinimumHeight(200)
 
     def pltcolor(self, index, hues=9, hueOff=180, minHue=0, maxHue=360, val=255, sat=255, alpha=255):
         """

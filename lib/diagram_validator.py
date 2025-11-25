@@ -64,32 +64,73 @@ class DiagramValidator:
         """
         self.errors = []
 
-        # Run all validation checks
-        self._check_disconnected_inputs()
-        self._check_disconnected_outputs()
-        self._check_isolated_blocks()
-        self._check_invalid_connections()
-        self._check_duplicate_connections()
+        # Build connection maps once for efficiency (O(n) instead of O(n²))
+        connection_maps = self._build_connection_maps()
+
+        # Run all validation checks with pre-built maps
+        self._check_disconnected_inputs(connection_maps)
+        self._check_disconnected_outputs(connection_maps)
+        self._check_isolated_blocks(connection_maps)
+        self._check_invalid_connections(connection_maps)
+        self._check_duplicate_connections(connection_maps)
 
         logger.info(f"Validation complete: {len(self.errors)} issues found")
         return self.errors
 
-    def _check_disconnected_inputs(self):
+    def _build_connection_maps(self) -> dict:
+        """
+        Build connection maps once to avoid O(n²) complexity.
+
+        Returns:
+            Dictionary containing:
+                - input_connections: {(block_name, port_idx): [connections]}
+                - output_connections: {(block_name, port_idx): [connections]}
+                - connected_blocks: set of block names with any connection
+                - valid_block_names: set of all valid block names
+        """
+        input_connections = {}
+        output_connections = {}
+        connected_blocks = set()
+
+        for line in self.dsim.line_list:
+            # Track input connections
+            input_key = (line.dstblock, line.dstport)
+            if input_key not in input_connections:
+                input_connections[input_key] = []
+            input_connections[input_key].append(line)
+
+            # Track output connections
+            output_key = (line.srcblock, line.srcport)
+            if output_key not in output_connections:
+                output_connections[output_key] = []
+            output_connections[output_key].append(line)
+
+            # Track connected blocks
+            connected_blocks.add(line.srcblock)
+            connected_blocks.add(line.dstblock)
+
+        return {
+            'input_connections': input_connections,
+            'output_connections': output_connections,
+            'connected_blocks': connected_blocks,
+            'valid_block_names': {block.name for block in self.dsim.blocks_list}
+        }
+
+    def _check_disconnected_inputs(self, connection_maps: dict) -> None:
         """Check for input ports that have no connections."""
+        input_connections = connection_maps['input_connections']
+
         for block in self.dsim.blocks_list:
-            # Skip blocks that don't require inputs (sources)
-            if hasattr(block, 'category') and block.category == 'Sources':
+            # Skip blocks that don't require inputs (use block property if available)
+            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_inputs'):
+                if not block.block_instance.requires_inputs:
+                    continue
+            elif hasattr(block, 'category') and block.category == 'Sources':
                 continue
 
-            # Get connected input ports
-            connected_inputs = set()
-            for line in self.dsim.line_list:
-                if line.dstblock == block.name:
-                    connected_inputs.add(line.dstport)
-
-            # Check for disconnected inputs
+            # Check for disconnected inputs using pre-built map
             for i in range(block.in_ports):
-                if i not in connected_inputs:
+                if (block.name, i) not in input_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.ERROR,
                         message=f"Block '{block.username or block.name}' has disconnected input port {i+1}",
@@ -98,22 +139,21 @@ class DiagramValidator:
                     )
                     self.errors.append(error)
 
-    def _check_disconnected_outputs(self):
+    def _check_disconnected_outputs(self, connection_maps: dict) -> None:
         """Check for output ports that have no connections."""
+        output_connections = connection_maps['output_connections']
+
         for block in self.dsim.blocks_list:
-            # Skip blocks that don't require outputs to be connected (sinks)
-            if hasattr(block, 'category') and block.category in ['Sinks', 'Other']:
+            # Skip blocks that don't require outputs to be connected (use block property if available)
+            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_outputs'):
+                if not block.block_instance.requires_outputs:
+                    continue
+            elif hasattr(block, 'category') and block.category in ['Sinks', 'Other']:
                 continue
 
-            # Get connected output ports
-            connected_outputs = set()
-            for line in self.dsim.line_list:
-                if line.srcblock == block.name:
-                    connected_outputs.add(line.srcport)
-
-            # Check for disconnected outputs
+            # Check for disconnected outputs using pre-built map
             for i in range(block.out_ports):
-                if i not in connected_outputs:
+                if (block.name, i) not in output_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.WARNING,
                         message=f"Block '{block.username or block.name}' has disconnected output port {i+1}",
@@ -122,20 +162,13 @@ class DiagramValidator:
                     )
                     self.errors.append(error)
 
-    def _check_isolated_blocks(self):
+    def _check_isolated_blocks(self, connection_maps: dict) -> None:
         """Check for blocks with no connections at all."""
+        connected_blocks = connection_maps['connected_blocks']
+
         for block in self.dsim.blocks_list:
-            has_input = False
-            has_output = False
-
-            for line in self.dsim.line_list:
-                if line.srcblock == block.name:
-                    has_output = True
-                if line.dstblock == block.name:
-                    has_input = True
-
-            # Block is isolated if it has no connections
-            if not has_input and not has_output:
+            # Block is isolated if it's not in the connected blocks set
+            if block.name not in connected_blocks:
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
                     message=f"Block '{block.username or block.name}' is not connected to anything",
@@ -144,9 +177,9 @@ class DiagramValidator:
                 )
                 self.errors.append(error)
 
-    def _check_invalid_connections(self):
+    def _check_invalid_connections(self, connection_maps: dict) -> None:
         """Check for connections with invalid block references."""
-        valid_block_names = {block.name for block in self.dsim.blocks_list}
+        valid_block_names = connection_maps['valid_block_names']
 
         for line in self.dsim.line_list:
             if line.srcblock not in valid_block_names:
@@ -167,15 +200,9 @@ class DiagramValidator:
                 )
                 self.errors.append(error)
 
-    def _check_duplicate_connections(self):
+    def _check_duplicate_connections(self, connection_maps: dict) -> None:
         """Check for multiple connections to the same input port."""
-        input_connections = {}  # (block_name, port_index) -> [connections]
-
-        for line in self.dsim.line_list:
-            key = (line.dstblock, line.dstport)
-            if key not in input_connections:
-                input_connections[key] = []
-            input_connections[key].append(line)
+        input_connections = connection_maps['input_connections']
 
         # Find duplicates
         for (block_name, port_idx), connections in input_connections.items():

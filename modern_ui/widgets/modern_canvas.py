@@ -814,6 +814,9 @@ class ModernCanvas(QWidget):
             QMessageBox.critical(self, "Root Locus Error", f"Error calculating root locus: {str(e)}")
             logger.error(f"Root locus calculation error: {str(e)}")
 
+    def generate_root_locus_plot(self, rootlocus_block):
+        """Wrapper method to maintain naming consistency with generate_bode_plot."""
+        self.generate_root_locus(rootlocus_block)
 
     def _get_clicked_block(self, pos):
         for block in reversed(getattr(self.dsim, 'blocks_list', [])):
@@ -1480,6 +1483,10 @@ class ModernCanvas(QWidget):
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
+                else:
+                    # Clear selections if no other operation is active
+                    self._clear_selections()
+                    self.update()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
                 # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
@@ -1498,6 +1505,9 @@ class ModernCanvas(QWidget):
                 self.copy_selected_blocks()
             elif event.key() == Qt.Key_V and ctrl_pressed:
                 self.paste_blocks()
+            elif event.key() == Qt.Key_A and ctrl_pressed:
+                # Ctrl+A: Select all blocks
+                self._select_all_blocks()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
@@ -1683,8 +1693,18 @@ class ModernCanvas(QWidget):
         properties_action = menu.addAction("Properties...")
         properties_action.triggered.connect(lambda: self._show_block_properties(block))
 
-        # Show menu at cursor position (convert world to screen coordinates)
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        # Add special actions for analysis blocks
+        if block.block_fn == "BodeMag":
+            menu.addSeparator()
+            bode_action = menu.addAction("Generate Bode Plot")
+            bode_action.triggered.connect(lambda: self.generate_bode_plot(block))
+        elif block.block_fn == "RootLocus":
+            menu.addSeparator()
+            rlocus_action = menu.addAction("Generate Root Locus Plot")
+            rlocus_action.triggered.connect(lambda: self.generate_root_locus_plot(block))
+
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     def _show_connection_context_menu(self, line, pos):
@@ -1742,7 +1762,7 @@ class ModernCanvas(QWidget):
         highlight_action.triggered.connect(lambda: self._highlight_connection_path(line))
 
         # Show menu at cursor position
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     def _show_canvas_context_menu(self, pos):
@@ -1803,36 +1823,46 @@ class ModernCanvas(QWidget):
         zoom_fit_action.triggered.connect(self.zoom_to_fit)
 
         # Show menu at cursor position
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     # Helper methods for context menu actions
     def _duplicate_block(self, block):
         """Duplicate a block."""
         try:
+            from lib.simulation.menu_block import MenuBlocks
+            from PyQt5.QtCore import QPoint
+
             # Push undo state before duplication
             self._push_undo("Duplicate")
 
             offset = 30  # Offset for duplicated block
-            new_coords = QRect(
-                block.coords.x() + offset,
-                block.coords.y() + offset,
-                block.coords.width(),
-                block.coords.height()
+            new_position = QPoint(
+                block.rect.x() + block.rect.width() // 2 + offset,
+                block.rect.y() + block.rect.height() // 2 + offset
             )
 
-            new_block = self.dsim.add_new_block(
-                block.block_fn,
-                new_coords,
-                block.b_color,
-                block.in_ports,
-                block.out_ports,
-                block.b_type,
-                block.io_edit,
-                block.fn_name,
-                block.params.copy() if hasattr(block, 'params') else {},
-                block.external
+            # Create a MenuBlocks object from the existing block
+            io_params = {
+                'inputs': block.in_ports,
+                'outputs': block.out_ports,
+                'b_type': block.b_type,
+                'io_edit': block.io_edit
+            }
+
+            menu_block = MenuBlocks(
+                block_fn=block.block_fn,
+                fn_name=block.fn_name,
+                io_params=io_params,
+                ex_params=block.params.copy() if hasattr(block, 'params') else {},
+                b_color=block.b_color,
+                coords=(block.rect.width(), block.rect.height()),
+                external=block.external,
+                block_class=getattr(block, 'block_class', None)
             )
+
+            # Use add_block with the MenuBlocks object
+            new_block = self.dsim.add_block(menu_block, new_position)
 
             if new_block:
                 logger.info(f"Duplicated block: {block.fn_name} -> {new_block.name}")
@@ -1859,7 +1889,8 @@ class ModernCanvas(QWidget):
                         'fn_name': block.fn_name,
                         'params': block.params.copy() if hasattr(block, 'params') else {},
                         'external': block.external,
-                        'coords': block.coords
+                        'coords': block.rect,
+                        'flipped': getattr(block, 'flipped', False)
                     })
             logger.info(f"Copied {len(self.clipboard_blocks)} blocks to clipboard")
         except Exception as e:
@@ -1873,6 +1904,9 @@ class ModernCanvas(QWidget):
     def _paste_blocks(self, pos):
         """Paste blocks from clipboard at specified position."""
         try:
+            from lib.simulation.menu_block import MenuBlocks
+            from PyQt5.QtCore import QPoint
+
             if not self.clipboard_blocks:
                 return
 
@@ -1887,25 +1921,33 @@ class ModernCanvas(QWidget):
 
                 self._clear_selections()
                 for block_data in self.clipboard_blocks:
-                    new_coords = QRect(
-                        block_data['coords'].x() + offset_x,
-                        block_data['coords'].y() + offset_y,
-                        block_data['coords'].width(),
-                        block_data['coords'].height()
+                    # Calculate new position (center of block)
+                    new_position = QPoint(
+                        block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
+                        block_data['coords'].y() + block_data['coords'].height() // 2 + offset_y
                     )
 
-                    new_block = self.dsim.add_new_block(
-                        block_data['block_fn'],
-                        new_coords,
-                        block_data['color'],
-                        block_data['in_ports'],
-                        block_data['out_ports'],
-                        block_data['b_type'],
-                        block_data['io_edit'],
-                        block_data['fn_name'],
-                        block_data['params'],
-                        block_data['external']
+                    # Create MenuBlocks object from clipboard data
+                    io_params = {
+                        'inputs': block_data['in_ports'],
+                        'outputs': block_data['out_ports'],
+                        'b_type': block_data['b_type'],
+                        'io_edit': block_data['io_edit']
+                    }
+
+                    menu_block = MenuBlocks(
+                        block_fn=block_data['block_fn'],
+                        fn_name=block_data['fn_name'],
+                        io_params=io_params,
+                        ex_params=block_data['params'],
+                        b_color=block_data['color'],
+                        coords=(block_data['coords'].width(), block_data['coords'].height()),
+                        external=block_data['external'],
+                        block_class=block_data.get('block_class', None)
                     )
+
+                    # Use add_block with the MenuBlocks object
+                    new_block = self.dsim.add_block(menu_block, new_position)
 
                     if new_block:
                         new_block.selected = True
@@ -2445,6 +2487,30 @@ class ModernCanvas(QWidget):
 
     def zoom_out(self):
         self.set_zoom(self.zoom_factor / 1.1)
+
+    def zoom_to_fit(self):
+        """Zoom to fit all blocks in the view."""
+        if not self.dsim.blocks_list:
+            return
+
+        # Calculate bounding box of all blocks
+        min_x = min(block.left for block in self.dsim.blocks_list)
+        min_y = min(block.top for block in self.dsim.blocks_list)
+        max_x = max(block.left + block.width for block in self.dsim.blocks_list)
+        max_y = max(block.top + block.height for block in self.dsim.blocks_list)
+
+        # Add padding
+        padding = 50
+        bbox_width = max_x - min_x + 2 * padding
+        bbox_height = max_y - min_y + 2 * padding
+
+        # Calculate zoom factor to fit
+        width_ratio = self.width() / bbox_width if bbox_width > 0 else 1.0
+        height_ratio = self.height() / bbox_height if bbox_height > 0 else 1.0
+        target_zoom = min(width_ratio, height_ratio, 1.0)  # Don't zoom in beyond 100%
+
+        self.set_zoom(target_zoom)
+        logger.info(f"Zoomed to fit: {len(self.dsim.blocks_list)} blocks")
 
     def toggle_grid(self):
         """Toggle grid visibility."""
