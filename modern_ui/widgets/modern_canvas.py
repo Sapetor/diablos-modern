@@ -1505,6 +1505,9 @@ class ModernCanvas(QWidget):
                 self.copy_selected_blocks()
             elif event.key() == Qt.Key_V and ctrl_pressed:
                 self.paste_blocks()
+            elif event.key() == Qt.Key_A and ctrl_pressed:
+                # Ctrl+A: Select all blocks
+                self._select_all_blocks()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
@@ -1886,7 +1889,8 @@ class ModernCanvas(QWidget):
                         'fn_name': block.fn_name,
                         'params': block.params.copy() if hasattr(block, 'params') else {},
                         'external': block.external,
-                        'coords': block.rect
+                        'coords': block.rect,
+                        'flipped': getattr(block, 'flipped', False)
                     })
             logger.info(f"Copied {len(self.clipboard_blocks)} blocks to clipboard")
         except Exception as e:
