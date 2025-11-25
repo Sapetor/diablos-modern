@@ -122,7 +122,7 @@ class DiagramValidator:
 
         for block in self.dsim.blocks_list:
             # Skip blocks that don't require inputs (use block property if available)
-            if block.block_instance and hasattr(block.block_instance, 'requires_inputs'):
+            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_inputs'):
                 if not block.block_instance.requires_inputs:
                     continue
             elif hasattr(block, 'category') and block.category == 'Sources':
@@ -145,7 +145,7 @@ class DiagramValidator:
 
         for block in self.dsim.blocks_list:
             # Skip blocks that don't require outputs to be connected (use block property if available)
-            if block.block_instance and hasattr(block.block_instance, 'requires_outputs'):
+            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_outputs'):
                 if not block.block_instance.requires_outputs:
                     continue
             elif hasattr(block, 'category') and block.category in ['Sinks', 'Other']:
