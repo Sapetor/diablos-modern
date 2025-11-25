@@ -185,7 +185,7 @@ class DBlock:
 
         # Check if block wants port grid snapping (property-based, not hardcoded)
         use_grid_snap = True
-        if self.block_instance and hasattr(self.block_instance, 'use_port_grid_snap'):
+        if hasattr(self, 'block_instance') and self.block_instance and hasattr(self.block_instance, 'use_port_grid_snap'):
             use_grid_snap = self.block_instance.use_port_grid_snap
 
         if self.in_ports > 0:
