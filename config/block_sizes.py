@@ -3,6 +3,8 @@ Defines default sizes for different block types in the DiaBloS Modern UI.
 Sizes are specified as (width, height) tuples in pixels.
 """
 
+from typing import Tuple
+
 # Default size for blocks not specified
 DEFAULT_BLOCK_SIZE = (100, 80)
 
@@ -52,7 +54,7 @@ MAX_BLOCK_HEIGHT = 300
 RESIZE_HANDLE_SIZE = 8
 
 
-def get_block_size(block_fn: str) -> tuple:
+def get_block_size(block_fn: str) -> Tuple[int, int]:
     """
     Get the default size for a block type.
 
@@ -65,7 +67,7 @@ def get_block_size(block_fn: str) -> tuple:
     return BLOCK_SIZES.get(block_fn, DEFAULT_BLOCK_SIZE)
 
 
-def clamp_block_size(width: int, height: int) -> tuple:
+def clamp_block_size(width: int, height: int) -> Tuple[int, int]:
     """
     Ensure block size is within allowed bounds.
 
