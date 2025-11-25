@@ -1823,29 +1823,39 @@ class ModernCanvas(QWidget):
     def _duplicate_block(self, block):
         """Duplicate a block."""
         try:
+            from lib.simulation.menu_block import MenuBlocks
+            from PyQt5.QtCore import QPoint
+
             # Push undo state before duplication
             self._push_undo("Duplicate")
 
             offset = 30  # Offset for duplicated block
-            new_coords = QRect(
-                block.rect.x() + offset,
-                block.rect.y() + offset,
-                block.rect.width(),
-                block.rect.height()
+            new_position = QPoint(
+                block.rect.x() + block.rect.width() // 2 + offset,
+                block.rect.y() + block.rect.height() // 2 + offset
             )
 
-            new_block = self.dsim.add_new_block(
-                block.block_fn,
-                new_coords,
-                block.b_color,
-                block.in_ports,
-                block.out_ports,
-                block.b_type,
-                block.io_edit,
-                block.fn_name,
-                block.params.copy() if hasattr(block, 'params') else {},
-                block.external
+            # Create a MenuBlocks object from the existing block
+            io_params = {
+                'inputs': block.in_ports,
+                'outputs': block.out_ports,
+                'b_type': block.b_type,
+                'io_edit': block.io_edit
+            }
+
+            menu_block = MenuBlocks(
+                block_fn=block.block_fn,
+                fn_name=block.fn_name,
+                io_params=io_params,
+                ex_params=block.params.copy() if hasattr(block, 'params') else {},
+                b_color=block.b_color,
+                coords=(block.rect.width(), block.rect.height()),
+                external=block.external,
+                block_class=getattr(block, 'block_class', None)
             )
+
+            # Use add_block with the MenuBlocks object
+            new_block = self.dsim.add_block(menu_block, new_position)
 
             if new_block:
                 logger.info(f"Duplicated block: {block.fn_name} -> {new_block.name}")
