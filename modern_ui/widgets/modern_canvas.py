@@ -1483,6 +1483,10 @@ class ModernCanvas(QWidget):
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
+                else:
+                    # Clear selections if no other operation is active
+                    self._clear_selections()
+                    self.update()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
                 # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
@@ -1896,6 +1900,9 @@ class ModernCanvas(QWidget):
     def _paste_blocks(self, pos):
         """Paste blocks from clipboard at specified position."""
         try:
+            from lib.simulation.menu_block import MenuBlocks
+            from PyQt5.QtCore import QPoint
+
             if not self.clipboard_blocks:
                 return
 
@@ -1910,25 +1917,33 @@ class ModernCanvas(QWidget):
 
                 self._clear_selections()
                 for block_data in self.clipboard_blocks:
-                    new_coords = QRect(
-                        block_data['coords'].x() + offset_x,
-                        block_data['coords'].y() + offset_y,
-                        block_data['coords'].width(),
-                        block_data['coords'].height()
+                    # Calculate new position (center of block)
+                    new_position = QPoint(
+                        block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
+                        block_data['coords'].y() + block_data['coords'].height() // 2 + offset_y
                     )
 
-                    new_block = self.dsim.add_new_block(
-                        block_data['block_fn'],
-                        new_coords,
-                        block_data['color'],
-                        block_data['in_ports'],
-                        block_data['out_ports'],
-                        block_data['b_type'],
-                        block_data['io_edit'],
-                        block_data['fn_name'],
-                        block_data['params'],
-                        block_data['external']
+                    # Create MenuBlocks object from clipboard data
+                    io_params = {
+                        'inputs': block_data['in_ports'],
+                        'outputs': block_data['out_ports'],
+                        'b_type': block_data['b_type'],
+                        'io_edit': block_data['io_edit']
+                    }
+
+                    menu_block = MenuBlocks(
+                        block_fn=block_data['block_fn'],
+                        fn_name=block_data['fn_name'],
+                        io_params=io_params,
+                        ex_params=block_data['params'],
+                        b_color=block_data['color'],
+                        coords=(block_data['coords'].width(), block_data['coords'].height()),
+                        external=block_data['external'],
+                        block_class=block_data.get('block_class', None)
                     )
+
+                    # Use add_block with the MenuBlocks object
+                    new_block = self.dsim.add_block(menu_block, new_position)
 
                     if new_block:
                         new_block.selected = True
