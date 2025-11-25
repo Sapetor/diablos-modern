@@ -260,8 +260,16 @@ class DSim:
 
     def display_ports(self, painter):
         """
-        :purpose: Draws only the ports for all blocks.
-        :param painter: A layer in a pygame canvas where the figure is drawn.
+        Draw only the ports for all blocks on a separate rendering layer.
+
+        This allows ports to be rendered on top of connections for better visibility.
+        Uses theme-aware colors with radial gradients for a modern, glossy appearance.
+
+        :param painter: QPainter instance for rendering
+        :type painter: QPainter
+
+        Note: This method contains duplicated port-drawing logic that should ideally
+        be refactored into a DBlock.draw_ports() method for better code organization.
         """
         if painter is None:
             return
@@ -1455,14 +1463,8 @@ class SignalPlot(QWidget):
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
 
-            # Explicitly configure x-axis to ensure labels are shown
-            plot_widget.setLabel('bottom', 'Time')
-            plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
-            plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
-            plot_widget.getAxis('bottom').enableAutoSIPrefix(False)  # Disable SI scaling
-
-            # Set minimum height for plot widget to ensure x-axis labels have room
-            plot_widget.setMinimumHeight(200)
+            # Configure axes for better visibility
+            self._configure_plot_axes(plot_widget)
 
             curve = plot_widget.plot(pen='y')
             self.plot_items.append(plot_widget)
@@ -1483,6 +1485,24 @@ class SignalPlot(QWidget):
 
         self.resize(800, 600)
 
+    def _configure_plot_axes(self, plot_widget):
+        """
+        Configure plot widget axes for better visibility and consistent appearance.
+
+        Sets up the x-axis (time) with proper labels, styling, and ensures
+        sufficient space for axis labels to be displayed.
+
+        :param plot_widget: The PlotWidget to configure
+        :type plot_widget: pg.PlotWidget
+        """
+        # Configure x-axis to ensure labels are shown
+        plot_widget.setLabel('bottom', 'Time')
+        plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
+        plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
+        plot_widget.getAxis('bottom').enableAutoSIPrefix(False)  # Disable SI scaling
+
+        # Set minimum height for plot widget to ensure x-axis labels have room
+        plot_widget.setMinimumHeight(200)
 
     def pltcolor(self, index, hues=9, hueOff=180, minHue=0, maxHue=360, val=255, sat=255, alpha=255):
         """
