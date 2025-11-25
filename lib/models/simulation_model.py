@@ -16,7 +16,6 @@ from lib.block_loader import load_blocks
 from lib.simulation.menu_block import MenuBlocks
 
 # Import block size configuration
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from config.block_sizes import get_block_size
 
 logger = logging.getLogger(__name__)

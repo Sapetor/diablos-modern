@@ -14,6 +14,17 @@ from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
 
+# UI Constants
+PALETTE_WIDTH = 280
+PALETTE_HEIGHT = 150
+RESULTS_MIN_HEIGHT = 70
+RESULTS_MAX_HEIGHT = 90
+SEARCH_INPUT_HEIGHT = 32
+SEARCH_FONT_SIZE = 10
+ITEM_FONT_SIZE = 9
+CURSOR_OFFSET_X = 10
+CURSOR_OFFSET_Y = 10
+
 
 class CommandPalette(QDialog):
     """
@@ -52,8 +63,10 @@ class CommandPalette(QDialog):
         # Search input - minimal
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search...")
-        self.search_input.setMinimumHeight(32)
-        font = QFont("Segoe UI", 10)
+        self.search_input.setMinimumHeight(SEARCH_INPUT_HEIGHT)
+        # Use system default font for cross-platform compatibility
+        font = QFont()
+        font.setPointSize(SEARCH_FONT_SIZE)
         self.search_input.setFont(font)
         self.search_input.textChanged.connect(self._on_search_changed)
         self.search_input.returnPressed.connect(self._on_item_selected)
@@ -61,14 +74,14 @@ class CommandPalette(QDialog):
 
         # Results list - very compact, show only 2-3 items
         self.results_list = QListWidget()
-        self.results_list.setMinimumHeight(70)  # Show ~2-3 items
-        self.results_list.setMaximumHeight(90)
+        self.results_list.setMinimumHeight(RESULTS_MIN_HEIGHT)
+        self.results_list.setMaximumHeight(RESULTS_MAX_HEIGHT)
         self.results_list.itemDoubleClicked.connect(self._on_item_double_clicked)
         layout.addWidget(self.results_list)
 
         # Set dialog size - very compact and minimal
-        self.setFixedWidth(280)
-        self.setFixedHeight(150)
+        self.setFixedWidth(PALETTE_WIDTH)
+        self.setFixedHeight(PALETTE_HEIGHT)
 
     def _apply_theme(self):
         """Apply current theme styling - minimalist with transparency."""
@@ -159,8 +172,9 @@ class CommandPalette(QDialog):
             item = QListWidgetItem(name)
             item.setData(Qt.UserRole, cmd)
 
-            # Set item font
-            font = QFont("Segoe UI", 9)
+            # Set item font - use system default for cross-platform compatibility
+            font = QFont()
+            font.setPointSize(ITEM_FONT_SIZE)
             item.setFont(font)
 
             self.results_list.addItem(item)
@@ -227,18 +241,36 @@ class CommandPalette(QDialog):
 
         # Position near cursor with offset
         from PyQt5.QtGui import QCursor
+        from PyQt5.QtWidgets import QApplication
+
         cursor_pos = QCursor.pos()
+        screen_geometry = QApplication.desktop().availableGeometry()
 
-        # Offset slightly to the right and down so it doesn't cover what user clicked
-        offset_x = 10
-        offset_y = 10
+        # Calculate desired position with offset
+        desired_x = cursor_pos.x() + CURSOR_OFFSET_X
+        desired_y = cursor_pos.y() + CURSOR_OFFSET_Y
 
-        # Convert to parent widget coordinates if we have a parent
+        # Ensure palette stays within screen bounds
+        palette_width = self.width()
+        palette_height = self.height()
+
+        # Clamp to screen bounds
+        if desired_x + palette_width > screen_geometry.right():
+            desired_x = screen_geometry.right() - palette_width
+        if desired_y + palette_height > screen_geometry.bottom():
+            desired_y = screen_geometry.bottom() - palette_height
+        if desired_x < screen_geometry.left():
+            desired_x = screen_geometry.left()
+        if desired_y < screen_geometry.top():
+            desired_y = screen_geometry.top()
+
+        # Position the palette
         if self.parent():
-            cursor_pos = self.parent().mapFromGlobal(cursor_pos)
-            self.move(cursor_pos.x() + offset_x, cursor_pos.y() + offset_y)
+            local_pos = self.parent().mapFromGlobal(QCursor.pos())
+            # Apply the same offset but use global coordinates for bounds checking
+            self.move(desired_x, desired_y)
         else:
-            self.move(cursor_pos.x() + offset_x, cursor_pos.y() + offset_y)
+            self.move(desired_x, desired_y)
 
         # Clear previous search and focus
         self.search_input.clear()

@@ -1,10 +1,13 @@
+import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
+
 
 class SumBlock(BaseBlock):
     def __init__(self):
         super().__init__()
-        self._current_params = None
 
     @property
     def block_name(self):
@@ -75,5 +78,5 @@ class SumBlock(BaseBlock):
 
             return {0: suma}
         except (ValueError, TypeError) as e:
-            print(f"ERROR: Invalid input type in sum block. Expected numeric. Error: {str(e)}")
-            return {'E': True}
+            logger.error(f"Invalid input type in sum block. Expected numeric. Error: {str(e)}")
+            return {'error': True}
