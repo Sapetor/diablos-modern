@@ -878,12 +878,22 @@ class DBlock:
         return ed_dict
 
     def loading_params(self, new_params):
+        """
+        Load and normalize parameters, converting lists to numpy arrays.
+
+        Args:
+            new_params: Dictionary of parameters to load
+
+        Returns:
+            Dictionary with list values converted to numpy arrays
+        """
         try:
             for key in new_params.keys():
                 if isinstance(new_params[key], list):
                     new_params[key] = np.array(new_params[key])
             return new_params
-        except:
+        except (TypeError, ValueError) as e:
+            logger.warning(f"Failed to convert parameter lists to arrays: {e}")
             return new_params
 
     def change_params(self):
