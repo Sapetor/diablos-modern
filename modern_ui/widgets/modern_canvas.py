@@ -1683,8 +1683,8 @@ class ModernCanvas(QWidget):
         properties_action = menu.addAction("Properties...")
         properties_action.triggered.connect(lambda: self._show_block_properties(block))
 
-        # Show menu at cursor position (convert world to screen coordinates)
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        # Show menu at cursor position
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     def _show_connection_context_menu(self, line, pos):
@@ -1742,7 +1742,7 @@ class ModernCanvas(QWidget):
         highlight_action.triggered.connect(lambda: self._highlight_connection_path(line))
 
         # Show menu at cursor position
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     def _show_canvas_context_menu(self, pos):
@@ -1803,7 +1803,7 @@ class ModernCanvas(QWidget):
         zoom_fit_action.triggered.connect(self.zoom_to_fit)
 
         # Show menu at cursor position
-        screen_pos = self.mapToGlobal(self.world_to_screen(pos))
+        screen_pos = self.mapToGlobal(pos)
         menu.exec_(screen_pos)
 
     # Helper methods for context menu actions
