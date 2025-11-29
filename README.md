@@ -139,7 +139,8 @@ DiaBloS includes 20+ built-in block types:
 
 **Sources**: Step, Ramp, Sine, Noise, Exponential
 **Math**: Sum, Product, Gain
-**Control**: Integrator, Derivative, Transfer Function, State Space
+**Control**: Integrator, Derivative, Transfer Function, State Space, PID
+**Discrete-Time**: Discrete Transfer Function, Discrete State Space, Zero-Order Hold
 **Analysis**: Bode Plot, Root Locus
 **Utilities**: Scope, Export, Mux, Demux, Terminator
 **Advanced**: External (custom Python code)
