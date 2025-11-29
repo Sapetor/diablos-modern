@@ -869,6 +869,12 @@ class DSim:
                         if block.block_fn == 'Integrator':
                             block.params['output'] = block.params['mem']
 
+                    # Check if the execution returned None (some blocks may not return anything)
+                    if out_value is None:
+                        logger.error(f"Block {block.name} ({block.block_fn}) returned None")
+                        self.execution_failed(f"Block {block.name} returned None")
+                        return False
+
                     # It is checked that the function has not delivered an error
                     if 'E' in out_value.keys() and out_value['E']:
                         self.execution_failed(out_value.get('error', 'Unknown error'))
