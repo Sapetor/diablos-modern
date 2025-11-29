@@ -691,6 +691,28 @@ class DSim:
                     else:
                         block.b_type = 2  # Not strictly proper, direct feedthrough
 
+                elif block.block_fn == 'DiscreteTranFn':
+                    num = block.params.get('numerator', [])
+                    den = block.params.get('denominator', [])
+                    # In discrete transfer function H(z) = N(z)/D(z)
+                    # If order(D) > order(N), it's strictly proper (delay) -> Type 1
+                    # If order(D) == order(N), it has direct feedthrough -> Type 2
+                    # Note: len(den) is order + 1
+                    if len(den) > len(num):
+                        block.b_type = 1
+                    else:
+                        block.b_type = 2
+
+                elif block.block_fn == 'DiscreteStateSpace':
+                    # Check D matrix for direct feedthrough
+                    D = np.array(block.params.get('D', [[0.0]]))
+                    # If D is zero matrix, it's strictly proper (Type 1)
+                    if np.all(D == 0):
+                        block.b_type = 1
+                    else:
+                        block.b_type = 2
+
+
                 block.params['dtime'] = self.sim_dt
                 try:
                     missing_file_flag = block.reload_external_data()
@@ -734,6 +756,15 @@ class DSim:
                 num = block.params.get('numerator', [])
                 den = block.params.get('denominator', [])
                 if len(den) > len(num):
+                    self.memory_blocks.add(block.name)
+            elif block.block_fn == 'DiscreteTranFn':
+                num = block.params.get('numerator', [])
+                den = block.params.get('denominator', [])
+                if len(den) > len(num):
+                    self.memory_blocks.add(block.name)
+            elif block.block_fn == 'DiscreteStateSpace':
+                D = np.array(block.params.get('D', [[0.0]]))
+                if np.all(D == 0):
                     self.memory_blocks.add(block.name)
         logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
 
@@ -1404,7 +1435,9 @@ class SignalPlot(QWidget):
             # Configure axes for better visibility
             self._configure_plot_axes(plot_widget)
 
-            curve = plot_widget.plot(pen='y')
+            # Use stepMode=True for Zero-Order Hold visualization (staircase plot)
+            # This requires the x-axis (time) to have one more element than y-axis
+            curve = plot_widget.plot(pen='y', stepMode=True)
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
             plot_layout.addWidget(plot_widget)
@@ -1470,7 +1503,10 @@ class SignalPlot(QWidget):
 
             for i, curve in enumerate(self.curves):
                 if i < len(new_y):
-                    curve.setData(new_t, new_y[i])
+                    # For stepMode=True, x must be len(y) + 1
+                    # We append one more time step to the timeline
+                    t_step = np.append(new_t, new_t[-1] + self.dt)
+                    curve.setData(t_step, new_y[i])
         except Exception as e:
             logger.error(f"Error updating plot: {e}")
 

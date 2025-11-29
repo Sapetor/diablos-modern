@@ -29,6 +29,10 @@ BLOCK_SIZES = {
     'Derivative': (90, 70),
     'PID': (100, 80),
     'TranFn': (110, 80),
+    'DiscreteTranFn': (110, 80),
+    'StateSpace': (120, 90),
+    'DiscreteStateSpace': (120, 90),
+    'ZeroOrderHold': (90, 70),
 
     # Sinks - wider for labels/displays
     'Scope': (100, 80),
