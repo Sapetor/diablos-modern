@@ -37,4 +37,5 @@ class BodeMagBlock(BaseBlock):
     def execute(self, time, inputs, params):
         # BodeMag doesn't process data during simulation
         # It's used to generate static Bode plots via right-click menu
-        return None
+        # Return empty output dict to avoid breaking simulation
+        return {}
