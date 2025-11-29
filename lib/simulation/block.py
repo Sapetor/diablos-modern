@@ -446,6 +446,30 @@ class DBlock:
             font.setItalic(False)
             font.setPointSize(original_size)
             painter.setFont(font)
+        elif self.block_fn == "DiscreteTranFn":
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setItalic(True)
+            painter.setFont(font)
+            # Use dark color for text symbols on blocks
+            painter.setPen(QColor('#1F2937'))
+
+            # Draw B(z)
+            rect_top = QRect(self.left, self.top, self.width, self.height // 2)
+            painter.drawText(rect_top, Qt.AlignCenter, "B(z)")
+
+            # Draw divisor line
+            line_y = self.top + self.height // 2
+            painter.drawLine(self.left + 10, line_y, self.left + self.width - 10, line_y)
+
+            # Draw A(z)
+            rect_bottom = QRect(self.left, self.top + self.height // 2, self.width, self.height // 2)
+            painter.drawText(rect_bottom, Qt.AlignCenter, "A(z)")
+
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "Integrator":
             # Use 1/s notation (transfer function representation)
             font = painter.font()
@@ -540,6 +564,40 @@ class DBlock:
             path.moveTo(0.8, 0.3)
             path.lineTo(1.0, 0.5)
             path.lineTo(0.8, 0.7)
+        elif self.block_fn == "ZeroOrderHold":
+            # Draw a staircase symbol
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.3, 0.8)
+            path.lineTo(0.3, 0.5)
+            path.lineTo(0.6, 0.5)
+            path.lineTo(0.6, 0.2)
+            path.lineTo(0.9, 0.2)
+        elif self.block_fn == "StateSpace":
+            # Draw x' = Ax + Bu
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size - 1) # Slightly smaller font
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "x' = Ax+Bu\ny = Cx+Du")
+            
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "DiscreteStateSpace":
+            # Draw x[k+1] = Ax[k] + ...
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size - 2) # Even smaller font for longer text
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "x[k+1]=Ax+Bu\ny[k]=Cx+Du")
+            
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "External":
             # Draw a stylized letter 'E'
             path.moveTo(0.2, 0.2)

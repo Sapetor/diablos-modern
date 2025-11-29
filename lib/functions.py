@@ -170,7 +170,220 @@ def transfer_function(time, inputs, params, output_only=False):
             logger.error(f"Shapes: Ad: {Ad.shape}, x: {x.shape}, Bd: {Bd.shape}, u: {np.shape(u)}")
             return {'E': True, 'error': f"State update error in {params['_name_']}: {e}"}
     
+
     return {0: y.item()}
+
+
+def discrete_transfer_function(time, inputs, params, output_only=False):
+    """
+    Discrete Transfer function block in z-domain
+    """
+    if params.get('_init_start_', True):
+        params['_init_start_'] = False
+        num = np.array(params['numerator'])
+        den = np.array(params['denominator'])
+        
+        # Convert to state-space
+        # tf2ss works for discrete systems too, interpreting num/den as powers of z
+        # H(z) = (b0*z^M + ...)/(a0*z^N + ...)
+        try:
+            A, B, C, D = signal.tf2ss(num, den)
+        except Exception as e:
+            return {'E': True, 'error': f"Error in tf2ss conversion: {e}"}
+        
+        params['_Ad_'] = A
+        params['_Bd_'] = B
+        params['_Cd_'] = C
+        params['_Dd_'] = D
+        
+        # State vector initialization
+        num_states = A.shape[0]
+        init_conds = np.atleast_1d(np.array(params.get('init_conds', 0.0), dtype=float))
+
+        if len(init_conds) < num_states:
+            # Pad with zeros
+            padded_conds = np.zeros(num_states)
+            padded_conds[:len(init_conds)] = init_conds
+            init_conds = padded_conds
+        elif len(init_conds) > num_states:
+            # Truncate
+            init_conds = init_conds[:num_states]
+
+        params['_x_'] = init_conds.reshape(-1, 1)
+
+    # Get discrete-time system matrices and state
+    Ad = params['_Ad_']
+    Bd = params['_Bd_']
+    Cd = params['_Cd_']
+    Dd = params['_Dd_']
+    x = params['_x_']
+    
+    # Get input
+    u = 0.0
+    if not output_only:
+        u = inputs.get(0, 0.0)
+
+    # Compute output: y[k] = C*x[k] + D*u[k]
+    try:
+        y = Cd @ x + Dd * u
+    except ValueError as e:
+        logger.error(f"Error in discrete transfer function matrix multiplication: {e}")
+        return {'E': True, 'error': f"Matrix multiplication error in {params['_name_']}: {e}"}
+
+    # Update state: x[k+1] = A*x[k] + B*u[k]
+    if not output_only:
+        try:
+            params['_x_'] = Ad @ x + Bd * u
+        except ValueError as e:
+            logger.error(f"Error in discrete transfer function state update: {e}")
+            return {'E': True, 'error': f"State update error in {params['_name_']}: {e}"}
+    
+    return {0: y.item()}
+
+
+def zero_order_hold(time, inputs, params, output_only=False):
+    """
+    Zero-Order Hold block
+    Samples input at specified rate and holds value.
+    """
+    if params.get('_init_start_', True):
+        params['_init_start_'] = False
+        params['_next_sample_time_'] = 0.0
+        # Initialize held value with initial input if available, else 0
+        val = inputs.get(0, 0.0)
+        if hasattr(val, 'item'):
+            val = val.item()
+        params['_held_value_'] = float(val)
+
+    # Get current held value
+    held_val = params['_held_value_']
+    
+    # Check if it's time to sample
+    # Use a small tolerance for floating point comparisons
+    sampling_time = params['sampling_time']
+    if time >= params['_next_sample_time_'] - 1e-9:
+        if not output_only:
+            # Update held value
+            val = inputs.get(0, 0.0)
+            if hasattr(val, 'item'):
+                val = val.item()
+            params['_held_value_'] = float(val)
+            
+            # Schedule next sample
+            # Ensure we don't get stuck if time jumped far ahead
+            while params['_next_sample_time_'] <= time + 1e-9:
+                 params['_next_sample_time_'] += sampling_time
+        
+        # Return new value
+        return {0: params['_held_value_']}
+        
+    return {0: held_val}
+
+
+def discrete_statespace(time, inputs, params, output_only=False):
+    """
+    Discrete State-Space representation block
+    x[k+1] = Ax[k] + Bu[k]
+    y[k] = Cx[k] + Du[k]
+    """
+    if params.get('_init_start_', True):
+        params['_init_start_'] = False
+
+        # Get matrices
+        A = np.array(params['A'], dtype=float)
+        B = np.array(params['B'], dtype=float)
+        C = np.array(params['C'], dtype=float)
+        D = np.array(params['D'], dtype=float)
+
+        # Validate dimensions
+        n = A.shape[0]  # Number of states
+        if A.shape != (n, n):
+            return {'E': True, 'error': 'A matrix must be square (n×n)'}
+
+        if len(B.shape) == 1:
+            B = B.reshape(-1, 1)
+        if B.shape[0] != n:
+            return {'E': True, 'error': f'B matrix must have {n} rows to match A'}
+
+        m = B.shape[1]  # Number of inputs
+
+        if len(C.shape) == 1:
+            C = C.reshape(1, -1)
+        if C.shape[1] != n:
+            return {'E': True, 'error': f'C matrix must have {n} columns to match A'}
+
+        p = C.shape[0]  # Number of outputs
+
+        if len(D.shape) == 1:
+            D = D.reshape(1, -1) if D.shape[0] > 1 else D.reshape(1, 1)
+        if D.shape != (p, m):
+            return {'E': True, 'error': f'D matrix must be {p}×{m} to match C and B'}
+
+        params['_Ad_'] = A
+        params['_Bd_'] = B
+        params['_Cd_'] = C
+        params['_Dd_'] = D
+
+        # Initialize state vector
+        init_conds = np.atleast_1d(np.array(params.get('init_conds', [0.0]), dtype=float))
+        if len(init_conds) < n:
+            # Pad with zeros
+            padded_conds = np.zeros(n)
+            padded_conds[:len(init_conds)] = init_conds
+            init_conds = padded_conds
+        elif len(init_conds) > n:
+            # Truncate
+            init_conds = init_conds[:n]
+
+        params['_x_'] = init_conds.reshape(-1, 1)
+        params['_n_states_'] = n
+        params['_n_inputs_'] = m
+        params['_n_outputs_'] = p
+
+    # Get discrete-time system matrices and state
+    Ad = params['_Ad_']
+    Bd = params['_Bd_']
+    Cd = params['_Cd_']
+    Dd = params['_Dd_']
+    x = params['_x_']
+
+    # Get input
+    u = 0.0
+    if not output_only:
+        u = inputs.get(0, 0.0)
+        # Convert scalar to column vector if needed
+        if isinstance(u, (int, float)):
+            u = np.array([[u]])
+        else:
+            u = np.atleast_2d(u).reshape(-1, 1)
+
+        # Validate input dimensions
+        if u.shape[0] != params['_n_inputs_']:
+            return {'E': True, 'error': f"Input dimension mismatch: expected {params['_n_inputs_']}, got {u.shape[0]}"}
+    else:
+        u = np.zeros((params['_n_inputs_'], 1))
+
+    # Compute output: y = Cx + Du
+    try:
+        y = Cd @ x + Dd @ u
+    except ValueError as e:
+        logger.error(f"Error in discrete state space output computation: {e}")
+        return {'E': True, 'error': f"Output computation error: {e}"}
+
+    # Update state for next iteration: x[k+1] = Ax[k] + Bu[k]
+    if not output_only:
+        try:
+            params['_x_'] = Ad @ x + Bd @ u
+        except ValueError as e:
+            logger.error(f"Error in discrete state space state update: {e}")
+            return {'E': True, 'error': f"State update error: {e}"}
+
+    # Return output (flatten if single output)
+    if y.size == 1:
+        return {0: y.item()}
+    else:
+        return {0: y.flatten()}
+
 
 
 def statespace(time, inputs, params, output_only=False):
