@@ -91,6 +91,7 @@ class DBlock:
 
         self.params: Dict[str, Any] = params.copy()
         self.initial_params: Dict[str, Any] = params.copy()
+        self.exec_params: Dict[str, Any] = {}  # Parameters used during execution (resolved variables)
         self.init_params_list: List[str] = [key for key in params.keys() if not (key.startswith('_') and key.endswith('_'))]
         logger.debug(f"Initialized block {self.name} with params: {self.params}")
 

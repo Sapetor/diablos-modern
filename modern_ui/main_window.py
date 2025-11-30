@@ -3,13 +3,19 @@ Modern Main Window for DiaBloS
 Features modern layout, theming, and enhanced user interface.
 """
 
+"""
+Modern Main Window for DiaBloS
+Features modern layout, theming, and enhanced user interface.
+"""
+
 import sys
 import os
 import logging
 import ast
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QMenuBar, QStatusBar, QLabel, QFrame,
-                             QApplication, QMessageBox, QScrollArea)
+                             QApplication, QMessageBox, QScrollArea, QFileDialog)
+from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
 
@@ -805,6 +811,7 @@ class ModernDiaBloSWindow(QMainWindow):
             ('New Diagram', 'Create a new diagram', self.new_diagram),
             ('Open Diagram', 'Open an existing diagram', self.open_diagram),
             ('Save Diagram', 'Save current diagram', self.save_diagram),
+            ('Load Workspace', 'Load variables from workspace file', self.load_workspace),
             ('Run Simulation', 'Start the simulation', self.start_simulation),
             ('Pause Simulation', 'Pause the simulation', self.pause_simulation),
             ('Stop Simulation', 'Stop the simulation', self.stop_simulation),
@@ -1080,8 +1087,12 @@ class ModernDiaBloSWindow(QMainWindow):
                     param_type = type(block.params.get(prop_name))
 
                     try:
+                        # Try to convert to the expected type
                         if param_type == bool:
-                            converted_value = bool(new_value)
+                            if isinstance(new_value, str):
+                                converted_value = new_value.lower() == 'true'
+                            else:
+                                converted_value = bool(new_value)
                         elif param_type == list:
                             converted_value = ast.literal_eval(new_value)
                             if not isinstance(converted_value, list):
@@ -1092,13 +1103,22 @@ class ModernDiaBloSWindow(QMainWindow):
                             converted_value = float(new_value)
                         else:
                             converted_value = str(new_value)
+                    except (ValueError, TypeError, SyntaxError):
+                        # If conversion fails, treat as a string (potential variable name)
+                        # But only if it looks like a valid identifier
+                        if isinstance(new_value, str) and new_value.isidentifier():
+                            converted_value = new_value
+                            logger.info(f"Treating input '{new_value}' as a variable name")
+                        else:
+                            raise  # Re-raise the original exception if not a valid identifier
 
-                        block.update_params({prop_name: converted_value})
-                        self.canvas.dsim.dirty = True
-                        logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
-                    except (ValueError, TypeError, SyntaxError) as e:
-                        logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
+                    block.update_params({prop_name: converted_value})
+                    self.canvas.dsim.dirty = True
+                    logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
                     break
+        except (ValueError, TypeError, SyntaxError) as e:
+            logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
+            self.show_error(f"Invalid input for {prop_name}: {e}")
         except Exception as e:
             logger.error(f"Error updating property: {e}")
 
@@ -1539,3 +1559,16 @@ class ModernDiaBloSWindow(QMainWindow):
                 logger.debug("Auto-save file cleaned up")
         except Exception as e:
             logger.error(f"Error cleaning up auto-save: {str(e)}")
+
+    def load_workspace(self):
+        """Load variables from a workspace file."""
+        filepath, _ = QFileDialog.getOpenFileName(
+            self, "Load Workspace", "", "Text Files (*.txt);;All Files (*)"
+        )
+        if filepath:
+            try:
+                WorkspaceManager().load_from_file(filepath)
+                self.toast.show_message(f"Workspace loaded from {os.path.basename(filepath)}", duration=3000)
+            except Exception as e:
+                self.toast.show_message(f"Failed to load workspace: {str(e)}", duration=5000, is_error=True)
+                logger.error(f"Failed to load workspace: {str(e)}")
