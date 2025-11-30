@@ -12,6 +12,8 @@ from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter
 from PyQt5.QtCore import Qt, QRect, QPoint, QEvent, QTimer
 import pyqtgraph as pg
 from lib.block_loader import load_blocks
+from lib.dialogs import ParamDialog, PortDialog
+from lib.workspace import WorkspaceManager
 from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
 import logging
 from modern_ui.themes.theme_manager import theme_manager
@@ -681,19 +683,26 @@ class DSim:
 
             logger.debug("*****INIT NEW EXECUTION*****")
 
+            workspace_manager = WorkspaceManager()
+
             for block in self.blocks_list:
+                # Resolve parameters using WorkspaceManager
+                block.exec_params = workspace_manager.resolve_params(block.params)
+                # Copy internal parameters that start with '_'
+                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+
                 # Dynamically set b_type for Transfer Functions
                 if block.block_fn == 'TranFn':
-                    num = block.params.get('numerator', [])
-                    den = block.params.get('denominator', [])
+                    num = block.exec_params.get('numerator', [])
+                    den = block.exec_params.get('denominator', [])
                     if len(den) > len(num):
                         block.b_type = 1  # Strictly proper, has memory
                     else:
                         block.b_type = 2  # Not strictly proper, direct feedthrough
-
+                
                 elif block.block_fn == 'DiscreteTranFn':
-                    num = block.params.get('numerator', [])
-                    den = block.params.get('denominator', [])
+                    num = block.exec_params.get('numerator', [])
+                    den = block.exec_params.get('denominator', [])
                     # In discrete transfer function H(z) = N(z)/D(z)
                     # If order(D) > order(N), it's strictly proper (delay) -> Type 1
                     # If order(D) == order(N), it has direct feedthrough -> Type 2
@@ -705,15 +714,15 @@ class DSim:
 
                 elif block.block_fn == 'DiscreteStateSpace':
                     # Check D matrix for direct feedthrough
-                    D = np.array(block.params.get('D', [[0.0]]))
+                    D = np.array(block.exec_params.get('D', [[0.0]]))
                     # If D is zero matrix, it's strictly proper (Type 1)
                     if np.all(D == 0):
                         block.b_type = 1
                     else:
                         block.b_type = 2
 
-
-                block.params['dtime'] = self.sim_dt
+                
+                block.exec_params['dtime'] = self.sim_dt
                 try:
                     missing_file_flag = block.reload_external_data()
                     if missing_file_flag == 1:
@@ -781,13 +790,13 @@ class DSim:
                 # The function is executed (differentiate between internal and external function first)
                 if block.external:
                     try:
-                        out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
+                        out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                     except Exception as e:
                         logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
                         self.execution_failed(str(e))
                         return False
                 else:
-                    out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
+                    out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                 block.computed_data = True
                 block.hierarchy = 0
                 self.update_global_list(block.name, h_value=0, h_assign=True)
@@ -797,7 +806,7 @@ class DSim:
                 kwargs = {
                     'time': self.time_step,
                     'inputs': block.input_queue,
-                    'params': block.params,
+                    'params': block.exec_params,
                     'output_only': True
                 }
                 if block.block_fn == 'Integrator':
@@ -852,7 +861,7 @@ class DSim:
                     # The function is executed (differentiate between internal and external function first)
                     if block.external:
                         try:
-                            out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
+                            out_value = getattr(block.file_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                         except Exception as e:
                             logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
                             self.execution_failed()
@@ -860,14 +869,14 @@ class DSim:
                     else:
                         # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
                         if block.block_instance:
-                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
+                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                         else:
-                            out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.params)
+                            out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
 
                     # After execution, for memory blocks, update the 'output' state for the next step
                     if block.name in self.memory_blocks:
                         if block.block_fn == 'Integrator':
-                            block.params['output'] = block.params['mem']
+                            block.exec_params['output'] = block.exec_params['mem']
 
                     # Check if the execution returned None (some blocks may not return anything)
                     if out_value is None:
@@ -977,7 +986,7 @@ class DSim:
                         kwargs = {
                             'time': self.time_step,
                             'inputs': block.input_queue,
-                            'params': block.params,
+                            'params': block.exec_params,
                             'output_only': True
                         }
                         if block.block_fn == 'Integrator':
@@ -1027,7 +1036,7 @@ class DSim:
                         # The function is executed (differentiate between internal and external function first)
                         if block.external:
                             try:
-                                out_value = getattr(block.file_function, block.fn_name)(self.time_step, block.input_queue, block.params)
+                                out_value = getattr(block.file_function, block.fn_name)(self.time_step, block.input_queue, block.exec_params)
                             except Exception as e:
                                 logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
                                 self.execution_failed()
@@ -1035,9 +1044,9 @@ class DSim:
                         else:
                             # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
                             if block.block_instance:
-                                out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.params)
+                                out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                             else:
-                                out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.params)
+                                out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.exec_params)
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
                             if block.block_fn == 'Integrator':
@@ -1261,19 +1270,7 @@ class DSim:
                 neighs.append({'srcport': line.srcport, 'dstblock': line.dstblock, 'dstport': line.dstport})
         return neighs
 
-    def get_neighbors(self, block_name):
-        logger.debug(f"get_neighbors called for block_name: {block_name}")
-        # Returns two lists of blocks, for blocks connected through lines where the current block is destination or source
-        n_inputs = []
-        n_outputs = []
-        for line in self.line_list:
-            logger.debug(f"  Checking line: {line.name}, srcblock: {line.srcblock}, dstblock: {line.dstblock}")
-            if line.srcblock == block_name:
-                n_outputs.append({'srcport': line.srcport, 'dstblock': line.dstblock, 'dstport': line.dstport})
-            if line.dstblock == block_name:
-                n_inputs.append({'dstport': line.dstport, 'srcblock': line.dstblock, 'srcport': line.srcport})
-        logger.debug(f"  Found inputs: {n_inputs}, outputs: {n_outputs}")
-        return n_inputs, n_outputs
+
 
     def children_recognition(self, block_name, children_list):
         """
@@ -1290,6 +1287,18 @@ class DSim:
         if child_ports == []:
             return False, -1
         return True, child_ports
+
+    def get_neighbors(self, block_name):
+        inputs = []
+        outputs = []
+        # print(f"DEBUG: get_neighbors({block_name}) signals len: {len(self.line_list)}")
+        for signal in self.line_list:
+            # print(f"DEBUG: Checking line {signal.name}: src={signal.srcblock}, dst={signal.dstblock}")
+            if signal.dstblock == block_name:
+                inputs.append(signal)
+            if signal.srcblock == block_name:
+                outputs.append(signal)
+        return inputs, outputs
 
     def reset_memblocks(self):
         """
@@ -1349,9 +1358,10 @@ class DSim:
         for block in self.blocks_list:
             if block.block_fn == 'Scope':
                 logger.debug(f"Found Scope block: {block.name}")
-                b_labels = block.params['vec_labels']
+                # Use exec_params as that's where simulation data is stored
+                b_labels = block.exec_params.get('vec_labels', block.params.get('vec_labels'))
                 labels_list.append(b_labels)
-                b_vectors = block.params['vector']
+                b_vectors = block.exec_params.get('vector', block.params.get('vector'))
                 vector_list.append(b_vectors)
                 logger.debug(f"Full vector for {block.name}:\n{b_vectors}")
                 logger.debug(f"Labels: {b_labels}")
@@ -1361,7 +1371,8 @@ class DSim:
 
         if labels_list and vector_list:
             logger.debug("Creating SignalPlot...")
-            self.plotty = SignalPlot(self.sim_dt, labels_list, len(self.timeline))
+            # Default to step_mode=False for continuous look as requested
+            self.plotty = SignalPlot(self.sim_dt, labels_list, len(self.timeline), step_mode=False)
             try:
                 self.plotty.loop(new_t=self.timeline.astype(float), new_y=[np.array(v).astype(float) for v in vector_list])
                 self.plotty.show()
@@ -1415,9 +1426,10 @@ class SignalPlot(QWidget):
     :type xrange: int
 
     """
-    def __init__(self, dt, labels, xrange):
+    def __init__(self, dt, labels, xrange, step_mode=False):
         super().__init__()
         self.dt = dt
+        self.step_mode = step_mode
         self.xrange = xrange * self.dt
         self.plot_items = []
         self.curves = []
@@ -1443,7 +1455,7 @@ class SignalPlot(QWidget):
 
             # Use stepMode=True for Zero-Order Hold visualization (staircase plot)
             # This requires the x-axis (time) to have one more element than y-axis
-            curve = plot_widget.plot(pen='y', stepMode=True)
+            curve = plot_widget.plot(pen='y', stepMode=self.step_mode)
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
             plot_layout.addWidget(plot_widget)
@@ -1509,10 +1521,30 @@ class SignalPlot(QWidget):
 
             for i, curve in enumerate(self.curves):
                 if i < len(new_y):
-                    # For stepMode=True, x must be len(y) + 1
-                    # We append one more time step to the timeline
-                    t_step = np.append(new_t, new_t[-1] + self.dt)
-                    curve.setData(t_step, new_y[i])
+                    if self.step_mode:
+                        # For stepMode=True, x must be len(y) + 1
+                        # Ensure t_step is exactly len(new_y[i]) + 1
+                        if len(new_t) == len(new_y[i]):
+                            t_step = np.append(new_t, new_t[-1] + self.dt)
+                        elif len(new_t) > len(new_y[i]):
+                            t_step = new_t[:len(new_y[i]) + 1]
+                        else:
+                            # This case shouldn't happen if logic is correct, but handle safely
+                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(new_y[i]) - len(new_t) + 1))
+                        
+                        curve.setData(t_step, new_y[i])
+                    else:
+                        # For normal plotting, x and y must have same length
+                        # Ensure t_step is exactly len(new_y[i])
+                        if len(new_t) == len(new_y[i]):
+                            t_step = new_t
+                        elif len(new_t) > len(new_y[i]):
+                            t_step = new_t[:len(new_y[i])]
+                        else:
+                            # Pad time if needed (shouldn't happen)
+                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(new_y[i]) - len(new_t)))
+                            
+                        curve.setData(t_step, new_y[i])
         except Exception as e:
             logger.error(f"Error updating plot: {e}")
 
