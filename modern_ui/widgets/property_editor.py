@@ -128,7 +128,7 @@ class PropertyEditor(QFrame):
             return
 
         block_name = getattr(self.block, 'name', 'Unknown')
-        self.logger.debug(f"Property changed: {block_name}.{prop_name} = {new_value}")
+        self.logger.info(f"Property changed: {block_name}.{prop_name} = {new_value}")
         self.property_changed.emit(block_name, prop_name, new_value)
 
     def _update_theme(self):
