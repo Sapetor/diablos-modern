@@ -258,6 +258,11 @@ class ThemeManager(QObject):
             qss_vars[f"@{key}"] = value
         return qss_vars
 
+    def get_icon_size(self):
+        """Get the standard icon size for the application."""
+        from PyQt5.QtCore import QSize
+        return QSize(24, 24)
+
 
 # Global theme manager instance
 theme_manager = ThemeManager()

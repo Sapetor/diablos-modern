@@ -687,7 +687,10 @@ class DSim:
 
             for block in self.blocks_list:
                 # Resolve parameters using WorkspaceManager
+                logger.info(f"Block {block.name}: params before resolve = {block.params}")
+                logger.info(f"WorkspaceManager variables = {workspace_manager.variables}")
                 block.exec_params = workspace_manager.resolve_params(block.params)
+                logger.info(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
                 # Copy internal parameters that start with '_'
                 block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
 

@@ -36,6 +36,7 @@ from modern_ui.widgets.property_editor import PropertyEditor
 from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.widgets.command_palette import CommandPalette
+from modern_ui.widgets.variable_editor import VariableEditor
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -75,7 +76,21 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.set_simulation_state(False, False)
         self._setup_layout()
         self._setup_statusbar()
-        self._setup_connections()
+        
+        # Connect property editor signal
+        self.property_editor.property_changed.connect(self._on_property_changed)
+        
+        # Initialize Variable Editor (Dockable)
+        from PyQt5.QtWidgets import QDockWidget
+        self.variable_editor = VariableEditor(self)
+        self.variable_editor_dock = QDockWidget("Variable Editor", self)
+        self.variable_editor_dock.setWidget(self.variable_editor)
+        self.variable_editor_dock.setAllowedAreas(Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.variable_editor_dock)
+        self.variable_editor_dock.hide()  # Hidden by default
+        
+        # Connect variable editor signals
+        self.variable_editor.variables_updated.connect(self._on_variables_updated)
 
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
@@ -217,6 +232,19 @@ class ModernDiaBloSWindow(QMainWindow):
         view_menu.addSeparator()
 
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.toggle_theme)
+        view_menu.addSeparator()
+        
+        # Variable Editor toggle
+        self.variable_editor_action = view_menu.addAction("Show/Hide Variable &Editor\tCmd+Shift+V", self.toggle_variable_editor)
+        self.variable_editor_action.setCheckable(True)
+        self.variable_editor_action.setChecked(False)
+        
+        # Add actual keyboard shortcut (menu text alone doesn't create the shortcut)
+        from PyQt5.QtWidgets import QShortcut
+        from PyQt5.QtGui import QKeySequence
+        from PyQt5.QtCore import Qt
+        self.variable_editor_shortcut = QShortcut(QKeySequence(Qt.CTRL | Qt.SHIFT | Qt.Key_V), self)
+        self.variable_editor_shortcut.activated.connect(self.toggle_variable_editor)
         view_menu.addSeparator()
         scaling_menu = view_menu.addMenu("UI Scale")
         action_100 = scaling_menu.addAction("100%")
@@ -1031,6 +1059,29 @@ class ModernDiaBloSWindow(QMainWindow):
                          "✅ Modern Canvas with Mouse Events\n"
                          "Built with PyQt5 and modern design principles")
     
+
+    def toggle_variable_editor(self):
+        """Toggle Variable Editor visibility."""
+        if self.variable_editor_dock.isVisible():
+            self.variable_editor_dock.hide()
+            self.variable_editor_action.setChecked(False)
+            self.toast.show_message("Variable Editor hidden")
+        else:
+            self.variable_editor_dock.show()
+            self.variable_editor_action.setChecked(True)
+            self.toast.show_message("Variable Editor shown")
+    
+    def _on_variables_updated(self):
+        """Handle variable updates from the Variable Editor."""
+        try:
+            var_count = len(WorkspaceManager().variables)
+            self.toast.show_message(f"✓ Workspace updated ({var_count} variables)", duration=2000)
+            self.status_message.setText(f"Workspace updated with {var_count} variable(s)")
+            logger.info(f"Workspace updated from Variable Editor: {var_count} variables")
+        except Exception as e:
+            logger.error(f"Error handling variable update: {str(e)}")
+            self.toast.show_message(f"Error updating workspace: {str(e)}", duration=3000, is_error=True)
+    
     def closeEvent(self, event):
         """Handle application shutdown."""
         logger.info("Modern DiaBloS closing...")
@@ -1112,15 +1163,22 @@ class ModernDiaBloSWindow(QMainWindow):
                         else:
                             raise  # Re-raise the original exception if not a valid identifier
 
+                    logger.info(f"Attempting to update {block_name}.{prop_name} with value: {converted_value} (type: {type(converted_value).__name__})")
+                    logger.info(f"Block params before update: {block.params}")
                     block.update_params({prop_name: converted_value})
+                    logger.info(f"Block params after update: {block.params}")
                     self.canvas.dsim.dirty = True
                     logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
                     break
         except (ValueError, TypeError, SyntaxError) as e:
             logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self.show_error(f"Invalid input for {prop_name}: {e}")
         except Exception as e:
             logger.error(f"Error updating property: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _on_error_clicked(self, error):
         """Handle error item click - navigate to error location."""
