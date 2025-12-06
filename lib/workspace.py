@@ -68,17 +68,21 @@ class WorkspaceManager:
         resolved = params.copy()
         for key, value in params.items():
             if isinstance(value, str):
-                # Check if it's a variable in the workspace
+                # Check if it's a direct variable match
                 if value in self.variables:
                     resolved[key] = self.variables[value]
                 else:
-                    # Try to evaluate simple expressions or lists stored as strings
+                    # Try to evaluate expression using workspace variables
                     try:
-                        # Check if it looks like a list or number
-                        val = ast.literal_eval(value)
+                        # Use eval with the variables dictionary as locals
+                        # This allows expressions like "[K, K]" or "2*K" to be resolved
+                        # We use a restricted globals dict for basic safety, but allow math
+                        import math
+                        safe_globals = {"__builtins__": {}, "math": math, "list": list, "int": int, "float": float}
+                        val = eval(value, safe_globals, self.variables)
                         resolved[key] = val
-                    except (ValueError, SyntaxError):
-                        # Keep as string if it's not a variable or literal
+                    except (ValueError, SyntaxError, NameError, TypeError):
+                        # Keep as string if evaluation fails
                         pass
             elif isinstance(value, list):
                 # Recursively resolve lists (though usually lists are numbers)
