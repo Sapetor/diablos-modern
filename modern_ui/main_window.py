@@ -1130,6 +1130,52 @@ class ModernDiaBloSWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error handling simulation status change: {str(e)}")
 
+    def show_error(self, message):
+        """Show an error message to the user."""
+        logger.error(message)
+        if hasattr(self, 'toast'):
+            self.toast.show_message(message, duration=5000, is_error=True)
+        else:
+            QMessageBox.critical(self, "Error", message)
+
+    def _convert_param_value(self, new_value, target_type):
+        """
+        Convert a parameter value to the target type, handling variables.
+        
+        Args:
+            new_value: The string input from the user.
+            target_type: The expected type (int, float, bool, list).
+            
+        Returns:
+            The converted value.
+            
+        Raises:
+            ValueError, TypeError, SyntaxError: If conversion fails and it's not a valid variable name.
+        """
+        try:
+            # Try to convert to the expected type
+            if target_type == bool:
+                if isinstance(new_value, str):
+                    return new_value.lower() == 'true'
+                return bool(new_value)
+            elif target_type == list:
+                converted = ast.literal_eval(new_value)
+                if not isinstance(converted, list):
+                    raise TypeError("Input must be a list (e.g., [1, 2, 3])")
+                return converted
+            elif target_type == int:
+                return int(new_value)
+            elif target_type == float:
+                return float(new_value)
+            else:
+                return str(new_value)
+        except (ValueError, TypeError, SyntaxError):
+            # If conversion fails, treat as a string (potential variable name or expression)
+            # We allow this so that expressions like '[K, K]' or '2*K' can be stored as strings
+            # and resolved later by the WorkspaceManager.
+            logger.debug(f"Could not convert '{new_value}' to {target_type}, keeping as string.")
+            return str(new_value)
+
     def _on_property_changed(self, block_name, prop_name, new_value):
         """Handle property changes from the property editor."""
         try:
@@ -1137,43 +1183,14 @@ class ModernDiaBloSWindow(QMainWindow):
                 if block.name == block_name:
                     param_type = type(block.params.get(prop_name))
 
-                    try:
-                        # Try to convert to the expected type
-                        if param_type == bool:
-                            if isinstance(new_value, str):
-                                converted_value = new_value.lower() == 'true'
-                            else:
-                                converted_value = bool(new_value)
-                        elif param_type == list:
-                            converted_value = ast.literal_eval(new_value)
-                            if not isinstance(converted_value, list):
-                                raise TypeError("Input must be a list (e.g., [1, 2, 3])")
-                        elif param_type == int:
-                            converted_value = int(new_value)
-                        elif param_type == float:
-                            converted_value = float(new_value)
-                        else:
-                            converted_value = str(new_value)
-                    except (ValueError, TypeError, SyntaxError):
-                        # If conversion fails, treat as a string (potential variable name)
-                        # But only if it looks like a valid identifier
-                        if isinstance(new_value, str) and new_value.isidentifier():
-                            converted_value = new_value
-                            logger.info(f"Treating input '{new_value}' as a variable name")
-                        else:
-                            raise  # Re-raise the original exception if not a valid identifier
+                    converted_value = self._convert_param_value(new_value, param_type)
 
-                    logger.info(f"Attempting to update {block_name}.{prop_name} with value: {converted_value} (type: {type(converted_value).__name__})")
-                    logger.info(f"Block params before update: {block.params}")
+                    logger.debug(f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})")
                     block.update_params({prop_name: converted_value})
-                    logger.info(f"Block params after update: {block.params}")
                     self.canvas.dsim.dirty = True
-                    logger.info(f"Updated {block_name}.{prop_name} to {converted_value}")
                     break
         except (ValueError, TypeError, SyntaxError) as e:
             logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
             self.show_error(f"Invalid input for {prop_name}: {e}")
         except Exception as e:
             logger.error(f"Error updating property: {e}")

@@ -77,10 +77,16 @@ class VariableEditor(QWidget):
         # Toolbar
         self.toolbar = QToolBar()
         self.toolbar.setIconSize(theme_manager.get_icon_size())
-        self.toolbar.setStyleSheet("QToolBar { border-bottom: 1px solid #ccc; background: #f5f5f5; spacing: 5px; }")
+        # Style applied in _apply_theme
         layout.addWidget(self.toolbar)
 
         # Actions
+        self.action_load = QAction("Load Script", self)
+        self.action_load.setToolTip("Load Python script from file")
+        self.action_load.triggered.connect(self.load_script)
+        self.action_load.setText("📂 Load")
+        self.toolbar.addAction(self.action_load)
+
         self.action_run = QAction("Update Workspace", self)
         self.action_run.setShortcut("Ctrl+Enter")
         self.action_run.setToolTip("Run code and update workspace (Ctrl+Enter)")
@@ -118,20 +124,85 @@ class VariableEditor(QWidget):
         # Status Bar (Inline Feedback)
         self.status_bar = QFrame()
         self.status_bar.setFixedHeight(30)
-        self.status_bar.setStyleSheet("background: #f0f0f0; border-top: 1px solid #ccc;")
+        # Style applied in _apply_theme
         status_layout = QHBoxLayout(self.status_bar)
         status_layout.setContentsMargins(10, 0, 10, 0)
         
         self.status_label = QLabel("Ready")
-        self.status_label.setStyleSheet("color: #666;")
+        # Style applied in _apply_theme
         status_layout.addWidget(self.status_label)
         
+        # Connect to theme changes
+        theme_manager.theme_changed.connect(self._apply_theme)
+        
+        # Apply initial theme
+        self._apply_theme()
+        
         layout.addWidget(self.status_bar)
+
+    def _apply_theme(self):
+        """Apply the current theme to the widget."""
+        bg_color = theme_manager.get_color("background_secondary").name()
+        border_color = theme_manager.get_color("border_primary").name()
+        text_color = theme_manager.get_color("text_primary").name()
+        status_bg = theme_manager.get_color("surface_variant").name()
+        
+        # Toolbar styling
+        self.toolbar.setStyleSheet(f"""
+            QToolBar {{ 
+                border-bottom: 1px solid {border_color}; 
+                background: {bg_color}; 
+                spacing: 5px; 
+                color: {text_color};
+            }}
+            QToolButton {{
+                color: {text_color};
+                background: transparent;
+                padding: 5px;
+                border-radius: 4px;
+            }}
+            QToolButton:hover {{
+                background: {theme_manager.get_color("surface_elevated").name()};
+            }}
+        """)
+        
+        # Status bar styling
+        self.status_bar.setStyleSheet(f"background: {status_bg}; border-top: 1px solid {border_color};")
+        self.status_label.setStyleSheet(f"color: {text_color};")
+        
+        # Editor styling (optional, but good for consistency)
+        editor_bg = theme_manager.get_color("surface").name()
+        self.editor.setStyleSheet(f"border: none; background-color: {editor_bg}; color: {text_color};")
 
     def clear_editor(self):
         self.editor.clear()
         self.status_label.setText("Cleared")
         self.status_label.setStyleSheet("color: #666;")
+
+    def load_script(self):
+        """Load a Python script from a file."""
+        from PyQt5.QtWidgets import QFileDialog
+        import os
+        
+        filename, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Load Python Script", 
+            "", 
+            "Python Files (*.py);;Text Files (*.txt);;All Files (*)"
+        )
+        
+        if filename:
+            try:
+                with open(filename, 'r') as f:
+                    content = f.read()
+                self.editor.setPlainText(content)
+                self.status_label.setText(f"Loaded {os.path.basename(filename)}")
+                self.status_label.setStyleSheet("color: #666;")
+                logger.info(f"Loaded script from {filename}")
+            except Exception as e:
+                logger.error(f"Error loading script: {e}")
+                self.status_label.setText(f"Error loading file: {str(e)}")
+                self.status_label.setStyleSheet("color: red;")
 
     def toggle_float(self, checked):
         """Toggle floating state of the parent dock widget."""

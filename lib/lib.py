@@ -687,10 +687,10 @@ class DSim:
 
             for block in self.blocks_list:
                 # Resolve parameters using WorkspaceManager
-                logger.info(f"Block {block.name}: params before resolve = {block.params}")
-                logger.info(f"WorkspaceManager variables = {workspace_manager.variables}")
+                logger.debug(f"Block {block.name}: params before resolve = {block.params}")
+                logger.debug(f"WorkspaceManager variables = {workspace_manager.variables}")
                 block.exec_params = workspace_manager.resolve_params(block.params)
-                logger.info(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
+                logger.debug(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
                 # Copy internal parameters that start with '_'
                 block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
 
@@ -1348,6 +1348,57 @@ class DSim:
             np.savez('saves/' + self.filename[:-4], t=self.timeline, **vec_dict)
             logger.info("DATA EXPORTED TO " + 'saves/' + self.filename[:-4] + '.npz')
 
+    def _is_discrete_upstream(self, block_name, visited=None):
+        """
+        Determine if a block (or any of its ancestors) is discrete-time/ZOH.
+        """
+        if visited is None:
+            visited = set()
+
+        if block_name in visited:
+            return False
+        visited.add(block_name)
+
+        # Lookup the block in the model
+        block = None
+        try:
+            block = self.model.get_block_by_name(block_name)
+        except Exception:
+            # Fallback in case model is not available for some reason
+            block = next((b for b in self.blocks_list if b.name == block_name), None)
+
+        if block is None:
+            return False
+
+        discrete_blocks = {'DiscreteTranFn', 'DiscreteStateSpace', 'ZeroOrderHold'}
+        continuous_blocks = {'Integrator', 'TranFn', 'StateSpace', 'Derivative'}
+
+        if block.block_fn in discrete_blocks:
+            return True
+        if block.block_fn in continuous_blocks:
+            return False
+
+        inputs, _ = self.get_neighbors(block.name)
+        for conn in inputs:
+            if self._is_discrete_upstream(conn.srcblock, visited):
+                return True
+        return False
+
+    def _scope_step_modes(self):
+        """
+        Build a list of step-mode flags (one per Scope block) for plotting.
+        """
+        modes = []
+        for block in self.blocks_list:
+            if block.block_fn == 'Scope':
+                inputs, _ = self.get_neighbors(block.name)
+                if not inputs:
+                    modes.append(False)
+                    continue
+                step_mode = any(self._is_discrete_upstream(conn.srcblock) for conn in inputs)
+                modes.append(step_mode)
+        return modes
+
     # Pyqtgraph functions
     def pyqtPlotScope(self):
         """
@@ -1372,10 +1423,12 @@ class DSim:
                 logger.debug(f"Vector type: {type(b_vectors)}")
                 logger.debug(f"Vector sample: {b_vectors[:5]}")
 
+        step_modes = self._scope_step_modes()
+
         if labels_list and vector_list:
             logger.debug("Creating SignalPlot...")
-            # Default to step_mode=False for continuous look as requested
-            self.plotty = SignalPlot(self.sim_dt, labels_list, len(self.timeline), step_mode=False)
+            # Use step mode for discrete/ZOH signals to keep values constant between samples
+            self.plotty = SignalPlot(self.sim_dt, labels_list, len(self.timeline), step_mode=step_modes)
             try:
                 self.plotty.loop(new_t=self.timeline.astype(float), new_y=[np.array(v).astype(float) for v in vector_list])
                 self.plotty.show()
@@ -1401,7 +1454,8 @@ class DSim:
                     labels_list.append(b_labels)
 
             if labels_list != []:
-                self.plotty = SignalPlot(self.sim_dt, labels_list, self.plot_trange)
+                step_modes = self._scope_step_modes()
+                self.plotty = SignalPlot(self.sim_dt, labels_list, self.plot_trange, step_mode=step_modes)
 
         elif step == 1: # loop
             vector_list = []
@@ -1433,6 +1487,7 @@ class SignalPlot(QWidget):
         super().__init__()
         self.dt = dt
         self.step_mode = step_mode
+        self.curve_step_modes = self._expand_step_modes(step_mode, len(labels))
         self.xrange = xrange * self.dt
         self.plot_items = []
         self.curves = []
@@ -1449,7 +1504,7 @@ class SignalPlot(QWidget):
         plot_layout = QVBoxLayout()
         plot_layout.setSpacing(10)  # Add spacing between plots
         plot_layout.setContentsMargins(0, 0, 0, 10)  # Add bottom margin to plot area
-        for label in labels:
+        for idx, label in enumerate(labels):
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
 
@@ -1458,7 +1513,7 @@ class SignalPlot(QWidget):
 
             # Use stepMode=True for Zero-Order Hold visualization (staircase plot)
             # This requires the x-axis (time) to have one more element than y-axis
-            curve = plot_widget.plot(pen='y', stepMode=self.step_mode)
+            curve = plot_widget.plot(pen='y', stepMode=self.curve_step_modes[idx])
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
             plot_layout.addWidget(plot_widget)
@@ -1496,6 +1551,21 @@ class SignalPlot(QWidget):
         # Set minimum height for plot widget to ensure x-axis labels have room
         plot_widget.setMinimumHeight(200)
 
+    def _expand_step_modes(self, step_mode, count):
+        """
+        Normalize step_mode (bool or list) into a list matching the plot count.
+        """
+        if isinstance(step_mode, (list, tuple, np.ndarray)):
+            modes = [bool(mode) for mode in step_mode]
+        else:
+            modes = [bool(step_mode)] * count
+
+        if len(modes) < count:
+            modes.extend([modes[-1] if modes else False] * (count - len(modes)))
+        elif len(modes) > count:
+            modes = modes[:count]
+        return modes
+
     def pltcolor(self, index, hues=9, hueOff=180, minHue=0, maxHue=360, val=255, sat=255, alpha=255):
         """
         :purpose: Assigns a color to a vector for plotting purposes.
@@ -1524,7 +1594,8 @@ class SignalPlot(QWidget):
 
             for i, curve in enumerate(self.curves):
                 if i < len(new_y):
-                    if self.step_mode:
+                    step_mode = self.curve_step_modes[i] if i < len(self.curve_step_modes) else False
+                    if step_mode:
                         # For stepMode=True, x must be len(y) + 1
                         # Ensure t_step is exactly len(new_y[i]) + 1
                         if len(new_t) == len(new_y[i]):
@@ -1546,7 +1617,7 @@ class SignalPlot(QWidget):
                         else:
                             # Pad time if needed (shouldn't happen)
                             t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(new_y[i]) - len(new_t)))
-                            
+
                         curve.setData(t_step, new_y[i])
         except Exception as e:
             logger.error(f"Error updating plot: {e}")
