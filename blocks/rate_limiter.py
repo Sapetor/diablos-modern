@@ -1,0 +1,64 @@
+import numpy as np
+from blocks.base_block import BaseBlock
+
+
+class RateLimiterBlock(BaseBlock):
+    """
+    Limits the rate of change (slew rate) of the input signal.
+    """
+
+    @property
+    def block_name(self):
+        return "RateLimiter"
+
+    @property
+    def category(self):
+        return "Control"
+
+    @property
+    def color(self):
+        return "magenta"
+
+    @property
+    def doc(self):
+        return "Limits the rising/falling slew rate of the input."
+
+    @property
+    def params(self):
+        return {
+            "rising_slew": {"type": "float", "default": np.inf, "doc": "Max positive slope (units/sec)."},
+            "falling_slew": {"type": "float", "default": np.inf, "doc": "Max negative slope magnitude (units/sec)."},
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
+        }
+
+    @property
+    def inputs(self):
+        return [{"name": "in", "type": "any"}]
+
+    @property
+    def outputs(self):
+        return [{"name": "out", "type": "any"}]
+
+    def execute(self, time, inputs, params):
+        dt = float(params.get("dtime", 0.01))
+        u = np.array(inputs[0], dtype=float)
+
+        if params.get("_init_start_", True):
+            params["_prev"] = u
+            params["_init_start_"] = False
+            return {0: u}
+
+        prev = np.array(params["_prev"], dtype=float)
+        rising = float(params.get("rising_slew", np.inf))
+        falling = float(params.get("falling_slew", np.inf))
+
+        max_inc = rising * dt
+        max_dec = falling * dt
+
+        delta = u - prev
+        delta = np.minimum(delta, max_inc)
+        delta = np.maximum(delta, -max_dec)
+
+        y = prev + delta
+        params["_prev"] = y
+        return {0: y}
