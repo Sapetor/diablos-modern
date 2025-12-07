@@ -1294,13 +1294,19 @@ class DSim:
     def get_neighbors(self, block_name):
         inputs = []
         outputs = []
-        # print(f"DEBUG: get_neighbors({block_name}) signals len: {len(self.line_list)}")
         for signal in self.line_list:
-            # print(f"DEBUG: Checking line {signal.name}: src={signal.srcblock}, dst={signal.dstblock}")
             if signal.dstblock == block_name:
-                inputs.append(signal)
+                inputs.append({
+                    'srcblock': signal.srcblock,
+                    'srcport': signal.srcport,
+                    'dstport': signal.dstport
+                })
             if signal.srcblock == block_name:
-                outputs.append(signal)
+                outputs.append({
+                    'dstblock': signal.dstblock,
+                    'srcport': signal.srcport,
+                    'dstport': signal.dstport
+                })
         return inputs, outputs
 
     def reset_memblocks(self):
@@ -1319,13 +1325,18 @@ class DSim:
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         try:
-            scope_lengths = [len(x.params['vector']) for x in self.blocks_list if x.block_fn == 'Scope']
-            if scope_lengths and scope_lengths[0] > 0:
+            vectors = [
+                x.params.get('vector')
+                for x in self.blocks_list
+                if x.block_fn == 'Scope' and 'vector' in x.params
+            ]
+            valid_vectors = [v for v in vectors if v is not None and hasattr(v, '__len__') and len(v) > 0]
+            if valid_vectors:
                 self.pyqtPlotScope()
             else:
-                logger.error("ERROR: NOT ENOUGH SAMPLES TO PLOT")
+                logger.info("PLOT: No scope data available to plot.")
         except Exception as e:
-            logger.error(f"ERROR: GRAPH HAS NOT BEEN SIMULATED YET: {str(e)}")
+            logger.info(f"PLOT: Skipping plot; scope data not available yet ({str(e)})")
 
     def export_data(self):
         """
@@ -1380,7 +1391,8 @@ class DSim:
 
         inputs, _ = self.get_neighbors(block.name)
         for conn in inputs:
-            if self._is_discrete_upstream(conn.srcblock, visited):
+            src_block = conn.get('srcblock') if isinstance(conn, dict) else getattr(conn, 'srcblock', None)
+            if src_block and self._is_discrete_upstream(src_block, visited):
                 return True
         return False
 
@@ -1395,7 +1407,13 @@ class DSim:
                 if not inputs:
                     modes.append(False)
                     continue
-                step_mode = any(self._is_discrete_upstream(conn.srcblock) for conn in inputs)
+                step_mode = any(
+                    self._is_discrete_upstream(
+                        conn.get('srcblock') if isinstance(conn, dict) else getattr(conn, 'srcblock', None)
+                    )
+                    for conn in inputs
+                    if (conn.get('srcblock') if isinstance(conn, dict) else getattr(conn, 'srcblock', None))
+                )
                 modes.append(step_mode)
         return modes
 
