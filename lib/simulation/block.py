@@ -628,18 +628,17 @@ class DBlock:
             path.lineTo(0.9, 0.3)
             path.lineTo(0.9, 0.7)
         elif self.block_fn == "Hysteresis":
-            # Relay with upper/lower bands
-            path.moveTo(0.1, 0.2)   # lower band
-            path.lineTo(0.9, 0.2)
-            path.moveTo(0.1, 0.8)   # upper band
-            path.lineTo(0.9, 0.8)
-            # Arrow showing switching
-            path.moveTo(0.3, 0.5)
-            path.lineTo(0.3, 0.8)
-            path.lineTo(0.25, 0.75)
-            path.moveTo(0.6, 0.5)
-            path.lineTo(0.6, 0.2)
-            path.lineTo(0.55, 0.25)
+            # Relay hysteresis: two thresholds and retained output
+            # Threshold lines
+            path.moveTo(0.1, 0.25); path.lineTo(0.9, 0.25)
+            path.moveTo(0.1, 0.75); path.lineTo(0.9, 0.75)
+            # Output levels
+            path.moveTo(0.15, 0.85); path.lineTo(0.85, 0.85)
+            path.moveTo(0.15, 0.15); path.lineTo(0.85, 0.15)
+            # Rising transition arrow (at upper)
+            path.moveTo(0.3, 0.6); path.lineTo(0.3, 0.25); path.lineTo(0.25, 0.32)
+            # Falling transition arrow (at lower)
+            path.moveTo(0.6, 0.4); path.lineTo(0.6, 0.75); path.lineTo(0.55, 0.68)
         elif self.block_fn == "Deadband":
             # Flat line around center with drop outside band
             path.moveTo(0.1, 0.5)
