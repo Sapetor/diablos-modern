@@ -573,6 +573,55 @@ class DBlock:
             path.lineTo(0.6, 0.5)
             path.lineTo(0.6, 0.2)
             path.lineTo(0.9, 0.2)
+        elif self.block_fn == "PRBS":
+            # Stylized pseudo-random bit sequence as a jagged square wave
+            path.moveTo(0.1, 0.7)
+            path.lineTo(0.2, 0.7)
+            path.lineTo(0.2, 0.3)
+            path.lineTo(0.35, 0.3)
+            path.lineTo(0.35, 0.7)
+            path.lineTo(0.55, 0.7)
+            path.lineTo(0.55, 0.3)
+            path.lineTo(0.7, 0.3)
+            path.lineTo(0.7, 0.7)
+            path.lineTo(0.9, 0.7)
+        elif self.block_fn == "Saturation":
+            # Clipped sine-like signal against min/max rails
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.9, 0.8)  # upper rail
+            path.moveTo(0.1, 0.2)
+            path.lineTo(0.9, 0.2)  # lower rail
+            path.moveTo(0.15, 0.5)
+            path.quadTo(0.3, 0.2, 0.45, 0.2)
+            path.lineTo(0.55, 0.2)
+            path.quadTo(0.7, 0.8, 0.85, 0.8)
+        elif self.block_fn == "RateLimiter":
+            # Ramp with limited slope
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.4, 0.6)
+            path.lineTo(0.7, 0.4)
+            path.lineTo(0.9, 0.4)
+            # Show slope cap with triangle marker
+            path.moveTo(0.55, 0.55)
+            path.lineTo(0.6, 0.45)
+            path.lineTo(0.65, 0.55)
+            path.lineTo(0.55, 0.55)
+        elif self.block_fn == "PID":
+            # Center "PID" label and small sp/pv hints
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 3)
+            font.setWeight(600)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            painter.drawText(self.rect, Qt.AlignCenter, "PID")
+            font.setPointSize(original_size - 1)
+            font.setWeight(400)
+            painter.setFont(font)
+            painter.drawText(QRect(self.left + 4, self.top + 2, self.width // 2, self.height // 2), Qt.AlignLeft | Qt.AlignTop, "sp")
+            painter.drawText(QRect(self.left + 4, self.top + self.height // 2, self.width // 2, self.height // 2), Qt.AlignLeft | Qt.AlignBottom, "pv")
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "StateSpace":
             # Draw x' = Ax + Bu
             font = painter.font()
@@ -1058,4 +1107,3 @@ class DBlock:
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
         self.dirty = True
-
