@@ -640,18 +640,20 @@ class DBlock:
             # Falling transition arrow (at lower)
             path.moveTo(0.6, 0.4); path.lineTo(0.6, 0.75); path.lineTo(0.55, 0.68)
         elif self.block_fn == "Deadband":
-            # Flat line around center with drop outside band
-            path.moveTo(0.1, 0.5)
-            path.lineTo(0.35, 0.5)
-            path.lineTo(0.35, 0.2)
-            path.lineTo(0.65, 0.2)
-            path.lineTo(0.65, 0.5)
-            path.lineTo(0.9, 0.5)
+            # Center deadband band and zeroed output inside
             # Band markers
-            path.moveTo(0.35, 0.3)
-            path.lineTo(0.35, 0.7)
-            path.moveTo(0.65, 0.3)
-            path.lineTo(0.65, 0.7)
+            path.moveTo(0.35, 0.25); path.lineTo(0.35, 0.75)
+            path.moveTo(0.65, 0.25); path.lineTo(0.65, 0.75)
+            # Signal clamped to center inside band
+            path.moveTo(0.1, 0.5); path.lineTo(0.35, 0.5)
+            path.lineTo(0.65, 0.5)
+            # Outside band, rising
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.9, 0.2)
+            # Outside band, falling
+            path.moveTo(0.65, 0.5)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.9, 0.8)
         elif self.block_fn == "Switch":
             # 3-input selector icon
             path.moveTo(0.15, 0.3)  # ctrl arrow to decision
