@@ -43,7 +43,7 @@ BLOCK_SIZES = {
     # Routing - compact
     'Mux': (70, 60),
     'Demux': (70, 60),
-    'Switch': (80, 70),
+    'Switch': (90, 90),
 }
 
 # Minimum block size to prevent blocks from becoming too small
