@@ -62,6 +62,15 @@ def test_switch_selects_true_branch():
     block = SwitchBlock()
     p = {"threshold": 0.0}
     out = block.execute(0.0, {0: np.array([0.5]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
-    assert out == 10.0
+    assert out == 10.0  # ctrl>=thr -> first data input
     out2 = block.execute(0.0, {0: np.array([-0.1]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
     assert out2 == -10.0
+
+
+def test_switch_index_mode_multiway():
+    block = SwitchBlock()
+    p = {"mode": "index", "n_inputs": 3}
+    out0 = block.execute(0.0, {0: np.array([0.1]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p)[0][0]
+    assert out0 == 1.0  # round(0.1)=0 -> in0
+    out2 = block.execute(0.0, {0: np.array([2.2]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p)[0][0]
+    assert out2 == 3.0  # clamp to last
