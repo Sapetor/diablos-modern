@@ -2,6 +2,9 @@ import numpy as np
 from blocks.saturation import SaturationBlock
 from blocks.rate_limiter import RateLimiterBlock
 from blocks.pid import PIDBlock
+from blocks.hysteresis import HysteresisBlock
+from blocks.deadband import DeadbandBlock
+from blocks.switch import SwitchBlock
 
 
 def test_saturation_clips_values():
@@ -34,3 +37,31 @@ def test_pid_proportional_only():
     out = block.execute(0.0, {0: np.array([1.0]), 1: np.array([0.25])}, params)[0]
     # error = 0.75; u = 2 * 0.75 = 1.5
     assert np.isclose(out, 1.5)
+
+
+def test_hysteresis_switches_and_holds():
+    block = HysteresisBlock()
+    p = {"upper": 1.0, "lower": -1.0, "high": 2.0, "low": -2.0, "_init_start_": True}
+    out1 = block.execute(0.0, {0: np.array([0.0])}, p)[0][0]
+    assert out1 == -2.0
+    out2 = block.execute(0.1, {0: np.array([1.2])}, p)[0][0]
+    assert out2 == 2.0
+    out3 = block.execute(0.2, {0: np.array([0.5])}, p)[0][0]
+    # Should hold high state inside band
+    assert out3 == 2.0
+
+
+def test_deadband_zeroes_small_signal():
+    block = DeadbandBlock()
+    p = {"deadband": 0.5, "center": 0.0}
+    out = block.execute(0.0, {0: np.array([-0.4, 0.0, 0.6])}, p)[0]
+    assert np.allclose(out, [0.0, 0.0, 0.6])
+
+
+def test_switch_selects_true_branch():
+    block = SwitchBlock()
+    p = {"threshold": 0.0}
+    out = block.execute(0.0, {0: np.array([0.5]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
+    assert out == 10.0
+    out2 = block.execute(0.0, {0: np.array([-0.1]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
+    assert out2 == -10.0
