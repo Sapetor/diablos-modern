@@ -168,6 +168,20 @@ class DBlock:
         for i in range(self.in_ports):
             self.input_queue[i] = None
 
+        # Determine input groups if provided by block instance
+        control_group_indices = []
+        data_group_indices = []
+        if hasattr(self, 'block_instance') and self.block_instance:
+            try:
+                port_defs = self.block_instance.get_inputs(self.params) if hasattr(self.block_instance, 'get_inputs') else self.block_instance.inputs
+            except Exception:
+                port_defs = []
+            for idx, pdef in enumerate(port_defs or []):
+                if isinstance(pdef, dict) and pdef.get("group") == "control":
+                    control_group_indices.append(idx)
+                else:
+                    data_group_indices.append(idx)
+
         port_height = max(self.out_ports, self.in_ports) * self.port_radius * 2
         if port_height > self.height:
             self.height = port_height + 10
@@ -189,9 +203,34 @@ class DBlock:
         if hasattr(self, 'block_instance') and self.block_instance and hasattr(self.block_instance, 'use_port_grid_snap'):
             use_grid_snap = self.block_instance.use_port_grid_snap
 
+        # Helper to compute evenly spaced Y positions
+        def spaced_positions(count, top, height):
+            return [int(top + height * (i + 1) / (count + 1)) for i in range(count)]
+
+        # Assign Y positions with grouping: control at top section, data below
+        port_y_positions = {}
+        ctrl_section_height = int(self.height * 0.35) if control_group_indices else 0
+        data_section_height = self.height - ctrl_section_height
+        ctrl_top = self.top
+        data_top = self.top + ctrl_section_height
+
+        if control_group_indices:
+            ctrl_positions = spaced_positions(len(control_group_indices), ctrl_top, max(ctrl_section_height, self.port_radius * 2))
+            for idx, pos in zip(control_group_indices, ctrl_positions):
+                port_y_positions[idx] = pos
+
+        data_indices = [i for i in range(self.in_ports) if i not in control_group_indices]
+        if data_indices:
+            data_positions = spaced_positions(len(data_indices), data_top, max(data_section_height, self.port_radius * 2))
+            for idx, pos in zip(data_indices, data_positions):
+                port_y_positions[idx] = pos
+
         if self.in_ports > 0:
             for i in range(self.in_ports):
-                port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
+                if port_y_positions:
+                    port_y_float = port_y_positions.get(i, self.top + self.height * (i + 1) / (self.in_ports + 1))
+                else:
+                    port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
                 if use_grid_snap:
                     port_y = int(round(port_y_float / grid_size) * grid_size)
                 else:
