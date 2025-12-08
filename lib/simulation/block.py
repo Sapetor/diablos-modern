@@ -628,32 +628,40 @@ class DBlock:
             path.lineTo(0.9, 0.3)
             path.lineTo(0.9, 0.7)
         elif self.block_fn == "Hysteresis":
-            # Relay hysteresis: two thresholds and retained output
-            # Threshold lines
-            path.moveTo(0.1, 0.25); path.lineTo(0.9, 0.25)
-            path.moveTo(0.1, 0.75); path.lineTo(0.9, 0.75)
-            # Output levels
-            path.moveTo(0.15, 0.85); path.lineTo(0.85, 0.85)
-            path.moveTo(0.15, 0.15); path.lineTo(0.85, 0.15)
-            # Rising transition arrow (at upper)
-            path.moveTo(0.3, 0.6); path.lineTo(0.3, 0.25); path.lineTo(0.25, 0.32)
-            # Falling transition arrow (at lower)
-            path.moveTo(0.6, 0.4); path.lineTo(0.6, 0.75); path.lineTo(0.55, 0.68)
+            # Stylized hysteresis loop (rectangular loop with direction arrows)
+            path.moveTo(0.25, 0.2)   # bottom left
+            path.lineTo(0.75, 0.2)   # bottom right
+            path.lineTo(0.75, 0.35)  # up
+            path.lineTo(0.35, 0.35)
+            path.lineTo(0.35, 0.65)
+            path.lineTo(0.75, 0.65)
+            path.lineTo(0.75, 0.8)   # top right
+            path.lineTo(0.25, 0.8)   # top left
+            path.lineTo(0.25, 0.65)
+            path.lineTo(0.65, 0.65)
+            path.lineTo(0.65, 0.35)
+            path.lineTo(0.25, 0.35)
+            path.lineTo(0.25, 0.2)
+            # Arrowheads indicating loop direction (clockwise)
+            path.moveTo(0.55, 0.2); path.lineTo(0.58, 0.23); path.lineTo(0.52, 0.23)
+            path.moveTo(0.75, 0.5); path.lineTo(0.72, 0.47); path.lineTo(0.72, 0.53)
+            path.moveTo(0.45, 0.8); path.lineTo(0.48, 0.77); path.lineTo(0.42, 0.77)
+            path.moveTo(0.25, 0.5); path.lineTo(0.28, 0.53); path.lineTo(0.28, 0.47)
         elif self.block_fn == "Deadband":
-            # Center deadband band and zeroed output inside
+            # Input/output characteristic with deadband flattened around zero
+            # Diagonal outside deadband
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.35, 0.65)   # enters band
+            path.lineTo(0.65, 0.65)   # flat through band
+            path.lineTo(0.9, 0.4)     # exits band
+            # Lower branch
+            path.moveTo(0.1, 0.1)
+            path.lineTo(0.35, 0.35)
+            path.lineTo(0.65, 0.35)
+            path.lineTo(0.9, 0.6)
             # Band markers
-            path.moveTo(0.35, 0.25); path.lineTo(0.35, 0.75)
-            path.moveTo(0.65, 0.25); path.lineTo(0.65, 0.75)
-            # Signal clamped to center inside band
-            path.moveTo(0.1, 0.5); path.lineTo(0.35, 0.5)
-            path.lineTo(0.65, 0.5)
-            # Outside band, rising
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.9, 0.2)
-            # Outside band, falling
-            path.moveTo(0.65, 0.5)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.9, 0.8)
+            path.moveTo(0.35, 0.2); path.lineTo(0.35, 0.8)
+            path.moveTo(0.65, 0.2); path.lineTo(0.65, 0.8)
         elif self.block_fn == "Switch":
             # 3-input selector icon
             path.moveTo(0.15, 0.3)  # ctrl arrow to decision
