@@ -1417,6 +1417,45 @@ class DSim:
                 modes.append(step_mode)
         return modes
 
+    def get_scope_traces(self):
+        """
+        Collect scope data as a flat list of traces for the waveform inspector.
+        Returns (timeline, traces) where traces is a list of dicts:
+        {'name': str, 'y': np.ndarray, 'step': bool}
+        """
+        if not hasattr(self, 'timeline') or self.timeline is None or len(self.timeline) == 0:
+            return None, []
+
+        step_modes = self._scope_step_modes()
+        traces = []
+        step_idx = 0
+        for block in self.blocks_list:
+            if block.block_fn != 'Scope':
+                continue
+            labels = block.exec_params.get('vec_labels', block.params.get('vec_labels'))
+            vec = block.exec_params.get('vector', block.params.get('vector'))
+            if vec is None:
+                continue
+            arr = np.array(vec)
+            step_flag = step_modes[step_idx] if step_idx < len(step_modes) else False
+            step_idx += 1
+
+            if arr.ndim == 1:
+                name = labels if isinstance(labels, str) else block.name
+                traces.append({'name': name, 'y': arr, 'step': step_flag})
+            elif arr.ndim == 2:
+                # Multiple channels
+                for i in range(arr.shape[1]):
+                    if isinstance(labels, (list, tuple)) and i < len(labels):
+                        name = labels[i]
+                    else:
+                        name = f"{block.name}[{i}]"
+                    traces.append({'name': name, 'y': arr[:, i], 'step': step_flag})
+            else:
+                continue
+
+        return self.timeline, traces
+
     # Pyqtgraph functions
     def pyqtPlotScope(self):
         """
