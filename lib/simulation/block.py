@@ -637,7 +637,7 @@ class DBlock:
             font.setPointSize(orig - 2)
             painter.setFont(font)
             painter.drawText(QRect(self.left + 4, self.top + 4, self.width//2, self.height//3), Qt.AlignLeft | Qt.AlignTop, "ctrl")
-            painter.drawText(QRect(self.left + 4, self.top + self.height//2, self.width//2, self.height//2), Qt.AlignLeft | Qt.AlignBottom, "true / false")
+            painter.drawText(QRect(self.left + 4, self.top + self.height//2, self.width//2, self.height//2), Qt.AlignLeft | Qt.AlignBottom, "in0 / in1")
             font.setPointSize(orig)
             painter.setFont(font)
         elif self.block_fn == "Saturation":
