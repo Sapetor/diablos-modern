@@ -574,20 +574,20 @@ class DBlock:
             path.lineTo(0.6, 0.2)
             path.lineTo(0.9, 0.2)
         elif self.block_fn == "PRBS":
-            # LFSR icon: shift register boxes with feedback loop arrow
-            # Draw three register boxes
-            path.addRect(0.15, 0.25, 0.2, 0.5)
-            path.addRect(0.4, 0.25, 0.2, 0.5)
-            path.addRect(0.65, 0.25, 0.2, 0.5)
-            # Output tap arrow
-            path.moveTo(0.85, 0.5)
-            path.lineTo(0.95, 0.5)
-            # Feedback loop (curved arrow back to first box)
-            path.moveTo(0.85, 0.3)
-            path.cubicTo(0.95, 0.15, 0.05, 0.15, 0.15, 0.3)
-            path.moveTo(0.2, 0.28)
-            path.lineTo(0.15, 0.33)
-            path.lineTo(0.1, 0.28)
+            # Irregular pulse train (variable widths/heights)
+            path.moveTo(0.1, 0.7)
+            path.lineTo(0.18, 0.7)
+            path.lineTo(0.18, 0.3)
+            path.lineTo(0.32, 0.3)
+            path.lineTo(0.32, 0.7)
+            path.lineTo(0.45, 0.7)
+            path.lineTo(0.45, 0.4)
+            path.lineTo(0.6, 0.4)
+            path.lineTo(0.6, 0.7)
+            path.lineTo(0.78, 0.7)
+            path.lineTo(0.78, 0.3)
+            path.lineTo(0.9, 0.3)
+            path.lineTo(0.9, 0.7)
         elif self.block_fn == "Saturation":
             # Clipped sine-like signal against min/max rails
             path.moveTo(0.1, 0.8)
