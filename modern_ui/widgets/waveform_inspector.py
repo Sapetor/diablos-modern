@@ -31,6 +31,7 @@ class WaveformInspector(QWidget):
         self.timeline = None
         self.traces = []
         self.active_traces = set()
+        self.active_indices = set()
 
         self.setWindowTitle("Waveform Inspector")
         self.resize(900, 650)
@@ -125,6 +126,7 @@ class WaveformInspector(QWidget):
 
         # rebuild trace list UI
         self.active_traces = set(range(len(self.traces)))
+        self.active_indices = set(self.active_traces)
         self._populate_trace_list()
         self._update_scrub_max()
 
@@ -201,7 +203,7 @@ class WaveformInspector(QWidget):
         idx = min(max(idx, 0), len(self.timeline) - 1)
         vals = []
         for i, tr in enumerate(self.traces):
-            if i not in self.active_indices:
+            if i not in self.active_traces:
                 continue
             y = tr["y"]
             if len(y) == 0:
