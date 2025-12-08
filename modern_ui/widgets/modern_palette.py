@@ -49,6 +49,30 @@ class DraggableBlockWidget(QFrame):
         self.setFixedSize(scaled_size, scaled_size)
         self.setFrameStyle(QFrame.StyledPanel)
         self.setCursor(Qt.OpenHandCursor)
+        # Tooltip with doc, ports, params
+        try:
+            doc_lines = []
+            block_cls = getattr(self.menu_block, 'block_class', None)
+            inst = block_cls() if block_cls else None
+            if inst and hasattr(inst, 'doc'):
+                doc_lines.append(str(inst.doc))
+            # Inputs / outputs
+            def _names(seq):
+                try:
+                    return ", ".join([i.get('name', '') for i in seq if isinstance(i, dict)]) or "—"
+                except Exception:
+                    return "—"
+            if inst:
+                doc_lines.append(f"Inputs: {_names(getattr(inst, 'inputs', []))}")
+                doc_lines.append(f"Outputs: {_names(getattr(inst, 'outputs', []))}")
+                params = getattr(inst, 'params', {})
+                if isinstance(params, dict) and params:
+                    doc_lines.append("Params: " + ", ".join(list(params.keys())[:6]) + ("…" if len(params) > 6 else ""))
+            tooltip = "\n".join([line for line in doc_lines if line])
+            if tooltip:
+                self.setToolTip(tooltip)
+        except Exception:
+            pass
 
     def paintEvent(self, event):
         painter = QPainter(self)
