@@ -31,8 +31,6 @@ class WaveformInspector(QWidget):
         self.timeline = None
         self.traces = []
         self.active_traces = set()
-        self._rebuild_traces()
-        self._update_scrub_max()
 
         self.setWindowTitle("Waveform Inspector")
         self.resize(900, 650)
@@ -71,7 +69,6 @@ class WaveformInspector(QWidget):
         self.plot.addItem(self.vline)
         self.vline.sigPositionChanged.connect(self._update_readout)
         self.curves = []
-        self._refresh_curves()
 
         right.addWidget(self.plot, 1)
 
@@ -98,6 +95,10 @@ class WaveformInspector(QWidget):
         btns.addStretch()
         right.addLayout(btns)
 
+        # Build traces now that widgets exist
+        self._rebuild_traces()
+        self._refresh_curves()
+        self._update_scrub_max()
         self._update_readout()
 
     def _rebuild_traces(self):
