@@ -596,16 +596,29 @@ class DBlock:
             path.lineTo(0.55, 0.2)
             path.quadTo(0.7, 0.8, 0.85, 0.8)
         elif self.block_fn == "RateLimiter":
-            # Ramp with limited slope
+            # Show desired steep ramp (dashed idea) and limited (solid) ramp
+            # Limited ramp
             path.moveTo(0.1, 0.8)
-            path.lineTo(0.4, 0.6)
-            path.lineTo(0.7, 0.4)
+            path.lineTo(0.35, 0.6)
+            path.lineTo(0.6, 0.4)
             path.lineTo(0.9, 0.4)
-            # Show slope cap with triangle marker
-            path.moveTo(0.55, 0.55)
+            # Desired (steeper) ramp hint
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.5, 0.2)
+            # Cap marker
+            path.moveTo(0.6, 0.45)
+            path.lineTo(0.66, 0.33)
+            path.lineTo(0.72, 0.45)
             path.lineTo(0.6, 0.45)
-            path.lineTo(0.65, 0.55)
-            path.lineTo(0.55, 0.55)
+            # Small label
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size - 1)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            painter.drawText(QRect(self.left, self.top + self.height // 2, self.width, self.height // 2), Qt.AlignCenter, "du/dt")
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "PID":
             # Center "PID" label and small sp/pv hints
             font = painter.font()
