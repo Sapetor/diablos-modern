@@ -588,6 +588,58 @@ class DBlock:
             path.lineTo(0.78, 0.3)
             path.lineTo(0.9, 0.3)
             path.lineTo(0.9, 0.7)
+        elif self.block_fn == "Hysteresis":
+            # Relay with upper/lower bands
+            path.moveTo(0.1, 0.2)   # lower band
+            path.lineTo(0.9, 0.2)
+            path.moveTo(0.1, 0.8)   # upper band
+            path.lineTo(0.9, 0.8)
+            # Arrow showing switching
+            path.moveTo(0.3, 0.5)
+            path.lineTo(0.3, 0.8)
+            path.lineTo(0.25, 0.75)
+            path.moveTo(0.6, 0.5)
+            path.lineTo(0.6, 0.2)
+            path.lineTo(0.55, 0.25)
+        elif self.block_fn == "Deadband":
+            # Flat line around center with drop outside band
+            path.moveTo(0.1, 0.5)
+            path.lineTo(0.35, 0.5)
+            path.lineTo(0.35, 0.2)
+            path.lineTo(0.65, 0.2)
+            path.lineTo(0.65, 0.5)
+            path.lineTo(0.9, 0.5)
+            # Band markers
+            path.moveTo(0.35, 0.3)
+            path.lineTo(0.35, 0.7)
+            path.moveTo(0.65, 0.3)
+            path.lineTo(0.65, 0.7)
+        elif self.block_fn == "Switch":
+            # 3-input selector icon
+            path.moveTo(0.15, 0.3)  # ctrl arrow to decision
+            path.lineTo(0.4, 0.5)
+            path.moveTo(0.15, 0.7)  # in_false
+            path.lineTo(0.4, 0.6)
+            path.moveTo(0.15, 0.9)  # in_true
+            path.lineTo(0.4, 0.7)
+            # decision diamond
+            path.moveTo(0.45, 0.5)
+            path.lineTo(0.55, 0.4)
+            path.lineTo(0.65, 0.5)
+            path.lineTo(0.55, 0.6)
+            path.lineTo(0.45, 0.5)
+            # output
+            path.moveTo(0.65, 0.5)
+            path.lineTo(0.9, 0.5)
+            # tiny port labels
+            font = painter.font()
+            orig = font.pointSize()
+            font.setPointSize(orig - 2)
+            painter.setFont(font)
+            painter.drawText(QRect(self.left + 4, self.top + 4, self.width//2, self.height//3), Qt.AlignLeft | Qt.AlignTop, "ctrl")
+            painter.drawText(QRect(self.left + 4, self.top + self.height//2, self.width//2, self.height//2), Qt.AlignLeft | Qt.AlignBottom, "true / false")
+            font.setPointSize(orig)
+            painter.setFont(font)
         elif self.block_fn == "Saturation":
             # Clipped sine-like signal against min/max rails
             path.moveTo(0.1, 0.8)
