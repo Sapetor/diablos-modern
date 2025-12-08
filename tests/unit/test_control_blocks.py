@@ -5,6 +5,8 @@ from blocks.pid import PIDBlock
 from blocks.hysteresis import HysteresisBlock
 from blocks.deadband import DeadbandBlock
 from blocks.switch import SwitchBlock
+from blocks.goto import GotoBlock
+from blocks.from_block import FromBlock
 
 
 def test_saturation_clips_values():
@@ -74,3 +76,10 @@ def test_switch_index_mode_multiway():
     assert out0 == 1.0  # round(0.1)=0 -> in0
     out2 = block.execute(0.0, {0: np.array([2.2]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p)[0][0]
     assert out2 == 3.0  # clamp to last
+
+
+def test_goto_from_params_defaults():
+    goto = GotoBlock()
+    frm = FromBlock()
+    assert goto.params["tag"]["default"] == "A"
+    assert frm.params["tag"]["default"] == "A"

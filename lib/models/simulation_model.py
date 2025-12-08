@@ -131,6 +131,7 @@ class SimulationModel:
                         ex_params[param_name] = param_info['default']
                     else:
                         ex_params[param_name] = param_info
+            param_metadata = getattr(block, 'params', {})
 
             # Determine function name
             if hasattr(block, 'fn_name'):
@@ -154,7 +155,7 @@ class SimulationModel:
                     'b_type': b_type,
                     'io_edit': io_edit
                 },
-                ex_params=ex_params,
+                ex_params=param_metadata,
                 b_color=block_color,
                 coords=block_size,  # Use configured block size
                 external=getattr(block, 'external', False),

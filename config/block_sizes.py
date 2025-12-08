@@ -44,6 +44,8 @@ BLOCK_SIZES = {
     'Mux': (70, 60),
     'Demux': (70, 60),
     'Switch': (90, 90),
+    'Goto': (70, 60),
+    'From': (70, 60),
 }
 
 # Minimum block size to prevent blocks from becoming too small
