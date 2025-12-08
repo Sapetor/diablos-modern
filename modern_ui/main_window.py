@@ -37,6 +37,7 @@ from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
+from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -625,8 +626,14 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def show_plots(self):
         """Show plots."""
-        if hasattr(self.dsim, 'plot_again'):
-            self.dsim.plot_again()
+        if not hasattr(self.dsim, 'get_scope_traces'):
+            return
+        timeline, traces = self.dsim.get_scope_traces()
+        if not traces:
+            QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
+            return
+        self.waveform_inspector = WaveformInspector(timeline, traces)
+        self.waveform_inspector.show()
     
     def capture_screen(self):
         """Capture screenshot."""
