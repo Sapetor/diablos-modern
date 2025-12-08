@@ -125,6 +125,9 @@ class DSim:
         self.timeline = []
         self.outs = []
         self.plotty = None
+        # Run history of scope data (session only)
+        self.run_history = []
+        self.run_history_limit = 5
 
     def main_buttons_init(self):
         """
@@ -1089,6 +1092,12 @@ class DSim:
                 # Export
                 self.export_data()
 
+                # Record run history for inspector
+                try:
+                    self._record_run_history()
+                except Exception as e:
+                    logger.warning(f"Could not record run history: {e}")
+
                 # Scope
                 if not self.dynamic_plot:
                     logger.debug("Calling pyqtPlotScope...")
@@ -1455,6 +1464,26 @@ class DSim:
                 continue
 
         return self.timeline, traces
+
+    def _record_run_history(self):
+        """
+        Save latest scope run into in-memory history (session only).
+        """
+        timeline, traces = self.get_scope_traces()
+        if timeline is None or not traces:
+            return
+
+        run_entry = {
+            "name": f"Run {len(self.run_history)+1}",
+            "timeline": np.array(timeline, dtype=float),
+            "traces": traces,
+            "sim_dt": self.sim_dt,
+            "sim_time": self.sim_time,
+        }
+        self.run_history.append(run_entry)
+        # Enforce limit
+        if len(self.run_history) > self.run_history_limit:
+            self.run_history = self.run_history[-self.run_history_limit:]
 
     # Pyqtgraph functions
     def pyqtPlotScope(self):

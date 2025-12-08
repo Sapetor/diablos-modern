@@ -626,13 +626,13 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def show_plots(self):
         """Show plots."""
-        if not hasattr(self.dsim, 'get_scope_traces'):
+        if not hasattr(self.dsim, 'run_history'):
             return
-        timeline, traces = self.dsim.get_scope_traces()
-        if not traces:
+        history = getattr(self.dsim, 'run_history', [])
+        if not history:
             QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
             return
-        self.waveform_inspector = WaveformInspector(timeline, traces)
+        self.waveform_inspector = WaveformInspector(history)
         self.waveform_inspector.show()
     
     def capture_screen(self):
