@@ -220,6 +220,43 @@ class SimulationModel:
         logger.debug(f"New block created: {new_block.name} (category: {category})")
         return new_block
 
+    def link_goto_from(self) -> None:
+        """
+        Automatically connect Goto/From blocks that share the same tag.
+        For each From(tag) with no incoming line, connect the first matching Goto(tag).
+        """
+        # Collect goto blocks by tag
+        goto_map = {}
+        for b in self.blocks_list:
+            if b.block_fn == 'Goto':
+                tag = str(b.params.get('tag', ''))
+                if tag not in goto_map:
+                    goto_map[tag] = []
+                goto_map[tag].append(b)
+
+        # For each From, ensure an incoming line from matching Goto
+        for b in self.blocks_list:
+            if b.block_fn != 'From':
+                continue
+            tag = str(b.params.get('tag', ''))
+            if tag not in goto_map:
+                continue
+
+            # Skip if already connected
+            inputs, _ = self.get_neighbors(b.name)
+            if inputs:
+                continue
+
+            src_block = goto_map[tag][0]
+            # Ensure coords are up to date
+            src_block.update_Block()
+            b.update_Block()
+
+            src_point = src_block.out_coords[0] if src_block.out_coords else src_block.rect.center()
+            dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
+
+            self.add_line((src_block.name, 0, src_point), (b.name, 0, dst_point))
+
     def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],
                  dstData: Optional[Tuple[str, int, QPoint]]) -> Optional[DLine]:
         """

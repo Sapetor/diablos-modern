@@ -83,3 +83,26 @@ def test_goto_from_params_defaults():
     frm = FromBlock()
     assert goto.params["tag"]["default"] == "A"
     assert frm.params["tag"]["default"] == "A"
+
+
+def test_link_goto_from_adds_line(simulation_model):
+    from PyQt5.QtCore import QRect
+    from lib.simulation.block import DBlock
+    from lib.simulation.connection import DLine
+
+    # Create simple goto/from blocks
+    goto = DBlock("Goto", 0, QRect(0, 0, 70, 60), "orange", block_class=GotoBlock)
+    goto.params['tag'] = "X"
+    frm = DBlock("From", 0, QRect(200, 0, 70, 60), "orange", block_class=FromBlock, in_ports=1, out_ports=1)
+    frm.params['tag'] = "X"
+
+    simulation_model.blocks_list = [goto, frm]
+    simulation_model.line_list = []
+
+    simulation_model.link_goto_from()
+
+    # Expect one line connecting goto -> from
+    assert len(simulation_model.line_list) == 1
+    line = simulation_model.line_list[0]
+    assert line.srcblock == goto.name
+    assert line.dstblock == frm.name

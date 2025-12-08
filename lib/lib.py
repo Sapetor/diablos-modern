@@ -949,6 +949,15 @@ class DSim:
             if block.block_fn == 'Scope':
                 self.buttons_list[6].active = True
 
+        # Auto-connect Goto/From tags
+        try:
+            self.model.link_goto_from()
+            # refresh references
+            self.blocks_list = self.model.blocks_list
+            self.line_list = self.model.line_list
+        except Exception as e:
+            logger.warning(f"Goto/From linking failed: {e}")
+
         # The dynamic plot function is initialized, if the Boolean is active
         self.dynamic_pyqtPlotScope(step=0)
 
