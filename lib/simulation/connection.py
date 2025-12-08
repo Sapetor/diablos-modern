@@ -455,7 +455,8 @@ class DLine:
         painter.setFont(font)
 
         metrics = QFontMetrics(font)
-        text_width = metrics.horizontalAdvance(self.label)
+        # Qt5.9 compatibility: use width() as fallback
+        text_width = metrics.horizontalAdvance(self.label) if hasattr(metrics, "horizontalAdvance") else metrics.width(self.label)
         text_height = metrics.height()
 
         # Background rectangle
