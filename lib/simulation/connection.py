@@ -32,7 +32,7 @@ class DLine:
     """
 
     def __init__(self, sid: int, srcblock: str, srcport: int, dstblock: str, dstport: int,
-                 points: Union[List[QPoint], List[Tuple[int, int]]]) -> None:
+                 points: Union[List[QPoint], List[Tuple[int, int]]], hidden: bool = False) -> None:
         """
         Initialize a connection line between two blocks.
 
@@ -50,6 +50,7 @@ class DLine:
         self.srcport: int = srcport
         self.dstblock: str = dstblock
         self.dstport: int = dstport
+        self.hidden: bool = hidden
         self.total_srcports: int = 1
         self.total_dstports: int = 1
         self.srcbottom: int = 0

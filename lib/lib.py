@@ -239,6 +239,8 @@ class DSim:
         if painter is None:
             return
         for line in self.line_list:
+            if getattr(line, "hidden", False):
+                continue
             line.draw_line(painter)
 
     def update_lines(self):

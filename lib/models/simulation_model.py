@@ -247,6 +247,9 @@ class SimulationModel:
                     goto_map[tag] = []
                 goto_map[tag].append(b)
 
+        # Remove any previous virtual lines
+        self.line_list = [ln for ln in self.line_list if not getattr(ln, "hidden", False)]
+
         # For each From, ensure an incoming line from matching Goto
         for b in self.blocks_list:
             if b.block_fn != 'From':
@@ -265,10 +268,26 @@ class SimulationModel:
             src_block.update_Block()
             b.update_Block()
 
-            src_point = src_block.out_coords[0] if src_block.out_coords else src_block.rect.center()
-            dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
+            # Find source of the goto (its incoming line)
+            src_inputs, _ = _get_neighbors(src_block.name)
+            if not src_inputs:
+                continue
+            src_line = src_inputs[0]
 
-            self.add_line((src_block.name, 0, src_point), (b.name, 0, dst_point))
+            # Create hidden virtual line from goto input source to From block
+            from lib.simulation.connection import DLine
+            src_point = src_block.in_coords[0] if src_block.in_coords else src_block.rect.center()
+            dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
+            vline = DLine(
+                sid=len(self.line_list),
+                srcblock=src_line['srcblock'],
+                srcport=src_line['srcport'],
+                dstblock=b.name,
+                dstport=0,
+                points=[src_point, dst_point],
+                hidden=True
+            )
+            self.line_list.append(vline)
 
     def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],
                  dstData: Optional[Tuple[str, int, QPoint]]) -> Optional[DLine]:
