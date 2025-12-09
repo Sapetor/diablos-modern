@@ -261,6 +261,13 @@ python diablos_modern.py
 
 Your block should appear in the Block Palette under the category you specified!
 
+### Routing (Goto / From)
+
+- `Goto`: sink with `tag` (and optional `signal_name`). It consumes a wire and does not render an output port.
+- `From`: source with the same `tag`/`signal_name`. It exposes one output port.
+- At simulation init, the model creates a hidden virtual line from the Goto’s upstream source to each matching From (same tag). Hidden lines are not drawn or hit-tested.
+- The virtual line label is set to `signal_name` (defaults to `tag`), which can later be used for workspace binding/export.
+
 ### Step 4: Write Tests
 
 ```python
