@@ -65,7 +65,7 @@ class DraggableBlockWidget(QFrame):
             if inst:
                 doc_lines.append(f"Inputs: {_names(getattr(inst, 'inputs', []))}")
                 doc_lines.append(f"Outputs: {_names(getattr(inst, 'outputs', []))}")
-                params = getattr(inst, 'params', {})
+                params = getattr(self.menu_block, 'param_meta', getattr(inst, 'params', {}))
                 if isinstance(params, dict) and params:
                     doc_lines.append("Params: " + ", ".join(list(params.keys())[:6]) + ("…" if len(params) > 6 else ""))
             tooltip = "\n".join([line for line in doc_lines if line])
