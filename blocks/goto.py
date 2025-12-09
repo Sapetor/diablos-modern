@@ -25,7 +25,8 @@ class GotoBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "tag": {"type": "string", "default": "A", "doc": "Tag name to link Goto/From."}
+            "tag": {"type": "string", "default": "A", "doc": "Tag name to link Goto/From."},
+            "signal_name": {"type": "string", "default": "", "doc": "Optional label; defaults to tag when empty."}
         }
 
     @property
