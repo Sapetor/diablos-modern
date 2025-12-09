@@ -34,7 +34,7 @@ class GotoBlock(BaseBlock):
 
     @property
     def outputs(self):
-        return [{"name": "out", "type": "any"}]
+        return []
 
     def execute(self, time, inputs, params):
         return {0: inputs.get(0, 0)}
