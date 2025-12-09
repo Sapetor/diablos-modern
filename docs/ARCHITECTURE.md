@@ -194,6 +194,7 @@ class BaseBlock:
 - **Math**: Sum, Product (SgProd), Gain
 - **Control**: Integrator, Derivative, Transfer Function
 - **Utilities**: Mux, Demux, Scope, Export, Terminator
+- **Routing**: Goto (tagged sink) / From (tagged source). At simulation init the model inserts a hidden virtual line from the Goto’s upstream source to matching From blocks (same tag). Hidden lines are skipped in hit-testing/drawing. Optional `signal_name` defaults to the tag and is used as the virtual line label.
 - **Analysis**: BodeMag, RootLocus
 - **Advanced**: External (custom Python code)
 

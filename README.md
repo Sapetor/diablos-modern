@@ -143,6 +143,7 @@ DiaBloS includes 20+ built-in block types:
 **Discrete-Time**: Discrete Transfer Function, Discrete State Space, Zero-Order Hold
 **Analysis**: Bode Plot, Root Locus
 **Utilities**: Scope, Export, Mux, Demux, Terminator
+**Routing**: Goto / From (tag-based signal jump with optional signal_name, no visible wire)
 **Advanced**: External (custom Python code)
 
 ## Contributing
