@@ -243,6 +243,9 @@ class SimulationModel:
         for b in self.blocks_list:
             if b.block_fn == 'Goto':
                 tag = str(b.params.get('tag', ''))
+                # Ensure signal_name has fallback
+                if not b.params.get('signal_name'):
+                    b.params['signal_name'] = tag
                 if tag not in goto_map:
                     goto_map[tag] = []
                 goto_map[tag].append(b)
@@ -278,6 +281,7 @@ class SimulationModel:
             from lib.simulation.connection import DLine
             src_point = src_block.in_coords[0] if src_block.in_coords else src_block.rect.center()
             dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
+            signal_name = b.params.get('signal_name') or b.params.get('tag', '')
             vline = DLine(
                 sid=len(self.line_list),
                 srcblock=src_line['srcblock'],
@@ -287,6 +291,7 @@ class SimulationModel:
                 points=[src_point, dst_point],
                 hidden=True
             )
+            vline.label = signal_name
             self.line_list.append(vline)
 
     def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],
