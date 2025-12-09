@@ -832,6 +832,8 @@ class ModernCanvas(QWidget):
 
     def _get_clicked_line(self, pos):
         for line in getattr(self.dsim, 'line_list', []):
+            if getattr(line, "hidden", False):
+                continue
             if hasattr(line, 'collision'):
                 result = line.collision(pos)
                 if result:
