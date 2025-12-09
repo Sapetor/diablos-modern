@@ -155,7 +155,7 @@ class SimulationModel:
                     'b_type': b_type,
                     'io_edit': io_edit
                 },
-                ex_params=param_metadata,
+                ex_params=ex_params,
                 b_color=block_color,
                 coords=block_size,  # Use configured block size
                 external=getattr(block, 'external', False),
@@ -165,6 +165,8 @@ class SimulationModel:
 
             # Store category on menu block for later reference
             menu_block.category = category
+            # Store full param metadata for tooltips
+            menu_block.param_meta = param_metadata
             self.menu_blocks.append(menu_block)
 
     def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
