@@ -549,7 +549,9 @@ class DBlock:
             font.setPointSize(original_size + 4)
             painter.setFont(font)
             sign_text = self.params.get('sign', '++')
-            painter.drawText(self.rect, Qt.AlignCenter, sign_text)
+            if isinstance(sign_text, dict):
+                sign_text = sign_text.get('default', '++')
+            painter.drawText(self.rect, Qt.AlignCenter, str(sign_text))
             font.setPointSize(original_size)
             painter.setFont(font)
         elif self.block_fn == "SgProd":
