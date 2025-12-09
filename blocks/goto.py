@@ -34,8 +34,7 @@ class GotoBlock(BaseBlock):
 
     @property
     def outputs(self):
-        return []
+        return [{"name": "out", "type": "any"}]
 
     def execute(self, time, inputs, params):
-        # Execution does nothing; routing handled at wiring stage in model
         return {0: inputs.get(0, 0)}

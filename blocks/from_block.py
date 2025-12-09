@@ -30,12 +30,12 @@ class FromBlock(BaseBlock):
 
     @property
     def inputs(self):
-        return []
+        return [{"name": "in", "type": "any"}]
 
     @property
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
     def execute(self, time, inputs, params):
-        # Execution happens via pre-wiring; return passthrough
+        # Pass through received value
         return {0: inputs.get(0, 0)}
