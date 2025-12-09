@@ -73,6 +73,7 @@ class DiagramValidator:
         self._check_isolated_blocks(connection_maps)
         self._check_invalid_connections(connection_maps)
         self._check_duplicate_connections(connection_maps)
+        self._check_goto_from_tags()
 
         logger.info(f"Validation complete: {len(self.errors)} issues found")
         return self.errors
@@ -93,6 +94,8 @@ class DiagramValidator:
         connected_blocks = set()
 
         for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
             # Track input connections
             input_key = (line.dstblock, line.dstport)
             if input_key not in input_connections:
@@ -177,11 +180,61 @@ class DiagramValidator:
                 )
                 self.errors.append(error)
 
+    def _check_goto_from_tags(self) -> None:
+        """Validate tag usage for Goto/From blocks (duplicates, missing links)."""
+        goto_tags = {}
+        from_tags = {}
+        for block in self.dsim.blocks_list:
+            if block.block_fn == 'Goto':
+                tag = str(block.params.get('tag', '')).strip()
+                goto_tags.setdefault(tag, []).append(block)
+            elif block.block_fn == 'From':
+                tag = str(block.params.get('tag', '')).strip()
+                from_tags.setdefault(tag, []).append(block)
+
+        # Multiple Goto with same tag -> warning (ambiguous source)
+        for tag, gotos in goto_tags.items():
+            if len(gotos) > 1:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.WARNING,
+                        message=f"Multiple Goto blocks share tag '{tag or '(empty)'}'",
+                        blocks=gotos,
+                        suggestion="Use unique tags or remove duplicates to avoid ambiguity"
+                    )
+                )
+
+        # From without matching Goto -> error
+        for tag, frs in from_tags.items():
+            if tag not in goto_tags:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.ERROR,
+                        message=f"From tag '{tag or '(empty)'}' has no matching Goto",
+                        blocks=frs,
+                        suggestion="Add a Goto with the same tag or update the tag"
+                    )
+                )
+
+        # Goto with no From -> warning (unused)
+        for tag, gotos in goto_tags.items():
+            if tag not in from_tags:
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.WARNING,
+                        message=f"Goto tag '{tag or '(empty)'}' is unused (no From)",
+                        blocks=gotos,
+                        suggestion="Add a From with the same tag or remove the Goto"
+                    )
+                )
+
     def _check_invalid_connections(self, connection_maps: dict) -> None:
         """Check for connections with invalid block references."""
         valid_block_names = connection_maps['valid_block_names']
 
         for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
             if line.srcblock not in valid_block_names:
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,

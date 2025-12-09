@@ -632,7 +632,7 @@ class ModernDiaBloSWindow(QMainWindow):
         if not history:
             QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
             return
-        self.waveform_inspector = WaveformInspector(history)
+        self.waveform_inspector = WaveformInspector(self.dsim)
         self.waveform_inspector.show()
     
     def capture_screen(self):
@@ -1195,6 +1195,14 @@ class ModernDiaBloSWindow(QMainWindow):
                     logger.debug(f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})")
                     block.update_params({prop_name: converted_value})
                     self.canvas.dsim.dirty = True
+                    # For Goto/From blocks, refresh labels and virtual links immediately
+                    if block.block_fn in ("Goto", "From") and prop_name in ("tag", "signal_name"):
+                        try:
+                            self.canvas.dsim.model.link_goto_from()
+                        except Exception as e:
+                            logger.warning(f"Could not relink Goto/From after property change: {e}")
+                        # Update canvas visuals
+                        self.canvas.update()
                     break
         except (ValueError, TypeError, SyntaxError) as e:
             logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
