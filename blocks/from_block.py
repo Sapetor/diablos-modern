@@ -30,12 +30,12 @@ class FromBlock(BaseBlock):
 
     @property
     def inputs(self):
-        return [{"name": "in", "type": "any"}]
+        return []
 
     @property
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
     def execute(self, time, inputs, params):
-        # Pass through received value
+        # Value will be fed via hidden virtual line into input_queue under key 0
         return {0: inputs.get(0, 0)}
