@@ -274,13 +274,12 @@ class ModernCanvas(QWidget):
     
     def paintEvent(self, event):
         """Paint the canvas with blocks, connections, and other elements."""
-        painter = None
-        ended = False
+        painter = QPainter()
+        begun = painter.begin(self)
+        if not begun:
+            return
         try:
             self.perf_helper.start_timer("canvas_paint")
-            
-            # Create painter
-            painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
             painter.translate(self.pan_offset)
@@ -396,8 +395,6 @@ class ModernCanvas(QWidget):
                 self._draw_validation_errors(painter)
 
             painter.end()
-            ended = True
-            
             paint_duration = self.perf_helper.end_timer("canvas_paint")
             
             # Log slow paint events
@@ -407,7 +404,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in canvas paintEvent: {str(e)}")
         finally:
-            if painter is not None and painter.isActive():
+            if painter.isActive():
                 try:
                     painter.end()
                 except Exception:
