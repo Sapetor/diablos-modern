@@ -226,8 +226,9 @@ class SimulationModel:
         """
         Automatically connect Goto/From blocks that share the same tag.
         For each From(tag) with no incoming line, connect the first matching Goto(tag).
+        Also sync line labels to the configured signal name.
         """
-        # get_neighbors is on DSim; implement locally for model
+        # Local neighbor helper to avoid dependency on DSim.get_neighbors
         def _get_neighbors(block_name):
             inputs = []
             outputs = []
@@ -250,14 +251,23 @@ class SimulationModel:
                     goto_map[tag] = []
                 goto_map[tag].append(b)
 
-        # Remove any previous virtual lines
-        self.line_list = [ln for ln in self.line_list if not getattr(ln, "hidden", False)]
+        # Remove any previous virtual lines (in place to keep shared reference)
+        self.line_list[:] = [ln for ln in self.line_list if not getattr(ln, "hidden", False)]
 
         # For each From, ensure an incoming line from matching Goto
         for b in self.blocks_list:
             if b.block_fn != 'From':
                 continue
             tag = str(b.params.get('tag', ''))
+            # Ensure signal_name fallback
+            if not b.params.get('signal_name'):
+                b.params['signal_name'] = tag
+
+            # Update labels on outgoing visible lines from From
+            for line in self.line_list:
+                if line.srcblock == b.name:
+                    line.label = b.params.get('signal_name') or tag
+
             if tag not in goto_map:
                 continue
 
@@ -266,7 +276,7 @@ class SimulationModel:
             if inputs:
                 continue
 
-            src_block = goto_map[tag][0]
+            src_block = goto_map[tag][0]  # deterministic choice of first Goto
             # Ensure coords are up to date
             src_block.update_Block()
             b.update_Block()
@@ -293,6 +303,15 @@ class SimulationModel:
             )
             vline.label = signal_name
             self.line_list.append(vline)
+
+        # Sync labels on incoming lines to Goto blocks as well
+        for tag, gotos in goto_map.items():
+            label = (gotos[0].params.get('signal_name') or tag) if gotos else tag
+            for g in gotos:
+                inputs, _ = _get_neighbors(g.name)
+                for line in self.line_list:
+                    if line.dstblock == g.name:
+                        line.label = label
 
     def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],
                  dstData: Optional[Tuple[str, int, QPoint]]) -> Optional[DLine]:

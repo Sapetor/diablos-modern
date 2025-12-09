@@ -4,6 +4,7 @@ import numpy as np
 import copy
 import time
 import json
+from pathlib import Path
 import os
 import sys
 from tqdm import tqdm
@@ -128,6 +129,9 @@ class DSim:
         # Run history of scope data (session only)
         self.run_history = []
         self.run_history_limit = 5
+        self.run_history_persist_enabled = False
+        self.run_history_persist_path = Path("saves/run_history.json")
+        self._load_run_history()
 
     def main_buttons_init(self):
         """
@@ -1478,7 +1482,7 @@ class DSim:
 
     def _record_run_history(self):
         """
-        Save latest scope run into in-memory history (session only).
+        Save latest scope run into history (session, optionally persisted).
         """
         timeline, traces = self.get_scope_traces()
         if timeline is None or not traces:
@@ -1490,11 +1494,101 @@ class DSim:
             "traces": traces,
             "sim_dt": self.sim_dt,
             "sim_time": self.sim_time,
+            "pinned": False,
         }
         self.run_history.append(run_entry)
-        # Enforce limit
-        if len(self.run_history) > self.run_history_limit:
-            self.run_history = self.run_history[-self.run_history_limit:]
+        # Enforce limit on unpinned runs while keeping pinned entries
+        unpinned_count = sum(1 for r in self.run_history if not r.get("pinned", False))
+        if unpinned_count > self.run_history_limit:
+            drop = unpinned_count - self.run_history_limit
+            new_history = []
+            for r in self.run_history:
+                if not r.get("pinned", False) and drop > 0:
+                    drop -= 1
+                    continue
+                new_history.append(r)
+            self.run_history = new_history
+
+        # Persist if enabled
+        self.save_run_history()
+
+    def _load_run_history(self):
+        """Load persisted run history if enabled."""
+        try:
+            if not self.run_history_persist_path.exists():
+                return
+            with open(self.run_history_persist_path, "r") as f:
+                payload = json.load(f)
+            self.run_history_persist_enabled = bool(payload.get("persist", False))
+            if not self.run_history_persist_enabled:
+                return
+            runs = payload.get("runs", [])
+            loaded = []
+            for run in runs:
+                timeline = np.array(run.get("timeline", []), dtype=float)
+                traces = []
+                for tr in run.get("traces", []):
+                    traces.append({
+                        "name": tr.get("name", ""),
+                        "y": np.array(tr.get("y", []), dtype=float),
+                        "step": bool(tr.get("step", False))
+                    })
+                loaded.append({
+                    "name": run.get("name", "Run"),
+                    "timeline": timeline,
+                    "traces": traces,
+                    "sim_dt": run.get("sim_dt"),
+                    "sim_time": run.get("sim_time"),
+                    "pinned": bool(run.get("pinned", False))
+                })
+            self.run_history = loaded[-self.run_history_limit:] if loaded else []
+        except Exception as e:
+            logger.warning(f"Could not load run history: {e}")
+
+    def save_run_history(self):
+        """Persist run history to disk if enabled."""
+        try:
+            if not self.run_history_persist_enabled:
+                return
+            self.run_history_persist_path.parent.mkdir(parents=True, exist_ok=True)
+            serializable_runs = []
+            for run in self.run_history:
+                serializable_runs.append({
+                    "name": run.get("name", ""),
+                    "timeline": run.get("timeline", np.array([])).tolist(),
+                    "traces": [
+                        {
+                            "name": tr.get("name", ""),
+                            "y": np.array(tr.get("y", [])).tolist(),
+                            "step": bool(tr.get("step", False))
+                        }
+                        for tr in run.get("traces", [])
+                    ],
+                    "sim_dt": run.get("sim_dt"),
+                    "sim_time": run.get("sim_time"),
+                    "pinned": bool(run.get("pinned", False))
+                })
+            payload = {
+                "persist": self.run_history_persist_enabled,
+                "runs": serializable_runs
+            }
+            with open(self.run_history_persist_path, "w") as f:
+                json.dump(payload, f)
+        except Exception as e:
+            logger.warning(f"Could not save run history: {e}")
+
+    def set_run_history_persist(self, enabled: bool):
+        """Toggle persistence of waveform run history."""
+        self.run_history_persist_enabled = bool(enabled)
+        if not enabled:
+            # Optionally remove file to avoid stale data
+            try:
+                if self.run_history_persist_path.exists():
+                    self.run_history_persist_path.unlink()
+            except Exception:
+                pass
+        else:
+            self.save_run_history()
 
     # Pyqtgraph functions
     def pyqtPlotScope(self):

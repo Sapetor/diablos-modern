@@ -2,7 +2,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QPushButton, QLabel, QSlider, QFileDialog, QMessageBox
+    QPushButton, QLabel, QSlider, QFileDialog, QMessageBox, QCheckBox
 )
 from PyQt5.QtCore import Qt
 
@@ -16,22 +16,21 @@ class WaveformInspector(QWidget):
     - Export selected traces to CSV
     """
 
-    def __init__(self, run_history):
+    def __init__(self, dsim):
         """
         Args:
-            run_history (list[dict]): each dict has keys:
-              - name: str
-              - timeline: np.ndarray
-              - traces: list of dicts {'name','y','step'}
+            dsim: DSim instance providing run history and persistence settings
         """
         super().__init__()
-        self.run_history = run_history or []
+        self.dsim = dsim
+        self.run_history = list(getattr(dsim, "run_history", [])) if dsim else []
         self.active_runs = set(range(len(self.run_history)))
         # Flatten traces with run tag for plotting
         self.timeline = None
         self.traces = []
         self.active_traces = set()
         self.active_indices = set()
+        self.persist_enabled = bool(getattr(dsim, "run_history_persist_enabled", False))
 
         self.setWindowTitle("Waveform Inspector")
         self.resize(900, 650)
@@ -46,12 +45,23 @@ class WaveformInspector(QWidget):
         self.run_list = QListWidget()
         self.run_list.itemChanged.connect(self._on_run_changed)
         for idx, run in enumerate(self.run_history):
-            item = QListWidgetItem(run["name"])
+            item = QListWidgetItem(self._run_display_name(run))
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Checked)
             self.run_list.addItem(item)
         left.addWidget(QLabel("Runs"))
         left.addWidget(self.run_list)
+
+        run_controls = QHBoxLayout()
+        self.pin_btn = QPushButton("Pin/Unpin")
+        self.pin_btn.clicked.connect(self._toggle_pin_selected)
+        self.persist_chk = QCheckBox("Persist history")
+        self.persist_chk.setChecked(self.persist_enabled)
+        self.persist_chk.toggled.connect(self._toggle_persist)
+        run_controls.addWidget(self.pin_btn)
+        run_controls.addWidget(self.persist_chk)
+        run_controls.addStretch()
+        left.addLayout(run_controls)
 
         self.trace_list = QListWidget()
         self.trace_list.itemChanged.connect(self._on_trace_changed)
@@ -140,6 +150,10 @@ class WaveformInspector(QWidget):
             self.trace_list.addItem(item)
         self.trace_list.blockSignals(False)
 
+    def _run_display_name(self, run):
+        prefix = "* " if run.get("pinned", False) else ""
+        return f"{prefix}{run.get('name', 'Run')}"
+
     def _update_scrub_max(self):
         if hasattr(self, "scrub"):
             self.scrub.blockSignals(True)
@@ -187,6 +201,21 @@ class WaveformInspector(QWidget):
         self._rebuild_traces()
         self._refresh_curves()
         self._update_readout()
+
+    def _toggle_pin_selected(self):
+        idx = self.run_list.currentRow()
+        if idx < 0 or idx >= len(self.run_history):
+            return
+        self.run_history[idx]["pinned"] = not self.run_history[idx].get("pinned", False)
+        self.run_list.item(idx).setText(self._run_display_name(self.run_history[idx]))
+        if self.dsim:
+            self.dsim.run_history = self.run_history
+            self.dsim.save_run_history()
+
+    def _toggle_persist(self, checked):
+        self.persist_enabled = bool(checked)
+        if self.dsim and hasattr(self.dsim, "set_run_history_persist"):
+            self.dsim.set_run_history_persist(self.persist_enabled)
 
     def _on_scrub(self, value):
         if self.timeline is None or not len(self.timeline):

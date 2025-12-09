@@ -394,6 +394,9 @@ class ModernCanvas(QWidget):
             if self.show_validation_errors:
                 self._draw_validation_errors(painter)
 
+            # Draw routing tag HUD (Goto/From overview)
+            self._draw_tag_hud(painter)
+
             painter.end()
             paint_duration = self.perf_helper.end_timer("canvas_paint")
             
@@ -1044,6 +1047,12 @@ class ModernCanvas(QWidget):
                         # Set the default routing mode for the new connection
                         new_line.routing_mode = self.default_routing_mode
                         logger.info(f"Line created: {start_block_name} -> {end_block_name} (routing: {self.default_routing_mode})")
+                        # If Goto/From involved, relink to sync labels/virtual lines
+                        if getattr(self.line_start_block, "block_fn", "") in ("Goto", "From") or getattr(end_block, "block_fn", "") in ("Goto", "From"):
+                            try:
+                                self.dsim.model.link_goto_from()
+                            except Exception as e:
+                                logger.warning(f"Could not relink Goto/From after connection: {e}")
                         self.dsim.update_lines()
                         self.connection_created.emit(self.line_start_block, end_block)
                     else:
@@ -2169,6 +2178,62 @@ class ModernCanvas(QWidget):
 
         except Exception as e:
             logger.error(f"Error drawing validation errors: {str(e)}")
+
+    def _draw_tag_hud(self, painter):
+        """Draw a compact HUD summarizing Goto/From tags to help spot mismatches."""
+        try:
+            # Only show if there is at least one routing block
+            tags = {}
+            for block in getattr(self.dsim, 'blocks_list', []):
+                if block.block_fn in ('Goto', 'From'):
+                    tag = str(block.params.get('tag', '')).strip()
+                    entry = tags.setdefault(tag, {"goto": 0, "from": 0})
+                    if block.block_fn == 'Goto':
+                        entry["goto"] += 1
+                    else:
+                        entry["from"] += 1
+
+            if not tags:
+                return
+
+            # Reset transform so HUD is screen-aligned
+            painter.save()
+            painter.resetTransform()
+
+            # Prepare text lines
+            lines = ["Routing tags"]
+            for tag, counts in sorted(tags.items()):
+                label = tag if tag else "(empty)"
+                lines.append(f"{label}: G{counts['goto']} → F{counts['from']}")
+
+            fm = painter.fontMetrics()
+            # horizontalAdvance not in Qt 5.9, fallback to width
+            width_func = getattr(fm, "horizontalAdvance", fm.width)
+            max_w = max(width_func(line) for line in lines) + 12
+            line_h = fm.height() + 2
+            box_h = line_h * len(lines) + 8
+
+            # Position top-left margin
+            margin = 12
+            rect = QRect(margin, margin, max_w, box_h)
+
+            # Background
+            bg = theme_manager.get_color('surface')
+            bg.setAlpha(200)
+            painter.setBrush(bg)
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(rect, 6, 6)
+
+            # Text
+            painter.setPen(theme_manager.get_color('text_primary'))
+            y = margin + 6 + fm.ascent()
+            for line in lines:
+                painter.drawText(rect.left() + 6, y, line)
+                y += line_h
+
+            painter.restore()
+        except Exception as e:
+            logger.error(f"Error drawing tag HUD: {e}")
 
     def _draw_block_error_indicator(self, painter, block, is_error=True):
         """Draw error/warning indicator on a specific block."""

@@ -1,164 +1,49 @@
-# DiaBloS - Modern
+# DiaBloS Modern
 
-A modern, Python-based graphical tool for simulating dynamical systems. This project is an evolution of the original DiaBloS, featuring a completely revamped user interface built with PyQt5, a clean **MVC architecture**, and comprehensive testing infrastructure.
+DiaBloS Modern is a PyQt5-based block-diagram simulator with a refreshed UI, MVC core, and a growing control-toolbox. It targets quick assembly of dynamic systems, fast iteration, and clear visualization.
 
-![Screenshot of DiaBloS Modern UI](screenshot.png)
+## Highlights
+- Modern canvas: drag/drop palette, zoom/pan, snap-to-grid, property editor with live apply.
+- Control & routing blocks: PID, saturation, rate limiter, hysteresis, deadband, switch (multi-input with control port), PRBS source, mux/demux, Goto/From tag routing. Tags auto-link, are validated, and a small HUD shows tag counts.
+- Waveform Inspector: per-run history from scopes, run pinning, CSV export, optional on-disk persistence, step plotting for discrete signals.
+- Simulation integrity: algebraic-loop detection, diagram validation (disconnected ports, duplicate inputs, tag issues), autosave before run.
+- Tested: pytest suite covering diagram integrity, hidden-line routing, and execution init smoke tests.
 
-## Key Features
-
-### User Experience
-- **Modern, Themable UI**: Switch between light and dark modes instantly
-- **Interactive Canvas**: Zoomable, pannable canvas for building simulations
-- **Drag-and-Drop**: Easily add blocks by dragging from the palette
-- **Streamlined Property Editing**: Edit block parameters directly with auto-apply
-- **Dynamic Layout**: Resizable panels with responsive design
-
-### Technical Excellence
-- **MVC Architecture**: Clean separation of Model, View, and Controller layers
-- **Type-Safe Code**: Comprehensive type hints throughout the codebase
-- **Test Infrastructure**: Unit test framework with pytest ready for contributors
-- **Extensible Design**: Plugin-based block system with automatic discovery
-- **Professional Quality**: Follows Python best practices and coding standards
-
-## Getting Started
-
-### Requirements
-
+## Requirements
 - Python 3.9+
-- A GUI environment with X11 support (will not work headless)
+- GUI-capable environment (PyQt5). For headless CI, set `QT_QPA_PLATFORM=offscreen`.
 
-### Installation
+## Install
+```bash
+git clone https://github.com/Sapetor/diablos-modern.git
+cd diablos-modern
+pip install -r requirements.txt
+```
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/Sapetor/diablos-modern.git
-    cd diablos-modern
-    ```
-
-2.  Install the required dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-### Running the Application
-
-To run the modern version of DiaBloS, execute the following command:
-
+## Run
 ```bash
 python diablos_modern.py
 ```
 
-## Basic Usage
+## Basic Flow
+1) Drag blocks from the palette to the canvas.  
+2) Click an output port, then an input port to connect.  
+3) Select a block to edit parameters in the property panel.  
+4) Add `Scope` blocks to visualize signals; press **Show Plots** to open the Waveform Inspector.  
+5) Use `Goto`/`From` blocks to route by tag instead of long wires; set `signal_name` or `tag` to label the virtual link.
 
-1.  **Add Blocks**: Drag blocks from the **Block Palette** on the left onto the main canvas
-2.  **Connect Blocks**: Click output port → click input port to create connections
-3.  **Edit Properties**: Click a block to edit its parameters in the **Properties** panel
-4.  **Select Multiple Blocks**: Shift+Click blocks or draw a selection rectangle by clicking and dragging on empty canvas
-5.  **Copy/Paste**: Select blocks and use `Ctrl+C` / `Ctrl+V` (or `Cmd+C` / `Cmd+V` on Mac) to duplicate
-6.  **Run Simulation**: Click the **Play** button to start simulation
-7.  **View Results**: Use `Scope` blocks to visualize outputs
-8.  **Export Data**: Click **Export to CSV...** button in the plot window to save data for post-processing
+## Waveform Inspector
+- Opens from **Show Plots**. Displays the last runs (limit configurable, pinned runs kept).
+- Toggle traces and runs, scrub with the time slider, export selected traces to CSV.
+- Optional persistence: enable in the inspector to save run history to `saves/run_history.json` across sessions.
 
-### Keyboard Shortcuts
-
-**Selection:**
-- **Click**: Select single block
-- **Shift+Click**: Add block to selection (multi-select)
-- **Ctrl+Click**: Toggle block selection on/off
-- **Click and drag on empty area**: Draw a rectangle to select multiple blocks
-- **Shift + drag rectangle**: Add blocks to existing selection
-- **Click empty area**: Deselect all
-
-**Editing:**
-- **Ctrl+C / Cmd+C**: Copy selected block(s)
-- **Ctrl+V / Cmd+V**: Paste block(s) with offset
-- **Ctrl+F / Cmd+F**: Flip selected block(s) horizontally
-- **Delete**: Remove selected block(s) or connection(s)
-- **Escape**: Cancel current operation
-
-**Tip:** Select multiple blocks with Shift+Click, then delete them all at once with Delete!
-
-## Documentation
-
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - MVC design, data flow, extension points
-- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - How to add blocks, contribute, best practices
-- **[Testing Guide](tests/README.md)** - Running tests, writing tests, coverage
-- **[CSV Export Feature](docs/CSV_EXPORT_FEATURE.md)** - Export plot data to CSV for post-processing
-
-## For Developers
-
-### Quick Start
-
+## Development
 ```bash
-# Install development dependencies
 pip install -r requirements-dev.txt
-
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=lib --cov=modern_ui --cov-report=html
-
-# Format code
-black lib/ modern_ui/ tests/
-
-# Type checking
-mypy lib/ modern_ui/
+QT_QPA_PLATFORM=offscreen pytest          # run tests headlessly
+black lib/ modern_ui/ tests/             # format
 ```
-
-### Architecture Overview
-
-DiaBloS Modern follows a clean **MVC (Model-View-Controller)** architecture:
-
-- **Model** (`lib/models/`) - Data management (blocks, connections, state)
-- **Engine** (`lib/engine/`) - Business logic (validation, execution)
-- **Services** (`lib/services/`) - File I/O and external operations
-- **View** (`modern_ui/`) - User interface components
-- **Controller** (`lib/lib.py`) - Coordination and delegation
-
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
-
-### Adding a New Block
-
-1. Create `blocks/my_block.py` with your block class
-2. Add execution function to `lib/functions.py`
-3. Restart application - block auto-discovered!
-
-See [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md#adding-new-blocks) for step-by-step guide.
-
-### Code Quality
-
-- **Type Hints**: All core files have comprehensive type annotations
-- **Test Framework**: Pytest infrastructure with fixtures for unit testing
-- **Documentation**: Google-style docstrings throughout
-- **Standards**: Follows PEP 8 and Python best practices
-
-## Block Types
-
-DiaBloS includes 20+ built-in block types:
-
-**Sources**: Step, Ramp, Sine, Noise, Exponential
-**Math**: Sum, Product, Gain
-**Control**: Integrator, Derivative, Transfer Function, State Space, PID
-**Discrete-Time**: Discrete Transfer Function, Discrete State Space, Zero-Order Hold
-**Analysis**: Bode Plot, Root Locus
-**Utilities**: Scope, Export, Mux, Demux, Terminator
-**Routing**: Goto / From (tag-based signal jump with optional signal_name, no visible wire)
-**Advanced**: External (custom Python code)
-
-## Contributing
-
-We welcome contributions! Please see [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md#contributing) for:
-
-- Development workflow
-- Code style guidelines
-- Testing requirements
-- Pull request process
+More detail: `docs/ARCHITECTURE.md`, `docs/DEVELOPER_GUIDE.md`, `tests/README.md`.
 
 ## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-Built with: PyQt5, NumPy, Matplotlib, SciPy, PyQtGraph
+MIT. See `LICENSE`.

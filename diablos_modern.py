@@ -10,6 +10,7 @@ import sys
 import os
 import logging
 import json
+import warnings
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -37,6 +38,12 @@ logging.getLogger('lib.improvements').setLevel(logging.INFO)
 
 def setup_application():
     """Setup application-wide settings and styling."""
+    # Silence PyQtGraph Qt version warning on older Qt (harmless noise)
+    warnings.filterwarnings(
+        "ignore",
+        message="PyQtGraph supports Qt version >= 5.15",
+        category=RuntimeWarning,
+    )
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
