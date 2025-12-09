@@ -2018,7 +2018,7 @@ class ModernCanvas(QWidget):
         )
 
         if ok:
-            line.label = text
+            line.label = str(text)
             self.update()
             logger.info(f"Updated connection label: {line.name} -> '{text}'")
 
