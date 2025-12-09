@@ -227,6 +227,17 @@ class SimulationModel:
         Automatically connect Goto/From blocks that share the same tag.
         For each From(tag) with no incoming line, connect the first matching Goto(tag).
         """
+        # get_neighbors is on DSim; implement locally for model
+        def _get_neighbors(block_name):
+            inputs = []
+            outputs = []
+            for line in self.line_list:
+                if line.dstblock == block_name:
+                    inputs.append({'srcblock': line.srcblock, 'srcport': line.srcport, 'dstport': line.dstport})
+                if line.srcblock == block_name:
+                    outputs.append({'dstblock': line.dstblock, 'srcport': line.srcport, 'dstport': line.dstport})
+            return inputs, outputs
+
         # Collect goto blocks by tag
         goto_map = {}
         for b in self.blocks_list:
@@ -245,7 +256,7 @@ class SimulationModel:
                 continue
 
             # Skip if already connected
-            inputs, _ = self.get_neighbors(b.name)
+            inputs, _ = _get_neighbors(b.name)
             if inputs:
                 continue
 
