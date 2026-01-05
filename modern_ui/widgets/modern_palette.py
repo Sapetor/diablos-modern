@@ -101,7 +101,8 @@ class DraggableBlockWidget(QFrame):
             fn_name=menu_block.fn_name,
             params=menu_block.params,
             external=menu_block.external,
-            colors=self.colors
+            colors=self.colors,
+            block_class=getattr(menu_block, 'block_class', None)
         )
 
         temp_dblock.update_Block()
@@ -428,7 +429,7 @@ class ModernBlockPalette(QWidget):
                     temp_instance = block.block_class()
                     if hasattr(temp_instance, 'category'):
                         category = temp_instance.category
-                except:
+                except Exception:
                     pass
 
             # If no category property, use keyword-based categorization

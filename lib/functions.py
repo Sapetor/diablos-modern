@@ -522,7 +522,7 @@ def export(time, inputs, params):
         aux_vector = np.array([inputs[0]])
         try:
             params['vec_dim'] = len(inputs[0])
-        except:
+        except TypeError:
             params['vec_dim'] = 1
 
         labels = params['str_name']
@@ -558,7 +558,7 @@ def scope(time, inputs, params):
         aux_vector = np.atleast_1d(inputs[0])
         try:
             params['vec_dim'] = len(inputs[0])
-        except:
+        except TypeError:
             params['vec_dim'] = 1
 
         labels = params['labels']
@@ -587,3 +587,20 @@ def bode_plot(time, inputs, params):
     The plotting is handled by a special call from the UI.
     """
     return {0: np.array([0.0])}
+
+
+def goto_block(time, inputs, params):
+    """
+    Goto block execution fallback.
+    Simply passes input to output (even though it has no output ports, 
+    the virtual line handling uses the value).
+    """
+    return {0: inputs.get(0, 0)}
+
+
+def from_block(time, inputs, params):
+    """
+    From block execution fallback.
+    Receives value from Goto via virtual line and passes it to output.
+    """
+    return {0: inputs.get(0, 0)}

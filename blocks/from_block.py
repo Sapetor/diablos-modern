@@ -11,6 +11,10 @@ class FromBlock(BaseBlock):
         return "From"
 
     @property
+    def fn_name(self):
+        return "from_block"
+
+    @property
     def category(self):
         return "Routing"
 

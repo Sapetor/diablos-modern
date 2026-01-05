@@ -8,7 +8,7 @@ import copy
 from typing import Dict, List, Optional, Any, Union
 import numpy as np
 from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QTransform, QPainterPath, QPolygonF, QPainter
-from PyQt5.QtCore import Qt, QRect, QPoint
+from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager
 from lib.dialogs import ParamDialog, PortDialog
 import sys
@@ -108,6 +108,29 @@ class DBlock:
         self.in_coords: List[QPoint] = []
         self.out_coords: List[QPoint] = []
         self.io_edit: Union[bool, str] = io_edit
+
+        # Create block_instance BEFORE update_Block so port positions can use it
+        if block_class:
+            self.block_instance = block_class()
+
+            # Check if block supports dynamic port configuration and update accordingly
+            if hasattr(self.block_instance, 'get_inputs'):
+                try:
+                    # Get initial input configuration based on default params
+                    initial_inputs = self.block_instance.get_inputs(self.params)
+                    initial_input_count = len(initial_inputs)
+
+                    # Update port count if different from default
+                    if initial_input_count != self.in_ports:
+                        logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
+                        self.in_ports = initial_input_count
+                        self.params['_inputs_'] = initial_input_count
+                except Exception as e:
+                    logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
+        else:
+            self.block_instance = None
+
+        # Now update_Block can access block_instance for port positioning
         self.update_Block()
 
         self.b_type: int = b_type
@@ -130,28 +153,6 @@ class DBlock:
         self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
         logging.debug(f"Block initialized: {self.name}")
 
-        if block_class:
-            self.block_instance = block_class()
-
-            # Check if block supports dynamic port configuration and update accordingly
-            if hasattr(self.block_instance, 'get_inputs'):
-                try:
-                    # Get initial input configuration based on default params
-                    initial_inputs = self.block_instance.get_inputs(self.params)
-                    initial_input_count = len(initial_inputs)
-
-                    # Update port count if different from default
-                    if initial_input_count != self.in_ports:
-                        logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
-                        self.in_ports = initial_input_count
-                        self.params['_inputs_'] = initial_input_count
-                        # Update block geometry and port positions
-                        self.update_Block()
-                except Exception as e:
-                    logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
-        else:
-            self.block_instance = None
-
 
 
 
@@ -171,14 +172,20 @@ class DBlock:
         # Determine input groups if provided by block instance
         control_group_indices = []
         data_group_indices = []
+        top_port_indices = []  # Ports positioned on top edge
         if hasattr(self, 'block_instance') and self.block_instance:
             try:
                 port_defs = self.block_instance.get_inputs(self.params) if hasattr(self.block_instance, 'get_inputs') else self.block_instance.inputs
             except Exception:
                 port_defs = []
             for idx, pdef in enumerate(port_defs or []):
-                if isinstance(pdef, dict) and pdef.get("group") == "control":
-                    control_group_indices.append(idx)
+                if isinstance(pdef, dict):
+                    if pdef.get("position") == "top":
+                        top_port_indices.append(idx)
+                    elif pdef.get("group") == "control":
+                        control_group_indices.append(idx)
+                    else:
+                        data_group_indices.append(idx)
                 else:
                     data_group_indices.append(idx)
 
@@ -219,23 +226,36 @@ class DBlock:
             for idx, pos in zip(control_group_indices, ctrl_positions):
                 port_y_positions[idx] = pos
 
-        data_indices = [i for i in range(self.in_ports) if i not in control_group_indices]
+        data_indices = [i for i in range(self.in_ports) if i not in control_group_indices and i not in top_port_indices]
         if data_indices:
             data_positions = spaced_positions(len(data_indices), data_top, max(data_section_height, self.port_radius * 2))
             for idx, pos in zip(data_indices, data_positions):
                 port_y_positions[idx] = pos
 
+        # Calculate top port positions (horizontal spacing on top edge)
+        top_port_positions = {}
+        if top_port_indices:
+            top_x_positions = [int(self.left + self.width * (i + 1) / (len(top_port_indices) + 1)) for i in range(len(top_port_indices))]
+            for idx, x_pos in zip(top_port_indices, top_x_positions):
+                top_port_positions[idx] = x_pos
+
         if self.in_ports > 0:
             for i in range(self.in_ports):
-                if port_y_positions:
-                    port_y_float = port_y_positions.get(i, self.top + self.height * (i + 1) / (self.in_ports + 1))
+                if i in top_port_indices:
+                    # Top port: positioned on top edge
+                    port_x = top_port_positions.get(i, self.left + self.width // 2)
+                    port_in = QPoint(port_x, self.top)
                 else:
-                    port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
-                if use_grid_snap:
-                    port_y = int(round(port_y_float / grid_size) * grid_size)
-                else:
-                    port_y = int(port_y_float)
-                port_in = QPoint(in_x, port_y)
+                    # Left-side port
+                    if port_y_positions:
+                        port_y_float = port_y_positions.get(i, self.top + self.height * (i + 1) / (self.in_ports + 1))
+                    else:
+                        port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
+                    if use_grid_snap:
+                        port_y = int(round(port_y_float / grid_size) * grid_size)
+                    else:
+                        port_y = int(port_y_float)
+                    port_in = QPoint(in_x, port_y)
                 self.in_coords.append(port_in)
         if self.out_ports > 0:
             for j in range(self.out_ports):
@@ -421,23 +441,55 @@ class DBlock:
             path.lineTo(0.6, 0.7)
             path.lineTo(0.9, 0.7)
         elif self.block_fn == "RootLocus":
-            # Draw axes
-            path.moveTo(0.1, 0.5) # horizontal axis
-            path.lineTo(0.9, 0.5)
-            path.moveTo(0.5, 0.1) # vertical axis
-            path.lineTo(0.5, 0.9)
-            # Draw root locus path (stylized)
-            path.moveTo(0.3, 0.5)
-            path.quadTo(0.35, 0.35, 0.5, 0.35)
-            path.quadTo(0.65, 0.35, 0.7, 0.5)
-            path.moveTo(0.3, 0.5)
-            path.quadTo(0.35, 0.65, 0.5, 0.65)
-            path.quadTo(0.65, 0.65, 0.7, 0.5)
-            # Draw some poles (×) and zeros (○)
-            path.moveTo(0.25, 0.45)
-            path.lineTo(0.35, 0.55)
-            path.moveTo(0.25, 0.55)
-            path.lineTo(0.35, 0.45)
+            # Complex Plane with Poles and Zeros
+            # Center (0.5, 0.5) is origin
+            
+            # Axes
+            path.moveTo(0.1, 0.5); path.lineTo(0.9, 0.5) # Real Axis
+            path.moveTo(0.5, 0.1); path.lineTo(0.5, 0.9) # Imag Axis
+            
+            # Pole (x) at (-0.2, +0.2) -> (0.4, 0.3)
+            # Size 0.05
+            p_x, p_y = 0.4, 0.3
+            path.moveTo(p_x-0.03, p_y-0.03); path.lineTo(p_x+0.03, p_y+0.03)
+            path.moveTo(p_x+0.03, p_y-0.03); path.lineTo(p_x-0.03, p_y+0.03)
+            
+            # Pole (x) at (-0.2, -0.2) -> (0.4, 0.7)
+            p_x, p_y = 0.4, 0.7
+            path.moveTo(p_x-0.03, p_y-0.03); path.lineTo(p_x+0.03, p_y+0.03)
+            path.moveTo(p_x+0.03, p_y-0.03); path.lineTo(p_x-0.03, p_y+0.03)
+            
+            # Zero (o) at (-0.6, 0) -> (0.2, 0.5)
+            # Drawn as small circle path
+            path.addEllipse(QPointF(0.2*self.width, 0.5*self.height), 3, 3) 
+            # Note: addEllipse works in screen coords if using QPainterPath directly, 
+            # but here we are using normalized 0-1 coords that get scaled later.
+            # Wait, the other paths are 0.0-1.0. addEllipse takes (x, y, w, h). 
+            # Scaled path transform handles the 0-1 range if we used unit circle? 
+            # Actually, addEllipse might break the 0-1 abstraction if not careful.
+            # Let's use MoveTo/LineTo for a diamond shape 'o' approximation or just drawing lines
+            
+            # Zero (o) approximate as diamond/circle
+            z_x, z_y = 0.2, 0.5
+            r = 0.03
+            path.moveTo(z_x+r, z_y)
+            path.quadTo(z_x+r, z_y+r, z_x, z_y+r)
+            path.quadTo(z_x-r, z_y+r, z_x-r, z_y)
+            path.quadTo(z_x-r, z_y-r, z_x, z_y-r)
+            path.quadTo(z_x+r, z_y-r, z_x+r, z_y)
+            
+            # Locus Curves (Example branches)
+            # Branch 1: Pole Upper to Zero
+            path.moveTo(0.4, 0.3)
+            path.quadTo(0.3, 0.3, 0.2, 0.5)
+            
+            # Branch 2: Pole Lower to Zero
+            path.moveTo(0.4, 0.7)
+            path.quadTo(0.3, 0.7, 0.2, 0.5)
+            
+            # Branch 3: Zero to Infinity (Left)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.1, 0.5)
         elif self.block_fn == "Deriv":
             font = painter.font()
             original_size = font.pointSize()
@@ -584,6 +636,27 @@ class DBlock:
             font.setItalic(False)
             font.setPointSize(original_size)
             painter.setFont(font)
+        elif self.block_fn == "Display":
+            # Display block shows the current value
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            # Get display value from exec_params (during sim) or params
+            params_source = getattr(self, 'exec_params', self.params) or self.params
+            display_val = params_source.get('_display_value_', '---')
+            
+            # Truncate if too long
+            if len(str(display_val)) > 10:
+                display_val = str(display_val)[:9] + "…"
+            
+            painter.drawText(self.rect, Qt.AlignCenter, str(display_val))
+            font.setBold(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
         elif self.block_fn == "Term":
             # Draw a ground/terminator symbol
             path.moveTo(0.5, 0.2)
@@ -630,66 +703,76 @@ class DBlock:
             path.lineTo(0.9, 0.3)
             path.lineTo(0.9, 0.7)
         elif self.block_fn == "Hysteresis":
-            # Stylized hysteresis loop (rectangular loop with direction arrows)
-            path.moveTo(0.25, 0.2)   # bottom left
-            path.lineTo(0.75, 0.2)   # bottom right
-            path.lineTo(0.75, 0.35)  # up
-            path.lineTo(0.35, 0.35)
-            path.lineTo(0.35, 0.65)
-            path.lineTo(0.75, 0.65)
-            path.lineTo(0.75, 0.8)   # top right
-            path.lineTo(0.25, 0.8)   # top left
-            path.lineTo(0.25, 0.65)
-            path.lineTo(0.65, 0.65)
-            path.lineTo(0.65, 0.35)
-            path.lineTo(0.25, 0.35)
-            path.lineTo(0.25, 0.2)
-            # Arrowheads indicating loop direction (clockwise)
-            path.moveTo(0.55, 0.2); path.lineTo(0.58, 0.23); path.lineTo(0.52, 0.23)
-            path.moveTo(0.75, 0.5); path.lineTo(0.72, 0.47); path.lineTo(0.72, 0.53)
-            path.moveTo(0.45, 0.8); path.lineTo(0.48, 0.77); path.lineTo(0.42, 0.77)
-            path.moveTo(0.25, 0.5); path.lineTo(0.28, 0.53); path.lineTo(0.28, 0.47)
+            # Improved Hysteresis Loop
+            # Coords: 0.15 (left) to 0.85 (right), 0.25 (top) to 0.75 (bottom)
+            
+            # 1. Low -> High Path (Bottom -> Top)
+            path.moveTo(0.15, 0.75)     # Start Left-Low
+            path.lineTo(0.75, 0.75)     # To Right Threshold
+            path.lineTo(0.75, 0.25)     # Jump Up
+            path.lineTo(0.85, 0.25)     # End Right-High
+            
+            # 2. High -> Low Path (Top -> Bottom)
+            path.moveTo(0.85, 0.25)     # Start Right-High
+            path.lineTo(0.25, 0.25)     # To Left Threshold
+            path.lineTo(0.25, 0.75)     # Jump Down
+            path.lineTo(0.15, 0.75)     # End Left-Low
+            
+            # 3. Arrows for direction
+            # Right arrow on bottom path
+            path.moveTo(0.45, 0.75); path.lineTo(0.45, 0.72); path.lineTo(0.51, 0.75); path.lineTo(0.45, 0.78); path.lineTo(0.45, 0.75)
+
+            # Left arrow on top path
+            path.moveTo(0.55, 0.25); path.lineTo(0.55, 0.22); path.lineTo(0.49, 0.25); path.lineTo(0.55, 0.28); path.lineTo(0.55, 0.25)
         elif self.block_fn == "Deadband":
-            # Input/output characteristic with deadband flattened around zero
-            # Diagonal outside deadband
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.35, 0.65)   # enters band
-            path.lineTo(0.65, 0.65)   # flat through band
-            path.lineTo(0.9, 0.4)     # exits band
-            # Lower branch
-            path.moveTo(0.1, 0.1)
-            path.lineTo(0.35, 0.35)
-            path.lineTo(0.65, 0.35)
-            path.lineTo(0.9, 0.6)
-            # Band markers
-            path.moveTo(0.35, 0.2); path.lineTo(0.35, 0.8)
-            path.moveTo(0.65, 0.2); path.lineTo(0.65, 0.8)
+            # Standard Deadband Characteristic (Linear-Flat-Linear)
+            # Center of block is (0.5, 0.5)
+            # Deadband zone: 0.35 to 0.65
+            
+            # 1. Left Slope (Input < -Deadband)
+            path.moveTo(0.15, 0.80)   # Bottom-Left
+            path.lineTo(0.35, 0.50)   # To Zero Axis
+            
+            # 2. Deadband Zone (Flat Zero)
+            path.lineTo(0.65, 0.50)   # Stay at Zero
+            
+            # 3. Right Slope (Input > +Deadband)
+            path.lineTo(0.85, 0.20)   # Top-Right
+            
+            # Optional: Add small x-axis mark for reference
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.8, 0.5)
         elif self.block_fn == "Switch":
-            # 3-input selector icon
-            path.moveTo(0.15, 0.3)  # ctrl arrow to decision
-            path.lineTo(0.4, 0.5)
-            path.moveTo(0.15, 0.7)  # in_false
-            path.lineTo(0.4, 0.6)
-            path.moveTo(0.15, 0.9)  # in_true
-            path.lineTo(0.4, 0.7)
-            # decision diamond
-            path.moveTo(0.45, 0.5)
-            path.lineTo(0.55, 0.4)
-            path.lineTo(0.65, 0.5)
-            path.lineTo(0.55, 0.6)
-            path.lineTo(0.45, 0.5)
-            # output
-            path.moveTo(0.65, 0.5)
-            path.lineTo(0.9, 0.5)
-            # tiny port labels
-            font = painter.font()
-            orig = font.pointSize()
-            font.setPointSize(orig - 2)
-            painter.setFont(font)
-            painter.drawText(QRect(self.left + 4, self.top + 4, self.width//2, self.height//3), Qt.AlignLeft | Qt.AlignTop, "ctrl")
-            painter.drawText(QRect(self.left + 4, self.top + self.height//2, self.width//2, self.height//2), Qt.AlignLeft | Qt.AlignBottom, "in0 / in1")
-            font.setPointSize(orig)
-            painter.setFont(font)
+            # Switch symbol with ctrl on TOP, data inputs on LEFT, output on RIGHT
+            # Shows: ctrl selects which data input passes to output
+            
+            # Control arrow from top
+            path.moveTo(0.5, 0.10)
+            path.lineTo(0.5, 0.35)
+            # Arrow head
+            path.moveTo(0.47, 0.30); path.lineTo(0.5, 0.35); path.lineTo(0.53, 0.30)
+            
+            # Selector box
+            path.moveTo(0.30, 0.35)
+            path.lineTo(0.70, 0.35)
+            path.lineTo(0.70, 0.75)
+            path.lineTo(0.30, 0.75)
+            path.lineTo(0.30, 0.35)
+            
+            # Data input indicators inside box (horizontal lines from left)
+            path.moveTo(0.30, 0.45)
+            path.lineTo(0.45, 0.45)
+            path.moveTo(0.30, 0.65)
+            path.lineTo(0.45, 0.65)
+            
+            # Selected path (from in0 to output)
+            path.moveTo(0.45, 0.45)
+            path.lineTo(0.55, 0.55)
+            path.lineTo(0.70, 0.55)
+            
+            # Output arrow
+            path.moveTo(0.70, 0.55)
+            path.lineTo(0.90, 0.55)
         elif self.block_fn == "Saturation":
             # Clipped sine-like signal against min/max rails
             path.moveTo(0.1, 0.8)
@@ -701,27 +784,30 @@ class DBlock:
             path.lineTo(0.55, 0.2)
             path.quadTo(0.7, 0.8, 0.85, 0.8)
         elif self.block_fn == "RateLimiter":
-            # Show desired steep ramp (dashed idea) and limited (solid) ramp
-            # Limited ramp
-            path.moveTo(0.1, 0.8)
-            path.lineTo(0.35, 0.6)
-            path.lineTo(0.6, 0.4)
-            path.lineTo(0.9, 0.4)
-            # Desired (steeper) ramp hint
-            path.moveTo(0.1, 0.8)
-            path.lineTo(0.5, 0.2)
-            # Cap marker
-            path.moveTo(0.6, 0.45)
-            path.lineTo(0.66, 0.33)
-            path.lineTo(0.72, 0.45)
-            path.lineTo(0.6, 0.45)
+            # Step response with slew rate limit
+            # 1. Initial Flat Low
+            path.moveTo(0.15, 0.75)
+            path.lineTo(0.35, 0.75)
+            
+            # 2. Slew Rate Ramp
+            path.lineTo(0.65, 0.25)
+            
+            # 3. Final Flat High
+            path.lineTo(0.85, 0.25)
+            
+            # 4. Input Step Reference (Broken line styled)
+            path.moveTo(0.35, 0.75)
+            path.lineTo(0.35, 0.25) # Vertical step
+            path.lineTo(0.40, 0.25) # Start of top
+            
             # Small label
             font = painter.font()
             original_size = font.pointSize()
             font.setPointSize(original_size - 1)
             painter.setFont(font)
             painter.setPen(QColor('#1F2937'))
-            painter.drawText(QRect(self.left, self.top + self.height // 2, self.width, self.height // 2), Qt.AlignCenter, "du/dt")
+            # Position label in bottom right
+            painter.drawText(QRect(self.left + int(self.width*0.4), self.top + int(self.height*0.4), int(self.width*0.6), int(self.height*0.6)), Qt.AlignCenter, "du/dt")
             font.setPointSize(original_size)
             painter.setFont(font)
         elif self.block_fn == "PID":
@@ -776,6 +862,169 @@ class DBlock:
             path.lineTo(0.8, 0.8)
             path.moveTo(0.2, 0.2)
             path.lineTo(0.2, 0.8)
+        elif self.block_fn == "Constant":
+            # Draw a horizontal line with a value indicator
+            # Represents constant output level
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 4)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            # Display "K" for constant
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "K")
+            
+            font.setBold(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Delay":
+            # Draw a "z^-n" symbol representing discrete delay
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 2)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            # Draw z^-n notation
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "z⁻ⁿ")
+            
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Abs":
+            # Draw absolute value symbol |x|
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 4)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "|u|")
+            
+            font.setBold(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "TransportDelay":
+            # Draw e^(-τs) with proper formatting
+            font = painter.font()
+            original_size = font.pointSize()
+            
+            # Draw 'e' in normal size
+            font.setPointSize(original_size + 3)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            # Calculate positions for proper layout
+            cx = self.left + self.width // 2
+            cy = self.top + self.height // 2
+            
+            # Draw 'e'
+            painter.drawText(cx - 12, cy + 4, "e")
+            
+            # Draw superscript '-τs' smaller and raised
+            font.setPointSize(original_size)
+            painter.setFont(font)
+            painter.drawText(cx - 2, cy - 4, "-τs")
+            
+            font.setItalic(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Display":
+            # Display block shows the current value
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 1)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#1F2937'))
+            
+            # Get the display value from params
+            display_val = self.params.get("_display_value_", "---")
+            
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, str(display_val))
+            
+            font.setBold(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "XYGraph":
+            # Draw XY axes with curve
+            # Axes
+            path.moveTo(0.15, 0.85)  # Origin
+            path.lineTo(0.85, 0.85)  # X axis
+            path.moveTo(0.15, 0.85)
+            path.lineTo(0.15, 0.15)  # Y axis
+            
+            # Small arrows
+            path.moveTo(0.82, 0.82); path.lineTo(0.85, 0.85); path.lineTo(0.82, 0.88)
+            path.moveTo(0.12, 0.18); path.lineTo(0.15, 0.15); path.lineTo(0.18, 0.18)
+            
+            # Parametric curve (spiral-ish)
+            path.moveTo(0.25, 0.75)
+            path.quadTo(0.35, 0.35, 0.55, 0.45)
+            path.quadTo(0.75, 0.55, 0.70, 0.30)
+        elif self.block_fn == "Assert":
+            # Draw exclamation mark in triangle (warning symbol)
+            font = painter.font()
+            original_size = font.pointSize()
+            font.setPointSize(original_size + 6)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.setPen(QColor('#DC2626'))  # Red color for warning
+            
+            rect = QRect(self.left, self.top, self.width, self.height)
+            painter.drawText(rect, Qt.AlignCenter, "⚠")
+            
+            font.setBold(False)
+            font.setPointSize(original_size)
+            painter.setFont(font)
+        elif self.block_fn == "Selector":
+            # Draw vector with arrow pointing to subset
+            # Input vector representation
+            path.moveTo(0.15, 0.3)
+            path.lineTo(0.15, 0.7)
+            path.lineTo(0.35, 0.7)
+            path.lineTo(0.35, 0.3)
+            path.lineTo(0.15, 0.3)
+            
+            # Horizontal lines inside (vector elements)
+            path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4)
+            path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5)
+            path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
+            
+            # Arrow pointing to selected element
+            path.moveTo(0.35, 0.5)
+            path.lineTo(0.65, 0.5)
+            path.moveTo(0.60, 0.45); path.lineTo(0.65, 0.5); path.lineTo(0.60, 0.55)
+            
+            # Output (single element)
+            path.moveTo(0.70, 0.45)
+            path.lineTo(0.85, 0.45)
+            path.lineTo(0.85, 0.55)
+            path.lineTo(0.70, 0.55)
+            path.lineTo(0.70, 0.45)
+        elif self.block_fn == "FFT":
+            # FFT spectrum symbol - frequency spectrum bars
+            # Axis
+            path.moveTo(0.15, 0.80)
+            path.lineTo(0.15, 0.20)
+            path.moveTo(0.15, 0.80)
+            path.lineTo(0.85, 0.80)
+            
+            # Spectrum bars (varying heights like typical FFT output)
+            bar_positions = [0.22, 0.32, 0.42, 0.52, 0.62, 0.72]
+            bar_heights = [0.30, 0.55, 0.70, 0.45, 0.25, 0.15]
+            bar_width = 0.06
+            for x, h in zip(bar_positions, bar_heights):
+                path.moveTo(x, 0.80)
+                path.lineTo(x, 0.80 - h * 0.55)
+                path.lineTo(x + bar_width, 0.80 - h * 0.55)
+                path.lineTo(x + bar_width, 0.80)
         if not path.isEmpty():
             margin = self.width * 0.2
             transform = QTransform()

@@ -11,6 +11,10 @@ class GotoBlock(BaseBlock):
         return "Goto"
 
     @property
+    def fn_name(self):
+        return "goto_block"
+
+    @property
     def category(self):
         return "Routing"
 

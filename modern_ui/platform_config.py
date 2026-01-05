@@ -174,9 +174,9 @@ class PlatformConfig:
         the Windows display scale setting. We use logical pixels here and let
         Qt handle the physical pixel scaling.
 
-        Reduced from 100px to 85px to look better at high DPI settings (125%, 150%).
+        Increased to 100px for better symbol visibility.
         """
-        return 85
+        return 100
 
     @property
     def palette_grid_columns(self) -> int:

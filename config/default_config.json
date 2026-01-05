@@ -22,7 +22,7 @@
     "canvas_left_limit": 200,
     "default_block_width": 120,
     "default_block_height": 60,
-    "scaling_factor": 1.0
+    "scaling_factor": 1.25
   },
   "validation": {
     "check_algebraic_loops": true,

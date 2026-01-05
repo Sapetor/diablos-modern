@@ -42,8 +42,8 @@ class SwitchBlock(BaseBlock):
         if isinstance(raw_n, dict):
             raw_n = raw_n.get("default", 2)
         n = max(2, int(raw_n))
-        # Place control separate (index 0), then data inputs
-        inputs = [{"name": "ctrl", "type": "any", "group": "control"}]
+        # Place control on top, then data inputs on left
+        inputs = [{"name": "ctrl", "type": "any", "position": "top"}]
         for i in range(n):
             inputs.append({"name": f"in{i}", "type": "any"})
         return inputs
