@@ -551,15 +551,15 @@ class DSim:
         :param data: Dictionary with DSim parameters.
         :type data: dict
         """
-        self.SCREEN_WIDTH = data['wind_width']
-        self.SCREEN_HEIGHT = data['wind_height']
-        self.FPS = data['fps']
+        self.SCREEN_WIDTH = data.get('wind_width', 1280)
+        self.SCREEN_HEIGHT = data.get('wind_height', 770)
+        self.FPS = data.get('fps', 60)
         self.line_creation = 0
-        self.only_one = data['only_one']
-        self.enable_line_selection = data['enable_line_sel']
-        self.sim_time = data['sim_time']
-        self.sim_dt = data['sim_dt']
-        self.plot_trange = data['sim_trange']
+        self.only_one = data.get('only_one', False)
+        self.enable_line_selection = data.get('enable_line_sel', True)
+        self.sim_time = data.get('sim_time', 1.0)
+        self.sim_dt = data.get('sim_dt', 0.01)
+        self.plot_trange = data.get('sim_trange', 100)
 
     def update_blocks_data(self, block_data):
         """
@@ -793,6 +793,18 @@ class DSim:
         self.rk45_len = self.count_rk45_ints()
         self.rk_counter = 0
 
+        # Auto-connect Goto/From tags before execution starts
+        try:
+            self.model.link_goto_from()
+            # refresh references
+            self.blocks_list = self.model.blocks_list
+            self.line_list = self.model.line_list
+        except Exception as e:
+            logger.warning(f"Goto/From linking failed: {e}")
+
+        # Validate signal dimensions between connected blocks
+        self._validate_signal_dimensions()
+
         # The block diagram starts with looking for source type blocks
         for block in self.blocks_list:
             logger.debug(f"Initial processing of block: {block.name}, b_type: {block.b_type}")
@@ -869,7 +881,13 @@ class DSim:
         while not self.check_global_list():
             for block in self.blocks_list:
                 # This part is executed only if the received data is equal to the number of input ports and the block has not been computed yet.
-                if block.data_recieved == block.in_ports and not block.computed_data:
+                # Special case: From blocks have in_ports=0 but receive data via virtual lines
+                can_execute = block.data_recieved == block.in_ports
+                if block.block_fn == 'From':
+                    # From blocks must wait for virtual line data in input_queue[0]
+                    can_execute = 0 in block.input_queue and block.input_queue[0] is not None
+                
+                if can_execute and not block.computed_data:
                     # The function is executed (differentiate between internal and external function first)
                     if block.external:
                         try:
@@ -912,9 +930,18 @@ class DSim:
                             if is_child:
                                 # Data is sent to each required port of the child block
                                 for tuple_child in tuple_list:
-                                    mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
+                                    signal_data = out_value[tuple_child['srcport']]
+                                    mblock.input_queue[tuple_child['dstport']] = signal_data
                                     mblock.data_recieved += 1
                                     block.data_sent += 1
+                                    
+                                    # Update line signal_width for MIMO visual indicator
+                                    signal_len = len(np.atleast_1d(signal_data).flatten()) if signal_data is not None else 1
+                                    for line in self.line_list:
+                                        if line.srcblock == block.name and line.dstblock == mblock.name:
+                                            if line.srcport == tuple_child['srcport'] and line.dstport == tuple_child['dstport']:
+                                                line.signal_width = signal_len
+                                                break
 
             # The number of executed blocks from the previous stage is compared. If it is zero, there is an algebraic loop.
             computed_count = self.count_computed_global_list()
@@ -954,15 +981,6 @@ class DSim:
         for block in self.blocks_list:
             if block.block_fn == 'Scope':
                 self.buttons_list[6].active = True
-
-        # Auto-connect Goto/From tags
-        try:
-            self.model.link_goto_from()
-            # refresh references
-            self.blocks_list = self.model.blocks_list
-            self.line_list = self.model.line_list
-        except Exception as e:
-            logger.warning(f"Goto/From linking failed: {e}")
 
         # The dynamic plot function is initialized, if the Boolean is active
         self.dynamic_pyqtPlotScope(step=0)
@@ -1175,6 +1193,63 @@ class DSim:
         logger.debug("NO ISSUES FOUND IN DIAGRAM")
         return True
 
+    def _validate_signal_dimensions(self):
+        """
+        Validate signal dimensions between connected blocks.
+        Logs warnings for potential dimension mismatches (non-fatal).
+        """
+        warnings = []
+        
+        for line in self.line_list:
+            if line.hidden:
+                continue
+                
+            # Find source and destination blocks
+            src_block = next((b for b in self.blocks_list if b.name == line.srcblock), None)
+            dst_block = next((b for b in self.blocks_list if b.name == line.dstblock), None)
+            
+            if not src_block or not dst_block:
+                continue
+            
+            # Get expected output width from source block
+            src_width = None
+            if hasattr(src_block, 'block_instance') and src_block.block_instance:
+                outputs = getattr(src_block.block_instance, 'outputs', [])
+                if line.srcport < len(outputs):
+                    port_def = outputs[line.srcport]
+                    if isinstance(port_def, dict):
+                        src_width = port_def.get('width', None)
+            
+            # Get expected input width from destination block
+            dst_width = None
+            if hasattr(dst_block, 'block_instance') and dst_block.block_instance:
+                try:
+                    inputs = (dst_block.block_instance.get_inputs(dst_block.params) 
+                              if hasattr(dst_block.block_instance, 'get_inputs') 
+                              else getattr(dst_block.block_instance, 'inputs', []))
+                    if line.dstport < len(inputs):
+                        port_def = inputs[line.dstport]
+                        if isinstance(port_def, dict):
+                            dst_width = port_def.get('width', None)
+                except Exception:
+                    pass
+            
+            # Check for dimension mismatch (only if both specify a width)
+            if src_width is not None and dst_width is not None:
+                if src_width != dst_width and src_width != -1 and dst_width != -1:
+                    warnings.append(
+                        f"Dimension mismatch: {src_block.name}[{line.srcport}] → "
+                        f"{dst_block.name}[{line.dstport}] (width {src_width} → {dst_width})"
+                    )
+        
+        for warning in warnings:
+            logger.warning(f"Signal dimension: {warning}")
+        
+        if warnings:
+            logger.info(f"Signal dimension validation: {len(warnings)} potential mismatch(es) detected")
+        else:
+            logger.debug("Signal dimension validation: No mismatches detected")
+
     def count_rk45_ints(self):
         """
         :purpose: Checks all integrators and looks if there's at least one that use 'RK45' as integration method.
@@ -1340,15 +1415,23 @@ class DSim:
         for block in self.blocks_list:
             if '_init_start_' in block.params.keys():
                 block.params['_init_start_'] = True
+            # Also reset in exec_params if it exists (used during execution)
+            if hasattr(block, 'exec_params') and block.exec_params:
+                if '_init_start_' in block.exec_params:
+                    block.exec_params['_init_start_'] = True
+                # Clear any stored state like _prev
+                if '_prev' in block.exec_params:
+                    del block.exec_params['_prev']
 
     def plot_again(self):
         """
-        :purpose: Plots the data saved in Scope blocks without needing to execute the simulation again.
+        :purpose: Plots the data saved in Scope and XYGraph blocks without needing to execute the simulation again.
         """
         if self.dirty:
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         try:
+            # Plot Scopes
             vectors = [
                 x.params.get('vector')
                 for x in self.blocks_list
@@ -1359,8 +1442,118 @@ class DSim:
                 self.pyqtPlotScope()
             else:
                 logger.info("PLOT: No scope data available to plot.")
+            
+            # Plot XYGraphs
+            for block in self.blocks_list:
+                if block.block_fn == 'XYGraph':
+                    params = getattr(block, 'exec_params', block.params)
+                    x_data = params.get('_x_data_', [])
+                    y_data = params.get('_y_data_', [])
+                    if x_data and y_data:
+                        self._plot_xygraph(block)
+            
+            # Plot FFT spectrums
+            for block in self.blocks_list:
+                if block.block_fn == 'FFT':
+                    params = getattr(block, 'exec_params', block.params)
+                    buffer = params.get('_fft_buffer_', [])
+                    if buffer and len(buffer) > 1:
+                        self._plot_fft(block)
+                        
         except Exception as e:
             logger.info(f"PLOT: Skipping plot; scope data not available yet ({str(e)})")
+
+    def _plot_xygraph(self, block):
+        """Plot XY graph data for a single XYGraph block."""
+        import matplotlib.pyplot as plt
+        
+        # Data is stored in exec_params during execution
+        params = getattr(block, 'exec_params', block.params)
+        x_data = params.get('_x_data_', [])
+        y_data = params.get('_y_data_', [])
+        
+        if not x_data or not y_data:
+            return
+        
+        title = block.params.get('title', 'XY Plot')
+        x_label = block.params.get('x_label', 'X')
+        y_label = block.params.get('y_label', 'Y')
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(x_data, y_data, 'b-', linewidth=1)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(f"{title} ({block.name})")
+        ax.grid(True, alpha=0.3)
+        ax.set_aspect('equal', adjustable='box')
+        
+        plt.tight_layout()
+        plt.show()
+
+    def _plot_fft(self, block):
+        """Plot FFT spectrum for a single FFT block."""
+        import matplotlib.pyplot as plt
+        
+        params = getattr(block, 'exec_params', block.params)
+        buffer = params.get('_fft_buffer_', [])
+        time_data = params.get('_fft_time_', [])
+        
+        if not buffer or len(buffer) < 2:
+            return
+        
+        # Convert to numpy array
+        signal = np.array(buffer)
+        if signal.ndim > 1:
+            signal = signal[:, 0]  # Take first channel
+        
+        # Calculate sample rate
+        if len(time_data) > 1:
+            dt = np.mean(np.diff(time_data))
+            fs = 1.0 / dt if dt > 0 else 1.0
+        else:
+            fs = 1.0 / self.sim_dt if hasattr(self, 'sim_dt') else 1.0
+        
+        # Apply window function
+        window_type = params.get('window', 'hann')
+        n = len(signal)
+        if window_type == 'hann':
+            window = np.hanning(n)
+        elif window_type == 'hamming':
+            window = np.hamming(n)
+        elif window_type == 'blackman':
+            window = np.blackman(n)
+        else:
+            window = np.ones(n)
+        
+        windowed_signal = signal * window
+        
+        # Compute FFT
+        fft_result = np.fft.rfft(windowed_signal)
+        freqs = np.fft.rfftfreq(n, d=1.0/fs)
+        magnitude = np.abs(fft_result)
+        
+        # Normalize
+        if params.get('normalize', True):
+            max_mag = np.max(magnitude)
+            if max_mag > 0:
+                magnitude = magnitude / max_mag
+        
+        # Convert to dB if requested
+        if params.get('log_scale', False):
+            magnitude = 20 * np.log10(magnitude + 1e-12)
+        
+        # Plot
+        title = params.get('title', 'FFT Spectrum')
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(freqs, magnitude, 'b-', linewidth=1)
+        ax.set_xlabel('Frequency (Hz)')
+        ax.set_ylabel('Magnitude (dB)' if params.get('log_scale', False) else 'Magnitude')
+        ax.set_title(f"{title} ({block.name})")
+        ax.grid(True, alpha=0.3)
+        ax.set_xlim([0, fs/2])
+        
+        plt.tight_layout()
+        plt.show()
 
     def export_data(self):
         """
@@ -1607,8 +1800,10 @@ class DSim:
                 b_labels = block.exec_params.get('vec_labels', block.params.get('vec_labels'))
                 labels_list.append(b_labels)
                 b_vectors = block.exec_params.get('vector', block.params.get('vector'))
+                if b_vectors is None:
+                    b_vectors = []
                 vector_list.append(b_vectors)
-                logger.debug(f"Full vector for {block.name}:\n{b_vectors}")
+                logger.debug(f"Full vector for {block.name}: shape {np.shape(b_vectors)}")
                 logger.debug(f"Labels: {b_labels}")
                 logger.debug(f"Vector length: {len(b_vectors)}")
                 logger.debug(f"Vector type: {type(b_vectors)}")

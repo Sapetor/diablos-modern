@@ -69,6 +69,7 @@ class DLine:
         self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
         self.color: QColor = QColor(0, 0, 0)  # Default to black
         self.label: str = ""  # Connection label for signal names
+        self.signal_width: int = 1  # Signal width for MIMO (1=scalar, >1=vector)
 
     def toggle_selection(self) -> None:
         """Toggle the selection state of this line."""
@@ -326,6 +327,10 @@ class DLine:
         return path, all_points, segments
 
     def update_line(self, blocks_list: List) -> None:
+        """Update line coordinates based on current block positions."""
+        if self.hidden:
+            return
+            
         logger.debug(f"Updating line {self.name}")
         if blocks_list:
             start, end = None, None
@@ -362,10 +367,13 @@ class DLine:
             default_connection_color = theme_manager.get_color('connection_default')
             active_connection_color = theme_manager.get_color('connection_active')
 
-            # Determine line color and width based on selection state
+            # Determine line color and width based on selection state and signal width
             is_selected = self.selected and self.selected_segment == -1
             pen_color = active_connection_color if is_selected else default_connection_color
-            line_width = 2.5 if is_selected else 2.0
+            
+            # Base line width - thicker for vector signals (MIMO indicator)
+            base_width = 2.0 if self.signal_width <= 1 else 3.5
+            line_width = base_width + 0.5 if is_selected else base_width
 
             # Draw subtle glow/shadow for selected connections
             if is_selected:

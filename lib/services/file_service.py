@@ -270,17 +270,32 @@ class FileService:
 
             self.model.blocks_list.append(block)
 
+        # Build username→name and name→name maps for flexible line references
+        block_name_map = {}
+        for block in self.model.blocks_list:
+            # Map block.name to itself
+            block_name_map[block.name] = block.name
+            # Map username to block.name (if username exists)
+            if block.username:
+                block_name_map[block.username] = block.name
+
         # Recreate lines
         from lib.simulation.connection import DLine
         lines_data = data.get('lines_data', [])
         for line_data in lines_data:
             points = [tuple(p) if isinstance(p, list) else p for p in line_data['points']]
 
+            # Resolve srcblock and dstblock - allow username OR block.name
+            srcblock = line_data['srcblock']
+            dstblock = line_data['dstblock']
+            srcblock = block_name_map.get(srcblock, srcblock)
+            dstblock = block_name_map.get(dstblock, dstblock)
+
             line = DLine(
                 line_data['sid'],
-                line_data['srcblock'],
+                srcblock,
                 line_data['srcport'],
-                line_data['dstblock'],
+                dstblock,
                 line_data['dstport'],
                 points
             )

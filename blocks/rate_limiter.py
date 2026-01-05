@@ -49,8 +49,8 @@ class RateLimiterBlock(BaseBlock):
             return {0: u}
 
         prev = np.array(params["_prev"], dtype=float)
-        rising = float(params.get("rising_slew", np.inf))
-        falling = float(params.get("falling_slew", np.inf))
+        rising = abs(float(params.get("rising_slew", np.inf)))
+        falling = abs(float(params.get("falling_slew", np.inf)))
 
         max_inc = rising * dt
         max_dec = falling * dt
