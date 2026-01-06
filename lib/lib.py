@@ -611,10 +611,21 @@ class DSim:
         :param line_data: Dictionary with Line object id, parameters, variables, etc.
         :type line_data: dict
         """
+        # Build username→name map for flexible block references
+        # This allows files to use usernames (e.g., "err1") instead of auto-generated names ("Sum1")
+        srcblock = line_data['srcblock']
+        dstblock = line_data['dstblock']
+        
+        for block in self.blocks_list:
+            if block.username == srcblock:
+                srcblock = block.name
+            if block.username == dstblock:
+                dstblock = block.name
+        
         line = DLine(sid=line_data['sid'],
-                    srcblock=line_data['srcblock'],
+                    srcblock=srcblock,
                     srcport=line_data['srcport'],
-                    dstblock=line_data['dstblock'],
+                    dstblock=dstblock,
                     dstport=line_data['dstport'],
                     points=line_data['points'])
         line.selected = line_data['selected']
@@ -903,11 +914,6 @@ class DSim:
                         else:
                             out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
 
-                    # After execution, for memory blocks, update the 'output' state for the next step
-                    if block.name in self.memory_blocks:
-                        if block.block_fn == 'Integrator':
-                            block.exec_params['output'] = block.exec_params['mem']
-
                     # Check if the execution returned None (some blocks may not return anything)
                     if out_value is None:
                         logger.error(f"Block {block.name} ({block.block_fn}) returned None")
@@ -918,6 +924,11 @@ class DSim:
                     if 'E' in out_value.keys() and out_value['E']:
                         self.execution_failed(out_value.get('error', 'Unknown error'))
                         return False
+
+                    # After execution, for memory blocks, update the 'output' state for the next step
+                    if block.name in self.memory_blocks:
+                        if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                            block.exec_params['output'] = block.exec_params['mem']
 
                     # The computed_data booleans are updated in the global list as well as in the block itself
                     self.update_global_list(block.name, h_value=h_count, h_assign=True)
@@ -1088,8 +1099,8 @@ class DSim:
                                 out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.exec_params)
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
-                            if block.block_fn == 'Integrator':
-                                block.params['output'] = block.params['mem']
+                            if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                                block.exec_params['output'] = block.exec_params['mem']
 
                         # It is checked that the function has not delivered an error
                         if 'E' in out_value.keys() and out_value['E']:
@@ -1144,7 +1155,9 @@ class DSim:
             self.rk_counter += 1
         
         except Exception as e:
+            import traceback
             logger.error(f"Error during execution loop: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self.execution_failed()
 
     def execution_failed(self, msg=""):
