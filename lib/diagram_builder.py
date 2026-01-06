@@ -267,34 +267,45 @@ def create_platoon_diagram(n_vehicles: int = 5, save_path: str = "saves/platoon.
     for i in range(n_vehicles):
         y = 100 + i * 80
         
-        err = builder.add_block("Sum", x=160, y=y, name=f"err{i+1}", 
-                                params={"sign": "+-"})
+        # For vehicle 1, we need 3 inputs: ref (port 0), pos5 cyclic (port 1), pos1 feedback (port 2)
+        # For other vehicles: pos[i-1] (port 0), pos[i] feedback (port 1)
+        if i == 0:
+            # err1 needs 3 inputs for cyclic: ref + pos5 - pos1
+            err = builder.add_block("Sum", x=160, y=y, name=f"err{i+1}", 
+                                    params={"sign": "++-"}, in_ports=3)
+        else:
+            err = builder.add_block("Sum", x=160, y=y, name=f"err{i+1}", 
+                                    params={"sign": "+-"}, in_ports=2)
+        
         K = builder.add_block("Gain", x=230, y=y, name=f"K{i+1}", 
                               params={"gain": 2.0})
         vel = builder.add_block("Integrator", x=310, y=y, name=f"vel{i+1}",
-                                params={"init_cond": 0.0})
+                                params={"init_conds": 0.0, "method": "FWD_EULER"})
         pos = builder.add_block("Integrator", x=390, y=y, name=f"pos{i+1}",
-                                params={"init_cond": 0.0})
+                                params={"init_conds": 0.0, "method": "FWD_EULER"})
         
         # Internal chain: err -> K -> vel -> pos
         builder.connect(err, 0, K, 0)
         builder.connect(K, 0, vel, 0)
         builder.connect(vel, 0, pos, 0)
         
-        # Feedback: pos -> err (port 1)
-        builder.connect(pos, 0, err, 1)
+        # Feedback: pos -> err (last port, negative)
+        if i == 0:
+            builder.connect(pos, 0, err, 2)  # pos1 to err1 port 2 (negative)
+        else:
+            builder.connect(pos, 0, err, 1)  # pos[i] to err[i] port 1 (negative)
         
         vehicles.append((err, K, vel, pos))
     
-    # Connect reference to first vehicle
+    # Connect reference to first vehicle (port 0)
     builder.connect(ref, 0, "err1", 0)
     
-    # Forward coupling: pos[i] -> err[i+1]
+    # Forward coupling: pos[i] -> err[i+1] (port 0)
     for i in range(n_vehicles - 1):
         builder.connect(f"pos{i+1}", 0, f"err{i+2}", 0)
     
-    # Cyclic connection: pos[N] -> err[1]
-    builder.connect(f"pos{n_vehicles}", 0, "err1", 0)
+    # Cyclic connection: pos[N] -> err1 (port 1, positive for cyclic)
+    builder.connect(f"pos{n_vehicles}", 0, "err1", 1)
     
     # Add scope to display all positions
     scope = builder.add_block("Scope", x=520, y=250, name="scope",
