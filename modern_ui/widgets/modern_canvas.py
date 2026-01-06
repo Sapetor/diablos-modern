@@ -1362,12 +1362,22 @@ class ModernCanvas(QWidget):
 
                 if is_horizontal:
                     # Move horizontal segment vertically
-                    line.points[segment_index].setY(pos.y())
-                    line.points[segment_index + 1].setY(pos.y())
+                    # Don't move port-connected endpoints (first or last point)
+                    is_first_segment = (segment_index == 0)
+                    is_last_segment = (segment_index == len(line.points) - 2)
+                    if not is_first_segment:
+                        line.points[segment_index].setY(pos.y())
+                    if not is_last_segment:
+                        line.points[segment_index + 1].setY(pos.y())
                 else:
                     # Move vertical segment horizontally
-                    line.points[segment_index].setX(pos.x())
-                    line.points[segment_index + 1].setX(pos.x())
+                    # Don't move port-connected endpoints (first or last point)
+                    is_first_segment = (segment_index == 0)
+                    is_last_segment = (segment_index == len(line.points) - 2)
+                    if not is_first_segment:
+                        line.points[segment_index].setX(pos.x())
+                    if not is_last_segment:
+                        line.points[segment_index + 1].setX(pos.x())
                 
                 # Regenerate the trajectory with the updated points
                 line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
