@@ -262,6 +262,45 @@ def test_assert_block():
     print("[PASS] AssertBlock condition check")
 
 
+def test_bodemag_block():
+    """Test BodeMagBlock (analysis block, returns empty during sim)."""
+    from blocks.bodemag import BodeMagBlock
+    
+    block = BodeMagBlock()
+    params = {'_init_start_': True}
+    
+    # BodeMag just returns empty dict during simulation
+    result = block.execute(0, {0: np.array([1.0])}, params)
+    assert result == {}, f"BodeMag: expected empty dict, got {result}"
+    print("[PASS] BodeMagBlock")
+
+
+def test_rootlocus_block():
+    """Test RootLocusBlock (analysis block, returns empty during sim)."""
+    from blocks.rootlocus import RootLocusBlock
+    
+    block = RootLocusBlock()
+    params = {'_init_start_': True}
+    
+    # RootLocus just returns empty dict during simulation
+    result = block.execute(0, {0: np.array([1.0])}, params)
+    assert result == {}, f"RootLocus: expected empty dict, got {result}"
+    print("[PASS] RootLocusBlock")
+
+
+def test_external_block():
+    """Test ExternalBlock (placeholder, returns None during sim)."""
+    from blocks.external import ExternalBlock
+    
+    block = ExternalBlock()
+    params = {'filename': 'test.py'}
+    
+    # External block returns None (executed externally)
+    result = block.execute(0, {0: np.array([1.0])}, params)
+    assert result is None, f"External: expected None, got {result}"
+    print("[PASS] ExternalBlock")
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("DiaBloS Remaining Block Tests")
@@ -285,6 +324,9 @@ if __name__ == "__main__":
         ("FFTBlock", test_fft_block),
         # Analysis
         ("AssertBlock", test_assert_block),
+        ("BodeMagBlock", test_bodemag_block),
+        ("RootLocusBlock", test_rootlocus_block),
+        ("ExternalBlock", test_external_block),
     ]
     
     passed = 0
