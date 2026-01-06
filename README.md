@@ -2,6 +2,8 @@
 
 DiaBloS Modern is a PyQt5-based block-diagram simulator with a refreshed UI, MVC core, and a growing control-toolbox. It targets quick assembly of dynamic systems, fast iteration, and clear visualization.
 
+![DiaBloS Modern Screenshot](screenshot.png)
+
 ## Highlights
 - Modern canvas: drag/drop palette, zoom/pan, snap-to-grid, property editor with live apply.
 - Control & routing blocks: PID, saturation, rate limiter, hysteresis, deadband, switch (multi-input with control port), PRBS source, mux/demux, Goto/From tag routing. Tags auto-link, are validated, and a small HUD shows tag counts.
