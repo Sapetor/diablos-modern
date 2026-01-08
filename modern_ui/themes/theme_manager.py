@@ -126,10 +126,15 @@ class ThemeManager(QObject):
             'selection_rectangle': '#60A5FA',     # Selection rectangle
             'selection_rectangle_fill': '#60A5FA1A',  # Selection fill (with alpha)
             
-            # Palette specific - darker backgrounds for dark theme
-            'palette_bg': '#151A20',               # Palette background
-            'palette_item_bg': '#1E242C',          # Palette item background
+            # Palette specific - elevated surface with jewel tone accents
+            'palette_bg': '#1A1F26',               # Palette background (elevated from canvas)
+            'palette_item_bg': '#252A32',          # Palette item cards (elevated)
+            'palette_item_hover': '#2F3845',       # Palette item hover (even more elevated)
+            'palette_item_border': '#374151',      # Subtle border for items
+            'palette_item_border_hover': '#60A5FA',  # Accent border on hover (sapphire blue)
             'palette_text': '#E5E7EB',             # Palette text (brighter)
+            'palette_category_bg': '#1E242C',      # Category header background
+            'palette_category_text': '#9CA3AF',    # Category header text (muted)
             
             # Status bar - ensure good contrast
             'statusbar_bg': '#151A20',             # Status bar background
@@ -237,8 +242,13 @@ class ThemeManager(QObject):
             
             # Palette specific
             'palette_bg': '#F3F4F6',               # Palette background
-            'palette_item_bg': '#FFFFFF',          # Palette item background
+            'palette_item_bg': '#FFFFFF',          # Palette item cards
+            'palette_item_hover': '#F9FAFB',       # Palette item hover
+            'palette_item_border': '#E5E7EB',      # Subtle border for items
+            'palette_item_border_hover': '#2563EB',  # Accent border on hover
             'palette_text': '#374151',             # Palette text
+            'palette_category_bg': '#E5E7EB',      # Category header background
+            'palette_category_text': '#6B7280',    # Category header text
             
             # Status bar
             'statusbar_bg': '#F3F4F6',             # Status bar background
