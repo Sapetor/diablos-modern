@@ -7,7 +7,7 @@ import importlib
 import copy
 from typing import Dict, List, Optional, Any, Union
 import numpy as np
-from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QTransform, QPainterPath, QPolygonF, QPainter
+from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QTransform, QPainterPath, QPolygonF, QPainter, QLinearGradient
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager
 from lib.dialogs import ParamDialog, PortDialog
@@ -334,8 +334,18 @@ class DBlock:
                 # Create a lighter version for selected state
                 painter.setBrush(self.b_color)
 
-        # Draw main block shape
-        painter.setBrush(self.b_color)
+        # Draw main block shape with gradient fill
+        # Create subtle gradient from top (lighter) to bottom (base color)
+        gradient = QLinearGradient(self.left, self.top, self.left, self.top + self.height)
+        base_color = self.b_color
+        lighter_color = QColor(base_color)
+        lighter_color.setRed(min(255, base_color.red() + 30))
+        lighter_color.setGreen(min(255, base_color.green() + 30))
+        lighter_color.setBlue(min(255, base_color.blue() + 30))
+        gradient.setColorAt(0, lighter_color)
+        gradient.setColorAt(1, base_color)
+        
+        painter.setBrush(gradient)
         painter.setPen(QPen(border_color, 3 if self.selected else 2))
 
         if self.block_fn == "Gain":
