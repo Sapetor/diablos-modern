@@ -44,8 +44,8 @@ def create_nonlinear_example():
     
     # Deadband block
     builder.add_block('Deadband', 200, 300, name='dead', params={
-        'deadband': 0.5,
-        'center': 0.0
+        'start': -0.5,
+        'end': 0.5
     })
     
     # Rate Limiter
