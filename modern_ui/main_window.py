@@ -530,7 +530,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         statusbar.addPermanentWidget(QLabel("|"))
 
-        self.theme_status = QLabel("Dark Theme")
+        # Show actual current theme
+        initial_theme = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
+        self.theme_status = QLabel(initial_theme)
         statusbar.addPermanentWidget(self.theme_status)
 
         # Apply initial theme colors to statusbar labels

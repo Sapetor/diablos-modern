@@ -132,7 +132,7 @@ class ThemeManager(QObject):
             'palette_item_hover': '#2F3845',       # Palette item hover (even more elevated)
             'palette_item_border': '#374151',      # Subtle border for items
             'palette_item_border_hover': '#60A5FA',  # Accent border on hover (sapphire blue)
-            'palette_text': '#E5E7EB',             # Palette text (brighter)
+            'palette_text': '#FFFFFF',             # Palette text (pure white for contrast)
             'palette_category_bg': '#1E242C',      # Category header background
             'palette_category_text': '#9CA3AF',    # Category header text (muted)
             
