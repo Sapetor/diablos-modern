@@ -129,21 +129,23 @@ class DraggableBlockWidget(QFrame):
         painter.drawText(name_rect, Qt.AlignCenter, menu_block.fn_name)
 
     def _apply_styling(self):
-        """Apply theme-aware styling."""
-        border_color = theme_manager.get_color('border_secondary')
-        hover_bg_color = theme_manager.get_color('accent_primary')
-        hover_bg_color.setAlpha(30)  # Semi-transparent accent color for better text contrast
+        """Apply theme-aware styling with elevated surfaces."""
+        # Use palette-specific theme colors
+        item_bg = theme_manager.get_color('palette_item_bg')
+        item_hover = theme_manager.get_color('palette_item_hover')
+        item_border = theme_manager.get_color('palette_item_border')
+        item_border_hover = theme_manager.get_color('palette_item_border_hover')
 
         self.setStyleSheet(f"""
             DraggableBlockWidget {{
-                background-color: transparent;
-                border: 1px solid {border_color.name()};
+                background-color: {item_bg.name()};
+                border: 1px solid {item_border.name()};
                 border-radius: 10px;
                 margin: 2px;
             }}
             DraggableBlockWidget:hover {{
-                background-color: {hover_bg_color.name(QColor.HexArgb)};
-                border: 2px solid {theme_manager.get_color('accent_primary').name()};
+                background-color: {item_hover.name()};
+                border: 2px solid {item_border_hover.name()};
             }}
         """)
     
