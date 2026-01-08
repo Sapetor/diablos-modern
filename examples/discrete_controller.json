@@ -1,0 +1,264 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.001,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Sine",
+            "sid": 0,
+            "username": "sine",
+            "coords_left": 50,
+            "coords_top": 150,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sine",
+            "params": {
+                "amplitude": 1.0,
+                "frequency": 2.0,
+                "phase": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ZeroOrderHold",
+            "sid": 1,
+            "username": "zoh",
+            "coords_left": 200,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#808080",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "zeroorderhold",
+            "params": {
+                "sampling_time": 0.1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "DiscreteTF",
+            "sid": 2,
+            "username": "dtf",
+            "coords_left": 350,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#808080",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "discretetf",
+            "params": {
+                "numerator": [
+                    0.5
+                ],
+                "denominator": [
+                    1.0,
+                    -0.5
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 3,
+            "username": "scope_orig",
+            "coords_left": 400,
+            "coords_top": 100,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Original Signal",
+                "labels": "continuous"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 4,
+            "username": "scope_zoh",
+            "coords_left": 400,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "ZOH Output",
+                "labels": "sampled"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 5,
+            "username": "scope_filt",
+            "coords_left": 500,
+            "coords_top": 300,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Filtered Output",
+                "labels": "filtered"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "line0",
+            "sid": 0,
+            "srcblock": "sine",
+            "srcport": 0,
+            "dstblock": "zoh",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    170
+                ],
+                [
+                    200,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line1",
+            "sid": 1,
+            "srcblock": "sine",
+            "srcport": 0,
+            "dstblock": "scope_orig",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    170
+                ],
+                [
+                    400,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line2",
+            "sid": 2,
+            "srcblock": "zoh",
+            "srcport": 0,
+            "dstblock": "dtf",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    220
+                ],
+                [
+                    350,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line3",
+            "sid": 3,
+            "srcblock": "zoh",
+            "srcport": 0,
+            "dstblock": "scope_zoh",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    220
+                ],
+                [
+                    400,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line4",
+            "sid": 4,
+            "srcblock": "dtf",
+            "srcport": 0,
+            "dstblock": "scope_filt",
+            "dstport": 0,
+            "points": [
+                [
+                    400,
+                    220
+                ],
+                [
+                    500,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
+}

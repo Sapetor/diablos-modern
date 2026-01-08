@@ -1,0 +1,394 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Sine",
+            "sid": 0,
+            "username": "input",
+            "coords_left": 50,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sine",
+            "params": {
+                "amplitude": 2.0,
+                "frequency": 0.5,
+                "phase": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Saturation",
+            "sid": 1,
+            "username": "sat",
+            "coords_left": 200,
+            "coords_top": 100,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "saturation",
+            "params": {
+                "upper_limit": 1.0,
+                "lower_limit": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Hysteresis",
+            "sid": 2,
+            "username": "hyst",
+            "coords_left": 200,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "hysteresis",
+            "params": {
+                "upper": 0.5,
+                "lower": -0.5,
+                "high": 1.0,
+                "low": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Deadband",
+            "sid": 3,
+            "username": "dead",
+            "coords_left": 200,
+            "coords_top": 300,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "deadband",
+            "params": {
+                "deadband": 0.5,
+                "center": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "RateLimiter",
+            "sid": 4,
+            "username": "rate",
+            "coords_left": 200,
+            "coords_top": 400,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DDA0DD",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "ratelimiter",
+            "params": {
+                "rising_slew": 2.0,
+                "falling_slew": -2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 5,
+            "username": "scope_sat",
+            "coords_left": 400,
+            "coords_top": 100,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Saturation",
+                "labels": "saturated"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 6,
+            "username": "scope_hyst",
+            "coords_left": 400,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Hysteresis",
+                "labels": "hysteresis"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "scope_dead",
+            "coords_left": 400,
+            "coords_top": 300,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Deadband",
+                "labels": "deadband"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "username": "scope_rate",
+            "coords_left": 400,
+            "coords_top": 400,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "in",
+            "fn_name": "scope",
+            "params": {
+                "title": "Rate Limiter",
+                "labels": "rate_limited"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "line0",
+            "sid": 0,
+            "srcblock": "input",
+            "srcport": 0,
+            "dstblock": "sat",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    200,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line1",
+            "sid": 1,
+            "srcblock": "input",
+            "srcport": 0,
+            "dstblock": "hyst",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    200,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line2",
+            "sid": 2,
+            "srcblock": "input",
+            "srcport": 0,
+            "dstblock": "dead",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    200,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line3",
+            "sid": 3,
+            "srcblock": "input",
+            "srcport": 0,
+            "dstblock": "rate",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    200,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line4",
+            "sid": 4,
+            "srcblock": "sat",
+            "srcport": 0,
+            "dstblock": "scope_sat",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    120
+                ],
+                [
+                    400,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line5",
+            "sid": 5,
+            "srcblock": "hyst",
+            "srcport": 0,
+            "dstblock": "scope_hyst",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    220
+                ],
+                [
+                    400,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line6",
+            "sid": 6,
+            "srcblock": "dead",
+            "srcport": 0,
+            "dstblock": "scope_dead",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    320
+                ],
+                [
+                    400,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line7",
+            "sid": 7,
+            "srcblock": "rate",
+            "srcport": 0,
+            "dstblock": "scope_rate",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    420
+                ],
+                [
+                    400,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
+}
