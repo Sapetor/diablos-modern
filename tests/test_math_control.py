@@ -147,25 +147,31 @@ def test_saturation_block():
 
 
 def test_deadband_block():
-    """Test DeadbandBlock creates dead zone."""
+    """Test DeadbandBlock matches Simulink Dead Zone behavior."""
     from blocks.deadband import DeadbandBlock
     
     block = DeadbandBlock()
     
-    # Inside deadband - outputs center (0) - deadband is half-width around center
-    params = {'deadband': 0.5, 'center': 0.0}
+    # Dead zone from -0.5 to +0.5
+    params = {'start': -0.5, 'end': 0.5}
+    
+    # Inside deadzone - output is 0
     result = block.execute(0, {0: np.array([0.3])}, params)
     assert np.isclose(result[0], 0.0), f"Deadband inside: expected 0, got {result[0]}"
     
-    # Outside deadband (above) - passes through
+    # Above end - output = input - end (1.0 - 0.5 = 0.5)
     result = block.execute(0, {0: np.array([1.0])}, params)
-    assert np.isclose(result[0], 1.0), f"Deadband above: expected 1.0, got {result[0]}"
+    assert np.isclose(result[0], 0.5), f"Deadband above: expected 0.5, got {result[0]}"
     
-    # Outside deadband (below) - passes through
+    # Below start - output = input - start (-1.0 - (-0.5) = -0.5)
     result = block.execute(0, {0: np.array([-1.0])}, params)
-    assert np.isclose(result[0], -1.0), f"Deadband below: expected -1.0, got {result[0]}"
+    assert np.isclose(result[0], -0.5), f"Deadband below: expected -0.5, got {result[0]}"
     
-    print("[PASS] DeadbandBlock")
+    # Exactly at boundary (end) - output is 0
+    result = block.execute(0, {0: np.array([0.5])}, params)
+    assert np.isclose(result[0], 0.0), f"Deadband at end: expected 0, got {result[0]}"
+    
+    print("[PASS] DeadbandBlock (Simulink behavior)")
 
 
 def test_rate_limiter_block():

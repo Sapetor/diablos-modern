@@ -4,7 +4,13 @@ from blocks.base_block import BaseBlock
 
 class DeadbandBlock(BaseBlock):
     """
-    Zeroes the signal inside a symmetric deadband around center; passes through otherwise.
+    Dead Zone block matching Simulink behavior.
+    
+    Output is zero inside [start, end] deadzone.
+    Outside the deadzone, the offset is subtracted:
+    - input < start: output = input - start
+    - start <= input <= end: output = 0
+    - input > end: output = input - end
     """
 
     @property
@@ -21,13 +27,13 @@ class DeadbandBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Suppress small signals within +/- deadband around center."
+        return "Dead zone: output is zero in [start, end], offset-subtracted outside."
 
     @property
     def params(self):
         return {
-            "deadband": {"type": "float", "default": 0.1, "doc": "Half-width of deadband."},
-            "center": {"type": "float", "default": 0.0, "doc": "Center value of deadband."},
+            "start": {"type": "float", "default": -0.5, "doc": "Start of dead zone (lower threshold)."},
+            "end": {"type": "float", "default": 0.5, "doc": "End of dead zone (upper threshold)."},
         }
 
     @property
@@ -40,9 +46,21 @@ class DeadbandBlock(BaseBlock):
 
     def execute(self, time, inputs, params):
         u = np.array(inputs[0], dtype=float)
-        center = float(params.get("center", 0.0))
-        band = float(params.get("deadband", 0.0))
-        out = u.copy()
-        mask = np.abs(u - center) <= band
-        out[mask] = center
+        start = float(params.get("start", -0.5))
+        end = float(params.get("end", 0.5))
+        
+        # Simulink Dead Zone behavior
+        out = np.zeros_like(u)
+        
+        # Below dead zone: subtract start threshold
+        below_mask = u < start
+        out[below_mask] = u[below_mask] - start
+        
+        # Above dead zone: subtract end threshold
+        above_mask = u > end
+        out[above_mask] = u[above_mask] - end
+        
+        # Inside dead zone: output remains 0 (already initialized)
+        
         return {0: out}
+

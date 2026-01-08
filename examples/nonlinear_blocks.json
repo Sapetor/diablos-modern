@@ -101,8 +101,8 @@
             "io_edit": "none",
             "fn_name": "deadband",
             "params": {
-                "deadband": 0.5,
-                "center": 0.0
+                "start": -0.5,
+                "end": 0.5
             },
             "external": false,
             "flipped": false
