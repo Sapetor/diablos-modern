@@ -125,6 +125,15 @@ class ThemeManager(QObject):
             'canvas_background_alt': '#1A1F26',   # Alternate canvas (for patterns)
             'selection_rectangle': '#60A5FA',     # Selection rectangle
             'selection_rectangle_fill': '#60A5FA1A',  # Selection fill (with alpha)
+            
+            # Palette specific - darker backgrounds for dark theme
+            'palette_bg': '#151A20',               # Palette background
+            'palette_item_bg': '#1E242C',          # Palette item background
+            'palette_text': '#E5E7EB',             # Palette text (brighter)
+            
+            # Status bar - ensure good contrast
+            'statusbar_bg': '#151A20',             # Status bar background
+            'statusbar_text': '#E5E7EB',           # Status bar text (brighter white)
         }
     
     def _create_light_theme(self) -> Dict[str, Any]:
@@ -225,6 +234,15 @@ class ThemeManager(QObject):
             'canvas_background_alt': '#FFFFFF',   # Alternate canvas (for patterns)
             'selection_rectangle': '#2563EB',     # Selection rectangle
             'selection_rectangle_fill': '#2563EB1A',  # Selection fill (with alpha)
+            
+            # Palette specific
+            'palette_bg': '#F3F4F6',               # Palette background
+            'palette_item_bg': '#FFFFFF',          # Palette item background
+            'palette_text': '#374151',             # Palette text
+            
+            # Status bar
+            'statusbar_bg': '#F3F4F6',             # Status bar background
+            'statusbar_text': '#374151',           # Status bar text
         }
     
     def get_current_theme(self) -> Dict[str, Any]:
