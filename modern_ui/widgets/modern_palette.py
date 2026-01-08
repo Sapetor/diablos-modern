@@ -120,12 +120,31 @@ class DraggableBlockWidget(QFrame):
         if original_theme:
             theme_manager.themes[ThemeType.DARK]['text_primary'] = original_theme
 
-        # Use palette_text color for block label text
-        painter.setPen(theme_manager.get_color('palette_text'))
-
+        # Draw block name with background for visibility
+        name_rect = QRect(4, self.height() - 22, self.width() - 8, 20)
+        
+        # Draw semi-transparent background behind text for contrast
+        from modern_ui.themes.theme_manager import ThemeType
+        if theme_manager.current_theme == ThemeType.DARK:
+            # Dark mode: dark background, white text
+            bg_color = QColor('#1A1F26')
+            bg_color.setAlpha(220)
+            text_color = QColor('#FFFFFF')
+        else:
+            # Light mode: light background, dark text  
+            bg_color = QColor('#F3F4F6')
+            bg_color.setAlpha(220)
+            text_color = QColor('#1F2937')
+        
+        painter.setBrush(bg_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawRoundedRect(name_rect, 4, 4)
+        
+        # Draw text
+        painter.setPen(text_color)
         font = QFont("Segoe UI", 8)
+        font.setBold(True)
         painter.setFont(font)
-        name_rect = QRect(0, self.height() - 20, self.width(), 20)
         painter.drawText(name_rect, Qt.AlignCenter, menu_block.fn_name)
 
     def _apply_styling(self):
