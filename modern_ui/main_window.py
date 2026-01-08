@@ -1502,43 +1502,19 @@ class ModernDiaBloSWindow(QMainWindow):
             # Create config directory if it doesn't exist
             os.makedirs('config', exist_ok=True)
 
-            # Save current state to autosave file
-            import pickle
-            with open(self.autosave_path, 'wb') as f:
-                state = {
-                    'blocks': [],
-                    'lines': []
-                }
-
-                # Capture blocks
-                for block in self.canvas.dsim.blocks_list:
-                    block_data = {
-                        'name': block.name,
-                        'block_fn': block.block_fn,
-                        'coords': (block.left, block.top, block.width, block.height),
-                        'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
-                        'in_ports': block.in_ports,
-                        'out_ports': block.out_ports,
-                        'b_type': block.b_type,
-                        'io_edit': block.io_edit,
-                        'fn_name': block.fn_name,
-                        'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
-                        'external': block.external
-                    }
-                    state['blocks'].append(block_data)
-
-                # Capture connections
-                for line in self.canvas.dsim.line_list:
-                    line_data = {
-                        'name': line.name,
-                        'srcblock': line.srcblock,
-                        'srcport': line.srcport,
-                        'dstblock': line.dstblock,
-                        'dstport': line.dstport
-                    }
-                    state['lines'].append(line_data)
-
-                pickle.dump(state, f)
+            # Save using file_service for proper JSON format
+            if hasattr(self.dsim, 'file_service'):
+                self.dsim.file_service.save(
+                    autosave=True, 
+                    modern_ui_data={
+                        'theme': theme_manager.current_theme.value,
+                        'zoom_factor': self.canvas.zoom_factor if hasattr(self.canvas, 'zoom_factor') else 1.0
+                    },
+                    filepath=self.autosave_path
+                )
+            else:
+                # Fallback: use dsim.save
+                self.dsim.save(autosave=True, filepath=self.autosave_path)
 
             logger.debug("Auto-save completed")
 
@@ -1574,59 +1550,17 @@ class ModernDiaBloSWindow(QMainWindow):
     def _recover_autosave(self):
         """Recover diagram from auto-save file."""
         try:
-            import pickle
-            from PyQt5.QtCore import QRect
-            from PyQt5.QtGui import QColor
-
-            with open(self.autosave_path, 'rb') as f:
-                state = pickle.load(f)
-
-            # Clear current diagram
-            self.canvas.dsim.blocks_list.clear()
-            self.canvas.dsim.line_list.clear()
-
-            # Restore blocks
-            for block_data in state['blocks']:
-                coords = QRect(*block_data['coords'])
-                block = self.canvas.dsim.add_new_block(
-                    block_data['block_fn'],
-                    coords,
-                    QColor(block_data['color']),
-                    block_data['in_ports'],
-                    block_data['out_ports'],
-                    block_data['b_type'],
-                    block_data['io_edit'],
-                    block_data['fn_name'],
-                    block_data['params'],
-                    block_data['external']
-                )
-                if block:
-                    block.name = block_data['name']
-
-            # Restore connections
-            for line_data in state['lines']:
-                # Find blocks by name
-                src_block = None
-                dst_block = None
-                for block in self.canvas.dsim.blocks_list:
-                    if block.name == line_data['srcblock']:
-                        src_block = block
-                    if block.name == line_data['dstblock']:
-                        dst_block = block
-
-                if src_block and dst_block:
-                    src_port_pos = src_block.out_coords[line_data['srcport']]
-                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
-
-                    line = self.canvas.dsim.add_line(
-                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
-                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
-                    )
-                    if line:
-                        line.name = line_data['name']
+            # Use the file service to load properly (same as normal open)
+            if hasattr(self.dsim, 'file_service'):
+                modern_ui_data = self.dsim.file_service.load(filepath=self.autosave_path)
+            else:
+                # Fallback: load directly via open_file
+                modern_ui_data = self.dsim.open_file(self.autosave_path)
 
             # Remove autosave file after successful recovery
-            os.remove(self.autosave_path)
+            import os
+            if os.path.exists(self.autosave_path):
+                os.remove(self.autosave_path)
 
             self.canvas.update()
             self.status_message.setText("Diagram recovered from auto-save")
@@ -1638,12 +1572,22 @@ class ModernDiaBloSWindow(QMainWindow):
                 "Your diagram has been successfully recovered from the auto-save file."
             )
 
+            return modern_ui_data
+
         except Exception as e:
             logger.error(f"Error recovering from auto-save: {str(e)}")
+            # Try to remove the corrupt autosave file
+            try:
+                import os
+                if os.path.exists(self.autosave_path):
+                    os.remove(self.autosave_path)
+                    logger.info("Removed corrupt autosave file")
+            except:
+                pass
             QMessageBox.warning(
                 self,
                 "Recovery Failed",
-                f"Failed to recover diagram from auto-save:\n{str(e)}"
+                f"Could not recover auto-save file. Starting fresh.\n\nError: {str(e)}"
             )
 
     def _cleanup_autosave(self):
