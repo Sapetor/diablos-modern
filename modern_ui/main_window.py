@@ -525,6 +525,11 @@ class ModernDiaBloSWindow(QMainWindow):
 
         statusbar.addPermanentWidget(QLabel("|"))
 
+        self.block_count_status = QLabel("Blocks: 0")
+        statusbar.addPermanentWidget(self.block_count_status)
+
+        statusbar.addPermanentWidget(QLabel("|"))
+
         self.theme_status = QLabel("Dark Theme")
         statusbar.addPermanentWidget(self.theme_status)
 

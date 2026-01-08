@@ -1535,6 +1535,15 @@ class ModernCanvas(QWidget):
             elif event.key() == Qt.Key_A and ctrl_pressed:
                 # Ctrl+A: Select all blocks
                 self._select_all_blocks()
+            elif event.key() == Qt.Key_F5:
+                if shift_pressed:
+                    # Shift+F5: Stop simulation
+                    self.stop_simulation()
+                    logger.info("F5: Stopped simulation")
+                else:
+                    # F5: Start/run simulation
+                    self.start_simulation()
+                    logger.info("F5: Started simulation")
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
