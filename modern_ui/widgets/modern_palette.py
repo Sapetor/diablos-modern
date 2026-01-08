@@ -120,13 +120,8 @@ class DraggableBlockWidget(QFrame):
         if original_theme:
             theme_manager.themes[ThemeType.DARK]['text_primary'] = original_theme
 
-        # Use dark text color in dark mode for better contrast on bright block colors
-        if theme_manager.current_theme == ThemeType.DARK:
-            # Use dark text for palette blocks in dark mode
-            painter.setPen(QColor('#1F2937'))  # Dark gray for good contrast
-        else:
-            # Use standard text color in light mode
-            painter.setPen(theme_manager.get_color('text_primary'))
+        # Use palette_text color for block label text
+        painter.setPen(theme_manager.get_color('palette_text'))
 
         font = QFont("Segoe UI", 8)
         painter.setFont(font)

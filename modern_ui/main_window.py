@@ -678,13 +678,21 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _update_statusbar_colors(self):
         """Update statusbar label colors for proper contrast."""
-        text_color = theme_manager.get_color('text_primary').name()
-        statusbar_style = f"QLabel {{ color: {text_color}; }}"
+        text_color = theme_manager.get_color('statusbar_text').name()
+        bg_color = theme_manager.get_color('statusbar_bg').name()
+        
+        # Style the status bar itself
+        self.statusBar().setStyleSheet(f"QStatusBar {{ background-color: {bg_color}; }}")
+        
+        # Style all labels in the status bar
+        statusbar_style = f"QLabel {{ color: {text_color}; background-color: transparent; }}"
 
         # Update known labels
         self.status_message.setStyleSheet(statusbar_style)
         self.zoom_status.setStyleSheet(statusbar_style)
         self.cursor_status.setStyleSheet(statusbar_style)
+        if hasattr(self, 'block_count_status'):
+            self.block_count_status.setStyleSheet(statusbar_style)
         self.theme_status.setStyleSheet(statusbar_style)
 
         # Apply to all statusbar labels (including "Zoom:" and "|" separators)
