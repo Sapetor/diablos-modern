@@ -41,6 +41,10 @@ class DerivativeBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Derivative uses dy/dt text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params):
         if params.get('_init_start_', True):
             self.t_old = time
@@ -61,3 +65,4 @@ class DerivativeBlock(BaseBlock):
         self.didt_old = didt
         
         return {0: np.array(didt)}
+

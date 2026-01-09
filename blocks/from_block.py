@@ -41,6 +41,11 @@ class FromBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """From uses tag text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params):
         # Value will be fed via hidden virtual line into input_queue under key 0
         return {0: inputs.get(0, 0)}
+

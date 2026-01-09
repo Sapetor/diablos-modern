@@ -4,10 +4,12 @@ Handles simulation initialization, execution loops, and diagram analysis.
 """
 
 import logging
-from typing import List, Dict, Tuple, Any
+import time as time_module
+from typing import List, Dict, Tuple, Any, Optional, Callable
 import numpy as np
 from lib import functions
 from lib.simulation.block import DBlock
+from lib.workspace import WorkspaceManager
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +53,18 @@ class SimulationEngine:
         self.sim_time: float = 1.0
         self.sim_dt: float = 0.01
         self.real_time: bool = True
+        self.execution_time: float = 1.0
+        self.time_step: float = 0.0
 
         # Execution tracking
         self.global_computed_list: List[Dict[str, Any]] = []
-        self.timeline: List[float] = []
+        self.timeline: np.ndarray = np.array([0.0])
         self.outs: List[Any] = []
+        self.memory_blocks: set = set()
+        self.max_hier: int = 0
+        self.rk45_len: bool = False
+        self.rk_counter: int = 0
+        self.execution_time_start: float = 0.0
 
     def check_diagram_integrity(self):
         """
@@ -278,3 +287,217 @@ class SimulationEngine:
             'sim_time': self.sim_time,
             'sim_dt': self.sim_dt
         }
+
+    # =========================================================================
+    # Core Execution Methods - Migrated from DSim
+    # =========================================================================
+
+    def prepare_execution(self, execution_time: float) -> bool:
+        """
+        Prepare the simulation for execution by resolving parameters and 
+        identifying memory blocks.
+
+        Args:
+            execution_time: Total simulation time in seconds
+
+        Returns:
+            bool: True if preparation successful, False otherwise
+        """
+        logger.debug("*****INIT NEW EXECUTION*****")
+        
+        self.execution_stop = False
+        self.error_msg = ""
+        self.time_step = 0
+        self.timeline = np.array([self.time_step])
+        self.execution_time = execution_time
+
+        workspace_manager = WorkspaceManager()
+
+        for block in self.model.blocks_list:
+            # Resolve parameters using WorkspaceManager
+            logger.debug(f"Block {block.name}: params before resolve = {block.params}")
+            block.exec_params = workspace_manager.resolve_params(block.params)
+            logger.debug(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
+            
+            # Copy internal parameters that start with '_'
+            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+
+            # Dynamically set b_type for Transfer Functions
+            self._set_block_type(block)
+            
+            block.exec_params['dtime'] = self.sim_dt
+            try:
+                missing_file_flag = block.reload_external_data()
+                if missing_file_flag == 1:
+                    logger.error(f"Missing external file for block: {block.name}")
+                    return False
+            except Exception as e:
+                logger.error(f"Error reloading external data for block {block.name}: {str(e)}")
+                return False
+
+        if not self.check_diagram_integrity():
+            logger.error("Diagram integrity check failed")
+            return False
+
+        # Initialize global computed list
+        self.global_computed_list = [
+            {'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
+            for x in self.model.blocks_list
+        ]
+        self.reset_execution_data()
+        self.execution_time_start = time_module.time()
+        
+        # Identify memory blocks
+        self._identify_memory_blocks()
+        
+        # Check for RK45 integrators
+        self.rk45_len = self.count_rk45_integrators()
+        self.rk_counter = 0
+
+        # Auto-connect Goto/From tags
+        try:
+            self.model.link_goto_from()
+        except Exception as e:
+            logger.warning(f"Goto/From linking failed: {e}")
+
+        logger.debug("Execution preparation complete")
+        return True
+
+    def _set_block_type(self, block: DBlock) -> None:
+        """Set block type based on transfer function properness."""
+        if block.block_fn == 'TranFn':
+            num = block.exec_params.get('numerator', [])
+            den = block.exec_params.get('denominator', [])
+            block.b_type = 1 if len(den) > len(num) else 2
+        elif block.block_fn == 'DiscreteTranFn':
+            num = block.exec_params.get('numerator', [])
+            den = block.exec_params.get('denominator', [])
+            block.b_type = 1 if len(den) > len(num) else 2
+        elif block.block_fn == 'DiscreteStateSpace':
+            D = np.array(block.exec_params.get('D', [[0.0]]))
+            block.b_type = 1 if np.all(D == 0) else 2
+
+    def _identify_memory_blocks(self) -> None:
+        """Identify blocks with memory (integrators, strictly proper TFs)."""
+        self.memory_blocks = set()
+        for block in self.model.blocks_list:
+            if block.b_type == 1:
+                self.memory_blocks.add(block.name)
+            elif block.block_fn == 'TranFn':
+                num = block.params.get('numerator', [])
+                den = block.params.get('denominator', [])
+                if len(den) > len(num):
+                    self.memory_blocks.add(block.name)
+            elif block.block_fn == 'DiscreteTranFn':
+                num = block.params.get('numerator', [])
+                den = block.params.get('denominator', [])
+                if len(den) > len(num):
+                    self.memory_blocks.add(block.name)
+            elif block.block_fn == 'DiscreteStateSpace':
+                D = np.array(block.params.get('D', [[0.0]]))
+                if np.all(D == 0):
+                    self.memory_blocks.add(block.name)
+        logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
+
+    def execute_block(self, block: DBlock, output_only: bool = False) -> Dict[int, Any]:
+        """
+        Execute a single block.
+
+        Args:
+            block: The block to execute
+            output_only: If True, only compute output without updating state
+
+        Returns:
+            dict: Output values keyed by port number, or {'E': True} on error
+        """
+        kwargs = {
+            'time': self.time_step,
+            'inputs': block.input_queue,
+            'params': block.exec_params,
+        }
+        if output_only:
+            kwargs['output_only'] = True
+        if block.block_fn == 'Integrator':
+            kwargs['next_add_in_memory'] = not self.rk45_len or self.rk_counter == 3
+            kwargs['dtime'] = self.sim_dt
+
+        try:
+            if block.external:
+                out_value = getattr(block.file_function, block.fn_name)(**kwargs)
+            elif block.block_instance:
+                out_value = block.block_instance.execute(**kwargs)
+            else:
+                out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
+            return out_value
+        except Exception as e:
+            logger.error(f"Error executing block {block.name}: {str(e)}")
+            return {'E': True, 'error': str(e)}
+
+    def propagate_outputs(self, block: DBlock, out_value: Dict[int, Any]) -> None:
+        """
+        Propagate block outputs to connected downstream blocks.
+
+        Args:
+            block: Source block
+            out_value: Output values from the block
+        """
+        children = self.get_outputs(block.name)
+        for mblock in self.model.blocks_list:
+            is_child, tuple_list = self._children_recognition(mblock.name, children)
+            if is_child:
+                for tuple_child in tuple_list:
+                    if tuple_child['dstport'] not in mblock.input_queue:
+                        mblock.data_recieved += 1
+                    mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
+                    block.data_sent += 1
+
+    def _children_recognition(self, block_name: str, children_list: List[Dict]) -> Tuple[bool, List[Dict]]:
+        """
+        Check if block_name is in the children list.
+
+        Returns:
+            Tuple of (is_child, matching_connections)
+        """
+        child_ports = []
+        for child in children_list:
+            if block_name in child.values():
+                child_ports.append(child)
+        if not child_ports:
+            return False, []
+        return True, child_ports
+
+    def update_global_list(self, block_name: str, h_value: int = 0, h_assign: bool = False) -> None:
+        """
+        Update the global computed list for a block.
+
+        Args:
+            block_name: Name of the block
+            h_value: Hierarchy value to assign
+            h_assign: Whether to assign hierarchy value
+        """
+        for elem in self.global_computed_list:
+            if elem['name'] == block_name:
+                if h_assign:
+                    elem['hierarchy'] = h_value
+                elem['computed_data'] = True
+                break
+
+    def check_global_list(self) -> bool:
+        """Check if all blocks have been computed."""
+        return all(elem['computed_data'] for elem in self.global_computed_list)
+
+    def count_computed_global_list(self) -> int:
+        """Count the number of computed blocks."""
+        return sum(1 for x in self.global_computed_list if x['computed_data'])
+
+    def execution_failed(self, msg: str = "") -> None:
+        """
+        Handle execution failure.
+
+        Args:
+            msg: Error message
+        """
+        self.execution_initialized = False
+        self.reset_memblocks()
+        self.error_msg = msg
+        logger.error("*****EXECUTION STOPPED*****")

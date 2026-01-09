@@ -39,6 +39,17 @@ class RateLimiterBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw rate limiter icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Step response with slew limit
+        path.moveTo(0.15, 0.75)
+        path.lineTo(0.35, 0.75)
+        path.lineTo(0.65, 0.25)  # Slew-limited ramp
+        path.lineTo(0.85, 0.25)
+        return path
+
     def execute(self, time, inputs, params):
         dt = float(params.get("dtime", 0.01))
         u = np.array(inputs[0], dtype=float)
@@ -62,3 +73,4 @@ class RateLimiterBlock(BaseBlock):
         y = prev + delta
         params["_prev"] = y
         return {0: y}
+

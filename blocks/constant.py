@@ -37,6 +37,16 @@ class ConstantBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw constant value icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Horizontal line representing constant
+        path.moveTo(0.1, 0.5)
+        path.lineTo(0.9, 0.5)
+        return path
+
     def execute(self, time, inputs, params):
         value = params.get("value", 1.0)
         return {0: np.atleast_1d(value)}
+

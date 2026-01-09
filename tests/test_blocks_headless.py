@@ -48,34 +48,42 @@ def test_diagram_builder():
 def test_block_functions():
     """Test block functions directly without simulation."""
     from lib import functions
+    from blocks.gain import GainBlock
+    from blocks.sum import SumBlock
+    from blocks.step import StepBlock
     
-    # Test Gain
+    # Test Gain using modern block pattern
+    gain_block = GainBlock()
     params = {"gain": 3.0}
     inputs = {0: np.array([2.0])}
-    result = functions.gain(0, inputs, params)
+    result = gain_block.execute(0, inputs, params)
     assert np.isclose(result[0], 6.0), f"Gain: expected 6.0, got {result[0]}"
     print("[PASS] Gain function test")
     
-    # Test Sum with +-
+    # Test Sum with +- using modern block pattern
+    sum_block = SumBlock()
     params = {"sign": "+-"}
     inputs = {0: np.array([5.0]), 1: np.array([3.0])}
-    result = functions.sum_fn(0, inputs, params)
+    result = sum_block.execute(0, inputs, params)
     assert np.isclose(result[0], 2.0), f"Sum: expected 2.0, got {result[0]}"
     print("[PASS] Sum function test")
     
-    # Test Step
-    params = {"start_time": 0.5, "h_start": 0.0, "h_final": 1.0}
-    result_before = functions.step(0.4, {}, params.copy())
-    result_after = functions.step(0.6, {}, params.copy())
+    # Test Step using modern block pattern
+    step_block = StepBlock()
+    params = {"value": 1.0, "delay": 0.5, "type": "up", "pulse_start_up": True}
+    result_before = step_block.execute(0.4, {}, params.copy())
+    result_after = step_block.execute(0.6, {}, params.copy())
+    # type='up' means output is 0 before delay, 1 after
     assert np.isclose(result_before[0], 0.0), f"Step before: expected 0.0, got {result_before[0]}"
     assert np.isclose(result_after[0], 1.0), f"Step after: expected 1.0, got {result_after[0]}"
     print("[PASS] Step function test")
     
-    # Test Integrator initialization
+    # Test Integrator initialization (still in functions.py)
     params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True}
     result = functions.integrator(0, {0: np.array([1.0])}, params, dtime=0.01)
     assert "mem" in params, "Integrator should initialize 'mem'"
     print("[PASS] Integrator initialization test")
+
 
 
 def test_integrator_integration():
@@ -97,20 +105,21 @@ def test_integrator_integration():
 
 def test_saturation():
     """Test saturation block."""
-    from lib import functions
+    from blocks.saturation import SaturationBlock
     
-    params = {"upper_limit": 1.0, "lower_limit": -1.0}
+    sat_block = SaturationBlock()
+    params = {"min": -1.0, "max": 1.0}
     
     # Under limit
-    result = functions.saturation(0, {0: np.array([0.5])}, params.copy())
+    result = sat_block.execute(0, {0: np.array([0.5])}, params.copy())
     assert np.isclose(result[0], 0.5), f"Saturation: expected 0.5, got {result[0]}"
     
     # Over upper limit
-    result = functions.saturation(0, {0: np.array([2.0])}, params.copy())
+    result = sat_block.execute(0, {0: np.array([2.0])}, params.copy())
     assert np.isclose(result[0], 1.0), f"Saturation: expected 1.0, got {result[0]}"
     
     # Under lower limit
-    result = functions.saturation(0, {0: np.array([-2.0])}, params.copy())
+    result = sat_block.execute(0, {0: np.array([-2.0])}, params.copy())
     assert np.isclose(result[0], -1.0), f"Saturation: expected -1.0, got {result[0]}"
     
     print("[PASS] Saturation test")

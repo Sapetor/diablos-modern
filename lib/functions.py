@@ -87,10 +87,16 @@ def integrator(time, inputs, params, output_only=False, next_add_in_memory=True,
             params['nb_loop'] = 0
             params['mem'] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
     elif params['method'] == 'SOLVE_IVP':
+        # solve_ivp requires y0 to be 1-dimensional
+        mem_shape = params['mem'].shape
+        y0 = np.atleast_1d(params['mem']).flatten()
+        
         def fun(t, y):
-            return inputs[0]
-        sol = solve_ivp(fun, [time, time + dtime], params['mem'])
-        params['mem'] = sol.y[:, -1]
+            return np.atleast_1d(inputs[0]).flatten()
+        
+        sol = solve_ivp(fun, [time, time + dtime], y0)
+        # Reshape result back to original shape
+        params['mem'] = sol.y[:, -1].reshape(mem_shape)
         return {0: params['mem']}
     else:
         logger.error(f"Unknown integration method {params['method']} in {params['_name_']}")
@@ -518,7 +524,7 @@ def export(time, inputs, params):
         params['_skip_'] = False
         return {0: np.array([0.0])}
     # Initialization of the saving vector
-    if params['_init_start_']:
+    if params.get('_init_start_', True):
         aux_vector = np.array([inputs[0]])
         try:
             params['vec_dim'] = len(inputs[0])
@@ -553,7 +559,7 @@ def scope(time, inputs, params):
         params['_skip_'] = False
         return {0: np.array([0.0])}
     # Initialization of the saving vector
-    if params['_init_start_']:
+    if params.get('_init_start_', True):
         logger.debug(f"Scope {params.get('_name_', 'unknown')} initializing, inputs: {inputs}")
         aux_vector = np.atleast_1d(inputs[0])
         try:

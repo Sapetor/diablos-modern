@@ -372,15 +372,27 @@ class DBlock:
         painter.setPen(icon_pen)
         
         path = QPainterPath()
-        if self.block_fn == "Step":
+        
+        # Try polymorphic draw_icon first (modern pattern)
+        if self.block_instance and hasattr(self.block_instance, 'draw_icon'):
+            try:
+                custom_path = self.block_instance.draw_icon(self.rect)
+                if custom_path is not None:
+                    path = custom_path
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"draw_icon failed for {self.block_fn}: {e}")
+        
+        # Fallback to legacy switch statement if path is empty
+        if path.isEmpty() and self.block_fn == "Step":
             path.moveTo(0.1, 0.7)
             path.lineTo(0.5, 0.7)
             path.lineTo(0.5, 0.3)
             path.lineTo(0.9, 0.3)
-        elif self.block_fn == "Ramp":
+        elif path.isEmpty() and self.block_fn == "Ramp":
             path.moveTo(0.1, 0.9)
             path.lineTo(0.9, 0.1)
-        elif self.block_fn == "Sine":
+        elif path.isEmpty() and self.block_fn == "Sine":
             path.moveTo(0.1, 0.5)
             path.quadTo(0.3, 0.1, 0.5, 0.5)
             path.quadTo(0.7, 0.9, 0.9, 0.5)

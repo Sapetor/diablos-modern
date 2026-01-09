@@ -51,5 +51,10 @@ class DiscreteTransferFunctionBlock(BaseBlock):
         """
         return 2 
 
+    def draw_icon(self, block_rect):
+        """DiscreteTranFn uses B(z)/A(z) text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params, **kwargs):
         return functions.discrete_transfer_function(time, inputs, params, **kwargs)
+

@@ -45,6 +45,10 @@ class DisplayBlock(BaseBlock):
         """Sinks don't need output connections."""
         return False
 
+    def draw_icon(self, block_rect):
+        """Display uses dynamic text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params):
         fmt = params.get("format", "%.3f")
         label = params.get("label", "")

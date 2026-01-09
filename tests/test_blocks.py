@@ -37,30 +37,26 @@ class SimulationRunner:
         Returns:
             Dictionary with scope names as keys and numpy arrays as values.
         """
-        import json
         from lib.lib import DSim
         
         # Create DSim instance
         self.dsim = DSim()
         
-        # Load diagram file directly (bypass file dialog)
-        with open(self.diagram_path) as f:
-            data = json.load(f)
+        # Load diagram using FileService (modern pattern)
+        data = self.dsim.file_service.load(filepath=self.diagram_path)
+        if data is None:
+            print(f"Failed to load diagram: {self.diagram_path}")
+            return {}
         
-        sim_data = data['sim_data']
-        blocks_data = data['blocks_data']
-        lines_data = data['lines_data']
+        # Apply loaded data using FileService
+        sim_params = self.dsim.file_service.apply_loaded_data(data)
         
-        self.dsim.clear_all()
-        self.dsim.update_sim_data(sim_data)
+        # Sync simulation parameters to DSim
+        self.dsim.sim_time = sim_params.get('sim_time', sim_time)
+        self.dsim.sim_dt = sim_params.get('sim_dt', sim_dt)
         self.dsim.ss_count = 0
         
-        for block in blocks_data:
-            self.dsim.update_blocks_data(block)
-        for line in lines_data:
-            self.dsim.update_lines_data(line)
-        
-        # Override simulation parameters
+        # Override with test parameters
         self.dsim.sim_time = sim_time
         self.dsim.sim_dt = sim_dt
         

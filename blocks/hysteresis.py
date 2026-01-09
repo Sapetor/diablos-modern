@@ -41,6 +41,22 @@ class HysteresisBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw hysteresis loop icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Low -> High path
+        path.moveTo(0.15, 0.75)
+        path.lineTo(0.75, 0.75)
+        path.lineTo(0.75, 0.25)
+        path.lineTo(0.85, 0.25)
+        # High -> Low path
+        path.moveTo(0.85, 0.25)
+        path.lineTo(0.25, 0.25)
+        path.lineTo(0.25, 0.75)
+        path.lineTo(0.15, 0.75)
+        return path
+
     def execute(self, time, inputs, params):
         u = float(np.atleast_1d(inputs[0])[0])
 
@@ -60,3 +76,4 @@ class HysteresisBlock(BaseBlock):
             params["_state"] = float(params["low"])
 
         return {0: np.atleast_1d(params["_state"])}
+

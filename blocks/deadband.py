@@ -44,6 +44,22 @@ class DeadbandBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw deadband characteristic icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Left slope
+        path.moveTo(0.15, 0.80)
+        path.lineTo(0.35, 0.50)
+        # Deadband zone (flat)
+        path.lineTo(0.65, 0.50)
+        # Right slope
+        path.lineTo(0.85, 0.20)
+        # X-axis reference
+        path.moveTo(0.2, 0.5)
+        path.lineTo(0.8, 0.5)
+        return path
+
     def execute(self, time, inputs, params):
         u = np.array(inputs[0], dtype=float)
         start = float(params.get("start", -0.5))

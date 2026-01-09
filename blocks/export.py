@@ -36,5 +36,24 @@ class ExportBlock(BaseBlock):
     def outputs(self):
         return []
 
+    def draw_icon(self, block_rect):
+        """Draw export/file icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Box
+        path.moveTo(0.2, 0.2)
+        path.lineTo(0.8, 0.2)
+        path.lineTo(0.8, 0.8)
+        path.lineTo(0.2, 0.8)
+        path.lineTo(0.2, 0.2)
+        # Arrow out
+        path.moveTo(0.5, 0.5)
+        path.lineTo(1.0, 0.5)
+        path.moveTo(0.8, 0.3)
+        path.lineTo(1.0, 0.5)
+        path.lineTo(0.8, 0.7)
+        return path
+
     def execute(self, time, inputs, params):
         return functions.export(time, inputs, params)
+

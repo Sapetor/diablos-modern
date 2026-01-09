@@ -160,6 +160,168 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
 
 **MenuBlocks** (`menu_block.py`)
 - Template for creating blocks from palette
+# DiaBloS Modern - Architecture Documentation
+
+## Overview
+
+DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separating concerns between data management, business logic, and user interface.
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      User Interface Layer                    │
+│  modern_ui/                                                  │
+│  ├── main_window.py          (Main window, menus, toolbar)  │
+│  ├── widgets/                                                │
+│  │   ├── modern_canvas.py    (Diagram canvas, interactions) │
+│  │   ├── modern_palette.py   (Block palette)               │
+│  │   ├── property_editor.py  (Property editing)            │
+│  │   └── modern_toolbar.py   (Toolbar controls)            │
+│  └── themes/                  (Theme management)            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     Controller Layer                         │
+│  lib/lib.py (DSim)                                          │
+│  - Coordinates between UI and backend                        │
+│  - Delegates to MVC components                               │
+│  - Maintains backward compatibility                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────┴─────────┐
+                    ↓                   ↓
+┌──────────────────────────┐  ┌─────────────────────────┐
+│      Model Layer         │  │   Engine Layer          │
+│  lib/models/             │  │  lib/engine/            │
+│  SimulationModel         │  │  SimulationEngine       │
+│  - blocks_list           │  │  - Diagram validation   │
+│  - line_list             │  │  - Execution logic      │
+│  - menu_blocks           │  │  - Algebraic loops      │
+│  - colors                │  │  - Hierarchy analysis   │
+└──────────────────────────┘  └─────────────────────────┘
+                    │                   │
+                    └─────────┬─────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Services Layer                            │
+│  lib/services/                                               │
+│  ├── FileService           (Save/load diagrams)             │
+│  └── (future services)                                       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     Domain Layer                             │
+│  lib/simulation/                                             │
+│  ├── block.py              (DBlock - Block entities)        │
+│  ├── connection.py         (DLine - Connection entities)    │
+│  └── menu_block.py         (MenuBlocks - Block templates)   │
+│                                                              │
+│  blocks/                   (Block implementations)           │
+│  ├── base_block.py         (Base class for all blocks)      │
+│  ├── integrator.py         (Integrator block)               │
+│  ├── transfer_function.py  (Transfer function block)        │
+│  └── ... (18+ block types)                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Model Layer (`lib/models/`)
+
+**SimulationModel** (`simulation_model.py`)
+- **Responsibility**: Manages diagram data (blocks, connections, state)
+- **Key attributes**:
+  - `blocks_list: List[DBlock]` - Instantiated blocks in diagram
+  - `line_list: List[DLine]` - Connections between blocks
+  - `menu_blocks: List[MenuBlocks]` - Available block types
+  - `colors: Dict[str, QColor]` - Color palette
+  - `dirty: bool` - Has diagram been modified?
+
+- **Key methods**:
+  - `add_block(block, position)` - Add block to diagram
+  - `remove_block(block)` - Remove block and its connections
+  - `add_line(src_data, dst_data)` - Create connection
+  - `get_block_by_name(name)` - Lookup block by name
+  - `is_port_available(dst_line)` - Check if port is connected
+  - `load_all_blocks()` - Load block types from blocks/ directory
+
+### 2. Engine Layer (`lib/engine/`)
+
+**SimulationEngine** (`simulation_engine.py`)
+- **Responsibility**: Business logic for simulation execution
+- **Key attributes**:
+  - `model: SimulationModel` - Reference to data model
+  - `execution_initialized: bool` - Execution state
+  - `sim_time: float` - Total simulation time
+  - `sim_dt: float` - Time step
+  - `global_computed_list: List[Dict]` - Execution tracking
+
+- **Key methods**:
+  - `check_diagram_integrity()` - Validate all ports connected
+  - `get_neighbors(block_name)` - Get block's connections
+  - `detect_algebraic_loops(blocks)` - Find feedback loops
+  - `children_recognition(block, list)` - Find downstream blocks
+  - `reset_execution_data()` - Clear execution state
+  - `get_max_hierarchy()` - Find max hierarchy level
+
+### 3. Services Layer (`lib/services/`)
+
+**FileService** (`file_service.py`)
+- **Responsibility**: Persistence (save/load diagrams)
+- **Key methods**:
+  - `save(autosave, ui_data, sim_params)` - Save to JSON file
+  - `load(filepath)` - Load from JSON file
+  - `apply_loaded_data(data)` - Reconstruct diagram from data
+
+- **File format**: JSON with structure:
+  ```json
+  {
+    "version": "2.0",
+    "sim_data": {...},
+    "blocks_data": [{...}],
+    "lines_data": [{...}],
+    "modern_ui_data": {...}
+  }
+  ```
+
+### 4. Controller Layer (`lib/lib.py`)
+
+**DSim Class**
+- **Responsibility**: Coordinates between UI and backend
+- **Pattern**: Delegates to MVC components while maintaining backward compatibility
+- **Key delegations**:
+  - `self.model = SimulationModel()` - Data management
+  - `self.engine = SimulationEngine(model)` - Business logic
+  - `self.file_service = FileService(model)` - Persistence
+  - Exposes common properties: `blocks_list`, `line_list`, `colors`
+
+### 5. Domain Entities (`lib/simulation/`)
+
+**DBlock** (`block.py`)
+- Represents a functional block in the diagram
+- **Key attributes**:
+  - `name: str` - Unique identifier
+  - `block_fn: str` - Block type (e.g., "Integrator")
+  - `fn_name: str` - Execution function name
+  - `params: Dict` - Block parameters
+  - `in_ports: int`, `out_ports: int` - Port counts
+  - `in_coords: List[QPoint]`, `out_coords: List[QPoint]` - Port positions
+  - `hierarchy: int` - Execution order level
+  - `computed_data: bool` - Has been computed this step
+
+**DLine** (`connection.py`)
+- Represents a connection between blocks
+- **Key attributes**:
+  - `srcblock: str`, `dstblock: str` - Connected blocks
+  - `srcport: int`, `dstport: int` - Port numbers
+  - `points: List[QPoint]` - Line path
+  - `path: QPainterPath` - Rendered path
+
+**MenuBlocks** (`menu_block.py`)
+- Template for creating blocks from palette
 - Contains default parameters and metadata
 
 ### 6. Block Implementations (`blocks/`)
@@ -187,6 +349,10 @@ class BaseBlock:
     def params(self): ...           # Default parameters
 
     def execute(self, time, inputs, params, **kwargs): ...
+    
+    def draw_icon(self, block_rect):  # Optional: custom icon
+        """Return QPainterPath in 0-1 normalized coordinates, or None for fallback."""
+        ...
 ```
 
 **Block types include**:
@@ -357,11 +523,15 @@ def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
 
 ### Adding a New Block Type
 
+> **Note:** As of 2026-01, blocks implement their `execute()` method directly. 
+> The legacy `functions.py` is only used by some older blocks (integrator, statespace, etc.)
+> and will be fully deprecated in a future release.
+
 1. Create file in `blocks/` directory:
 ```python
 # blocks/my_block.py
 from blocks.base_block import BaseBlock
-from lib import functions
+import numpy as np
 
 class MyBlock(BaseBlock):
     @property
@@ -370,7 +540,7 @@ class MyBlock(BaseBlock):
 
     @property
     def fn_name(self):
-        return "my_block"  # Must match function in lib/functions.py
+        return "my_block"
 
     @property
     def params(self):
@@ -381,17 +551,17 @@ class MyBlock(BaseBlock):
     # ... implement other properties
 
     def execute(self, time, inputs, params, **kwargs):
-        return functions.my_block(time, inputs, params, **kwargs)
+        """
+        Execute block logic directly - no functions.py needed!
+        """
+        input_val = inputs.get(0, 0.0)
+        param1 = params.get('param1', 1.0)
+        result = input_val * param1
+        return {'output': result, 'E': False}
 ```
 
-2. Add function to `lib/functions.py`:
-```python
-def my_block(time, inputs, params, output_only=False):
-    # Implementation
-    return {'output': result}
-```
+2. Restart application - block automatically discovered!
 
-3. Restart application - block automatically discovered!
 
 ### Adding a New Service
 

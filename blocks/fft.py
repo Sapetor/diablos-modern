@@ -42,6 +42,24 @@ class FFTBlock(BaseBlock):
     def outputs(self):
         return []
 
+    def draw_icon(self, block_rect):
+        """Draw FFT spectrum icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Axis
+        path.moveTo(0.15, 0.80)
+        path.lineTo(0.15, 0.20)
+        path.moveTo(0.15, 0.80)
+        path.lineTo(0.85, 0.80)
+        # Spectrum bars
+        bars = [(0.22, 0.50), (0.32, 0.30), (0.42, 0.40), (0.52, 0.55), (0.62, 0.65), (0.72, 0.70)]
+        for x, h in bars:
+            path.moveTo(x, 0.80)
+            path.lineTo(x, h)
+            path.lineTo(x + 0.06, h)
+            path.lineTo(x + 0.06, 0.80)
+        return path
+
     def execute(self, time, inputs, params):
         # Get input signal value
         u = np.atleast_1d(inputs.get(0, 0)).astype(float)
