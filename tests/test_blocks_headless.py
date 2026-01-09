@@ -47,7 +47,7 @@ def test_diagram_builder():
 
 def test_block_functions():
     """Test block functions directly without simulation."""
-    from lib import functions
+    from blocks.integrator import IntegratorBlock
     from blocks.gain import GainBlock
     from blocks.sum import SumBlock
     from blocks.step import StepBlock
@@ -78,9 +78,10 @@ def test_block_functions():
     assert np.isclose(result_after[0], 1.0), f"Step after: expected 1.0, got {result_after[0]}"
     print("[PASS] Step function test")
     
-    # Test Integrator initialization (still in functions.py)
+    # Test Integrator initialization using block pattern
+    integrator_block = IntegratorBlock()
     params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True}
-    result = functions.integrator(0, {0: np.array([1.0])}, params, dtime=0.01)
+    result = integrator_block.execute(0, {0: np.array([1.0])}, params, dtime=0.01)
     assert "mem" in params, "Integrator should initialize 'mem'"
     print("[PASS] Integrator initialization test")
 
@@ -88,14 +89,16 @@ def test_block_functions():
 
 def test_integrator_integration():
     """Test integrator over multiple steps."""
-    from lib import functions
+    from blocks.integrator import IntegratorBlock
+    
+    block = IntegratorBlock()
     
     # Integrate constant 1.0 for 100 steps with dt=0.01
     params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True}
     input_val = {0: np.array([1.0])}
     
     for i in range(100):
-        result = functions.integrator(i * 0.01, input_val, params, dtime=0.01)
+        result = block.execute(i * 0.01, input_val, params, dtime=0.01)
     
     # After integrating 1.0 for 1 second, should be close to 1.0
     final_value = params.get("mem", [0])[0]

@@ -108,8 +108,8 @@ def profile_simulation():
     
     # Load into DSim (headless check)
     try:
-        # Profile the functions module instead of full simulation
-        from lib import functions
+        # Profile the block execute() method instead of full simulation
+        from blocks.integrator import IntegratorBlock
         import numpy as np
         
         print("\nProfiling individual block functions:")
@@ -118,9 +118,10 @@ def profile_simulation():
         profiler = cProfile.Profile()
         profiler.enable()
         
+        block = IntegratorBlock()
         params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, 'dtime': 0.01}
         for i in range(1000):
-            functions.integrator(i * 0.01, {0: np.array([1.0])}, params, dtime=0.01)
+            block.execute(i * 0.01, {0: np.array([1.0])}, params, dtime=0.01)
         
         profiler.disable()
         
@@ -221,7 +222,8 @@ def run_benchmark():
     print(f"{'dt':>12} {'Steps':>10} {'Time (s)':>12} {'Steps/sec':>12}")
     print("-" * 50)
     
-    from lib import functions
+    from blocks.integrator import IntegratorBlock
+    integrator_block = IntegratorBlock()
     
     # Test with different dt values (constant 1 second simulation)
     sim_duration = 1.0
@@ -233,7 +235,7 @@ def run_benchmark():
         
         start = time.perf_counter()
         for i in range(num_steps):
-            functions.integrator(i * dt, {0: np.array([1.0])}, params, dtime=dt)
+            integrator_block.execute(i * dt, {0: np.array([1.0])}, params, dtime=dt)
         elapsed = time.perf_counter() - start
         
         steps_per_sec = num_steps / elapsed
@@ -254,7 +256,7 @@ def run_benchmark():
         
         start = time.perf_counter()
         for i in range(num_steps):
-            functions.integrator(i * dt, {0: np.array([1.0])}, params, dtime=dt)
+            integrator_block.execute(i * dt, {0: np.array([1.0])}, params, dtime=dt)
         elapsed = time.perf_counter() - start
         
         realtime_factor = duration / elapsed
@@ -283,7 +285,7 @@ def run_benchmark():
         for i in range(num_steps):
             t = i * dt
             for integ in integrators:
-                functions.integrator(t, {0: np.array([1.0])}, integ['params'], dtime=dt)
+                integrator_block.execute(t, {0: np.array([1.0])}, integ['params'], dtime=dt)
         elapsed = time.perf_counter() - start
         
         realtime_factor = duration / elapsed
