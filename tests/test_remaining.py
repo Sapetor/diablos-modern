@@ -22,7 +22,9 @@ sys.path.insert(0, os.getcwd())
 
 def test_statespace_block():
     """Test StateSpaceBlock implements dx/dt = Ax + Bu, y = Cx + Du."""
-    from lib import functions
+    from blocks.statespace import StateSpaceBlock
+    
+    block = StateSpaceBlock()
     
     # Simple first-order system: dx/dt = -x + u, y = x
     # A = -1, B = 1, C = 1, D = 0
@@ -38,10 +40,10 @@ def test_statespace_block():
     
     # Step response - should approach 1.0 as steady state
     for i in range(500):
-        result = functions.statespace(i * 0.01, {0: np.array([1.0])}, params)
+        result = block.execute(i * 0.01, {0: np.array([1.0])}, params)
     
     # After 5 seconds, first-order system should be near 1.0
-    output = params.get('_y_', result.get(0, [0]))
+    output = result.get(0, [0])
     if hasattr(output, '__len__'):
         output = output[0]
     assert output > 0.9, f"StateSpace: expected >0.9, got {output}"
@@ -50,7 +52,9 @@ def test_statespace_block():
 
 def test_transfer_function_block():
     """Test TransferFunctionBlock implements continuous TF."""
-    from lib import functions
+    from blocks.transfer_function import TransferFunctionBlock
+    
+    block = TransferFunctionBlock()
     
     # First-order low-pass filter: H(s) = 1/(s+1)
     # numerator = [1], denominator = [1, 1]
@@ -63,7 +67,7 @@ def test_transfer_function_block():
     
     # Step response
     for i in range(500):
-        result = functions.transfer_function(i * 0.01, {0: np.array([1.0])}, params)
+        result = block.execute(i * 0.01, {0: np.array([1.0])}, params)
     
     # After 5 seconds, should be near 1.0
     output = result.get(0, [0])

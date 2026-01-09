@@ -7,7 +7,6 @@ import logging
 import time as time_module
 from typing import List, Dict, Tuple, Any, Optional, Callable
 import numpy as np
-from lib import functions
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
 
@@ -41,8 +40,6 @@ class SimulationEngine:
             model: SimulationModel instance containing blocks and lines
         """
         self.model = model
-        self.execution_function = functions
-
         # Execution state
         self.execution_initialized: bool = False
         self.execution_pause: bool = False

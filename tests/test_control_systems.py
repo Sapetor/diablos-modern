@@ -18,14 +18,16 @@ sys.path.insert(0, os.getcwd())
 
 def test_integrator_block():
     """Test IntegratorBlock integrates signal correctly."""
-    from lib import functions
+    from blocks.integrator import IntegratorBlock
+    
+    block = IntegratorBlock()
     
     # Test integration of constant 1.0 over time
     params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True}
     
     # Run 100 steps at dt=0.01 (total 1 second)
     for i in range(100):
-        result = functions.integrator(i * 0.01, {0: np.array([1.0])}, params, dtime=0.01)
+        result = block.execute(i * 0.01, {0: np.array([1.0])}, params, dtime=0.01)
     
     # After integrating 1.0 for 1 second, should be ~1.0
     final_value = params.get('mem', [0])[0]
@@ -37,7 +39,7 @@ def test_integrator_block():
     
     for i in range(100):
         t = i * 0.01
-        result = functions.integrator(t, {0: np.array([t])}, params, dtime=0.01)
+        result = block.execute(t, {0: np.array([t])}, params, dtime=0.01)
     
     # Integral of t from 0 to 1 = t^2/2 = 0.5
     final_value = params.get('mem', [0])[0]
@@ -46,9 +48,10 @@ def test_integrator_block():
     
     # Test initial condition
     params = {'init_conds': 5.0, 'method': 'FWD_EULER', '_init_start_': True}
-    result = functions.integrator(0, {0: np.array([0.0])}, params, output_only=True, dtime=0.01)
+    result = block.execute(0, {0: np.array([0.0])}, params, output_only=True, dtime=0.01)
     assert np.isclose(result[0], 5.0), f"Integrator init_cond: expected 5.0, got {result[0]}"
     print("[PASS] IntegratorBlock initial condition")
+
 
 
 def test_derivative_block():
