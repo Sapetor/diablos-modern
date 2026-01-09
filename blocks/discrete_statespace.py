@@ -1,5 +1,9 @@
 from blocks.base_block import BaseBlock
-from lib import functions
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class DiscreteStateSpaceBlock(BaseBlock):
     def __init__(self):
@@ -34,15 +38,7 @@ class DiscreteStateSpaceBlock(BaseBlock):
 
     @property
     def doc(self):
-        return """Discrete State-Space representation: x[k+1] = Ax[k] + Bu[k], y[k] = Cx[k] + Du[k]
-
-        A: State matrix (n×n)
-        B: Input matrix (n×m)
-        C: Output matrix (p×n)
-        D: Feedthrough matrix (p×m)
-
-        where n = number of states, m = number of inputs, p = number of outputs
-        """
+        return """Discrete State-Space: x[k+1] = Ax[k] + Bu[k], y[k] = Cx[k] + Du[k]"""
 
     @property
     def inputs(self):
@@ -54,13 +50,105 @@ class DiscreteStateSpaceBlock(BaseBlock):
 
     @property
     def b_type(self):
-        """
-        Determine block type based on properness.
-        This is a default; it might be overridden during initialization based on actual params.
-        Type 1: Strictly proper (memory)
-        Type 2: Proper (direct feedthrough)
-        """
+        """Block type: 1=strictly proper (memory), 2=proper (direct feedthrough)."""
         return 2
 
     def execute(self, time, inputs, params, **kwargs):
-        return functions.discrete_statespace(time, inputs, params, **kwargs)
+        """
+        Discrete State-Space representation block.
+        x[k+1] = Ax[k] + Bu[k], y[k] = Cx[k] + Du[k]
+        """
+        output_only = kwargs.get('output_only', False)
+        
+        if params.get('_init_start_', True):
+            params['_init_start_'] = False
+
+            # Get matrices
+            A = np.array(params['A'], dtype=float)
+            B = np.array(params['B'], dtype=float)
+            C = np.array(params['C'], dtype=float)
+            D = np.array(params['D'], dtype=float)
+
+            # Validate dimensions
+            n = A.shape[0]  # Number of states
+            if A.shape != (n, n):
+                return {'E': True, 'error': 'A matrix must be square (n×n)'}
+
+            if len(B.shape) == 1:
+                B = B.reshape(-1, 1)
+            if B.shape[0] != n:
+                return {'E': True, 'error': f'B matrix must have {n} rows to match A'}
+
+            m = B.shape[1]  # Number of inputs
+
+            if len(C.shape) == 1:
+                C = C.reshape(1, -1)
+            if C.shape[1] != n:
+                return {'E': True, 'error': f'C matrix must have {n} columns to match A'}
+
+            p = C.shape[0]  # Number of outputs
+
+            if len(D.shape) == 1:
+                D = D.reshape(1, -1) if D.shape[0] > 1 else D.reshape(1, 1)
+            if D.shape != (p, m):
+                return {'E': True, 'error': f'D matrix must be {p}×{m} to match C and B'}
+
+            params['_Ad_'] = A
+            params['_Bd_'] = B
+            params['_Cd_'] = C
+            params['_Dd_'] = D
+
+            # Initialize state vector
+            init_conds = np.atleast_1d(np.array(params.get('init_conds', [0.0]), dtype=float))
+            if len(init_conds) < n:
+                padded_conds = np.zeros(n)
+                padded_conds[:len(init_conds)] = init_conds
+                init_conds = padded_conds
+            elif len(init_conds) > n:
+                init_conds = init_conds[:n]
+
+            params['_x_'] = init_conds.reshape(-1, 1)
+            params['_n_states_'] = n
+            params['_n_inputs_'] = m
+            params['_n_outputs_'] = p
+
+        # Get matrices and state
+        Ad = params['_Ad_']
+        Bd = params['_Bd_']
+        Cd = params['_Cd_']
+        Dd = params['_Dd_']
+        x = params['_x_']
+
+        # Get input
+        if not output_only:
+            u = inputs.get(0, 0.0)
+            if isinstance(u, (int, float)):
+                u = np.array([[u]])
+            else:
+                u = np.atleast_2d(u).reshape(-1, 1)
+
+            if u.shape[0] != params['_n_inputs_']:
+                return {'E': True, 'error': f"Input dimension mismatch: expected {params['_n_inputs_']}, got {u.shape[0]}"}
+        else:
+            u = np.zeros((params['_n_inputs_'], 1))
+
+        # Compute output: y = Cx + Du
+        try:
+            y = Cd @ x + Dd @ u
+        except ValueError as e:
+            logger.error(f"Error in discrete state space: {e}")
+            return {'E': True, 'error': f"Output computation error: {e}"}
+
+        # Update state: x[k+1] = Ax[k] + Bu[k]
+        if not output_only:
+            try:
+                params['_x_'] = Ad @ x + Bd @ u
+            except ValueError as e:
+                logger.error(f"Error in discrete state space state update: {e}")
+                return {'E': True, 'error': f"State update error: {e}"}
+
+        # Return output
+        if y.size == 1:
+            return {0: y.item(), 'E': False}
+        else:
+            return {0: y.flatten(), 'E': False}
