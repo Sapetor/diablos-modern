@@ -97,6 +97,9 @@ class ValidationHelper:
         """
         Simple algebraic loop detection using topological sort.
         
+        Memory blocks (Integrator, StateSpace, etc.) break algebraic loops because
+        their output depends on previous state, not current input.
+        
         Args:
             blocks_list: List of DBlock instances
             line_list: List of DLine instances
@@ -105,6 +108,12 @@ class ValidationHelper:
             Tuple of (no_loops_found, list_of_errors)
         """
         from collections import defaultdict, deque
+        
+        # Memory blocks break algebraic loops - their output depends on previous state
+        MEMORY_BLOCK_TYPES = {
+            'Integrator', 'StateSpace', 'DiscreteStateSpace', 
+            'DiscreteTranFn', 'ZeroOrderHold', 'Delay'
+        }
         
         graph = defaultdict(list)
         in_degree = defaultdict(int)
@@ -120,24 +129,38 @@ class ValidationHelper:
             if not src_block or not dst_block:
                 continue
 
-            # By default, assume the block has direct feedthrough
+            # Check if DESTINATION block is a memory block (breaks the loop)
+            # A memory block's output at time t depends on its input at time t-1
             is_memory_block = False
 
-            # b_type == 1 are memory blocks (integrators)
-            if src_block.b_type == 1:
+            # Check by b_type: Type 1 blocks are memory blocks
+            if dst_block.b_type == 1:
                 is_memory_block = True
             
-            # Transfer functions are memory blocks if they are strictly proper
-            if src_block.block_fn == 'TranFn':
-                logger.debug(f"Checking transfer function: {src_block.name}")
-                num = src_block.params.get('numerator', [])
-                den = src_block.params.get('denominator', [])
-                logger.debug(f"  Numerator: {num}, Denominator: {den}")
+            # Check by block function name
+            if dst_block.block_fn in MEMORY_BLOCK_TYPES:
+                is_memory_block = True
+            
+            # TranFn is memory block if strictly proper (num degree < den degree)
+            if dst_block.block_fn == 'TranFn':
+                num = dst_block.params.get('numerator', [])
+                den = dst_block.params.get('denominator', [])
                 if len(den) > len(num):
                     is_memory_block = True
-                    logger.debug(f"  {src_block.name} is a memory block")
+                    logger.debug(f"  {dst_block.name} (TranFn) is strictly proper - memory block")
 
-            if not is_memory_block:
+            # DiscreteTranFn is memory block if strictly proper
+            if dst_block.block_fn == 'DiscreteTranFn':
+                num = dst_block.params.get('numerator', [])
+                den = dst_block.params.get('denominator', [])
+                if len(den) > len(num):
+                    is_memory_block = True
+                    logger.debug(f"  {dst_block.name} (DiscreteTranFn) is strictly proper - memory block")
+
+            if is_memory_block:
+                logger.debug(f"Memory block {dst_block.name} breaks loop from {src_block.name}")
+            else:
+                # Only add edge if destination is NOT a memory block
                 graph[line.srcblock].append(line.dstblock)
                 in_degree[line.dstblock] += 1
 

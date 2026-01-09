@@ -37,6 +37,23 @@ class DemuxBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out1", "type": "any"}, {"name": "out2", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw demultiplexer icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Input
+        path.moveTo(0.2, 0.5); path.lineTo(0.4, 0.5)
+        # Main body (rectangle)
+        path.moveTo(0.4, 0.2)
+        path.lineTo(0.4, 0.8)
+        path.lineTo(0.8, 0.8)
+        path.lineTo(0.8, 0.2)
+        path.lineTo(0.4, 0.2)
+        # Output lines
+        path.moveTo(0.8, 0.3); path.lineTo(1.0, 0.3)
+        path.moveTo(0.8, 0.7); path.lineTo(1.0, 0.7)
+        return path
+
     def execute(self, time, inputs, params):
         # Check input dimensions first
         if len(inputs[0]) / params['output_shape'] < len(self.outputs):
@@ -58,3 +75,4 @@ class DemuxBlock(BaseBlock):
         except (ValueError, TypeError):
             print(f"ERROR: Invalid input type in demux block. Expected numeric.")
             return {'E': True}
+

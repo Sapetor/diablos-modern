@@ -36,5 +36,19 @@ class ScopeBlock(BaseBlock):
     def outputs(self):
         return []
 
+    def draw_icon(self, block_rect):
+        """Draw oscilloscope icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        path.moveTo(0.1, 0.9)
+        path.lineTo(0.9, 0.9)  # x-axis
+        path.moveTo(0.1, 0.9)
+        path.lineTo(0.1, 0.1)  # y-axis
+        path.moveTo(0.1, 0.6)
+        path.quadTo(0.3, 0.2, 0.5, 0.6)
+        path.quadTo(0.7, 1.0, 0.9, 0.6)
+        return path
+
     def execute(self, time, inputs, params):
         return functions.scope(time, inputs, params)
+

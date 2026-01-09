@@ -38,6 +38,14 @@ class RampBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw ramp signal icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        path.moveTo(0.1, 0.9)
+        path.lineTo(0.9, 0.1)
+        return path
+
     def execute(self, time, inputs, params):
         slope = float(params['slope'])
         delay = float(params['delay'])

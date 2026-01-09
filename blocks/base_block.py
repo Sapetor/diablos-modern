@@ -80,3 +80,22 @@ class BaseBlock(ABC):
         """
         # Default: blocks require outputs unless they're Sinks or Other
         return getattr(self, 'category', 'Other') not in ['Sinks', 'Other']
+
+    def draw_icon(self, block_rect):
+        """
+        Return a QPainterPath for the block's icon in normalized coordinates.
+        
+        The path should use coordinates from 0.0 to 1.0 where (0,0) is top-left
+        and (1,1) is bottom-right. The path will be automatically scaled and 
+        positioned within the block's drawing area.
+        
+        Override this method in subclasses to provide custom block icons.
+        If not overridden, the fallback switch-based drawing in DBlock is used.
+        
+        Args:
+            block_rect: QRect of the block (for context, not for positioning)
+            
+        Returns:
+            QPainterPath in 0-1 normalized coordinates, or None to use fallback
+        """
+        return None  # Default: use fallback switch-based drawing

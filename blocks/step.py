@@ -45,6 +45,17 @@ class StepBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw step signal icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Step signal: low -> high
+        path.moveTo(0.1, 0.7)
+        path.lineTo(0.5, 0.7)
+        path.lineTo(0.5, 0.3)
+        path.lineTo(0.9, 0.3)
+        return path
+
     def execute(self, time, inputs, params):
         if params.get('_init_start_', True):
             self.step_old = time

@@ -42,6 +42,32 @@ class SelectorBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw selector icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Vector box on left
+        path.moveTo(0.15, 0.3)
+        path.lineTo(0.15, 0.7)
+        path.lineTo(0.35, 0.7)
+        path.lineTo(0.35, 0.3)
+        path.lineTo(0.15, 0.3)
+        # Lines inside (vector elements)
+        path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4)
+        path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5)
+        path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
+        # Arrow to output
+        path.moveTo(0.35, 0.5)
+        path.lineTo(0.65, 0.5)
+        path.moveTo(0.60, 0.45); path.lineTo(0.65, 0.5); path.lineTo(0.60, 0.55)
+        # Output element box
+        path.moveTo(0.70, 0.45)
+        path.lineTo(0.85, 0.45)
+        path.lineTo(0.85, 0.55)
+        path.lineTo(0.70, 0.55)
+        path.lineTo(0.70, 0.45)
+        return path
+
     def execute(self, time, inputs, params):
         # Get input vector
         u = np.atleast_1d(inputs.get(0, 0)).flatten()

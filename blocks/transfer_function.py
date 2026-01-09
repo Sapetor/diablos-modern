@@ -41,5 +41,10 @@ class TransferFunctionBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """TranFn uses B(s)/A(s) text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params, **kwargs):
         return functions.transfer_function(time, inputs, params, **kwargs)
+

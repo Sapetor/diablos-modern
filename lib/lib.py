@@ -18,7 +18,6 @@ from lib.workspace import WorkspaceManager
 from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
 import logging
 from modern_ui.themes.theme_manager import theme_manager
-from lib import functions
 
 # Import refactored classes from new modules
 from lib.simulation.block import DBlock
@@ -28,6 +27,9 @@ from lib.ui.button import Button
 
 # Import block size configuration
 from config.block_sizes import get_block_size
+
+# Import extracted classes
+from lib.plotting.signal_plot import SignalPlot
 
 logger = logging.getLogger(__name__)
 
@@ -107,11 +109,9 @@ class DSim:
         self.sim_dt = self.engine.sim_dt
         self.plot_trange = 100
 
-        # Execution state (delegate to engine)
-        self.execution_initialized = self.engine.execution_initialized
+        # Execution state (properties delegate to engine)
+        # execution_initialized, execution_stop, error_msg are now properties
         self.execution_pause = self.engine.execution_pause
-        self.execution_stop = self.engine.execution_stop
-        self.error_msg = self.engine.error_msg
         self.real_time = self.engine.real_time
         self.dynamic_plot = False
 
@@ -119,11 +119,7 @@ class DSim:
         self.filename = self.file_service.filename
         self.dirty = self.model.dirty
 
-        self.execution_function = functions
-
-        # Legacy execution tracking (still needed for complex execution methods)
-        self.global_computed_list = []
-        self.timeline = []
+        # Execution tracking (timeline, global_computed_list are now properties)
         self.outs = []
         self.plotty = None
         # Run history of scope data (session only)
@@ -132,6 +128,79 @@ class DSim:
         self.run_history_persist_enabled = False
         self.run_history_persist_path = Path("saves/run_history.json")
         self._load_run_history()
+
+    # Properties for state shared with SimulationEngine
+    @property
+    def timeline(self):
+        """Timeline array - shared with engine."""
+        return self.engine.timeline
+
+    @timeline.setter
+    def timeline(self, value):
+        self.engine.timeline = value
+
+    @property
+    def time_step(self):
+        """Current time step - shared with engine."""
+        return self.engine.time_step
+
+    @time_step.setter
+    def time_step(self, value):
+        self.engine.time_step = value
+
+    @property
+    def global_computed_list(self):
+        """Block computation tracking - shared with engine."""
+        return self.engine.global_computed_list
+
+    @global_computed_list.setter
+    def global_computed_list(self, value):
+        self.engine.global_computed_list = value
+
+    @property
+    def execution_initialized(self):
+        """Whether simulation is initialized - shared with engine."""
+        return self.engine.execution_initialized
+
+    @execution_initialized.setter
+    def execution_initialized(self, value):
+        self.engine.execution_initialized = value
+
+    @property
+    def execution_stop(self):
+        """Whether simulation is stopped - shared with engine."""
+        return self.engine.execution_stop
+
+    @execution_stop.setter
+    def execution_stop(self, value):
+        self.engine.execution_stop = value
+
+    @property
+    def error_msg(self):
+        """Error message - shared with engine."""
+        return self.engine.error_msg
+
+    @error_msg.setter
+    def error_msg(self, value):
+        self.engine.error_msg = value
+
+    @property
+    def execution_time_start(self):
+        """Execution start time - shared with engine."""
+        return self.engine.execution_time_start
+
+    @execution_time_start.setter
+    def execution_time_start(self, value):
+        self.engine.execution_time_start = value
+
+    @property
+    def memory_blocks(self):
+        """Memory blocks set - shared with engine."""
+        return self.engine.memory_blocks
+
+    @memory_blocks.setter
+    def memory_blocks(self, value):
+        self.engine.memory_blocks = value
 
     def main_buttons_init(self):
         """
@@ -148,18 +217,6 @@ class DSim:
 
         self.buttons_list = [new, load, save, sim, pause, stop, rplt, capt]
 
-    def display_buttons(self, painter):
-        """
-        :purpose: Displays all the buttons on the screen.
-        :param painter: Pygame's layer where the figure is drawn.
-        """
-        if painter is None:
-            return
-        pen = QPen(self.colors['black'], 2)
-        painter.setPen(pen)
-        painter.drawLine(200, 60, 1260, 60)
-        for button in self.buttons_list:
-            button.draw_button(painter)
 
     def set_color(self, color):
         """
@@ -175,21 +232,6 @@ class DSim:
             return color
         else:
             return self.colors['gray']
-
-    def screenshot(self, painter):
-        """
-        :purpose: Takes a capture of the screen with all elements seen on display.
-        :param painter: Pygame's layer where the figures, lines and buttons are drawn.
-        """
-        filename = self.filename[:-4]
-        pixmap = QPixmap(self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
-        painter.end()  # End the current painter
-        new_painter = QPainter(pixmap)
-        self.render(new_painter)
-        new_painter.end()
-        pixmap.save(f"captures/{filename}-{self.ss_count}.png")
-        self.ss_count += 1
-        painter.begin(self)  # Restart the original painter
 
     ##### ADD OR REMOVE BLOCKS AND LINES #####
 
@@ -295,342 +337,70 @@ class DSim:
                 return False
         return True
 
-    ##### MENU BLOCKS #####
-
-    def load_all_blocks(self):
-        """
-        :purpose: Function that initializes all types of blocks available in the menu.
-        :description: From the block files, base blocks are generated. Then they are accumulated in a list so that they are available in the interface menu.
-        """
-        self.menu_blocks = []
-        block_classes = load_blocks()
-
-        # Define color map for categories
-        category_colors = {
-            "Sources": "blue",
-            "Math": "lime_green",
-            "Control": "magenta",
-            "Filters": "cyan",
-            "Sinks": "red",
-            "Routing": "orange",
-            "Other": "light_gray"
-        }
-
-        # Simple categorization based on block names
-        source_keywords = ['step', 'ramp', 'sine', 'square', 'constant', 'source']
-        math_keywords = ['sum', 'gain', 'multiply', 'add', 'subtract', 'divide', 'abs', 'sqrt']
-        control_keywords = ['integr', 'deriv', 'pid', 'controller', 'delay']
-        filter_keywords = ['filter', 'lowpass', 'highpass', 'bandpass']
-        sink_keywords = ['scope', 'display', 'sink', 'plot', 'output', 'term']
-
-        for block_class in block_classes:
-            block = block_class()
-            
-            b_type = 2
-            if not block.inputs:
-                b_type = 0
-            elif block.block_name.lower() in ['integr', 'integrator']:
-                b_type = 1
-
-            io_params = {
-                'inputs': len(block.inputs), 
-                'outputs': len(block.outputs), 
-                'b_type': b_type,
-                'io_edit': False
-            }
-            
-            ex_params = {}
-            for param_name, param_props in block.params.items():
-                ex_params[param_name] = param_props['default']
-
-            # Determine block category and color
-            if hasattr(block, 'category'):
-                category = block.category
-            else:
-                block_name_lower = block.block_name.lower()
-                category = "Other"
-                if any(keyword in block_name_lower for keyword in source_keywords):
-                    category = "Sources"
-                elif any(keyword in block_name_lower for keyword in math_keywords):
-                    category = "Math"
-                elif any(keyword in block_name_lower for keyword in control_keywords):
-                    category = "Control"
-                elif any(keyword in block_name_lower for keyword in filter_keywords):
-                    category = "Filters"
-                elif any(keyword in block_name_lower for keyword in sink_keywords):
-                    category = "Sinks"
-
-            if hasattr(block, 'color'):
-                color = block.color
-            else:
-                color = category_colors.get(category, "light_gray")
-
-            if hasattr(block, 'fn_name'):
-                fn_name = block.fn_name
-            else:
-                fn_name = block.block_name.lower()
-
-            # Get block-specific size from configuration
-            block_size = get_block_size(block.block_name)
-
-            menu_block = MenuBlocks(
-                block_fn=block.block_name,
-                fn_name=fn_name,
-                io_params=io_params,
-                ex_params=ex_params,
-                b_color=color,
-                coords=block_size,  # Use configured block size
-                block_class=block_class,
-                colors=self.colors
-            )
-            self.menu_blocks.append(menu_block)
-
-    def display_menu_blocks(self, painter):
-        """
-        :purpose: Draws MenuBlocks objects in the screen.
-        :param painter: QtPy layer where the figure is drawn.
-        """
-        if painter is None:
-            return
-        pen = QPen(self.colors['black'], 2)
-        painter.setPen(pen)
-        painter.drawLine(200, 60, 200, 710)
-        for i, block in enumerate(self.menu_blocks):
-            block.draw_menublock(painter, i)
+    # NOTE: Block loading moved to SimulationModel.load_all_blocks()
 
     ##### LOADING AND SAVING #####
 
     def save(self, autosave=False, modern_ui_data=None):
         """
-        :purpose: Saves blocks, lines and other data in a .dat file.
-        :description: Obtaining the location where the file is to be saved, all the important data of the DSim class, each one of the blocks and each one of the lines, are copied into dictionaries, which will then be loaded to the external file by means of the JSON library.
-        :param autosave: Flag that defines whether the process to be performed is an autosave or not.
-        :type autosave: bool
-        :notes: This function is executed automatically when you want to simulate, so as not to lose unsaved information.
-        """
+        Save diagram to file. Delegates to FileService.
         
-        if not autosave:
-            options = QFileDialog.Options()
-            initial_dir = os.path.join(os.path.dirname(__file__), 'saves')
-            file, _ = QFileDialog.getSaveFileName(
-                None,
-                "Save File",
-                os.path.join(initial_dir, self.filename),
-                "Data Files (*.dat);;All Files (*)",
-                options=options
-            )
-
-            if not file:
-                return 1
-            if not file.lower().endswith('.dat'):
-                file += '.dat'
-        else:  # Option for when a graph is going to run
-            if '_AUTOSAVE' not in self.filename:
-                file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
-            else:
-                file = f'saves/{self.filename}'
-
-        # Ensure the saves directory exists
-        os.makedirs(os.path.dirname(file), exist_ok=True)
-
-        # DSim data (Simulator interface)
-        init_dict = {
-            "wind_width": self.SCREEN_WIDTH,
-            "wind_height": self.SCREEN_HEIGHT,
-            "fps": self.FPS,
-            "only_one": self.only_one,
-            "enable_line_sel": self.enable_line_selection,
-            "sim_time": self.sim_time,
-            "sim_dt": self.sim_dt,
-            "sim_trange": self.plot_trange
+        Args:
+            autosave: If True, save to autosave location without dialog
+            modern_ui_data: Additional UI state data to save
+        
+        Returns:
+            0 on success, 1 if user cancelled
+        """
+        # Sync parameters to file_service
+        sim_params = {
+            'sim_time': self.sim_time,
+            'sim_dt': self.sim_dt,
+            'plot_trange': self.plot_trange
         }
+        self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
+        self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
+        
+        result = self.file_service.save(
+            autosave=autosave,
+            modern_ui_data=modern_ui_data,
+            sim_params=sim_params
+        )
+        
+        # Sync filename back for backward compatibility
+        if result == 0 and not autosave:
+            self.filename = self.file_service.filename
+            
+        return result
 
-        # Blocks parameters data
-        blocks_dict = []
-        for block in self.blocks_list:
-            block_dict = {
-                "block_fn": block.block_fn,
-                "sid": block.sid,
-                "username": block.username,
-                "coords_left": block.left,
-                "coords_top": block.top,
-                "coords_width": block.width,
-                "coords_height": block.height,
-                "coords_height_base": block.height_base,
-                "in_ports": block.in_ports,
-                "out_ports": block.out_ports,
-                "dragging": block.dragging,
-                "selected": block.selected,
-                "b_color": block.b_color.name(),  # Convert QColor to string
-                "b_type": block.b_type,
-                "io_edit": block.io_edit,
-                "fn_name": block.fn_name,
-                "params": block.saving_params(),
-                "external": block.external,
-                "flipped": block.flipped
-            }
-            blocks_dict.append(block_dict)
-
-        # Line parameters data
-        lines_dict = []
-        for line in self.line_list:
-            line_dict = {
-                "name": line.name,
-                "sid": line.sid,
-                "srcblock": line.srcblock,
-                "srcport": line.srcport,
-                "dstblock": line.dstblock,
-                "dstport": line.dstport,
-                "points": [(p.x(), p.y()) for p in line.points],
-                "cptr": getattr(line, 'cptr', 0),  # Use getattr with a default value
-                "selected": line.selected
-            }
-            lines_dict.append(line_dict)
-
-        main_dict = {"sim_data": init_dict, "blocks_data": blocks_dict, "lines_data": lines_dict}
-
-        if modern_ui_data:
-            main_dict["modern_ui_data"] = modern_ui_data
-        main_dict["version"] = "2.0"
-
-        with open(file, 'w') as fp:
-            json.dump(main_dict, fp, indent=4)
-
-        if not autosave:
-            self.filename = os.path.basename(file)  # Keeps the name of the file if you want to save it again later
-
-        logger.info(f"SAVED AS {file}")
 
     def open(self):
         """
-        :purpose: Loads blocks, lines and other data from a .dat file.
-        :description: Starting from the .dat file, the data saved in the dictionaries are unpacked, updating the data in DSim, creating new blocks and lines, leaving the canvas and the configurations as they were saved before.
-        :notes: The name of the loaded file is saved in the system, in order to facilitate the saving of data in it (overwriting it).
+        Load diagram from file. Delegates to FileService.
+        
+        Returns:
+            modern_ui_data dict if present in file, None otherwise
         """
-        options = QFileDialog.Options()
-        initial_dir = os.path.dirname(os.path.abspath(__file__))
-        file, _ = QFileDialog.getOpenFileName(
-            None,
-            "Open File",
-            os.path.join(initial_dir, self.filename),
-            "Data Files (*.dat);;All Files (*)",
-            options=options
-        )
-
-        if not file:  # If no file was selected (dialog was cancelled)
-            return
-
-        with open(file) as json_file:
-            data = json.load(json_file)
-
+        data = self.file_service.load()
+        
+        if data is None:
+            return None
+            
         version = data.get("version", "1.0")
         if version != "2.0":
-            logger.warning(f"Loading a file with version {version}, but the current version is 2.0. Some features may not be supported.")
-
-        sim_data = data['sim_data']
-        blocks_data = data['blocks_data']
-        lines_data = data['lines_data']
-        modern_ui_data = data.get("modern_ui_data")
-
-        self.clear_all()
-        self.update_sim_data(sim_data)
+            logger.warning(f"Loading file version {version}, current is 2.0")
+        
+        # Apply loaded data using FileService
+        sim_params = self.file_service.apply_loaded_data(data)
+        
+        # Sync simulation parameters back to DSim
+        self.sim_time = sim_params.get('sim_time', 1.0)
+        self.sim_dt = sim_params.get('sim_dt', 0.01)
+        self.plot_trange = sim_params.get('plot_trange', 100)
         self.ss_count = 0
-        for block in blocks_data:
-            self.update_blocks_data(block)
-        for line in lines_data:
-            self.update_lines_data(line)
-
-        self.filename = os.path.basename(file)  # Keeps the name of the file if you want to save it again later
-
-        logger.info(f"LOADED FROM {file}")
-        return modern_ui_data
-
-    def update_sim_data(self, data):
-        """
-        :purpose: Updates information related with the main class variables saved in a file to the current simulation.
-        :param data: Dictionary with DSim parameters.
-        :type data: dict
-        """
-        self.SCREEN_WIDTH = data.get('wind_width', 1280)
-        self.SCREEN_HEIGHT = data.get('wind_height', 770)
-        self.FPS = data.get('fps', 60)
-        self.line_creation = 0
-        self.only_one = data.get('only_one', False)
-        self.enable_line_selection = data.get('enable_line_sel', True)
-        self.sim_time = data.get('sim_time', 1.0)
-        self.sim_dt = data.get('sim_dt', 0.01)
-        self.plot_trange = data.get('sim_trange', 100)
-
-    def update_blocks_data(self, block_data):
-        """
-        :purpose: Updates information related with all the blocks saved in a file to the current simulation.
-        :param block_data: Dictionary with Block object id, parameters, variables, etc.
-        :type block_data: dict
-        """
-        menu_block = None
-        for mb in self.menu_blocks:
-            if mb.block_fn == block_data['block_fn']:
-                menu_block = mb
-                break
-
-        loaded_params = block_data['params']
-        if menu_block:
-            default_params = copy.deepcopy(menu_block.params)
-            default_params.update(loaded_params)
-            loaded_params = default_params
-
-        # Use fn_name from menu_block to ensure we have the correct function name,
-        # not the potentially outdated one from saved file
-        fn_name = menu_block.fn_name if menu_block else block_data.get('fn_name', block_data['block_fn'].lower())
-
-        coords = QRect(block_data['coords_left'], block_data['coords_top'], block_data['coords_width'], block_data['coords_height_base'])
-        block = DBlock(block_fn=block_data['block_fn'],
-                      sid=block_data['sid'],
-                      coords=coords,
-                      color=block_data['b_color'],
-                      in_ports=block_data['in_ports'],
-                      out_ports=block_data['out_ports'],
-                      b_type=block_data['b_type'],
-                      io_edit=block_data['io_edit'],
-                      fn_name=fn_name,
-                      params=loaded_params,
-                      external=block_data['external'],
-                      username=block_data['username'],
-                      block_class=menu_block.block_class if menu_block else None,
-                      colors=self.colors)
-        block.height = block_data['coords_height']
-        block.selected = block_data['selected']
-        block.dragging = block_data['dragging']
-        block.flipped = block_data.get('flipped', False)
-        self.blocks_list.append(block)
-
-    def update_lines_data(self, line_data):
-        logger.debug(f"Updating line data: {line_data}")
-        """
-        :purpose: Updates information related with all the lines saved in a file to the current simulation.
-        :param line_data: Dictionary with Line object id, parameters, variables, etc.
-        :type line_data: dict
-        """
-        # Build username→name map for flexible block references
-        # This allows files to use usernames (e.g., "err1") instead of auto-generated names ("Sum1")
-        srcblock = line_data['srcblock']
-        dstblock = line_data['dstblock']
+        self.filename = self.file_service.filename
         
-        for block in self.blocks_list:
-            if block.username == srcblock:
-                srcblock = block.name
-            if block.username == dstblock:
-                dstblock = block.name
-        
-        line = DLine(sid=line_data['sid'],
-                    srcblock=srcblock,
-                    srcport=line_data['srcport'],
-                    dstblock=dstblock,
-                    dstport=line_data['dstport'],
-                    points=line_data['points'])
-        line.selected = line_data['selected']
-        line.update_line(self.blocks_list)
-        self.line_list.append(line)
+        return data.get("modern_ui_data")
 
     def clear_all(self):
         """Clear all blocks and lines from the diagram. Delegates to model."""
@@ -856,11 +626,8 @@ class DSim:
                         self.execution_failed(str(e))
                         return False
                 else:
-                    # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
-                    if block.block_instance:
-                        out_value = block.block_instance.execute(**kwargs)
-                    else:
-                        out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
+                    # Use block_instance (all blocks now have execute() methods)
+                    out_value = block.block_instance.execute(**kwargs)
                 children = self.get_outputs(block.name)
                 block.computed_data = True
                 self.update_global_list(block.name, h_value=0, h_assign=True)
@@ -908,11 +675,8 @@ class DSim:
                             self.execution_failed()
                             return False
                     else:
-                        # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
-                        if block.block_instance:
-                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
-                        else:
-                            out_value = getattr(self.execution_function, block.fn_name)(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
+                        # Use block_instance (all blocks now have execute() methods)
+                        out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
 
                     # Check if the execution returned None (some blocks may not return anything)
                     if out_value is None:
@@ -1052,11 +816,8 @@ class DSim:
                                 self.execution_failed()
                                 return
                         else:
-                            # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
-                            if block.block_instance:
-                                out_value = block.block_instance.execute(**kwargs)
-                            else:
-                                out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
+                            # Use block_instance (all blocks now have execute() methods)
+                            out_value = block.block_instance.execute(**kwargs)
 
                         if 'E' in out_value and out_value['E']:
                             self.execution_failed()
@@ -1092,11 +853,8 @@ class DSim:
                                 self.execution_failed()
                                 return
                         else:
-                            # Use block_instance if available (refactored blocks), otherwise use execution_function (legacy)
-                            if block.block_instance:
-                                out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
-                            else:
-                                out_value = getattr(self.execution_function, block.fn_name)(self.time_step, block.input_queue, block.exec_params)
+                            # Use block_instance (all blocks now have execute() methods)
+                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
                             if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
@@ -1171,40 +929,8 @@ class DSim:
         logger.error("*****EXECUTION STOPPED*****")
 
     def check_diagram_integrity(self):
-        logger.debug("*****Checking diagram integrity*****")
-        error_trigger = False
-        for block in self.blocks_list:
-            inputs, outputs = self.get_neighbors(block.name)
-
-            if block.in_ports == 1 and len(inputs) < block.in_ports:
-                logger.error(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
-                error_trigger = True
-            elif block.in_ports > 1:
-                in_vector = np.zeros(block.in_ports)
-                for tupla in inputs:
-                    in_vector[tupla['dstport']] += 1
-                finders = np.where(in_vector == 0)
-                if len(finders[0]) > 0:
-                    logger.error(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
-                    error_trigger = True
-
-            if block.out_ports == 1 and len(outputs) < block.out_ports:
-                logger.error(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
-                error_trigger = True
-            elif block.out_ports > 1:
-                out_vector = np.zeros(block.out_ports)
-                for tupla in outputs:
-                    out_vector[tupla['srcport']] += 1
-                finders = np.where(out_vector == 0)
-                if len(finders[0]) > 0:
-                    logger.error(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
-                    error_trigger = True
-
-        if error_trigger:
-            logger.error("Diagram integrity check failed.")
-            return False
-        logger.debug("NO ISSUES FOUND IN DIAGRAM")
-        return True
+        """Check diagram integrity. Delegates to SimulationEngine."""
+        return self.engine.check_diagram_integrity()
 
     def _validate_signal_dimensions(self):
         """
@@ -1373,17 +1099,8 @@ class DSim:
         return False, []
 
     def get_outputs(self, block_name):
-        """
-        :purpose: Finds all the blocks that need a "block_name" result as input.
-        :param block_name: Block object name id.
-        :type block_name: str
-        """
-        # Returns a list of dictionaries with the outgoing ports for block_name, as well as the incoming blocks and ports
-        neighs = []
-        for line in self.line_list:
-            if line.srcblock == block_name:
-                neighs.append({'srcport': line.srcport, 'dstblock': line.dstblock, 'dstport': line.dstport})
-        return neighs
+        """Get output connections for a block. Delegates to SimulationEngine."""
+        return self.engine.get_outputs(block_name)
 
 
 
@@ -1404,22 +1121,8 @@ class DSim:
         return True, child_ports
 
     def get_neighbors(self, block_name):
-        inputs = []
-        outputs = []
-        for signal in self.line_list:
-            if signal.dstblock == block_name:
-                inputs.append({
-                    'srcblock': signal.srcblock,
-                    'srcport': signal.srcport,
-                    'dstport': signal.dstport
-                })
-            if signal.srcblock == block_name:
-                outputs.append({
-                    'dstblock': signal.dstblock,
-                    'srcport': signal.srcport,
-                    'dstport': signal.dstport
-                })
-        return inputs, outputs
+        """Get neighbors for a block. Delegates to SimulationEngine."""
+        return self.engine.get_neighbors(block_name)
 
     def reset_memblocks(self):
         """
@@ -1444,12 +1147,16 @@ class DSim:
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         try:
-            # Plot Scopes
-            vectors = [
-                x.params.get('vector')
-                for x in self.blocks_list
-                if x.block_fn == 'Scope' and 'vector' in x.params
-            ]
+            # Plot Scopes - scope stores data in exec_params during execution
+            vectors = []
+            for x in self.blocks_list:
+                if x.block_fn == 'Scope':
+                    # Check exec_params first (used during execution), fallback to params
+                    params = getattr(x, 'exec_params', x.params)
+                    vec = params.get('vector')
+                    if vec is None:
+                        vec = x.params.get('vector')
+                    vectors.append(vec)
             valid_vectors = [v for v in vectors if v is not None and hasattr(v, '__len__') and len(v) > 0]
             if valid_vectors:
                 self.pyqtPlotScope()
@@ -1869,326 +1576,5 @@ class DSim:
                 logger.info("DYNAMIC PLOT: OFF")
 
 
-class SignalPlot(QWidget):
-    """
-    Class that manages the display of dynamic plots through the simulation.
-    *WARNING: It uses pyqtgraph as base (MIT license, but interacts with PyQT5 (GPL)).*
 
-    :param dt: Sampling time of the system.
-    :param labels: List of names of the vectors.
-    :param xrange: Maximum number of elements to plot in axis x.
-    :type dt: float
-    :type labels: list
-    :type xrange: int
 
-    """
-    def __init__(self, dt, labels, xrange, step_mode=False):
-        super().__init__()
-        self.dt = dt
-        self.step_mode = step_mode
-        self.curve_step_modes = self._expand_step_modes(step_mode, len(labels))
-        self.xrange = xrange * self.dt
-        self.plot_items = []
-        self.curves = []
-
-        # Store data for export
-        self.labels = labels
-        self.timeline = None
-        self.data_vectors = None
-
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
-
-        # Create plot area
-        plot_layout = QVBoxLayout()
-        plot_layout.setSpacing(10)  # Add spacing between plots
-        plot_layout.setContentsMargins(0, 0, 0, 10)  # Add bottom margin to plot area
-        for idx, label in enumerate(labels):
-            plot_widget = pg.PlotWidget(title=label)
-            plot_widget.showGrid(x=True, y=True)
-
-            # Configure axes for better visibility
-            self._configure_plot_axes(plot_widget)
-
-            # Use stepMode=True for Zero-Order Hold visualization (staircase plot)
-            # This requires the x-axis (time) to have one more element than y-axis
-            curve = plot_widget.plot(pen='y', stepMode=self.curve_step_modes[idx])
-            self.plot_items.append(plot_widget)
-            self.curves.append(curve)
-            plot_layout.addWidget(plot_widget)
-
-        main_layout.addLayout(plot_layout)
-
-        # Add spacing before the export button to prevent it from overlapping the x-axis
-        main_layout.addSpacing(20)
-
-        # Add export button at bottom
-        from lib.ui.button import Button
-        self.export_button = QPushButton("Export to CSV...")
-        self.export_button.setToolTip("Export plot data to CSV file")
-        self.export_button.clicked.connect(self.export_to_csv)
-        main_layout.addWidget(self.export_button)
-
-        self.resize(800, 600)
-
-    def _configure_plot_axes(self, plot_widget):
-        """
-        Configure plot widget axes for better visibility and consistent appearance.
-
-        Sets up the x-axis (time) with proper labels, styling, and ensures
-        sufficient space for axis labels to be displayed.
-
-        :param plot_widget: The PlotWidget to configure
-        :type plot_widget: pg.PlotWidget
-        """
-        # Configure x-axis to ensure labels are shown
-        plot_widget.setLabel('bottom', 'Time')
-        plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
-        plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
-        plot_widget.getAxis('bottom').enableAutoSIPrefix(False)  # Disable SI scaling
-
-        # Set minimum height for plot widget to ensure x-axis labels have room
-        plot_widget.setMinimumHeight(200)
-
-    def _expand_step_modes(self, step_mode, count):
-        """
-        Normalize step_mode (bool or list) into a list matching the plot count.
-        """
-        if isinstance(step_mode, (list, tuple, np.ndarray)):
-            modes = [bool(mode) for mode in step_mode]
-        else:
-            modes = [bool(step_mode)] * count
-
-        if len(modes) < count:
-            modes.extend([modes[-1] if modes else False] * (count - len(modes)))
-        elif len(modes) > count:
-            modes = modes[:count]
-        return modes
-
-    def pltcolor(self, index, hues=9, hueOff=180, minHue=0, maxHue=360, val=255, sat=255, alpha=255):
-        """
-        :purpose: Assigns a color to a vector for plotting purposes.
-        """
-        third = (maxHue - minHue) / 3
-        hues = int(hues)
-        indc = int(index) // 3
-        indr = int(index) % 3
-
-        hsection = indr * third
-        hrange = (indc * third / (hues // 3)) % third
-        h = (hsection + hrange + hueOff) % 360
-        return pg.hsvColor(h/360, sat/255, val/255, alpha/255)
-
-    def plot_config(self, settings_dict={}):
-        return
-
-    def loop(self, new_t, new_y):
-        """
-        :purpose: Updates the time and scope vectors and plot them.
-        """
-        try:
-            # Store data for export
-            self.timeline = new_t
-            self.data_vectors = new_y
-
-            for i, curve in enumerate(self.curves):
-                if i < len(new_y):
-                    step_mode = self.curve_step_modes[i] if i < len(self.curve_step_modes) else False
-                    if step_mode:
-                        # For stepMode=True, x must be len(y) + 1
-                        # Ensure t_step is exactly len(new_y[i]) + 1
-                        if len(new_t) == len(new_y[i]):
-                            t_step = np.append(new_t, new_t[-1] + self.dt)
-                        elif len(new_t) > len(new_y[i]):
-                            t_step = new_t[:len(new_y[i]) + 1]
-                        else:
-                            # This case shouldn't happen if logic is correct, but handle safely
-                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(new_y[i]) - len(new_t) + 1))
-                        
-                        curve.setData(t_step, new_y[i])
-                    else:
-                        # For normal plotting, x and y must have same length
-                        # Ensure t_step is exactly len(new_y[i])
-                        if len(new_t) == len(new_y[i]):
-                            t_step = new_t
-                        elif len(new_t) > len(new_y[i]):
-                            t_step = new_t[:len(new_y[i])]
-                        else:
-                            # Pad time if needed (shouldn't happen)
-                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(new_y[i]) - len(new_t)))
-
-                        curve.setData(t_step, new_y[i])
-        except Exception as e:
-            logger.error(f"Error updating plot: {e}")
-
-    def export_to_csv(self):
-        """
-        Export plot data to CSV file with user selection of which scopes to include.
-        """
-        import csv
-        from datetime import datetime
-
-        # Check if we have data to export
-        if self.timeline is None or self.data_vectors is None:
-            QMessageBox.warning(self, "No Data", "No plot data available to export.")
-            return
-
-        # Create scope selection dialog
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Select Scopes to Export")
-        dialog_layout = QVBoxLayout()
-
-        # Instructions
-        instruction_label = QLabel("Select which scope blocks to include in the CSV export:")
-        dialog_layout.addWidget(instruction_label)
-
-        # Create checkboxes for each scope
-        checkboxes = []
-        for i, label in enumerate(self.labels):
-            # labels can be either a string or a list of strings
-            if isinstance(label, str):
-                scope_name = label
-            elif isinstance(label, list):
-                scope_name = f"Scope {i} ({', '.join(label[:3])}{'...' if len(label) > 3 else ''})"
-            else:
-                scope_name = f"Scope {i}"
-
-            checkbox = QWidget()
-            checkbox_layout = QHBoxLayout()
-            checkbox_layout.setContentsMargins(0, 0, 0, 0)
-
-            from PyQt5.QtWidgets import QCheckBox
-            cb = QCheckBox(scope_name)
-            cb.setChecked(True)  # Default to all selected
-            checkbox_layout.addWidget(cb)
-            checkbox.setLayout(checkbox_layout)
-
-            checkboxes.append(cb)
-            dialog_layout.addWidget(checkbox)
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        select_all_btn = QPushButton("Select All")
-        deselect_all_btn = QPushButton("Deselect All")
-        ok_btn = QPushButton("Export")
-        cancel_btn = QPushButton("Cancel")
-
-        select_all_btn.clicked.connect(lambda: [cb.setChecked(True) for cb in checkboxes])
-        deselect_all_btn.clicked.connect(lambda: [cb.setChecked(False) for cb in checkboxes])
-        ok_btn.clicked.connect(dialog.accept)
-        cancel_btn.clicked.connect(dialog.reject)
-
-        button_layout.addWidget(select_all_btn)
-        button_layout.addWidget(deselect_all_btn)
-        button_layout.addStretch()
-        button_layout.addWidget(ok_btn)
-        button_layout.addWidget(cancel_btn)
-
-        dialog_layout.addLayout(button_layout)
-        dialog.setLayout(dialog_layout)
-        dialog.setMinimumWidth(400)
-
-        # Show dialog and get result
-        if dialog.exec_() != QDialog.Accepted:
-            return
-
-        # Get selected scopes
-        selected_indices = [i for i, cb in enumerate(checkboxes) if cb.isChecked()]
-
-        if not selected_indices:
-            QMessageBox.warning(self, "No Selection", "Please select at least one scope to export.")
-            return
-
-        # Get save file path
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_filename = f"plot_data_{timestamp}.csv"
-
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Export Plot Data to CSV",
-            default_filename,
-            "CSV Files (*.csv);;All Files (*)"
-        )
-
-        if not filepath:
-            return
-
-        # Export data to CSV
-        try:
-            with open(filepath, 'w', newline='') as csvfile:
-                writer = csv.writer(csvfile)
-
-                # Build header row
-                header = ['time']
-                column_data = []
-
-                for idx in selected_indices:
-                    label = self.labels[idx]
-                    vector = self.data_vectors[idx]
-
-                    # Handle multi-dimensional vectors
-                    if isinstance(label, list):
-                        # Multiple signals in this scope
-                        for i, sig_label in enumerate(label):
-                            header.append(sig_label)
-                            # Extract column from 2D array
-                            if len(vector.shape) > 1:
-                                column_data.append(vector[:, i])
-                            else:
-                                column_data.append(vector)
-                    else:
-                        # Single signal
-                        header.append(label)
-                        column_data.append(vector.flatten() if hasattr(vector, 'flatten') else vector)
-
-                # Write header
-                writer.writerow(header)
-
-                # Write data rows
-                num_rows = len(self.timeline)
-                for row_idx in range(num_rows):
-                    row = [self.timeline[row_idx]]
-                    for col_data in column_data:
-                        if row_idx < len(col_data):
-                            row.append(col_data[row_idx])
-                        else:
-                            row.append('')  # Handle mismatched lengths
-                    writer.writerow(row)
-
-            # Log success and update button text briefly
-            logger.info(f"Plot data exported to {filepath} ({num_rows} rows, {len(header)} columns)")
-
-            # Briefly change button text to show success
-            original_text = self.export_button.text()
-            self.export_button.setText(f"✓ Exported to {os.path.basename(filepath)}")
-            self.export_button.setEnabled(False)
-
-            # Reset button after 3 seconds
-            QTimer.singleShot(3000, lambda: (
-                self.export_button.setText(original_text),
-                self.export_button.setEnabled(True)
-            ))
-
-        except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Failed to export data:\n{str(e)}")
-            logger.error(f"Failed to export plot data: {e}")
-
-    def sort_labels(self, labels):
-        """
-        :purpose: Rearranges the list if some elements are lists too.
-        """
-        self.labels = []
-        for elem in labels:
-            if isinstance(elem, str):
-                self.labels += [elem]
-            elif isinstance(elem, list):
-                self.labels += elem
-
-    def sort_vectors(self, ny):
-        """
-        :purpose: Rearranges all vectors in one matrix.
-        """
-        new_vec = ny[0]
-        for i in range(1, len(ny)):
-            new_vec = np.column_stack((new_vec, ny[i]))
-        return new_vec

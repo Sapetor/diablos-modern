@@ -58,6 +58,10 @@ class GainBlock(BaseBlock):
         """
         return False
 
+    def draw_icon(self, block_rect):
+        """Gain uses triangular shape - handled specially in DBlock.draw_Block."""
+        return None
+
     def execute(self, time, inputs, params):
         try:
             # Get input as numpy array

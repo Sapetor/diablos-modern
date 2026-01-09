@@ -55,9 +55,13 @@ def test_hysteresis_switches_and_holds():
 
 def test_deadband_zeroes_small_signal():
     block = DeadbandBlock()
-    p = {"deadband": 0.5, "center": 0.0}
+    # DeadbandBlock uses start/end params, not deadband/center
+    p = {"start": -0.5, "end": 0.5}
     out = block.execute(0.0, {0: np.array([-0.4, 0.0, 0.6])}, p)[0]
-    assert np.allclose(out, [0.0, 0.0, 0.6])
+    # Input -0.4: inside deadzone [-0.5, 0.5] -> 0.0
+    # Input 0.0: inside deadzone -> 0.0  
+    # Input 0.6: above end (0.5) -> 0.6 - 0.5 = 0.1
+    assert np.allclose(out, [0.0, 0.0, 0.1])
 
 
 def test_switch_selects_true_branch():
@@ -86,23 +90,42 @@ def test_goto_from_params_defaults():
 
 
 def test_link_goto_from_adds_line(simulation_model):
-    from PyQt5.QtCore import QRect
+    from PyQt5.QtCore import QRect, QPoint
     from lib.simulation.block import DBlock
     from lib.simulation.connection import DLine
+    from blocks.step import StepBlock
 
-    # Create simple goto/from blocks
-    goto = DBlock("Goto", 0, QRect(0, 0, 70, 60), "orange", block_class=GotoBlock)
+    # Create a source block that feeds into Goto
+    src = DBlock("Step", 0, QRect(0, 0, 70, 60), "green", block_class=StepBlock, in_ports=0, out_ports=1)
+    
+    # Create Goto block
+    goto = DBlock("Goto", 0, QRect(100, 0, 70, 60), "orange", block_class=GotoBlock, in_ports=1, out_ports=0)
     goto.params['tag'] = "X"
-    frm = DBlock("From", 0, QRect(200, 0, 70, 60), "orange", block_class=FromBlock, in_ports=1, out_ports=1)
+    
+    # Create From block
+    frm = DBlock("From", 0, QRect(200, 0, 70, 60), "orange", block_class=FromBlock, in_ports=0, out_ports=1)
     frm.params['tag'] = "X"
 
-    simulation_model.blocks_list = [goto, frm]
-    simulation_model.line_list = []
+    simulation_model.blocks_list = [src, goto, frm]
+    
+    # Create the required line from source to Goto (link_goto_from needs this)
+    line_to_goto = DLine(
+        sid=0,
+        srcblock=src.name,
+        srcport=0,
+        dstblock=goto.name,
+        dstport=0,
+        points=[QPoint(70, 30), QPoint(100, 30)]
+    )
+    simulation_model.line_list = [line_to_goto]
 
     simulation_model.link_goto_from()
 
-    # Expect one line connecting goto -> from
-    assert len(simulation_model.line_list) == 1
-    line = simulation_model.line_list[0]
-    assert line.srcblock == goto.name
-    assert line.dstblock == frm.name
+    # Expect TWO lines: original line + virtual hidden line to From
+    assert len(simulation_model.line_list) == 2
+    # Find the new virtual line (hidden=True)
+    virtual_lines = [ln for ln in simulation_model.line_list if getattr(ln, 'hidden', False)]
+    assert len(virtual_lines) == 1
+    vline = virtual_lines[0]
+    assert vline.srcblock == src.name  # Source of goto's input
+    assert vline.dstblock == frm.name

@@ -32,5 +32,23 @@ class MuxBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw multiplexer icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Input lines
+        path.moveTo(0.2, 0.3); path.lineTo(0.4, 0.3)
+        path.moveTo(0.2, 0.7); path.lineTo(0.4, 0.7)
+        # Main body (trapezoid)
+        path.moveTo(0.4, 0.2)
+        path.lineTo(0.8, 0.4)
+        path.lineTo(0.8, 0.6)
+        path.lineTo(0.4, 0.8)
+        path.lineTo(0.4, 0.2)
+        # Output
+        path.moveTo(0.8, 0.5); path.lineTo(1.0, 0.5)
+        return path
+
     def execute(self, time, inputs, params):
         return {0: list(inputs.values())}
+

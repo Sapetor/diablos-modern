@@ -35,6 +35,16 @@ class SigProductBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw multiplication X symbol in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        path.moveTo(0.2, 0.2)
+        path.lineTo(0.8, 0.8)
+        path.moveTo(0.2, 0.8)
+        path.lineTo(0.8, 0.2)
+        return path
+
     def execute(self, time, inputs, params):
         try:
             mult = np.array(1.0, dtype=float)
@@ -44,3 +54,4 @@ class SigProductBlock(BaseBlock):
         except (ValueError, TypeError):
             print(f"ERROR: Invalid input type in sigproduct block. Expected numeric.")
             return {'E': True}
+

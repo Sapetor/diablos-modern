@@ -59,6 +59,11 @@ class SumBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Sum block icon is the sign text - handled specially in draw_Block."""
+        # Sum uses text rendering, so we return None and let the switch handle it
+        return None
+
     def execute(self, time, inputs, params):
         try:
             suma = 0.0
@@ -80,3 +85,4 @@ class SumBlock(BaseBlock):
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid input type in sum block. Expected numeric. Error: {str(e)}")
             return {'error': True}
+

@@ -45,6 +45,10 @@ class PIDBlock(BaseBlock):
     def outputs(self):
         return [{"name": "u", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """PID uses text rendering - handled in DBlock switch."""
+        return None
+
     def execute(self, time, inputs, params):
         dt = float(params.get("dtime", 0.01))
         sp = float(np.atleast_1d(inputs[0])[0])

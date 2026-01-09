@@ -52,6 +52,31 @@ class SwitchBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw switch selector icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Control arrow from top
+        path.moveTo(0.5, 0.10)
+        path.lineTo(0.5, 0.35)
+        path.moveTo(0.47, 0.30); path.lineTo(0.5, 0.35); path.lineTo(0.53, 0.30)
+        # Selector box
+        path.moveTo(0.30, 0.35)
+        path.lineTo(0.70, 0.35)
+        path.lineTo(0.70, 0.75)
+        path.lineTo(0.30, 0.75)
+        path.lineTo(0.30, 0.35)
+        # Data inputs  
+        path.moveTo(0.30, 0.45); path.lineTo(0.45, 0.45)
+        path.moveTo(0.30, 0.65); path.lineTo(0.45, 0.65)
+        # Selected path
+        path.moveTo(0.45, 0.45)
+        path.lineTo(0.55, 0.55)
+        path.lineTo(0.70, 0.55)
+        # Output
+        path.moveTo(0.70, 0.55); path.lineTo(0.90, 0.55)
+        return path
+
     def execute(self, time, inputs, params):
         ctrl = float(np.atleast_1d(inputs[0])[0])
         mode = params.get("mode", "threshold")
@@ -67,3 +92,4 @@ class SwitchBlock(BaseBlock):
         if isinstance(out, (float, int)):
             out = np.atleast_1d(out)
         return {0: np.array(out, dtype=float)}
+

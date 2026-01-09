@@ -135,6 +135,10 @@ diablos-modern/
 
 ## Adding New Blocks
 
+> **Note (2026-01):** Blocks now implement their `execute()` method directly.
+> The legacy `functions.py` is only used by some older blocks and will be deprecated.
+> New blocks should implement all logic in `execute()` instead of adding to `functions.py`.
+
 ### Step 1: Create Block Class
 
 Create a new file in `blocks/` directory:

@@ -51,6 +51,21 @@ class XYGraphBlock(BaseBlock):
         """Sinks don't need output connections."""
         return False
 
+    def draw_icon(self, block_rect):
+        """Draw XY graph icon in normalized 0-1 coordinates."""
+        from PyQt5.QtGui import QPainterPath
+        path = QPainterPath()
+        # Axes
+        path.moveTo(0.15, 0.85)
+        path.lineTo(0.15, 0.15)  # Y axis
+        path.moveTo(0.15, 0.85)
+        path.lineTo(0.85, 0.85)  # X axis
+        # Curve (parametric)
+        path.moveTo(0.2, 0.7)
+        path.quadTo(0.4, 0.2, 0.5, 0.4)
+        path.quadTo(0.6, 0.6, 0.8, 0.3)
+        return path
+
     def execute(self, time, inputs, params):
         # Initialize on first call
         if params.get("_init_start_", True):
