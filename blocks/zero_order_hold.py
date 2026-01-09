@@ -1,5 +1,5 @@
 from blocks.base_block import BaseBlock
-from lib import functions
+
 
 class ZeroOrderHoldBlock(BaseBlock):
     def __init__(self):
@@ -53,5 +53,37 @@ class ZeroOrderHoldBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        return functions.zero_order_hold(time, inputs, params, **kwargs)
+        """
+        Zero-Order Hold: Samples input at specified rate and holds value.
+        """
+        output_only = kwargs.get('output_only', False)
+        
+        if params.get('_init_start_', True):
+            params['_init_start_'] = False
+            params['_next_sample_time_'] = 0.0
+            # Initialize held value with initial input if available, else 0
+            val = inputs.get(0, 0.0)
+            if hasattr(val, 'item'):
+                val = val.item()
+            params['_held_value_'] = float(val)
 
+        # Get current held value
+        held_val = params['_held_value_']
+        
+        # Check if it's time to sample
+        sampling_time = params['sampling_time']
+        if time >= params['_next_sample_time_'] - 1e-9:
+            if not output_only:
+                # Update held value
+                val = inputs.get(0, 0.0)
+                if hasattr(val, 'item'):
+                    val = val.item()
+                params['_held_value_'] = float(val)
+                
+                # Schedule next sample
+                while params['_next_sample_time_'] <= time + 1e-9:
+                    params['_next_sample_time_'] += sampling_time
+            
+            return {0: params['_held_value_'], 'E': False}
+            
+        return {0: held_val, 'E': False}

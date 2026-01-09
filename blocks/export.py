@@ -1,5 +1,6 @@
 from blocks.base_block import BaseBlock
-from lib import functions
+import numpy as np
+
 
 class ExportBlock(BaseBlock):
     def __init__(self):
@@ -55,5 +56,37 @@ class ExportBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params):
-        return functions.export(time, inputs, params)
+        """
+        Save and export block signals.
+        """
+        # To prevent saving data in wrong iterations (RK45 integration)
+        if '_skip_' in params.keys() and params['_skip_']:
+            params['_skip_'] = False
+            return {0: np.array([0.0]), 'E': False}
 
+        # Initialization of the saving vector
+        if params.get('_init_start_', True):
+            aux_vector = np.array([inputs[0]])
+            try:
+                params['vec_dim'] = len(inputs[0])
+            except TypeError:
+                params['vec_dim'] = 1
+
+            labels = params['str_name']
+            if labels == 'default':
+                labels = params['_name_'] + '-0'
+            labels = labels.replace(' ', '').split(',')
+            if len(labels) < params['vec_dim']:
+                for i in range(params['vec_dim'] - len(labels)):
+                    labels.append(params['_name_'] + '-' + str(params['vec_dim'] + i - 1))
+            elif len(labels) > params['vec_dim']:
+                labels = labels[:params['vec_dim']]
+            if len(labels) == params['vec_dim'] == 1:
+                labels = labels[0]
+            params['vec_labels'] = labels
+            params['_init_start_'] = False
+        else:
+            aux_vector = params['vector']
+            aux_vector = np.concatenate((aux_vector, [inputs[0]]))
+        params['vector'] = aux_vector
+        return {0: np.array([0.0]), 'E': False}
