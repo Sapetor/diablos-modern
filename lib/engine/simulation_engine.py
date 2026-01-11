@@ -320,7 +320,7 @@ class SimulationEngine:
             block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
 
             # Dynamically set b_type for Transfer Functions
-            self._set_block_type(block)
+            self.set_block_type(block)
             
             block.exec_params['dtime'] = self.sim_dt
             try:
@@ -345,7 +345,7 @@ class SimulationEngine:
         self.execution_time_start = time_module.time()
         
         # Identify memory blocks
-        self._identify_memory_blocks()
+        self.identify_memory_blocks()
         
         # Check for RK45 integrators
         self.rk45_len = self.count_rk45_integrators()
@@ -360,7 +360,7 @@ class SimulationEngine:
         logger.debug("Execution preparation complete")
         return True
 
-    def _set_block_type(self, block: DBlock) -> None:
+    def set_block_type(self, block: DBlock) -> None:
         """Set block type based on transfer function properness."""
         if block.block_fn == 'TranFn':
             num = block.exec_params.get('numerator', [])
@@ -374,7 +374,7 @@ class SimulationEngine:
             D = np.array(block.exec_params.get('D', [[0.0]]))
             block.b_type = 1 if np.all(D == 0) else 2
 
-    def _identify_memory_blocks(self) -> None:
+    def identify_memory_blocks(self) -> None:
         """Identify blocks with memory (integrators, strictly proper TFs)."""
         self.memory_blocks = set()
         for block in self.model.blocks_list:
