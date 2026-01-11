@@ -135,9 +135,10 @@ diablos-modern/
 
 ## Adding New Blocks
 
-> **Note (2026-01):** Blocks now implement their `execute()` method directly.
-> The legacy `functions.py` is only used by some older blocks and will be deprecated.
-> New blocks should implement all logic in `execute()` instead of adding to `functions.py`.
+Blocks implement their execution logic directly in the `execute()` method.
+
+> **Note (2026-01):** The legacy `lib/functions.py` has been deleted.
+> All blocks now implement their logic in `execute()` directly.
 
 ### Step 1: Create Block Class
 
@@ -146,7 +147,7 @@ Create a new file in `blocks/` directory:
 ```python
 # blocks/my_custom_block.py
 from blocks.base_block import BaseBlock
-from lib import functions
+
 
 class MyCustomBlock(BaseBlock):
     """
@@ -161,8 +162,7 @@ class MyCustomBlock(BaseBlock):
     @property
     def fn_name(self):
         """
-        Function name in lib/functions.py
-        IMPORTANT: This must match exactly!
+        Unique function identifier used by the simulation engine.
         """
         return "my_custom"
 
@@ -207,10 +207,15 @@ class MyCustomBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """
-        Execute the block logic.
-        This delegates to lib/functions.py
+        Execute the block logic directly.
         """
-        return functions.my_custom(time, inputs, params, **kwargs)
+        # Inline execution logic - see modern blocks for examples
+        gain = params.get('gain', 1.0)
+        offset = params.get('offset', 0.0)
+        input1 = inputs.get(0, 0.0)
+        input2 = inputs.get(1, 0.0)
+        result = (input1 + input2) * gain + offset
+        return {'output': result}
 ```
 
 ### Step 2: Implement Execution Function
@@ -255,7 +260,7 @@ def my_custom(time, inputs, params, output_only=False):
         return {'E': True, 'error': str(e)}
 ```
 
-### Step 3: Test Your Block
+### Step 2: Test Your Block
 
 Blocks are automatically discovered and loaded. Just restart the application:
 
@@ -272,13 +277,13 @@ Your block should appear in the Block Palette under the category you specified!
 - At simulation init, the model creates a hidden virtual line from the Goto’s upstream source to each matching From (same tag). Hidden lines are not drawn or hit-tested.
 - The virtual line label is set to `signal_name` (defaults to `tag`), which can later be used for workspace binding/export.
 
-### Step 4: Write Tests
+### Step 3: Write Tests
 
 ```python
 # tests/unit/test_my_custom_block.py
 import pytest
 from blocks.my_custom_block import MyCustomBlock
-from lib import functions
+
 
 @pytest.mark.unit
 class TestMyCustomBlock:
@@ -290,14 +295,12 @@ class TestMyCustomBlock:
         block = MyCustomBlock()
         assert block.fn_name == "my_custom"
 
-    def test_execution_function_exists(self):
-        assert hasattr(functions, 'my_custom')
-
-    def test_execution_with_valid_inputs(self):
+    def test_execute_with_valid_inputs(self):
+        block = MyCustomBlock()
         inputs = {0: 5.0, 1: 3.0}
         params = {'gain': 2.0, 'offset': 1.0}
 
-        result = functions.my_custom(0.0, inputs, params)
+        result = block.execute(0.0, inputs, params)
 
         assert result['output'] == 17.0  # (5+3)*2+1
 ```
@@ -731,3 +734,17 @@ python diablos_modern.py
 - **NumPy Documentation**: [https://numpy.org/doc/](https://numpy.org/doc/)
 - **pytest Documentation**: [https://docs.pytest.org/](https://docs.pytest.org/)
 - **Type Hints**: [https://docs.python.org/3/library/typing.html](https://docs.python.org/3/library/typing.html)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
