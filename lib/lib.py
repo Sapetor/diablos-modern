@@ -218,21 +218,6 @@ class DSim:
         self.buttons_list = [new, load, save, sim, pause, stop, rplt, capt]
 
 
-    def set_color(self, color):
-        """
-        :purpose: Defines color for an element drawn in pygame.
-        :param color: The color in string or rgb to set.
-        :type color: str/(float, float, float)
-        """
-        if isinstance(color, str):
-            return self.colors.get(color, self.colors['gray'])
-        elif isinstance(color, (tuple, list)) and len(color) == 3:
-            return QColor(*color)
-        elif isinstance(color, QColor):
-            return color
-        else:
-            return self.colors['gray']
-
     ##### ADD OR REMOVE BLOCKS AND LINES #####
 
     def add_block(self, block, m_pos):
@@ -251,31 +236,6 @@ class DSim:
         self.model.remove_block(block)
         self.line_list = self.model.line_list  # Sync line_list after removal
         self.dirty = self.model.dirty
-
-    def check_line_block(self, line, b_del_list):
-        """
-        :purpose: Checks if a line is connected to one or more removed blocks.
-        :param line: Line object.
-        :param b_del_list: List of recently removed blocks.
-        """
-        if line.dstblock in b_del_list or line.srcblock in b_del_list:
-            return True
-        return False
-
-    def check_line_port(self, line, block):
-        """
-        :purpose: Checks if there are lines left from a removed port (associated to a block).
-        :param line: Line object.
-        :param block: Block object.
-        """
-        if line.srcblock == block.name and line.srcport > block.out_ports - 1:
-            return True
-        elif line.dstblock == block.name and line.dstport > block.in_ports - 1:
-            return True
-        else:
-            return False
-        
-
 
     def display_lines(self, painter):
         """
@@ -325,17 +285,6 @@ class DSim:
             return
         for b_elem in self.blocks_list:
             b_elem.draw_ports(painter)
-
-    def port_availability(self, dst_line):
-        """
-        :purpose: Checks if an input port is free to get connected with a line to another port.
-        :param dst_line: The name of a Line object.
-        :type dst_line: str
-        """
-        for line in self.line_list:
-            if line.dstblock == dst_line[0] and line.dstport == dst_line[1]:
-                return False
-        return True
 
     # NOTE: Block loading moved to SimulationModel.load_all_blocks()
 
