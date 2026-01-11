@@ -385,36 +385,8 @@ class DSim:
                 # Copy internal parameters that start with '_'
                 block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
 
-                # Dynamically set b_type for Transfer Functions
-                if block.block_fn == 'TranFn':
-                    num = block.exec_params.get('numerator', [])
-                    den = block.exec_params.get('denominator', [])
-                    if len(den) > len(num):
-                        block.b_type = 1  # Strictly proper, has memory
-                    else:
-                        block.b_type = 2  # Not strictly proper, direct feedthrough
-                
-                elif block.block_fn == 'DiscreteTranFn':
-                    num = block.exec_params.get('numerator', [])
-                    den = block.exec_params.get('denominator', [])
-                    # In discrete transfer function H(z) = N(z)/D(z)
-                    # If order(D) > order(N), it's strictly proper (delay) -> Type 1
-                    # If order(D) == order(N), it has direct feedthrough -> Type 2
-                    # Note: len(den) is order + 1
-                    if len(den) > len(num):
-                        block.b_type = 1
-                    else:
-                        block.b_type = 2
-
-                elif block.block_fn == 'DiscreteStateSpace':
-                    # Check D matrix for direct feedthrough
-                    D = np.array(block.exec_params.get('D', [[0.0]]))
-                    # If D is zero matrix, it's strictly proper (Type 1)
-                    if np.all(D == 0):
-                        block.b_type = 1
-                    else:
-                        block.b_type = 2
-
+                # Dynamically set b_type for Transfer Functions (delegated to engine)
+                self.engine.set_block_type(block)
                 
                 block.exec_params['dtime'] = self.sim_dt
                 try:
@@ -450,26 +422,8 @@ class DSim:
         # Check the existence of algebraic loops (part 1)
         check_loop = self.count_computed_global_list()
 
-        # Identify memory blocks to correctly solve algebraic loops
-        self.memory_blocks = set()
-        for block in self.blocks_list:
-            if block.b_type == 1: # Integrators
-                self.memory_blocks.add(block.name)
-            elif block.block_fn == 'TranFn': # Strictly proper transfer functions
-                num = block.params.get('numerator', [])
-                den = block.params.get('denominator', [])
-                if len(den) > len(num):
-                    self.memory_blocks.add(block.name)
-            elif block.block_fn == 'DiscreteTranFn':
-                num = block.params.get('numerator', [])
-                den = block.params.get('denominator', [])
-                if len(den) > len(num):
-                    self.memory_blocks.add(block.name)
-            elif block.block_fn == 'DiscreteStateSpace':
-                D = np.array(block.params.get('D', [[0.0]]))
-                if np.all(D == 0):
-                    self.memory_blocks.add(block.name)
-        logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
+        # Identify memory blocks to correctly solve algebraic loops (delegated to engine)
+        self.engine.identify_memory_blocks()
 
         # Check for integrators using Runge-Kutta 45 and initialize counter
         self.rk45_len = self.count_rk45_ints()
