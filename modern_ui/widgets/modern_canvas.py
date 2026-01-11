@@ -293,14 +293,9 @@ class ModernCanvas(QWidget):
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
             # This ensures ports appear on top of connection lines
-            if hasattr(self.dsim, 'display_blocks'):
-                self.dsim.display_blocks(painter, draw_ports=False)
-
-            if hasattr(self.dsim, 'display_lines'):
-                self.dsim.display_lines(painter)
-
-            if hasattr(self.dsim, 'display_ports'):
-                self.dsim.display_ports(painter)
+            self._render_blocks(painter, draw_ports=False)
+            self._render_lines(painter)
+            self._render_ports(painter)
             
             # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:
@@ -412,6 +407,49 @@ class ModernCanvas(QWidget):
                     painter.end()
                 except Exception:
                     pass
+
+    # ===== Rendering Methods (moved from DSim) =====
+    
+    def _render_blocks(self, painter, draw_ports=True):
+        """Render all blocks to canvas.
+        
+        This replaces DSim.display_blocks() - rendering logic belongs in canvas.
+        """
+        if painter is None:
+            return
+        for block in self.dsim.blocks_list:
+            block.draw_Block(painter, draw_ports=draw_ports)
+            if block.selected:
+                block.draw_resize_handles(painter)
+
+    def _render_lines(self, painter):
+        """Render all connection lines.
+        
+        This replaces DSim.display_lines() - rendering logic belongs in canvas.
+        """
+        if painter is None:
+            return
+        for line in self.dsim.line_list:
+            if not getattr(line, "hidden", False):
+                line.draw_line(painter)
+
+    def _render_ports(self, painter):
+        """Render all ports on top of lines for better visibility.
+        
+        This replaces DSim.display_ports() - rendering logic belongs in canvas.
+        """
+        if painter is None:
+            return
+        for block in self.dsim.blocks_list:
+            block.draw_ports(painter)
+
+    def _update_line_positions(self):
+        """Update line positions after block movement.
+        
+        This replaces DSim.update_lines() - line position logic belongs in canvas.
+        """
+        for line in self.dsim.line_list:
+            line.update_line(self.dsim.blocks_list)
 
     def _draw_grid(self, painter):
         """Draw a sophisticated grid system with dots at intervals."""
@@ -1053,7 +1091,7 @@ class ModernCanvas(QWidget):
                                 self.dsim.model.link_goto_from()
                             except Exception as e:
                                 logger.warning(f"Could not relink Goto/From after connection: {e}")
-                        self.dsim.update_lines()
+                        self._update_line_positions()
                         self.connection_created.emit(self.line_start_block, end_block)
                     else:
                         logger.warning("Failed to create line")
@@ -1334,7 +1372,7 @@ class ModernCanvas(QWidget):
                             block_y = snapped_y + relative_offset.y()
                             block.relocate_Block(QPoint(block_x, block_y))
 
-                self.dsim.update_lines() # Update lines dynamically during drag
+                self._update_line_positions() # Update lines dynamically during drag
                 self.update() # Trigger repaint
             elif self.state == State.RESIZING and self.resizing_block:
                 # Calculate the resize delta
@@ -1444,7 +1482,7 @@ class ModernCanvas(QWidget):
                 self.dragging_block = None
                 self.drag_offset = None
                 self.drag_start_positions = {}
-                self.dsim.update_lines() # Ensure lines are updated after drag finishes
+                self._update_line_positions() # Ensure lines are updated after drag finishes
                 self.update() # Trigger a final repaint
         except Exception as e:
             logger.error(f"Error finishing drag: {str(e)}")

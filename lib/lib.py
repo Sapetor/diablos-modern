@@ -237,55 +237,7 @@ class DSim:
         self.line_list = self.model.line_list  # Sync line_list after removal
         self.dirty = self.model.dirty
 
-    def display_lines(self, painter):
-        """
-        :purpose: Draws lines connecting blocks in the screen.
-        :param painter: Pygame's layer where the figure is drawn.
-        """
-        if painter is None:
-            return
-        for line in self.line_list:
-            if getattr(line, "hidden", False):
-                continue
-            line.draw_line(painter)
-
-    def update_lines(self):
-        """
-        :purpose: Updates lines according to the location of blocks if these changed place.
-        """
-        logger.debug("Updating lines")
-        for line in self.line_list:
-            line.update_line(self.blocks_list)
-
-    def display_blocks(self, painter, draw_ports=True):
-        """
-        :purpose: Draws blocks defined in the main list on the screen.
-        :param painter: A layer in a pygame canvas where the figure is drawn.
-        :param draw_ports: Whether to draw ports (default True for backward compatibility)
-        """
-        if painter is None:
-            return
-        for b_elem in self.blocks_list:
-            b_elem.draw_Block(painter, draw_ports=draw_ports)
-            # Draw resize handles for selected blocks
-            if b_elem.selected:
-                b_elem.draw_resize_handles(painter)
-
-    def display_ports(self, painter):
-        """
-        Draw only the ports for all blocks on a separate rendering layer.
-
-        This allows ports to be rendered on top of connections for better visibility.
-        Delegates to each block's draw_ports() method for consistent rendering.
-
-        :param painter: QPainter instance for rendering
-        :type painter: QPainter
-        """
-        if painter is None:
-            return
-        for b_elem in self.blocks_list:
-            b_elem.draw_ports(painter)
-
+    # NOTE: display_lines, display_blocks, display_ports, update_lines moved to ModernCanvas
     # NOTE: Block loading moved to SimulationModel.load_all_blocks()
 
     ##### LOADING AND SAVING #####
