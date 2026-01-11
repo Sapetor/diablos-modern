@@ -845,15 +845,8 @@ class DSim:
             logger.debug("Signal dimension validation: No mismatches detected")
 
     def count_rk45_ints(self):
-        """
-        :purpose: Checks all integrators and looks if there's at least one that use 'RK45' as integration method.
-        """
-        for block in self.blocks_list:
-            if block.block_fn == 'Integrator' and block.params['method'] == 'RK45':
-                return True
-            elif block.block_fn == 'External' and 'method' in block.params.keys() and block.params['method'] == 'RK45':
-                return True
-        return False
+        """Check if any integrators use RK45 method. Delegates to engine."""
+        return self.engine.count_rk45_integrators()
 
     def update_global_list(self, block_name, h_value, h_assign=False):
         """
