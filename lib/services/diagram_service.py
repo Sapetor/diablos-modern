@@ -38,7 +38,7 @@ class DiagramService:
                 self.main_window,
                 "Save Diagram",
                 self.last_directory,
-                "DiaBloS Files (*.dbs);;All Files (*)"
+                "DiaBloS Files (*.dbs *.json *.dat);;All Files (*)"
             )
 
         if not filename:
@@ -86,7 +86,7 @@ class DiagramService:
                 self.main_window,
                 "Open Diagram",
                 self.last_directory,
-                "DiaBloS Files (*.dbs);;All Files (*)"
+                "DiaBloS Files (*.dbs *.json *.dat);;All Files (*)"
             )
 
         if not filename:
