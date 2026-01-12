@@ -70,5 +70,6 @@ The main `execution_init()` (~270 lines) could be further simplified:
 - [x] Extract plotting logic to `lib/plotting/scope_plotter.py`
 - [x] Extract run history logic to `lib/services/run_history_service.py`
 - [x] Extract execution init logic to `engine.initialize_execution()`
+- [x] Improvements: Dynamic height scaling for blocks based on port count (fixes SumBlock size)
 
 
