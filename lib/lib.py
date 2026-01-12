@@ -881,16 +881,8 @@ class DSim:
         return len([x for x in self.global_computed_list if x['computed_data']])
 
     def reset_execution_data(self):
-        """
-        :purpose: Resets the execution state for all the blocks of a graph.
-        """
-        for i in range(len(self.blocks_list)):
-            self.global_computed_list[i]['computed_data'] = False
-            self.blocks_list[i].computed_data = False
-            self.blocks_list[i].data_recieved = 0
-            self.blocks_list[i].data_sent = 0
-            self.blocks_list[i].input_queue = {}
-            self.blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
+        """Reset execution state for all blocks. Delegates to engine."""
+        self.engine.reset_execution_data()
 
     def get_max_hierarchy(self):
         """
