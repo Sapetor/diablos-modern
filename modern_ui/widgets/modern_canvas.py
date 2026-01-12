@@ -18,6 +18,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from lib.lib import DSim
 from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
 from modern_ui.themes.theme_manager import theme_manager
+from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
+from modern_ui.renderers.block_renderer import BlockRenderer
+from modern_ui.renderers.connection_renderer import ConnectionRenderer
+from modern_ui.renderers.canvas_renderer import CanvasRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +117,25 @@ class ModernCanvas(QWidget):
         self.blocks_with_warnings = set()
         self.show_validation_errors = False
 
-        # Setup canvas
+        # Initialize helpers
+        self.performance = PerformanceHelper()
+        self.validator = ValidationHelper()
+        self.safety = SafetyChecks()
+        
+        # Initialize Analysis Tool
+        self.analyzer = ControlSystemAnalyzer(self.dsim, self)
+        
+        # Initialize Renderer
+        self.block_renderer = BlockRenderer()
+        self.connection_renderer = ConnectionRenderer()
+        self.canvas_renderer = CanvasRenderer()
+
+        # Setup UI
         self._setup_canvas()
+        
+        # Initialize state
+        self.zoom_level = 1.0
+        self.offset = QPoint(0, 0)
         
         # Enable drag and drop
         self.setAcceptDrops(True)
@@ -158,6 +179,16 @@ class ModernCanvas(QWidget):
             if hasattr(self.dsim, 'add_block'):
                 new_block = self.dsim.add_block(menu_block, position)
                 if new_block:
+                    # Apply dynamic sizing based on port count
+                    if hasattr(new_block, 'calculate_min_size'):
+                        min_height = new_block.calculate_min_size()
+                        if min_height > new_block.height:
+                            logger.info(f"Resizing {block_name} to min_height {min_height}")
+                            new_block.height = min_height
+                            # Update rect
+                            new_block.rect.setHeight(min_height)
+                            new_block.update_Block()
+
                     logger.info(f"Successfully added {block_name}")
 
                     # Capture state for undo
@@ -289,7 +320,7 @@ class ModernCanvas(QWidget):
             painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
 
             # Draw sophisticated grid system
-            self._draw_grid(painter)
+            self.canvas_renderer.draw_grid(painter, self.rect(), self.width(), self.height(), self.grid_visible)
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
             # This ensures ports appear on top of connection lines
@@ -309,88 +340,21 @@ class ModernCanvas(QWidget):
                     if not is_output:
                         is_valid_target = True
 
-                # Choose color based on validity
-                if is_valid_target:
-                    line_color = QColor(76, 175, 80)  # Green for valid
-                else:
-                    line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
-
-                # Save painter state
-                painter.save()
-
-                # Enable antialiasing for smooth preview
-                painter.setRenderHint(QPainter.Antialiasing, True)
-
-                # Draw with solid line (not dashed) to avoid shadow artifacts
-                pen = QPen(line_color, 2, Qt.SolidLine)
-                pen.setCapStyle(Qt.RoundCap)
-                painter.setPen(pen)
-
-                # Explicitly set no brush to prevent fill artifacts
-                painter.setBrush(Qt.NoBrush)
-
-                # Draw curved Bezier preview
-                from PyQt5.QtGui import QPainterPath
-                path = QPainterPath()
-                path.moveTo(start_point)
-
-                # Calculate control points for smooth curve
-                dx = end_point.x() - start_point.x()
-                dy = end_point.y() - start_point.y()
-                distance = (dx * dx + dy * dy) ** 0.5
-
-                # Control point offset based on distance
-                offset = min(distance * 0.5, 100)
-
-                cp1 = QPoint(int(start_point.x() + offset), start_point.y())
-                cp2 = QPoint(int(end_point.x() - offset), end_point.y())
-
-                path.cubicTo(cp1, cp2, end_point)
-                painter.drawPath(path)
-
-                # Draw endpoint indicator
-                painter.setBrush(line_color)
-                painter.setPen(Qt.NoPen)
-                painter.drawEllipse(end_point, 4, 4)
-
-                # Restore painter state
-                painter.restore()
+                self.canvas_renderer.draw_temp_line(painter, start_point, end_point, is_valid_target)
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
-                # Save painter state before drawing selection
-                painter.save()
-
-                # Calculate normalized rectangle
-                x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
-                y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
-                x2 = max(self.selection_rect_start.x(), self.selection_rect_end.x())
-                y2 = max(self.selection_rect_start.y(), self.selection_rect_end.y())
-
-                selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
-
-                # Draw semi-transparent blue fill
-                fill_color = QColor(100, 149, 237, 50)  # Cornflower blue with alpha
-                painter.fillRect(selection_rect, fill_color)
-
-                # Draw blue border
-                border_pen = QPen(QColor(100, 149, 237), 2, Qt.DashLine)
-                painter.setPen(border_pen)
-                painter.setBrush(Qt.NoBrush)  # Explicitly set no brush for border
-                painter.drawRect(selection_rect)
-
-                # Restore painter state
-                painter.restore()
+                self.canvas_renderer.draw_selection_rect(painter, self.selection_rect_start, self.selection_rect_end)
 
             # Draw hover effects
-            self._draw_hover_effects(painter)
+            self.canvas_renderer.draw_hover_effects(painter, self.hovered_port, self.hovered_block, self.hovered_line)
 
             # Draw validation error indicators
             if self.show_validation_errors:
-                self._draw_validation_errors(painter)
+                self.canvas_renderer.draw_validation_errors(painter, self.blocks_with_errors, self.blocks_with_warnings)
 
             # Draw routing tag HUD (Goto/From overview)
-            self._draw_tag_hud(painter)
+            self.canvas_renderer.draw_tag_hud(painter, self.dsim)
 
             painter.end()
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -418,9 +382,9 @@ class ModernCanvas(QWidget):
         if painter is None:
             return
         for block in self.dsim.blocks_list:
-            block.draw_Block(painter, draw_ports=draw_ports)
+            self.block_renderer.draw_block(block, painter, draw_ports=draw_ports)
             if block.selected:
-                block.draw_resize_handles(painter)
+                self.block_renderer.draw_resize_handles(block, painter)
 
     def _render_lines(self, painter):
         """Render all connection lines.
@@ -431,17 +395,15 @@ class ModernCanvas(QWidget):
             return
         for line in self.dsim.line_list:
             if not getattr(line, "hidden", False):
-                line.draw_line(painter)
+                self.connection_renderer.draw_line(line, painter)
 
     def _render_ports(self, painter):
         """Render all ports on top of lines for better visibility.
         
         This replaces DSim.display_ports() - rendering logic belongs in canvas.
         """
-        if painter is None:
-            return
         for block in self.dsim.blocks_list:
-            block.draw_ports(painter)
+            self.block_renderer.draw_ports(block, painter)
 
     def _update_line_positions(self):
         """Update line positions after block movement.
@@ -451,100 +413,8 @@ class ModernCanvas(QWidget):
         for line in self.dsim.line_list:
             line.update_line(self.dsim.blocks_list)
 
-    def _draw_grid(self, painter):
-        """Draw a sophisticated grid system with dots at intervals."""
-        if not self.grid_visible:
-            return
 
-        try:
-            # Grid configuration
-            small_grid_size = 20  # Small dot spacing (20px)
-            large_grid_size = 100  # Large dot spacing (100px for emphasis)
 
-            # Get theme colors
-            small_dot_color = theme_manager.get_color('grid_dots')
-            large_dot_color = theme_manager.get_color('grid_dots')
-            large_dot_color.setAlpha(180)  # Make large dots slightly more visible
-
-            # Calculate visible area bounds (considering zoom and pan)
-            visible_rect = self.rect()
-
-            # Draw small dots
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(small_dot_color)
-            for x in range(0, self.width(), small_grid_size):
-                for y in range(0, self.height(), small_grid_size):
-                    # Only draw small dots if not on a large grid intersection
-                    if x % large_grid_size != 0 or y % large_grid_size != 0:
-                        painter.drawEllipse(QPoint(x, y), 1, 1)
-
-            # Draw larger dots at major grid intersections
-            painter.setBrush(large_dot_color)
-            for x in range(0, self.width(), large_grid_size):
-                for y in range(0, self.height(), large_grid_size):
-                    painter.drawEllipse(QPoint(x, y), 2, 2)
-
-        except Exception as e:
-            logger.error(f"Error drawing grid: {str(e)}")
-
-    def _draw_hover_effects(self, painter):
-        """Draw hover effects for ports, blocks, and connections."""
-        painter.save()
-        try:
-            # Draw hovered port (highest priority)
-            if self.hovered_port:
-                block, port_idx, is_output = self.hovered_port
-                port_list = block.out_coords if is_output else block.in_coords
-                if port_idx < len(port_list):
-                    port_pos = port_list[port_idx]
-
-                    # Draw pulsing glow around hovered port
-                    glow_color = theme_manager.get_color('accent_primary')
-                    glow_color.setAlpha(100)
-                    painter.setBrush(glow_color)
-                    painter.setPen(Qt.NoPen)
-                    painter.drawEllipse(port_pos, 12, 12)
-
-                    # Draw brighter center
-                    center_color = theme_manager.get_color('accent_primary')
-                    center_color.setAlpha(180)
-                    painter.setBrush(center_color)
-                    painter.drawEllipse(port_pos, 8, 8)
-
-            # Draw hovered block outline
-            elif self.hovered_block and not self.hovered_block.selected:
-                block = self.hovered_block
-                hover_color = theme_manager.get_color('accent_secondary')
-                hover_color.setAlpha(120)
-
-                # Draw glowing outline
-                painter.setPen(QPen(hover_color, 2.5, Qt.SolidLine))
-                painter.setBrush(Qt.NoBrush)
-                painter.drawRoundedRect(
-                    block.left - 2,
-                    block.top - 2,
-                    block.width + 4,
-                    block.height + 4,
-                    8, 8
-                )
-
-            # Draw hovered connection highlight
-            elif self.hovered_line and not self.hovered_line.selected:
-                line = self.hovered_line
-                if line.path and not line.path.isEmpty():
-                    hover_color = theme_manager.get_color('accent_secondary')
-                    hover_color.setAlpha(150)
-
-                    # Draw thicker line underneath
-                    painter.setPen(QPen(hover_color, 3.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-                    painter.setBrush(Qt.NoBrush)
-                    painter.drawPath(line.path)
-
-        except Exception as e:
-            logger.error(f"Error drawing hover effects: {str(e)}")
-        finally:
-            # Always restore painter state even if there's an exception
-            painter.restore()
 
     def mousePressEvent(self, event):
         """Handle mouse press events."""
@@ -590,7 +460,7 @@ class ModernCanvas(QWidget):
             # Check for resize handles FIRST on selected blocks
             for block in self.dsim.blocks_list:
                 if block.selected:
-                    handle = block.get_resize_handle_at(pos)
+                    handle = self.block_renderer.get_resize_handle_at(block, pos)
                     if handle:
                         self._start_resize(block, handle, pos)
                         return
@@ -664,52 +534,7 @@ class ModernCanvas(QWidget):
 
     def generate_bode_plot(self, bode_block):
         """Find the connected transfer function, calculate, and plot the Bode diagram."""
-        # 1. Find the connected transfer function block
-        source_block = None
-        for line in self.dsim.line_list:
-            if line.dstblock == bode_block.name:
-                for block in self.dsim.blocks_list:
-                    if block.name == line.srcblock:
-                        if block.block_fn == 'TranFn':
-                            source_block = block
-                            break
-                if source_block:
-                    break
-        
-        if not source_block:
-            QMessageBox.warning(self, "Bode Plot Error", "BodeMag block must be connected to the output of a Transfer Function block.")
-            return
-
-        # 2. Get numerator and denominator
-        num = source_block.params.get('numerator')
-        den = source_block.params.get('denominator')
-
-        if not num or not den:
-            QMessageBox.warning(self, "Bode Plot Error", "Connected Transfer Function has invalid parameters.")
-            return
-
-        # 3. Calculate Bode plot data
-        w, mag, phase = signal.bode((num, den))
-
-        # 4. Display the plot
-        plot_window = QWidget()
-        plot_window.setWindowTitle(f"Bode Plot: {source_block.name}")
-        layout = QVBoxLayout()
-        plot_widget = pg.PlotWidget()
-        layout.addWidget(plot_widget)
-        plot_window.setLayout(layout)
-
-        plot_widget.setLogMode(x=True, y=False)
-        plot_widget.setLabel('left', 'Magnitude', units='dB')
-        plot_widget.setLabel('bottom', 'Frequency', units='rad/s')
-        plot_widget.setTitle(f"Bode Magnitude Plot: {source_block.name}")
-        plot_widget.plot(w, mag)
-        plot_widget.showGrid(x=True, y=True)
-
-        if not hasattr(self, 'plot_windows'):
-            self.plot_windows = []
-        self.plot_windows.append(plot_window)
-        plot_window.show()
+        self.analyzer.generate_bode_plot(bode_block)
 
     def show_root_locus_menu(self, block, pos):
         """Show context menu for the RootLocus block."""
@@ -721,145 +546,7 @@ class ModernCanvas(QWidget):
 
     def generate_root_locus(self, rootlocus_block):
         """Find the connected transfer function, calculate, and plot the root locus."""
-        # 1. Find the connected transfer function block
-        source_block = None
-        for line in self.dsim.line_list:
-            if line.dstblock == rootlocus_block.name:
-                for block in self.dsim.blocks_list:
-                    if block.name == line.srcblock:
-                        if block.block_fn == 'TranFn':
-                            source_block = block
-                            break
-                if source_block:
-                    break
-
-        if not source_block:
-            QMessageBox.warning(self, "Root Locus Error", "RootLocus block must be connected to the output of a Transfer Function block.")
-            return
-
-        # 2. Get numerator and denominator
-        num = source_block.params.get('numerator')
-        den = source_block.params.get('denominator')
-
-        if not num or not den:
-            QMessageBox.warning(self, "Root Locus Error", "Connected Transfer Function has invalid parameters.")
-            return
-
-        # 3. Calculate root locus using scipy
-        try:
-            # Ensure num and den are numpy arrays
-            num = np.atleast_1d(num)
-            den = np.atleast_1d(den)
-
-            # Pad numerator to same length as denominator
-            if len(num) < len(den):
-                num = np.pad(num, (len(den) - len(num), 0), 'constant')
-            elif len(den) < len(num):
-                den = np.pad(den, (len(num) - len(den), 0), 'constant')
-
-            # Calculate root locus for gains from 0 to a reasonable maximum
-            # Characteristic equation: 1 + K*G(s) = 0
-            # => den(s) + K*num(s) = 0
-            k_values = np.concatenate([
-                np.linspace(0, 1, 150),           # Fine detail near K=0
-                np.linspace(1, 10, 150),          # Fine detail 1-10
-                np.logspace(1, 4, 400)            # Logarithmic from 10 to 10000
-            ])
-
-            # Store roots for each K value to track branches
-            all_roots = []
-            for k in k_values:
-                # Characteristic equation: den(s) + k*num(s) = 0
-                char_poly = den + k * num
-                roots = np.roots(char_poly)
-                all_roots.append(roots)
-
-            # Convert to numpy array for easier manipulation
-            all_roots = np.array(all_roots)  # Shape: (num_k_values, num_poles)
-
-            # Track branches: for each pole, follow its path as K increases
-            num_poles = all_roots.shape[1]
-
-            # Sort roots at each K to maintain branch continuity
-            # Start with the first set of roots
-            sorted_roots = [all_roots[0]]
-            for i in range(1, len(all_roots)):
-                current = all_roots[i]
-                previous = sorted_roots[-1]
-
-                # Match each current root to the closest previous root
-                # This helps maintain branch continuity
-                matched = []
-                available = list(range(len(current)))
-
-                for prev_root in previous:
-                    if not available:
-                        break
-                    # Find closest root
-                    distances = [abs(current[j] - prev_root) for j in available]
-                    closest_idx = available[np.argmin(distances)]
-                    matched.append(current[closest_idx])
-                    available.remove(closest_idx)
-
-                # Add any remaining unmatched roots
-                for idx in available:
-                    matched.append(current[idx])
-
-                sorted_roots.append(np.array(matched))
-
-            sorted_roots = np.array(sorted_roots)
-
-            # 4. Display the plot
-            plot_window = QWidget()
-            plot_window.setWindowTitle(f"Root Locus: {source_block.name}")
-            layout = QVBoxLayout()
-            plot_widget = pg.PlotWidget()
-            layout.addWidget(plot_widget)
-            plot_window.setLayout(layout)
-
-            plot_widget.setLabel('left', 'Imaginary Axis', units='rad/s')
-            plot_widget.setLabel('bottom', 'Real Axis', units='1/s')
-            plot_widget.setTitle(f"Root Locus Plot: {source_block.name}")
-
-            # Plot each branch as a continuous line
-            colors = [(100, 149, 237), (237, 100, 100), (100, 237, 149),
-                     (237, 149, 100), (149, 100, 237), (237, 237, 100)]
-
-            for pole_idx in range(num_poles):
-                branch_real = sorted_roots[:, pole_idx].real
-                branch_imag = sorted_roots[:, pole_idx].imag
-                color = colors[pole_idx % len(colors)]
-                plot_widget.plot(branch_real, branch_imag,
-                               pen=pg.mkPen(color, width=2),
-                               name=f'Branch {pole_idx+1}' if pole_idx == 0 else None)
-
-            # Mark the open-loop poles (roots of denominator at K=0)
-            poles = np.roots(den)
-            plot_widget.plot(poles.real, poles.imag, pen=None, symbol='x', symbolSize=12,
-                           symbolPen=pg.mkPen('r', width=3), name='Poles')
-
-            # Mark the open-loop zeros (roots of numerator)
-            if np.any(num):  # Only if numerator is not all zeros
-                zeros = np.roots(num)
-                if len(zeros) > 0:
-                    plot_widget.plot(zeros.real, zeros.imag, pen=None, symbol='o', symbolSize=12,
-                                   symbolPen=pg.mkPen('g', width=3), symbolBrush=None, name='Zeros')
-
-            # Add axes lines
-            plot_widget.addLine(x=0, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
-            plot_widget.addLine(y=0, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
-
-            plot_widget.showGrid(x=True, y=True)
-            plot_widget.addLegend()
-
-            if not hasattr(self, 'plot_windows'):
-                self.plot_windows = []
-            self.plot_windows.append(plot_window)
-            plot_window.show()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Root Locus Error", f"Error calculating root locus: {str(e)}")
-            logger.error(f"Root locus calculation error: {str(e)}")
+        self.analyzer.generate_root_locus(rootlocus_block)
 
     def generate_root_locus_plot(self, rootlocus_block):
         """Wrapper method to maintain naming consistency with generate_bode_plot."""
@@ -1318,7 +1005,7 @@ class ModernCanvas(QWidget):
             block.rect.moveTo(new_left, new_top)
 
             # Update connected lines
-            self.dsim.update_lines()
+            self._update_line_positions()
             self.update()
 
         except Exception as e:
@@ -1517,7 +1204,7 @@ class ModernCanvas(QWidget):
                 self.resize_start_pos = None
 
                 # Ensure lines are updated after resize
-                self.dsim.update_lines()
+                self._update_line_positions()
                 self.update()
         except Exception as e:
             logger.error(f"Error finishing resize: {str(e)}")
@@ -1592,7 +1279,7 @@ class ModernCanvas(QWidget):
                 if block.selected:
                     block.flipped = not block.flipped
                     block.update_Block() # Recalculate port positions
-            self.dsim.update_lines()
+            self._update_line_positions()
             self.update() # Redraw canvas
             logger.info("Flipped selected blocks")
         except Exception as e:
@@ -2105,7 +1792,7 @@ class ModernCanvas(QWidget):
         resize_handle = None
         for block in self.dsim.blocks_list:
             if block.selected:
-                handle = block.get_resize_handle_at(pos)
+                handle = self.block_renderer.get_resize_handle_at(block, pos)
                 if handle:
                     resize_handle = handle
                     self._set_resize_cursor(handle)
@@ -2218,79 +1905,7 @@ class ModernCanvas(QWidget):
         self.show_validation_errors = False
         self.update()
 
-    def _draw_validation_errors(self, painter):
-        """Draw visual indicators for validation errors."""
-        try:
-            painter.save()
 
-            # Draw error indicators on blocks
-            for block in self.blocks_with_errors:
-                self._draw_block_error_indicator(painter, block, is_error=True)
-
-            for block in self.blocks_with_warnings:
-                if block not in self.blocks_with_errors:  # Don't double-draw
-                    self._draw_block_error_indicator(painter, block, is_error=False)
-
-            painter.restore()
-
-        except Exception as e:
-            logger.error(f"Error drawing validation errors: {str(e)}")
-
-    def _draw_tag_hud(self, painter):
-        """Draw a compact HUD summarizing Goto/From tags to help spot mismatches."""
-        try:
-            # Only show if there is at least one routing block
-            tags = {}
-            for block in getattr(self.dsim, 'blocks_list', []):
-                if block.block_fn in ('Goto', 'From'):
-                    tag = str(block.params.get('tag', '')).strip()
-                    entry = tags.setdefault(tag, {"goto": 0, "from": 0})
-                    if block.block_fn == 'Goto':
-                        entry["goto"] += 1
-                    else:
-                        entry["from"] += 1
-
-            if not tags:
-                return
-
-            # Reset transform so HUD is screen-aligned
-            painter.save()
-            painter.resetTransform()
-
-            # Prepare text lines
-            lines = ["Routing tags"]
-            for tag, counts in sorted(tags.items()):
-                label = tag if tag else "(empty)"
-                lines.append(f"{label}: G{counts['goto']} → F{counts['from']}")
-
-            fm = painter.fontMetrics()
-            # horizontalAdvance not in Qt 5.9, fallback to width
-            width_func = getattr(fm, "horizontalAdvance", fm.width)
-            max_w = max(width_func(line) for line in lines) + 12
-            line_h = fm.height() + 2
-            box_h = line_h * len(lines) + 8
-
-            # Position top-left margin
-            margin = 12
-            rect = QRect(margin, margin, max_w, box_h)
-
-            # Background
-            bg = theme_manager.get_color('surface')
-            bg.setAlpha(200)
-            painter.setBrush(bg)
-            painter.setPen(Qt.NoPen)
-            painter.drawRoundedRect(rect, 6, 6)
-
-            # Text
-            painter.setPen(theme_manager.get_color('text_primary'))
-            y = margin + 6 + fm.ascent()
-            for line in lines:
-                painter.drawText(rect.left() + 6, y, line)
-                y += line_h
-
-            painter.restore()
-        except Exception as e:
-            logger.error(f"Error drawing tag HUD: {e}")
 
     def _draw_block_error_indicator(self, painter, block, is_error=True):
         """Draw error/warning indicator on a specific block."""

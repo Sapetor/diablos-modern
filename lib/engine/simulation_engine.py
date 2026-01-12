@@ -63,6 +63,202 @@ class SimulationEngine:
         self.rk_counter: int = 0
         self.execution_time_start: float = 0.0
 
+    def initialize_execution(self, blocks_list: List[DBlock]) -> bool:
+        """
+        Initialize the execution sequence for the simulation.
+        
+        Args:
+            blocks_list: List of all blocks in the diagram
+            
+        Returns:
+            bool: True if initialization was successful, False otherwise
+        """
+        try:
+            logger.debug("Engine: Initializing execution...")
+            
+            # Reset temporary lists
+            self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
+                                       for x in blocks_list]
+            self.reset_execution_data()
+            self.execution_time_start = time_module.time()
+            
+            # Check for algebraic loops (part 1)
+            check_loop = self.count_computed_global_list()
+            
+            # Identify memory blocks
+            self.identify_memory_blocks()
+            
+            # Count RK45 integrators
+            self.rk45_len = self.count_rk45_integrators()
+            self.rk_counter = 0
+            
+            # Initial validation of signal dimensions happens in DSim or can remain there for now 
+            # as it relies on line_list which is in DSim/Model. 
+            # For this refactor, we assume DSim handles the pre-checks on lines.
+
+            # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
+            for block in blocks_list:
+                logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
+                children = {}
+                out_value = {}
+                
+                if block.b_type == 0:
+                    # Execute source block
+                    out_value = self.execute_block(block)
+                    if out_value is False: # execute_block handles errors and returns None/False/Dict
+                        return False
+                        
+                    block.computed_data = True
+                    block.hierarchy = 0
+                    self.update_global_list(block.name, h_value=0, h_assign=True)
+                    children = self.get_outputs(block.name)
+
+                elif block.name in self.memory_blocks:
+                    # Execute memory block (output_only=True)
+                    out_value = self.execute_block(block, output_only=True)
+                    if out_value is False:
+                         return False
+
+                    children = self.get_outputs(block.name)
+                    block.computed_data = True
+                    self.update_global_list(block.name, h_value=0, h_assign=True)
+
+                # Check for errors in output
+                if out_value and isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
+                    self.error_msg = out_value.get('error', 'Unknown error')
+                    logger.error(self.error_msg)
+                    return False
+
+                # Propagate outputs to children
+                if out_value:
+                    if block.b_type not in [1, 3]: # Only propagate if valid type logic applies (memory blocks propagate manually here)
+                         # Note: The original logic had custom propagation here.
+                         pass
+                    
+                    # We can reuse propagate_outputs but need to be careful about the specific logic used in init
+                    # Original logic manually iterated children. Let's replicate or delegate.
+                    self.propagate_outputs(block, out_value)
+
+            # Un-compute memory blocks for the main loop
+            for block in blocks_list:
+                if block.name in self.memory_blocks:
+                    block.computed_data = False
+                    self.update_global_list(block.name, h_value=0, h_assign=False, reset_computed=True)
+            
+            # Loop 2: Hierarchy Resolution Matrix
+            h_count = 1
+            while not self.check_global_list():
+                for block in blocks_list:
+                    # Check execution readiness
+                    can_execute = block.data_recieved == block.in_ports
+                    if block.block_fn == 'From':
+                        can_execute = 0 in block.input_queue and block.input_queue[0] is not None
+                    
+                    if can_execute and not block.computed_data:
+                        out_value = self.execute_block(block)
+                        if out_value is False:
+                            return False
+                            
+                        # Memory block special output update
+                        if block.name in self.memory_blocks:
+                             if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                                block.exec_params['output'] = block.exec_params['mem']
+                        
+                        self.update_global_list(block.name, h_value=h_count, h_assign=True)
+                        block.computed_data = True
+                        
+                        if block.b_type not in [1, 3]:
+                            self.propagate_outputs(block, out_value)
+                            
+                # Algebraic Loop Detection
+                computed_count = self.count_computed_global_list()
+                if computed_count == check_loop:
+                    uncomputed_blocks = [b for b in blocks_list if not b.computed_data]
+                    if not uncomputed_blocks:
+                        break
+                        
+                    is_algebraic, cycle_nodes = self.detect_algebraic_loops(uncomputed_blocks)
+                    if is_algebraic:
+                        self.error_msg = f"Algebraic loop detected involving blocks: {cycle_nodes}"
+                        logger.error(self.error_msg)
+                        return False
+                    else:
+                        break
+                else:
+                    check_loop = computed_count
+                
+                h_count += 1
+            
+            # Sync hierarchies back to blocks
+            self.reset_execution_data()
+            
+            # Calculate max hierarchy
+            self.max_hier = self.get_max_hierarchy()
+            
+            logger.debug(f"Engine: Execution initialized. Max hierarchy: {self.max_hier}")
+            self.execution_initialized = True
+            return True
+
+        except Exception as e:
+            import traceback
+            logger.error(f"Engine: Error during execution init: {e}")
+            logger.error(traceback.format_exc())
+            self.error_msg = str(e)
+            return False
+
+    def update_global_list(self, block_name, h_value=0, h_assign=False, reset_computed=False):
+        """Update global computed list."""
+        for g_block in self.global_computed_list:
+            if g_block['name'] == block_name:
+                if reset_computed:
+                    g_block['computed_data'] = False
+                else:
+                    g_block['computed_data'] = True
+                
+                if h_assign:
+                    g_block['hierarchy'] = h_value
+                break
+
+    def execute_block(self, block, output_only=False):
+        """
+        Execute a single block. 
+        Returns output value (dict) or False on failure.
+        """
+        try:
+            kwargs = {
+                'time': self.time_step,
+                'inputs': block.input_queue,
+                'params': block.exec_params
+            }
+            
+            if output_only:
+                kwargs['output_only'] = True
+                if block.block_fn == 'Integrator':
+                    kwargs['next_add_in_memory'] = False
+                    kwargs['dtime'] = self.sim_dt
+            
+            if block.external:
+                try:
+                    out_value = getattr(block.file_function, block.fn_name)(**kwargs)
+                except Exception as e:
+                    logger.error(f"ERROR IN EXTERNAL FUNCTION {block.file_function}: {e}")
+                    return False
+            else:
+                out_value = block.block_instance.execute(**kwargs)
+                
+            if out_value is None:
+                 logger.error(f"Block {block.name} returned None")
+                 return False
+                 
+            if isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
+                return out_value # Caller checks for error
+                
+            return out_value
+            
+        except Exception as e:
+            logger.error(f"Error executing block {block.name}: {e}")
+            return False
+
     def check_diagram_integrity(self):
         """
         Verify that all block ports are properly connected.
@@ -172,40 +368,65 @@ class SimulationEngine:
 
     def detect_algebraic_loops(self, uncomputed_blocks):
         """
-        Detect if there are algebraic loops in uncomputed blocks.
+        Detect if there are algebraic loops in uncomputed blocks using 
+        topological sort (Kahn's algorithm).
 
         Args:
             uncomputed_blocks: List of blocks that haven't been computed
 
         Returns:
-            bool: True if algebraic loop detected
+            tuple: (is_algebraic: bool, cycle_nodes: list) - True if loop detected,
+                   with list of block names involved in the cycle
         """
+        from collections import deque
+        
         if len(uncomputed_blocks) == 0:
-            return False
+            return False, []
 
         logger.debug("Checking for algebraic loops...")
         logger.debug(f"Uncomputed blocks: {[b.name for b in uncomputed_blocks]}")
 
-        # Check if any block can be computed
+        uncomputed_block_names = {block.name for block in uncomputed_blocks}
+
+        # Build the graph only with uncomputed blocks
+        graph = {block.name: [] for block in uncomputed_blocks}
+        in_degree = {block.name: 0 for block in uncomputed_blocks}
+
         for block in uncomputed_blocks:
-            inputs, _ = self.get_neighbors(block.name)
+            children = self.get_outputs(block.name)
+            for child_info in children:
+                child_name = child_info['dstblock']
+                if child_name in uncomputed_block_names:
+                    graph[block.name].append(child_name)
+                    in_degree[child_name] += 1
 
-            # Count how many inputs are satisfied
-            satisfied_inputs = 0
-            for input_conn in inputs:
-                src_block = self.model.get_block_by_name(input_conn['srcblock'])
-                if src_block and src_block.computed_data:
-                    satisfied_inputs += 1
+        # Find all nodes with an in-degree of 0
+        queue = deque([name for name, degree in in_degree.items() if degree == 0])
 
-            # If all inputs are satisfied, this block can be computed
-            if satisfied_inputs == len(inputs):
-                logger.debug(f"Block {block.name} can be computed")
-                return False
+        # Perform topological sort
+        count = 0
+        while queue:
+            u = queue.popleft()
+            count += 1
+            for v in graph.get(u, []):
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
 
-        # If we get here, no block can be computed = algebraic loop
-        logger.error("ALGEBRAIC LOOP DETECTED")
-        logger.error(f"Blocks involved: {[b.name for b in uncomputed_blocks]}")
-        return True
+        # If the count of visited nodes is less than the number of nodes, there is a cycle
+        if count < len(uncomputed_blocks):
+            # Find the nodes involved in the cycle
+            cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
+            
+            # Check if the cycle contains any memory blocks
+            has_memory_block = any(node in self._memory_blocks for node in cycle_nodes)
+            
+            if not has_memory_block:
+                logger.error("ALGEBRAIC LOOP DETECTED")
+                logger.error(f"Blocks involved: {cycle_nodes}")
+                return True, cycle_nodes
+
+        return False, []
 
     def children_recognition(self, block_name, children_list):
         """
@@ -419,39 +640,7 @@ class SimulationEngine:
                     self.memory_blocks.add(block.name)
         logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
 
-    def execute_block(self, block: DBlock, output_only: bool = False) -> Dict[int, Any]:
-        """
-        Execute a single block.
 
-        Args:
-            block: The block to execute
-            output_only: If True, only compute output without updating state
-
-        Returns:
-            dict: Output values keyed by port number, or {'E': True} on error
-        """
-        kwargs = {
-            'time': self.time_step,
-            'inputs': block.input_queue,
-            'params': block.exec_params,
-        }
-        if output_only:
-            kwargs['output_only'] = True
-        if block.block_fn == 'Integrator':
-            kwargs['next_add_in_memory'] = not self.rk45_len or self.rk_counter == 3
-            kwargs['dtime'] = self.sim_dt
-
-        try:
-            if block.external:
-                out_value = getattr(block.file_function, block.fn_name)(**kwargs)
-            elif block.block_instance:
-                out_value = block.block_instance.execute(**kwargs)
-            else:
-                out_value = getattr(self.execution_function, block.fn_name)(**kwargs)
-            return out_value
-        except Exception as e:
-            logger.error(f"Error executing block {block.name}: {str(e)}")
-            return {'E': True, 'error': str(e)}
 
     def propagate_outputs(self, block: DBlock, out_value: Dict[int, Any]) -> None:
         """
@@ -514,21 +703,7 @@ class SimulationEngine:
             return False, []
         return True, child_ports
 
-    def update_global_list(self, block_name: str, h_value: int = 0, h_assign: bool = False) -> None:
-        """
-        Update the global computed list for a block.
 
-        Args:
-            block_name: Name of the block
-            h_value: Hierarchy value to assign
-            h_assign: Whether to assign hierarchy value
-        """
-        for elem in self.global_computed_list:
-            if elem['name'] == block_name:
-                if h_assign:
-                    elem['hierarchy'] = h_value
-                elem['computed_data'] = True
-                break
 
     def check_global_list(self) -> bool:
         """Check if all blocks have been computed."""

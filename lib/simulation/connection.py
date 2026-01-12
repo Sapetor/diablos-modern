@@ -5,9 +5,8 @@ DLine (connection) class - represents connections between blocks.
 import math
 import logging
 from typing import List, Tuple, Optional, Union
-from PyQt5.QtGui import QPainterPath, QColor, QPen, QPolygonF, QPainter
+from PyQt5.QtGui import QPainterPath, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect
-from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
 
@@ -354,150 +353,7 @@ class DLine:
                 self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
                 self.modified = False
 
-    def draw_line(self, painter: QPainter) -> None:
-        """Draw the connection line with smooth Bezier curves and modern styling."""
-        if self.path and not self.path.isEmpty():
-            # Save painter state
-            painter.save()
 
-            # Enable antialiasing for smooth curves
-            painter.setRenderHint(QPainter.Antialiasing, True)
-
-            # Use theme_manager for connection colors
-            default_connection_color = theme_manager.get_color('connection_default')
-            active_connection_color = theme_manager.get_color('connection_active')
-
-            # Determine line color and width based on selection state and signal width
-            is_selected = self.selected and self.selected_segment == -1
-            pen_color = active_connection_color if is_selected else default_connection_color
-            
-            # Base line width - thicker for vector signals (MIMO indicator)
-            base_width = 2.0 if self.signal_width <= 1 else 3.5
-            line_width = base_width + 0.5 if is_selected else base_width
-
-            # Draw subtle glow/shadow for selected connections
-            if is_selected:
-                # Draw outer glow
-                glow_color = QColor(active_connection_color)
-                glow_color.setAlpha(40)
-                glow_pen = QPen(glow_color, line_width + 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-                painter.setPen(glow_pen)
-                painter.setBrush(Qt.NoBrush)
-                painter.drawPath(self.path)
-
-            # Draw main connection line
-            pen = QPen(pen_color, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-            painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
-            painter.drawPath(self.path)
-
-            # If a specific segment is selected, highlight it
-            if self.selected and self.selected_segment != -1:
-                if self.selected_segment < len(self.points) - 1:
-                    p1 = self.points[self.selected_segment]
-                    p2 = self.points[self.selected_segment + 1]
-
-                    # Draw glow for segment
-                    segment_glow_color = QColor(active_connection_color)
-                    segment_glow_color.setAlpha(60)
-                    glow_pen = QPen(segment_glow_color, 6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-                    painter.setPen(glow_pen)
-                    painter.drawLine(p1, p2)
-
-                    # Draw segment highlight
-                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-                    painter.setPen(highlight_pen)
-                    painter.drawLine(p1, p2)
-
-            # Restore painter state
-            painter.restore()
-
-            # Draw intermediate points if the whole line is selected
-            if self.selected and self.selected_segment == -1:
-                painter.setBrush(active_connection_color)
-                for point in self.points[1:-1]:
-                    painter.drawEllipse(point, 4, 4)
-
-            # Draw connection label if present
-            if self.label:
-                self._draw_label(painter)
-
-            # Draw arrowhead
-            arrow_size = 10
-
-            end_point = self.path.pointAtPercent(1.0)
-            if self.path.length() > 0:
-                point_before_end = self.path.pointAtPercent(1.0 - (arrow_size / self.path.length()))
-            else:
-                point_before_end = end_point
-
-            # Calculate angle
-            dx = end_point.x() - point_before_end.x()
-            dy = end_point.y() - point_before_end.y()
-            angle = math.atan2(dy, dx)  # Angle in radians
-
-            # Arrowhead points
-            arrow_p1 = end_point + QPoint(int(-arrow_size * math.cos(angle - math.pi / 6)), int(-arrow_size * math.sin(angle - math.pi / 6)))
-            arrow_p2 = end_point + QPoint(int(-arrow_size * math.cos(angle + math.pi / 6)), int(-arrow_size * math.sin(angle + math.pi / 6)))
-
-            arrow_polygon = QPolygonF([end_point, arrow_p1, arrow_p2])
-
-            arrow_color = active_connection_color if self.selected else default_connection_color
-            painter.setBrush(arrow_color)  # Fill arrowhead with line color
-            painter.setPen(Qt.NoPen)  # No border for arrowhead
-            painter.drawPolygon(arrow_polygon)
-
-    def _draw_label(self, painter: QPainter) -> None:
-        """Draw the connection label at the midpoint of the line."""
-        if not self.label or len(self.points) < 2:
-            return
-        if painter is None or not painter.isActive():
-            return
-        saved = False
-        try:
-            painter.save()
-            saved = True
-
-            # Find midpoint of the line
-            mid_index = len(self.points) // 2
-            label_pos = self.points[mid_index]
-
-            # Draw label background
-            from PyQt5.QtGui import QFont, QFontMetrics
-            font = QFont("Arial", 9)
-            painter.setFont(font)
-
-            metrics = QFontMetrics(font)
-            text = str(self.label)
-            # Qt5.9 compatibility: use width() as fallback
-            text_width = metrics.horizontalAdvance(text) if hasattr(metrics, "horizontalAdvance") else metrics.width(text)
-            text_height = metrics.height()
-
-            # Background rectangle
-            padding = 4
-            bg_rect = QRect(
-                label_pos.x() - text_width // 2 - padding,
-                label_pos.y() - text_height // 2 - padding,
-                text_width + 2 * padding,
-                text_height + 2 * padding
-            )
-
-            # Draw semi-transparent background
-            bg_color = theme_manager.get_color('canvas_background')
-            bg_color.setAlpha(230)
-            painter.setBrush(bg_color)
-            painter.setPen(QPen(theme_manager.get_color('border_primary'), 1))
-            painter.drawRoundedRect(bg_rect, 3, 3)
-
-            # Draw text
-            text_color = theme_manager.get_color('text_primary')
-            painter.setPen(text_color)
-            painter.drawText(bg_rect, Qt.AlignCenter, text)
-        except Exception as e:
-            logger.warning(f"Label draw failed: {e}")
-        finally:
-            if saved and painter.isActive():
-                painter.restore()
 
     def collision(self, m_coords: Union[QPoint, Tuple[int, int]], point_radius: int = 5,
                   line_threshold: int = 5) -> Optional[Tuple[str, int]]:

@@ -114,7 +114,9 @@ class DraggableBlockWidget(QFrame):
             theme_manager.themes[ThemeType.DARK]['text_primary'] = '#1F2937'
 
         # Draw block with ports for better visualization
-        temp_dblock.draw_Block(painter, draw_name=False, draw_ports=True)
+        from modern_ui.renderers.block_renderer import BlockRenderer
+        renderer = BlockRenderer()
+        renderer.draw_block(temp_dblock, painter, draw_name=False, draw_ports=True)
 
         # Restore original theme color if we changed it
         if original_theme:
