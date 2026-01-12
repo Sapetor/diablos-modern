@@ -652,41 +652,16 @@ class DSim:
             for block in self.blocks_list:
                 try:
                     if block.name in self.memory_blocks:
-                        kwargs = {
-                            'time': self.time_step,
-                            'inputs': block.input_queue,
-                            'params': block.exec_params,
-                            'output_only': True
-                        }
-                        if block.block_fn == 'Integrator':
-                            add_in_memory = not self.rk45_len or self.rk_counter == 3
-                            kwargs['next_add_in_memory'] = add_in_memory
-                            kwargs['dtime'] = self.sim_dt
-                        
-                        if block.external:
-                            try:
-                                out_value = getattr(block.file_function, block.fn_name)(**kwargs)
-                            except Exception as e:
-                                logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {str(e)}")
-                                self.execution_failed()
-                                return
-                        else:
-                            # Use block_instance (all blocks now have execute() methods)
-                            out_value = block.block_instance.execute(**kwargs)
+                        # Execute memory blocks with output_only=True using engine
+                        out_value = self.engine.execute_block(block, output_only=True)
 
-                        if 'E' in out_value and out_value['E']:
-                            self.execution_failed()
+                        if out_value is None or ('E' in out_value and out_value['E']):
+                            self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
                             return
 
-                        children = self.get_outputs(block.name)
-                        for mblock in self.blocks_list:
-                            is_child, tuple_list = self.children_recognition(mblock.name, children)
-                            if is_child:
-                                for tuple_child in tuple_list:
-                                                                    if tuple_child['dstport'] not in mblock.input_queue:
-                                                                        mblock.data_recieved += 1
-                                                                    mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
-                                                                    block.data_sent += 1
+                        # Propagate outputs to children
+                        self.engine.propagate_outputs(block, out_value)
+
                     if self.rk45_len and self.rk_counter != 0:
                         block.params['_skip_'] = True
                 except Exception as e:
@@ -699,43 +674,26 @@ class DSim:
                 for block in self.blocks_list:
                     # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
                     if block.hierarchy == hier and (block.data_recieved == block.in_ports or block.in_ports == 0) and not block.computed_data:
-                        # The function is executed (differentiate between internal and external function first)
-                        if block.external:
-                            try:
-                                out_value = getattr(block.file_function, block.fn_name)(self.time_step, block.input_queue, block.exec_params)
-                            except Exception as e:
-                                logger.error(f"ERROR FOUND IN EXTERNAL FUNCTION {block.file_function}: {e}")
-                                self.execution_failed()
-                                return
-                        else:
-                            # Use block_instance (all blocks now have execute() methods)
-                            out_value = block.block_instance.execute(time=self.time_step, inputs=block.input_queue, params=block.exec_params)
+                        # Execute using engine (handles external vs internal, kwargs building)
+                        out_value = self.engine.execute_block(block)
+                        
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
                             if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
                                 block.exec_params['output'] = block.exec_params['mem']
 
                         # It is checked that the function has not delivered an error
-                        if 'E' in out_value.keys() and out_value['E']:
-                            self.execution_failed()
+                        if out_value is None or ('E' in out_value and out_value['E']):
+                            self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
                             return
 
                         # The computed_data booleans are updated in the global list as well as in the block itself
                         self.update_global_list(block.name, h_value=0)
                         block.computed_data = True
 
-                        # The blocks that require the processed data from this block are searched
-                        children = self.get_outputs(block.name)
-                        if block.b_type not in [1, 3]:  # Elements that do not deliver a result to children (1 is initial cond.)
-                            for mblock in self.blocks_list:
-                                is_child, tuple_list = self.children_recognition(block_name=mblock.name, children_list=children)
-                                if is_child:
-                                    # Data is sent to each required port of the child block
-                                                                    for tuple_child in tuple_list:
-                                                                        if tuple_child['dstport'] not in mblock.input_queue:
-                                                                            mblock.data_recieved += 1
-                                                                        mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
-                                                                        block.data_sent += 1
+                        # Propagate outputs to children (engine handles b_type check)
+                        if block.b_type not in [1, 3]:
+                            self.engine.propagate_outputs(block, out_value)
                 hier += 1
 
             # The dynamic plot function is called to save the new data, if active
