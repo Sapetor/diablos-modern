@@ -1,13 +1,18 @@
 """
 Property Editor Widget for DiaBloS
 Dynamically creates a form to edit the properties of a selected block.
+Now features specialized widgets for different types and input validation.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QComboBox, QCheckBox, QFrame, QFormLayout
+import ast
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QLineEdit, QComboBox, QCheckBox, 
+    QFrame, QFormLayout, QSpinBox, QDoubleSpinBox, QToolTip
+)
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
+from PyQt5.QtGui import QIntValidator, QDoubleValidator, QPalette, QColor
 from modern_ui.themes.theme_manager import theme_manager
-
 
 class PropertyEditor(QFrame):
     """A widget that dynamically creates a form to edit block properties."""
@@ -18,8 +23,6 @@ class PropertyEditor(QFrame):
         super().__init__(parent)
         self.setObjectName("PropertyEditor")
         self.setFrameStyle(QFrame.StyledPanel)
-
-        # Ensure proper background for property editor
         self.setAutoFillBackground(True)
 
         self.layout = QFormLayout(self)
@@ -46,7 +49,7 @@ class PropertyEditor(QFrame):
         else:
             self._create_form()
         
-        self.updateGeometry() # Notify layout that size hint has changed
+        self.updateGeometry()
         
     def _clear_form(self):
         """Clear the existing form widgets."""
@@ -60,7 +63,6 @@ class PropertyEditor(QFrame):
         placeholder = QLabel("Select a block to view its properties.")
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
-        # Use theme-aware styling
         text_color = theme_manager.get_color('text_secondary').name()
         placeholder.setStyleSheet(f"color: {text_color}; padding: 20px;")
         self.layout.addRow(placeholder)
@@ -70,57 +72,143 @@ class PropertyEditor(QFrame):
         if not hasattr(self.block, 'params'):
             return
             
-        for key, value in self.block.params.items():
-            if key.startswith('_'):
-                continue
-                
+        # Sort keys to put 'Name' first (if it existed in params, usually it's separate)
+        # For now, just generic loop but skip internal keys
+        keys = [k for k in self.block.params.keys() if not k.startswith('_')]
+        
+        for key in keys:
+            value = self.block.params[key]
             label = QLabel(f"{key.replace('_', ' ').title()}:")
-            # Use theme-aware styling
             text_color = theme_manager.get_color('text_primary').name()
-            label.setStyleSheet(f"color: {text_color};")
-
-            widget = None
-            if isinstance(value, bool):
-                widget = QCheckBox()
-                widget.setChecked(value)
-                widget.toggled.connect(
-                    lambda state, k=key: self._on_property_changed(k, state)
-                )
-            elif key == 'method':
-                widget = QComboBox()
-                widget.addItems(["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"])
-                widget.setCurrentText(value)
-                widget.currentTextChanged.connect(
-                    lambda text, k=key: self._on_property_changed(k, text)
-                )
-            elif isinstance(value, (list, int, float, str)):
-                widget = QLineEdit(str(value))
-                # Use devicePixelRatio for proper scaling with Qt's high DPI support
-                from PyQt5.QtWidgets import QApplication
-                screen = QApplication.primaryScreen()
-                device_ratio = screen.devicePixelRatio()
-
-                # Base width that works well - more generous for visibility
-                base_width = 150
-
-                # Scale for high DPI
-                if device_ratio > 1.25:
-                    scaled_width = int(base_width * 1.3)
-                else:
-                    scaled_width = base_width
-
-                widget.setMinimumWidth(scaled_width)
-                # Ensure widget is visible and has proper sizing
-                widget.setSizePolicy(widget.sizePolicy().horizontalPolicy(), widget.sizePolicy().verticalPolicy())
-                widget.editingFinished.connect(
-                    lambda w=widget, k=key: self._on_property_changed(k, w.text())
-                )
-            else:
-                # For unhandled types, just display them as labels
-                widget = QLabel(str(value))
-                
+            label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+            
+            widget = self._create_editor_for_value(key, value)
             if widget:
+                # Add tooltip if we had descriptions (future improvement)
                 self.layout.addRow(label, widget)
+
+    def _create_editor_for_value(self, key, value):
+        """Factory method to create the appropriate editor widget based on value type."""
+        
+        # 1. Boolean -> QCheckBox
+        if isinstance(value, bool):
+            cx = QCheckBox()
+            cx.setChecked(value)
+            cx.toggled.connect(lambda state, k=key: self._on_property_changed(k, state))
+            return cx
+            
+        # 2. Known Enums -> QComboBox
+        if key == 'method':
+            cb = QComboBox()
+            cb.addItems(["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"])
+            cb.setCurrentText(str(value))
+            cb.currentTextChanged.connect(lambda text, k=key: self._on_property_changed(k, text))
+            return cb
+            
+        # 3. Integers -> QSpinBox
+        # Note: Some 'ints' in params might be large, so check range or use QLineEdit if unsure.
+        # But commonly these are small counts like ports.
+        if isinstance(value, int):
+            sb = QSpinBox()
+            sb.setRange(-999999, 999999) # Generous range
+            sb.setValue(value)
+            # Use 'valueChanged' but maybe wait for editingFinished to avoid spamming updates during typing?
+            # QSpinBox emits valueChanged on typing too. 'editingFinished' is safer for complex updates.
+            sb.editingFinished.connect(lambda: self._on_property_changed(key, sb.value()))
+            return sb
+            
+        # 4. Floats -> QDoubleSpinBox
+        if isinstance(value, float):
+            dsb = QDoubleSpinBox()
+            dsb.setRange(-float('inf'), float('inf'))
+            dsb.setDecimals(4) # Reasonable default
+            dsb.setValue(value)
+            dsb.editingFinished.connect(lambda: self._on_property_changed(key, dsb.value()))
+            return dsb
+            
+        # 5. Lists/Arrays or Complex Strings -> QLineEdit with Validation support
+        # We'll use a generic LineEdit but try to validate
+        le = QLineEdit(str(value))
+        
+        # Determine styling based on device pixel ratio
+        self._apply_widget_sizing(le)
+        
+        # Connect signal
+        le.editingFinished.connect(lambda: self._validate_and_submit_string(key, le, type(value)))
+        
+        # Tooltip hint for format
+        if isinstance(value, list):
+            le.setPlaceholderText("e.g. [1, 2, 3]")
+            le.setToolTip("Enter a list of numbers, e.g., [1, 0, 0]")
+            
+        return le
+
+    def _apply_widget_sizing(self, widget):
+        """Apply responsive sizing logic for widgets."""
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen()
+        device_ratio = screen.devicePixelRatio()
+        base_width = 150
+        if device_ratio > 1.25:
+            scaled_width = int(base_width * 1.3)
+        else:
+            scaled_width = base_width
+        widget.setMinimumWidth(scaled_width)
+
+    def _validate_and_submit_string(self, key, widget, target_type):
+        """Validate string input before submission."""
+        text = widget.text()
+        is_valid = True
+        converted_value = None
+        
+        try:
+            if target_type == list:
+                # Try to parse as list
+                val = ast.literal_eval(text)
+                if not isinstance(val, list):
+                    raise ValueError("Not a list")
+                converted_value = val
+            elif target_type == int:
+                converted_value = int(text)
+            elif target_type == float:
+                converted_value = float(text)
+            else:
+                converted_value = text # String is always valid
+                
+        except (ValueError, SyntaxError):
+            is_valid = False
+            
+        if is_valid:
+            # clear error style
+            self._set_widget_error_state(widget, False)
+            self._on_property_changed(key, converted_value)
+        else:
+            # set error style
+            self._set_widget_error_state(widget, True)
+            self.logger.warning(f"Invalid input not submitted for {key}: {text}")
+
+    def _set_widget_error_state(self, widget, is_error):
+        """Apply error styling to widget."""
+        border_color = theme_manager.get_color('error').name() if is_error else theme_manager.get_color('border_primary').name()
+        
+        # We need to maintain the base style but change border
+        # This is a bit hacky because we're overriding the whole stylesheet again for this widget
+        bg_color = theme_manager.get_color('surface_variant').name()
+        text_color = theme_manager.get_color('text_primary').name()
+        
+        widget.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 2px solid {border_color};
+                border-radius: 4px;
+                padding: 4px;
+            }}
+        """)
+        if is_error:
+            widget.setToolTip("Invalid input format")
+        else:
+            widget.setToolTip("")
 
     def _on_property_changed(self, prop_name, new_value):
         """Emit a signal for a changed property."""
@@ -137,58 +225,52 @@ class PropertyEditor(QFrame):
         text_color = theme_manager.get_color('text_primary').name()
         border_color = theme_manager.get_color('border_primary').name()
         input_bg = theme_manager.get_color('surface_variant').name()
-
+        
+        # Global stylesheet for the container properties
         self.setStyleSheet(f"""
             PropertyEditor {{
                 background-color: {bg_color};
                 border: 1px solid {border_color};
                 border-radius: 4px;
             }}
-            QLineEdit {{
-                background-color: {input_bg};
-                color: {text_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QLineEdit:focus {{
-                border: 1px solid {theme_manager.get_color('border_focus').name()};
-            }}
-            QComboBox {{
-                background-color: {input_bg};
-                color: {text_color};
-                border: 1px solid {border_color};
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QComboBox:focus {{
-                border: 1px solid {theme_manager.get_color('border_focus').name()};
-            }}
             QCheckBox {{
                 color: {text_color};
+                spacing: 8px;
             }}
             QLabel {{
                 color: {text_color};
             }}
         """)
+        
+        # Re-apply specific widget styles via helper to ensure consistency
+        # We iterate over rows and update children styles
+        for i in range(self.layout.rowCount()):
+            item = self.layout.itemAt(i, QFormLayout.FieldRole)
+            if item and item.widget():
+                w = item.widget()
+                self._apply_widget_theme(w, input_bg, text_color, border_color)
 
-        # Re-create form if block is set to apply new colors to existing widgets
-        if self.block:
-            self._clear_form()
-            self._create_form()
-        else:
-            self._clear_form()
-            self._show_placeholder()
+    def _apply_widget_theme(self, widget, bg, text, border):
+        """Apply theme to individual editor widgets."""
+        base_style = f"""
+            background-color: {bg};
+            color: {text};
+            border: 1px solid {border};
+            border-radius: 4px;
+            padding: 4px;
+        """
+        
+        if isinstance(widget, (QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox)):
+            widget.setStyleSheet(f"{type(widget).__name__} {{ {base_style} }}")
 
     def sizeHint(self):
         """Provide a dynamic size hint based on the number of properties."""
         if self.block and hasattr(self.block, 'params'):
             num_props = len([p for p in self.block.params if not p.startswith('_')])
             if num_props > 0:
-                # Calculate height based on number of rows
-                row_height = 32  # Approximate height of a form row
+                row_height = 40  # Slightly taller for spacing
                 height = num_props * row_height + self.layout.contentsMargins().top() + self.layout.contentsMargins().bottom()
                 return QSize(super().sizeHint().width(), height)
         
-        # Default size for placeholder
-        return QSize(super().sizeHint().width(), 80)
+        return QSize(super().sizeHint().width(), 100)
+
