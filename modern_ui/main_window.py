@@ -204,6 +204,18 @@ class ModernDiaBloSWindow(QMainWindow):
         self.recent_files_menu = file_menu.addMenu("Recent Files")
         self._update_recent_files_menu()
 
+        # Examples submenu
+        examples_menu = file_menu.addMenu("Examples")
+        examples_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'examples')
+        if os.path.exists(examples_dir):
+            for f in os.listdir(examples_dir):
+                if f.endswith('.json'):
+                    action = examples_menu.addAction(f)
+                    # Use default argument capture to bind the current 'f' value
+                    action.triggered.connect(lambda checked, fname=f: self.open_example(os.path.join(examples_dir, fname)))
+        else:
+            examples_menu.addAction("Examples directory not found").setEnabled(False)
+
         file_menu.addSeparator()
         file_menu.addAction("E&xit\tAlt+F4", self.close)
         
@@ -601,6 +613,13 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'diagram_service'):
             self.diagram_service.load_diagram()
         self.status_message.setText("Diagram opened")
+        
+    def open_example(self, filename):
+        """Open an example diagram."""
+        if hasattr(self, 'diagram_service'):
+            # diagram_service.load_diagram accepts a filename
+            self.diagram_service.load_diagram(filename)
+        self.status_message.setText(f"Example {os.path.basename(filename)} opened")
     
     def save_diagram(self):
         """Save diagram."""
