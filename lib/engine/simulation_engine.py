@@ -462,6 +462,34 @@ class SimulationEngine:
                     mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
                     block.data_sent += 1
 
+    def execute_and_propagate(self, block: DBlock, output_only: bool = False) -> Dict[int, Any]:
+        """
+        Execute a block and propagate its outputs to children.
+        
+        This is the core execution helper used by execution_init and execution_loop.
+        IMPORTANT: Does not create new exec_params dicts - only reads/updates existing ones.
+        
+        Args:
+            block: Block to execute
+            output_only: If True, only compute output without updating state
+            
+        Returns:
+            dict: Output values, or {'E': True, 'error': msg} on failure
+        """
+        out_value = self.execute_block(block, output_only)
+        
+        if out_value is None:
+            return {'E': True, 'error': f'Block {block.name} returned None'}
+        
+        if 'E' in out_value and out_value['E']:
+            return out_value
+            
+        # Propagate outputs to children (for non-sink blocks)
+        if block.b_type not in [1, 3]:  # Not memory-only or sink
+            self.propagate_outputs(block, out_value)
+        
+        return out_value
+
     def _children_recognition(self, block_name: str, children_list: List[Dict]) -> Tuple[bool, List[Dict]]:
         """
         Check if block_name is in the children list.
