@@ -258,8 +258,10 @@ class TestResetExecutionData:
         assert block.computed_data == False
         assert block.data_recieved == 0
         assert block.data_sent == 0
+        # When called before global_computed_list is set up, hierarchy is reset to -1
+        # and input_queue is set to empty dict (DSim behavior)
         assert block.hierarchy == -1
-        assert block.input_queue == {0: None, 1: None}
+        assert block.input_queue == {}
 
 
 @pytest.mark.unit

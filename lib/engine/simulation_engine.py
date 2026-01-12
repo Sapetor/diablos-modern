@@ -229,13 +229,27 @@ class SimulationEngine:
         return children_list
 
     def reset_execution_data(self):
-        """Reset execution state for all blocks."""
-        for block in self.model.blocks_list:
-            block.computed_data = False
-            block.data_recieved = 0
-            block.data_sent = 0
-            block.hierarchy = -1
-            block.input_queue = {i: None for i in range(block.in_ports)}
+        """Reset execution state for all blocks.
+        
+        IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
+        """
+        # Safety check - if global_computed_list isn't populated yet, use simple reset
+        if not self.global_computed_list or len(self.global_computed_list) != len(self.model.blocks_list):
+            for block in self.model.blocks_list:
+                block.computed_data = False
+                block.data_recieved = 0
+                block.data_sent = 0
+                block.hierarchy = -1
+                block.input_queue = {}
+            return
+            
+        for i in range(len(self.model.blocks_list)):
+            self.global_computed_list[i]['computed_data'] = False
+            self.model.blocks_list[i].computed_data = False
+            self.model.blocks_list[i].data_recieved = 0
+            self.model.blocks_list[i].data_sent = 0
+            self.model.blocks_list[i].input_queue = {}
+            self.model.blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
 
     def count_rk45_integrators(self):
         """
