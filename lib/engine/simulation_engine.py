@@ -266,11 +266,20 @@ class SimulationEngine:
         return False
 
     def reset_memblocks(self):
-        """Reset memory blocks (integrators, transfer functions, etc.)."""
+        """Reset memory blocks (integrators, transfer functions, etc.).
+        
+        Resets _init_start_ in both params and exec_params, and clears _prev state.
+        """
         for block in self.model.blocks_list:
-            if block.block_fn in ['Integrator', 'TranFn']:
-                if '_init_start_' in block.params:
-                    block.params['_init_start_'] = True
+            if '_init_start_' in block.params:
+                block.params['_init_start_'] = True
+            # Also reset in exec_params if it exists (used during execution)
+            if hasattr(block, 'exec_params') and block.exec_params:
+                if '_init_start_' in block.exec_params:
+                    block.exec_params['_init_start_'] = True
+                # Clear any stored state like _prev
+                if '_prev' in block.exec_params:
+                    del block.exec_params['_prev']
 
     def update_sim_params(self, sim_time, sim_dt):
         """

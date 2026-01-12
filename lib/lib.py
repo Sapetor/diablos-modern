@@ -903,39 +903,18 @@ class DSim:
 
 
     def children_recognition(self, block_name, children_list):
-        """
-        :purpose: For a block, checks all the blocks that are connected to its outputs and sends a list with them.
-        :param block_name: Block object name id.
-        :param children_list: List of dictionaries with blocks data that require the output of block 'block_name'.
-        :type block_name: str
-        :type children_list: list
-        """
-        child_ports = []
-        for child in children_list:
-            if block_name in child.values():
-                child_ports.append(child)
-        if child_ports == []:
-            return False, -1
-        return True, child_ports
+        """Check if block_name is a child in the children_list. Delegates to engine."""
+        is_child, ports = self.engine._children_recognition(block_name, children_list)
+        # Backward compatibility: return -1 instead of [] when not a child
+        return (is_child, ports if is_child else -1)
 
     def get_neighbors(self, block_name):
         """Get neighbors for a block. Delegates to SimulationEngine."""
         return self.engine.get_neighbors(block_name)
 
     def reset_memblocks(self):
-        """
-        :purpose: Resets the "_init_start_" parameter in all blocks.
-        """
-        for block in self.blocks_list:
-            if '_init_start_' in block.params.keys():
-                block.params['_init_start_'] = True
-            # Also reset in exec_params if it exists (used during execution)
-            if hasattr(block, 'exec_params') and block.exec_params:
-                if '_init_start_' in block.exec_params:
-                    block.exec_params['_init_start_'] = True
-                # Clear any stored state like _prev
-                if '_prev' in block.exec_params:
-                    del block.exec_params['_prev']
+        """Reset memory blocks. Delegates to engine."""
+        self.engine.reset_memblocks()
 
     def plot_again(self):
         """
