@@ -866,20 +866,41 @@ class DSim:
                 elem['computed_data'] = True
 
     def check_global_list(self):
-        """Check if all blocks are computed. Delegates to engine."""
-        return self.engine.check_global_list()
+        """
+        :purpose: Checks if there are no blocks of a graph left unexecuted.
+        """
+        for elem in self.global_computed_list:
+            if not elem['computed_data']:
+                return False
+        return True
 
     def count_computed_global_list(self):
-        """Count computed blocks. Delegates to engine."""
-        return self.engine.count_computed_global_list()
+        """
+        :purpose: Counts the number of already computed blocks of a graph.
+        """
+        return len([x for x in self.global_computed_list if x['computed_data']])
 
     def reset_execution_data(self):
-        """Reset execution state for all blocks. Delegates to engine."""
-        self.engine.reset_execution_data()
+        """
+        :purpose: Resets the execution state for all the blocks of a graph.
+        """
+        for i in range(len(self.blocks_list)):
+            self.global_computed_list[i]['computed_data'] = False
+            self.blocks_list[i].computed_data = False
+            self.blocks_list[i].data_recieved = 0
+            self.blocks_list[i].data_sent = 0
+            self.blocks_list[i].input_queue = {}
+            self.blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
 
     def get_max_hierarchy(self):
-        """Get max hierarchy value. Delegates to engine."""
-        return self.engine.get_max_hierarchy()
+        """
+        :purpose: Finds in the global execution list the max value in hierarchy.
+        """
+        max_val = 0
+        for elem in self.global_computed_list:
+            if elem['hierarchy'] >= max_val:
+                max_val = elem['hierarchy']
+        return max_val
 
     def detect_algebraic_loops(self, uncomputed_blocks):
         from collections import deque
