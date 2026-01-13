@@ -228,6 +228,18 @@ class ModernDiaBloSWindow(QMainWindow):
         edit_menu.addSeparator()
         edit_menu.addAction("Command &Palette\tCtrl+P", self.show_command_palette)
         
+    def undo_action(self):
+        """Undo last action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.undo()
+            self.status_message.setText("Undo")
+
+    def redo_action(self):
+        """Redo last action."""
+        if hasattr(self, 'canvas'):
+            self.canvas.redo()
+            self.status_message.setText("Redo")
+        
         # Simulation menu
         sim_menu = menubar.addMenu("&Simulation")
         sim_menu.addAction("&Run\tF5", self.start_simulation)
