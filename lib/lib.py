@@ -276,6 +276,33 @@ class DSim:
             
         return result
 
+    def serialize(self, modern_ui_data=None):
+        """
+        Serialize current diagram state to dict.
+        Used by DiagramService.
+        """
+        sim_params = {
+            'sim_time': self.sim_time,
+            'sim_dt': self.sim_dt,
+            'plot_trange': self.plot_trange
+        }
+        return self.file_service.serialize(modern_ui_data, sim_params)
+
+    def deserialize(self, data):
+        """
+        Deserialize diagram state from dict.
+        Used by DiagramService.
+        """
+        sim_params = self.file_service.apply_loaded_data(data)
+        
+        # Sync simulation parameters back to DSim
+        self.sim_time = sim_params.get('sim_time', 1.0)
+        self.sim_dt = sim_params.get('sim_dt', 0.01)
+        self.plot_trange = sim_params.get('plot_trange', 100)
+        self.ss_count = 0
+        self.filename = self.file_service.filename
+        return sim_params
+
 
     def open(self):
         """
@@ -293,15 +320,8 @@ class DSim:
         if version != "2.0":
             logger.warning(f"Loading file version {version}, current is 2.0")
         
-        # Apply loaded data using FileService
-        sim_params = self.file_service.apply_loaded_data(data)
-        
-        # Sync simulation parameters back to DSim
-        self.sim_time = sim_params.get('sim_time', 1.0)
-        self.sim_dt = sim_params.get('sim_dt', 0.01)
-        self.plot_trange = sim_params.get('plot_trange', 100)
-        self.ss_count = 0
-        self.filename = self.file_service.filename
+        # Apply loaded data using internal deserialize which handles syncing
+        self.deserialize(data)
         
         return data.get("modern_ui_data")
 

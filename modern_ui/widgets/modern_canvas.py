@@ -22,20 +22,9 @@ from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
 from modern_ui.renderers.block_renderer import BlockRenderer
 from modern_ui.renderers.connection_renderer import ConnectionRenderer
 from modern_ui.renderers.canvas_renderer import CanvasRenderer
+from modern_ui.interactions.interaction_manager import InteractionManager, State
 
 logger = logging.getLogger(__name__)
-
-
-class State:
-    """State enumeration for canvas interactions."""
-    IDLE = "idle"
-    DRAGGING = "dragging"
-    DRAGGING_BLOCK = "dragging_block"
-    DRAGGING_LINE_POINT = "dragging_line_point"
-    DRAGGING_LINE_SEGMENT = "dragging_line_segment"
-    CONNECTING = "connecting"
-    CONFIGURING = "configuring"
-    RESIZING = "resizing"
 
 
 class ModernCanvas(QWidget):
@@ -61,7 +50,10 @@ class ModernCanvas(QWidget):
         
         # State management
         self.state = State.IDLE
-        self.dragging_block = None
+        self.interaction_manager = InteractionManager(self)
+        
+        # Interactions (Migrating to InteractionManager)
+        # self.dragging_block = None -> interaction_manager.dragging_block
         self.drag_offset = None
         self.drag_offsets = {}  # For multi-block dragging
         self.drag_start_positions = {}  # Track starting positions for undo
@@ -419,19 +411,8 @@ class ModernCanvas(QWidget):
     def mousePressEvent(self, event):
         """Handle mouse press events."""
         try:
-            if event.button() == Qt.MiddleButton:
-                self.panning = True
-                self.last_pan_pos = event.pos()
-                self.setCursor(Qt.ClosedHandCursor)
-                return
-
-            pos = self.screen_to_world(event.pos())
-            logger.debug(f"Canvas mouse press at ({pos.x()}, {pos.y()})")
-
-            if event.button() == Qt.LeftButton:
-                self._handle_left_click(pos)
-            elif event.button() == Qt.RightButton:
-                self._handle_right_click(pos)
+            # Delegate completely to InteractionManager
+            self.interaction_manager.handle_mouse_press(event)
 
         except Exception as e:
             logger.error(f"Error in canvas mousePressEvent: {str(e)}")
@@ -454,52 +435,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
 
-    def _handle_left_click(self, pos):
-        """Handle left mouse button clicks."""
-        try:
-            # Check for resize handles FIRST on selected blocks
-            for block in self.dsim.blocks_list:
-                if block.selected:
-                    handle = self.block_renderer.get_resize_handle_at(block, pos)
-                    if handle:
-                        self._start_resize(block, handle, pos)
-                        return
 
-            # Check for port clicks (before block clicks)
-            # This allows clicking on ports to create connections instead of dragging blocks
-            port_clicked = self._check_port_clicks(pos)
-            if port_clicked:
-                return
-
-            # Check for block clicks (only if no port was clicked)
-            clicked_block = self._get_clicked_block(pos)
-            if clicked_block:
-                self._handle_block_click(clicked_block, pos)
-                return
-
-            # Check for line clicks
-            clicked_line, collision_result = self._get_clicked_line(pos)
-            if clicked_line:
-                self._handle_line_click(clicked_line, collision_result, pos)
-                return
-
-            # Cancel any ongoing line creation if clicking on empty area
-            if self.line_creation_state:
-                self._cancel_line_creation()
-            else:
-                # If no item was clicked, start rectangle selection
-                modifiers = QApplication.keyboardModifiers()
-
-                # Start rectangle selection
-                self.is_rect_selecting = True
-                self.selection_rect_start = pos
-                self.selection_rect_end = pos
-
-                # Clear existing selection unless Shift is held
-                if not (modifiers & Qt.ShiftModifier):
-                    self._clear_selections()
-
-                logger.debug(f"Started rectangle selection at ({pos.x()}, {pos.y()})")
 
         except Exception as e:
             logger.error(f"Error in _handle_left_click: {str(e)}")
@@ -1012,135 +948,14 @@ class ModernCanvas(QWidget):
             logger.error(f"Error performing resize: {str(e)}")
 
     def mouseMoveEvent(self, event):
-        """Handle mouse move events with hover detection."""
-        try:
-            if self.panning:
-                delta = event.pos() - self.last_pan_pos
-                self.pan_offset += delta
-                self.last_pan_pos = event.pos()
-                self.update()
-                return
-
-            pos = self.screen_to_world(event.pos())
-
-            # Update hover states (only when not dragging/selecting)
-            if self.state == State.IDLE and not self.is_rect_selecting:
-                self._update_hover_states(pos)
-
-            # Update rectangle selection
-            if self.is_rect_selecting:
-                self.selection_rect_end = pos
-                self.update()
-                return
-
-            if self.state == State.DRAGGING and self.dragging_block:
-                # Update all selected block positions with grid snapping
-                # Calculate new position for the clicked block
-                new_x = pos.x() - self.drag_offset.x()
-                new_y = pos.y() - self.drag_offset.y()
-
-                # Snap to grid if enabled
-                if self.snap_enabled:
-                    snapped_x = round(new_x / self.grid_size) * self.grid_size
-                    snapped_y = round(new_y / self.grid_size) * self.grid_size
-                else:
-                    snapped_x = new_x
-                    snapped_y = new_y
-
-                # Move clicked block to snapped position
-                self.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
-
-                # If multiple blocks are selected, move them all by maintaining relative positions
-                if hasattr(self, 'drag_offsets') and len(self.drag_offsets) > 1:
-                    for block, relative_offset in self.drag_offsets.items():
-                        if block is not self.dragging_block:
-                            # Position this block relative to the clicked block
-                            block_x = snapped_x + relative_offset.x()
-                            block_y = snapped_y + relative_offset.y()
-                            block.relocate_Block(QPoint(block_x, block_y))
-
-                self._update_line_positions() # Update lines dynamically during drag
-                self.update() # Trigger repaint
-            elif self.state == State.RESIZING and self.resizing_block:
-                # Calculate the resize delta
-                self._perform_resize(pos)
-            elif self.state == State.DRAGGING_LINE_POINT and self.dragging_item:
-                line, point_index = self.dragging_item
-                line.points[point_index] = pos
-                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
-                self.update()
-            elif self.state == State.DRAGGING_LINE_SEGMENT and self.dragging_item:
-                line, segment_index = self.dragging_item
-                p1 = line.points[segment_index]
-                p2 = line.points[segment_index + 1]
-                is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
-
-                # If the line has only two points and we are dragging a segment, we need to add a new point to create a corner
-                if len(line.points) == 2:
-                    if is_horizontal:
-                        new_point = QPoint(int(p1.x() + (p2.x() - p1.x()) // 2), int(pos.y()))
-                    else:
-                        new_point = QPoint(int(pos.x()), int(p1.y() + (p2.y() - p1.y()) // 2))
-                    line.points.insert(1, new_point)
-                    self.dragging_item = (line, 1 if pos.y() > p1.y() else 0)
-                    segment_index = self.dragging_item[1]
-
-                if is_horizontal:
-                    # Move horizontal segment vertically
-                    # Don't move port-connected endpoints (first or last point)
-                    is_first_segment = (segment_index == 0)
-                    is_last_segment = (segment_index == len(line.points) - 2)
-                    if not is_first_segment:
-                        line.points[segment_index].setY(pos.y())
-                    if not is_last_segment:
-                        line.points[segment_index + 1].setY(pos.y())
-                else:
-                    # Move vertical segment horizontally
-                    # Don't move port-connected endpoints (first or last point)
-                    is_first_segment = (segment_index == 0)
-                    is_last_segment = (segment_index == len(line.points) - 2)
-                    if not is_first_segment:
-                        line.points[segment_index].setX(pos.x())
-                    if not is_last_segment:
-                        line.points[segment_index + 1].setX(pos.x())
-                
-                # Regenerate the trajectory with the updated points
-                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.dsim.blocks_list, line.points)
-                self.update()
-            elif self.line_creation_state == 'start' and self.temp_line:
-                # Update temporary line endpoint
-                self.temp_line = (self.temp_line[0], pos)
-                self.update()
-        except Exception as e:
-            logger.error(f"Error in mouseMoveEvent: {str(e)}")
+        """Handle mouse move events."""
+        # Delegate to InteractionManager
+        self.interaction_manager.handle_mouse_move(event)
 
     def mouseReleaseEvent(self, event):
         """Handle mouse release events."""
-        try:
-            if event.button() == Qt.MiddleButton:
-                self.panning = False
-                self.setCursor(Qt.ArrowCursor)
-
-            # Finalize rectangle selection
-            if self.is_rect_selecting and event.button() == Qt.LeftButton:
-                self._finalize_rect_selection()
-                return
-
-            if self.state == State.DRAGGING:
-                self._finish_drag()
-            elif self.state == State.RESIZING:
-                self._finish_resize()
-            elif self.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
-                if self.dragging_item:
-                    line, _ = self.dragging_item
-                    if hasattr(line, '_stub_created'):
-                        del line._stub_created
-                self.state = State.IDLE
-                self.dragging_item = None
-                self.update()
-
-        except Exception as e:
-            logger.error(f"Error in mouseReleaseEvent: {str(e)}")
+        # Delegate to InteractionManager
+        self.interaction_manager.handle_mouse_release(event)
 
     def _finish_drag(self):
         """Finish dragging operation."""

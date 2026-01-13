@@ -51,31 +51,22 @@ class FileService:
         Returns:
             0 on success, 1 if user cancelled the save dialog
         """
-        if not autosave:
-            options = QFileDialog.Options()
-            initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
-            file, _ = QFileDialog.getSaveFileName(
-                None,
-                "Save File",
-                os.path.join(initial_dir, self.filename),
-                "Data Files (*.dat);;All Files (*)",
-                options=options
-            )
+        if modern_ui_data:
+            main_dict["modern_ui_data"] = modern_ui_data
 
-            if not file:
-                return 1
-            if not file.lower().endswith('.dat'):
-                file += '.dat'
-        else:
-            # Autosave to saves/ directory
-            if '_AUTOSAVE' not in self.filename:
-                file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
-            else:
-                file = f'saves/{self.filename}'
+        return main_dict
 
-        # Ensure the saves directory exists
-        os.makedirs(os.path.dirname(file), exist_ok=True)
-
+    def serialize(self, modern_ui_data: Optional[Dict[str, Any]] = None, sim_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Serialize the current diagram state into a dictionary.
+        
+        Args:
+            modern_ui_data: Additional UI state data
+            sim_params: Simulation parameters
+            
+        Returns:
+            Dictionary containing the diagram data.
+        """
         # Prepare simulation data
         sim_params = sim_params or {}
         init_dict = {
@@ -139,17 +130,64 @@ class FileService:
 
         if modern_ui_data:
             main_dict["modern_ui_data"] = modern_ui_data
+            
+        return main_dict
 
-        # Write to file
-        with open(file, 'w') as fp:
-            json.dump(main_dict, fp, indent=4)
+    def save_to_file(self, data: Dict[str, Any], filename: str) -> bool:
+        """
+        Write serialized data to a file.
+        
+        Args:
+            data: Diagram data dict
+            filename: Path to save
+        """
+        try:
+            # Ensure the directory exists
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            
+            with open(filename, 'w') as fp:
+                json.dump(data, fp, indent=4)
+                
+            self.filename = os.path.basename(filename)
+            self.model.dirty = False
+            logger.info(f"SAVED AS {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving file {filename}: {e}")
+            return False
 
+    def save(self, autosave: bool = False, modern_ui_data: Optional[Dict[str, Any]] = None,
+             sim_params: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Legacy save method. Wraps serialize and save_to_file.
+        """
         if not autosave:
-            self.filename = os.path.basename(file)
+            options = QFileDialog.Options()
+            initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
+            file, _ = QFileDialog.getSaveFileName(
+                None,
+                "Save File",
+                os.path.join(initial_dir, self.filename),
+                "Data Files (*.dat);;All Files (*)",
+                options=options
+            )
 
-        self.model.dirty = False
-        logger.info(f"SAVED AS {file}")
-        return 0
+            if not file:
+                return 1
+            if not file.lower().endswith('.dat'):
+                file += '.dat'
+        else:
+            # Autosave to saves/ directory
+            if '_AUTOSAVE' not in self.filename:
+                file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
+            else:
+                file = f'saves/{self.filename}'
+        
+        # Use new methods
+        data = self.serialize(modern_ui_data, sim_params)
+        success = self.save_to_file(data, file)
+        
+        return 0 if success else 1
 
     def load(self, filepath: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """

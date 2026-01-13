@@ -21,7 +21,13 @@ class DiagramService:
         """
         self.main_window = main_window
         self.dsim = main_window.dsim
-        self.last_directory = os.path.expanduser("~")
+        
+        # Set default directory to 'saves' relative to current working directory
+        project_root = os.getcwd()
+        self.last_directory = os.path.join(project_root, 'saves')
+        
+        if not os.path.exists(self.last_directory):
+             os.makedirs(self.last_directory, exist_ok=True)
 
     def save_diagram(self, filename=None):
         """
