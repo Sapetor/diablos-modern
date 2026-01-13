@@ -162,7 +162,7 @@ class InteractionManager:
                     snapped_y = new_y
 
                 # Move clicked block
-                self.canvas.dragging_block.relocate_Block(QPoint(snapped_x, snapped_y))
+                self.canvas.dragging_block.relocate_Block(QPoint(int(snapped_x), int(snapped_y)))
 
                 # Move other selected blocks relative to it
                 if hasattr(self.canvas, 'drag_offsets') and len(self.canvas.drag_offsets) > 1:
@@ -170,7 +170,7 @@ class InteractionManager:
                         if block is not self.canvas.dragging_block:
                             block_x = snapped_x + relative_offset.x()
                             block_y = snapped_y + relative_offset.y()
-                            block.relocate_Block(QPoint(block_x, block_y))
+                            block.relocate_Block(QPoint(int(block_x), int(block_y)))
 
                 self.canvas._update_line_positions() 
                 self.canvas.update()
