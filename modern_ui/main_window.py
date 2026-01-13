@@ -1504,11 +1504,35 @@ class ModernDiaBloSWindow(QMainWindow):
     def _open_recent_file(self, filepath):
         """Open a file from the recent files list."""
         if os.path.exists(filepath):
-            # TODO: Implement actual file opening logic
-            # For now, just add to recent files
-            self._add_recent_file(filepath)
-            self.status_message.setText(f"Opened: {os.path.basename(filepath)}")
-            logger.info(f"Opening recent file: {filepath}")
+            # Open the diagram using the diagram service (or direct load method)
+            # Since open_diagram doesn't take arguments in its current form (it opens dialog),
+            # we should call dsim.open directly or refactor open_diagram to accept an optional path.
+            # Looking at existing code, MainWindow.open_diagram calls self.dsim.open() (which opens dialog)
+            # We want to bypass the dialog.
+            
+            try:
+                # Use DSim's open mechanism that supports filepath
+                # dsim.open_file(filepath) or dsim.file_service.load(filepath)
+                # Let's check DSim.open in lib.py - it takes no args usually?
+                # Using the FileService directly via DSim is safer if DSim.open is UI-bound.
+                # However, DSim.serialize/deserialize were added.
+                
+                # Check if we have file_service
+                if hasattr(self.dsim, 'file_service'):
+                    block_data = self.dsim.file_service.load(filepath=filepath)
+                    self.dsim.deserialize(block_data)
+                else:
+                    # Fallback to older mechanism if needed
+                    self.dsim.open(filepath)
+                
+                self._add_recent_file(filepath)
+                self.status_message.setText(f"Opened: {os.path.basename(filepath)}")
+                logger.info(f"Opening recent file: {filepath}")
+                self.canvas.update()
+                
+            except Exception as e:
+                logger.error(f"Failed to open recent file: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to open file:\n{str(e)}")
         else:
             QMessageBox.warning(
                 self,
