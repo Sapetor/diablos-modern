@@ -23,6 +23,9 @@ from modern_ui.renderers.block_renderer import BlockRenderer
 from modern_ui.renderers.connection_renderer import ConnectionRenderer
 from modern_ui.renderers.canvas_renderer import CanvasRenderer
 from modern_ui.interactions.interaction_manager import InteractionManager, State
+from modern_ui.managers.history_manager import HistoryManager
+from modern_ui.managers.menu_manager import MenuManager
+from modern_ui.managers.selection_manager import SelectionManager
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +116,15 @@ class ModernCanvas(QWidget):
         self.performance = PerformanceHelper()
         self.validator = ValidationHelper()
         self.safety = SafetyChecks()
+        
+        # State
+        self.state = State.IDLE
+        
+        # Managers
+        self.interaction_manager = InteractionManager(self)
+        self.history_manager = HistoryManager(self)
+        self.menu_manager = MenuManager(self)
+        self.selection_manager = SelectionManager(self)
         
         # Initialize Analysis Tool
         self.analyzer = ControlSystemAnalyzer(self.dsim, self)
@@ -1348,11 +1360,7 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
 
-    def _select_all_blocks(self):
-        """Select all blocks on canvas."""
-        for block in self.dsim.blocks_list:
-            block.selected = True
-        self.update()
+
 
     def _show_block_properties(self, block):
         """Show properties dialog for a block."""
@@ -1371,11 +1379,6 @@ class ModernCanvas(QWidget):
                 self.update()
         except Exception as e:
             logger.error(f"Error deleting line: {str(e)}")
-
-    def _clear_line_selections(self):
-        """Clear all line selections."""
-        for line in self.dsim.line_list:
-            line.selected = False
 
     def _highlight_connection_path(self, line):
         """Temporarily highlight a connection path."""
@@ -1601,29 +1604,14 @@ class ModernCanvas(QWidget):
         """Push current state to undo stack. (Internal helper wrapper)"""
         self.history_manager.push_undo(description)
 
+    def _select_all_blocks(self):
+        self.selection_manager.select_all_blocks()
+
+    def _clear_line_selections(self):
+        self.selection_manager.clear_line_selections()
+
     def remove_selected_items(self):
-        """Remove all selected blocks and lines."""
-        try:
-            blocks_to_remove = [block for block in self.dsim.blocks_list if block.selected]
-            lines_to_remove = [line for line in self.dsim.line_list if line.selected]
-
-            # Push undo state before deletion
-            if blocks_to_remove or lines_to_remove:
-                self.history_manager.push_undo("Delete")
-
-            for block in blocks_to_remove:
-                self.dsim.remove_block_and_lines(block)
-            for line in lines_to_remove:
-                if line in self.dsim.line_list:
-                    self.dsim.line_list.remove(line)
-
-            # Clear validation errors when blocks are removed
-            self.clear_validation()
-
-            self.update()
-            logger.info(f"Removed {len(blocks_to_remove)} blocks and {len(lines_to_remove)} lines")
-        except Exception as e:
-            logger.error(f"Error removing selected items: {str(e)}")
+        self.selection_manager.remove_selected_items()
 
     def clear_canvas(self):
         """Clear all blocks and connections from the canvas."""
