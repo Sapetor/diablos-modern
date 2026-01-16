@@ -157,12 +157,15 @@ class FileService:
             return False
 
     def save(self, autosave: bool = False, modern_ui_data: Optional[Dict[str, Any]] = None,
-             sim_params: Optional[Dict[str, Any]] = None) -> int:
+             sim_params: Optional[Dict[str, Any]] = None, filepath: Optional[str] = None) -> int:
         """
         Legacy save method. Wraps serialize and save_to_file.
         """
         if not autosave:
-            options = QFileDialog.Options()
+            if filepath:
+                file = filepath
+            else:
+                options = QFileDialog.Options()
             initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
             file, _ = QFileDialog.getSaveFileName(
                 None,
@@ -178,7 +181,9 @@ class FileService:
                 file += '.dat'
         else:
             # Autosave to saves/ directory
-            if '_AUTOSAVE' not in self.filename:
+            if filepath:
+                 file = filepath
+            elif '_AUTOSAVE' not in self.filename:
                 file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
             else:
                 file = f'saves/{self.filename}'

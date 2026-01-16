@@ -1,0 +1,140 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 1.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Scope",
+            "sid": 0,
+            "username": "scope0",
+            "coords_left": 560,
+            "coords_top": 340,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#fee2e2",
+            "b_type": 2,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "default"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Integrator",
+            "sid": 0,
+            "username": "integrator0",
+            "coords_left": 300,
+            "coords_top": 340,
+            "coords_width": 90,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": true,
+            "b_color": "#e9d5ff",
+            "b_type": 2,
+            "io_edit": "both",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": 0.0,
+                "method": "SOLVE_IVP"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Step",
+            "sid": 0,
+            "username": "step0",
+            "coords_left": 180,
+            "coords_top": 339,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#d1fae5",
+            "b_type": 2,
+            "io_edit": "output",
+            "fn_name": "step",
+            "params": {
+                "value": 1.0,
+                "delay": 0.0,
+                "type": "up",
+                "pulse_start_up": true
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "scope0",
+            "dstport": 0,
+            "points": [
+                [
+                    390,
+                    380
+                ],
+                [
+                    560,
+                    380
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "integrator0",
+            "dstport": 0,
+            "points": [
+                [
+                    260,
+                    370
+                ],
+                [
+                    280,
+                    370
+                ],
+                [
+                    280,
+                    380
+                ],
+                [
+                    300,
+                    380
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

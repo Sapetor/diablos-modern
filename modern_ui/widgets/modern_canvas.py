@@ -281,8 +281,9 @@ class ModernCanvas(QWidget):
         # This will block the UI. In a real application, this should be run in a separate thread.
         self.dsim.execution_batch()
         
-        self.simulation_status_changed.emit("Simulation finished")
-        logger.info("Batch simulation finished.")
+        solver_type = getattr(self.dsim, 'last_solver_type', 'Standard')
+        self.simulation_status_changed.emit(f"Simulation finished [{solver_type}]")
+        logger.info(f"Batch simulation finished. Solver: {solver_type}")
         self.dsim.plot_again()
     
     def stop_simulation(self):

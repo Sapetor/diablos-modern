@@ -28,6 +28,8 @@ class DiagramService:
         
         if not os.path.exists(self.last_directory):
              os.makedirs(self.last_directory, exist_ok=True)
+             
+        self.current_file = None
 
     def save_diagram(self, filename=None):
         """
@@ -59,7 +61,7 @@ class DiagramService:
             # Add UI-specific state
             ui_state = {
                 "theme": "dark", # simple default or fetch from theme manager
-                "zoom_factor": self.main_window.modern_canvas.zoom_factor,
+                "zoom_factor": self.main_window.canvas.zoom_factor,
                 # Store splitter sizes to restore layout
                 "main_splitter_sizes": self.main_window.main_splitter.sizes(),
                 "center_splitter_sizes": self.main_window.center_splitter.sizes() if hasattr(self.main_window, 'center_splitter') else []
@@ -70,6 +72,7 @@ class DiagramService:
                 json.dump(diagram_data, f, indent=4)
             
             logger.info(f"Diagram saved to {filename}")
+            self.current_file = filename
             return True
             
         except Exception as e:
@@ -119,6 +122,7 @@ class DiagramService:
                 self.main_window.main_splitter.setSizes(ui_state["main_splitter_sizes"])
 
             logger.info(f"Diagram loaded from {filename}")
+            self.current_file = filename
             return data
 
         except Exception as e:
@@ -130,4 +134,5 @@ class DiagramService:
         """Reset the diagram to a clean state."""
         # Confirm with user if unsaved changes? (Future feature)
         self.dsim.new_diagram()
+        self.current_file = None
         logger.info("New diagram created")

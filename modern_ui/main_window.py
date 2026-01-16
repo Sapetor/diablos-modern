@@ -58,6 +58,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Default routing mode for new connections
         self.default_routing_mode = "bezier"
+        self.use_fast_solver = True # Enabled by default
 
         # Core DSim functionality
         self.dsim = DSim()
@@ -68,8 +69,16 @@ class ModernDiaBloSWindow(QMainWindow):
         # Simulation configuration
         self.sim_config = SimulationConfig()
 
+        # Core Managers (Must be before state init)
+        from modern_ui.managers.project_manager import ProjectManager
+        self.project_manager = ProjectManager(self)
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
+
+        # Builders
+        from modern_ui.builders.menu_builder import MenuBuilder
+        self.menu_builder = MenuBuilder(self)
 
         # Setup modern UI
         self._setup_window()
@@ -144,7 +153,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.drag_offset = None
 
         # Initialize Services
-        self.diagram_service = DiagramService(self)
+        self.diagram_service = self.project_manager.diagram_service
         
         # Connection management
         self.line_creation_state = None
@@ -191,43 +200,9 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def _setup_menubar(self):
         """Setup modern menu bar."""
-        menubar = self.menuBar()
+        if self.menu_builder:
+            self.menu_builder.setup_menubar()
 
-        # File menu
-        file_menu = menubar.addMenu("&File")
-        file_menu.addAction("&New\tCtrl+N", self.new_diagram)
-        file_menu.addAction("&Open\tCtrl+O", self.open_diagram)
-        file_menu.addAction("&Save\tCtrl+S", self.save_diagram)
-        file_menu.addSeparator()
-
-        # Recent Files submenu
-        self.recent_files_menu = file_menu.addMenu("Recent Files")
-        self._update_recent_files_menu()
-
-        # Examples submenu
-        examples_menu = file_menu.addMenu("Examples")
-        examples_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'examples')
-        if os.path.exists(examples_dir):
-            for f in os.listdir(examples_dir):
-                if f.endswith('.json'):
-                    action = examples_menu.addAction(f)
-                    # Use default argument capture to bind the current 'f' value
-                    action.triggered.connect(lambda checked, fname=f: self.open_example(os.path.join(examples_dir, fname)))
-        else:
-            examples_menu.addAction("Examples directory not found").setEnabled(False)
-
-        file_menu.addSeparator()
-        file_menu.addAction("E&xit\tAlt+F4", self.close)
-        
-        # Edit menu
-        edit_menu = menubar.addMenu("&Edit")
-        edit_menu.addAction("&Undo\tCtrl+Z", self.undo_action)
-        edit_menu.addAction("&Redo\tCtrl+Y", self.redo_action)
-        edit_menu.addSeparator()
-        edit_menu.addAction("Select &All\tCtrl+A", self.select_all)
-        edit_menu.addSeparator()
-        edit_menu.addAction("Command &Palette\tCtrl+P", self.show_command_palette)
-        
     def undo_action(self):
         """Undo last action."""
         if hasattr(self, 'canvas'):
@@ -239,65 +214,47 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas'):
             self.canvas.redo()
             self.status_message.setText("Redo")
+
+    # Helper method for selecting all (delegated to canvas)
+    def select_all(self):
+        """Select all items on canvas."""
+        if hasattr(self, 'canvas') and hasattr(self.canvas, 'selection_manager'):
+            self.canvas.selection_manager.select_all_blocks()
+        elif hasattr(self, 'canvas') and hasattr(self.canvas, '_select_all_blocks'):
+             self.canvas._select_all_blocks()
+
+    # Helper methods for view actions
+    def zoom_in(self):
+        self.set_zoom(self.zoom_level * 1.2)
         
-        # Simulation menu
-        sim_menu = menubar.addMenu("&Simulation")
-        sim_menu.addAction("&Run\tF5", self.start_simulation)
-        sim_menu.addAction("&Pause\tF6", self.pause_simulation)
-        sim_menu.addAction("&Stop\tF7", self.stop_simulation)
-        sim_menu.addSeparator()
-        sim_menu.addAction("Show &Plots", self.show_plots)
+    def zoom_out(self):
+         self.set_zoom(self.zoom_level / 1.2)
+         
+    def fit_to_window(self):
+        self.set_zoom(1.0)
+        # Could implement actual fit logic later
         
-        # View menu
-        view_menu = menubar.addMenu("&View")
-        view_menu.addAction("&Zoom In\tCtrl++", self.zoom_in)
-        view_menu.addAction("Zoom &Out\tCtrl+-", self.zoom_out)
-        view_menu.addAction("&Fit to Window\tCtrl+0", self.fit_to_window)
-        view_menu.addSeparator()
+    def toggle_grid(self):
+        self.show_grid = not getattr(self, 'show_grid', True)
+        if hasattr(self, 'canvas') and hasattr(self.canvas, 'canvas_renderer'):
+             self.canvas.canvas_renderer.show_grid = self.show_grid
+             self.canvas.update()
+        # Update action state if builder set it
+        if hasattr(self, 'grid_toggle_action'):
+             self.grid_toggle_action.setChecked(self.show_grid)
 
-        # Grid toggle
-        self.grid_toggle_action = view_menu.addAction("Show &Grid\tCtrl+G", self.toggle_grid)
-        self.grid_toggle_action.setCheckable(True)
-        self.grid_toggle_action.setChecked(True)
-        view_menu.addSeparator()
+    def toggle_variable_editor(self):
+        # Implementation depends on logic elsewhere, ensuring method exists
+        if hasattr(self, 'variable_editor'):
+             visible = not self.variable_editor.isVisible()
+             self.variable_editor.setVisible(visible)
+             if hasattr(self, 'variable_editor_action'):
+                 self.variable_editor_action.setChecked(visible)
 
-        view_menu.addAction("Toggle &Theme\tCtrl+T", self.toggle_theme)
-        view_menu.addSeparator()
-        
-        # Variable Editor toggle
-        self.variable_editor_action = view_menu.addAction("Show/Hide Variable &Editor\tCmd+Shift+V", self.toggle_variable_editor)
-        self.variable_editor_action.setCheckable(True)
-        self.variable_editor_action.setChecked(False)
-        
-        # Add actual keyboard shortcut (menu text alone doesn't create the shortcut)
-        from PyQt5.QtWidgets import QShortcut
-        from PyQt5.QtGui import QKeySequence
-        from PyQt5.QtCore import Qt
-        self.variable_editor_shortcut = QShortcut(QKeySequence(Qt.CTRL | Qt.SHIFT | Qt.Key_V), self)
-        self.variable_editor_shortcut.activated.connect(self.toggle_variable_editor)
-        view_menu.addSeparator()
-        scaling_menu = view_menu.addMenu("UI Scale")
-        action_100 = scaling_menu.addAction("100%")
-        action_100.triggered.connect(lambda: self._set_scaling(1.0))
-        action_125 = scaling_menu.addAction("125%")
-        action_125.triggered.connect(lambda: self._set_scaling(1.25))
-        action_150 = scaling_menu.addAction("150%")
-        action_150.triggered.connect(lambda: self._set_scaling(1.5))
+    def show_command_palette(self):
+        # Placeholder or existing?
+        pass
 
-        # Default Connection Routing submenu
-        view_menu.addSeparator()
-        routing_menu = view_menu.addMenu("Default Connection Routing")
-
-        # Bezier mode (default)
-        self.bezier_routing_action = routing_menu.addAction("Bezier (Curved)")
-        self.bezier_routing_action.setCheckable(True)
-        self.bezier_routing_action.setChecked(True)
-        self.bezier_routing_action.triggered.connect(lambda: self._set_default_routing_mode("bezier"))
-
-        # Orthogonal mode
-        self.orthogonal_routing_action = routing_menu.addAction("Orthogonal (Manhattan)")
-        self.orthogonal_routing_action.setCheckable(True)
-        self.orthogonal_routing_action.triggered.connect(lambda: self._set_default_routing_mode("orthogonal"))
 
         # Help menu
         help_menu = menubar.addMenu("&Help")
@@ -613,31 +570,19 @@ class ModernDiaBloSWindow(QMainWindow):
     
     # Toolbar action handlers
     def new_diagram(self):
-        """Create new diagram."""
-        if hasattr(self, 'diagram_service'):
-            self.diagram_service.new_diagram()
-        elif hasattr(self.dsim, 'clear_all'):
-            self.dsim.clear_all()
-        self.status_message.setText("New diagram created")
+        self.project_manager.new_diagram()
     
     def open_diagram(self):
-        """Open diagram."""
-        if hasattr(self, 'diagram_service'):
-            self.diagram_service.load_diagram()
-        self.status_message.setText("Diagram opened")
+        self.project_manager.open_diagram()
+
+    def _update_recent_files_menu(self):
+        self.project_manager.update_recent_files_menu()
         
     def open_example(self, filename):
-        """Open an example diagram."""
-        if hasattr(self, 'diagram_service'):
-            # diagram_service.load_diagram accepts a filename
-            self.diagram_service.load_diagram(filename)
-        self.status_message.setText(f"Example {os.path.basename(filename)} opened")
+        self.project_manager.open_example(filename)
     
     def save_diagram(self):
-        """Save diagram."""
-        if hasattr(self, 'diagram_service'):
-            self.diagram_service.save_diagram()
-        self.status_message.setText("Diagram saved")
+        self.project_manager.save_diagram()
     
     def start_simulation(self):
         """Start simulation with validation."""
@@ -1425,6 +1370,11 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.clear_validation()
 
         # Start the simulation
+        # Start the simulation
+        # Check fast solver preference
+        if hasattr(self, 'use_fast_solver'):
+             self.dsim.use_fast_solver = self.use_fast_solver
+             
         self.canvas.start_simulation()
     
     def stop_simulation(self):
@@ -1433,6 +1383,13 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.stop_simulation()
         self.toolbar.set_simulation_state(False, False)
         self.status_message.setText("Simulation stopped")
+
+    def toggle_fast_solver(self, checked):
+        """Toggle fast solver mode."""
+        self.use_fast_solver = checked
+        if hasattr(self, 'dsim'):
+            self.dsim.use_fast_solver = checked
+        logger.info(f"Fast Solver enabled: {checked}")
 
     # Recent Files Management
     def _load_recent_files(self):
@@ -1583,82 +1540,13 @@ class ModernDiaBloSWindow(QMainWindow):
             logger.error(f"Error during auto-save: {str(e)}")
 
     def _check_autosave_recovery(self):
-        """Check if there's an auto-save file and offer recovery."""
-        try:
-            if not os.path.exists(self.autosave_path):
-                return
-
-            # Ask user if they want to recover
-            reply = QMessageBox.question(
-                self,
-                "Recover Auto-Saved Diagram?",
-                "An auto-saved diagram was found. This may be from an unexpected shutdown.\n\n"
-                "Would you like to recover it?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
-            )
-
-            if reply == QMessageBox.Yes:
-                self._recover_autosave()
-            else:
-                # User declined, remove autosave file
-                os.remove(self.autosave_path)
-                logger.info("Auto-save file deleted (user declined recovery)")
-
-        except Exception as e:
-            logger.error(f"Error checking auto-save recovery: {str(e)}")
+        self.project_manager.check_autosave_recovery()
 
     def _recover_autosave(self):
-        """Recover diagram from auto-save file."""
-        try:
-            # Use the file service to load properly (same as normal open)
-            if hasattr(self.dsim, 'file_service'):
-                modern_ui_data = self.dsim.file_service.load(filepath=self.autosave_path)
-            else:
-                # Fallback: load directly via open_file
-                modern_ui_data = self.dsim.open_file(self.autosave_path)
-
-            # Remove autosave file after successful recovery
-            import os
-            if os.path.exists(self.autosave_path):
-                os.remove(self.autosave_path)
-
-            self.canvas.update()
-            self.status_message.setText("Diagram recovered from auto-save")
-            logger.info("Diagram successfully recovered from auto-save")
-
-            QMessageBox.information(
-                self,
-                "Recovery Successful",
-                "Your diagram has been successfully recovered from the auto-save file."
-            )
-
-            return modern_ui_data
-
-        except Exception as e:
-            logger.error(f"Error recovering from auto-save: {str(e)}")
-            # Try to remove the corrupt autosave file
-            try:
-                import os
-                if os.path.exists(self.autosave_path):
-                    os.remove(self.autosave_path)
-                    logger.info("Removed corrupt autosave file")
-            except:
-                pass
-            QMessageBox.warning(
-                self,
-                "Recovery Failed",
-                f"Could not recover auto-save file. Starting fresh.\n\nError: {str(e)}"
-            )
+        return self.project_manager.recover_autosave()
 
     def _cleanup_autosave(self):
-        """Clean up auto-save file on normal shutdown."""
-        try:
-            if os.path.exists(self.autosave_path):
-                os.remove(self.autosave_path)
-                logger.debug("Auto-save file cleaned up")
-        except Exception as e:
-            logger.error(f"Error cleaning up auto-save: {str(e)}")
+        self.project_manager.cleanup_autosave()
 
     def load_workspace(self):
         """Load variables from a workspace file."""
