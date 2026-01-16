@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple, Any, Optional, Callable
 import numpy as np
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
+from lib.engine.system_compiler import SystemCompiler
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,12 @@ class SimulationEngine:
         self.max_hier: int = 0
         self.rk45_len: bool = False
         self.rk_counter: int = 0
+        self.rk45_len: bool = False
+        self.rk_counter: int = 0
         self.execution_time_start: float = 0.0
+        
+        # System Compiler
+        self.compiler = SystemCompiler()
 
     def initialize_execution(self, blocks_list: List[DBlock]) -> bool:
         """
@@ -724,3 +730,165 @@ class SimulationEngine:
         self.reset_memblocks()
         self.error_msg = msg
         logger.error("*****EXECUTION STOPPED*****")
+
+    def check_compilability(self, blocks: List[DBlock]) -> bool:
+        """Check if the system can be compiled."""
+        return self.compiler.check_compilability(blocks)
+
+    def run_compiled_simulation(self, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float) -> bool:
+        """
+        Run the simulation using the compiled fast solver.
+        """
+        try:
+            from scipy.integrate import solve_ivp
+            
+            # Ensure hierarchy is calculated for topological sort
+            if not self.initialize_execution(blocks):
+                logger.error("Failed to initialize execution (algebraic loop or error).")
+                return False
+            
+            # Topological sort via hierarchy
+            sorted_blocks = sorted(blocks, key=lambda b: b.hierarchy)
+            
+            logger.info("Compiling system...")
+            model_func, y0, state_map = self.compiler.compile_system(blocks, sorted_blocks, lines)
+            
+            logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
+            t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
+            
+            # Using RK45 by default with strict tolerances for long-duration stability
+            sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
+            
+            if not sol.success:
+                logger.error(f"Solver failed: {sol.message}")
+                return False
+                
+            logger.info("Simulation finished. Processing results...")
+            
+            # 4. Distribute results
+            self.outs = sol.y
+            self.timeline = sol.t
+            
+            # For Scope visualization, we need to populate block outputs.
+            # We "replay" the simulation using the solution to capture all signals.
+            num_steps = len(sol.t)
+            
+            # Map states back to blocks to prepare for replay
+            # We can reuse part of model_func logic or just run a lightweight loop
+            # But model_func returns dy, not signals.
+            # We need a `compute_signals(t, y)` function.
+            # Since model_func creates `signals` internally, we can extract that logic?
+            # Ideally SystemCompiler returns `compute_signals` too, or we duplicate logic here for MVP.
+            # Duplicating logic is messy.
+            # Let's modify SystemCompiler to return `compute_signals`?
+            # Or just hack it here: if we have States, we have their values.
+            # We need to re-compute source blocks (Sine) and feed Scopes.
+            
+            # Let's assume most users plot States or Inputs to States.
+            # But here user plotted Sine (Source) -> Integrator -> Scope.
+            # Sine is a function of time.
+            
+            # Replay Loop
+            for i in range(num_steps):
+                t = sol.t[i]
+                y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y # Handle 1D case
+                
+                # 1. State Map
+                current_signals = {}
+                for b_name, (start, size) in state_map.items():
+                    current_signals[b_name] = y_step[start : start + size]
+                    
+                # 2. Block Logic Replay (Reduced)
+                for block in sorted_blocks:
+                    b_name = block.name
+                    fn = block.block_fn
+                    
+                    # Compute Input
+                    inputs = {}
+                    # deps = self.compiler.get_block_dependencies(block, lines) # Helper needed or recompute locally
+                    # Re-implementing dependency lookup here is safer for now
+                    for line in lines:
+                        if line.dstblock == b_name:
+                            src = line.srcblock
+                            if src in current_signals:
+                                inputs[line.dstport] = current_signals[src]
+                            else:
+                                if i == 0: # Only log once
+                                    logger.warning(f"Replay: Source {src} not found in signals {list(current_signals.keys())} for block {b_name}")
+                                inputs[line.dstport] = 0.0
+                                
+                    # Compute Output (Simplified Logic)
+                    # Note: This duplicates SystemCompiler logic. Ideally refactor later.
+                    out_val = 0.0
+                    
+                    if fn == 'Integrator':
+                        out_val = current_signals.get(b_name, 0.0)
+                        
+                    elif fn == 'Sine':
+                        amp = float(block.params.get('amplitude', 1.0))
+                        freq = float(block.params.get('frequency', 1.0))
+                        phase = float(block.params.get('phase', 0.0))
+                        bias = float(block.params.get('bias', 0.0))
+                        out_val = amp * np.sin(freq * t + phase) + bias
+                        
+                    elif fn == 'Constant':
+                        out_val = float(block.params.get('value', 0.0))
+                        
+                    elif fn == 'Gain':
+                        out_val = inputs.get(0, 0.0) * float(block.params.get('gain', 1.0))
+                        
+                    elif fn == 'Sum':
+                         signs = block.params.get('inputs', '++')
+                         res = 0.0
+                         for idx, char in enumerate(signs):
+                             val = inputs.get(idx, 0.0)
+                             if char == '+': res += val
+                             elif char == '-': res -= val
+                         out_val = res
+                    
+                    elif fn == 'Step':
+                        step_t = float(block.params.get('time', 1.0))
+                        init_v = float(block.params.get('initial_value', 0.0))
+                        final_v = float(block.params.get('final_value', 1.0))
+                        out_val = final_v if t >= step_t else init_v
+                        
+                    # Store
+                    current_signals[b_name] = out_val
+                    
+                    # Store in Block History for Scopes
+                    # ScopePlotter expects `block.out_history` list? Or `block.params['vector']`?
+                    # DSim.execution_loop doesn't seem to append to `out_history` explicitly?
+                    # Ah, `Scope` blocks have internal `execute` that saves to `vector`.
+                    # Standard blocks don't save history unless probed.
+                    # But Scopes DO.
+                    if fn == 'Scope':
+                        # Scope consumes input 0
+                        val = inputs.get(0, 0.0)
+                        
+                        # Ensure we write to exec_params as ScopePlotter prioritizes it
+                        if not hasattr(block, 'exec_params'):
+                            block.exec_params = block.params.copy()
+                        
+                        # Flatten single-element arrays to scalars for compatibility with SignalPlot
+                        if isinstance(val, (np.ndarray, list)):
+                            if np.size(val) == 1:
+                                val = float(val[0]) if isinstance(val, np.ndarray) else val[0]
+                            
+                        # Initialize if check
+                        # Note: We need to handle the case where exec_params['vector'] might be None
+                        if i == 0:
+                             block.exec_params['vector'] = []
+                             
+                        block.exec_params['vector'].append(val)
+                
+            # Finalize Scope Vectors (convert to numpy)
+            for block in blocks:
+                if block.block_fn == 'Scope':
+                     if hasattr(block, 'exec_params') and 'vector' in block.exec_params:
+                        block.exec_params['vector'] = np.array(block.exec_params['vector'])
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Compiled simulation failed: {e}", exc_info=True)
+            return False

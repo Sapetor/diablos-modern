@@ -489,6 +489,44 @@ class DSim:
 
     def execution_batch(self):
         """Run the entire simulation as fast as possible."""
+        # FAST SOLVER CHECK
+        # Check if fast solver is enabled (default True if attr missing)
+        use_fast = getattr(self, 'use_fast_solver', True)
+        
+        if use_fast and self.engine.check_compilability(self.blocks_list):
+            logger.info("System is compilable. Using Fast Solver.")
+            self.last_solver_type = "Fast (Compiled)"
+            t_span = (0.0, self.execution_time)
+            success = self.engine.run_compiled_simulation(
+                self.blocks_list, 
+                self.line_list, 
+                t_span, 
+                self.sim_dt
+            )
+            if success:
+                logger.info("Fast simulation successful.")
+                
+                # Finalize execution state
+                self.execution_initialized = False
+                
+                # Update progress bar to 100%
+                if hasattr(self, 'pbar') and self.pbar:
+                    self.pbar.n = self.pbar.total
+                    self.pbar.last_print_n = self.pbar.total
+                    self.pbar.refresh()
+                    self.pbar.close()
+                
+                # Perform post-simulation tasks normally handled by loop
+                self.export_data()
+                try:
+                    self._record_run_history()
+                except Exception as e:
+                    logger.warning(f"Failed to record run history: {e}")
+                    
+                return
+
+        logger.info("System not fully compilable. Using Interpreter Mode.")
+        self.last_solver_type = "Standard (Interpreter)"
         while self.execution_initialized:
             self.execution_loop()
 

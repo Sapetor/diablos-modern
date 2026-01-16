@@ -9,6 +9,7 @@ DiaBloS Modern is a PyQt5-based block-diagram simulator with a refreshed UI, MVC
 - Control & routing blocks: PID, saturation, rate limiter, hysteresis, deadband, switch (multi-input with control port), PRBS source, mux/demux, Goto/From tag routing. Tags auto-link, are validated, and a small HUD shows tag counts.
 - Waveform Inspector: per-run history from scopes, run pinning, CSV export, optional on-disk persistence, step plotting for discrete signals.
 - Simulation integrity: algebraic-loop detection, diagram validation (disconnected ports, duplicate inputs, tag issues), autosave before run.
+- **Fast Solver**: Hybrid engine with compiled execution using `scipy.integrate`. Automatically accelerates supported systems (Integrator, Gain, Sum, Sine, etc.) by flattening the diagram into efficient numerical code.
 - Tested: pytest suite covering diagram integrity, hidden-line routing, and execution init smoke tests.
 
 ## Requirements

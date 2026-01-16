@@ -8,49 +8,28 @@ This file tracks remaining refactoring opportunities for the DiaBloS codebase.
 
 ## Priority 2: Extract Plotting to Separate Module (Medium Risk)
 
-~250 lines of plotting logic could be extracted to `lib/plotting/scope_plotter.py`:
-
-- [x] `plot_again()` 
-- [x] `_plot_xygraph()`
-- [x] `_plot_fft()`
-- [x] `pyqtPlotScope()`
-- [x] `dynamic_pyqtPlotScope()`
-- [x] `get_scope_traces()`
-- [x] `_scope_step_modes()`
-- [x] `_is_discrete_upstream()`
-
 ✅ **COMPLETED** - Plotting logic extracted to `lib/plotting/scope_plotter.py`.
 
 ## Priority 3: Extract Run History to Separate Module (Low Risk)
 
-~100 lines could be extracted to `lib/services/run_history_service.py`:
-
-- [x] `_record_run_history()`
-- [x] `_load_run_history()`
-- [x] `save_run_history()`
-- [x] `set_run_history_persist()`
-
 ✅ **COMPLETED** - Run history logic extracted to `lib/services/run_history_service.py`.
 
 ## Priority 4: Extract execution_init Loops (Medium-High Risk)
-
-The main `execution_init()` (~270 lines) could be further simplified:
-
-- [x] Source/memory block initial execution loop 
-- [x] Main while loop that establishes hierarchy
-- [x] Consider creating `engine.initialize_execution()`
 
 ✅ **COMPLETED** - `execution_init` logic extracted to `engine.initialize_execution()`.
 
 
 ## Priority 5: Extract Canvas Tools and Rendering
 
-- [x] Extract Analysis tools (Bode, Root Locus) to `lib/analysis/control_system_analyzer.py`
-- [x] Extract Block Rendering to `modern_ui/renderers/block_renderer.py`
-- [x] Extract Connection Rendering to `modern_ui/renderers/connection_renderer.py`
-- [x] Extract Canvas Rendering to `modern_ui/renderers/canvas_renderer.py` (Grid, Selection, HUDs)
-
 ✅ **COMPLETED** - All rendering and analysis logic extracted from `modern_canvas.py`, `block.py`, and `connection.py`.
+
+## Priority 6: Simplify Modern Canvas (Logic Extraction)
+
+✅ **COMPLETED** - Logic extracted to `InteractionManager`, `HistoryManager`, `SelectionManager`, `MenuManager`.
+
+## Priority 7: Simplify Main Window
+
+✅ **COMPLETED** - Logic extracted to `MenuBuilder`, `ProjectManager`.
 
 ## Completed ✅
 
@@ -72,8 +51,8 @@ The main `execution_init()` (~270 lines) could be further simplified:
 - [x] Extract execution init logic to `engine.initialize_execution()`
 - [x] Improvements: Dynamic height scaling for blocks based on port count (fixes SumBlock size)
 - [x] Refactor ModernCanvas: Logic extracted to `InteractionManager` (mouse events, state machine)
+- [x] Refactor ModernCanvas: Logic extracted to `HistoryManager`, `SelectionManager`, `MenuManager`.
+- [x] Refactor MainWindow: Logic extracted to `MenuBuilder`, `ProjectManager`.
 - [x] Fix: Implemented missing `Undo` and `Redo` actions
 - [x] Fix: Implemented `Recent Files` loading logic
-- [x] Testing: Added unit tests for `InteractionManager`
-
-
+- [x] Testing: Added unit tests for `InteractionManager`, `SelectionManager`.
