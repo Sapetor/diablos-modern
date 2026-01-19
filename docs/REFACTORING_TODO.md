@@ -56,3 +56,4 @@ This file tracks remaining refactoring opportunities for the DiaBloS codebase.
 - [x] Fix: Implemented missing `Undo` and `Redo` actions
 - [x] Fix: Implemented `Recent Files` loading logic
 - [x] Testing: Added unit tests for `InteractionManager`, `SelectionManager`.
+- [x] Refactor: Optimized `SystemCompiler` with closure-based executors (Fast Solver Speedup).
