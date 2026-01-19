@@ -70,6 +70,8 @@ class CommandPalette(QDialog):
         self.search_input.setFont(font)
         self.search_input.textChanged.connect(self._on_search_changed)
         self.search_input.returnPressed.connect(self._on_item_selected)
+        # Install event filter to capture navigation keys from the input field
+        self.search_input.installEventFilter(self)
         layout.addWidget(self.search_input)
 
         # Results list - very compact, show only 2-3 items
@@ -234,6 +236,27 @@ class CommandPalette(QDialog):
                 self.results_list.setCurrentRow(current_row - 1)
         else:
             super().keyPressEvent(event)
+
+    def eventFilter(self, obj, event):
+        """Handle key events from input field."""
+        if obj == self.search_input and event.type() == event.KeyPress:
+            if event.key() == Qt.Key_Down:
+                current_row = self.results_list.currentRow()
+                if current_row < self.results_list.count() - 1:
+                    self.results_list.setCurrentRow(current_row + 1)
+                return True
+            elif event.key() == Qt.Key_Up:
+                current_row = self.results_list.currentRow()
+                if current_row > 0:
+                    self.results_list.setCurrentRow(current_row - 1)
+                return True
+            elif event.key() in (Qt.Key_Return, Qt.Key_Enter):
+                self._on_item_selected()
+                return True
+            elif event.key() == Qt.Key_Escape:
+                self.close()
+                return True
+        return super().eventFilter(obj, event)
 
     def showEvent(self, event):
         """When shown, position near cursor and focus search."""
