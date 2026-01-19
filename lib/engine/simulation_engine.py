@@ -425,7 +425,7 @@ class SimulationEngine:
             cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
             
             # Check if the cycle contains any memory blocks
-            has_memory_block = any(node in self._memory_blocks for node in cycle_nodes)
+            has_memory_block = any(node in self.memory_blocks for node in cycle_nodes)
             
             if not has_memory_block:
                 logger.error("ALGEBRAIC LOOP DETECTED")
@@ -630,6 +630,8 @@ class SimulationEngine:
         for block in self.model.blocks_list:
             if block.b_type == 1:
                 self.memory_blocks.add(block.name)
+            elif block.block_fn == 'Integrator':
+                self.memory_blocks.add(block.name)
             elif block.block_fn == 'TranFn':
                 num = block.params.get('numerator', [])
                 den = block.params.get('denominator', [])
@@ -751,13 +753,26 @@ class SimulationEngine:
             sorted_blocks = sorted(blocks, key=lambda b: b.hierarchy)
             
             logger.info("Compiling system...")
-            model_func, y0, state_map = self.compiler.compile_system(blocks, sorted_blocks, lines)
+            logger.info("Compiling system...")
+            model_func, y0, state_map, block_matrices = self.compiler.compile_system(blocks, sorted_blocks, lines)
             
             logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
             t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
             
-            # Using RK45 by default with strict tolerances for long-duration stability
-            sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
+            if len(y0) == 0:
+                # Purely algebraic system
+                # Create a dummy solution object for compatibility
+                class MockSol:
+                    pass
+                sol = MockSol()
+                sol.t = t_eval
+                sol.y = np.zeros((0, len(t_eval)))
+                sol.success = True
+                sol.message = "Algebraic system computed successfully"
+                logger.info("System is algebraic (0 states). Skipping solver.")
+            else:
+                # Using RK45 by default with strict tolerances for long-duration stability
+                sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
             
             if not sol.success:
                 logger.error(f"Solver failed: {sol.message}")
@@ -769,65 +784,182 @@ class SimulationEngine:
             self.outs = sol.y
             self.timeline = sol.t
             
+            # Debug: Check if states evolved
+            if sol.y.size > 0:
+                logger.info(f"Solver output range: min={np.min(sol.y)}, max={np.max(sol.y)}")
+            else:
+                logger.warning("Solver returned no states?")
+
             # For Scope visualization, we need to populate block outputs.
             # We "replay" the simulation using the solution to capture all signals.
             num_steps = len(sol.t)
             
-            # Map states back to blocks to prepare for replay
-            # We can reuse part of model_func logic or just run a lightweight loop
-            # But model_func returns dy, not signals.
-            # We need a `compute_signals(t, y)` function.
-            # Since model_func creates `signals` internally, we can extract that logic?
-            # Ideally SystemCompiler returns `compute_signals` too, or we duplicate logic here for MVP.
-            # Duplicating logic is messy.
-            # Let's modify SystemCompiler to return `compute_signals`?
-            # Or just hack it here: if we have States, we have their values.
-            # We need to re-compute source blocks (Sine) and feed Scopes.
+            # Replay Sort: Topological sort respecting Direct Feedthrough
+            # 1. Build Graph
+            replay_order = []
+            in_degree = {b.name: 0 for b in blocks}
+            adj = {b.name: [] for b in blocks}
             
-            # Let's assume most users plot States or Inputs to States.
-            # But here user plotted Sine (Source) -> Integrator -> Scope.
-            # Sine is a function of time.
+            # 2. Add edges only for Direct Feedthrough connections
+            for line in lines:
+                src = line.srcblock
+                dst = line.dstblock
+                
+                # Check Direct Feedthrough
+                is_feedthrough = True
+                dst_block = next((b for b in blocks if b.name == dst), None)
+                if dst_block:
+                    fn = dst_block.block_fn.title() if dst_block.block_fn else ''
+                    if fn == 'Statespace': fn = 'StateSpace'
+                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
+                    
+                    if fn == 'Integrator':
+                        is_feedthrough = False
+                    elif fn == 'TransferFcn':
+                        # Check strictly proper (num < den)
+                        num = dst_block.params.get('numerator', [])
+                        den = dst_block.params.get('denominator', [])
+                        if len(den) > len(num):
+                            is_feedthrough = False
+                    elif fn == 'StateSpace':
+                         # Check D=0
+                         D = np.array(dst_block.params.get('D', [[0.0]]))
+                         if np.all(D == 0):
+                             is_feedthrough = False
+                
+                if is_feedthrough:
+                    if src in adj:
+                        adj[src].append(dst)
+                        in_degree[dst] += 1
+            
+            # 3. Kahn's Algorithm
+            queue = [b for b in blocks if in_degree[b.name] == 0]
+            # stable sort for determinism (e.g. step before sine if independent)
+            queue.sort(key=lambda b: b.name) 
+            
+            while queue:
+                u = queue.pop(0)
+                replay_order.append(u)
+                
+                if u.name in adj:
+                    for v_name in adj[u.name]:
+                        in_degree[v_name] -= 1
+                        if in_degree[v_name] == 0:
+                            v_block = next((b for b in blocks if b.name == v_name), None)
+                            if v_block:
+                                queue.append(v_block)
+            
+            # If cycles remain (algebraic loops), append leftovers (best effort)
+            if len(replay_order) < len(blocks):
+                leftovers = [b for b in blocks if b not in replay_order]
+                # logger.warning(f"Replay Sort: Algebraic loop detected or sort failed. Leftovers: {[b.name for b in leftovers]}")
+                replay_order.extend(leftovers)
+                
+            sorted_blocks = replay_order
             
             # Replay Loop
             for i in range(num_steps):
                 t = sol.t[i]
-                y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y # Handle 1D case
+                y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y
                 
-                # 1. State Map
+                # 1. State Map - Populate 'current_states' first
+                # Output 'signals' populate diffently based on block type.
                 current_signals = {}
+                current_states = {} # b_name -> x
+                
                 for b_name, (start, size) in state_map.items():
-                    current_signals[b_name] = y_step[start : start + size]
-                    
-                # 2. Block Logic Replay (Reduced)
+                     x_val = y_step[start : start + size]
+                     current_states[b_name] = x_val
+                     
+                     # For Integrator, y = x
+                     # For SS/TF, y != x. We calculate y later.
+                     # We can pe-fill generic "Integrator" assumption if we verify type?
+                     # No, let's rely on block loop.
+                     
+                # 2. Block Logic Replay
+                # Execute blocks in topological order
                 for block in sorted_blocks:
                     b_name = block.name
-                    fn = block.block_fn
+                    # Normalize function name (matches SystemCompiler logic)
+                    fn = block.block_fn.title() if block.block_fn else ''
+                    if fn == 'Statespace': fn = 'StateSpace'
+                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
+                    if block.block_fn == 'PID': fn = 'PID'
+                    if fn == 'Ratelimiter': fn = 'RateLimiter'
                     
-                    # Compute Input
+                    # Collect inputs
                     inputs = {}
-                    # deps = self.compiler.get_block_dependencies(block, lines) # Helper needed or recompute locally
-                    # Re-implementing dependency lookup here is safer for now
                     for line in lines:
                         if line.dstblock == b_name:
-                            src = line.srcblock
-                            if src in current_signals:
-                                inputs[line.dstport] = current_signals[src]
-                            else:
-                                if i == 0: # Only log once
-                                    logger.warning(f"Replay: Source {src} not found in signals {list(current_signals.keys())} for block {b_name}")
-                                inputs[line.dstport] = 0.0
-                                
-                    # Compute Output (Simplified Logic)
-                    # Note: This duplicates SystemCompiler logic. Ideally refactor later.
+                            # Direct feedthrough lookup
+                            val = current_signals.get(line.srcblock, 0.0)
+                            inputs[line.dstport] = val
+                    
                     out_val = 0.0
                     
                     if fn == 'Integrator':
-                        out_val = current_signals.get(b_name, 0.0)
+                        # Valid because Integrator state output is just the state
+                        if b_name in current_states:
+                             val = current_states[b_name]
+                             out_val = val if val.size > 1 else val.item()
                         
+                    elif fn in ('StateSpace', 'TransferFcn'):
+                        if b_name in block_matrices and b_name in current_states:
+                             A, B, C, D = block_matrices[b_name]
+                             x = current_states[b_name].reshape(-1, 1)
+                             
+                             u_val = inputs.get(0, 0.0)
+                             u = np.atleast_1d(u_val).reshape(-1, 1)
+                             
+                             if B.shape[1] > 0 and u.shape[0] != B.shape[1]: 
+                                 if B.shape[1] == 1:
+                                     u = np.array([[float(u_val)]])
+                                 else:
+                                     u = np.full((B.shape[1], 1), float(u_val))
+                             elif B.shape[1] == 0:
+                                 u = np.array([[]])
+
+                             y_out = C @ x + D @ u
+                             out_val = y_out if y_out.size > 1 else y_out.item()
+                             
+                    elif fn == 'PID':
+                         # Inputs
+                         sp = float(inputs.get(0, 0.0))
+                         meas = float(inputs.get(1, 0.0))
+                         e = sp - meas
+                         
+                         # Params
+                         Kp = float(block.params.get('Kp', 1.0))
+                         Ki = float(block.params.get('Ki', 0.0))
+                         Kd = float(block.params.get('Kd', 0.0))
+                         N = float(block.params.get('N', 20.0))
+                         
+                         # States
+                         states = current_states[b_name]
+                         x_i = states[0]
+                         x_d = states[1]
+                         
+                         # Derivatives (need for D-term calc)
+                         # d_term = Kd * dx_d
+                         # dx_d = N * (e - x_d)
+                         dx_d = N * (e - x_d)
+                         
+                         d_term = Kd * dx_d
+                         i_term = Ki * x_i
+                         p_term = Kp * e
+                         
+                         u_unsat = p_term + i_term + d_term
+                         
+                         # Saturation
+                         u_min = float(block.params.get('u_min', -np.inf))
+                         u_max = float(block.params.get('u_max', np.inf))
+                         
+                         out_val = np.clip(u_unsat, u_min, u_max)
+
                     elif fn == 'Sine':
                         amp = float(block.params.get('amplitude', 1.0))
-                        freq = float(block.params.get('frequency', 1.0))
-                        phase = float(block.params.get('phase', 0.0))
+                        freq = float(block.params.get('frequency', block.params.get('omega', 1.0)))
+                        phase = float(block.params.get('phase', block.params.get('init_angle', 0.0)))
                         bias = float(block.params.get('bias', 0.0))
                         out_val = amp * np.sin(freq * t + phase) + bias
                         
@@ -847,13 +979,83 @@ class SimulationEngine:
                          out_val = res
                     
                     elif fn == 'Step':
-                        step_t = float(block.params.get('time', 1.0))
-                        init_v = float(block.params.get('initial_value', 0.0))
-                        final_v = float(block.params.get('final_value', 1.0))
-                        out_val = final_v if t >= step_t else init_v
+                        step_t = float(block.params.get('delay', 0.0))
+                        val = float(block.params.get('value', 1.0))
+                        out_val = val if t >= step_t else 0.0
+
+                    elif fn == 'SgProd':
+                         res = 1.0
+                         if inputs:
+                             for val in inputs.values():
+                                 res *= val
+                         else:
+                             res = 1.0
+                         out_val = res
+
+                    elif fn == 'Exponential':
+                        # y = a * exp(b * x)
+                        a = float(block.params.get('a', 1.0))
+                        b = float(block.params.get('b', 1.0))
+                        x_in = float(inputs.get(0, 0.0))
+                        out_val = a * np.exp(b * x_in)
+                        
+                    elif fn == 'Deadband':
+                        val = float(inputs.get(0, 0.0))
+                        start = float(block.params.get('start', -0.5))
+                        end = float(block.params.get('end', 0.5))
+                        
+                        if val < start:
+                            out_val = val - start
+                        elif val > end:
+                            out_val = val - end
+                        else:
+                            out_val = 0.0
+
+                    elif fn == 'Saturation':
+                        val = inputs.get(0, 0.0)
+                        lower = float(block.params.get('min', -np.inf))
+                        upper = float(block.params.get('max', np.inf))
+                        out_val = np.clip(val, lower, upper)
+                        
+                    elif fn in ('Abs', 'Absblock'):
+                        out_val = np.abs(inputs.get(0, 0.0))
+                        
+                    elif fn == 'Ramp':
+                        slope = float(block.params.get('slope', 1.0))
+                        delay = float(block.params.get('delay', 0.0))
+                        if slope > 0:
+                            out_val = np.maximum(0.0, slope * (t - delay))
+                        elif slope < 0:
+                            out_val = np.minimum(0.0, slope * (t - delay))
+                        else:
+                            out_val = 0.0
+                            
+                    elif fn == 'Switch':
+                        ctrl = float(inputs.get(0, 0.0))
+                        mode = block.params.get('mode', 'threshold')
+                        n_inputs = int(block.params.get('n_inputs', 2))
+                        
+                        if mode == 'index':
+                            sel = int(round(ctrl))
+                        else:
+                            threshold = float(block.params.get('threshold', 0.0))
+                            sel = 0 if ctrl >= threshold else 1
+                            
+                        sel = max(0, min(n_inputs - 1, sel))
+                        out_val = inputs.get(sel + 1, 0.0)
+                        
+                    elif fn == 'RateLimiter':
+                        if b_name in current_states:
+                            out_val = current_states[b_name][0]
+                        else:
+                            out_val = 0.0
+
+                    elif fn in ('Terminator', 'Display'):
+                        pass # Do nothing
                         
                     # Store
                     current_signals[b_name] = out_val
+                    # logger.info(f"DEBUG Replay {b_name} t={t:.2f} out={out_val}") # Uncomment for verbose debug
                     
                     # Store in Block History for Scopes
                     # ScopePlotter expects `block.out_history` list? Or `block.params['vector']`?
@@ -880,6 +1082,9 @@ class SimulationEngine:
                              block.exec_params['vector'] = []
                              
                         block.exec_params['vector'].append(val)
+                        
+                        if i == num_steps - 1:
+                            logger.info(f"DEBUG Replay Scope {b_name}: input={val}, vec_len={len(block.exec_params['vector'])}")
                 
             # Finalize Scope Vectors (convert to numpy)
             for block in blocks:

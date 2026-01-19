@@ -506,6 +506,9 @@ class DSim:
             if success:
                 logger.info("Fast simulation successful.")
                 
+                # Sync timeline from engine (Required for plotting)
+                self.timeline = self.engine.timeline
+                
                 # Finalize execution state
                 self.execution_initialized = False
                 
