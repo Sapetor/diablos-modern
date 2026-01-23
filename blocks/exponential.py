@@ -26,7 +26,15 @@ class ExponentialBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Computes a * exp(b * x)"
+        return (
+            "Exponential Signal."
+            "\n\ny(t) = Amplitude * exp(Rate * t)"
+            "\n\nParameters:"
+            "\n- Amplitude: Initial value."
+            "\n- Rate: Growth (+) or Decay (-) constant."
+            "\n\nUsage:"
+            "\nTransient analysis or unstable system simulation."
+        )
 
     @property
     def inputs(self):

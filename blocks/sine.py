@@ -21,7 +21,17 @@ class SineBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Generates a sine wave."
+        return (
+            "Generates a Sinusoidal signal."
+            "\n\ny(t) = Amplitude * sin(Frequency * t + Phase) + Bias"
+            "\n\nParameters:"
+            "\n- Amplitude: Peak value."
+            "\n- Frequency: Angular frequency (rad/s)."
+            "\n- Phase: Initial phase shift (rad)."
+            "\n- Bias: DC offset added to the signal."
+            "\n\nUsage:"
+            "\nStandard test signal for frequency response analysis."
+        )
 
     @property
     def params(self):

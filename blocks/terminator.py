@@ -21,7 +21,12 @@ class TerminatorBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Terminates a signal."
+        return (
+            "Signal Terminator."
+            "\n\nSafely terminates an unused output signal."
+            "\n\nUsage:"
+            "\nPrevents 'Unconnected Output' warnings during validation."
+        )
 
     @property
     def params(self):

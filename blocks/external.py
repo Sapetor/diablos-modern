@@ -5,6 +5,18 @@ class ExternalBlock(BaseBlock):
         super().__init__()
 
     @property
+    def doc(self):
+        return (
+            "External Function Block."
+            "\n\nExecutes custom Python code loaded from an external file."
+            "\n\nParameters:"
+            "\n- Script Path: Path to the .py file."
+            "\n- Function Name: Name of the function to call."
+            "\n\nUsage:"
+            "\nIntegrate custom logic, complex math, or hardware interfaces not provided by standard blocks."
+        )
+
+    @property
     def block_name(self):
         return "External"
 

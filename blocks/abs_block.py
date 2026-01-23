@@ -21,7 +21,13 @@ class AbsBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Outputs the absolute value of the input signal."
+        return (
+            "Absolute Value."
+            "\n\nComputes the absolute value of the input signal."
+            "\ny = |u|"
+            "\n\nUsage:"
+            "\nUsed in magnitude calculations, rectifiers, or error metrics."
+        )
 
     @property
     def params(self):

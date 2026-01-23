@@ -23,7 +23,18 @@ class PIDBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "PID controller (setpoint, measurement -> control)."
+        return (
+            "PID Controller."
+            "\n\nu(t) = P + I + D"
+            "\n\nParameters:"
+            "\n- Proportional (P): Kp * error"
+            "\n- Integral (I): Ki * integral(error)"
+            "\n- Derivative (D): Kd * derivative(error)"
+            "\n- Filter Coeff (N): Derivative filter bandwidth (Low-pass)."
+            "\n  D term = Kd * N * s / (s + N)"
+            "\n\nUsage:"
+            "\nFeedback control. Tuning parameters Kp, Ki, Kd."
+        )
 
     @property
     def params(self):

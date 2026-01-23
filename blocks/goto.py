@@ -24,7 +24,14 @@ class GotoBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Sends its input to any From block with the same tag."
+        return (
+            "Goto Tag."
+            "\n\nSends a signal to a matching 'From' block without a visible wire."
+            "\n\nParameters:"
+            "\n- Tag: Unique identifier (string) to match with 'From'."
+            "\n\nUsage:"
+            "\nReduces visual clutter by hiding long connections."
+        )
 
     @property
     def params(self):

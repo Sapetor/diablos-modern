@@ -22,7 +22,15 @@ class DisplayBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Displays the current input value on the block. Useful for real-time monitoring."
+        return (
+            "Numerical Display."
+            "\n\nShows the current value of the input signal."
+            "\n\nParameters:"
+            "\n- Format: standard Python f-string format (e.g. {:.2f})."
+            "\n- Label: Text label prefix."
+            "\n\nUsage:"
+            "\nMonitor scalar values during simulation."
+        )
 
     @property
     def params(self):

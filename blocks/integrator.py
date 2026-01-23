@@ -32,7 +32,17 @@ class IntegratorBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Integrates the input signal over time."
+        return (
+            "Continuous-time Integrator (1/s)."
+            "\n\nComputes the time integral of the input signal."
+            "\ny(t) = y(0) + integral(u(t) dt)"
+            "\n\nParameters:"
+            "\n- Initial Condition: Value of the output at start time."
+            "\n- Limit Output: Enable saturation limits on the integral."
+            "\n- Method: Integration method (e.g., RK45, Forward Euler)."
+            "\n\nUsage:"
+            "\nFundamental block for building dynamic system models."
+        )
 
     @property
     def inputs(self):

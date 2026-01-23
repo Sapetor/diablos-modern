@@ -87,6 +87,34 @@ class PropertyEditor(QFrame):
                 # Add tooltip if we had descriptions (future improvement)
                 self.layout.addRow(label, widget)
 
+        # Add Documentation Section
+        if hasattr(self.block, 'doc') and self.block.doc:
+            # Separator
+            line = QFrame()
+            line.setFrameShape(QFrame.HLine)
+            line.setFrameShadow(QFrame.Sunken)
+            line.setStyleSheet(f"background-color: {theme_manager.get_color('border_primary').name()};")
+            self.layout.addRow(line)
+
+            # Header
+            doc_header = QLabel("Documentation")
+            header_color = theme_manager.get_color('accent').name()
+            doc_header.setStyleSheet(f"color: {header_color}; font-weight: bold; font-size: 13px; margin-top: 8px;")
+            self.layout.addRow(doc_header)
+
+            # Doc Text
+            doc_label = QLabel(str(self.block.doc).strip())
+            doc_label.setWordWrap(True)
+            text_secondary = theme_manager.get_color('text_secondary').name()
+            doc_label.setStyleSheet(f"color: {text_secondary}; font-style: italic; margin-bottom: 8px;")
+            self.layout.addRow(doc_label)
+
+            # Link (Visual only for now, or pointing to a wiki)
+            link_label = QLabel('<a href="https://github.com/Sapetor/diablos-modern/wiki">View Full Reference</a>')
+            link_label.setOpenExternalLinks(True)
+            link_label.setStyleSheet(f"color: {theme_manager.get_color('accent').name()};")
+            self.layout.addRow(link_label)
+
     def _create_editor_for_value(self, key, value):
         """Factory method to create the appropriate editor widget based on value type."""
         

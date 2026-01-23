@@ -30,7 +30,16 @@ class ScopeBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Displays input signals on a plot."
+        return (
+            "Oscilloscope / Plotter."
+            "\n\nDisplays time-domain signals during or after simulation."
+            "\n\nParameters:"
+            "\n- Title: Plot window title."
+            "\n- Labels: Comma-separated legend labels."
+            "\n\nUsage:"
+            "\nThe primary way to visualize simulation results."
+            "\nDouble-click after simulation to re-open the plot."
+        )
 
     @property
     def inputs(self):

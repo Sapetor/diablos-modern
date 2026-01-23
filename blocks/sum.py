@@ -18,8 +18,15 @@ class SumBlock(BaseBlock):
         return "Math"
 
     @property
-    def color(self):
-        return "lime_green"
+    def doc(self):
+        return (
+            "Adds or subtracts multiple input signals."
+            "\n\nParameters:"
+            "\n- Signs: A string of '+' and '-' characters defining the operation for each input port."
+            "\n  Example: '+-+' creates 3 ports: (in1 - in2 + in3)."
+            "\n\nUsage:"
+            "\nStandard summing junction for feedback loops (set signs to '+-')."
+        )
 
     @property
     def params(self):

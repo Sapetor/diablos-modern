@@ -21,7 +21,16 @@ class NoiseBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Generates Gaussian noise."
+        return (
+            "White Noise Generator."
+            "\n\nGenerates random numbers with a Normal (Gaussian) distribution."
+            "\n\nParameters:"
+            "\n- Mean: Average value (center)."
+            "\n- Std Dev: Standard Deviation (spread)."
+            "\n- Seed: Random seed for reproducibility (0 = random)."
+            "\n\nUsage:"
+            "\nSimulate sensor noise or process disturbances."
+        )
 
     @property
     def params(self):

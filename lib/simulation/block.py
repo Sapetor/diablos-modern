@@ -147,6 +147,13 @@ class DBlock:
         self.data_sent: int = 0
         self.input_queue: Dict[int, Any] = {}
 
+    @property
+    def doc(self) -> str:
+        """Get the documentation string from the block instance."""
+        if self.block_instance and hasattr(self.block_instance, 'doc'):
+            return self.block_instance.doc
+        return ""
+
     def calculate_min_size(self) -> int:
         """
         Calculate the minimum height required for the block based on its ports.

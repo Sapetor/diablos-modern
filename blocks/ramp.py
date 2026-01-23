@@ -21,7 +21,16 @@ class RampBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Generates a ramp signal."
+        return (
+            "Generates a Linear Ramp signal."
+            "\n\nOutput increases linearly with time: y = Slope * (t - Start Time)."
+            "\nOutput is 0 before Start Time."
+            "\n\nParameters:"
+            "\n- Slope: Rate of change (dy/dt)."
+            "\n- Start Time: Time (seconds) when the ramp starts."
+            "\n\nUsage:"
+            "\nUsed to test tracking performance or generate sweeping signals."
+        )
 
     @property
     def params(self):

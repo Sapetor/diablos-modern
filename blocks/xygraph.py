@@ -22,7 +22,15 @@ class XYGraphBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Plots input X vs input Y. Useful for phase portraits and parametric curves."
+        return (
+            "XY Plotter."
+            "\n\nPlots Y vs X (parametric plot)."
+            "\n\nConnnections:"
+            "\n- Port 1: X-axis signal."
+            "\n- Port 2: Y-axis signal."
+            "\n\nUsage:"
+            "\nPhase portraits, hysteresis loops, or orbital paths."
+        )
 
     @property
     def params(self):

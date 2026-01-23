@@ -24,7 +24,13 @@ class RootLocusBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Right-click to generate a Root Locus plot from a connected Transfer Function block."
+        return (
+            "Root Locus Plotter."
+            "\n\nAnalyzes the closed-loop poles of a system as a parameter varies."
+            "\n\nUsage:"
+            "\nConnect to a Transfer Function or State Space block."
+            "\nRight-click to generate plot."
+        )
 
     @property
     def inputs(self):

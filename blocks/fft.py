@@ -23,7 +23,15 @@ class FFTBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "FFT analyzer - shows frequency spectrum of input signal after simulation."
+        return (
+            "Spectrum Analyzer (FFT)."
+            "\n\nComputes and plots the Frequency Spectrum (Magnitude) of the input."
+            "\n\nParameters:"
+            "\n- Window: Tapering window (Hamming, Hanning, Rectangular)."
+            "\n- Log Scale: Use logarithmic X/Y axes."
+            "\n\nUsage:"
+            "\nAnalyze frequency content, resonances, or noise."
+        )
 
     @property
     def params(self):

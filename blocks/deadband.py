@@ -27,7 +27,18 @@ class DeadbandBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Dead zone: output is zero in [start, end], offset-subtracted outside."
+        return (
+            "Dead Zone / Deadband."
+            "\n\nOutputs zero when the input is within the specified range [Start, End]."
+            "\n\nFunction:"
+            "\n- u < Start: y = u - Start"
+            "\n- Start <= u <= End: y = 0"
+            "\n- u > End: y = u - End"
+            "\n\nParameters:"
+            "\n- Start/End: Lower and Upper bounds of the zero region."
+            "\n\nUsage:"
+            "\nModels mechanical play (backlash) or noise thresholds."
+        )
 
     @property
     def params(self):

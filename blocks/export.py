@@ -27,7 +27,15 @@ class ExportBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Exports input signals to a file."
+        return (
+            "Data Export."
+            "\n\nSaves simulation data to a file (e.g., .npz, .mat, .csv)."
+            "\n\nParameters:"
+            "\n- Filename: Destination file path."
+            "\n- Variable Name: Name of variable in saved file."
+            "\n\nUsage:"
+            "\nSave results for post-processing in Python or MATLAB."
+        )
 
     @property
     def inputs(self):

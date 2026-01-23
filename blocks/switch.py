@@ -22,7 +22,17 @@ class SwitchBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Selects between inputs based on control. Modes: threshold (binary) or index (multi-way)."
+        return (
+            "Signal Switch."
+            "\n\nPasses one of the inputs based on the Control signal (middle port)."
+            "\n\nCriteria:"
+            "\n- u2 >= Threshold: Output = u1 (Top port)"
+            "\n- u2 < Threshold:  Output = u3 (Bottom port)"
+            "\n\nParameters:"
+            "\n- Threshold: Switching value."
+            "\n\nUsage:"
+            "\nConditional logic or selecting between valid signals."
+        )
 
     @property
     def params(self):
