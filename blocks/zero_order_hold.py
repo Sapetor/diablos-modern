@@ -30,7 +30,15 @@ class ZeroOrderHoldBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Samples the input at a specified rate and holds the value constant."
+        return (
+            "Zero-Order Hold (ZOH)."
+            "\n\nSamples the input signal at a fixed rate and holds it constant between samples."
+            "\n\nParameters:"
+            "\n- Sampling Time: The period (in seconds) between samples."
+            "\n\nUsage:"
+            "\nConverts continuous signals to discrete (digital) steps."
+            "\nModels triggers or ADCs."
+        )
 
     @property
     def inputs(self):

@@ -24,7 +24,14 @@ class FromBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Receives signal from a Goto block with the same tag."
+        return (
+            "From Tag."
+            "\n\nReceives a signal from a matching 'Goto' block."
+            "\n\nParameters:"
+            "\n- Tag: Identifier of the source 'Goto' block."
+            "\n\nUsage:"
+            "\nReduces visual clutter."
+        )
 
     @property
     def params(self):

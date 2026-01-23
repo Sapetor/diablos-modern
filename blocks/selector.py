@@ -22,7 +22,16 @@ class SelectorBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Selects specific elements from a vector. Use comma-separated indices (0-based)."
+        return (
+            "Selector / Indexer."
+            "\n\nPicks specific elements from a vector input."
+            "\n\nParameters:"
+            "\n- Indices: List of 0-based indices to extract."
+            "\n  Example: [0, 2] extracts 1st and 3rd elements."
+            "\n- Input Width: (Optional) Expected size of input vector."
+            "\n\nUsage:"
+            "\nReordering or subsetting signals."
+        )
 
     @property
     def params(self):

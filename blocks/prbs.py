@@ -23,7 +23,16 @@ class PRBSBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Generates a pseudo-random binary sequence (LFSR-based)."
+        return (
+            "Pseudo-Random Binary Sequence (PRBS)."
+            "\n\nGenerates a binary signal (-Amp, +Amp) that approximates white noise."
+            "\nUseful for System Identification."
+            "\n\nParameters:"
+            "\n- Amplitude: Height of the binary steps."
+            "\n- Clock Period: Time duration of each step."
+            "\n\nUsage:"
+            "\nApply to system input to estimate frequency response (rich frequency content)."
+        )
 
     @property
     def params(self):

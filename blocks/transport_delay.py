@@ -23,7 +23,17 @@ class TransportDelayBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Continuous-time delay (e^{-τs}). Delays input by τ seconds with linear interpolation."
+        return (
+            "Transport Delay / Time Delay."
+            "\n\nDelays the input signal by a specified time amount."
+            "\ny(t) = u(t - Delay)"
+            "\n\nParameters:"
+            "\n- Time Delay: Amount of delay in seconds."
+            "\n- Initial Output: Output value before t < Delay."
+            "\n- Buffer Size: Max history length (increase if simulation is long/fast)."
+            "\n\nUsage:"
+            "\nModels pipe flow, conveyor belts, or communication latency."
+        )
 
     @property
     def params(self):

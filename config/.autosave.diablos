@@ -9,14 +9,14 @@
     },
     "blocks_data": [
         {
-            "block_fn": "Sine",
+            "block_fn": "Noise",
             "sid": 0,
-            "username": "sine0",
-            "coords_left": 107,
-            "coords_top": 326,
-            "coords_width": 80,
-            "coords_height": 60,
-            "coords_height_base": 60,
+            "username": "noise0",
+            "coords_left": 218,
+            "coords_top": 219,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
@@ -24,126 +24,68 @@
             "b_color": "#d1fae5",
             "b_type": 2,
             "io_edit": "output",
-            "fn_name": "sine",
+            "fn_name": "noise",
             "params": {
-                "amplitude": 1.0,
-                "omega": 1.0,
-                "init_angle": 0.0
+                "mu": 0.0,
+                "sigma": 1.0
             },
             "external": false,
             "flipped": false
         },
         {
-            "block_fn": "Scope",
+            "block_fn": "Deriv",
             "sid": 0,
-            "username": "scope0",
-            "coords_left": 560,
-            "coords_top": 340,
+            "username": "deriv0",
+            "coords_left": 264,
+            "coords_top": 446,
             "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#fee2e2",
-            "b_type": 2,
-            "io_edit": "input",
-            "fn_name": "scope",
-            "params": {
-                "labels": "default"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "TranFn",
-            "sid": 0,
-            "username": "tranfn0",
-            "coords_left": 269,
-            "coords_top": 372,
-            "coords_width": 110,
             "coords_height": 80,
             "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#e9d5ff",
-            "b_type": 1,
+            "b_color": "#dbeafe",
+            "b_type": 2,
             "io_edit": "both",
-            "fn_name": "transfer_function",
+            "fn_name": "deriv",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "DiscreteTranFn",
+            "sid": 0,
+            "username": "discretetranfn0",
+            "coords_left": 204,
+            "coords_top": 613,
+            "coords_width": 110,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": true,
+            "b_color": "#e9d5ff",
+            "b_type": 2,
+            "io_edit": "both",
+            "fn_name": "discrete_transfer_function",
             "params": {
                 "numerator": [
-                    1.0
+                    1.0,
+                    0.0
                 ],
                 "denominator": [
                     1.0,
-                    1.0
-                ]
+                    -0.5
+                ],
+                "sampling_time": -1.0
             },
             "external": false,
             "flipped": false
         }
     ],
-    "lines_data": [
-        {
-            "name": "Line0",
-            "sid": 0,
-            "srcblock": "sine0",
-            "srcport": 0,
-            "dstblock": "tranfn0",
-            "dstport": 0,
-            "points": [
-                [
-                    187,
-                    360
-                ],
-                [
-                    228,
-                    360
-                ],
-                [
-                    228,
-                    410
-                ],
-                [
-                    269,
-                    410
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line1",
-            "sid": 1,
-            "srcblock": "tranfn0",
-            "srcport": 0,
-            "dstblock": "scope0",
-            "dstport": 0,
-            "points": [
-                [
-                    379,
-                    410
-                ],
-                [
-                    469,
-                    410
-                ],
-                [
-                    469,
-                    380
-                ],
-                [
-                    560,
-                    380
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        }
-    ],
+    "lines_data": [],
     "version": "2.0",
     "modern_ui_data": {
         "theme": "light",

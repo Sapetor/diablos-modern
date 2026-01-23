@@ -21,7 +21,15 @@ class SigProductBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Calculates the element-wise product of its inputs."
+        return (
+            "Computes the product of input signals."
+            "\n\nOperation:"
+            "\ny = u1 * u2 * ... * un (Element-wise multiplication)."
+            "\n\nParameters:"
+            "\n- Inputs: Number of input ports to multiply."
+            "\n\nUsage:"
+            "\nUsed for modulation, mixing, or non-linear scaling."
+        )
 
     @property
     def params(self):

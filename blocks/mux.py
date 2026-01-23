@@ -22,7 +22,14 @@ class MuxBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Multiplexes multiple inputs into a single output vector."
+        return (
+            "Multiplexer (Mux)."
+            "\n\nCombines multiple scalar or vector signals into a single vector output."
+            "\n\nParameters:"
+            "\n- Inputs: Number of signals to combine."
+            "\n\nUsage:"
+            "\nUse to bundle signals for Scope plotting or bus routing."
+        )
 
     @property
     def inputs(self):

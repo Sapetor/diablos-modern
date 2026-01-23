@@ -21,7 +21,18 @@ class HysteresisBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Relay with upper/lower thresholds; holds state between."
+        return (
+            "Hysteresis Relay."
+            "\n\nSwitches output based on history (memory effect)."
+            "\n\nLogic:"
+            "\n- Output = ON (1) if Input > High Threshold"
+            "\n- Output = OFF (0) if Input < Low Threshold"
+            "\n- Retains previous state if Input is between thresholds."
+            "\n\nParameters:"
+            "\n- Low/High Thresholds: Switching points."
+            "\n\nUsage:"
+            "\nThermostats, Schmitt Triggers, On-Off Control."
+        )
 
     @property
     def params(self):

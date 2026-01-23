@@ -30,7 +30,15 @@ class GainBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Scales input by gain. Supports scalar, vector (element-wise), or matrix (K @ u) gains."
+        return (
+            "Scales the input signal by a specified Gain."
+            "\n\nSupports:"
+            "\n- Scalar Gain: y = K * u (element-wise)."
+            "\n- Vector Gain: y = K * u (element-wise, if K is a vector)."
+            "\n- Matrix Gain: y = K @ u (Matrix Multiplication, if K is a matrix)."
+            "\n\nUsage:"
+            "\nUse Matrix Gain (nested lists like [[1], [2]]) to expand scalars to vectors."
+        )
 
     @property
     def params(self):

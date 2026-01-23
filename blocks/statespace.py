@@ -39,7 +39,17 @@ class StateSpaceBlock(BaseBlock):
 
     @property
     def doc(self):
-        return """State-Space: dx/dt = Ax + Bu, y = Cx + Du"""
+        return (
+            "Continuous State-Space Model."
+            "\n\ndx/dt = Ax + Bu"
+            "\ny = Cx + Du"
+            "\n\nParameters:"
+            "\n- A, B, C, D: System matrices."
+            "\n- Initial State: x(0) vector."
+            "\n\nUsage:"
+            "\nFor Modern Control (MIMO systems). Can model any linear system."
+            "\nMatrices can be entered as nested lists: [[1, 0], [0, 1]]."
+        )
 
     @property
     def inputs(self):

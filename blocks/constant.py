@@ -21,7 +21,14 @@ class ConstantBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Outputs a constant value. Useful for setpoints, constants, and fixed parameters."
+        return (
+            "Outputs a constant value."
+            "\n\nParameters:"
+            "\n- Value: The constant output value (scalar or vector)."
+            "\n\nUsage:"
+            "\nUseful for setpoints, constant parameters, or enabling blocks."
+            "\nTo create a vector, use [v1, v2, ...]."
+        )
 
     @property
     def params(self):

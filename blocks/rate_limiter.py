@@ -21,7 +21,16 @@ class RateLimiterBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Limits the rising/falling slew rate of the input."
+        return (
+            "Rate Limiter."
+            "\n\nLimits the rate of change (slope) of the input signal."
+            "\n\nParameters:"
+            "\n- Rising Slew Rate: Max positive slope (dy/dt)."
+            "\n- Falling Slew Rate: Max negative slope (dy/dt) (usually negative)."
+            "\n\nUsage:"
+            "\nPrevents abrupt changes in control signals or models actuator speed limits."
+            "\nUseful for smoothing setpoints."
+        )
 
     @property
     def params(self):

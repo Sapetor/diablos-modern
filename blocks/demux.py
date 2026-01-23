@@ -21,7 +21,14 @@ class DemuxBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Splits an input vector into multiple outputs."
+        return (
+            "Demultiplexer (Demux)."
+            "\n\nSplits a vector input signal into individual scalar/vector components."
+            "\n\nParameters:"
+            "\n- Outputs: Number of output ports."
+            "\n\nUsage:"
+            "\nUse to extract signals from a bus or Mux."
+        )
 
     @property
     def params(self):

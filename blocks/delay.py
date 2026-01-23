@@ -22,7 +22,16 @@ class DelayBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Delays input by N time steps. Initial output is the specified initial value."
+        return (
+            "Discrete Integer Delay (z^-N)."
+            "\n\nDelays the input by a fixed number of execution steps."
+            "\ny[k] = u[k - N]"
+            "\n\nParameters:"
+            "\n- Delay Steps: Number of steps (N)."
+            "\n- Initial Value: Output for k < N."
+            "\n\nUsage:"
+            "\nModels digital latency or buffer pipelines."
+        )
 
     @property
     def params(self):

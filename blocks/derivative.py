@@ -27,7 +27,16 @@ class DerivativeBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Calculates the derivative of a signal."
+        return (
+            "Time Derivative (du/dt)."
+            "\n\nApproximates the time derivative of the input."
+            "\n\nWarning:"
+            "\nDerivative is sensitive to noise. Use with a low-pass filter if possible."
+            "\n\nParameters:"
+            "\n- Filter Coefficient: Bandwidth of internal filter (if implemented)."
+            "\n\nUsage:"
+            "\nComputing velocity from position, or rate of change."
+        )
 
     @property
     def params(self):

@@ -26,7 +26,15 @@ class StepBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Generates a step signal."
+        return (
+            "Generates a Step function."
+            "\n\nOutput is 0 before 'Delay' time, and 'Final Value' afterwards."
+            "\n\nParameters:"
+            "\n- Final Value: The height of the step."
+            "\n- Step Time: Time (seconds) when the step occurs."
+            "\n\nUsage:"
+            "\nCommonly used to test step response of control systems."
+        )
 
     @property
     def params(self):

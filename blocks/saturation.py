@@ -21,7 +21,15 @@ class SaturationBlock(BaseBlock):
 
     @property
     def doc(self):
-        return "Clips the input signal to specified min/max limits."
+        return (
+            "Limits the input signal to a specified range."
+            "\n\nOutput:"
+            "\n- Upper Limit if u > Upper Limit"
+            "\n- Lower Limit if u < Lower Limit"
+            "\n- u otherwise"
+            "\n\nUsage:"
+            "\nPrevents windup or limits actuator signals."
+        )
 
     @property
     def params(self):
