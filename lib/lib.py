@@ -24,6 +24,9 @@ from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.simulation.menu_block import MenuBlocks
 from lib.ui.button import Button
+from blocks.subsystem import Subsystem
+from blocks.inport import Inport
+from blocks.outport import Outport
 
 # Import block size configuration
 from config.block_sizes import get_block_size
@@ -99,6 +102,7 @@ class DSim:
         self.menu_blocks = self.model.menu_blocks
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list
+        self.connections_list = self.line_list  # Alias for backward/forward compatibility
 
         # UI state
         self.line_creation = 0
@@ -130,6 +134,102 @@ class DSim:
         # Run history service
         self.run_history_service = RunHistoryService()
         self.run_history_service.load_history()
+
+        # Navigation Context
+        # Stack of (blocks_list, line_list, parent_subsystem_name) tuples
+        self.navigation_stack = []
+        self.current_subsystem = None # Top level is None
+
+    def enter_subsystem(self, subsystem_block):
+        """
+        Enter a subsystem block to edit its contents.
+        Pushes the current context to the stack and enters the subsystem.
+        """
+        # Save current context (references to the lists)
+        self.navigation_stack.append((self.model.blocks_list, self.model.line_list, self.current_subsystem))
+        
+        # Switch to subsystem context
+        # We perform a swap of the lists in the model.
+        # Use the subsystem's internal lists as the active model lists.
+        self.model.blocks_list = subsystem_block.sub_blocks
+        self.model.line_list = subsystem_block.sub_lines
+        
+        # Sync DSim references to match model's new active lists
+        self.blocks_list = self.model.blocks_list
+        self.line_list = self.model.line_list
+        self.connections_list = self.line_list
+        
+        self.current_subsystem = subsystem_block.name
+        
+        # Reset selection state when changing scope
+        for block in self.blocks_list:
+             block.selected = False
+        for line in self.line_list:
+             line.selected = False
+             
+        # Reset view state variables
+        self.ss_count = 0
+        self.dirty = False # View change doesn't mean dirty, but usually we care about content
+        
+        logger.info(f"Entered subsystem: {subsystem_block.name}")
+
+    def exit_subsystem(self):
+        """
+        Exit the current subsystem and return to the parent scope.
+        """
+        if not self.navigation_stack:
+            logger.warning("Already at top level.")
+            return
+
+        # Restore previous context
+        (prev_blocks, prev_lines, prev_subsystem) = self.navigation_stack.pop()
+        
+        # Restore model lists
+        self.model.blocks_list = prev_blocks
+        self.model.line_list = prev_lines
+        
+        # Sync DSim references
+        self.blocks_list = self.model.blocks_list
+        self.line_list = self.model.line_list
+        self.connections_list = self.line_list
+        
+        self.current_subsystem = prev_subsystem
+        
+        # Reset selection
+        for block in self.blocks_list:
+             block.selected = False
+        for line in self.line_list:
+             line.selected = False
+             
+        logger.info("Exited subsystem, returned to parent scope")
+
+
+    def get_current_path(self):
+        """
+        Return the current navigation path as a list of strings.
+        Example: ['Top Level', 'Subsystem1', 'Nested2']
+        """
+        path = ['Top Level']
+        for _, _, name in self.navigation_stack:
+             if name:
+                 path.append(name)
+                 
+        if self.current_subsystem:
+            path.append(self.current_subsystem)
+            
+        return path
+
+    def get_root_context(self):
+        """
+        Get the root context (blocks_list, line_list) of the simulation model.
+        Used for execution to ensure we always simulate the full system.
+        """
+        if not self.navigation_stack:
+            return self.blocks_list, self.line_list
+        else:
+            # The bottom of the stack (index 0) contains the references to root lists
+            # Stack format: (prev_blocks, prev_lines, prev_subsystem)
+            return self.navigation_stack[0][0], self.navigation_stack[0][1]
 
     # Properties for state shared with SimulationEngine
     @property
@@ -238,6 +338,168 @@ class DSim:
         self.model.remove_block(block)
         self.line_list = self.model.line_list  # Sync line_list after removal
         self.dirty = self.model.dirty
+
+    def create_subsystem_from_selection(self, selected_blocks):
+        """
+        Create a subsystem containing the selected blocks.
+        """
+        if not selected_blocks:
+            return
+
+        # Calculate bounding box of selected blocks
+        min_x = min(b.rect.left() for b in selected_blocks)
+        min_y = min(b.rect.top() for b in selected_blocks)
+        max_x = max(b.rect.right() for b in selected_blocks)
+        max_y = max(b.rect.bottom() for b in selected_blocks)
+        center_x = (min_x + max_x) // 2
+        center_y = (min_y + max_y) // 2
+
+        # Create Subsystem block
+        # We need to construct it directly as DBlock logic is complex with MenuBlocks
+        # But here we want a specific 'Subsystem' type.
+        # We can use self.model.add_block if we have a template, or create manually.
+        # Let's create manually for now to avoid menu dependency.
+        from PyQt5.QtCore import QRect
+        subsys = Subsystem()
+        subsys.sid = max([b.sid for b in self.blocks_list] + [0]) + 1
+        subsys.rect = QRect(center_x - subsys.width//2, center_y - subsys.height//2, subsys.width, subsys.height)
+        subsys.name = f"Subsystem{subsys.sid}"
+        
+        # Add to current scope
+        self.blocks_list.append(subsys)
+        
+        # Logic to move blocks and handle connections
+        # 1. Identify internal lines (both ends in selection)
+        # 2. Identify boundary lines
+        
+        internal_lines = []
+        boundary_lines = [] # list of (line, type) where type is 'in' or 'out'
+        
+        selected_names = {b.name for b in selected_blocks}
+        
+        # We iterate a copy because we might modify self.line_list
+        current_lines = list(self.line_list)
+        
+        for line in current_lines:
+            src_in = line.srcblock in selected_names
+            dst_in = line.dstblock in selected_names
+            
+            if src_in and dst_in:
+                internal_lines.append(line)
+            elif src_in and not dst_in:
+                boundary_lines.append((line, 'out'))
+            elif not src_in and dst_in:
+                boundary_lines.append((line, 'in'))
+                
+        # Move blocks and internal lines to subsystem
+        for b in selected_blocks:
+            if b in self.blocks_list:
+                self.blocks_list.remove(b)
+            # Normalize positions relative to top-left of selection + margin
+            b.rect.translate(-min_x + 100, -min_y + 100)
+            subsys.sub_blocks.append(b)
+            
+        for l in internal_lines:
+            if l in self.line_list:
+                self.line_list.remove(l)
+            # Update line trajectories if necessary? 
+            # DLine stores points. We should translate them too.
+            # But DLine uses block names. 
+            # Coordinate translation is good for visual.
+            new_points = []
+            for p in l.points:
+                 new_points.append(QPoint(p.x() - min_x + 100, p.y() - min_y + 100))
+            l.points = tuple(new_points)
+            subsys.sub_lines.append(l)
+
+        # Handle Ports
+        inport_idx = 1
+        outport_idx = 1
+        
+        # For each boundary line, we need to create a port
+        for line, direction in boundary_lines:
+            if direction == 'in':
+                # External Source -> Subsystem (Inport) -> Internal Dest
+                
+                # Create Inport inside subsystem
+                # We place it to the left of the internal blocks
+                inport = Inport(block_name=f"In{inport_idx}")
+                inport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+                # Position it: Find dest block position
+                # But multiple lines could go to same block.
+                # Just place them vertically on the left.
+                inport.rect = QRect(20, 50 * inport_idx, inport.width, inport.height)
+                subsys.sub_blocks.append(inport)
+                
+                # New internal line: Inport -> Internal Dest
+                internal_line = DLine(
+                    sid=max([l.sid for l in subsys.sub_lines] + [0]) + 1,
+                    srcblock=inport.name, srcport=0, # Inport has 1 output (index 0)
+                    dstblock=line.dstblock, dstport=line.dstport,
+                    points=(inport.out_coords[0], line.points[-1]) # Simplify points
+                )
+                subsys.sub_lines.append(internal_line)
+                
+                # Update external line: External Source -> Subsystem
+                # We reuse the existing line object but change destination
+                # We neeed to know WHICH input port of subsystem this corresponds to.
+                # Subsystem generally doesn't define ports until now.
+                # We need to add dynamic ports to Subsystem block.
+                
+                # Add port to subsystem visual definition
+                # Subsystem.ports dict needs updates.
+                if 'in' not in subsys.ports: subsys.ports['in'] = []
+                
+                # Calculate port position on Subsystem block
+                port_pos = (0, (subsys.height / (len(boundary_lines) + 1)) * inport_idx) # Rough
+                subsys.ports['in'].append({'pos': port_pos, 'type': 'input', 'name': str(inport_idx)})
+                
+                # Map external port index to Inport name
+                # Inport name is 'In{idx}'
+                # External port index is len(subsys.ports['in']) - 1
+                port_idx = len(subsys.ports['in']) - 1
+                
+                line.dstblock = subsys.name
+                line.dstport = port_idx
+                # Update line points to end at subsystem
+                # This requires recalculating trajectory which happens in update
+                
+                inport_idx += 1
+                
+            elif direction == 'out':
+                 # Internal Source -> Subsystem (Outport) -> External Dest
+                 
+                 # Create Outport inside
+                 outport = Outport(block_name=f"Out{outport_idx}")
+                 outport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+                 # Place on right
+                 max_internal_x = max(b.rect.right() for b in subsys.sub_blocks)
+                 outport.rect = QRect(max_internal_x + 50, 50 * outport_idx, outport.width, outport.height)
+                 subsys.sub_blocks.append(outport)
+                 
+                 # New internal line: Internal Source -> Outport
+                 internal_line = DLine(
+                    sid=max([l.sid for l in subsys.sub_lines] + [0]) + 1,
+                    srcblock=line.srcblock, srcport=line.srcport,
+                    dstblock=outport.name, dstport=0, # Outport has 1 input (index 0)
+                    points=(line.points[0], outport.in_coords[0])
+                 )
+                 subsys.sub_lines.append(internal_line)
+                 
+                 # Update external line: Subsystem -> External Dest
+                 if 'out' not in subsys.ports: subsys.ports['out'] = []
+                 port_pos = (subsys.width, (subsys.height / (len(boundary_lines) + 1)) * outport_idx)
+                 subsys.ports['out'].append({'pos': port_pos, 'type': 'output', 'name': str(outport_idx)})
+                 
+                 port_idx = len(subsys.ports['out']) - 1
+                 
+                 line.srcblock = subsys.name
+                 line.srcport = port_idx
+                 
+                 outport_idx += 1
+                 
+        self.dirty = True
+        logger.info(f"Created subsystem {subsys.name} with {len(subsys.sub_blocks)} blocks")
 
     # NOTE: display_lines, display_blocks, display_ports, update_lines moved to ModernCanvas
     # NOTE: Block loading moved to SimulationModel.load_all_blocks()
@@ -398,37 +660,56 @@ class DSim:
 
             workspace_manager = WorkspaceManager()
 
-            for block in self.blocks_list:
-                # Resolve parameters using WorkspaceManager
-                logger.debug(f"Block {block.name}: params before resolve = {block.params}")
-                logger.debug(f"WorkspaceManager variables = {workspace_manager.variables}")
-                block.exec_params = workspace_manager.resolve_params(block.params)
-                logger.debug(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
-                # Copy internal parameters that start with '_'
-                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+            # Helper for recursive parameter resolution
+            def resolve_recursive(blocks):
+                for block in blocks:
+                    # Resolve parameters using WorkspaceManager
+                    block.exec_params = workspace_manager.resolve_params(block.params)
+                    # Copy internal parameters that start with '_'
+                    block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+                    
+                    # Dynamically set b_type for Transfer Functions (delegated to engine)
+                    self.engine.set_block_type(block)
+                    
+                    block.exec_params['dtime'] = self.sim_dt
+                    
+                    # Reload external data
+                    try:
+                         if block.block_fn == 'External': # Check explicitly or reload_external_data handles it
+                             missing_file_flag = block.reload_external_data()
+                             if missing_file_flag == 1:
+                                 logger.error(f"Missing external file for block: {block.name}")
+                                 return False
+                    except Exception as e:
+                         logger.error(f"Error reloading external data for block {block.name}: {str(e)}")
+                         return False
+                         
+                    # Recurse if subsystem
+                    if getattr(block, 'block_type', '') == 'Subsystem':
+                        if resolve_recursive(block.sub_blocks) is False:
+                            return False
+                return True
 
-                # Dynamically set b_type for Transfer Functions (delegated to engine)
-                self.engine.set_block_type(block)
-                
-                block.exec_params['dtime'] = self.sim_dt
-                try:
-                    missing_file_flag = block.reload_external_data()
-                    if missing_file_flag == 1:
-                        logger.error(f"Missing external file for block: {block.name}")
-                        return False
-                except Exception as e:
-                    logger.error(f"Error reloading external data for block {block.name}: {str(e)}")
-                    return False
+            # Get Root Context for execution
+            root_blocks, root_lines = self.get_root_context()
 
-            if not self.check_diagram_integrity():
-                logger.error("Diagram integrity check failed")
-                return False
+            # Resolve params for ALL blocks in hierarchy
+            logger.debug(f"Resolving parameters for hierarchy...")
+            if not resolve_recursive(root_blocks):
+                 return False
+
             logger.debug("Initializing execution...")
 
-            # Generation of a checklist for the computation of functions
-            self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
-                                    for x in self.blocks_list]
-            self.reset_execution_data()
+            # Initialize engine with ROOT context (will trigger flattening)
+            # Pass lines explicitly!
+            if not self.engine.initialize_execution(root_blocks, root_lines):
+                self.execution_failed(self.engine.error_msg)
+                return False
+                
+            # Generation of a checklist for the computation of functions (Legacy? Engine handles global_computed_list now)
+            # self.global_computed_list is synced from engine via property
+
+            self.reset_execution_data() # Delegates to engine
             self.execution_time_start = time.time()
             logger.debug("Execution initialization complete")
         except Exception as e:
@@ -560,7 +841,11 @@ class DSim:
                 self.pbar.update(1)
                 self.timeline = np.append(self.timeline, self.time_step)
 
-            for block in self.blocks_list:
+            # Use the active list from engine (flattened if needed)
+            # Fallback to local list if engine not ready (though it should be)
+            current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
+            
+            for block in current_blocks:
                 try:
                     if block.name in self.memory_blocks:
                         # Execute memory blocks with output_only=True using engine
@@ -582,7 +867,7 @@ class DSim:
 
             # All blocks are executed according to the hierarchy order defined in the first iteration
             for hier in range(self.max_hier + 1):
-                for block in self.blocks_list:
+                for block in current_blocks:
                     # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
                     if block.hierarchy == hier and (block.data_recieved == block.in_ports or block.in_ports == 0) and not block.computed_data:
                         # Execute using engine (handles external vs internal, kwargs building)
@@ -599,7 +884,7 @@ class DSim:
                             return
 
                         # The computed_data booleans are updated in the global list as well as in the block itself
-                        self.update_global_list(block.name, h_value=0)
+                        self.engine.update_global_list(block.name, h_value=0)
                         block.computed_data = True
 
                         # Propagate outputs to children (engine handles b_type check)
@@ -648,7 +933,8 @@ class DSim:
         """
         self.execution_initialized = False   # Finishes the simulation execution
         self.reset_memblocks()               # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
-        self.pbar.close()                    # Finishes the progress bar
+        if hasattr(self, 'pbar'):
+            self.pbar.close()                    # Finishes the progress bar
         self.error_msg = msg
         logger.error("*****EXECUTION STOPPED*****")
 
@@ -716,6 +1002,259 @@ class DSim:
     def count_rk45_ints(self):
         """Check if any integrators use RK45 method. Delegates to engine."""
         return self.engine.count_rk45_integrators()
+
+    def create_subsystem_from_selection(self):
+        """
+        Create a subsystem from currently selected blocks.
+        Moves selected blocks into a new Subsystem block and maintains connections.
+        """
+        selected_blocks = [b for b in self.blocks_list if b.selected]
+        if not selected_blocks:
+            return
+
+        logger.info(f"Creating subsystem from {len(selected_blocks)} blocks...")
+        
+        # 1. Identify Blocks and Lines
+        internal_block_names = set(b.name for b in selected_blocks)
+        internal_lines = []
+        crossing_inputs = [] # (line, src_external, dst_internal)
+        crossing_outputs = [] # (line, src_internal, dst_external)
+        lines_to_remove = []
+        
+        # Helper to find line by ID or object (since we iterate line_list)
+        for line in list(self.line_list): # Copy list as we might modify
+            src_in = line.srcblock in internal_block_names
+            dst_in = line.dstblock in internal_block_names
+            
+            if src_in and dst_in:
+                internal_lines.append(line)
+                lines_to_remove.append(line)
+            elif not src_in and dst_in:
+                crossing_inputs.append(line)
+                lines_to_remove.append(line)
+            elif src_in and not dst_in:
+                crossing_outputs.append(line)
+                lines_to_remove.append(line)
+        
+        # 2. Create Subsystem Block
+        # Calculate bounding box
+        coords = [b.rect for b in selected_blocks]
+        if not coords:
+             logger.error("No coordinates found for selected blocks!")
+             return
+             
+        min_x = min(r.left() for r in coords)
+        min_y = min(r.top() for r in coords)
+        max_x = max(r.left() + r.width() for r in coords)
+        max_y = max(r.top() + r.height() for r in coords)
+        
+        center_x = (min_x + max_x) // 2
+        center_y = (min_y + max_y) // 2
+        
+        logger.info(f"Subsystem Bounding Box: ({min_x}, {min_y}) - ({max_x}, {max_y}). Center: ({center_x}, {center_y})")
+        
+        # Find unique SID/Name for subsystem
+        base_name = "Subsystem"
+        existing_names = [b.name for b in self.blocks_list]
+        idx = 1
+        while f"{base_name}{idx}" in existing_names:
+            idx += 1
+        subsys_name = f"{base_name}{idx}"
+        
+        # Create Subsystem
+        subsys = Subsystem(block_name=subsys_name, sid=idx)
+        # Use QRect explicitly
+        from PyQt5.QtCore import QRect
+        subsys.rect = QRect(center_x - 50, center_y - 40, 100, 80) # Default size
+        # Sync shadow attributes
+        subsys.left = subsys.rect.left()
+        subsys.top = subsys.rect.top()
+        subsys.width = subsys.rect.width()
+        subsys.height = subsys.rect.height()
+        
+        # Initialize robust port mapping
+        subsys.ports_map = {'input': {}, 'output': {}}
+        
+        logger.info(f"Subsystem Rect assigned: {subsys.rect}")
+        
+        # 3. Process Inputs (Crossing In) -> Create Inports
+        inport_map = {} # (src_name, src_port) -> InportBlock
+        
+        for line in crossing_inputs:
+            key = (line.srcblock, line.srcport)
+            if key not in inport_map:
+                # Create Inport
+                idx = len(inport_map)
+                in_name = f"In{idx+1}"
+                inport = Inport(block_name=in_name, sid=idx+1)
+                # Position Inport inside: Left side, stacked
+                inport.rect = QRect(min_x - 50, min_y + idx*60, 40, 30)
+                subsys.sub_blocks.append(inport)
+                inport_map[key] = inport
+                
+                # External connection: Src -> Subsys:Port
+                port_idx = subsys.in_ports
+                subsys.in_ports += 1
+                
+                self.add_line(line.srcblock, line.srcport, subsys.name, port_idx)
+                
+                # Update map
+                subsys.ports_map['input'][port_idx] = inport.name
+                
+            inport = inport_map[key]
+            
+            # Create Internal Line: Inport:0 -> InternalDst
+            from lib.simulation.connection import DLine
+            # Use global max SID for safety
+            all_sids = [l.sid for l in self.line_list] + [l.sid for l in subsys.sub_lines] + [0]
+            lid = max(all_sids) + 1
+            
+            start_p = (inport.rect.right(), inport.rect.center().y())
+            # Find dest block object to get coords
+            # Careful: selected_blocks items are moved potentially, but objects persist
+            dst_block = next(b for b in selected_blocks if b.name == line.dstblock)
+            end_p = dst_block.in_coords[line.dstport]
+            
+            new_line = DLine(lid, inport.name, 0, line.dstblock, line.dstport, [start_p, end_p])
+            subsys.sub_lines.append(new_line)
+            
+        # 4. Process Outputs (Crossing Out) -> Create Outports
+        outport_map = {} # (src_name, src_port) -> OutportBlock
+        
+        for line in crossing_outputs:
+             key = (line.srcblock, line.srcport)
+             if key not in outport_map:
+                 idx = len(outport_map)
+                 out_name = f"Out{idx+1}"
+                 outport = Outport(block_name=out_name, sid=idx+1)
+                 outport.rect = QRect(max_x + 10, min_y + idx*60, 40, 30)
+                 subsys.sub_blocks.append(outport)
+                 outport_map[key] = {
+                     'block': outport,
+                     'port_idx': subsys.out_ports
+                 }
+                 subsys.out_ports += 1
+                 
+                 # Create Internal Line: InternalSrc -> Outport:0
+                 from lib.simulation.connection import DLine
+                 all_sids = [l.sid for l in self.line_list] + [l.sid for l in subsys.sub_lines] + [0]
+                 lid = max(all_sids) + 1
+                 
+                 src_block = next(b for b in selected_blocks if b.name == line.srcblock)
+                 start_p = src_block.out_coords[line.srcport]
+                 end_p = (outport.rect.left(), outport.rect.center().y())
+                 
+                 new_line = DLine(lid, line.srcblock, line.srcport, outport.name, 0, [start_p, end_p])
+                 subsys.sub_lines.append(new_line)
+                 
+             # Create External Line: Subsys:Port -> ExternalDst
+             out_info = outport_map[key]
+             self.add_line(subsys.name, out_info['port_idx'], line.dstblock, line.dstport)
+             
+             # Update map
+             subsys.ports_map['output'][out_info['port_idx']] = outport.name
+        
+        # 4b. Process Unconnected Internal Ports
+        # Use existing sets to track what is connected
+        connected_inputs = set() # (block_name, port_idx)
+        connected_outputs = set() # (block_name, port_idx)
+        
+        # Populate with existing lines (both internal and crossing)
+        all_lines_involved = internal_lines + crossing_inputs + crossing_outputs
+        for line in all_lines_involved:
+            connected_inputs.add((line.dstblock, line.dstport))
+            connected_outputs.add((line.srcblock, line.srcport))
+            
+        # Scan blocks for unconnected ports
+        for block in selected_blocks:
+            # Inputs
+            for i in range(block.in_ports):
+                if (block.name, i) not in connected_inputs:
+                    # Found unconnected input - Create Inport
+                    idx = subsys.in_ports # Current count
+                    in_name = f"In{idx+1}"
+                    inport = Inport(block_name=in_name, sid=max([b.sid for b in subsys.sub_blocks] + [0]) + 1)
+                    inport.rect = QRect(min_x - 50, min_y + idx*60, 40, 30)
+                    # Sync attributes for inport
+                    inport.left = inport.rect.left()
+                    inport.top = inport.rect.top()
+                    inport.width = inport.rect.width()
+                    inport.height = inport.rect.height()
+                    
+                    subsys.sub_blocks.append(inport) # Restore this!
+                    subsys.in_ports += 1
+                    subsys.ports_map['input'][idx] = inport.name
+                    
+                    # Connect Inport -> Block
+                    from lib.simulation.connection import DLine
+                    all_sids = [l.sid for l in self.line_list] + [l.sid for l in subsys.sub_lines] + [0]
+                    lid = max(all_sids) + 1
+                    
+                    # Start point (Inport right), End point (Block in)
+                    start_p = (inport.rect.right(), inport.rect.center().y())
+                    end_p = block.in_coords[i] if i < len(block.in_coords) else (block.left, block.top + 10) # Fallback
+                    
+                    new_line = DLine(lid, inport.name, 0, block.name, i, [start_p, end_p])
+                    subsys.sub_lines.append(new_line)
+                    logger.info(f"Promoted unconnected input {block.name}:{i} to {in_name}")
+
+            # Outputs
+            for i in range(block.out_ports):
+                if (block.name, i) not in connected_outputs:
+                    # Found unconnected output - Create Outport
+                    idx = subsys.out_ports
+                    out_name = f"Out{idx+1}"
+                    outport = Outport(block_name=out_name, sid=max([b.sid for b in subsys.sub_blocks] + [0]) + 1)
+                    outport.rect = QRect(max_x + 10, min_y + idx*60, 40, 30)
+                    # Sync attributes for outport
+                    outport.left = outport.rect.left()
+                    outport.top = outport.rect.top()
+                    outport.width = outport.rect.width()
+                    outport.height = outport.rect.height()
+                    
+                    subsys.sub_blocks.append(outport) # Restore this!
+                    subsys.out_ports += 1
+                    subsys.ports_map['output'][idx] = outport.name
+                    
+                    # Connect Block -> Outport
+                    from lib.simulation.connection import DLine
+                    all_sids = [l.sid for l in self.line_list] + [l.sid for l in subsys.sub_lines] + [0]
+                    lid = max(all_sids) + 1
+                    
+                    start_p = block.out_coords[i] if i < len(block.out_coords) else (block.left + block.width, block.top + 10)
+                    end_p = (outport.rect.left(), outport.rect.center().y())
+                    
+                    new_line = DLine(lid, block.name, i, outport.name, 0, [start_p, end_p])
+                    subsys.sub_lines.append(new_line)
+                    logger.info(f"Promoted unconnected output {block.name}:{i} to {out_name}")
+
+        # 5. Move Internal Lines
+        subsys.sub_lines.extend(internal_lines)
+        
+        # 6. Move Blocks
+        for b in selected_blocks:
+            if b in self.blocks_list:
+                self.blocks_list.remove(b)
+            # Deselect them
+            b.selected = False
+            subsys.sub_blocks.append(b)
+            
+        # 7. Remove Old Lines
+        for l in lines_to_remove:
+            if l in self.line_list:
+                self.line_list.remove(l)
+            if l in self.connections_list:
+                self.connections_list.remove(l)
+                
+        # 8. Add Subsystem to scope
+        self.blocks_list.append(subsys)
+        subsys.selected = True # Select the new subsystem
+        
+        # 9. Update canvas
+        self.dirty = True
+        subsys.update_Block() # Recalculate ports and internal geometry
+        logger.info(f"Subsystem {subsys.name} created with {len(subsys.sub_blocks)} blocks.")
+        return subsys
 
     def update_global_list(self, block_name, h_value, h_assign=False):
         """Update the global execution list. Delegates to engine."""

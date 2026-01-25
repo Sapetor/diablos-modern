@@ -429,6 +429,17 @@ class BlockRenderer:
              path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4); path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5); path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
              path.moveTo(0.35, 0.5); path.lineTo(0.65, 0.5); path.moveTo(0.60, 0.45); path.lineTo(0.65, 0.5); path.lineTo(0.60, 0.55)
              path.moveTo(0.70, 0.45); path.lineTo(0.85, 0.45); path.lineTo(0.85, 0.55); path.lineTo(0.70, 0.55); path.lineTo(0.70, 0.45)
+        elif block.block_fn == "Subsystem":
+             # Nested rectangles icon
+             path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.2); path.lineTo(0.8, 0.8); path.lineTo(0.2, 0.8); path.lineTo(0.2, 0.2)
+             path.moveTo(0.3, 0.3); path.lineTo(0.7, 0.3); path.lineTo(0.7, 0.7); path.lineTo(0.3, 0.7); path.lineTo(0.3, 0.3)
+        elif block.block_fn == "Inport":
+             self._draw_centered_text(block, painter, "In", bold=True, size_delta=2)
+             # Draw arrow?
+             # path.moveTo(0.2, 0.5); path.lineTo(0.8, 0.5); path.lineTo(0.6, 0.3)...
+        elif block.block_fn == "Outport":
+             self._draw_centered_text(block, painter, "Out", bold=True, size_delta=2)
+             
         elif block.block_fn == "FFT":
              path.moveTo(0.15, 0.80); path.lineTo(0.15, 0.20); path.moveTo(0.15, 0.80); path.lineTo(0.85, 0.80)
              bar_positions = [0.22, 0.32, 0.42, 0.52, 0.62, 0.72]

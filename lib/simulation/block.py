@@ -535,3 +535,30 @@ class DBlock:
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
         self.dirty = True
+    def __deepcopy__(self, memo):
+        """
+        Custom deepcopy implementation to assume QPixmap is not copied (recreate or ignore).
+        QPixmap cannot be pickled/copied deeply.
+        """
+        # Create a new instance
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        
+        for k, v in self.__dict__.items():
+            if k == 'pixmap':
+                setattr(result, k, None) 
+            elif k == 'sub_blocks':
+                 # List of blocks, recurse
+                 setattr(result, k, copy.deepcopy(v, memo))
+            else:
+                try:
+                    setattr(result, k, copy.deepcopy(v, memo))
+                except Exception as e:
+                    print(f"Deepcopy failed for key {k}: {e}", flush=True)
+                    setattr(result, k, None) # Fallback to None? Or raised error will stop usage.
+                
+        return result
+
+    # Add reload_image method if needed to restore pixmap?
+    # Usually update_Block handles drawing or re-creating it.

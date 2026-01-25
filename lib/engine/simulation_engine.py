@@ -8,8 +8,10 @@ import time as time_module
 from typing import List, Dict, Tuple, Any, Optional, Callable
 import numpy as np
 from lib.simulation.block import DBlock
+from lib.simulation.connection import DLine
 from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
+from lib.engine.flattener import Flattener
 
 logger = logging.getLogger(__name__)
 
@@ -68,30 +70,60 @@ class SimulationEngine:
         
         # System Compiler
         self.compiler = SystemCompiler()
+        self.flattener = Flattener()
+        
+        # Active execution lists (may differ from model if flattened)
+        self.active_blocks_list = []
+        self.active_line_list = []
 
-    def initialize_execution(self, blocks_list: List[DBlock]) -> bool:
+    def initialize_execution(self, blocks_list: List[DBlock], lines_list: Optional[List[DLine]] = None) -> bool:
         """
         Initialize the execution sequence for the simulation.
         
         Args:
-            blocks_list: List of all blocks in the diagram
+            blocks_list: List of blocks (Top Level)
+            lines_list: List of lines (Top Level). Required for flattening.
             
         Returns:
-            bool: True if initialization was successful, False otherwise
+            bool: True if block initialization successful
         """
         try:
             logger.debug("Engine: Initializing execution...")
             
-            # Reset temporary lists
+            # 1. Flatten Hierarchy if lines provided
+            # If line_list is None, we fallback to model list, but flattening requires consistent lists.
+            # DSim calls this. We assume DSim passes lines.
+            
+            if lines_list is None:
+                lines_list = self.model.line_list
+
+            # Check if flattening needed (if any Subsystem block exists)
+            has_subsystems = any(getattr(b, 'block_type', '') == 'Subsystem' for b in blocks_list)
+            
+            if has_subsystems:
+                logger.info("Flattening hierarchical system...")
+                self.active_blocks_list, self.active_line_list = self.flattener.flatten(blocks_list, lines_list)
+                logger.info(f"Flattening complete. Blocks: {len(self.active_blocks_list)}, Lines: {len(self.active_line_list)}")
+            else:
+                 self.active_blocks_list = blocks_list
+                 self.active_line_list = lines_list
+
+            # Integrity Check on the Active (Flattened) System
+            if not self.check_diagram_integrity():
+                 self.error_msg = "Diagram integrity check failed (connections)."
+                 logger.error(self.error_msg)
+                 return False
+
+            # Reset temporary lists using ACTIVE list
             self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
-                                       for x in blocks_list]
+                                       for x in self.active_blocks_list]
             self.reset_execution_data()
             self.execution_time_start = time_module.time()
             
             # Check for algebraic loops (part 1)
             check_loop = self.count_computed_global_list()
             
-            # Identify memory blocks
+            # Identify memory blocks (on ACTIVE list)
             self.identify_memory_blocks()
             
             # Count RK45 integrators
@@ -103,7 +135,11 @@ class SimulationEngine:
             # For this refactor, we assume DSim handles the pre-checks on lines.
 
             # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
-            for block in blocks_list:
+            # Iterate active_blocks_list instead of blocks_list input
+            blocks_to_exec = self.active_blocks_list
+            logger.info(f"Engine: Initializing execution for {len(blocks_to_exec)} blocks (flattened)")
+            
+            for block in blocks_to_exec:
                 logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
                 children = {}
                 out_value = {}
@@ -146,7 +182,7 @@ class SimulationEngine:
                     self.propagate_outputs(block, out_value)
 
             # Un-compute memory blocks for the main loop
-            for block in blocks_list:
+            for block in blocks_to_exec:
                 if block.name in self.memory_blocks:
                     block.computed_data = False
                     self.update_global_list(block.name, h_value=0, h_assign=False, reset_computed=True)
@@ -154,13 +190,16 @@ class SimulationEngine:
             # Loop 2: Hierarchy Resolution Matrix
             h_count = 1
             while not self.check_global_list():
-                for block in blocks_list:
+                for block in blocks_to_exec:
                     # Check execution readiness
                     can_execute = block.data_recieved == block.in_ports
                     if block.block_fn == 'From':
                         can_execute = 0 in block.input_queue and block.input_queue[0] is not None
                     
+                    logger.info(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports})")
+
                     if can_execute and not block.computed_data:
+                        # OUT_VALUE execute_block...
                         out_value = self.execute_block(block)
                         if out_value is False:
                             return False
@@ -175,11 +214,13 @@ class SimulationEngine:
                         
                         if block.b_type not in [1, 3]:
                             self.propagate_outputs(block, out_value)
+                        
+                        logger.info(f"EXECUTED in LOOP {h_count}: {block.name}")
                             
                 # Algebraic Loop Detection
                 computed_count = self.count_computed_global_list()
                 if computed_count == check_loop:
-                    uncomputed_blocks = [b for b in blocks_list if not b.computed_data]
+                    uncomputed_blocks = [b for b in blocks_to_exec if not b.computed_data]
                     if not uncomputed_blocks:
                         break
                         
@@ -231,6 +272,7 @@ class SimulationEngine:
         Returns output value (dict) or False on failure.
         """
         try:
+            logger.info(f"ENGINE EXECUTE: {block.name} (b_type={block.b_type})")
             kwargs = {
                 'time': self.time_step,
                 'inputs': block.input_queue,
@@ -274,8 +316,12 @@ class SimulationEngine:
         """
         logger.debug("Checking diagram integrity")
         error_trigger = False
+        
+        # Use active lists (fallback to model if not initialized, but ideally active)
+        blocks_to_check = self.active_blocks_list if self.active_blocks_list else self.model.blocks_list
+        # get_neighbors already uses active_line_list
 
-        for block in self.model.blocks_list:
+        for block in blocks_to_check:
             inputs, outputs = self.get_neighbors(block.name)
 
             # Check input ports
@@ -323,7 +369,12 @@ class SimulationEngine:
         inputs = []
         outputs = []
 
-        for line in self.model.line_list:
+        # Use active_line_list if active_blocks_list is populated (implies execution setup)
+        # Otherwise fallback to model list logic
+        use_active = len(self.active_blocks_list) > 0
+        line_source = self.active_line_list if use_active else self.model.line_list
+
+        for line in line_source:
             if line.dstblock == block_name:
                 inputs.append({
                     'srcblock': line.srcblock,
@@ -350,7 +401,11 @@ class SimulationEngine:
             list: Output connections
         """
         outputs = []
-        for line in self.model.line_list:
+        # Use active_line_list if active_blocks_list is populated
+        use_active = len(self.active_blocks_list) > 0
+        line_source = self.active_line_list if use_active else self.model.line_list
+        
+        for line in line_source:
             if line.srcblock == block_name:
                 outputs.append({
                     'dstblock': line.dstblock,
@@ -367,10 +422,72 @@ class SimulationEngine:
             int: Maximum hierarchy value
         """
         max_h = -1
-        for block in self.model.blocks_list:
+        # Use active_blocks_list
+        for block in self.active_blocks_list:
             if block.hierarchy > max_h:
                 max_h = block.hierarchy
         return max_h
+
+    # detect_algebraic_loops doesn't access lists directly, uses get_outputs
+
+    # children_recognition uses get_outputs
+
+    def reset_execution_data(self):
+        """Reset execution state for all blocks.
+        
+        IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
+        """
+        # Safety check - if global_computed_list isn't populated yet, use simple reset
+        if not self.global_computed_list or len(self.global_computed_list) != len(self.active_blocks_list):
+            for block in self.active_blocks_list:
+                block.computed_data = False
+                block.data_recieved = 0
+                block.data_sent = 0
+                block.hierarchy = -1
+                block.input_queue = {}
+            return
+            
+        for i in range(len(self.active_blocks_list)):
+            self.global_computed_list[i]['computed_data'] = False
+            self.active_blocks_list[i].computed_data = False
+            self.active_blocks_list[i].data_recieved = 0
+            self.active_blocks_list[i].data_sent = 0
+            self.active_blocks_list[i].input_queue = {}
+            self.active_blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
+    
+    # Duplicate definition of count_rk45_integrators here? 
+    # Yes, previous edit might have left one. 
+    # Let's fix count_rk45_integrators to use active list too.
+    
+    def count_rk45_integrators(self):
+        """
+        Check if any integrators use RK45 method.
+
+        Returns:
+            bool: True if RK45 integrators exist
+        """
+        for block in self.active_blocks_list:
+            if block.block_fn == 'Integrator' and block.params.get('method') == 'RK45':
+                return True
+            elif block.block_fn == 'External' and block.params.get('method') == 'RK45':
+                return True
+        return False
+
+    def reset_memblocks(self):
+        """Reset memory blocks (integrators, transfer functions, etc.).
+        
+        Resets _init_start_ in both params and exec_params, and clears _prev state.
+        """
+        for block in self.active_blocks_list:
+            if '_init_start_' in block.params:
+                block.params['_init_start_'] = True
+            # Also reset in exec_params if it exists (used during execution)
+            if hasattr(block, 'exec_params') and block.exec_params:
+                if '_init_start_' in block.exec_params:
+                    block.exec_params['_init_start_'] = True
+                # Clear any stored state like _prev
+                if '_prev' in block.exec_params:
+                    del block.exec_params['_prev']
 
     def detect_algebraic_loops(self, uncomputed_blocks):
         """
@@ -461,8 +578,8 @@ class SimulationEngine:
         IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
         """
         # Safety check - if global_computed_list isn't populated yet, use simple reset
-        if not self.global_computed_list or len(self.global_computed_list) != len(self.model.blocks_list):
-            for block in self.model.blocks_list:
+        if not self.global_computed_list or len(self.global_computed_list) != len(self.active_blocks_list):
+            for block in self.active_blocks_list:
                 block.computed_data = False
                 block.data_recieved = 0
                 block.data_sent = 0
@@ -470,13 +587,13 @@ class SimulationEngine:
                 block.input_queue = {}
             return
             
-        for i in range(len(self.model.blocks_list)):
+        for i in range(len(self.active_blocks_list)):
             self.global_computed_list[i]['computed_data'] = False
-            self.model.blocks_list[i].computed_data = False
-            self.model.blocks_list[i].data_recieved = 0
-            self.model.blocks_list[i].data_sent = 0
-            self.model.blocks_list[i].input_queue = {}
-            self.model.blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
+            self.active_blocks_list[i].computed_data = False
+            self.active_blocks_list[i].data_recieved = 0
+            self.active_blocks_list[i].data_sent = 0
+            self.active_blocks_list[i].input_queue = {}
+            self.active_blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
 
     def count_rk45_integrators(self):
         """
@@ -627,7 +744,7 @@ class SimulationEngine:
     def identify_memory_blocks(self) -> None:
         """Identify blocks with memory (integrators, strictly proper TFs)."""
         self.memory_blocks = set()
-        for block in self.model.blocks_list:
+        for block in self.active_blocks_list:
             if block.b_type == 1:
                 self.memory_blocks.add(block.name)
             elif block.block_fn == 'Integrator':
@@ -659,7 +776,12 @@ class SimulationEngine:
             out_value: Output values from the block
         """
         children = self.get_outputs(block.name)
-        for mblock in self.model.blocks_list:
+        # Use active blocks if execution initialized (flattened copies), otherwise model (fallback)
+        target_blocks = self.active_blocks_list if len(self.active_blocks_list) > 0 else self.model.blocks_list
+        
+        logger.info(f"ENGINE PROPAGATE: {block.name} -> {[c['dstblock'] for c in children]}")
+        
+        for mblock in target_blocks:
             is_child, tuple_list = self._children_recognition(mblock.name, children)
             if is_child:
                 for tuple_child in tuple_list:
@@ -745,7 +867,8 @@ class SimulationEngine:
             from scipy.integrate import solve_ivp
             
             # Ensure hierarchy is calculated for topological sort
-            if not self.initialize_execution(blocks):
+            # Pass lines to allow flattening
+            if not self.initialize_execution(blocks, lines):
                 logger.error("Failed to initialize execution (algebraic loop or error).")
                 return False
             

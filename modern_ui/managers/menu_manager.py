@@ -85,6 +85,14 @@ class MenuManager:
         cut_action.setShortcut("Ctrl+X")
         cut_action.triggered.connect(self.canvas._cut_selected_blocks)
 
+        # Create Subsystem (if multiple blocks selected)
+        selected_blocks = [b for b in self.canvas.dsim.blocks_list if b.selected]
+        if len(selected_blocks) > 1:
+            menu.addSeparator()
+            create_subsys_action = menu.addAction("Create Subsystem")
+            create_subsys_action.setShortcut("Ctrl+G")
+            create_subsys_action.triggered.connect(lambda: self.canvas.dsim.create_subsystem_from_selection(selected_blocks))
+
         menu.addSeparator()
 
         properties_action = menu.addAction("Properties...")

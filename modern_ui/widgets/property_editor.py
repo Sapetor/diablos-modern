@@ -109,8 +109,17 @@ class PropertyEditor(QFrame):
             doc_label.setStyleSheet(f"color: {text_secondary}; font-style: italic; margin-bottom: 8px;")
             self.layout.addRow(doc_label)
 
-            # Link (Visual only for now, or pointing to a wiki)
-            link_label = QLabel('<a href="https://github.com/Sapetor/diablos-modern/wiki">View Full Reference</a>')
+            # Link (Dynamic GitHub Wiki Link)
+            base_url = "https://github.com/Sapetor/diablos-modern/blob/main/docs/wiki"
+            # Category file (e.g. "Control.md")
+            cat_file = f"{getattr(self.block, 'category', 'Home')}.md".replace(' ', '-')
+            # Anchor (e.g. "#integrator")
+            # Use block_fn or base name if possible (strip ID suffix digits if needed, but block_fn is usually pure)
+            anchor = getattr(self.block, 'block_fn', 'Home').lower().replace(' ', '-')
+            
+            full_url = f"{base_url}/{cat_file}#{anchor}"
+            
+            link_label = QLabel(f'<a href="{full_url}">View Full Reference</a>')
             link_label.setOpenExternalLinks(True)
             link_label.setStyleSheet(f"color: {theme_manager.get_color('accent').name()};")
             self.layout.addRow(link_label)

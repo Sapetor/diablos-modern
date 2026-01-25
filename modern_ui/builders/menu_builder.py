@@ -81,6 +81,16 @@ class MenuBuilder:
             edit_menu.addAction("Select &All\tCtrl+A", self.window.canvas._select_all_blocks)
             
         edit_menu.addSeparator()
+
+        # Create Subsystem
+        if hasattr(self.window, 'create_subsystem'):
+             action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.create_subsystem)
+             action.setShortcut("Ctrl+G")
+        elif hasattr(self.window, 'canvas') and hasattr(self.window.canvas, '_create_subsystem_trigger'):
+             action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.canvas._create_subsystem_trigger)
+             action.setShortcut("Ctrl+G")
+
+        edit_menu.addSeparator()
         
         if hasattr(self.window, 'show_command_palette'):
             edit_menu.addAction("Command &Palette\tCtrl+P", self.window.show_command_palette)
@@ -129,9 +139,10 @@ class MenuBuilder:
 
         # Grid toggle
         if hasattr(self.window, 'toggle_grid'):
-            action = view_menu.addAction("Show &Grid\tCtrl+G", self.window.toggle_grid)
+            action = view_menu.addAction("Show &Grid\tCtrl+Shift+G", self.window.toggle_grid)
             action.setCheckable(True)
             action.setChecked(getattr(self.window, 'show_grid', True)) # default True
+            action.setShortcut("Ctrl+Shift+G")
             self.window.grid_toggle_action = action
 
         view_menu.addSeparator()
@@ -144,6 +155,13 @@ class MenuBuilder:
              action.setCheckable(True)
              action.setChecked(False)
              self.window.variable_editor_action = action
+             
+        # Workspace Editor toggle
+        if hasattr(self.window, 'toggle_workspace_editor'):
+             action = view_menu.addAction("Workspace Variables", self.window.toggle_workspace_editor)
+             action.setCheckable(True)
+             action.setChecked(False)
+             self.window.workspace_editor_action = action
              
              # Shortcut handling might remain in MainWindow or move here?
              # MainWindow had: self.variable_editor_shortcut = QShortcut(...)
