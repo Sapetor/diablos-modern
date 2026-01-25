@@ -37,7 +37,9 @@ from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
+from modern_ui.widgets.workspace_editor import WorkspaceEditor
 from modern_ui.widgets.waveform_inspector import WaveformInspector
+from modern_ui.widgets.breadcrumb_bar import BreadcrumbBar
 from modern_ui.platform_config import get_platform_config
 from lib.services.diagram_service import DiagramService
 
@@ -102,6 +104,15 @@ class ModernDiaBloSWindow(QMainWindow):
         
         # Connect variable editor signals
         self.variable_editor.variables_updated.connect(self._on_variables_updated)
+
+        # Initialize Workspace Editor (Dockable)
+        self.workspace_editor = WorkspaceEditor(self)
+        self.workspace_editor_dock = QDockWidget("Workspace Variables", self)
+        self.workspace_editor_dock.setWidget(self.workspace_editor)
+        self.workspace_editor_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.workspace_editor_dock)
+        self.workspace_editor_dock.hide()
+
 
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
@@ -223,6 +234,11 @@ class ModernDiaBloSWindow(QMainWindow):
         elif hasattr(self, 'canvas') and hasattr(self.canvas, '_select_all_blocks'):
              self.canvas._select_all_blocks()
 
+    def create_subsystem(self):
+        """Create subsystem from selection (delegate to canvas)."""
+        if hasattr(self, 'canvas') and hasattr(self.canvas, '_create_subsystem_trigger'):
+            self.canvas._create_subsystem_trigger()
+
     # Helper methods for view actions
     def zoom_in(self):
         self.set_zoom(self.zoom_level * 1.2)
@@ -250,6 +266,15 @@ class ModernDiaBloSWindow(QMainWindow):
              self.variable_editor.setVisible(visible)
              if hasattr(self, 'variable_editor_action'):
                  self.variable_editor_action.setChecked(visible)
+
+    def toggle_workspace_editor(self):
+        """Toggle visibility of the workspace editor dock."""
+        if hasattr(self, 'workspace_editor_dock'):
+             visible = not self.workspace_editor_dock.isVisible()
+             self.workspace_editor_dock.setVisible(visible)
+             if hasattr(self, 'workspace_editor_action'):
+                 self.workspace_editor_action.setChecked(visible)
+
 
     def show_command_palette(self):
         # Placeholder or existing?
@@ -447,7 +472,13 @@ class ModernDiaBloSWindow(QMainWindow):
         self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
         self.canvas.command_palette_requested.connect(self.show_command_palette)
 
-        # Add canvas to container
+        # Create breadcrumb bar
+        self.breadcrumb_bar = BreadcrumbBar()
+        self.breadcrumb_bar.path_clicked.connect(self.canvas.navigate_scope)
+        self.canvas.scope_changed.connect(self.breadcrumb_bar.set_path)
+
+        # Add widgets to container
+        container_layout.addWidget(self.breadcrumb_bar)
         container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
 
         # Create error panel

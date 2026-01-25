@@ -66,6 +66,7 @@ class ScopeBlock(BaseBlock):
         """
         Collect input signals for plotting.
         """
+        logger.debug(f"SCOPE EXECUTE: {self.block_name} time={time} inputs={inputs}")
         # To prevent saving data in wrong iterations (RK45 integration)
         if '_skip_' in params.keys() and params['_skip_']:
             params['_skip_'] = False

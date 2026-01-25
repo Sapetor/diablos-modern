@@ -90,3 +90,35 @@ class WorkspaceManager:
                 pass
         
         return resolved
+
+    def set_variable(self, name, value):
+        """Set or update a variable."""
+        self.variables[name] = value
+
+    def delete_variable(self, name):
+        """Delete a variable."""
+        if name in self.variables:
+            del self.variables[name]
+
+    def get_all_variables(self):
+        """Get all variables as a dictionary."""
+        return self.variables
+
+    def save_to_file(self, filepath=None):
+        """Save variables to the current or specified file."""
+        path = filepath or self.workspace_file
+        if not path:
+            logger.warning("No filepath specified for saving workspace.")
+            return False
+            
+        try:
+            with open(path, 'w') as f:
+                for name, value in self.variables.items():
+                    # We use repr() to ensure the value is written as a valid Python literal (e.g. string with quotes)
+                    f.write(f"{name} = {repr(value)}\n")
+            logger.info(f"Saved workspace to {path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving workspace file: {e}")
+            return False
+

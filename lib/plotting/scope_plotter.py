@@ -25,15 +25,25 @@ class ScopePlotter:
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         try:
+            # Use active blocks from engine if available (flattened execution), otherwise model list
+            has_engine = hasattr(self.dsim, 'engine')
+            use_active = has_engine and self.dsim.engine.active_blocks_list
+            source_blocks = self.dsim.engine.active_blocks_list if use_active else self.dsim.blocks_list
+            
+            logger.info(f"PLOT DEBUG: Engine={has_engine}, UseActive={use_active}, Blocks={len(source_blocks)}")
+            
             # Plot Scopes - scope stores data in exec_params during execution
             vectors = []
-            for x in self.dsim.blocks_list:
+            for x in source_blocks:
                 if x.block_fn == 'Scope':
                     # Check exec_params first (used during execution), fallback to params
                     params = getattr(x, 'exec_params', x.params)
                     vec = params.get('vector')
                     if vec is None:
                         vec = x.params.get('vector')
+                    
+                    vec_len = len(vec) if vec is not None else 'None'
+                    logger.info(f"PLOT DEBUG: Found Scope {x.name}. Vector len: {vec_len}")
                     vectors.append(vec)
             valid_vectors = [v for v in vectors if v is not None and hasattr(v, '__len__') and len(v) > 0]
             if valid_vectors:
@@ -42,7 +52,7 @@ class ScopePlotter:
                 logger.info("PLOT: No scope data available to plot.")
             
             # Plot XYGraphs
-            for block in self.dsim.blocks_list:
+            for block in source_blocks:
                 if block.block_fn == 'XYGraph':
                     params = getattr(block, 'exec_params', block.params)
                     x_data = params.get('_x_data_', [])
@@ -51,7 +61,7 @@ class ScopePlotter:
                         self._plot_xygraph(block)
             
             # Plot FFT spectrums
-            for block in self.dsim.blocks_list:
+            for block in source_blocks:
                 if block.block_fn == 'FFT':
                     params = getattr(block, 'exec_params', block.params)
                     buffer = params.get('_fft_buffer_', [])
@@ -195,9 +205,16 @@ class ScopePlotter:
         Build a list of step-mode flags (one per Scope block) for plotting.
         """
         modes = []
-        for block in self.dsim.blocks_list:
+        # Use active blocks from engine if available
+        source_blocks = self.dsim.engine.active_blocks_list if hasattr(self.dsim, 'engine') and self.dsim.engine.active_blocks_list else self.dsim.blocks_list
+        
+        for block in source_blocks:
             if block.block_fn == 'Scope':
-                inputs, _ = self.dsim.get_neighbors(block.name)
+                # Note: get_neighbors uses active list if execution initialized, 
+                # but we need to ensure dsim helper knows which list or engine helper is used.
+                # dsim.get_neighbors delegates to engine.get_neighbors? No, DSim has its own.
+                # We should use engine.get_neighbors if possible.
+                inputs, _ = self.dsim.engine.get_neighbors(block.name) if hasattr(self.dsim, 'engine') else self.dsim.get_neighbors(block.name)
                 if not inputs:
                     modes.append(False)
                     continue
@@ -223,7 +240,9 @@ class ScopePlotter:
         step_modes = self._scope_step_modes()
         traces = []
         step_idx = 0
-        for block in self.dsim.blocks_list:
+        
+        source_blocks = self.dsim.engine.active_blocks_list if hasattr(self.dsim, 'engine') and self.dsim.engine.active_blocks_list else self.dsim.blocks_list
+        for block in source_blocks:
             if block.block_fn != 'Scope':
                 continue
             labels = block.exec_params.get('vec_labels', block.params.get('vec_labels'))
@@ -257,7 +276,10 @@ class ScopePlotter:
         logger.debug("Attempting to plot...")
         labels_list = []
         vector_list = []
-        for block in self.dsim.blocks_list:
+        # Use active blocks from engine if available
+        source_blocks = self.dsim.engine.active_blocks_list if hasattr(self.dsim, 'engine') and self.dsim.engine.active_blocks_list else self.dsim.blocks_list
+        
+        for block in source_blocks:
             if block.block_fn == 'Scope':
                 logger.debug(f"Found Scope block: {block.name}")
                 # Use exec_params as that's where simulation data is stored

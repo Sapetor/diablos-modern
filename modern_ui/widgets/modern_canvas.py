@@ -38,9 +38,13 @@ class ModernCanvas(QWidget):
     connection_created = pyqtSignal(object, object)  # Emitted when a connection is made
     simulation_status_changed = pyqtSignal(str)  # Emitted when simulation status changes
     command_palette_requested = pyqtSignal()  # Emitted when command palette should open
+    scope_changed = pyqtSignal(list)  # Emitted when navigation scope changes (path)
     
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
+        
+        # Enable keyboard focus
+        self.setFocusPolicy(Qt.StrongFocus)
         
         # Initialize core DSim functionality
         self.dsim = dsim
@@ -440,6 +444,18 @@ class ModernCanvas(QWidget):
                 clicked_block = self._get_clicked_block(pos)
                 clicked_line, _ = self._get_clicked_line(pos)
 
+                if clicked_block:
+                    # Check if it's a subsystem to enter
+                    if getattr(clicked_block, 'block_type', '') == 'Subsystem':
+                        self.dsim.enter_subsystem(clicked_block)
+                        self.update()
+                        logger.info(f"Entered subsystem: {clicked_block.name}")
+                        self.scope_changed.emit(self.dsim.get_current_path())
+                        return
+                    else:
+                        # Open block properties otherwise
+                        self._show_block_properties(clicked_block)
+
                 if not clicked_block and not clicked_line:
                     # Double-clicked on empty space - open command palette
                     logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
@@ -448,10 +464,38 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
 
-
-
+    def keyPressEvent(self, event):
+        """Handle key press events."""
+        # logger.info(f"Key press: {event.key()} Modifiers: {event.modifiers()}")
+        try:
+            if event.key() == Qt.Key_Escape:
+                # If selection exists, clear it
+                has_selection = any(b.selected for b in getattr(self.dsim, 'blocks_list', [])) or \
+                                any(l.selected for l in getattr(self.dsim, 'line_list', []))
+                
+                if has_selection:
+                    self._clear_selections()
+                else:
+                    # If no selection, try to go up directory/subsystem
+                    if self.dsim.current_subsystem:
+                        self.dsim.exit_subsystem()
+                        self.update()
+                        self.scope_changed.emit(self.dsim.get_current_path())
+                        
+            elif event.key() == Qt.Key_Delete:
+                 self.remove_selected_items()
+            
+            elif event.key() == Qt.Key_G and (event.modifiers() & Qt.ControlModifier):
+                 # Ctrl+G to Group/Create Subsystem
+                 self._create_subsystem_trigger()
+                 
+            else:
+                 super().keyPressEvent(event)
+                 
         except Exception as e:
-            logger.error(f"Error in _handle_left_click: {str(e)}")
+            logger.error(f"Error in keyPressEvent: {str(e)}")
+            
+    # Cleaned up dangling except block here
     
     def _handle_right_click(self, pos):
         """Handle right mouse button clicks - show context menus."""
@@ -502,9 +546,13 @@ class ModernCanvas(QWidget):
         self.generate_root_locus(rootlocus_block)
 
     def _get_clicked_block(self, pos):
+        # logger.info(f"Checking click at {pos}")
         for block in reversed(getattr(self.dsim, 'blocks_list', [])):
             if hasattr(block, 'rect') and block.rect.contains(pos):
+                # logger.info(f"Hit block: {block.name}")
                 return block
+            # else:
+            #     logger.debug(f"Miss: {block.name} rect={block.rect}")
         return None
 
     def _get_clicked_line(self, pos):
@@ -1127,7 +1175,10 @@ class ModernCanvas(QWidget):
 
             # Deep copy the block data (not the actual block objects)
             self.clipboard_blocks = []
-            for block in selected_blocks:
+            selected_indices = {} # Map original block object to its index in clipboard
+
+            # 1. Copy Blocks
+            for i, block in enumerate(selected_blocks):
                 block_data = {
                     'block_fn': block.block_fn,
                     'coords': QRect(block.left, block.top, block.width, block.height_base),
@@ -1142,8 +1193,29 @@ class ModernCanvas(QWidget):
                     'flipped': getattr(block, 'flipped', False)
                 }
                 self.clipboard_blocks.append(block_data)
+                selected_indices[block] = i
 
-            logger.info(f"Copied {len(self.clipboard_blocks)} block(s) to clipboard")
+            # 2. Copy Internal Connections
+            self.clipboard_connections = []
+            
+            # Map names to objects for lookup
+            name_to_block = {b.name: b for b in self.dsim.blocks_list}
+            
+            for line in self.dsim.connections_list:
+                # Resolve block objects from names
+                src_obj = name_to_block.get(line.srcblock)
+                dst_obj = name_to_block.get(line.dstblock)
+                
+                if src_obj and dst_obj and src_obj in selected_indices and dst_obj in selected_indices:
+                    conn_data = {
+                        'start_index': selected_indices[src_obj],
+                        'start_port': line.srcport,
+                        'end_index': selected_indices[dst_obj],
+                        'end_port': line.dstport
+                    }
+                    self.clipboard_connections.append(conn_data)
+
+            logger.info(f"Copied {len(self.clipboard_blocks)} blocks and {len(self.clipboard_connections)} connections")
         except Exception as e:
             logger.error(f"Error copying blocks: {str(e)}")
 
@@ -1211,6 +1283,44 @@ class ModernCanvas(QWidget):
                 # Add to blocks list
                 self.dsim.blocks_list.append(new_block)
                 pasted_blocks.append(new_block)
+
+            # Recreate Connections
+            from lib.simulation.connection import DLine
+            if hasattr(self, 'clipboard_connections'):
+                for conn_data in self.clipboard_connections:
+                    try:
+                        start_block = pasted_blocks[conn_data['start_index']]
+                        end_block = pasted_blocks[conn_data['end_index']]
+                        
+                        start_port = conn_data['start_port']
+                        end_port = conn_data['end_port']
+
+                        # Create new line
+                        # Need new SID
+                        line_ids = [l.sid for l in self.dsim.connections_list]
+                        new_sid = max(line_ids) + 1 if line_ids else 0
+                        
+                        # Minimal points (start/end)
+                        p1 = start_block.out_coords[start_port]
+                        p2 = end_block.in_coords[end_port]
+
+                        new_line = DLine(
+                            sid=new_sid,
+                            srcblock=start_block.name,
+                            srcport=start_port,
+                            dstblock=end_block.name,
+                            dstport=end_port,
+                            points=[p1, p2]
+                        )
+                        
+                        # Ensure path is calculated
+                        new_line.update_line(self.dsim.blocks_list)
+                        
+                        self.dsim.connections_list.append(new_line)
+                    except IndexError:
+                        logger.warning("Skipping connection: Block index out of range")
+                    except Exception as e:
+                        logger.error(f"Error pasting connection: {e}")
 
             # Mark as dirty
             self.dsim.dirty = True
@@ -1303,6 +1413,150 @@ class ModernCanvas(QWidget):
         """Cut selected blocks to clipboard."""
         self._copy_selected_blocks()
         self.remove_selected_items()
+
+    def navigate_scope(self, index):
+        """
+        Navigate to a specific depth in the hierarchy.
+        Args:
+            index: The index in the path list to navigate to (0 = Top Level).
+        """
+        current_path = self.dsim.get_current_path()
+        current_depth = len(current_path) - 1 # 0-indexed index of current scope
+        
+        target_depth = index
+        
+        if target_depth < 0: return
+        if target_depth >= current_depth: return # Already there or invalid
+        
+        # Pop scopes until we reach target
+        # Calculate how many times to pop
+        # If current is depth 2 (Main > Sub1 > Sub2), index 0 (Main) -> pop 2 times
+        pops = current_depth - target_depth
+        
+        for _ in range(pops):
+            self.dsim.exit_subsystem()
+            
+        self.update()
+        self.scope_changed.emit(self.dsim.get_current_path())
+        logger.info(f"Navigated to scope index {index}")
+
+    def contextMenuEvent(self, event):
+        """Handle context menu events."""
+        # This might be called automatically by Qt on right click.
+        # Check if we should delegate or handle here.
+        # Since _handle_right_click also exists (called by interaction manager), 
+        # let's try to map event position to items.
+        
+        pos = event.pos()
+        # Convert to world pos if needed? 
+        # _get_clicked_block expects... screen pos?
+        # _get_clicked_block uses block.rect (world coords usually? no rect is screen/canvas coords?).
+        # Blocks are stored in world coords? Need validation.
+        # Mouse events usually give widget coords.
+        # _get_clicked_block expects 'pos' in same system as block.rect.
+        # If block.rect is in logical coords, we need screen_to_world.
+        
+        world_pos = self.screen_to_world(pos)
+        block = self._get_clicked_block(world_pos)
+        
+        if block:
+            self._show_block_context_menu(block, event.globalPos())
+        else:
+             # Check line?
+             line, _ = self._get_clicked_line(world_pos)
+             if line:
+                 self._show_connection_context_menu(line, event.globalPos())
+             else:
+                 self._show_canvas_context_menu(event.globalPos())
+
+    def _show_block_context_menu(self, block, global_pos):
+        """Show context menu for a block."""
+        from PyQt5.QtWidgets import QMenu, QAction
+        
+        context_menu = QMenu(self)
+        
+        # Check selection (might be multiple)
+        selected_blocks = [b for b in self.dsim.blocks_list if b.selected]
+        if block not in selected_blocks:
+            # Right clicked on unselected block?
+            # Maybe select it alone?
+            pass # Usually right click doesn't change selection unless separate logic
+            
+        # If multiple selected, actions apply to all
+        target_blocks = selected_blocks if selected_blocks else [block]
+
+        # Duplicate
+        action_duplicate = QAction("Duplicate", self)
+        action_duplicate.triggered.connect(lambda: [self._duplicate_block(b) for b in target_blocks])
+        context_menu.addAction(action_duplicate)
+        
+        # Delete
+        action_delete = QAction("Delete", self)
+        action_delete.triggered.connect(self.remove_selected_items)
+        context_menu.addAction(action_delete)
+        
+        context_menu.addSeparator()
+        
+        # Copy
+        action_copy = QAction("Copy", self)
+        action_copy.triggered.connect(self._copy_selected_blocks)
+        context_menu.addAction(action_copy)
+
+        context_menu.addSeparator()
+        
+        # Subsystem Creation
+        if len(target_blocks) > 0:
+            action_create_subsystem = QAction("Create Subsystem from Selection", self)
+            action_create_subsystem.triggered.connect(self._create_subsystem_trigger)
+            context_menu.addAction(action_create_subsystem)
+            
+        # Specific Block Actions (e.g. Bode)
+        if hasattr(block, 'block_fn'):
+             if block.block_fn == 'BodeMag':
+                 context_menu.addSeparator()
+                 action_bode = QAction("Generate Bode Plot", self)
+                 action_bode.triggered.connect(lambda: self.generate_bode_plot(block))
+                 context_menu.addAction(action_bode)
+             elif block.block_fn == 'RootLocus':
+                 context_menu.addSeparator()
+                 action_rl = QAction("Generate Root Locus", self)
+                 action_rl.triggered.connect(lambda: self.generate_root_locus(block))
+                 context_menu.addAction(action_rl)
+
+        context_menu.exec_(global_pos)
+
+    def _show_canvas_context_menu(self, global_pos):
+        """Show context menu for empty canvas."""
+        from PyQt5.QtWidgets import QMenu, QAction
+        context_menu = QMenu(self)
+        
+        action_paste = QAction("Paste", self)
+        action_paste.triggered.connect(lambda: self._paste_blocks(self.mapFromGlobal(global_pos)))
+        if not getattr(self, 'clipboard_blocks', None):
+            action_paste.setEnabled(False)
+        context_menu.addAction(action_paste)
+        
+        context_menu.exec_(global_pos)
+
+    def _show_connection_context_menu(self, line, global_pos):
+        """Show context menu for connection."""
+        from PyQt5.QtWidgets import QMenu, QAction
+        context_menu = QMenu(self)
+        
+        action_delete = QAction("Delete Connection", self)
+        # Assuming line is selected or we target it specifically
+        # For now reusing remove_selected_items if line selected
+        action_delete.triggered.connect(self.remove_selected_items)
+        context_menu.addAction(action_delete)
+        
+        context_menu.exec_(global_pos)
+        
+    def _create_subsystem_trigger(self):
+        """Trigger subsystem creation."""
+        logger.info("Create subsystem trigger called")
+        subsys = self.dsim.create_subsystem_from_selection()
+        if subsys:
+            self.update()
 
     def _paste_blocks(self, pos):
         """Paste blocks from clipboard at specified position."""
