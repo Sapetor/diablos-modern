@@ -176,25 +176,85 @@ class DSim:
     def exit_subsystem(self):
         """
         Exit the current subsystem and return to the parent scope.
+        Syncs external ports with internal Inport/Outport blocks.
         """
         if not self.navigation_stack:
             logger.warning("Already at top level.")
             return
 
-        # Restore previous context
+        # 1. Capture current internal state before popping
+        internal_blocks = self.blocks_list
+        current_subsystem_name = self.current_subsystem
+
+        # 2. Restore previous context
         (prev_blocks, prev_lines, prev_subsystem) = self.navigation_stack.pop()
         
-        # Restore model lists
+        # 3. Restore model lists
         self.model.blocks_list = prev_blocks
         self.model.line_list = prev_lines
         
-        # Sync DSim references
+        # 4. Sync DSim references
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list
         self.connections_list = self.line_list
         
         self.current_subsystem = prev_subsystem
         
+        # 5. Find the parent Subsystem block in the restored scope
+        parent_block = None
+        for block in self.blocks_list:
+            if block.name == current_subsystem_name:
+                parent_block = block
+                break
+        
+        if parent_block:
+            logger.info(f"Syncing ports for subsystem {current_subsystem_name}")
+            
+            # Find all internal ports
+            inports = [b for b in internal_blocks if getattr(b, 'block_type', '') == 'Inport']
+            outports = [b for b in internal_blocks if getattr(b, 'block_type', '') == 'Outport']
+            
+            # Sort by name/id to be deterministic (or position Y if preferred)
+            # Let's sort by Y position to allow user to reorder ports by moving blocks
+            inports.sort(key=lambda b: b.top)
+            outports.sort(key=lambda b: b.top)
+            
+            # Update parent block ports definition
+            # Ensure 'ports' dict exists
+            if not hasattr(parent_block, 'ports'):
+                parent_block.ports = {}
+            
+            # Input Ports
+            parent_block.ports['in'] = []
+            for idx, inp in enumerate(inports):
+                # Calculate relative position on the parent block edge for visualization
+                # Distribute evenly
+                rel_y = (parent_block.height / (len(inports) + 1)) * (idx + 1)
+                parent_block.ports['in'].append({
+                    'pos': (0, rel_y),
+                    'type': 'input',
+                    'name': str(idx+1) # Logical index
+                })
+            
+            # Output Ports
+            parent_block.ports['out'] = []
+            for idx, outp in enumerate(outports):
+                rel_y = (parent_block.height / (len(outports) + 1)) * (idx + 1)
+                parent_block.ports['out'].append({
+                    'pos': (parent_block.width, rel_y),
+                    'type': 'output',
+                    'name': str(idx+1)
+                })
+                
+            # Update geometry (port coordinates)
+            if hasattr(parent_block, 'update_Block'):
+                parent_block.update_Block()
+                
+            # Mark dirty to ensure save
+            self.dirty = True
+        else:
+            logger.error(f"Could not find parent block {current_subsystem_name} after exiting scope")
+
         # Reset selection
         for block in self.blocks_list:
              block.selected = False

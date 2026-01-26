@@ -2,7 +2,11 @@
 
 All notable changes to DiaBloS will be documented in this file.
 
-## [Unreleased] - 2026-01-09
+## [Unreleased] - 2026-01-26
+
+### New Features
+- **MIMO Subsystem Support**: Subsystems now automatically synchronize their external ports based on internal `Inport` and `Outport` blocks. This allows for subsystems with arbitrarily many inputs and outputs.
+
 
 ### Major Refactoring
 This release includes significant architectural improvements to reduce code complexity.
