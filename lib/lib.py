@@ -249,6 +249,16 @@ class DSim:
             # Update geometry (port coordinates)
             if hasattr(parent_block, 'update_Block'):
                 parent_block.update_Block()
+            
+            # Update parameters to reflect new port counts
+            # This is critical for the Engine and Flattener to know the correct port count
+            if parent_block.in_ports != parent_block.params.get('_inputs_'):
+                 parent_block.params['_inputs_'] = parent_block.in_ports
+                 logger.debug(f"Synced subsystem '_inputs_' param to {parent_block.in_ports}")
+                 
+            if parent_block.out_ports != parent_block.params.get('_outputs_'):
+                 parent_block.params['_outputs_'] = parent_block.out_ports
+                 logger.debug(f"Synced subsystem '_outputs_' param to {parent_block.out_ports}")
                 
             # Mark dirty to ensure save
             self.dirty = True
