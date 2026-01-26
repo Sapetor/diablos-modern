@@ -57,6 +57,26 @@ M = [[1, 0], [0, 1]]
 
 ---
 
+## Subsystems
+
+Subsystems allowed you to group blocks together to simplify large diagrams.
+
+### Creating a Subsystem
+1. Select multiple blocks using the selection rectangle or Shift+Click.
+2. Press **Ctrl+G** (Group).
+3. Selected blocks are replaced by a single "Subsystem" block.
+
+### Editing a Subsystem
+- **Double-click** a subsystem to enter it.
+- **Press Esc** or click "Up" in the breadcrumb bar to exit.
+
+### Adding Ports (MIMO)
+- Inside a subsystem, drag **Inport** and **Outport** blocks from the palette.
+- When you exit the subsystem, the parent block automatically updates to match the number and order of internal ports.
+- Top-to-bottom order of internal ports corresponds to top-to-bottom order of external pins.
+
+---
+
 ## MIMO Support
 
 DiaBloS supports vector and matrix signals:
