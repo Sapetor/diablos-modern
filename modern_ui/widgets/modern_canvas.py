@@ -450,6 +450,12 @@ class ModernCanvas(QWidget):
                         self.dsim.enter_subsystem(clicked_block)
                         self.update()
                         logger.info(f"Entered subsystem: {clicked_block.name}")
+                        
+                        # Reset view to ensure blocks are visible
+                        self.pan_offset = QPoint(0, 0)
+                        self.zoom_factor = 1.0
+                        self.zoom_to_fit()
+                        
                         self.scope_changed.emit(self.dsim.get_current_path())
                         return
                     else:
@@ -480,6 +486,12 @@ class ModernCanvas(QWidget):
                     if self.dsim.current_subsystem:
                         self.dsim.exit_subsystem()
                         self.update()
+                        
+                        # Reset view on exit too
+                        self.pan_offset = QPoint(0, 0)
+                        self.zoom_factor = 1.0
+                        self.zoom_to_fit()
+                        
                         self.scope_changed.emit(self.dsim.get_current_path())
                         
             elif event.key() == Qt.Key_Delete:
@@ -494,6 +506,22 @@ class ModernCanvas(QWidget):
                  
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
+
+    def navigate_scope(self, path_str):
+        """Navigate to a specific scope path (e.g. via BreadcrumbBar)."""
+        logger.info(f"Navigating to scope: {path_str}")
+        if hasattr(self.dsim, 'navigate_scope'):
+            self.dsim.navigate_scope(path_str)
+            self.update()
+            
+            # Reset view
+            self.pan_offset = QPoint(0, 0)
+            self.zoom_factor = 1.0
+            self.zoom_to_fit()
+            
+            self.scope_changed.emit(self.dsim.get_current_path())
+        else:
+            logger.warning("DSim does not support navigate_scope")
             
     # Cleaned up dangling except block here
     

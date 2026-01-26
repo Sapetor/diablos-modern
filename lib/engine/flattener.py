@@ -183,6 +183,20 @@ class Flattener:
                     curr = (full_outport_name, 0)
                     continue
                 else:
+                     # 3. Last Resort: Scan children for matching "Out*" name or loose match
+                     found_child = None
+                     prefix = f"{src_name}/"
+                     for k in self.block_map:
+                         if k.startswith(prefix):
+                             child_name = k[len(prefix):]
+                             if child_name.lower() == outport_name.lower():
+                                 found_child = k
+                                 break
+                                 
+                     if found_child:
+                         curr = (found_child, 0)
+                         continue
+                         
                      logger.warning(f"Could not find Outport {full_outport_name}. Available: {list(self.block_map.keys())}")
                      return None
                      
