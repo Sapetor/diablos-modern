@@ -56,6 +56,19 @@ class SystemCompiler:
             # Normalize to Title Case (e.g. Sine, Integrator) or just allow 'sine'
             # Our Set is Title Case. 
             b_type = block.block_fn
+            
+            # Special handling for Subsystems (Recursive check)
+            if b_type == 'Subsystem':
+                 if hasattr(block, 'sub_blocks'):
+                     if not self.check_compilability(block.sub_blocks):
+                         return False
+                 continue
+
+            # Special handling for structural blocks (Inport/Outport)
+            # They are flattened away or handled as sources/sinks
+            if b_type in ('Inport', 'Outport'):
+                continue
+
             if b_type not in self.COMPILABLE_BLOCKS:
                 # Try correcting case (Capitalize first letter) just in case
                 if b_type.title() in self.COMPILABLE_BLOCKS:
