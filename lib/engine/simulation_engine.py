@@ -868,16 +868,25 @@ class SimulationEngine:
             
             # Ensure hierarchy is calculated for topological sort
             # Pass lines to allow flattening
+            # initialize_execution populates self.active_blocks_list and self.active_line_list
             if not self.initialize_execution(blocks, lines):
                 logger.error("Failed to initialize execution (algebraic loop or error).")
                 return False
             
+            # Use the FLATTENED lists for checking and compilation
+            current_blocks = self.active_blocks_list
+            current_lines = self.active_line_list
+            
+            # Final check on flattened system
+            if not self.compiler.check_compilability(current_blocks):
+                logger.error("Flattened system contains uncompilable blocks.")
+                return False
+            
             # Topological sort via hierarchy
-            sorted_blocks = sorted(blocks, key=lambda b: b.hierarchy)
+            sorted_blocks = sorted(current_blocks, key=lambda b: b.hierarchy)
             
             logger.info("Compiling system...")
-            logger.info("Compiling system...")
-            model_func, y0, state_map, block_matrices = self.compiler.compile_system(blocks, sorted_blocks, lines)
+            model_func, y0, state_map, block_matrices = self.compiler.compile_system(current_blocks, sorted_blocks, current_lines)
             
             logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
             t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
@@ -920,17 +929,17 @@ class SimulationEngine:
             # Replay Sort: Topological sort respecting Direct Feedthrough
             # 1. Build Graph
             replay_order = []
-            in_degree = {b.name: 0 for b in blocks}
-            adj = {b.name: [] for b in blocks}
+            in_degree = {b.name: 0 for b in current_blocks}
+            adj = {b.name: [] for b in current_blocks}
             
             # 2. Add edges only for Direct Feedthrough connections
-            for line in lines:
+            for line in current_lines:
                 src = line.srcblock
                 dst = line.dstblock
                 
                 # Check Direct Feedthrough
                 is_feedthrough = True
-                dst_block = next((b for b in blocks if b.name == dst), None)
+                dst_block = next((b for b in current_blocks if b.name == dst), None)
                 if dst_block:
                     fn = dst_block.block_fn.title() if dst_block.block_fn else ''
                     if fn == 'Statespace': fn = 'StateSpace'
@@ -956,7 +965,7 @@ class SimulationEngine:
                         in_degree[dst] += 1
             
             # 3. Kahn's Algorithm
-            queue = [b for b in blocks if in_degree[b.name] == 0]
+            queue = [b for b in current_blocks if in_degree[b.name] == 0]
             # stable sort for determinism (e.g. step before sine if independent)
             queue.sort(key=lambda b: b.name) 
             
@@ -968,13 +977,13 @@ class SimulationEngine:
                     for v_name in adj[u.name]:
                         in_degree[v_name] -= 1
                         if in_degree[v_name] == 0:
-                            v_block = next((b for b in blocks if b.name == v_name), None)
+                            v_block = next((b for b in current_blocks if b.name == v_name), None)
                             if v_block:
                                 queue.append(v_block)
             
             # If cycles remain (algebraic loops), append leftovers (best effort)
-            if len(replay_order) < len(blocks):
-                leftovers = [b for b in blocks if b not in replay_order]
+            if len(replay_order) < len(current_blocks):
+                leftovers = [b for b in current_blocks if b not in replay_order]
                 # logger.warning(f"Replay Sort: Algebraic loop detected or sort failed. Leftovers: {[b.name for b in leftovers]}")
                 replay_order.extend(leftovers)
                 
@@ -1012,7 +1021,7 @@ class SimulationEngine:
                     
                     # Collect inputs
                     inputs = {}
-                    for line in lines:
+                    for line in current_lines:
                         if line.dstblock == b_name:
                             # Direct feedthrough lookup
                             val = current_signals.get(line.srcblock, 0.0)
@@ -1210,7 +1219,7 @@ class SimulationEngine:
                             logger.info(f"DEBUG Replay Scope {b_name}: input={val}, vec_len={len(block.exec_params['vector'])}")
                 
             # Finalize Scope Vectors (convert to numpy)
-            for block in blocks:
+            for block in current_blocks:
                 if block.block_fn == 'Scope':
                      if hasattr(block, 'exec_params') and 'vector' in block.exec_params:
                         block.exec_params['vector'] = np.array(block.exec_params['vector'])

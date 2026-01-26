@@ -6,6 +6,8 @@ All notable changes to DiaBloS will be documented in this file.
 
 ### New Features
 - **MIMO Subsystem Support**: Subsystems now automatically synchronize their external ports based on internal `Inport` and `Outport` blocks. This allows for subsystems with arbitrarily many inputs and outputs.
+- **Fast Solver Subsystem Support**: The Fast Solver (Compiled Mode) now recursively compiles and flattens Subsystems, allowing complex hierarchical models to run with compiled performance (10-100x speedup).
+
 
 
 ### Major Refactoring

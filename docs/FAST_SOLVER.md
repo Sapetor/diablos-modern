@@ -45,6 +45,8 @@ The following blocks are fully supported in Fast Solver mode. If a diagram conta
 ### Signal Routing
 *   **Mux / Demux**
 *   **Switch**: Routes signals based on control threshold or index.
+*   **Subsystems**: Recursive grouping supported. The compiler flattens subsystems into their primitive components.
+
 
 ### Sinks
 *   **Scope**: Records data for the Waveform Inspector.
