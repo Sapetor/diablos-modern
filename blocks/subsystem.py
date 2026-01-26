@@ -50,3 +50,62 @@ class Subsystem(DBlock):
         # in the standard loop if flattening is used.
         # If executed hierarchically, this would delegate to sub-blocks.
         pass
+
+    def update_Block(self):
+        """
+        Update subsystem geometry.
+        Overrides DBlock.update_Block to assume port positions from self.ports logic
+        if available, matching the internal Inport/Outport locations.
+        """
+        self.in_coords = []
+        self.out_coords = []
+        
+        # Base geometry
+        from PyQt5.QtCore import QPoint, QRect
+        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
+        
+        # 1. Input Ports
+        if hasattr(self, 'ports') and 'in' in self.ports and self.ports['in']:
+            # self.ports['in'] is a list of dicts: {'pos': (x,y), 'type': 'input', 'name': '1'}
+            # The 'pos' is relative to the block's top-left (or maybe just Y relative?).
+            # In create_subsystem_from_selection, we set pos = (0, relative_y).
+            
+            for p in self.ports['in']:
+                # pos is usually a tuple (x, y) relative to subsystem origin
+                # but might need adjustment if logic changed.
+                rel_x, rel_y = p['pos']
+                
+                # Absolute coordinate on canvas
+                # Inputs are on the left usually
+                abs_x = self.left + rel_x
+                abs_y = self.top + rel_y
+                
+                # If flipped? Subsystems might not flip well yet.
+                self.in_coords.append(QPoint(int(abs_x), int(abs_y)))
+                
+            # Sync count
+            self.in_ports = len(self.in_coords)
+            
+        else:
+            # Fallback to default DBlock behavior if no ports map
+            super().update_Block()
+            
+        # 2. Output Ports
+        if hasattr(self, 'ports') and 'out' in self.ports and self.ports['out']:
+            for p in self.ports['out']:
+                rel_x, rel_y = p['pos']
+                
+                # Absolute coordinate
+                abs_x = self.left + rel_x
+                abs_y = self.top + rel_y
+                
+                self.out_coords.append(QPoint(int(abs_x), int(abs_y)))
+                
+            self.out_ports = len(self.out_coords)
+        else:
+            # If we didn't have special output ports but used default for input, 
+            # we need to be careful not to double-call super().
+            # Actually, unconnected outputs should just be 0 if 'out' is empty in ports dict
+            if not (hasattr(self, 'ports') and 'in' in self.ports and self.ports['in']):
+                 # If we fell back for inputs, we likely fell back for outputs too via super()
+                 pass

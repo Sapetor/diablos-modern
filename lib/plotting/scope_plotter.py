@@ -292,8 +292,6 @@ class ScopePlotter:
                 logger.debug(f"Full vector for {block.name}: shape {np.shape(b_vectors)}")
                 logger.debug(f"Labels: {b_labels}")
                 logger.debug(f"Vector length: {len(b_vectors)}")
-                logger.debug(f"Vector type: {type(b_vectors)}")
-                logger.debug(f"Vector sample: {b_vectors[:5]}")
 
         step_modes = self._scope_step_modes()
 
@@ -304,8 +302,22 @@ class ScopePlotter:
             # Sync to dsim for backward compatibility
             self.dsim.plotty = self.plotty
             try:
-                self.plotty.loop(new_t=self.dsim.timeline.astype(float), new_y=[np.array(v).astype(float) for v in vector_list])
+                # Prepare data: ensure flattening if necessary
+                clean_vectors = []
+                for v in vector_list:
+                    arr = np.array(v).astype(float)
+                    # if shape is (N, 1), flatten to (N,)
+                    if arr.ndim == 2 and arr.shape[1] == 1:
+                        arr = arr.flatten()
+                    clean_vectors.append(arr)
+                    
+                self.plotty.loop(new_t=self.dsim.timeline.astype(float), new_y=clean_vectors)
+                
+                # Force visibility
                 self.plotty.show()
+                self.plotty.raise_()
+                self.plotty.activateWindow()
+                
                 logger.debug("SignalPlot should be visible now.")
             except Exception as e:
                 logger.error(f"Error in plotting: {e}")
