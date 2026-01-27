@@ -4,6 +4,7 @@ DLine (connection) class - represents connections between blocks.
 
 import math
 import logging
+import copy
 from typing import List, Tuple, Optional, Union
 from PyQt5.QtGui import QPainterPath, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect
@@ -420,3 +421,33 @@ class DLine:
             self.routing_mode = "bezier"
         # Force recalculation of path when mode changes
         self.modified = False
+
+    def __deepcopy__(self, memo):
+        """
+        Custom deepcopy to exclude QPainterPath (not pickleable).
+        """
+        # Create a new instance
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        
+        for k, v in self.__dict__.items():
+            if k == 'path':
+                # Recreate path later or set to default
+                setattr(result, k, QPainterPath())
+            elif k == 'segments':
+                # Segments are lists of QRect, which are picklable with PyQt5?
+                # QRect pickles fine.
+                try:
+                    setattr(result, k, copy.deepcopy(v, memo))
+                except Exception:
+                     # Fallback 
+                     setattr(result, k, [])
+            else:
+                 try:
+                    setattr(result, k, copy.deepcopy(v, memo))
+                 except Exception as e:
+                    # Ignore unpickleable UI assets
+                    setattr(result, k, None)
+                    
+        return result

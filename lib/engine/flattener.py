@@ -79,7 +79,17 @@ class Flattener:
             if not b_type:
                 b_type = getattr(block, 'block_type', '')
             
-            if b_type == 'Subsystem':
+            # Robust verification: check if explicit Subsystem class
+            is_subsystem = (b_type == 'Subsystem')
+            if not is_subsystem and block.__class__.__name__ == 'Subsystem':
+                is_subsystem = True
+                b_type = 'Subsystem' # ensure consistency
+                
+            # DEBUG LOGGING for Subsystem detection
+            if 'subsystem' in block.name.lower():
+                 logger.info(f"Flattener Inspecting {block.name}: Class={block.__class__.__name__}, b_type={b_type}, is_subsystem={is_subsystem}")
+            
+            if is_subsystem:
                 self.block_map[full_name] = block # Store original (container) for reference if needed
                 self._collect_recursive(block.sub_blocks, block.sub_lines, f"{full_name}/")
             else:
