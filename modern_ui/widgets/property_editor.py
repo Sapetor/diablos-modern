@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QIntValidator, QDoubleValidator, QPalette, QColor
 from modern_ui.themes.theme_manager import theme_manager
+from lib.workspace import WorkspaceManager
 
 class PropertyEditor(QFrame):
     """A widget that dynamically creates a form to edit block properties."""
@@ -201,14 +202,42 @@ class PropertyEditor(QFrame):
         try:
             if target_type == list:
                 # Try to parse as list
-                val = ast.literal_eval(text)
-                if not isinstance(val, list):
-                    raise ValueError("Not a list")
-                converted_value = val
+                try:
+                    val = ast.literal_eval(text)
+                    if not isinstance(val, list):
+                        raise ValueError("Not a list")
+                    converted_value = val
+                except (ValueError, SyntaxError) as e:
+                    # Check if it's a variable in workspace that evaluates to a list
+                    ws = WorkspaceManager()
+                    if text in ws.variables and isinstance(ws.variables[text], list):
+                         converted_value = text # Keep as string reference
+                    else:
+                         raise e
+
             elif target_type == int:
-                converted_value = int(text)
+                try:
+                    converted_value = int(text)
+                except ValueError:
+                    # Check workspace
+                    ws = WorkspaceManager()
+                    if text in ws.variables:
+                        # We accept it as a reference. Use string.
+                        # Backend (resolve_params) will handle it.
+                        converted_value = text
+                    else:
+                        raise ValueError(f"'{text}' is not an integer or known variable")
+
             elif target_type == float:
-                converted_value = float(text)
+                try:
+                     converted_value = float(text)
+                except ValueError:
+                    # Check workspace
+                    ws = WorkspaceManager()
+                    if text in ws.variables:
+                         converted_value = text
+                    else:
+                         raise ValueError(f"'{text}' is not a float or known variable")
             else:
                 converted_value = text # String is always valid
                 

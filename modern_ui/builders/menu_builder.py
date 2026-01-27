@@ -151,24 +151,19 @@ class MenuBuilder:
         
         # Variable Editor toggle
         if hasattr(self.window, 'toggle_variable_editor'):
-             action = view_menu.addAction("Show/Hide Variable &Editor\tCmd+Shift+V", self.window.toggle_variable_editor)
+             action = view_menu.addAction("Show/Hide Variable &Editor\tCtrl+Shift+V", self.window.toggle_variable_editor)
              action.setCheckable(True)
              action.setChecked(False)
+             action.setShortcut("Ctrl+Shift+V")
              self.window.variable_editor_action = action
              
         # Workspace Editor toggle
         if hasattr(self.window, 'toggle_workspace_editor'):
-             action = view_menu.addAction("Workspace Variables", self.window.toggle_workspace_editor)
+             action = view_menu.addAction("Workspace &Variables\tCtrl+Shift+W", self.window.toggle_workspace_editor)
              action.setCheckable(True)
              action.setChecked(False)
+             action.setShortcut("Ctrl+Shift+W")
              self.window.workspace_editor_action = action
-             
-             # Shortcut handling might remain in MainWindow or move here?
-             # MainWindow had: self.variable_editor_shortcut = QShortcut(...)
-             # We will assume MainWindow handles shortcut separately if it's complex, 
-             # or we can move it here if we import QShortcut. 
-             # For now, let's leave shortcut creation keying off the method existance, 
-             # but the MENU action is handled here.
 
         view_menu.addSeparator()
         
