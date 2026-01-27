@@ -1095,11 +1095,30 @@ class ModernDiaBloSWindow(QMainWindow):
             self.variable_editor_dock.show()
             self.variable_editor_action.setChecked(True)
             self.toast.show_message("Variable Editor shown")
+
+    def toggle_workspace_editor(self):
+        """Toggle Workspace Editor visibility."""
+        if hasattr(self, 'workspace_editor_dock'):
+            if self.workspace_editor_dock.isVisible():
+                self.workspace_editor_dock.hide()
+                if hasattr(self, 'workspace_editor_action'):
+                    self.workspace_editor_action.setChecked(False)
+                self.toast.show_message("Workspace Variables hidden")
+            else:
+                self.workspace_editor_dock.show()
+                if hasattr(self, 'workspace_editor_action'):
+                    self.workspace_editor_action.setChecked(True)
+                self.toast.show_message("Workspace Variables shown")
     
     def _on_variables_updated(self):
         """Handle variable updates from the Variable Editor."""
         try:
             var_count = len(WorkspaceManager().variables)
+            
+            # Refresh the Workspace Editor (table view)
+            if hasattr(self, 'workspace_editor'):
+                self.workspace_editor.refresh_variables()
+                
             self.toast.show_message(f"✓ Workspace updated ({var_count} variables)", duration=2000)
             self.status_message.setText(f"Workspace updated with {var_count} variable(s)")
             logger.info(f"Workspace updated from Variable Editor: {var_count} variables")

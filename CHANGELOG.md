@@ -11,6 +11,9 @@ All notable changes to DiaBloS will be documented in this file.
 - **Subsystem Copy Fix**: Fixed a crash when simulating copied subsystems by correctly restoring the internal structure (`sub_blocks`, `sub_lines`) and maintaining the `Subsystem` class identity during paste.
 - **Copy-Paste Connections Fix**: Fixed an issue where connections were lost after pasting by ensuring lines are registered before trajectory calculation.
 - **Serialization Fix**: Resolved `QPainterPath` pickling errors during copy operations by implementing custom deepcopy logic for connections.
+- **Variable Viewer Sync**: Fixed an issue where the Workspace Viewer table would not automatically refresh after running a script in the Variable Editor.
+- **Property Editor Variables**: Updated the Property Editor to accept workspace variable names (e.g., "K", "A") in numeric fields without validation errors.
+- **UI Shortcuts**: Unified shortcuts for Variable Editor (`Ctrl+Shift+V`) and Workspace Viewer (`Ctrl+Shift+W`).
 
 
 
