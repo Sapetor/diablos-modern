@@ -12,8 +12,8 @@
             "block_fn": "DiscreteTranFn",
             "sid": 0,
             "username": "discretetranfn0",
-            "coords_left": 310,
-            "coords_top": 194,
+            "coords_left": 333,
+            "coords_top": 329,
             "coords_width": 110,
             "coords_height": 80,
             "coords_height_base": 80,
@@ -22,111 +22,19 @@
             "dragging": false,
             "selected": false,
             "b_color": "#e9d5ff",
-            "b_type": 1,
+            "b_type": 2,
             "io_edit": "both",
             "fn_name": "discrete_transfer_function",
             "params": {
-                "numerator": "B",
-                "denominator": "A",
+                "numerator": [
+                    1.0,
+                    0.0
+                ],
+                "denominator": [
+                    1.0,
+                    -0.5
+                ],
                 "sampling_time": -1.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Step",
-            "sid": 0,
-            "username": "step0",
-            "coords_left": 141,
-            "coords_top": 321,
-            "coords_width": 80,
-            "coords_height": 60,
-            "coords_height_base": 60,
-            "in_ports": 0,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#d1fae5",
-            "b_type": 2,
-            "io_edit": "output",
-            "fn_name": "step",
-            "params": {
-                "value": 1.0,
-                "delay": 0.0,
-                "type": "up",
-                "pulse_start_up": true
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Scope",
-            "sid": 0,
-            "username": "scope0",
-            "coords_left": 454,
-            "coords_top": 156,
-            "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#fee2e2",
-            "b_type": 2,
-            "io_edit": "input",
-            "fn_name": "scope",
-            "params": {
-                "labels": "default"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Display",
-            "sid": 0,
-            "username": "display0",
-            "coords_left": 479,
-            "coords_top": 354,
-            "coords_width": 90,
-            "coords_height": 70,
-            "coords_height_base": 70,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#fee2e2",
-            "b_type": 2,
-            "io_edit": "input",
-            "fn_name": "display",
-            "params": {
-                "format": "%.3f",
-                "label": ""
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "XYGraph",
-            "sid": 0,
-            "username": "xygraph0",
-            "coords_left": 342,
-            "coords_top": 404,
-            "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 2,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#fee2e2",
-            "b_type": 2,
-            "io_edit": "input",
-            "fn_name": "xygraph",
-            "params": {
-                "x_label": "X",
-                "y_label": "Y",
-                "title": "XY Plot"
             },
             "external": false,
             "flipped": false
@@ -135,49 +43,20 @@
             "block_fn": "BodeMag",
             "sid": 0,
             "username": "bodemag0",
-            "coords_left": 420,
-            "coords_top": 0,
+            "coords_left": 585,
+            "coords_top": 297,
             "coords_width": 100,
             "coords_height": 80,
             "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 0,
             "dragging": false,
-            "selected": false,
+            "selected": true,
             "b_color": "#fef3c7",
             "b_type": 2,
             "io_edit": "input",
             "fn_name": "bodemag",
             "params": {},
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "TranFn",
-            "sid": 0,
-            "username": "tranfn0",
-            "coords_left": 221,
-            "coords_top": 24,
-            "coords_width": 110,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#e9d5ff",
-            "b_type": 2,
-            "io_edit": "both",
-            "fn_name": "transfer_function",
-            "params": {
-                "numerator": [
-                    1.0
-                ],
-                "denominator": [
-                    1.0,
-                    1.0
-                ]
-            },
             "external": false,
             "flipped": false
         }
@@ -186,174 +65,26 @@
         {
             "name": "Line0",
             "sid": 0,
-            "srcblock": "step0",
-            "srcport": 0,
-            "dstblock": "discretetranfn0",
-            "dstport": 0,
-            "points": [
-                [
-                    221,
-                    350
-                ],
-                [
-                    265,
-                    350
-                ],
-                [
-                    265,
-                    230
-                ],
-                [
-                    310,
-                    230
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line1",
-            "sid": 1,
             "srcblock": "discretetranfn0",
-            "srcport": 0,
-            "dstblock": "scope0",
-            "dstport": 0,
-            "points": [
-                [
-                    420,
-                    230
-                ],
-                [
-                    437,
-                    230
-                ],
-                [
-                    437,
-                    200
-                ],
-                [
-                    454,
-                    200
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line2",
-            "sid": 2,
-            "srcblock": "discretetranfn0",
-            "srcport": 0,
-            "dstblock": "display0",
-            "dstport": 0,
-            "points": [
-                [
-                    420,
-                    230
-                ],
-                [
-                    449,
-                    230
-                ],
-                [
-                    449,
-                    390
-                ],
-                [
-                    479,
-                    390
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line3",
-            "sid": 3,
-            "srcblock": "step0",
-            "srcport": 0,
-            "dstblock": "xygraph0",
-            "dstport": 0,
-            "points": [
-                [
-                    221,
-                    350
-                ],
-                [
-                    281,
-                    350
-                ],
-                [
-                    281,
-                    430
-                ],
-                [
-                    342,
-                    430
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line4",
-            "sid": 4,
-            "srcblock": "discretetranfn0",
-            "srcport": 0,
-            "dstblock": "xygraph0",
-            "dstport": 1,
-            "points": [
-                [
-                    420,
-                    230
-                ],
-                [
-                    440,
-                    230
-                ],
-                [
-                    440,
-                    303
-                ],
-                [
-                    322,
-                    303
-                ],
-                [
-                    322,
-                    460
-                ],
-                [
-                    342,
-                    460
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line5",
-            "sid": 5,
-            "srcblock": "tranfn0",
             "srcport": 0,
             "dstblock": "bodemag0",
             "dstport": 0,
             "points": [
                 [
-                    331,
-                    60
+                    443,
+                    370
                 ],
                 [
-                    375,
-                    60
+                    514,
+                    370
                 ],
                 [
-                    375,
-                    40
+                    514,
+                    340
                 ],
                 [
-                    420,
-                    40
+                    585,
+                    340
                 ]
             ],
             "cptr": 0,

@@ -534,14 +534,17 @@ class ModernCanvas(QWidget):
             clicked_line, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
 
             if clicked_block:
-                # Show block context menu
-                self._show_block_context_menu(clicked_block, pos)
+                # Show block context menu - needs global screen position
+                from PyQt5.QtGui import QCursor
+                self._show_block_context_menu(clicked_block, QCursor.pos())
             elif clicked_line:
                 # Show connection context menu
-                self._show_connection_context_menu(clicked_line, pos)
+                from PyQt5.QtGui import QCursor
+                self._show_connection_context_menu(clicked_line, QCursor.pos())
             else:
                 # Show canvas context menu
-                self._show_canvas_context_menu(pos)
+                from PyQt5.QtGui import QCursor
+                self._show_canvas_context_menu(QCursor.pos())
 
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
@@ -1570,6 +1573,11 @@ class ModernCanvas(QWidget):
         
         context_menu = QMenu(self)
         
+        # DEBUG LOGGING for context menu logic
+        logger.info(f"Opening context menu for block: {block.name}")
+        logger.info(f"  block_fn: {getattr(block, 'block_fn', 'N/A')}")
+        logger.info(f"  type(block): {type(block)}")
+        
         # Check selection (might be multiple)
         selected_blocks = [b for b in self.dsim.blocks_list if b.selected]
         if block not in selected_blocks:
@@ -1607,16 +1615,33 @@ class ModernCanvas(QWidget):
             
         # Specific Block Actions (e.g. Bode)
         if hasattr(block, 'block_fn'):
+             logger.info(f"Checking specific block actions for {block.block_fn}")
              if block.block_fn == 'BodeMag':
+                 logger.info("Adding BodeMag action")
                  context_menu.addSeparator()
                  action_bode = QAction("Generate Bode Plot", self)
                  action_bode.triggered.connect(lambda: self.generate_bode_plot(block))
                  context_menu.addAction(action_bode)
              elif block.block_fn == 'RootLocus':
+                 logger.info("Adding RootLocus action")
                  context_menu.addSeparator()
                  action_rl = QAction("Generate Root Locus", self)
                  action_rl.triggered.connect(lambda: self.generate_root_locus(block))
                  context_menu.addAction(action_rl)
+             elif block.block_fn == 'Nyquist':
+                 logger.info("Adding Nyquist action")
+                 context_menu.addSeparator()
+                 action_nyq = QAction("Generate Nyquist Plot", self)
+                 action_nyq.triggered.connect(lambda: self.generate_nyquist_plot(block))
+                 context_menu.addAction(action_nyq)
+             elif block.block_fn == 'BodePhase':
+                 logger.info("Adding BodePhase action")
+                 context_menu.addSeparator()
+                 action_bp = QAction("Generate Bode Phase Plot", self)
+                 action_bp.triggered.connect(lambda: self.generate_bode_phase_plot(block))
+                 context_menu.addAction(action_bp)
+             else:
+                 logger.info(f"No specific actions for {block.block_fn}")
 
         context_menu.exec_(global_pos)
 
@@ -1652,6 +1677,26 @@ class ModernCanvas(QWidget):
         subsys = self.dsim.create_subsystem_from_selection()
         if subsys:
             self.update()
+
+    def generate_bode_plot(self, block):
+        """Generate Bode plot for the given block."""
+        if hasattr(self.dsim, 'analyzer'):
+            self.dsim.analyzer.generate_bode_plot(block)
+
+    def generate_bode_phase_plot(self, block):
+        """Generate Bode Phase plot for the given block."""
+        if hasattr(self.dsim, 'analyzer'):
+            self.dsim.analyzer.generate_bode_phase_plot(block)
+
+    def generate_nyquist_plot(self, block):
+        """Generate Nyquist plot for the given block."""
+        if hasattr(self.dsim, 'analyzer'):
+            self.dsim.analyzer.generate_nyquist_plot(block)
+            
+    def generate_root_locus(self, block):
+        """Generate Root Locus for the given block."""
+        if hasattr(self.dsim, 'analyzer'):
+            self.dsim.analyzer.generate_root_locus(block)
 
     def _paste_blocks(self, pos):
         """Paste blocks from clipboard at specified position."""
@@ -2145,8 +2190,11 @@ class ModernCanvas(QWidget):
             if start_block == end_block:
                 validation_errors.append("Cannot connect a block to itself")
 
-            if end_block.block_fn == "BodeMag" and start_block.block_fn != "TranFn":
-                validation_errors.append("BodeMag block can only be connected to a Transfer Function.")
+            # BodeMag and RootLocus connections logic
+            allowed_bode_blocks = ['TranFn', 'DiscreteTranFn', 'StateSpace', 'DiscreteStateSpace', 'PID']
+            
+            if end_block.block_fn in ["BodeMag", "BodePhase", "Nyquist"] and start_block.block_fn not in allowed_bode_blocks:
+                validation_errors.append(f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}")
 
             if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
                 validation_errors.append("RootLocus block can only be connected to a Transfer Function.")
@@ -2199,3 +2247,32 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error validating connection: {str(e)}")
             return False, [f"Validation error: {str(e)}"]
+
+    # Analysis Methods
+    def generate_bode_plot(self, block):
+        """Delegate Bode plot generation to analyzer."""
+        if hasattr(self, 'analyzer'):
+            self.analyzer.generate_bode_plot(block)
+        else:
+            logger.error("Analyzer not initialized")
+
+    def generate_root_locus(self, block):
+        """Delegate Root Locus generation to analyzer."""
+        if hasattr(self, 'analyzer'):
+            self.analyzer.generate_root_locus(block)
+        else:
+            logger.error("Analyzer not initialized")
+
+    def generate_nyquist_plot(self, block):
+        """Delegate Nyquist plot generation to analyzer."""
+        if hasattr(self, 'analyzer'):
+            self.analyzer.generate_nyquist_plot(block)
+        else:
+            logger.error("Analyzer not initialized")
+
+    def generate_bode_phase_plot(self, block):
+        """Delegate Bode Phase plot generation to analyzer."""
+        if hasattr(self, 'analyzer'):
+            self.analyzer.generate_bode_phase_plot(block)
+        else:
+            logger.error("Analyzer not initialized")
