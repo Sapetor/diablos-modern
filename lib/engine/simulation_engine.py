@@ -292,6 +292,13 @@ class SimulationEngine:
                     logger.error(f"ERROR IN EXTERNAL FUNCTION {block.file_function}: {e}")
                     return False
             else:
+                if block.block_instance is None:
+                    # Logic for blocks without instance (e.g. Subsystem if not flattened correctly)
+                    # If it's a Subsystem, we shouldn't be here unless flattening failed.
+                    b_type_logs = getattr(block, 'block_type', 'Unknown')
+                    logger.error(f"Block {block.name} (type={b_type_logs}) has no block_instance. Skipping execution.")
+                    return False
+                    
                 out_value = block.block_instance.execute(**kwargs)
                 
             if out_value is None:

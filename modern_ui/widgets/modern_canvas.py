@@ -13,6 +13,7 @@ from PyQt5.QtGui import QPainter, QPen, QColor
 # Import DSim and helper modules
 import sys
 import os
+import copy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from lib.lib import DSim
@@ -1220,6 +1221,21 @@ class ModernCanvas(QWidget):
                     'external': block.external,
                     'flipped': getattr(block, 'flipped', False)
                 }
+                
+                # SPECIAL HANDLING FOR SUBSYSTEM COPY
+                if block.block_fn == 'Subsystem':
+                    # We need to deepcopy the internal structure!
+                    # block.sub_blocks and block.sub_lines contain DBlock/DLine objects.
+                    # We can use copy.deepcopy for this as they should be pickleable (mostly).
+                    try:
+                        block_data['sub_blocks'] = copy.deepcopy(block.sub_blocks)
+                        block_data['sub_lines'] = copy.deepcopy(block.sub_lines)
+                        block_data['ports'] = copy.deepcopy(block.ports) if hasattr(block, 'ports') else {}
+                        block_data['ports_map'] = copy.deepcopy(block.ports_map) if hasattr(block, 'ports_map') else {}
+                    except Exception as e:
+                        logger.error(f"Error deepcopying subsystem contents for {block.name}: {e}")
+                        # Fallback? If we fail, paste will create empty subsystem.
+                
                 self.clipboard_blocks.append(block_data)
                 selected_indices[block] = i
 
@@ -1289,22 +1305,67 @@ class ModernCanvas(QWidget):
 
                 # Create new block with unique ID
                 # Note: username='' makes it default to the new name (block_fn + sid)
-                new_block = DBlock(
-                    block_fn=block_fn,
-                    sid=sid,
-                    coords=new_coords,
-                    color=block_data['color'],
-                    in_ports=block_data['in_ports'],
-                    out_ports=block_data['out_ports'],
-                    b_type=block_data['b_type'],
-                    io_edit=block_data['io_edit'],
-                    fn_name=block_data['fn_name'],
-                    params=block_data['params'].copy(),
-                    external=block_data['external'],
-                    username='',  # Let it default to new name
-                    block_class=block_class,
-                    colors=self.dsim.colors
-                )
+                # Create new block with unique ID
+                # Note: username='' makes it default to the new name (block_fn + sid)
+                
+                # SPECIAL HANDLING FOR SUBSYSTEM
+                if block_fn == 'Subsystem':
+                    from blocks.subsystem import Subsystem
+                    new_block = Subsystem(
+                        block_name=f"Subsystem{sid}", # Default name will be corrected by DBlock init logic or manually set below
+                        sid=sid,
+                        coords=new_coords,
+                        color=block_data['color']
+                    )
+                    # Restore other attributes
+                    new_block.io_edit = block_data['io_edit']
+                    new_block.fn_name = block_data['fn_name']
+                    new_block.params = block_data['params'].copy()
+                    new_block.params['_name_'] = new_block.name # Ensure params name matches
+                    new_block.external = block_data['external']
+                    
+                    # Restore internal structure if available
+                    if 'sub_blocks' in block_data:
+                        try:
+                            new_block.sub_blocks = copy.deepcopy(block_data['sub_blocks'])
+                            new_block.sub_lines = copy.deepcopy(block_data['sub_lines'])
+                            new_block.ports = copy.deepcopy(block_data.get('ports', {}))
+                            new_block.ports_map = copy.deepcopy(block_data.get('ports_map', {}))
+                            
+                            # Recursively update names/SIDs of internal blocks? 
+                            # If we just copy them, they might have old names like "Subsystem1/Gain1".
+                            # But now they are inside "Subsystem2".
+                            # The 'name' attribute of sub-blocks usually doesn't include path? 
+                            # Let's check: in 'blocks.subsystem', sub_blocks usually have simple names?
+                            # Actually, Flattener relies on recursive structure, names inside are usually just "Gain1".
+                            # Flattener builds full path.
+                            # So deepcopy should be fine mostly, UNLESS SIDs conflict?
+                            # Internal SIDs are local to the subsystem presumably?
+                            # Standard simulation engine doesn't enforce global uniqueness for internal blocks until flattening.
+                            # However, 'update_Block' might rely on things.
+                            
+                            # Let's trust deepcopy for now.
+                            logger.info(f"Restored {len(new_block.sub_blocks)} internal blocks for {new_block.name}")
+                        except Exception as e:
+                            logger.error(f"Error restoring subsystem contents for {new_block.name}: {e}")
+                    
+                else: 
+                    new_block = DBlock(
+                        block_fn=block_fn,
+                        sid=sid,
+                        coords=new_coords,
+                        color=block_data['color'],
+                        in_ports=block_data['in_ports'],
+                        out_ports=block_data['out_ports'],
+                        b_type=block_data['b_type'],
+                        io_edit=block_data['io_edit'],
+                        fn_name=block_data['fn_name'],
+                        params=block_data['params'].copy(),
+                        external=block_data['external'],
+                        username='',  # Let it default to new name
+                        block_class=block_class,
+                        colors=self.dsim.colors
+                    )
                 new_block.flipped = block_data['flipped']
                 new_block.selected = True  # Select the pasted blocks
 
@@ -1342,9 +1403,15 @@ class ModernCanvas(QWidget):
                         )
                         
                         # Ensure path is calculated
-                        new_line.update_line(self.dsim.blocks_list)
-                        
+                        # Add to list FIRST so update_line can see it if it needs to check existence (though it mainly checks blocks)
                         self.dsim.connections_list.append(new_line)
+                        
+                        try:
+                            # Pass the full block list including new ones
+                            new_line.update_line(self.dsim.blocks_list)
+                        except Exception as e:
+                            logger.warning(f"Failed to update trajectory for pasted line {new_sid}: {e}")
+                            
                     except IndexError:
                         logger.warning("Skipping connection: Block index out of range")
                     except Exception as e:
