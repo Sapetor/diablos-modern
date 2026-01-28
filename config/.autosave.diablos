@@ -9,86 +9,30 @@
     },
     "blocks_data": [
         {
-            "block_fn": "WaveGenerator",
+            "block_fn": "Gain",
             "sid": 0,
-            "username": "wavegenerator0",
-            "coords_left": 100,
-            "coords_top": 280,
-            "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 0,
+            "username": "gain0",
+            "coords_left": 229,
+            "coords_top": 339,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#d1fae5",
+            "b_color": "#dbeafe",
             "b_type": 2,
-            "io_edit": "output",
-            "fn_name": "wavegenerator",
+            "io_edit": "both",
+            "fn_name": "gain",
             "params": {
-                "waveform": "triangle",
-                "amplitude": 1.0,
-                "frequency": 1.0,
-                "phase": 0.0,
-                "bias": 0.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Scope",
-            "sid": 0,
-            "username": "scope0",
-            "coords_left": 372,
-            "coords_top": 251,
-            "coords_width": 100,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": true,
-            "b_color": "#fee2e2",
-            "b_type": 2,
-            "io_edit": "input",
-            "fn_name": "scope",
-            "params": {
-                "labels": "default"
+                "gain": 1.0
             },
             "external": false,
             "flipped": false
         }
     ],
-    "lines_data": [
-        {
-            "name": "Line0",
-            "sid": 0,
-            "srcblock": "wavegenerator0",
-            "srcport": 0,
-            "dstblock": "scope0",
-            "dstport": 0,
-            "points": [
-                [
-                    200,
-                    320
-                ],
-                [
-                    286,
-                    320
-                ],
-                [
-                    286,
-                    290
-                ],
-                [
-                    372,
-                    290
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        }
-    ],
+    "lines_data": [],
     "version": "2.0",
     "modern_ui_data": {
         "theme": "light",

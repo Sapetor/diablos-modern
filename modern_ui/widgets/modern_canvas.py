@@ -655,7 +655,14 @@ class ModernCanvas(QWidget):
                 target_block = block
 
                 if source_block.out_ports > 0:
-                    source_port_index = 0  # Use the first output port
+                    # Find first free output port
+                    connected_output_ports = {line.srcport for line in self.dsim.line_list if line.srcblock == source_block.name}
+                    source_port_index = 0
+                    for i in range(source_block.out_ports):
+                        if i not in connected_output_ports:
+                            source_port_index = i
+                            break
+                    # If all ports connected, source_port_index remains 0 (fan-out allowed)
 
                     # Find an available input port on the target block
                     connected_input_ports = {line.dstport for line in self.dsim.line_list if line.dstblock == target_block.name}
