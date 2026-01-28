@@ -217,7 +217,7 @@ class ModernStyles:
             background-color: @surface;
             border: 1px solid @border_primary;
             border-radius: 8px;
-            padding: 8px 16px;
+            padding: 6px 12px;
             color: @text_primary;
             font-weight: 500;
             min-width: 80px;
@@ -270,7 +270,7 @@ class ModernStyles:
             background-color: @surface;
             border: 1px solid @border_primary;
             border-radius: 6px;
-            padding: 4px 2px 4px 6px; /* Reduced right padding for spin buttons */
+            padding: 4px 18px 4px 6px; /* Increased right padding for spin buttons */
             color: @text_primary;
             selection-background-color: @accent_primary;
             selection-color: white;
