@@ -23,9 +23,9 @@ class WaveGeneratorBlock(BaseBlock):
     def params(self):
         return {
             "waveform": {
-                "default": "sine",
+                "default": "Sine",
                 "type": "choice",
-                "options": ["sine", "square", "triangle", "sawtooth"]
+                "options": ["Sine", "Square", "Triangle", "Sawtooth"]
             },
             "amplitude": {"default": 1.0, "type": "float"},
             "frequency": {"default": 1.0, "type": "float"},
@@ -54,7 +54,7 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
         return [{"name": "out", "type": "float"}]
 
     def execute(self, time, inputs, params):
-        wv = params.get("waveform", "sine")
+        wv = params.get("waveform", "Sine")
         amp = params.get("amplitude", 1.0)
         freq = params.get("frequency", 1.0)
         phase = params.get("phase", 0.0)
@@ -69,16 +69,16 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
         
         val = 0.0
         
-        if wv == "sine":
+        if wv == "Sine":
             val = np.sin(arg)
-        elif wv == "square":
+        elif wv == "Square":
             val = signal.square(arg)
-        elif wv == "triangle":
+        elif wv == "Triangle":
             val = signal.sawtooth(arg, width=0.5)
-        elif wv == "sawtooth":
+        elif wv == "Sawtooth":
             val = signal.sawtooth(arg, width=1.0)
             
-        return {"out": bias + amp * val}
+        return {0: bias + amp * val}
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath

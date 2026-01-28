@@ -60,42 +60,42 @@ Select the function via the block parameters."""
         
         try:
             if func == "sin":
-                return {"y": np.sin(u)}
+                return {0: np.sin(u)}
             elif func == "cos":
-                return {"y": np.cos(u)}
+                return {0: np.cos(u)}
             elif func == "tan":
-                return {"y": np.tan(u)}
+                return {0: np.tan(u)}
             elif func == "asin":
-                return {"y": np.arcsin(u) if -1 <= u <= 1 else 0.0} # Safety or let it warn?
+                return {0: np.arcsin(u) if -1 <= u <= 1 else 0.0} # Safety or let it warn?
             elif func == "acos":
-                return {"y": np.arccos(u) if -1 <= u <= 1 else 0.0}
+                return {0: np.arccos(u) if -1 <= u <= 1 else 0.0}
             elif func == "atan":
-                return {"y": np.arctan(u)}
+                return {0: np.arctan(u)}
             elif func == "exp":
-                return {"y": np.exp(u)}
+                return {0: np.exp(u)}
             elif func == "log":
-                return {"y": np.log(u) if u > 0 else 0.0}
+                return {0: np.log(u) if u > 0 else 0.0}
             elif func == "log10":
-                return {"y": np.log10(u) if u > 0 else 0.0}
+                return {0: np.log10(u) if u > 0 else 0.0}
             elif func == "sqrt":
-                return {"y": np.sqrt(u) if u >= 0 else 0.0}
+                return {0: np.sqrt(u) if u >= 0 else 0.0}
             elif func == "square":
-                return {"y": u * u}
+                return {0: u * u}
             elif func == "sign":
-                return {"y": np.sign(u)}
+                return {0: np.sign(u)}
             elif func == "abs":
-                return {"y": np.abs(u)}
+                return {0: np.abs(u)}
             elif func == "ceil":
-                return {"y": np.ceil(u)}
+                return {0: np.ceil(u)}
             elif func == "floor":
-                return {"y": np.floor(u)}
+                return {0: np.floor(u)}
             elif func == "reciprocal":
-                return {"y": 1.0/u if u != 0 else 0.0}
+                return {0: 1.0/u if u != 0 else 0.0}
             else:
-                return {"y": u}
+                return {0: u}
         except Exception:
             # Fallback for domain errors like log(-1) if checks fail
-            return {"y": 0.0}
+            return {0: 0.0}
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
