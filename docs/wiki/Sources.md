@@ -12,6 +12,7 @@ You can find detailed information about parameters and usage below.
 | [Ramp](#ramp) | Generates a Linear Ramp signal. |
 | [Sine](#sine) | Generates a Sinusoidal signal. |
 | [Step](#step) | Generates a Step function. |
+| [WaveGenerator](#wavegenerator) | Generates periodic waveforms (Sine, Square, Triangle, Sawtooth). |
 
 ---
 
@@ -156,6 +157,35 @@ Commonly used to test step response of control systems.
 | `delay` | float | `0.0` | The delay of the step. |
 | `type` | string | `up` | up, down, pulse, constant |
 | `pulse_start_up` | bool | `True` | If type is pulse, defines if it starts up or down. |
+
+**Ports**: 0 In, 1 Out
+
+---
+
+### WaveGenerator
+
+Generates various periodic waveforms.
+
+**Output Equation**:
+$y(t) = Bias + Amplitude \times Waveform(2\pi \cdot Frequency \cdot t + Phase)$
+
+**Waveforms**:
+- **Sine**: Standard sinusoidal.
+- **Square**: Switch between -1 and +1.
+- **Triangle**: Linear ramps up and down (50% duty).
+- **Sawtooth**: Linear ramp up, instant reset.
+
+**Usage**:
+Versatile signal source for testing system response to different excitations.
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `waveform` | choice | `sine` | Shape of the wave. |
+| `amplitude` | float | `1.0` | Peak amplitude (from zero). |
+| `frequency` | float | `1.0` | Frequency in Hz. |
+| `phase` | float | `0.0` | Phase shift in radians. |
+| `bias` | float | `0.0` | Vertical offset (DC component). |
 
 **Ports**: 0 In, 1 Out
 

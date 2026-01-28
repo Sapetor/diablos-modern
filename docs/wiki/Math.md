@@ -10,6 +10,7 @@ You can find detailed information about parameters and usage below.
 | [Deriv](#deriv) | Time Derivative (du/dt). |
 | [Exp](#exp) | Exponential Signal. |
 | [Gain](#gain) | Scales the input signal by a specified Gain. |
+| [MathFunction](#mathfunction) | Apply a mathematical function (sin, cos, sqrt, etc.). |
 | [SgProd](#sgprod) | Computes the product of input signals. |
 | [Sum](#sum) | Adds or subtracts multiple input signals. |
 
