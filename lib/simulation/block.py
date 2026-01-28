@@ -546,8 +546,14 @@ class DBlock:
         memo[id(self)] = result
         
         for k, v in self.__dict__.items():
-            if k == 'pixmap':
-                setattr(result, k, None) 
+            if k == 'image' or k == 'pixmap':
+                # QPixmap cannot be copied, create a new empty one
+                setattr(result, k, QPixmap())
+            elif k == 'font':
+                # QFont cannot be copied safely in some versions, recreate it
+                f = QFont()
+                f.setPointSize(self.font_size)
+                setattr(result, k, f)
             elif k == 'sub_blocks':
                  # List of blocks, recurse
                  setattr(result, k, copy.deepcopy(v, memo))
@@ -555,9 +561,11 @@ class DBlock:
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))
                 except Exception as e:
-                    print(f"Deepcopy failed for key {k}: {e}", flush=True)
-                    setattr(result, k, None) # Fallback to None? Or raised error will stop usage.
-                
+                    # Only log if it's not a known safe-to-skip Qt object
+                    # QColor and QRect are usually fine.
+                    logger.warning(f"Deepcopy failed for key {k}: {e}")
+                    setattr(result, k, None) 
+        
         return result
 
     # Add reload_image method if needed to restore pixmap?

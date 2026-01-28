@@ -214,7 +214,10 @@ class ModernStyles:
             background-color: @surface;
             border: 1px solid @border_primary;
             border-radius: 8px;
-            padding: 10px 20px;
+            background-color: @surface;
+            border: 1px solid @border_primary;
+            border-radius: 8px;
+            padding: 8px 16px;
             color: @text_primary;
             font-weight: 500;
             min-width: 80px;
@@ -253,21 +256,37 @@ class ModernStyles:
         }
 
         /* Input fields */
-        QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
+        QLineEdit, QTextEdit, QPlainTextEdit {
+             background-color: @surface;
+             border: 1px solid @border_primary;
+             border-radius: 6px;
+             padding: 6px 10px;
+             color: @text_primary;
+             selection-background-color: @accent_primary;
+             selection-color: white;
+        }
+
+        QSpinBox, QDoubleSpinBox {
             background-color: @surface;
             border: 1px solid @border_primary;
             border-radius: 6px;
-            padding: 8px 12px;
+            padding: 4px 2px 4px 6px; /* Reduced right padding for spin buttons */
             color: @text_primary;
             selection-background-color: @accent_primary;
             selection-color: white;
+            min-height: 24px;
         }
 
-        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus,
+        QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+            border-color: @border_focus;
+            border-width: 2px;
+            padding: 5px 9px;
+        }
+
         QSpinBox:focus, QDoubleSpinBox:focus {
             border-color: @border_focus;
             border-width: 2px;
-            padding: 7px 11px;
+             padding: 3px 1px 3px 5px;
         }
 
         QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover,
