@@ -76,7 +76,7 @@ class SimulationDialog(QDialog):
         from PyQt5.QtWidgets import QGroupBox, QFormLayout  # Local import to avoid circular dep issues if any, or just convenience
         
         self.setWindowTitle("Simulation Configuration")
-        self.resize(400, 300)
+        self.resize(480, 350)
         self.layout = QVBoxLayout()
 
         # --- Solver Configuration Group ---
