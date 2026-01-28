@@ -268,7 +268,7 @@ class PropertyEditor(QFrame):
                 color: {text_color};
                 border: 2px solid {border_color};
                 border-radius: 4px;
-                padding: 4px;
+                padding: 2px 4px;
             }}
         """)
         if is_error:
@@ -323,7 +323,7 @@ class PropertyEditor(QFrame):
             color: {text};
             border: 1px solid {border};
             border-radius: 4px;
-            padding: 4px;
+            padding: 2px 4px;
         """
         
         if isinstance(widget, (QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox)):
