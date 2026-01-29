@@ -1,4 +1,4 @@
-from blocks.base_block import BaseBlock
+from blocks.statespace_base import StateSpaceBaseBlock
 import numpy as np
 from scipy import signal
 import logging
@@ -6,7 +6,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TransferFunctionBlock(BaseBlock):
+class TransferFunctionBlock(StateSpaceBaseBlock):
+    """Continuous Transfer Function block."""
+
     def __init__(self):
         super().__init__()
 
@@ -17,14 +19,6 @@ class TransferFunctionBlock(BaseBlock):
     @property
     def fn_name(self):
         return "transfer_function"
-
-    @property
-    def category(self):
-        return "Control"
-
-    @property
-    def color(self):
-        return "magenta"
 
     @property
     def params(self):
@@ -38,77 +32,61 @@ class TransferFunctionBlock(BaseBlock):
     def doc(self):
         return "Represents a linear time-invariant system as a transfer function."
 
-    @property
-    def inputs(self):
-        return [{"name": "in", "type": "any"}]
-
-    @property
-    def outputs(self):
-        return [{"name": "out", "type": "any"}]
-
     def draw_icon(self, block_rect):
         """TranFn uses B(s)/A(s) text rendering - handled in DBlock switch."""
         return None
 
     def execute(self, time, inputs, params, **kwargs):
-        """
-        Transfer function block - continuous time, discretized for simulation.
-        """
+        """Execute continuous transfer function (discretized for simulation)."""
         output_only = kwargs.get('output_only', False)
-        
+
         if params.get('_init_start_', True):
             params['_init_start_'] = False
-            num = np.array(params['numerator'])
-            den = np.array(params['denominator'])
-            
-            # Convert to state-space
-            A, B, C, D = signal.tf2ss(num, den)
-            
+            num = np.array(params['numerator'], dtype=float)
+            den = np.array(params['denominator'], dtype=float)
+
+            # Convert transfer function to state-space
+            try:
+                A, B, C, D = signal.tf2ss(num, den)
+            except Exception as e:
+                return {'E': True, 'error': f'Failed to convert TF to SS: {e}'}
+
             # Discretize
             dtime = params['dtime']
-            Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime)
-            
+            try:
+                Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime)
+            except Exception as e:
+                return {'E': True, 'error': f'Failed to discretize system: {e}'}
+
             params['_Ad_'] = Ad
             params['_Bd_'] = Bd
             params['_Cd_'] = Cd
             params['_Dd_'] = Dd
-            
-            # State vector initialization
-            num_states = Ad.shape[0]
-            init_conds = np.atleast_1d(np.array(params.get('init_conds', 0.0), dtype=float))
 
-            if len(init_conds) < num_states:
-                padded_conds = np.zeros(num_states)
-                padded_conds[:len(init_conds)] = init_conds
-                init_conds = padded_conds
-            elif len(init_conds) > num_states:
-                init_conds = init_conds[:num_states]
+            # Initialize state vector
+            n = Ad.shape[0]
+            params['_x_'] = self._initialize_state_vector(n, params.get('init_conds', [0.0]))
+            params['_n_states_'] = n
+            params['_n_inputs_'] = 1
+            params['_n_outputs_'] = 1
 
-            params['_x_'] = init_conds.reshape(-1, 1)
-
-        # Get discrete-time system matrices and state
-        Ad = params['_Ad_']
-        Bd = params['_Bd_']
-        Cd = params['_Cd_']
-        Dd = params['_Dd_']
-        x = params['_x_']
-        
-        # Get input
+        # Get input (SISO block, scalar input)
         u = 0.0
         if not output_only:
             u = inputs.get(0, 0.0)
 
-        # Compute output
+        # Compute output: y = Cx + Du
+        x = params['_x_']
         try:
-            y = Cd @ x + Dd * u
+            y = params['_Cd_'] @ x + params['_Dd_'] * u
         except ValueError as e:
             logger.error(f"Error in transfer function: {e}")
             return {'E': True, 'error': f"Matrix multiplication error: {e}"}
 
-        # Update state
+        # Update state: x[k+1] = Ax + Bu
         if not output_only:
             try:
-                params['_x_'] = Ad @ x + Bd * u
+                params['_x_'] = params['_Ad_'] @ x + params['_Bd_'] * u
             except ValueError as e:
                 logger.error(f"Error in transfer function state update: {e}")
                 return {'E': True, 'error': f"State update error: {e}"}

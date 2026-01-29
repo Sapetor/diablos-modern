@@ -1,4 +1,4 @@
-from blocks.base_block import BaseBlock
+from blocks.statespace_base import StateSpaceBaseBlock
 import numpy as np
 from scipy import signal
 import logging
@@ -6,7 +6,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class StateSpaceBlock(BaseBlock):
+class StateSpaceBlock(StateSpaceBaseBlock):
+    """Continuous State-Space Model block."""
+
     def __init__(self):
         super().__init__()
 
@@ -19,20 +21,12 @@ class StateSpaceBlock(BaseBlock):
         return "statespace"
 
     @property
-    def category(self):
-        return "Control"
-
-    @property
-    def color(self):
-        return "magenta"
-
-    @property
     def params(self):
         return {
-            "A": {"default": [[0.0]], "type": "list"},  # State matrix (n×n)
-            "B": {"default": [[1.0]], "type": "list"},  # Input matrix (n×m)
-            "C": {"default": [[1.0]], "type": "list"},  # Output matrix (p×n)
-            "D": {"default": [[0.0]], "type": "list"},  # Feedthrough matrix (p×m)
+            "A": {"default": [[0.0]], "type": "list"},
+            "B": {"default": [[1.0]], "type": "list"},
+            "C": {"default": [[1.0]], "type": "list"},
+            "D": {"default": [[0.0]], "type": "list"},
             "init_conds": {"default": [0.0], "type": "list"},
             "_init_start_": {"default": True, "type": "bool"},
         }
@@ -51,60 +45,26 @@ class StateSpaceBlock(BaseBlock):
             "\nMatrices can be entered as nested lists: [[1, 0], [0, 1]]."
         )
 
-    @property
-    def inputs(self):
-        return [{"name": "in", "type": "any"}]
-
-    @property
-    def outputs(self):
-        return [{"name": "out", "type": "any"}]
-
     def draw_icon(self, block_rect):
         """StateSpace uses complex rendering - handled in DBlock switch."""
         return None
 
     def execute(self, time, inputs, params, **kwargs):
-        """
-        State-Space representation block.
-        Continuous time discretized for simulation.
-        dx/dt = Ax + Bu, y = Cx + Du
-        """
+        """Execute continuous state-space block (discretized for simulation)."""
         output_only = kwargs.get('output_only', False)
-        
+
         if params.get('_init_start_', True):
             params['_init_start_'] = False
 
-            # Get continuous-time matrices
-            A = np.array(params['A'], dtype=float)
-            B = np.array(params['B'], dtype=float)
-            C = np.array(params['C'], dtype=float)
-            D = np.array(params['D'], dtype=float)
+            # Validate matrices
+            result = self._validate_state_space_matrices(
+                params['A'], params['B'], params['C'], params['D']
+            )
+            if isinstance(result, dict):
+                return result
+            A, B, C, D, n, m, p = result
 
-            # Validate dimensions
-            n = A.shape[0]  # Number of states
-            if A.shape != (n, n):
-                return {'E': True, 'error': 'A matrix must be square (n×n)'}
-
-            if len(B.shape) == 1:
-                B = B.reshape(-1, 1)
-            if B.shape[0] != n:
-                return {'E': True, 'error': f'B matrix must have {n} rows to match A'}
-
-            m = B.shape[1]  # Number of inputs
-
-            if len(C.shape) == 1:
-                C = C.reshape(1, -1)
-            if C.shape[1] != n:
-                return {'E': True, 'error': f'C matrix must have {n} columns to match A'}
-
-            p = C.shape[0]  # Number of outputs
-
-            if len(D.shape) == 1:
-                D = D.reshape(1, -1) if D.shape[0] > 1 else D.reshape(1, 1)
-            if D.shape != (p, m):
-                return {'E': True, 'error': f'D matrix must be {p}×{m} to match C and B'}
-
-            # Discretize the system
+            # Discretize continuous system
             dtime = params['dtime']
             try:
                 Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime, method='zoh')
@@ -115,58 +75,29 @@ class StateSpaceBlock(BaseBlock):
             params['_Bd_'] = Bd
             params['_Cd_'] = Cd
             params['_Dd_'] = Dd
-
-            # Initialize state vector
-            init_conds = np.atleast_1d(np.array(params.get('init_conds', [0.0]), dtype=float))
-            if len(init_conds) < n:
-                padded_conds = np.zeros(n)
-                padded_conds[:len(init_conds)] = init_conds
-                init_conds = padded_conds
-            elif len(init_conds) > n:
-                init_conds = init_conds[:n]
-
-            params['_x_'] = init_conds.reshape(-1, 1)
+            params['_x_'] = self._initialize_state_vector(n, params.get('init_conds', [0.0]))
             params['_n_states_'] = n
             params['_n_inputs_'] = m
             params['_n_outputs_'] = p
 
-        # Get matrices and state
-        Ad = params['_Ad_']
-        Bd = params['_Bd_']
-        Cd = params['_Cd_']
-        Dd = params['_Dd_']
-        x = params['_x_']
+        # Process input
+        u, err = self._process_input(inputs, params['_n_inputs_'], output_only)
+        if err:
+            return err
 
-        # Get input
+        # Compute output
+        y, err = self._compute_output(
+            params['_Cd_'], params['_Dd_'], params['_x_'], u
+        )
+        if err:
+            return err
+
+        # Update state
         if not output_only:
-            u = inputs.get(0, 0.0)
-            if isinstance(u, (int, float)):
-                u = np.array([[u]])
-            else:
-                u = np.atleast_2d(u).reshape(-1, 1)
+            err = self._update_state(
+                params['_Ad_'], params['_Bd_'], params['_x_'], u, params
+            )
+            if err:
+                return err
 
-            if u.shape[0] != params['_n_inputs_']:
-                return {'E': True, 'error': f"Input dimension mismatch: expected {params['_n_inputs_']}, got {u.shape[0]}"}
-        else:
-            u = np.zeros((params['_n_inputs_'], 1))
-
-        # Compute output: y = Cx + Du
-        try:
-            y = Cd @ x + Dd @ u
-        except ValueError as e:
-            logger.error(f"Error in state space: {e}")
-            return {'E': True, 'error': f"Output computation error: {e}"}
-
-        # Update state: x[k+1] = Ad*x[k] + Bd*u[k]
-        if not output_only:
-            try:
-                params['_x_'] = Ad @ x + Bd @ u
-            except ValueError as e:
-                logger.error(f"Error in state space state update: {e}")
-                return {'E': True, 'error': f"State update error: {e}"}
-
-        # Return output
-        if y.size == 1:
-            return {0: y.item(), 'E': False}
-        else:
-            return {0: y.flatten(), 'E': False}
+        return {0: self._format_output(y), 'E': False}
