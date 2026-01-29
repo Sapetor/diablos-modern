@@ -141,6 +141,7 @@ class PropertyEditor(QFrame):
             cb.addItems(["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"])
             cb.setCurrentText(str(value))
             cb.currentTextChanged.connect(lambda text, k=key: self._on_property_changed(k, text))
+            self._apply_widget_sizing(cb)
             return cb
             
         # 3. Integers -> QSpinBox
@@ -153,6 +154,7 @@ class PropertyEditor(QFrame):
             # Use 'valueChanged' but maybe wait for editingFinished to avoid spamming updates during typing?
             # QSpinBox emits valueChanged on typing too. 'editingFinished' is safer for complex updates.
             sb.editingFinished.connect(lambda: self._on_property_changed(key, sb.value()))
+            self._apply_widget_sizing(sb)
             return sb
             
         # 4. Floats -> QDoubleSpinBox
@@ -162,6 +164,7 @@ class PropertyEditor(QFrame):
             dsb.setDecimals(4) # Reasonable default
             dsb.setValue(value)
             dsb.editingFinished.connect(lambda: self._on_property_changed(key, dsb.value()))
+            self._apply_widget_sizing(dsb)
             return dsb
             
         # 5. Lists/Arrays or Complex Strings -> QLineEdit with Validation support
@@ -186,7 +189,7 @@ class PropertyEditor(QFrame):
         from PyQt5.QtWidgets import QApplication
         screen = QApplication.primaryScreen()
         device_ratio = screen.devicePixelRatio()
-        base_width = 150
+        base_width = 180
         if device_ratio > 1.25:
             scaled_width = int(base_width * 1.3)
         else:
