@@ -15,7 +15,7 @@ Example usage:
 
 import json
 import os
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 
 # Block type definitions for defaults
 BLOCK_DEFAULTS = {

@@ -4,18 +4,16 @@ Interactive palette with draggable blocks organized by categories.
 
 import logging
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QScrollArea, QFrame, QPushButton, QButtonGroup, QLineEdit, QGridLayout)
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QByteArray, QRect
+    QWidget, QVBoxLayout, QLabel,
+    QScrollArea, QFrame, QLineEdit, QGridLayout)
+from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect
 from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor
-from PyQt5.QtSvg import QSvgWidget
 
 # Import DSim modules
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from lib.lib import DSim
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)

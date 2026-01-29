@@ -137,7 +137,7 @@ class ProjectManager:
             try:
                 if os.path.exists(self.autosave_path):
                     os.remove(self.autosave_path)
-            except:
+            except OSError:
                 pass
             QMessageBox.warning(
                 self.window,

@@ -3,7 +3,6 @@ QSS Stylesheet definitions for Modern DiaBloS UI
 Provides consistent styling across all Qt widgets.
 """
 
-from typing import Dict
 from modern_ui.themes.theme_manager import theme_manager
 
 

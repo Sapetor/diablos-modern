@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-import scipy.signal as signal
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer

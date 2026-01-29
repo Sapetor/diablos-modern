@@ -11,7 +11,6 @@
 # x_dot = A*x + B*u
 # y = C*x
 
-import numpy as np
 
 # Sampling time for discrete system
 Ts = 0.01

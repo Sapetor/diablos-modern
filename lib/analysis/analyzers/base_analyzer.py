@@ -1,10 +1,8 @@
 import logging
 import numpy as np
 import scipy.signal as signal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QVBoxLayout
 import pyqtgraph as pg
-from PyQt5.QtGui import QCursor
-from PyQt5.QtCore import Qt
 
 logger = logging.getLogger(__name__)
 

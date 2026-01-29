@@ -2,7 +2,6 @@
 import logging
 from enum import Enum
 from PyQt5.QtCore import Qt, QPoint, QPointF
-from PyQt5.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
 

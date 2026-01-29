@@ -83,7 +83,7 @@ class GainBlock(BaseBlock):
                 try:
                     # Try to evaluate as numpy expression (e.g., "[[1,0],[0,1]]")
                     K = np.array(eval(K_raw), dtype=float)
-                except:
+                except Exception:
                     K = np.array([float(K_raw)], dtype=float)
             else:
                 K = np.atleast_1d(K_raw).astype(float)

@@ -1,7 +1,6 @@
 
 import logging
-from PyQt5.QtWidgets import QMenu, QAction
-from PyQt5.QtGui import QCursor
+from PyQt5.QtWidgets import QMenu
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)

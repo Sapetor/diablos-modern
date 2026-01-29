@@ -6,7 +6,6 @@ import pytest
 from PyQt5.QtCore import QPoint, QRect
 from PyQt5.QtGui import QColor
 
-from lib.models.simulation_model import SimulationModel
 
 
 @pytest.mark.unit

@@ -5,7 +5,7 @@ This module provides type hints, utility functions, and helpers that can be
 gradually integrated with the existing codebase without breaking changes.
 """
 
-from typing import Dict, List, Tuple, Optional, Any, Union
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import logging
 import time

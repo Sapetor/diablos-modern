@@ -1,9 +1,9 @@
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
-                             QPushButton, QLabel, QMessageBox, QToolBar, QAction,
+                             QLabel, QToolBar, QAction,
                              QDockWidget, QFrame)
-from PyQt5.QtCore import Qt, pyqtSignal, QRegExp
-from PyQt5.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat, QIcon
+from PyQt5.QtCore import pyqtSignal, QRegExp
+from PyQt5.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
 import logging
 from lib.workspace import WorkspaceManager
 from modern_ui.themes.theme_manager import theme_manager

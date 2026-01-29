@@ -1,5 +1,4 @@
 import logging
-import copy
 from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QColor
 

@@ -7,11 +7,10 @@ Now features specialized widgets for different types and input validation.
 import logging
 import ast
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QComboBox, QCheckBox, 
-    QFrame, QFormLayout, QSpinBox, QDoubleSpinBox, QToolTip
+    QLabel, QLineEdit, QComboBox, QCheckBox, 
+    QFrame, QFormLayout, QSpinBox, QDoubleSpinBox
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
-from PyQt5.QtGui import QIntValidator, QDoubleValidator, QPalette, QColor
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
 

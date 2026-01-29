@@ -5,7 +5,7 @@ Handles simulation initialization, execution loops, and diagram analysis.
 
 import logging
 import time as time_module
-from typing import List, Dict, Tuple, Any, Optional, Callable
+from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine

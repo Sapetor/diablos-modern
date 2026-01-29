@@ -2,7 +2,6 @@
 import unittest
 import os
 import sys
-import numpy as np
 from PyQt5.QtCore import QRect
 from PyQt5.QtWidgets import QApplication
 

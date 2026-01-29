@@ -5,7 +5,7 @@ Separates rendering logic from the ModernCanvas widget.
 """
 
 import logging
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QFontMetrics, QPainterPath
+from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QRect, QRectF
 from modern_ui.themes.theme_manager import theme_manager
 

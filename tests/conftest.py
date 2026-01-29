@@ -3,7 +3,6 @@ Pytest configuration and shared fixtures for DiaBloS tests.
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add parent directory to path so we can import diablos modules

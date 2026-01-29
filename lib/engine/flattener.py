@@ -154,7 +154,7 @@ class Flattener:
                              match = re.search(r'(\d+)$', my_name)
                              if match:
                                  found_idx = int(match.group(1)) - 1
-                        except:
+                        except (ValueError, AttributeError):
                             pass
                             
                     if found_idx is not None:

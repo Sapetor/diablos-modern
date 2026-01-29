@@ -3,15 +3,12 @@ DBlock class - represents a block in the simulation diagram.
 """
 
 import logging
-import importlib
 import copy
 from typing import Dict, List, Optional, Any, Union
 import numpy as np
 from PyQt5.QtGui import QColor, QFont, QPixmap
 from PyQt5.QtCore import QRect, QPoint
-from modern_ui.themes.theme_manager import theme_manager
 from lib.dialogs import ParamDialog, PortDialog
-import sys
 
 logger = logging.getLogger(__name__)
 

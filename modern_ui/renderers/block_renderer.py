@@ -6,7 +6,7 @@ Separates the view/drawing logic from the data model.
 
 import logging
 from typing import Optional
-from PyQt5.QtGui import QColor, QPen, QFont, QPainter, QPolygonF, QLinearGradient, QPainterPath, QRadialGradient, QTransform
+from PyQt5.QtGui import QColor, QPen, QPainter, QPolygonF, QLinearGradient, QPainterPath, QRadialGradient, QTransform
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager
 

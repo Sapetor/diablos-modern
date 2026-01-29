@@ -3,11 +3,8 @@ Unit tests for SimulationEngine class.
 """
 
 import pytest
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QRect
 
-from lib.engine.simulation_engine import SimulationEngine
-from lib.models.simulation_model import SimulationModel
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 

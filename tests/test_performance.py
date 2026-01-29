@@ -96,8 +96,6 @@ def time_diagram_creation(num_chains, chain_length):
 
 def profile_simulation():
     """Profile simulation execution on a medium-sized diagram."""
-    from lib.lib import DSim
-    import json
     
     # Create a test diagram
     builder = create_large_diagram(num_chains=5, chain_length=4)
@@ -204,7 +202,6 @@ def run_benchmark():
     print("-" * 50)
     
     # Check diagram size in memory
-    import json
     
     for num_chains, chain_length in [(5, 4), (20, 5)]:
         _, blocks, conns, builder = time_diagram_creation(num_chains, chain_length)
