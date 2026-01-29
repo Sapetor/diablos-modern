@@ -43,17 +43,43 @@ M = [[1, 0], [0, 1]]
 
 ## Keyboard Shortcuts
 
+### General
 | Key | Action |
 |-----|--------|
 | Ctrl+Z | Undo |
 | Ctrl+Y | Redo |
 | Ctrl+C | Copy |
 | Ctrl+V | Paste |
-| Ctrl+D | Duplicate |
+| Ctrl+A | Select all |
 | Delete | Delete selected |
 | Ctrl+S | Save |
 | Ctrl+O | Open |
+| Ctrl+G | Create subsystem from selection |
+
+### Simulation
+| Key | Action |
+|-----|--------|
 | F5 | Run simulation |
+| F6 | Pause simulation |
+| F7 | Stop simulation |
+| F8 | Single step (advance one timestep) |
+
+### Alignment (when 2+ blocks selected)
+| Key | Action |
+|-----|--------|
+| Ctrl+Shift+L | Align left |
+| Ctrl+Shift+R | Align right |
+| Ctrl+Shift+H | Align center (horizontal) |
+| Ctrl+Shift+T | Align top |
+| Ctrl+Shift+B | Align bottom |
+
+### View
+| Key | Action |
+|-----|--------|
+| Ctrl+Shift+M | Toggle minimap |
+| Ctrl+Shift+V | Toggle variable editor |
+| Ctrl+Shift+W | Toggle workspace viewer |
+| Ctrl+T | Toggle theme (dark/light) |
 
 ---
 
@@ -96,9 +122,66 @@ DiaBloS supports vector and matrix signals:
 
 ---
 
+## Alignment Tools
+
+Keep your diagrams tidy with alignment and distribution tools.
+
+### Aligning Blocks
+1. Select 2 or more blocks (Shift+Click or rectangle selection)
+2. Right-click → **Align** submenu
+3. Choose alignment option:
+   - **Align Left/Right**: Align to leftmost/rightmost block
+   - **Align Center (Horizontal)**: Align to horizontal center
+   - **Align Top/Bottom**: Align to topmost/bottommost block
+   - **Align Center (Vertical)**: Align to vertical center
+
+### Distributing Blocks
+With 3+ blocks selected:
+- **Distribute Horizontally**: Equal horizontal spacing
+- **Distribute Vertically**: Equal vertical spacing
+
+---
+
+## Single-Step Simulation
+
+Debug your simulations one timestep at a time.
+
+### How to Use
+1. Press **F8** to start stepping (no need to press F5 first)
+2. Simulation initializes at t=0 and advances one step
+3. Press **F8** again to advance another timestep
+4. Check Scope plots after each step
+5. Press **F7** to stop when done
+
+### Use Cases
+- Debug unexpected behavior
+- Understand signal flow
+- Verify initial conditions
+- Step through short simulations
+
+---
+
+## Minimap
+
+Navigate large diagrams with the minimap overview.
+
+### Enabling the Minimap
+- **View → Minimap** or press **Ctrl+Shift+M**
+
+### Features
+- Shows scaled overview of entire diagram
+- Blue rectangle shows current viewport
+- Click anywhere on minimap to pan canvas
+- Drag on minimap for continuous panning
+- Dock on left or right side of window
+
+---
+
 ## Tips
 
 - **Flip blocks**: Right-click → Flip
 - **Resize blocks**: Drag corner handles
 - **Toggle routing**: Right-click connection → Toggle Routing Mode
 - **Test incrementally**: Build and test small sections first
+- **Use minimap**: For large diagrams, enable minimap for quick navigation
+- **Step through**: Use F8 to debug simulations step-by-step

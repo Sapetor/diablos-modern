@@ -164,6 +164,14 @@ class MenuBuilder:
              action.setShortcut("Ctrl+Shift+W")
              self.window.workspace_editor_action = action
 
+        # Minimap toggle
+        if hasattr(self.window, 'toggle_minimap'):
+             action = view_menu.addAction("&Minimap\tCtrl+Shift+M", self.window.toggle_minimap)
+             action.setCheckable(True)
+             action.setChecked(False)
+             action.setShortcut("Ctrl+Shift+M")
+             self.window.minimap_action = action
+
         view_menu.addSeparator()
         
         # UI Scale
