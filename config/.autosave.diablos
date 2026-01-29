@@ -12,8 +12,8 @@
             "block_fn": "TranFn",
             "sid": 0,
             "username": "tranfn0",
-            "coords_left": 282,
-            "coords_top": 164,
+            "coords_left": 112,
+            "coords_top": 443,
             "coords_width": 110,
             "coords_height": 80,
             "coords_height_base": 80,
@@ -26,8 +26,10 @@
             "io_edit": "both",
             "fn_name": "transfer_function",
             "params": {
-                "numerator": "[1.0, 1]",
-                "denominator": "[1.0, 1.0, 3]"
+                "numerator": [
+                    1.0
+                ],
+                "denominator": "[1.0, 2, 1.0]"
             },
             "external": false,
             "flipped": false
@@ -36,15 +38,15 @@
             "block_fn": "RootLocus",
             "sid": 0,
             "username": "rootlocus0",
-            "coords_left": 564,
-            "coords_top": 211,
+            "coords_left": 356,
+            "coords_top": 398,
             "coords_width": 100,
             "coords_height": 80,
             "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 0,
             "dragging": false,
-            "selected": true,
+            "selected": false,
             "b_color": "#fef3c7",
             "b_type": 2,
             "io_edit": "input",
@@ -64,20 +66,20 @@
             "dstport": 0,
             "points": [
                 [
-                    392,
-                    200
+                    222,
+                    480
                 ],
                 [
-                    478,
-                    200
+                    289,
+                    480
                 ],
                 [
-                    478,
-                    250
+                    289,
+                    440
                 ],
                 [
-                    564,
-                    250
+                    356,
+                    440
                 ]
             ],
             "cptr": 0,
