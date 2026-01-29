@@ -132,7 +132,7 @@ class ModernCanvas(QWidget):
         self.selection_manager = SelectionManager(self)
         
         # Initialize Analysis Tool
-        self.analyzer = ControlSystemAnalyzer(self.dsim, self)
+        self.analyzer = ControlSystemAnalyzer(self, parent=self)
         
         # Initialize Renderer
         self.block_renderer = BlockRenderer()
