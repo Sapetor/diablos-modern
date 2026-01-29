@@ -426,6 +426,38 @@ class ModernCanvas(QWidget):
 
 
 
+    def mouseDoubleClickEvent(self, event):
+        """Handle double click events."""
+        m_pos = event.pos()
+        
+        # Check if clicked on a block
+        clicked_block = None
+        
+        # Check logical blocks first (z-order top)
+        for block in reversed(self.blocks_renderer_order):
+            if block.rect.contains(m_pos):
+                clicked_block = block
+                break
+                
+        if clicked_block:
+            # Special handling for Analysis blocks - Double click generates plot
+            if clicked_block.block_fn in ['BodePhase', 'Nyquist', 'RootLocus', 'BodeMag']:
+                logger.info(f"Double-click analysis trigger for {clicked_block.name}")
+                if clicked_block.block_fn == 'BodePhase':
+                     self.generate_bode_phase_plot(clicked_block)
+                elif clicked_block.block_fn == 'Nyquist':
+                     self.generate_nyquist_plot(clicked_block)
+                elif clicked_block.block_fn == 'RootLocus':
+                     self.generate_root_locus(clicked_block)
+                elif clicked_block.block_fn == 'BodeMag':
+                     self.generate_bode_plot(clicked_block)
+                return
+
+            # Default: Open parameter dialog
+            self.show_param_dialog(clicked_block)
+        
+        super().mouseDoubleClickEvent(event)
+
     def mousePressEvent(self, event):
         """Handle mouse press events."""
         try:

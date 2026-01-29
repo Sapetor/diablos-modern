@@ -72,8 +72,25 @@ class BaseAnalyzer:
         # A) Explicit Transfer Function
         if 'numerator' in params and 'denominator' in params:
             try:
-                num = np.array(params['numerator'])
-                den = np.array(params['denominator'])
+                # Ensure we handle string lists or mixed types by forcing float conversion
+                # Safe eval if string? Usually params are already lists of values from PropertyEditor.
+                # If PropertyEditor stores strings "[1, 2]", we might need safe parsing.
+                # But standard DBlock params should be values.
+                
+                # Check if it's a string representation of a list
+                def clean_param(val):
+                    if isinstance(val, str):
+                        # Try to parse "[1, 2]" string params if they exist
+                        val = val.strip()
+                        if val.startswith('[') and val.endswith(']'):
+                            return eval(val) # Basic fallback if AST not available or simple list
+                    return val
+
+                n_val = clean_param(params['numerator'])
+                d_val = clean_param(params['denominator'])
+                
+                num = np.array(n_val, dtype=float)
+                den = np.array(d_val, dtype=float)
                 dt = params.get('sampling_time', 0.0)
                 return num, den, float(dt)
             except Exception:
@@ -161,15 +178,44 @@ class BaseAnalyzer:
         return plot_widget
 
     def _position_window(self, window):
-        """Position window near mouse cursor or sensible default."""
+        """Position window with cascading offset."""
+        # We need a shared counter for cascading.
+        # Since BaseAnalyzer is instantiated per facade, but the facade persists on the canvas,
+        # we can check if 'parent' (ControlSystemAnalyzer facade or Canvas) has a window count.
+        
+        # Best approach: Use a static/class attribute or coordinate through the parent.
+        # Let's try to access the facade's window list if possible, or just use a screen-relative system.
+        
+        base_x = 100
+        base_y = 100
+        offset = 30
+        
+        # If we can access existing windows, we calculate offset
+        # But 'self.parent' is ModernCanvas (usually).
+        # And ModernCanvas has self.analyzer (the facade).
+        # The facade has self.plot_windows.
+        
         try:
-            cursor_pos = QCursor.pos()
-            # Offset slightly so it doesn't appear exactly under the click
-            window.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
+            # Try to find the facade to get window count
+            # self.parent is likely ModernCanvas (passed in init)
+            # ModernCanvas.analyzer is the facade
+            count = 0
+            if hasattr(self.parent, 'analyzer'):
+                count = len(self.parent.analyzer.plot_windows)
             
-            # Ensure it's not off-screen
-            # (Basic check, could be improved with screen geometry)
-            window.resize(600, 400) 
+            # Cascade
+            x = base_x + (count * offset)
+            y = base_y + (count * offset)
+            
+            # Keep within screen bounds (roughly)
+            # Logic to reset if too far
+            if x > 800: x = base_x
+            if y > 600: y = base_y
+            
+            window.move(x, y)
+            window.resize(600, 400)
+            
         except Exception:
-            # Fallback
+            # Fallback to simple default
+            window.move(100, 100)
             window.resize(600, 400)
