@@ -484,8 +484,8 @@ class ModernCanvas(QWidget):
 
                 if not clicked_block and not clicked_line:
                     # Double-clicked on empty space - open command palette
-                    # self.show_command_palette()
-                    pass
+                    logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
+                    self.command_palette_requested.emit()
                     
         except Exception as e:
             logger.error(f"Error in mouseDoubleClickEvent: {e}")
