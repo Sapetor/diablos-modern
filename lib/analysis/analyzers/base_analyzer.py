@@ -128,11 +128,12 @@ class BaseAnalyzer:
             for line in incoming_lines:
                 source_name = line.srcblock
                 # Resolve block object
-                # Canvas has 'blocks' dict? Or dsim.model.blocks_list is a list.
-                # Usually canvas.blocks is a Dict[name, block] map for easy lookup
-                # Let's verify if canvas.blocks exists.
-                # Based on previous code: canvas.blocks.get(source_name)
-                source_block = canvas.blocks.get(source_name)
+                # Canvas -> DSim -> Model -> get_block_by_name
+                try:
+                    source_block = canvas.dsim.model.get_block_by_name(source_name)
+                except AttributeError:
+                    logger.error("Could not access dsim.model from canvas")
+                    source_block = None
                 
                 if source_block and source_name not in visited:
                     visited.add(source_name)
