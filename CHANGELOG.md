@@ -2,9 +2,15 @@
 
 All notable changes to DiaBloS will be documented in this file.
 
-## [Unreleased] - 2026-01-26
+## [Unreleased] - 2026-01-29
 
 ### New Features
+- **Fast Solver Block Expansion**: Added 5 new blocks to the Fast Solver (Compiled Mode):
+  - `WaveGenerator`: Multi-waveform source (Sine, Square, Triangle, Sawtooth)
+  - `Noise`: Gaussian random noise generator
+  - `MathFunction`: Standard math functions (sin, cos, exp, log, sqrt, etc.)
+  - `Selector`: Vector element extraction
+  - `Hysteresis`: Relay with upper/lower thresholds
 - **MIMO Subsystem Support**: Subsystems now automatically synchronize their external ports based on internal `Inport` and `Outport` blocks. This allows for subsystems with arbitrarily many inputs and outputs.
 - **Fast Solver Subsystem Support**: The Fast Solver (Compiled Mode) now recursively compiles and flattens Subsystems, allowing complex hierarchical models to run with compiled performance (10-100x speedup).
 - **Subsystem Port Sync Fix**: Fixed a bug where adding input/output ports inside a subsystem would not correctly update the simulation parameters on the outside block, leading to simulation failures.
@@ -50,6 +56,7 @@ This release includes significant architectural improvements to reduce code comp
 - Fixed integrator SOLVE_IVP `y0 must be 1-dimensional` error
 - Fixed KeyError in scope/export with `.get('_init_start_', True)`
 - Fixed rectangle selection appearing after creating a block via double-click on canvas. The fix ensures proper event handling and state reset when focus returns from the command palette.
+- Fixed Fast Solver replay loop missing handlers for `WaveGenerator`, `Noise`, `MathFunction`, `Selector`, `Hysteresis`, `Mux`, and `Demux` blocks, which caused empty Scope plots.
 
 ### Technical Improvements
 - All 42 blocks have `execute()` methods in dedicated class files

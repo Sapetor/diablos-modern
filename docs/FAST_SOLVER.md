@@ -29,22 +29,27 @@ The following blocks are fully supported in Fast Solver mode. If a diagram conta
 *   **Abs**: Absolute value.
 *   **Saturation**: Min/Max clipping.
 *   **Deadband**: Zero output in dead zone.
+*   **MathFunction**: Standard math functions (sin, cos, exp, log, sqrt, etc.).
 
 ### Control
 *   **PID**: Proportional-Integral-Derivative controller (compiled to 2 states + feedthrough).
 *   **RateLimiter**: Limits the rate of change of the signal (compiled as dynamic state).
+*   **Hysteresis**: Relay with upper/lower thresholds (stateful switching).
 
 ### Sources
 *   **Step**: Delayed step input.
 *   **Ramp**: Linear growth with delay ($slope \times (t-delay)$).
 *   **Sine**: Sine wave with amplitude, frequency, phase, bias.
+*   **WaveGenerator**: Multi-waveform source (Sine, Square, Triangle, Sawtooth).
 *   **Constant**: Static value.
 *   **Exponential**: Exponential source ($a \times e^{bx}$).
+*   **Noise**: Gaussian random noise ($\mu + \sigma \cdot \text{randn}()$).
 *   **From**: Tag receiver (compile-time resolution).
 
 ### Signal Routing
 *   **Mux / Demux**
 *   **Switch**: Routes signals based on control threshold or index.
+*   **Selector**: Extracts specific elements from vector signals.
 *   **Subsystems**: Recursive grouping supported. The compiler flattens subsystems into their primitive components.
 
 
