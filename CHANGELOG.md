@@ -49,6 +49,7 @@ This release includes significant architectural improvements to reduce code comp
 - Fixed algebraic loop detection for memory blocks
 - Fixed integrator SOLVE_IVP `y0 must be 1-dimensional` error
 - Fixed KeyError in scope/export with `.get('_init_start_', True)`
+- Fixed rectangle selection appearing after creating a block via double-click on canvas. The fix ensures proper event handling and state reset when focus returns from the command palette.
 
 ### Technical Improvements
 - All 42 blocks have `execute()` methods in dedicated class files
