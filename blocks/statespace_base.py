@@ -1,4 +1,5 @@
 """Base class for state-space based blocks with common functionality."""
+from abc import abstractmethod
 from blocks.base_block import BaseBlock
 import numpy as np
 import logging
@@ -8,12 +9,36 @@ logger = logging.getLogger(__name__)
 
 class StateSpaceBaseBlock(BaseBlock):
     """
-    Base class for state-space based control blocks.
+    Abstract base class for state-space based control blocks.
     Provides common matrix validation, state initialization, and computation methods.
+    Subclasses must implement: block_name, fn_name, params, execute
     """
 
     def __init__(self):
         super().__init__()
+
+    @property
+    @abstractmethod
+    def block_name(self):
+        """Block display name - must be implemented by subclass."""
+        pass
+
+    @property
+    @abstractmethod
+    def fn_name(self):
+        """Block function name - must be implemented by subclass."""
+        pass
+
+    @property
+    @abstractmethod
+    def params(self):
+        """Block parameters - must be implemented by subclass."""
+        pass
+
+    @abstractmethod
+    def execute(self, time, inputs, params, **kwargs):
+        """Execute block - must be implemented by subclass."""
+        pass
 
     @property
     def category(self):
