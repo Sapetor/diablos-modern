@@ -2,9 +2,7 @@
 import unittest
 import os
 import sys
-import numpy as np
 from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QColor
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

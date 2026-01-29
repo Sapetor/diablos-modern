@@ -1,16 +1,13 @@
 import sys
 import os
 import unittest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt5.QtCore import QRect
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from lib.lib import DSim
-    from lib.engine.simulation_engine import SimulationEngine
-    from lib.models.simulation_model import SimulationModel
-    from lib.simulation.menu_block import MenuBlocks
     from blocks.subsystem import Subsystem
     from blocks.inport import Inport
     from blocks.outport import Outport

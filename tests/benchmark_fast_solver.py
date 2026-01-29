@@ -3,7 +3,6 @@ import sys
 import os
 import time
 import logging
-import numpy as np
 from PyQt5.QtCore import QRect
 
 # Adjust path

@@ -1,7 +1,6 @@
 import sys
 import os
 import unittest
-from PyQt5.QtCore import QPoint, QRect, QCoreApplication
 from PyQt5.QtWidgets import QApplication
 
 # Add project root to path

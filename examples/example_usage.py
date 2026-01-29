@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from lib.lib import DSim
 from lib.improvements import (
     ValidationHelper, PerformanceHelper, SafetyChecks, 
-    LoggingHelper, SimulationConfig, validate_simulation_parameters
+    LoggingHelper, validate_simulation_parameters
 )
 from lib.config_manager import ConfigManager, get_config
 

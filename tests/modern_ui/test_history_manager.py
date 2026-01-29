@@ -1,7 +1,6 @@
 
 import unittest
-from unittest.mock import MagicMock, patch
-from PyQt5.QtCore import QRect
+from unittest.mock import MagicMock
 from modern_ui.managers.history_manager import HistoryManager
 
 class TestHistoryManager(unittest.TestCase):

@@ -73,7 +73,7 @@ class PortDialog(QDialog):
 class SimulationDialog(QDialog):
     def __init__(self, sim_time, sim_dt, plot_trange):
         super().__init__()
-        from PyQt5.QtWidgets import QGroupBox, QFormLayout  # Local import to avoid circular dep issues if any, or just convenience
+        from PyQt5.QtWidgets import QGroupBox  # Local import to avoid circular dep issues if any, or just convenience
         
         self.setWindowTitle("Simulation Configuration")
         self.resize(480, 350)

@@ -1,10 +1,4 @@
 import logging
-import numpy as np
-import scipy.signal as signal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMessageBox
-import pyqtgraph as pg
-from PyQt5.QtGui import QCursor
-from PyQt5.QtCore import Qt
 
 # Import modular analyzers
 from lib.analysis.analyzers.bode import BodeAnalyzer

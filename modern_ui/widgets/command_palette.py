@@ -3,13 +3,12 @@ Command Palette - Quick search for blocks, commands, and files.
 """
 
 import logging
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem,
-    QLabel, QWidget, QHBoxLayout
+    QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QKeyEvent, QFont, QColor, QPalette
+from PyQt5.QtGui import QKeyEvent, QFont
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)

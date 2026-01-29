@@ -3,11 +3,8 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu, QVBoxLayout
-from PyQt5.QtCore import Qt, QTimer, QPoint, QRect, pyqtSignal
-import pyqtgraph as pg
-from scipy import signal
-import numpy as np
+from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu
+from PyQt5.QtCore import Qt, QPoint, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor
 
 # Import DSim and helper modules
@@ -16,7 +13,6 @@ import os
 import copy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from lib.lib import DSim
 from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
 from modern_ui.themes.theme_manager import theme_manager
 from lib.analysis.control_system_analyzer import ControlSystemAnalyzer

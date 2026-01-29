@@ -3,8 +3,8 @@ Modern Toolbar Widget for DiaBloS
 Features enhanced styling, modern icons, and improved usability.
 """
 
-from PyQt5.QtWidgets import (QToolBar, QToolButton, QAction, QWidget, 
-                             QHBoxLayout, QLabel, QSlider, QComboBox)
+from PyQt5.QtWidgets import (QToolBar, QAction, QWidget, 
+                             QHBoxLayout, QLabel, QSlider)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
 from modern_ui.themes.theme_manager import theme_manager

@@ -5,8 +5,6 @@ Manages blocks, lines, and diagram state.
 
 import logging
 import copy
-import sys
-import os
 from typing import List, Dict, Optional, Tuple, Any
 from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QRect, QPoint

@@ -5,7 +5,7 @@ Provides consistent color schemes and styling across the application.
 
 from enum import Enum
 from typing import Dict, Any
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QObject, pyqtSignal
 
 

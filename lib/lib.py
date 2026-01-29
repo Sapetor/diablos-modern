@@ -1,38 +1,25 @@
 "lib.py - Contains all the core functions and classes for the simulation and execution of the graphs."
 
 import numpy as np
-import copy
 import time
-import json
-from pathlib import Path
-import os
 import sys
 from tqdm import tqdm
-from PyQt5.QtWidgets import QWidget, QFileDialog, QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
-from PyQt5.QtGui import QColor, QPen, QFont, QPixmap, QPainter
-from PyQt5.QtCore import Qt, QRect, QPoint, QEvent, QTimer
-import pyqtgraph as pg
-from lib.block_loader import load_blocks
-from lib.dialogs import ParamDialog, PortDialog
+from PyQt5.QtWidgets import QDialog
+from PyQt5.QtCore import QPoint
 from lib.workspace import WorkspaceManager
-from lib.dialogs import ParamDialog, PortDialog, SimulationDialog
+from lib.dialogs import SimulationDialog
 import logging
-from modern_ui.themes.theme_manager import theme_manager
 
 # Import refactored classes from new modules
-from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
-from lib.simulation.menu_block import MenuBlocks
 from lib.ui.button import Button
 from blocks.subsystem import Subsystem
 from blocks.inport import Inport
 from blocks.outport import Outport
 
 # Import block size configuration
-from config.block_sizes import get_block_size
 
 # Import extracted classes
-from lib.plotting.signal_plot import SignalPlot
 from lib.plotting.scope_plotter import ScopePlotter
 
 logger = logging.getLogger(__name__)
@@ -630,7 +617,7 @@ class DSim:
                         outport.in_coords[0],
                         subsys.sub_blocks
                     )
-                 except: pass
+                 except Exception: pass
 
                  subsys.sub_lines.append(internal_line)
                  
@@ -1388,7 +1375,7 @@ class DSim:
                         outport.in_coords[0],
                         subsys.sub_blocks
                     )
-                 except: pass
+                 except Exception: pass
 
                  subsys.sub_lines.append(internal_line)
                  
@@ -1453,8 +1440,8 @@ class DSim:
                         new_line.path, new_line.points, new_line.segments = new_line.create_trajectory(
                             start_p, end_p, subsys.sub_blocks
                         )
-                    except: pass
-                    
+                    except Exception: pass
+
                     subsys.sub_lines.append(new_line)
                     
                     # Add to Subsystem External Ports
@@ -1496,8 +1483,8 @@ class DSim:
                         new_line.path, new_line.points, new_line.segments = new_line.create_trajectory(
                             start_p, end_p, subsys.sub_blocks
                         )
-                    except: pass
-                    
+                    except Exception: pass
+
                     subsys.sub_lines.append(new_line)
                     
                     # Add to External Ports

@@ -2,12 +2,11 @@
 DLine (connection) class - represents connections between blocks.
 """
 
-import math
 import logging
 import copy
 from typing import List, Tuple, Optional, Union
 from PyQt5.QtGui import QPainterPath, QColor
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtCore import QPoint, QRect
 
 logger = logging.getLogger(__name__)
 

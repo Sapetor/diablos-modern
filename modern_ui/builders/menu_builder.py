@@ -1,7 +1,6 @@
 
 import os
 import logging
-from PyQt5.QtWidgets import QMenu, QAction
 
 logger = logging.getLogger(__name__)
 

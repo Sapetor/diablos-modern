@@ -8,27 +8,25 @@ Modern Main Window for DiaBloS
 Features modern layout, theming, and enhanced user interface.
 """
 
-import sys
 import os
 import logging
 import ast
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QSplitter, QMenuBar, QStatusBar, QLabel, QFrame,
-                             QApplication, QMessageBox, QScrollArea, QFileDialog)
+                             QSplitter, QLabel, QFrame,
+                             QMessageBox, QScrollArea, QFileDialog)
 from lib.workspace import WorkspaceManager
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
 
 # Import existing DSim functionality
 from lib.lib import DSim
 from lib.improvements import (
-    ValidationHelper, PerformanceHelper, SafetyChecks, LoggingHelper,
-    SimulationConfig, validate_simulation_parameters
+    PerformanceHelper, SafetyChecks, LoggingHelper,
+    SimulationConfig
 )
 
 # Import modern UI components
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
-from modern_ui.styles.qss_styles import apply_modern_theme, ModernStyles
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.modern_palette import ModernBlockPalette
@@ -41,7 +39,6 @@ from modern_ui.widgets.workspace_editor import WorkspaceEditor
 from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.breadcrumb_bar import BreadcrumbBar
 from modern_ui.platform_config import get_platform_config
-from lib.services.diagram_service import DiagramService
 
 # Setup logging
 LoggingHelper.setup_logging(level="INFO", log_file="diablos_modern.log")

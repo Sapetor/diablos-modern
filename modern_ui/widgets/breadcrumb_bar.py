@@ -1,7 +1,6 @@
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QStyle
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIcon
 import logging
 
 logger = logging.getLogger(__name__)
