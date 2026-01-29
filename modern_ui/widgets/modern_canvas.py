@@ -491,11 +491,6 @@ class ModernCanvas(QWidget):
             logger.error(f"Error in mouseDoubleClickEvent: {e}")
 
         super().mouseDoubleClickEvent(event)
-                    logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
-                    self.command_palette_requested.emit()
-
-        except Exception as e:
-            logger.error(f"Error in canvas mouseDoubleClickEvent: {str(e)}")
 
     def keyPressEvent(self, event):
         """Handle key press events."""
