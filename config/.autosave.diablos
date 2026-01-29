@@ -9,38 +9,35 @@
     },
     "blocks_data": [
         {
-            "block_fn": "WaveGenerator",
+            "block_fn": "TranFn",
             "sid": 0,
-            "username": "wavegenerator0",
-            "coords_left": 100,
-            "coords_top": 280,
-            "coords_width": 100,
+            "username": "tranfn0",
+            "coords_left": 282,
+            "coords_top": 164,
+            "coords_width": 110,
             "coords_height": 80,
             "coords_height_base": 80,
-            "in_ports": 0,
+            "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#d1fae5",
-            "b_type": 2,
-            "io_edit": "output",
-            "fn_name": "wavegenerator",
+            "b_color": "#e9d5ff",
+            "b_type": 1,
+            "io_edit": "both",
+            "fn_name": "transfer_function",
             "params": {
-                "waveform": "Triangle",
-                "amplitude": 1.0,
-                "frequency": 1.0,
-                "phase": 0.0,
-                "bias": 0.0
+                "numerator": "[1.0, 1]",
+                "denominator": "[1.0, 1.0, 3]"
             },
             "external": false,
             "flipped": false
         },
         {
-            "block_fn": "Scope",
+            "block_fn": "RootLocus",
             "sid": 0,
-            "username": "scope0",
-            "coords_left": 372,
-            "coords_top": 251,
+            "username": "rootlocus0",
+            "coords_left": 564,
+            "coords_top": 211,
             "coords_width": 100,
             "coords_height": 80,
             "coords_height_base": 80,
@@ -48,13 +45,11 @@
             "out_ports": 0,
             "dragging": false,
             "selected": true,
-            "b_color": "#fee2e2",
+            "b_color": "#fef3c7",
             "b_type": 2,
             "io_edit": "input",
-            "fn_name": "scope",
-            "params": {
-                "labels": "default"
-            },
+            "fn_name": "rootlocus",
+            "params": {},
             "external": false,
             "flipped": false
         }
@@ -63,26 +58,26 @@
         {
             "name": "Line0",
             "sid": 0,
-            "srcblock": "wavegenerator0",
+            "srcblock": "tranfn0",
             "srcport": 0,
-            "dstblock": "scope0",
+            "dstblock": "rootlocus0",
             "dstport": 0,
             "points": [
                 [
-                    200,
-                    320
+                    392,
+                    200
                 ],
                 [
-                    286,
-                    320
+                    478,
+                    200
                 ],
                 [
-                    286,
-                    290
+                    478,
+                    250
                 ],
                 [
-                    372,
-                    290
+                    564,
+                    250
                 ]
             ],
             "cptr": 0,

@@ -33,9 +33,12 @@ class RootLocusAnalyzer(BaseAnalyzer):
             # We need standard polynomial form strictly here
             # num/den are coefficients
             
-            # Ensure they are decent arrays
-            if len(np.shape(num)) > 1: num = num.flatten()
-            if len(np.shape(den)) > 1: den = den.flatten()
+            # Ensure they are 1D arrays
+            num = np.atleast_1d(num)
+            den = np.atleast_1d(den)
+            
+            if num.ndim > 1: num = num.flatten()
+            if den.ndim > 1: den = den.flatten()
             
             # Pad to same length? No, np.roots handles it.
             # Denominator typically higher order.
