@@ -437,6 +437,14 @@ class ModernCanvas(QWidget):
 
     def mouseDoubleClickEvent(self, event):
         """Handle mouse double-click events."""
+        # Force reset of any pending selection/drag state that might have started on press
+        # RESET CANVAS ATTRIBUTES DIRECTLY
+        self.is_rect_selecting = False
+        self.selection_rect_start = None
+        self.selection_rect_end = None
+        self.state = State.IDLE
+        self.update()
+
         try:
             if event.button() == Qt.LeftButton:
                 pos = self.screen_to_world(event.pos())
@@ -490,7 +498,22 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error in mouseDoubleClickEvent: {e}")
 
-        super().mouseDoubleClickEvent(event)
+        # Accept the event to prevent propagation issues
+        event.accept()
+
+    def focusInEvent(self, event):
+        """Reset selection state when focus returns to canvas without mouse button pressed."""
+        super().focusInEvent(event)
+        # If focus returns without left mouse button pressed, reset any pending rect selection
+        # This handles cases where a popup (like command palette) closed and focus returned
+        from PyQt5.QtWidgets import QApplication
+        if not (QApplication.mouseButtons() & Qt.LeftButton):
+            if self.is_rect_selecting:
+                logger.debug("Resetting rect selection on focus return (no mouse button pressed)")
+                self.is_rect_selecting = False
+                self.selection_rect_start = None
+                self.selection_rect_end = None
+                self.update()
 
     def keyPressEvent(self, event):
         """Handle key press events."""
@@ -632,6 +655,7 @@ class ModernCanvas(QWidget):
         """Finalize rectangle selection and select blocks within the rectangle."""
         try:
             if not self.selection_rect_start or not self.selection_rect_end:
+                # Early return - but still reset state below via finally
                 return
 
             # Create QRect from start and end points
@@ -651,17 +675,14 @@ class ModernCanvas(QWidget):
                     selected_count += 1
 
             logger.info(f"Rectangle selection completed: {selected_count} block(s) selected")
-
-            # Reset rectangle selection state
+        except Exception as e:
+            logger.error(f"Error finalizing rectangle selection: {str(e)}")
+        finally:
+            # Always reset rectangle selection state, even on early return or exception
             self.is_rect_selecting = False
             self.selection_rect_start = None
             self.selection_rect_end = None
-
-            # Redraw canvas
             self.update()
-
-        except Exception as e:
-            logger.error(f"Error finalizing rectangle selection: {str(e)}")
 
     def _handle_block_click(self, block, pos):
         """Handle clicking on a block."""
