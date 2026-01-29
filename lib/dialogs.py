@@ -130,7 +130,7 @@ class SimulationDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         
-        accept_btn = QPushButton("Start Simulation")
+        accept_btn = QPushButton("Simulate")
         accept_btn.clicked.connect(self.accept)
         accept_btn.setDefault(True)
         button_layout.addWidget(accept_btn)
