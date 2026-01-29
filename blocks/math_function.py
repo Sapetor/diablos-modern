@@ -126,17 +126,19 @@ Select the function via the block parameters."""
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
         path = QPainterPath()
-        
-        # We can't easily draw generic text in path, 
-        # so we rely on the labelrenderer in modern_canvas that handles 'name' or params?
-        # Typically blocks draw a symbol. Here the symbol IS the function parameter.
-        # But draw_icon returns a path, not text.
-        # We'll draw a generic 'f(x)' looking curve or let the renderer handle text?
-        # The block renderer usually draws the block name.
-        # But for 'Math', showing structure is nice.
-        
-        # Generic function curve f(x)
-        path.moveTo(0.2, 0.8)
-        path.cubicTo(0.4, 0.8, 0.6, 0.2, 0.8, 0.2)
-        
+
+        # Draw "f(u)" style icon - a stylized f with curve
+        # The letter 'f' hook at top
+        path.moveTo(0.55, 0.15)
+        path.cubicTo(0.45, 0.15, 0.35, 0.25, 0.35, 0.35)
+        path.lineTo(0.35, 0.75)
+
+        # Crossbar of 'f'
+        path.moveTo(0.25, 0.45)
+        path.lineTo(0.50, 0.45)
+
+        # Small sine wave to represent function output
+        path.moveTo(0.55, 0.55)
+        path.cubicTo(0.62, 0.35, 0.70, 0.75, 0.85, 0.55)
+
         return path
