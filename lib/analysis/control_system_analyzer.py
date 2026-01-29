@@ -69,7 +69,11 @@ class ControlSystemAnalyzer:
             return None
             
         if isinstance(block_name_or_obj, str):
-            return self.canvas.blocks.get(block_name_or_obj)
+            try:
+                return self.canvas.dsim.model.get_block_by_name(block_name_or_obj)
+            except AttributeError:
+                logger.error("Canvas does not have dsim.model attached")
+                return None
         return block_name_or_obj
         
     def close_all_plots(self):
