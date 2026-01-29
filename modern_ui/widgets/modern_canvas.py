@@ -511,55 +511,18 @@ class ModernCanvas(QWidget):
                 self.selection_rect_end = None
                 self.update()
 
-    def keyPressEvent(self, event):
-        """Handle key press events."""
-        # logger.info(f"Key press: {event.key()} Modifiers: {event.modifiers()}")
-        try:
-            if event.key() == Qt.Key_Escape:
-                # If selection exists, clear it
-                has_selection = any(b.selected for b in getattr(self.dsim, 'blocks_list', [])) or \
-                                any(l.selected for l in getattr(self.dsim, 'line_list', []))
-                
-                if has_selection:
-                    self._clear_selections()
-                else:
-                    # If no selection, try to go up directory/subsystem
-                    if self.dsim.current_subsystem:
-                        self.dsim.exit_subsystem()
-                        self.update()
-                        
-                        # Reset view on exit too
-                        self.pan_offset = QPoint(0, 0)
-                        self.zoom_factor = 1.0
-                        self.zoom_to_fit()
-                        
-                        self.scope_changed.emit(self.dsim.get_current_path())
-                        
-            elif event.key() == Qt.Key_Delete:
-                 self.remove_selected_items()
-            
-            elif event.key() == Qt.Key_G and (event.modifiers() & Qt.ControlModifier):
-                 # Ctrl+G to Group/Create Subsystem
-                 self._create_subsystem_trigger()
-                 
-            else:
-                 super().keyPressEvent(event)
-                 
-        except Exception as e:
-            logger.error(f"Error in keyPressEvent: {str(e)}")
-
-    def navigate_scope(self, path_str):
-        """Navigate to a specific scope path (e.g. via BreadcrumbBar)."""
+    def navigate_scope_by_path(self, path_str):
+        """Navigate to a specific scope path (e.g. via BreadcrumbBar string)."""
         logger.info(f"Navigating to scope: {path_str}")
         if hasattr(self.dsim, 'navigate_scope'):
             self.dsim.navigate_scope(path_str)
             self.update()
-            
+
             # Reset view
             self.pan_offset = QPoint(0, 0)
             self.zoom_factor = 1.0
             self.zoom_to_fit()
-            
+
             self.scope_changed.emit(self.dsim.get_current_path())
         else:
             logger.warning("DSim does not support navigate_scope")
@@ -597,10 +560,6 @@ class ModernCanvas(QWidget):
         if action == plot_action:
             self.generate_bode_plot(block)
 
-    def generate_bode_plot(self, bode_block):
-        """Find the connected transfer function, calculate, and plot the Bode diagram."""
-        self.analyzer.generate_bode_plot(bode_block)
-
     def show_root_locus_menu(self, block, pos):
         """Show context menu for the RootLocus block."""
         menu = QMenu(self)
@@ -608,14 +567,6 @@ class ModernCanvas(QWidget):
         action = menu.exec_(pos)
         if action == plot_action:
             self.generate_root_locus(block)
-
-    def generate_root_locus(self, rootlocus_block):
-        """Find the connected transfer function, calculate, and plot the root locus."""
-        self.analyzer.generate_root_locus(rootlocus_block)
-
-    def generate_root_locus_plot(self, rootlocus_block):
-        """Wrapper method to maintain naming consistency with generate_bode_plot."""
-        self.generate_root_locus(rootlocus_block)
 
     def _get_clicked_block(self, pos):
         # logger.info(f"Checking click at {pos}")
@@ -1189,12 +1140,25 @@ class ModernCanvas(QWidget):
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
                 else:
-                    # Clear selections if no other operation is active
-                    self._clear_selections()
+                    # Check if anything is selected
+                    has_selection = any(b.selected for b in getattr(self.dsim, 'blocks_list', [])) or \
+                                    any(l.selected for l in getattr(self.dsim, 'line_list', []))
+                    if has_selection:
+                        self._clear_selections()
+                    elif self.dsim.current_subsystem:
+                        # Exit subsystem if no selection and inside one
+                        self.dsim.exit_subsystem()
+                        self.pan_offset = QPoint(0, 0)
+                        self.zoom_factor = 1.0
+                        self.zoom_to_fit()
+                        self.scope_changed.emit(self.dsim.get_current_path())
                     self.update()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
                 # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
+            elif event.key() == Qt.Key_G and ctrl_pressed:
+                # Ctrl+G: Create subsystem from selection
+                self._create_subsystem_trigger()
             elif event.key() == Qt.Key_Z and ctrl_pressed and shift_pressed:
                 # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
                 self.redo()
@@ -1722,26 +1686,6 @@ class ModernCanvas(QWidget):
         subsys = self.dsim.create_subsystem_from_selection()
         if subsys:
             self.update()
-
-    def generate_bode_plot(self, block):
-        """Generate Bode plot for the given block."""
-        if hasattr(self.dsim, 'analyzer'):
-            self.dsim.analyzer.generate_bode_plot(block)
-
-    def generate_bode_phase_plot(self, block):
-        """Generate Bode Phase plot for the given block."""
-        if hasattr(self.dsim, 'analyzer'):
-            self.dsim.analyzer.generate_bode_phase_plot(block)
-
-    def generate_nyquist_plot(self, block):
-        """Generate Nyquist plot for the given block."""
-        if hasattr(self.dsim, 'analyzer'):
-            self.dsim.analyzer.generate_nyquist_plot(block)
-            
-    def generate_root_locus(self, block):
-        """Generate Root Locus for the given block."""
-        if hasattr(self.dsim, 'analyzer'):
-            self.dsim.analyzer.generate_root_locus(block)
 
     def _paste_blocks(self, pos):
         """Paste blocks from clipboard at specified position."""

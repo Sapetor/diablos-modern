@@ -211,50 +211,10 @@ class ModernDiaBloSWindow(QMainWindow):
         if self.menu_builder:
             self.menu_builder.setup_menubar()
 
-    def undo_action(self):
-        """Undo last action."""
-        if hasattr(self, 'canvas'):
-            self.canvas.undo()
-            self.status_message.setText("Undo")
-
-    def redo_action(self):
-        """Redo last action."""
-        if hasattr(self, 'canvas'):
-            self.canvas.redo()
-            self.status_message.setText("Redo")
-
-    # Helper method for selecting all (delegated to canvas)
-    def select_all(self):
-        """Select all items on canvas."""
-        if hasattr(self, 'canvas') and hasattr(self.canvas, 'selection_manager'):
-            self.canvas.selection_manager.select_all_blocks()
-        elif hasattr(self, 'canvas') and hasattr(self.canvas, '_select_all_blocks'):
-             self.canvas._select_all_blocks()
-
     def create_subsystem(self):
         """Create subsystem from selection (delegate to canvas)."""
         if hasattr(self, 'canvas') and hasattr(self.canvas, '_create_subsystem_trigger'):
             self.canvas._create_subsystem_trigger()
-
-    # Helper methods for view actions
-    def zoom_in(self):
-        self.set_zoom(self.zoom_level * 1.2)
-        
-    def zoom_out(self):
-         self.set_zoom(self.zoom_level / 1.2)
-         
-    def fit_to_window(self):
-        self.set_zoom(1.0)
-        # Could implement actual fit logic later
-        
-    def toggle_grid(self):
-        self.show_grid = not getattr(self, 'show_grid', True)
-        if hasattr(self, 'canvas') and hasattr(self.canvas, 'canvas_renderer'):
-             self.canvas.canvas_renderer.show_grid = self.show_grid
-             self.canvas.update()
-        # Update action state if builder set it
-        if hasattr(self, 'grid_toggle_action'):
-             self.grid_toggle_action.setChecked(self.show_grid)
 
     def toggle_variable_editor(self):
         # Implementation depends on logic elsewhere, ensuring method exists
@@ -557,80 +517,29 @@ class ModernDiaBloSWindow(QMainWindow):
         # Theme change updates
         theme_manager.theme_changed.connect(self.on_theme_changed)
         self.property_editor.property_changed.connect(self._on_property_changed)
-    
-    # Implementation continues with all the existing functionality from improved version
-    # For brevity, I'll add the key methods here and the rest in the next part
-    
-    def safe_update(self):
-        """Safe update with error handling and performance monitoring."""
-        try:
-            self.perf_helper.start_timer("ui_update")
-            
-            # Use existing DSim update methods but with safety checks
-            if hasattr(self.dsim, 'execution_initialized') and self.dsim.execution_initialized:
-                is_safe, errors = SafetyChecks.check_simulation_state(self.dsim)
-                if not is_safe:
-                    logger.error(f"Simulation state unsafe: {errors}")
-                    self.stop_simulation()
-                    return
-                
-                self.perf_helper.start_timer("simulation_step")
-                self.dsim.execution_loop()
-                step_duration = self.perf_helper.end_timer("simulation_step")
-                
-                if step_duration and step_duration > 0.1:
-                    logger.warning(f"Slow simulation step: {step_duration:.4f}s")
-            
-            # Update canvas (for now, trigger a repaint)
-            self.canvas_area.update()
-            
-            self.perf_helper.end_timer("ui_update")
-            
-        except Exception as e:
-            logger.error(f"Error in safe_update: {str(e)}")
-            self.stop_simulation()
-    
     def paintEvent(self, event):
-        """Paint event - will be moved to canvas widget in Phase 2."""
-        # For Phase 1, keep the existing painting logic from improved version
-        # This will be refactored in Phase 2 when we implement the modern canvas
+        """Paint event - delegated to canvas widget."""
         pass
-    
-    # Toolbar action handlers
-    def new_diagram(self):
-        self.project_manager.new_diagram()
-    
+
+    # Toolbar action handlers (delegation to project_manager)
     def open_diagram(self):
         self.project_manager.open_diagram()
 
     def _update_recent_files_menu(self):
         self.project_manager.update_recent_files_menu()
-        
+
     def open_example(self, filename):
         self.project_manager.open_example(filename)
-    
+
     def save_diagram(self):
         self.project_manager.save_diagram()
-    
-    def start_simulation(self):
-        """Start simulation with validation."""
-        self.toolbar.set_simulation_state(True, False)
-        self.status_message.setText("Starting simulation...")
-        # Use existing validation logic from improved version
-        # (Implementation details omitted for brevity)
-    
+
     def pause_simulation(self):
         """Pause simulation."""
         if hasattr(self.dsim, 'execution_pause'):
             self.dsim.execution_pause = True
         self.toolbar.set_simulation_state(True, True)
-    
-    def stop_simulation(self):
-        """Stop simulation."""
-        if hasattr(self.dsim, 'execution_initialized'):
-            self.dsim.execution_initialized = False
-        self.toolbar.set_simulation_state(False, False)
-    
+
     def show_plots(self):
         """Show plots."""
         if not hasattr(self.dsim, 'run_history'):

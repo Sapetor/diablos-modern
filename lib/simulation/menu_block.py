@@ -4,7 +4,6 @@ MenuBlocks class - represents blocks in the palette menu.
 
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt, QRect
-from modern_ui.themes.theme_manager import theme_manager
 
 
 class MenuBlocks:
@@ -33,6 +32,9 @@ class MenuBlocks:
         self.colors = colors
 
     def draw_menublock(self, painter, pos):
+        # Lazy import to avoid circular dependency
+        from modern_ui.themes.theme_manager import theme_manager
+
         self.collision = QRect(40, 80 + 40*pos, self.side_length[0], self.side_length[1])
         painter.fillRect(self.collision, self.b_color)
         if not self.image.isNull():
