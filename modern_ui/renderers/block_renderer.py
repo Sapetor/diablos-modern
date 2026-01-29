@@ -447,6 +447,8 @@ class BlockRenderer:
              bar_w = 0.06
              for x, h in zip(bar_positions, bar_heights):
                  path.moveTo(x, 0.80); path.lineTo(x, 0.80 - h * 0.55); path.lineTo(x + bar_w, 0.80 - h * 0.55); path.lineTo(x + bar_w, 0.80)
+        elif block.block_fn == "MathFunction":
+             self._draw_centered_text(block, painter, "f(u)", italic=True, size_delta=4)
 
     # --- Helper methods for common icon patterns ---
 
