@@ -40,6 +40,10 @@ class SystemCompiler:
             'PiD', 'PID',
             'RateLimiter',
             'WaveGenerator',
+            'Noise',
+            'MathFunction',
+            'Selector',
+            'Hysteresis',
         }
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
@@ -451,15 +455,141 @@ class SystemCompiler:
                  u = signals.get(src, 0.0) if src else 0.0
                  y_val = y[start]
                  signals[b_name] = y_val
-                 
+
                  # Rate calculation
                  err = u - y_val
                  rate = err * K
-                 
+
                  # Clamp rate
                  dy = np.clip(rate, falling, rising)
                  dy_vec[start] = dy
              return exec_ratelimiter
+
+        elif fn == 'Noise':
+            mu = float(block.params.get('mu', 0.0))
+            sigma = float(block.params.get('sigma', 1.0))
+
+            def exec_noise(t, y, dy_vec, signals):
+                signals[b_name] = mu + sigma * np.random.randn()
+            return exec_noise
+
+        elif fn == 'Mathfunction':
+            src = input_sources[0] if input_sources else None
+            func = str(block.params.get('function', 'sin')).lower()
+
+            # Pre-select the function to avoid string comparison at runtime
+            if func == 'sin':
+                np_func = np.sin
+            elif func == 'cos':
+                np_func = np.cos
+            elif func == 'tan':
+                np_func = np.tan
+            elif func == 'asin':
+                np_func = np.arcsin
+            elif func == 'acos':
+                np_func = np.arccos
+            elif func == 'atan':
+                np_func = np.arctan
+            elif func == 'exp':
+                np_func = np.exp
+            elif func == 'log':
+                np_func = np.log
+            elif func == 'log10':
+                np_func = np.log10
+            elif func == 'sqrt':
+                np_func = np.sqrt
+            elif func == 'square':
+                np_func = lambda x: x * x
+            elif func == 'sign':
+                np_func = np.sign
+            elif func == 'abs':
+                np_func = np.abs
+            elif func == 'ceil':
+                np_func = np.ceil
+            elif func == 'floor':
+                np_func = np.floor
+            elif func == 'reciprocal':
+                np_func = lambda x: 1.0 / x if x != 0 else 0.0
+            elif func == 'cube':
+                np_func = lambda x: x * x * x
+            else:
+                np_func = np.sin  # Default fallback
+
+            def exec_mathfunc(t, y, dy_vec, signals, _func=np_func):
+                val = signals.get(src, 0.0) if src else 0.0
+                try:
+                    signals[b_name] = _func(val)
+                except (ValueError, ZeroDivisionError):
+                    signals[b_name] = 0.0
+            return exec_mathfunc
+
+        elif fn == 'Selector':
+            src = input_sources[0] if input_sources else None
+            indices_str = str(block.params.get('indices', '0'))
+
+            # Pre-parse indices at compile time
+            parsed_indices = []
+            for part in indices_str.split(','):
+                part = part.strip()
+                if ':' in part:
+                    parts = part.split(':')
+                    start_idx = int(parts[0]) if parts[0] else 0
+                    end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else None
+                    parsed_indices.append(('range', start_idx, end_idx))
+                else:
+                    try:
+                        parsed_indices.append(('idx', int(part)))
+                    except ValueError:
+                        parsed_indices.append(('idx', 0))
+
+            def exec_selector(t, y, dy_vec, signals, _indices=parsed_indices):
+                val = signals.get(src, 0.0) if src else 0.0
+                u = np.atleast_1d(val).flatten()
+                max_len = len(u)
+
+                result = []
+                for item in _indices:
+                    if item[0] == 'range':
+                        start_i, end_i = item[1], item[2]
+                        end_i = end_i if end_i is not None else max_len
+                        result.extend(u[start_i:min(end_i, max_len)])
+                    else:
+                        idx = item[1]
+                        if idx < 0:
+                            idx = max_len + idx
+                        if 0 <= idx < max_len:
+                            result.append(u[idx])
+
+                if len(result) == 1:
+                    signals[b_name] = result[0]
+                else:
+                    signals[b_name] = np.array(result) if result else 0.0
+            return exec_selector
+
+        elif fn == 'Hysteresis':
+            src = input_sources[0] if input_sources else None
+            upper = float(block.params.get('upper', 0.5))
+            lower = float(block.params.get('lower', -0.5))
+            high_val = float(block.params.get('high', 1.0))
+            low_val = float(block.params.get('low', 0.0))
+
+            # Use mutable container for state persistence across calls
+            state_holder = [low_val]  # Start with low output
+
+            def exec_hysteresis(t, y, dy_vec, signals, _state=state_holder):
+                val = signals.get(src, 0.0) if src else 0.0
+                # Extract scalar if needed
+                if hasattr(val, '__len__'):
+                    val = float(np.atleast_1d(val)[0])
+
+                if val >= upper:
+                    _state[0] = high_val
+                elif val <= lower:
+                    _state[0] = low_val
+                # else: retain previous state
+
+                signals[b_name] = _state[0]
+            return exec_hysteresis
 
         # Generic catch-all or pass
         def exec_noop(t, y, dy_vec, signals):
@@ -475,7 +605,7 @@ class SystemCompiler:
         others = []
         for b in sorted_order:
             fn = b.block_fn.title() if b.block_fn else ''
-            if fn in ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential'): 
+            if fn in ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator'):
                 sources.append(b)
             else:
                 others.append(b)
