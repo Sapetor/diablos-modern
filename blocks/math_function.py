@@ -124,21 +124,5 @@ Select the function via the block parameters."""
             return {0: 0.0}
 
     def draw_icon(self, block_rect):
-        from PyQt5.QtGui import QPainterPath
-        path = QPainterPath()
-
-        # Draw "f(u)" style icon - a stylized f with curve
-        # The letter 'f' hook at top
-        path.moveTo(0.55, 0.15)
-        path.cubicTo(0.45, 0.15, 0.35, 0.25, 0.35, 0.35)
-        path.lineTo(0.35, 0.75)
-
-        # Crossbar of 'f'
-        path.moveTo(0.25, 0.45)
-        path.lineTo(0.50, 0.45)
-
-        # Small sine wave to represent function output
-        path.moveTo(0.55, 0.55)
-        path.cubicTo(0.62, 0.35, 0.70, 0.75, 0.85, 0.55)
-
-        return path
+        """MathFunction uses f(·) text rendering - handled in DBlock switch."""
+        return None
