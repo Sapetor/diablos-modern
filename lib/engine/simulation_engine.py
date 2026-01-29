@@ -7,6 +7,7 @@ import logging
 import time as time_module
 from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
+from scipy import signal
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.workspace import WorkspaceManager
@@ -1188,6 +1189,134 @@ class SimulationEngine:
                             out_val = current_states[b_name][0]
                         else:
                             out_val = 0.0
+
+                    elif fn == 'Wavegenerator':
+                        waveform = block.params.get('waveform', 'Sine')
+                        amp = float(block.params.get('amplitude', 1.0))
+                        freq = float(block.params.get('frequency', 1.0))
+                        phase = float(block.params.get('phase', 0.0))
+                        bias = float(block.params.get('bias', 0.0))
+                        arg = 2 * np.pi * freq * t + phase
+
+                        if waveform == 'Sine':
+                            out_val = bias + amp * np.sin(arg)
+                        elif waveform == 'Square':
+                            out_val = bias + amp * signal.square(arg)
+                        elif waveform == 'Triangle':
+                            out_val = bias + amp * signal.sawtooth(arg, width=0.5)
+                        elif waveform == 'Sawtooth':
+                            out_val = bias + amp * signal.sawtooth(arg, width=1.0)
+                        else:
+                            out_val = bias + amp * np.sin(arg)
+
+                    elif fn == 'Noise':
+                        mu = float(block.params.get('mu', 0.0))
+                        sigma = float(block.params.get('sigma', 1.0))
+                        out_val = mu + sigma * np.random.randn()
+
+                    elif fn == 'Mathfunction':
+                        val = float(inputs.get(0, 0.0))
+                        func = str(block.params.get('function', 'sin')).lower()
+
+                        try:
+                            if func == 'sin':
+                                out_val = np.sin(val)
+                            elif func == 'cos':
+                                out_val = np.cos(val)
+                            elif func == 'tan':
+                                out_val = np.tan(val)
+                            elif func == 'asin':
+                                out_val = np.arcsin(val) if -1 <= val <= 1 else 0.0
+                            elif func == 'acos':
+                                out_val = np.arccos(val) if -1 <= val <= 1 else 0.0
+                            elif func == 'atan':
+                                out_val = np.arctan(val)
+                            elif func == 'exp':
+                                out_val = np.exp(val)
+                            elif func == 'log':
+                                out_val = np.log(val) if val > 0 else 0.0
+                            elif func == 'log10':
+                                out_val = np.log10(val) if val > 0 else 0.0
+                            elif func == 'sqrt':
+                                out_val = np.sqrt(val) if val >= 0 else 0.0
+                            elif func == 'square':
+                                out_val = val * val
+                            elif func == 'sign':
+                                out_val = np.sign(val)
+                            elif func == 'abs':
+                                out_val = np.abs(val)
+                            elif func == 'ceil':
+                                out_val = np.ceil(val)
+                            elif func == 'floor':
+                                out_val = np.floor(val)
+                            elif func == 'reciprocal':
+                                out_val = 1.0 / val if val != 0 else 0.0
+                            elif func == 'cube':
+                                out_val = val * val * val
+                            else:
+                                out_val = np.sin(val)
+                        except (ValueError, ZeroDivisionError):
+                            out_val = 0.0
+
+                    elif fn == 'Selector':
+                        val = inputs.get(0, 0.0)
+                        u = np.atleast_1d(val).flatten()
+                        indices_str = str(block.params.get('indices', '0'))
+                        max_len = len(u)
+
+                        result = []
+                        for part in indices_str.split(','):
+                            part = part.strip()
+                            if ':' in part:
+                                parts = part.split(':')
+                                start_idx = int(parts[0]) if parts[0] else 0
+                                end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else max_len
+                                result.extend(u[start_idx:min(end_idx, max_len)])
+                            else:
+                                try:
+                                    idx = int(part)
+                                    if idx < 0:
+                                        idx = max_len + idx
+                                    if 0 <= idx < max_len:
+                                        result.append(u[idx])
+                                except ValueError:
+                                    pass
+
+                        if len(result) == 1:
+                            out_val = result[0]
+                        else:
+                            out_val = np.array(result) if result else 0.0
+
+                    elif fn == 'Hysteresis':
+                        val = float(inputs.get(0, 0.0))
+                        upper = float(block.params.get('upper', 0.5))
+                        lower = float(block.params.get('lower', -0.5))
+                        high_val = float(block.params.get('high', 1.0))
+                        low_val = float(block.params.get('low', 0.0))
+
+                        # Get or initialize persistent state for replay
+                        if not hasattr(block, '_replay_hyst_state'):
+                            block._replay_hyst_state = low_val
+
+                        if val >= upper:
+                            block._replay_hyst_state = high_val
+                        elif val <= lower:
+                            block._replay_hyst_state = low_val
+
+                        out_val = block._replay_hyst_state
+
+                    elif fn == 'Mux':
+                        # Collect all inputs into array
+                        vals = []
+                        port_idx = 0
+                        while port_idx in inputs:
+                            vals.append(inputs[port_idx])
+                            port_idx += 1
+                        out_val = np.array(vals) if vals else 0.0
+
+                    elif fn == 'Demux':
+                        # Pass through - demux output depends on which port is connected
+                        out_val = inputs.get(0, 0.0)
 
                     elif fn in ('Terminator', 'Display'):
                         pass # Do nothing
