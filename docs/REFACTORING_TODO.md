@@ -57,3 +57,33 @@ This file tracks remaining refactoring opportunities for the DiaBloS codebase.
 - [x] Fix: Implemented `Recent Files` loading logic
 - [x] Testing: Added unit tests for `InteractionManager`, `SelectionManager`.
 - [x] Refactor: Optimized `SystemCompiler` with closure-based executors (Fast Solver Speedup).
+- [x] Fix: Rectangle selection bug after double-click block creation (`modern_canvas.py`)
+
+---
+
+## New Refactoring Opportunities (Identified Jan 2026)
+
+### Priority 1: Quick Wins (Low Risk)
+
+| Task | Files | Estimated Impact |
+|------|-------|------------------|
+| Remove unused imports | ~15 files | -50 lines |
+| Delete duplicate imports | ~8 files | -15 lines |
+| Replace `except: pass` with specific handling | lib/lib.py, flattener.py, project_manager.py | 6 fixes |
+| Move orphaned test files to tests/ | 4 files at root | Organization |
+
+### Priority 2: Split Monolithic Files (Medium Effort)
+
+| Task | Current | Target |
+|------|---------|--------|
+| Split `modern_canvas.py` | 2,327 lines | 3-4 files ~600 lines each |
+| Extract `SubsystemManager` from lib.py | 374-line function | New class |
+| Split `main_window.py` | 1,612 lines | Separate menu/dialog setup |
+
+### Priority 3: Consolidate Patterns (Higher Effort)
+
+| Task | Files Affected | Lines Saved |
+|------|----------------|-------------|
+| Create `StateSpaceBaseBlock` | 4 control blocks | ~70 lines |
+| Standardize block error returns | All blocks | Consistency |
+| Fix circular imports (theme_manager) | lib/lib.py, lib/simulation/block.py | Architecture |
