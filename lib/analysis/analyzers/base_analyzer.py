@@ -61,7 +61,7 @@ class BaseAnalyzer:
             return block.get_transfer_function()
             
         # 2. Subsystem Support (Simplified)
-        if block.block_type == 'subsystem':
+        if block.block_fn == 'Subsystem':
             # TODO: Robust subsystem tracing requires flattening logic or recursive graph search.
             # For now, we abort if not implementing get_transfer_function (which compiles it).
             pass
@@ -91,7 +91,7 @@ class BaseAnalyzer:
                  return None
 
         # C) PID Controller
-        if block.block_type == 'pid':
+        if block.block_fn == 'PID':
              try:
                  kp = float(params.get('kp', 1.0))
                  ki = float(params.get('ki', 0.0))
