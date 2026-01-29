@@ -20,7 +20,7 @@ class SystemCompiler:
             'Gain',
             'Sum',
             'Constant',
-            'Sine', 
+            'Sine',
             'Step',
             'TransferFcn',
             'TranFn',
@@ -38,7 +38,8 @@ class SystemCompiler:
             'Deadband',
             'Exponential',
             'PiD', 'PID',
-            'RateLimiter'
+            'RateLimiter',
+            'WaveGenerator',
         }
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
@@ -170,11 +171,45 @@ class SystemCompiler:
             freq = float(block.params.get('frequency', block.params.get('omega', 1.0)))
             phase = float(block.params.get('phase', block.params.get('init_angle', 0.0)))
             bias = float(block.params.get('bias', 0.0))
-            
+
             def exec_sine(t, y, dy_vec, signals):
                 signals[b_name] = amp * np.sin(freq * t + phase) + bias
             return exec_sine
-            
+
+        elif fn == 'Wavegenerator':
+            waveform = block.params.get('waveform', 'Sine')
+            amp = float(block.params.get('amplitude', 1.0))
+            freq = float(block.params.get('frequency', 1.0))
+            phase = float(block.params.get('phase', 0.0))
+            bias = float(block.params.get('bias', 0.0))
+
+            if waveform == 'Sine':
+                def exec_wavegen_sine(t, y, dy_vec, signals):
+                    arg = 2 * np.pi * freq * t + phase
+                    signals[b_name] = bias + amp * np.sin(arg)
+                return exec_wavegen_sine
+            elif waveform == 'Square':
+                def exec_wavegen_square(t, y, dy_vec, signals):
+                    arg = 2 * np.pi * freq * t + phase
+                    signals[b_name] = bias + amp * signal.square(arg)
+                return exec_wavegen_square
+            elif waveform == 'Triangle':
+                def exec_wavegen_triangle(t, y, dy_vec, signals):
+                    arg = 2 * np.pi * freq * t + phase
+                    signals[b_name] = bias + amp * signal.sawtooth(arg, width=0.5)
+                return exec_wavegen_triangle
+            elif waveform == 'Sawtooth':
+                def exec_wavegen_sawtooth(t, y, dy_vec, signals):
+                    arg = 2 * np.pi * freq * t + phase
+                    signals[b_name] = bias + amp * signal.sawtooth(arg, width=1.0)
+                return exec_wavegen_sawtooth
+            else:
+                # Default to sine
+                def exec_wavegen_default(t, y, dy_vec, signals):
+                    arg = 2 * np.pi * freq * t + phase
+                    signals[b_name] = bias + amp * np.sin(arg)
+                return exec_wavegen_default
+
         elif fn == 'Step':
             step_t = float(block.params.get('delay', 0.0))
             val = float(block.params.get('value', 1.0))
