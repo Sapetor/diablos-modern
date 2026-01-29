@@ -92,6 +92,47 @@ class MenuManager:
             create_subsys_action.setShortcut("Ctrl+G")
             create_subsys_action.triggered.connect(lambda: self.canvas.dsim.create_subsystem_from_selection(selected_blocks))
 
+            # Alignment submenu (only when 2+ blocks selected)
+            align_menu = menu.addMenu("Align")
+
+            # Horizontal alignment
+            align_left = align_menu.addAction("Align Left")
+            align_left.setShortcut("Ctrl+Shift+L")
+            align_left.triggered.connect(self.canvas.align_left)
+
+            align_right = align_menu.addAction("Align Right")
+            align_right.setShortcut("Ctrl+Shift+R")
+            align_right.triggered.connect(self.canvas.align_right)
+
+            align_center_h = align_menu.addAction("Align Center (Horizontal)")
+            align_center_h.setShortcut("Ctrl+Shift+H")
+            align_center_h.triggered.connect(self.canvas.align_center_horizontal)
+
+            align_menu.addSeparator()
+
+            # Vertical alignment
+            align_top = align_menu.addAction("Align Top")
+            align_top.setShortcut("Ctrl+Shift+T")
+            align_top.triggered.connect(self.canvas.align_top)
+
+            align_bottom = align_menu.addAction("Align Bottom")
+            align_bottom.setShortcut("Ctrl+Shift+B")
+            align_bottom.triggered.connect(self.canvas.align_bottom)
+
+            align_center_v = align_menu.addAction("Align Center (Vertical)")
+            align_center_v.setShortcut("Ctrl+Shift+V")
+            align_center_v.triggered.connect(self.canvas.align_center_vertical)
+
+            # Distribution (only when 3+ blocks selected)
+            if len(selected_blocks) >= 3:
+                align_menu.addSeparator()
+
+                dist_h = align_menu.addAction("Distribute Horizontally")
+                dist_h.triggered.connect(self.canvas.distribute_horizontal)
+
+                dist_v = align_menu.addAction("Distribute Vertically")
+                dist_v.triggered.connect(self.canvas.distribute_vertical)
+
         menu.addSeparator()
 
         properties_action = menu.addAction("Properties...")

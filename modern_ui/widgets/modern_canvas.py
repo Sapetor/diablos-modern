@@ -106,6 +106,7 @@ class ModernCanvas(QWidget):
         self.resize_handle = None  # Which handle is being dragged
         self.resize_start_rect = None  # Original block rect before resize
         self.resize_start_pos = None  # Mouse position at start of resize
+        self.resize_at_limit = False  # True when resize hits minimum size
 
         # Validation system
         self.validation_errors = []
@@ -1012,6 +1013,15 @@ class ModernCanvas(QWidget):
                 min_width = 50
                 min_height = 40
 
+            # Also check block's port-based minimum height (for multi-port blocks)
+            if hasattr(block, 'calculate_min_size'):
+                port_min_height = block.calculate_min_size()
+                min_height = max(min_height, port_min_height)
+
+            # Track if we're hitting the resize limit
+            at_width_limit = new_width <= min_width
+            at_height_limit = new_height <= min_height
+
             # Ensure minimum size
             if new_width < min_width:
                 if 'left' in handle:
@@ -1022,6 +1032,25 @@ class ModernCanvas(QWidget):
                 if 'top' in handle:
                     new_top = start_rect.bottom() - min_height
                 new_height = min_height
+
+            # Visual feedback: change cursor when at limit
+            if at_width_limit or at_height_limit:
+                self.setCursor(Qt.ForbiddenCursor)
+                self.resize_at_limit = True
+            else:
+                # Restore appropriate resize cursor
+                cursor_map = {
+                    'top_left': Qt.SizeFDiagCursor,
+                    'top_right': Qt.SizeBDiagCursor,
+                    'bottom_left': Qt.SizeBDiagCursor,
+                    'bottom_right': Qt.SizeFDiagCursor,
+                    'top': Qt.SizeVerCursor,
+                    'bottom': Qt.SizeVerCursor,
+                    'left': Qt.SizeHorCursor,
+                    'right': Qt.SizeHorCursor,
+                }
+                self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+                self.resize_at_limit = False
 
             # Update block position and size
             block.left = new_left
@@ -1106,6 +1135,8 @@ class ModernCanvas(QWidget):
                 self.resize_handle = None
                 self.resize_start_rect = None
                 self.resize_start_pos = None
+                self.resize_at_limit = False
+                self.setCursor(Qt.ArrowCursor)
 
                 # Ensure lines are updated after resize
                 self._update_line_positions()
@@ -1186,6 +1217,17 @@ class ModernCanvas(QWidget):
                     # F5: Start/run simulation
                     self.start_simulation()
                     logger.info("F5: Started simulation")
+            # Alignment shortcuts (Ctrl+Shift+key)
+            elif event.key() == Qt.Key_L and ctrl_pressed and shift_pressed:
+                self.align_left()
+            elif event.key() == Qt.Key_R and ctrl_pressed and shift_pressed:
+                self.align_right()
+            elif event.key() == Qt.Key_H and ctrl_pressed and shift_pressed:
+                self.align_center_horizontal()
+            elif event.key() == Qt.Key_T and ctrl_pressed and shift_pressed:
+                self.align_top()
+            elif event.key() == Qt.Key_B and ctrl_pressed and shift_pressed:
+                self.align_bottom()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 
@@ -2265,3 +2307,101 @@ class ModernCanvas(QWidget):
             self.analyzer.generate_bode_phase_plot(block)
         else:
             logger.error("Analyzer not initialized")
+
+    # ===== Alignment Methods =====
+
+    def align_left(self):
+        """Align selected blocks to the leftmost block's left edge."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Left")
+        AlignmentTools.align_left(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def align_right(self):
+        """Align selected blocks to the rightmost block's right edge."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Right")
+        AlignmentTools.align_right(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def align_center_horizontal(self):
+        """Align selected blocks to horizontal center."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Center Horizontal")
+        AlignmentTools.align_center_horizontal(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def align_top(self):
+        """Align selected blocks to the topmost block's top edge."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Top")
+        AlignmentTools.align_top(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def align_bottom(self):
+        """Align selected blocks to the bottommost block's bottom edge."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Bottom")
+        AlignmentTools.align_bottom(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def align_center_vertical(self):
+        """Align selected blocks to vertical center."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks selected to align")
+            return
+        self._push_undo("Align Center Vertical")
+        AlignmentTools.align_center_vertical(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def distribute_horizontal(self):
+        """Distribute selected blocks evenly horizontally."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 3:
+            logger.info("Need at least 3 blocks selected to distribute")
+            return
+        self._push_undo("Distribute Horizontal")
+        AlignmentTools.distribute_horizontal(blocks)
+        self._update_line_positions()
+        self.update()
+
+    def distribute_vertical(self):
+        """Distribute selected blocks evenly vertically."""
+        from modern_ui.tools.alignment_tools import AlignmentTools
+        blocks = self.selection_manager.get_selected_blocks()
+        if len(blocks) < 3:
+            logger.info("Need at least 3 blocks selected to distribute")
+            return
+        self._push_undo("Distribute Vertical")
+        AlignmentTools.distribute_vertical(blocks)
+        self._update_line_positions()
+        self.update()

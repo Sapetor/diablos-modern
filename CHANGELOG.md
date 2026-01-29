@@ -4,6 +4,45 @@ All notable changes to DiaBloS will be documented in this file.
 
 ## [Unreleased] - 2026-01-29
 
+### New UI/UX Features
+
+#### Alignment Tools
+Align and distribute multiple selected blocks for cleaner diagrams:
+- **Align Left/Right/Center (Horizontal)**: Align blocks horizontally
+- **Align Top/Bottom/Center (Vertical)**: Align blocks vertically
+- **Distribute Horizontally/Vertically**: Space blocks evenly (requires 3+ blocks)
+
+Access via:
+- Right-click context menu → Align submenu (when 2+ blocks selected)
+- Keyboard shortcuts: `Ctrl+Shift+L` (Left), `Ctrl+Shift+R` (Right), `Ctrl+Shift+H` (Center H), `Ctrl+Shift+T` (Top), `Ctrl+Shift+B` (Bottom)
+
+#### Single-Step Simulation
+Debug simulations one timestep at a time:
+- Press **F8** to step through simulation
+- Works from stopped state (initializes at t=0) or paused state
+- Each step advances exactly one `dt` and pauses automatically
+- Useful for debugging and understanding block behavior
+
+#### Minimap Widget
+Overview navigation for large diagrams:
+- Toggle via **View → Minimap** or `Ctrl+Shift+M`
+- Shows scaled overview of entire diagram
+- Current viewport highlighted as rectangle
+- Click on minimap to pan main canvas to that location
+- Dockable on left or right side
+
+### Bug Fixes
+- **Block Resize Port Alignment**: Fixed a visual glitch when resizing blocks with multiple input/output ports. The `rect` property was not being updated after minimum height enforcement in `update_Block()`, causing inconsistencies between block dimensions and port positions.
+- **Subsystem Resize Port Scaling**: Fixed an issue where subsystem ports would not scale when resizing. Port positions were stored as absolute pixel values at creation time and never recalculated. Ports now scale proportionally with block dimensions.
+- **Subsystem Naming Collision**: Fixed a bug where creating multiple subsystems would give them all the same name ("subsystem1"). The uniqueness check was comparing capitalized names ("Subsystem1") against lowercase block names ("subsystem1").
+- **Subsystem Loop Detection**: Improved algebraic loop detection to look inside subsystems. A subsystem containing a memory block (Integrator, etc.) now correctly breaks algebraic loops, allowing valid feedback connections.
+
+### Improvements
+- **Resize Limit Feedback**: The cursor now changes to a "forbidden" indicator when trying to resize a block below its minimum size, providing visual feedback about resize constraints.
+- **Smoother Port Positioning**: Disabled port grid snapping by default for smoother resize behavior. Blocks can opt-in via `block_instance.use_port_grid_snap = True`.
+- **Code Cleanup**: Removed unused `port_spacing` calculation in `DBlock.update_Block()`.
+- **Test Coverage**: Added 11 unit tests for block resize behavior (`tests/unit/test_block_resize.py`).
+
 ### New Features
 - **Fast Solver Block Expansion**: Added 5 new blocks to the Fast Solver (Compiled Mode):
   - `WaveGenerator`: Multi-waveform source (Sine, Square, Triangle, Sawtooth)

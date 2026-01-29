@@ -951,7 +951,45 @@ class DSim:
         while self.execution_initialized:
             self.execution_loop()
 
-        
+    def single_step(self):
+        """
+        Execute exactly one timestep of the simulation.
+        Used for step-by-step debugging when simulation is paused.
+
+        If simulation is not initialized, it will be initialized first
+        (starting from t=0) in paused state.
+
+        Returns:
+            bool: True if step was executed, False on error
+        """
+        try:
+            # If not initialized, initialize first (allows stepping from start)
+            if not self.execution_initialized:
+                logger.info("Initializing simulation for step-by-step mode...")
+                success = self.execution_init()
+                if not success:
+                    logger.error("Failed to initialize simulation for stepping")
+                    return False
+                # Start paused
+                self.execution_pause = True
+                logger.info(f"Simulation initialized at t=0, ready to step")
+
+            # Temporarily unpause
+            self.execution_pause = False
+
+            # Execute one step
+            self.execution_loop()
+
+            # Re-pause (single-step always pauses after)
+            self.execution_pause = True
+
+            logger.debug(f"Single step executed: t={self.time_step:.4f}s")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error during single step: {str(e)}")
+            self.execution_pause = True
+            return False
 
     def execution_loop(self):
         """
@@ -1190,12 +1228,13 @@ class DSim:
         logger.info(f"Subsystem Bounding Box: ({min_x}, {min_y}) - ({max_x}, {max_y}). Center: ({center_x}, {center_y})")
         
         # Find unique SID/Name for subsystem
-        base_name = "Subsystem"
+        # Note: block.name is lowercase (block_fn.lower() + str(sid)), so we check lowercase
+        base_name = "subsystem"
         existing_names = [b.name for b in self.blocks_list]
         idx = 1
         while f"{base_name}{idx}" in existing_names:
             idx += 1
-        subsys_name = f"{base_name}{idx}"
+        subsys_name = f"Subsystem{idx}"  # Username can have capital, name will be lowercase
         
         from PyQt5.QtCore import QPoint, QRect
         # Create Subsystem

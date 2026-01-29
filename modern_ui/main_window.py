@@ -36,6 +36,7 @@ from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
 from modern_ui.widgets.workspace_editor import WorkspaceEditor
+from modern_ui.widgets.minimap_widget import MinimapWidget
 from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.breadcrumb_bar import BreadcrumbBar
 from modern_ui.platform_config import get_platform_config
@@ -110,6 +111,13 @@ class ModernDiaBloSWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.workspace_editor_dock)
         self.workspace_editor_dock.hide()
 
+        # Initialize Minimap (Dockable)
+        self.minimap = MinimapWidget(self.canvas, self)
+        self.minimap_dock = QDockWidget("Minimap", self)
+        self.minimap_dock.setWidget(self.minimap)
+        self.minimap_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.minimap_dock)
+        self.minimap_dock.hide()  # Hidden by default
 
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
@@ -232,6 +240,16 @@ class ModernDiaBloSWindow(QMainWindow):
              if hasattr(self, 'workspace_editor_action'):
                  self.workspace_editor_action.setChecked(visible)
 
+    def toggle_minimap(self):
+        """Toggle visibility of the minimap dock."""
+        if hasattr(self, 'minimap_dock'):
+            visible = not self.minimap_dock.isVisible()
+            self.minimap_dock.setVisible(visible)
+            if visible:
+                # Refresh minimap when shown
+                self.minimap.refresh()
+            if hasattr(self, 'minimap_action'):
+                self.minimap_action.setChecked(visible)
 
     def show_command_palette(self):
         # Placeholder or existing?
@@ -290,6 +308,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.play_simulation.connect(self.start_simulation)
         self.toolbar.pause_simulation.connect(self.pause_simulation)
         self.toolbar.stop_simulation.connect(self.stop_simulation)
+        self.toolbar.step_simulation.connect(self.step_simulation)
         self.toolbar.plot_results.connect(self.show_plots)
         self.toolbar.capture_screen.connect(self.capture_screen)
         self.toolbar.zoom_changed.connect(self.set_zoom)
@@ -539,6 +558,39 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self.dsim, 'execution_pause'):
             self.dsim.execution_pause = True
         self.toolbar.set_simulation_state(True, True)
+
+    def step_simulation(self):
+        """Execute a single timestep of the simulation.
+
+        If simulation is not running, it will be initialized first,
+        allowing step-by-step execution from t=0.
+        """
+        if not hasattr(self.dsim, 'single_step'):
+            self.status_message.setText("Single-step not available")
+            return
+
+        # Check if this is the first step (will initialize)
+        was_initialized = self.dsim.execution_initialized
+
+        success = self.dsim.single_step()
+        if success:
+            if not was_initialized:
+                self.status_message.setText(f"Started stepping at t={self.dsim.time_step:.4f}s")
+            else:
+                self.status_message.setText(f"Stepped to t={self.dsim.time_step:.4f}s")
+            self.canvas.update()
+            # Keep toolbar in paused state (step always pauses)
+            self.toolbar.set_simulation_state(True, True)
+        else:
+            # Check if simulation ended or failed to start
+            if not self.dsim.execution_initialized:
+                self.toolbar.set_simulation_state(False, False)
+                if was_initialized:
+                    self.status_message.setText("Simulation finished")
+                else:
+                    self.status_message.setText("Failed to initialize simulation")
+            else:
+                self.status_message.setText("Step failed")
 
     def show_plots(self):
         """Show plots."""
@@ -1255,6 +1307,10 @@ class ModernDiaBloSWindow(QMainWindow):
                         logger.warning(f"Slow simulation step: {step_duration:.4f}s")
 
                 self.canvas.update()
+
+                # Refresh minimap if visible
+                if hasattr(self, 'minimap_dock') and self.minimap_dock.isVisible():
+                    self.minimap.refresh()
 
                 is_running = self.canvas.is_simulation_running()
 

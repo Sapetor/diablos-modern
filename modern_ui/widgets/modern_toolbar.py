@@ -20,6 +20,7 @@ class ModernToolBar(QToolBar):
     play_simulation = pyqtSignal()
     pause_simulation = pyqtSignal()
     stop_simulation = pyqtSignal()
+    step_simulation = pyqtSignal()
     plot_results = pyqtSignal()
     capture_screen = pyqtSignal()
     zoom_changed = pyqtSignal(float)
@@ -87,6 +88,11 @@ class ModernToolBar(QToolBar):
         self.stop_action.setShortcut("F7")
         self.stop_action.setToolTip("Stop simulation (F7)")
         self.stop_action.triggered.connect(self.stop_simulation.emit)
+
+        self.step_action = QAction(self._create_icon("⏭️"), "Step", self)
+        self.step_action.setShortcut("F8")
+        self.step_action.setToolTip("Single step simulation (F8)")
+        self.step_action.triggered.connect(self.step_simulation.emit)
         
         # View actions
         self.plot_action = QAction(self._create_icon("📊"), "Plot", self)
@@ -114,6 +120,7 @@ class ModernToolBar(QToolBar):
         self.addAction(self.play_action)
         self.addAction(self.pause_action)
         self.addAction(self.stop_action)
+        self.addAction(self.step_action)
         self.addSeparator()
         
         # View group
@@ -190,6 +197,7 @@ class ModernToolBar(QToolBar):
         self.play_action.setIcon(self._create_icon("▶️"))
         self.pause_action.setIcon(self._create_icon("⏸️"))
         self.stop_action.setIcon(self._create_icon("⏹️"))
+        self.step_action.setIcon(self._create_icon("⏭️"))
         self.plot_action.setIcon(self._create_icon("📊"))
         self.capture_action.setIcon(self._create_icon("📷"))
 
@@ -226,7 +234,9 @@ class ModernToolBar(QToolBar):
         self.play_action.setEnabled(not running or paused)
         self.pause_action.setEnabled(running and not paused)
         self.stop_action.setEnabled(running)
-        
+        # Step is enabled when paused OR when not running (to start in step mode)
+        self.step_action.setEnabled(not running or paused)
+
         if running and not paused:
             self.set_status("Simulation running...")
         elif running and paused:
