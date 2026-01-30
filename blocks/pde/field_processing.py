@@ -84,6 +84,11 @@ class FieldProbeBlock(BaseBlock):
             {"name": "value", "type": "float", "doc": "Field value at probe location"},
         ]
 
+    @property
+    def optional_inputs(self):
+        """Input 1 (position) is optional - uses parameter if not connected."""
+        return [1]
+
     def draw_icon(self, block_rect):
         """Draw probe icon - crosshair on a curve."""
         from PyQt5.QtGui import QPainterPath

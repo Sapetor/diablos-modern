@@ -131,8 +131,16 @@ class DiagramValidator:
             elif hasattr(block, 'category') and block.category == 'Sources':
                 continue
 
+            # Get optional inputs list (if the block specifies any)
+            optional_inputs = set()
+            if hasattr(block, 'block_instance') and block.block_instance:
+                if hasattr(block.block_instance, 'optional_inputs'):
+                    optional_inputs = set(block.block_instance.optional_inputs)
+
             # Check for disconnected inputs using pre-built map
             for i in range(block.in_ports):
+                if i in optional_inputs:
+                    continue  # Skip optional inputs
                 if (block.name, i) not in input_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.ERROR,
