@@ -53,7 +53,7 @@ class ConstantBlock(BaseBlock):
         path.lineTo(0.9, 0.5)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         value = params.get("value", 1.0)
-        return {0: np.atleast_1d(value)}
+        return {0: np.atleast_1d(value), 'E': False}
 
