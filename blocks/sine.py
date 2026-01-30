@@ -58,7 +58,7 @@ class SineBlock(BaseBlock):
         path.quadTo(0.7, 0.9, 0.9, 0.5)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         amplitude = float(params['amplitude'])
         omega = float(params['omega'])
         init_angle = float(params['init_angle'])

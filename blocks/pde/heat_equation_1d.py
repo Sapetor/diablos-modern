@@ -137,6 +137,11 @@ class HeatEquation1DBlock(BaseBlock):
         ]
 
     @property
+    def optional_inputs(self):
+        """Input 0 (q_src) is optional - heat source defaults to 0."""
+        return [0]
+
+    @property
     def optional_outputs(self):
         """Output 1 (T_avg) is optional - doesn't need to be connected."""
         return [1]

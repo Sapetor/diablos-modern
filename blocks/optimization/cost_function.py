@@ -107,6 +107,11 @@ class CostFunctionBlock(BaseBlock):
         ]
 
     @property
+    def optional_inputs(self):
+        """Input 1 (reference) is optional - uses target parameter if not connected."""
+        return [1]
+
+    @property
     def outputs(self):
         return [
             {"name": "cost", "type": "float", "doc": "Accumulated cost"},

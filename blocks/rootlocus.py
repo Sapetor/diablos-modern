@@ -64,7 +64,7 @@ class RootLocusBlock(BaseBlock):
 
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # RootLocus doesn't process data during simulation
         # It's used to generate static root locus plots via right-click menu
         # Return empty output dict to avoid breaking simulation

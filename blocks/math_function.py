@@ -55,7 +55,7 @@ Select the function via the block parameters."""
     def outputs(self):
         return [{"name": "y", "type": "float"}]
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # inputs are keyed by port index (0), but fallback to "u" just in case
         u = inputs.get(0, inputs.get("u", 0.0))
         

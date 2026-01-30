@@ -62,7 +62,7 @@ class SaturationBlock(BaseBlock):
         path.quadTo(0.7, 0.8, 0.85, 0.8)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         u = np.array(inputs[0], dtype=float)
         u_sat = np.clip(u, params["min"], params["max"])
         return {0: u_sat}

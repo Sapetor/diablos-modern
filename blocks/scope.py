@@ -62,7 +62,7 @@ class ScopeBlock(BaseBlock):
         path.quadTo(0.7, 1.0, 0.9, 0.6)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         """
         Collect input signals for plotting.
         """

@@ -53,7 +53,7 @@ class TransportDelayBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         delay_time = max(0.0, float(params.get("delay_time", 0.1)))
         initial_value = float(params.get("initial_value", 0.0))
         

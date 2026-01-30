@@ -59,7 +59,7 @@ class RateLimiterBlock(BaseBlock):
         path.lineTo(0.85, 0.25)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         dt = float(params.get("dtime", 0.01))
         u = np.array(inputs[0], dtype=float)
 

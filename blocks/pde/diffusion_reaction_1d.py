@@ -137,6 +137,16 @@ class DiffusionReaction1DBlock(BaseBlock):
             {"name": "reaction_rate", "type": "float", "doc": "Total reaction rate"},
         ]
 
+    @property
+    def optional_inputs(self):
+        """Inputs 0-2 are optional: source term and BCs depend on use case."""
+        return [0, 1, 2]
+
+    @property
+    def optional_outputs(self):
+        """Outputs 1 (c_total) and 2 (reaction_rate) are auxiliary."""
+        return [1, 2]
+
     def draw_icon(self, block_rect):
         """Draw diffusion-reaction icon - spreading profile with reaction."""
         from PyQt5.QtGui import QPainterPath

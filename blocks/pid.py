@@ -113,7 +113,7 @@ class PIDBlock(BaseBlock):
         except ImportError:
             return {}
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         dt = float(params.get("dtime", 0.01))
         sp = float(np.atleast_1d(inputs[0])[0])
         meas = float(np.atleast_1d(inputs[1])[0])

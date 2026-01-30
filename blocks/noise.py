@@ -62,7 +62,7 @@ class NoiseBlock(BaseBlock):
         path.lineTo(0.9, 0.6)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         sigma = float(params['sigma'])
         mu = float(params['mu'])
         return {0: np.array(sigma ** 2 * np.random.randn() + mu, dtype=float)}

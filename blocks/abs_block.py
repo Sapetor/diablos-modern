@@ -41,6 +41,6 @@ class AbsBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         input_value = np.atleast_1d(inputs.get(0, 0))
         return {0: np.abs(input_value)}

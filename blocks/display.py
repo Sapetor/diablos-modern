@@ -57,7 +57,7 @@ class DisplayBlock(BaseBlock):
         """Display uses dynamic text rendering - handled in DBlock switch."""
         return None
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         fmt = params.get("format", "%.3f")
         label = params.get("label", "")
         

@@ -64,7 +64,7 @@ class StepBlock(BaseBlock):
         path.lineTo(0.9, 0.3)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
             self.step_old = time
             self.change_old = not params['pulse_start_up']

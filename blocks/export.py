@@ -63,7 +63,7 @@ class ExportBlock(BaseBlock):
         path.lineTo(0.8, 0.7)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         """
         Save and export block signals.
         """

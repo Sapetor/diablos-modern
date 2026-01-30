@@ -108,6 +108,16 @@ class AdvectionEquation1DBlock(BaseBlock):
             {"name": "c_total", "type": "float", "doc": "Total mass (integral)"},
         ]
 
+    @property
+    def optional_inputs(self):
+        """Input 0 (c_inlet) is optional when using periodic BC."""
+        return [0]
+
+    @property
+    def optional_outputs(self):
+        """Output 1 (c_total) is auxiliary/diagnostic."""
+        return [1]
+
     def draw_icon(self, block_rect):
         """Draw advection icon - arrow with flowing profile."""
         from PyQt5.QtGui import QPainterPath

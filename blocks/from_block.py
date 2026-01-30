@@ -52,7 +52,7 @@ class FromBlock(BaseBlock):
         """From uses tag text rendering - handled in DBlock switch."""
         return None
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # Value will be fed via hidden virtual line into input_queue under key 0
         return {0: inputs.get(0, 0)}
 
