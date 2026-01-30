@@ -11,32 +11,9 @@
         {
             "block_fn": "Constant",
             "sid": 1,
-            "username": "LeftBC_100",
-            "coords_left": 50,
-            "coords_top": 150,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
-            "in_ports": 0,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "constant",
-            "params": {
-                "value": 100.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Constant",
-            "sid": 2,
-            "username": "RightBC_0",
-            "coords_left": 50,
-            "coords_top": 250,
+            "username": "HeatSource_0",
+            "coords_left": 80,
+            "coords_top": 100,
             "coords_width": 80,
             "coords_height": 40,
             "coords_height_base": 40,
@@ -56,10 +33,33 @@
         },
         {
             "block_fn": "Constant",
+            "sid": 2,
+            "username": "LeftBC_100",
+            "coords_left": 80,
+            "coords_top": 180,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 100.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
             "sid": 3,
-            "username": "HeatSource_0",
-            "coords_left": 50,
-            "coords_top": 50,
+            "username": "RightBC_0",
+            "coords_left": 80,
+            "coords_top": 260,
             "coords_width": 80,
             "coords_height": 40,
             "coords_height_base": 40,
@@ -82,10 +82,10 @@
             "sid": 4,
             "username": "HeatEquation",
             "coords_left": 250,
-            "coords_top": 120,
+            "coords_top": 140,
             "coords_width": 120,
-            "coords_height": 80,
-            "coords_height_base": 80,
+            "coords_height": 100,
+            "coords_height_base": 100,
             "in_ports": 3,
             "out_ports": 2,
             "dragging": false,
@@ -95,7 +95,7 @@
             "io_edit": false,
             "fn_name": "heatequation1d",
             "params": {
-                "alpha": 0.1,
+                "alpha": 0.05,
                 "L": 1.0,
                 "N": 20,
                 "bc_type_left": "Dirichlet",
@@ -108,9 +108,9 @@
         {
             "block_fn": "FieldProbe",
             "sid": 5,
-            "username": "Probe_Center",
+            "username": "Probe_x05",
             "coords_left": 450,
-            "coords_top": 80,
+            "coords_top": 120,
             "coords_width": 100,
             "coords_height": 50,
             "coords_height_base": 50,
@@ -133,9 +133,9 @@
         {
             "block_fn": "FieldProbe",
             "sid": 6,
-            "username": "Probe_Quarter",
+            "username": "Probe_x025",
             "coords_left": 450,
-            "coords_top": 180,
+            "coords_top": 200,
             "coords_width": 100,
             "coords_height": 50,
             "coords_height_base": 50,
@@ -158,9 +158,9 @@
         {
             "block_fn": "Scope",
             "sid": 7,
-            "username": "Temperature_Scope",
+            "username": "TempScope",
             "coords_left": 620,
-            "coords_top": 100,
+            "coords_top": 150,
             "coords_width": 80,
             "coords_height": 60,
             "coords_height_base": 60,
@@ -173,7 +173,7 @@
             "io_edit": true,
             "fn_name": "scope",
             "params": {
-                "labels": "T_center, T_quarter"
+                "labels": "T(x=0.5), T(x=0.25)"
             },
             "external": false,
             "flipped": false
@@ -181,9 +181,9 @@
         {
             "block_fn": "FieldScope",
             "sid": 8,
-            "username": "Field_Heatmap",
+            "username": "FieldHeatmap",
             "coords_left": 450,
-            "coords_top": 280,
+            "coords_top": 290,
             "coords_width": 100,
             "coords_height": 60,
             "coords_height_base": 60,
@@ -209,49 +209,57 @@
             "srcblock": "HeatSource_0",
             "srcport": 0,
             "dstblock": "HeatEquation",
-            "dstport": 0
+            "dstport": 0,
+            "points": [[160, 120], [250, 165]]
         },
         {
             "srcblock": "LeftBC_100",
             "srcport": 0,
             "dstblock": "HeatEquation",
-            "dstport": 1
+            "dstport": 1,
+            "points": [[160, 200], [250, 190]]
         },
         {
             "srcblock": "RightBC_0",
             "srcport": 0,
             "dstblock": "HeatEquation",
-            "dstport": 2
+            "dstport": 2,
+            "points": [[160, 280], [200, 280], [200, 215], [250, 215]]
         },
         {
             "srcblock": "HeatEquation",
             "srcport": 0,
-            "dstblock": "Probe_Center",
-            "dstport": 0
+            "dstblock": "Probe_x05",
+            "dstport": 0,
+            "points": [[370, 175], [410, 175], [410, 137], [450, 137]]
         },
         {
             "srcblock": "HeatEquation",
             "srcport": 0,
-            "dstblock": "Probe_Quarter",
-            "dstport": 0
-        },
-        {
-            "srcblock": "Probe_Center",
-            "srcport": 0,
-            "dstblock": "Temperature_Scope",
-            "dstport": 0
-        },
-        {
-            "srcblock": "Probe_Quarter",
-            "srcport": 0,
-            "dstblock": "Temperature_Scope",
-            "dstport": 1
+            "dstblock": "Probe_x025",
+            "dstport": 0,
+            "points": [[370, 175], [410, 175], [410, 217], [450, 217]]
         },
         {
             "srcblock": "HeatEquation",
             "srcport": 0,
-            "dstblock": "Field_Heatmap",
-            "dstport": 0
+            "dstblock": "FieldHeatmap",
+            "dstport": 0,
+            "points": [[370, 175], [410, 175], [410, 312], [450, 312]]
+        },
+        {
+            "srcblock": "Probe_x05",
+            "srcport": 0,
+            "dstblock": "TempScope",
+            "dstport": 0,
+            "points": [[550, 145], [585, 145], [585, 170], [620, 170]]
+        },
+        {
+            "srcblock": "Probe_x025",
+            "srcport": 0,
+            "dstblock": "TempScope",
+            "dstport": 1,
+            "points": [[550, 225], [585, 225], [585, 190], [620, 190]]
         }
     ],
     "version": "2.0",
