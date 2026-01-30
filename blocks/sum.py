@@ -103,7 +103,7 @@ class SumBlock(BaseBlock):
 
         return {0: result}
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         try:
             suma = 0.0
             sign_string = params.get('sign', '++')

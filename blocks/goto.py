@@ -52,6 +52,6 @@ class GotoBlock(BaseBlock):
         """Goto uses tag text rendering - handled in DBlock switch."""
         return None
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         return {0: inputs.get(0, 0)}
 

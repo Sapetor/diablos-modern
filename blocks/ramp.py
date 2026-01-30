@@ -55,7 +55,7 @@ class RampBlock(BaseBlock):
         path.lineTo(0.9, 0.1)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         slope = float(params['slope'])
         delay = float(params['delay'])
         if slope == 0:

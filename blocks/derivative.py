@@ -78,7 +78,7 @@ class DerivativeBlock(BaseBlock):
         # Y(s) = s * U(s) (Laplace domain derivative)
         return {0: s * u}
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
             self.t_old = time
             self.i_old = np.array(inputs[0], dtype=float)

@@ -77,7 +77,7 @@ class SelectorBlock(BaseBlock):
         path.lineTo(0.70, 0.45)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # Get input vector
         u = np.atleast_1d(inputs.get(0, 0)).flatten()
         

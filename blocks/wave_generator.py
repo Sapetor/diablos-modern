@@ -53,7 +53,7 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
     def outputs(self):
         return [{"name": "out", "type": "float"}]
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         wv = params.get("waveform", "Sine")
         amp = params.get("amplitude", 1.0)
         freq = params.get("frequency", 1.0)

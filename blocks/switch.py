@@ -87,7 +87,7 @@ class SwitchBlock(BaseBlock):
         path.moveTo(0.70, 0.55); path.lineTo(0.90, 0.55)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         ctrl = float(np.atleast_1d(inputs[0])[0])
         mode = params.get("mode", "threshold")
         n = max(2, int(params.get("n_inputs", 2)))

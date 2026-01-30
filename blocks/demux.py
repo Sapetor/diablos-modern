@@ -61,7 +61,7 @@ class DemuxBlock(BaseBlock):
         path.moveTo(0.8, 0.7); path.lineTo(1.0, 0.7)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # Check input dimensions first
         if len(inputs[0]) / params['output_shape'] < len(self.outputs):
             print("ERROR: Not enough inputs or wrong output shape in", params['_name_'])

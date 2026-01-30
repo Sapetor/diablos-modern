@@ -53,7 +53,7 @@ class SigProductBlock(BaseBlock):
         path.lineTo(0.8, 0.2)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         try:
             mult = np.array(1.0, dtype=float)
             for input_value in inputs.values():

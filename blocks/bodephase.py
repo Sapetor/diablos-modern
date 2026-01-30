@@ -34,7 +34,7 @@ class BodePhaseBlock(BaseBlock):
     def outputs(self):
         return []
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # BodePhase doesn't process data during simulation
         return {}
 

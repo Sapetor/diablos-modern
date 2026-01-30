@@ -301,6 +301,11 @@ class FieldMaxBlock(BaseBlock):
             {"name": "index", "type": "int", "doc": "Array index"},
         ]
 
+    @property
+    def optional_outputs(self):
+        """Outputs 1 (location) and 2 (index) are auxiliary."""
+        return [1, 2]
+
     def draw_icon(self, block_rect):
         """Draw max icon - curve with peak marker."""
         from PyQt5.QtGui import QPainterPath

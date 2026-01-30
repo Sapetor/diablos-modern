@@ -72,7 +72,7 @@ class PRBSBlock(BaseBlock):
         path.lineTo(0.9, 0.3)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         bit_time = float(params.get("bit_time", 0.1))
         if bit_time <= 0:
             return {"E": True, "error": "bit_time must be positive"}

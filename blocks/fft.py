@@ -68,7 +68,7 @@ class FFTBlock(BaseBlock):
             path.lineTo(x + 0.06, 0.80)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # Get input signal value
         u = np.atleast_1d(inputs.get(0, 0)).astype(float)
         

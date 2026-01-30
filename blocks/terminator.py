@@ -39,5 +39,5 @@ class TerminatorBlock(BaseBlock):
     def outputs(self):
         return []
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         return {}

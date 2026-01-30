@@ -56,6 +56,6 @@ class MuxBlock(BaseBlock):
         path.moveTo(0.8, 0.5); path.lineTo(1.0, 0.5)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         return {0: list(inputs.values())}
 

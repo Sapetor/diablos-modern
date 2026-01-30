@@ -134,6 +134,16 @@ class WaveEquation1DBlock(BaseBlock):
             {"name": "energy", "type": "float", "doc": "Total wave energy"},
         ]
 
+    @property
+    def optional_inputs(self):
+        """All inputs are optional: force and BCs default to 0."""
+        return [0, 1, 2]
+
+    @property
+    def optional_outputs(self):
+        """Outputs 1 (v_field) and 2 (energy) are auxiliary."""
+        return [1, 2]
+
     def draw_icon(self, block_rect):
         """Draw wave equation icon - sine wave."""
         from PyQt5.QtGui import QPainterPath

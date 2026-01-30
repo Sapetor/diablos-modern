@@ -131,7 +131,7 @@ class GainBlock(BaseBlock):
         except ImportError:
             return {}
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         try:
             # Get input as numpy array
             u = np.atleast_1d(inputs.get(0, 0)).astype(float)

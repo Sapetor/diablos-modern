@@ -71,7 +71,7 @@ class DeadbandBlock(BaseBlock):
         path.lineTo(0.8, 0.5)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         u = np.array(inputs[0], dtype=float)
         start = float(params.get("start", -0.5))
         end = float(params.get("end", 0.5))

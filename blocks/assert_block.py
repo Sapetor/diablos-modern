@@ -45,7 +45,7 @@ class AssertBlock(BaseBlock):
         """Sinks don't need output connections."""
         return False
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         if not params.get("enabled", True):
             return {0: np.array([0.0])}
         

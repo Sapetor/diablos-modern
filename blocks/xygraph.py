@@ -74,7 +74,7 @@ class XYGraphBlock(BaseBlock):
         path.quadTo(0.6, 0.6, 0.8, 0.3)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # Initialize on first call
         if params.get("_init_start_", True):
             params["_x_data_"] = []

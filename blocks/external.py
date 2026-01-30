@@ -42,6 +42,6 @@ class ExternalBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         # This block executes an external function, which is handled in the main loop
         pass

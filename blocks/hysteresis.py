@@ -68,7 +68,7 @@ class HysteresisBlock(BaseBlock):
         path.lineTo(0.15, 0.75)
         return path
 
-    def execute(self, time, inputs, params):
+    def execute(self, time, inputs, params, **kwargs):
         u = float(np.atleast_1d(inputs[0])[0])
 
         if params.get("_init_start_", True):
