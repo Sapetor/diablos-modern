@@ -206,6 +206,7 @@
     ],
     "lines_data": [
         {
+            "sid": 101,
             "srcblock": "HeatSource_0",
             "srcport": 0,
             "dstblock": "HeatEquation",
@@ -213,6 +214,7 @@
             "points": [[160, 120], [250, 165]]
         },
         {
+            "sid": 102,
             "srcblock": "LeftBC_100",
             "srcport": 0,
             "dstblock": "HeatEquation",
@@ -220,6 +222,7 @@
             "points": [[160, 200], [250, 190]]
         },
         {
+            "sid": 103,
             "srcblock": "RightBC_0",
             "srcport": 0,
             "dstblock": "HeatEquation",
@@ -227,6 +230,7 @@
             "points": [[160, 280], [200, 280], [200, 215], [250, 215]]
         },
         {
+            "sid": 104,
             "srcblock": "HeatEquation",
             "srcport": 0,
             "dstblock": "Probe_x05",
@@ -234,6 +238,7 @@
             "points": [[370, 175], [410, 175], [410, 137], [450, 137]]
         },
         {
+            "sid": 105,
             "srcblock": "HeatEquation",
             "srcport": 0,
             "dstblock": "Probe_x025",
@@ -241,6 +246,7 @@
             "points": [[370, 175], [410, 175], [410, 217], [450, 217]]
         },
         {
+            "sid": 106,
             "srcblock": "HeatEquation",
             "srcport": 0,
             "dstblock": "FieldHeatmap",
@@ -248,6 +254,7 @@
             "points": [[370, 175], [410, 175], [410, 312], [450, 312]]
         },
         {
+            "sid": 107,
             "srcblock": "Probe_x05",
             "srcport": 0,
             "dstblock": "TempScope",
@@ -255,6 +262,7 @@
             "points": [[550, 145], [585, 145], [585, 170], [620, 170]]
         },
         {
+            "sid": 108,
             "srcblock": "Probe_x025",
             "srcport": 0,
             "dstblock": "TempScope",
