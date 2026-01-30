@@ -324,7 +324,7 @@ class SimulationEngine:
         """
         logger.debug("Checking diagram integrity")
         error_trigger = False
-        
+
         # Use active lists (fallback to model if not initialized, but ideally active)
         blocks_to_check = self.active_blocks_list if self.active_blocks_list else self.model.blocks_list
         # get_neighbors already uses active_line_list
@@ -332,30 +332,54 @@ class SimulationEngine:
         for block in blocks_to_check:
             inputs, outputs = self.get_neighbors(block.name)
 
+            # Get optional inputs from block instance (if available)
+            optional_inputs = set()
+            if hasattr(block, 'block_instance') and block.block_instance:
+                if hasattr(block.block_instance, 'optional_inputs'):
+                    optional_inputs = set(block.block_instance.optional_inputs)
+
+            # Get optional outputs from block instance (if available)
+            optional_outputs = set()
+            if hasattr(block, 'block_instance') and block.block_instance:
+                if hasattr(block.block_instance, 'optional_outputs'):
+                    optional_outputs = set(block.block_instance.optional_outputs)
+                # Also check requires_outputs property
+                if hasattr(block.block_instance, 'requires_outputs'):
+                    if not block.block_instance.requires_outputs:
+                        optional_outputs = set(range(block.out_ports))
+
             # Check input ports
-            if block.in_ports == 1 and len(inputs) < block.in_ports:
+            required_in_ports = block.in_ports - len(optional_inputs)
+            connected_required_inputs = sum(1 for t in inputs if t['dstport'] not in optional_inputs)
+
+            if required_in_ports == 1 and connected_required_inputs < 1:
                 logger.error(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
                 error_trigger = True
-            elif block.in_ports > 1:
+            elif required_in_ports > 1 or (block.in_ports > 1 and required_in_ports > 0):
                 in_vector = np.zeros(block.in_ports)
                 for tupla in inputs:
                     in_vector[tupla['dstport']] += 1
-                finders = np.where(in_vector == 0)
-                if len(finders[0]) > 0:
-                    logger.error(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
+                # Find unlinked ports that are NOT optional
+                unlinked = [i for i in range(block.in_ports) if in_vector[i] == 0 and i not in optional_inputs]
+                if len(unlinked) > 0:
+                    logger.error(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}")
                     error_trigger = True
 
             # Check output ports
-            if block.out_ports == 1 and len(outputs) < block.out_ports:
+            required_out_ports = block.out_ports - len(optional_outputs)
+            connected_required_outputs = sum(1 for t in outputs if t['srcport'] not in optional_outputs)
+
+            if required_out_ports == 1 and connected_required_outputs < 1:
                 logger.error(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
                 error_trigger = True
-            elif block.out_ports > 1:
+            elif required_out_ports > 1 or (block.out_ports > 1 and required_out_ports > 0):
                 out_vector = np.zeros(block.out_ports)
                 for tupla in outputs:
                     out_vector[tupla['srcport']] += 1
-                finders = np.where(out_vector == 0)
-                if len(finders[0]) > 0:
-                    logger.error(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {finders[0]}")
+                # Find unlinked ports that are NOT optional
+                unlinked = [i for i in range(block.out_ports) if out_vector[i] == 0 and i not in optional_outputs]
+                if len(unlinked) > 0:
+                    logger.error(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}")
                     error_trigger = True
 
         if error_trigger:

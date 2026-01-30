@@ -136,6 +136,11 @@ class HeatEquation1DBlock(BaseBlock):
             {"name": "T_avg", "type": "float", "doc": "Average temperature"},
         ]
 
+    @property
+    def optional_outputs(self):
+        """Output 1 (T_avg) is optional - doesn't need to be connected."""
+        return [1]
+
     def draw_icon(self, block_rect):
         """Draw heat equation icon - temperature profile curve."""
         from PyQt5.QtGui import QPainterPath
