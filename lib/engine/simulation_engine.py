@@ -1097,7 +1097,38 @@ class SimulationEngine:
 
                              y_out = C @ x + D @ u
                              out_val = y_out if y_out.size > 1 else y_out.item()
-                             
+
+                    # ==================== PDE BLOCKS ====================
+                    elif fn == 'Heatequation1D':
+                        # HeatEquation1D: output is the temperature field (state vector)
+                        if b_name in current_states:
+                            out_val = current_states[b_name]
+                        else:
+                            out_val = np.zeros(int(block.params.get('N', 20)))
+
+                    elif fn == 'Waveequation1D':
+                        # WaveEquation1D: state is [u, v], output primary is u (displacement)
+                        if b_name in current_states:
+                            N = int(block.params.get('N', 50))
+                            state = current_states[b_name]
+                            out_val = state[:N]  # Displacement field
+                        else:
+                            out_val = np.zeros(int(block.params.get('N', 50)))
+
+                    elif fn == 'Advectionequation1D':
+                        # AdvectionEquation1D: output is concentration field
+                        if b_name in current_states:
+                            out_val = current_states[b_name]
+                        else:
+                            out_val = np.zeros(int(block.params.get('N', 50)))
+
+                    elif fn == 'Diffusionreaction1D':
+                        # DiffusionReaction1D: output is concentration field
+                        if b_name in current_states:
+                            out_val = current_states[b_name]
+                        else:
+                            out_val = np.zeros(int(block.params.get('N', 50)))
+
                     elif fn == 'PID':
                          # Inputs
                          sp = float(inputs.get(0, 0.0))
@@ -1354,6 +1385,36 @@ class SimulationEngine:
                         # Pass through - demux output depends on which port is connected
                         out_val = inputs.get(0, 0.0)
 
+                    elif fn == 'Fieldprobe':
+                        # FieldProbe: Extract value at position from field array
+                        field = inputs.get(0, np.array([0.0]))
+                        field = np.atleast_1d(field).flatten()
+
+                        position = float(block.params.get('position', 0.5))
+                        mode = block.params.get('position_mode', 'normalized')
+                        L = float(block.params.get('L', 1.0))
+                        N = len(field)
+
+                        if N == 0:
+                            out_val = 0.0
+                        else:
+                            if mode == 'normalized':
+                                idx_float = position * (N - 1)
+                            else:
+                                idx_float = (position / L) * (N - 1)
+
+                            idx_float = max(0, min(N - 1, idx_float))
+                            idx_low = int(np.floor(idx_float))
+                            idx_high = min(idx_low + 1, N - 1)
+                            frac = idx_float - idx_low
+
+                            out_val = field[idx_low] * (1 - frac) + field[idx_high] * frac
+
+                    elif fn == 'Fieldscope':
+                        # FieldScope: Store field for 2D visualization
+                        field = inputs.get(0, np.array([0.0]))
+                        out_val = np.atleast_1d(field).flatten()
+
                     elif fn in ('Terminator', 'Display'):
                         pass # Do nothing
                         
@@ -1389,12 +1450,31 @@ class SimulationEngine:
                         
                         if i == num_steps - 1:
                             logger.info(f"DEBUG Replay Scope {b_name}: input={val}, vec_len={len(block.exec_params['vector'])}")
-                
+
+                    if fn == 'Fieldscope':
+                        # FieldScope: Store field history for 2D heatmap
+                        field = inputs.get(0, np.array([0.0]))
+                        field = np.atleast_1d(field).flatten()
+
+                        if not hasattr(block, 'exec_params'):
+                            block.exec_params = block.params.copy()
+
+                        if i == 0:
+                            block.exec_params['field_history'] = []
+
+                        block.exec_params['field_history'].append(field.copy())
+
+                        if i == num_steps - 1:
+                            logger.info(f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['field_history'])}")
+
             # Finalize Scope Vectors (convert to numpy)
             for block in current_blocks:
                 if block.block_fn == 'Scope':
                      if hasattr(block, 'exec_params') and 'vector' in block.exec_params:
                         block.exec_params['vector'] = np.array(block.exec_params['vector'])
+                elif block.block_fn == 'FieldScope':
+                    if hasattr(block, 'exec_params') and 'field_history' in block.exec_params:
+                        block.exec_params['field_history'] = np.array(block.exec_params['field_history'])
             
             return True
             
