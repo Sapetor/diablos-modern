@@ -36,6 +36,46 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
         """TranFn uses B(s)/A(s) text rendering - handled in DBlock switch."""
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        In Laplace domain: Y(s) = G(s) * U(s) where G(s) = num(s) / den(s)
+
+        Args:
+            inputs: Dict of symbolic input expressions {port_idx: sympy_expr}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: G(s) * u}
+        """
+        try:
+            from sympy import Symbol
+        except ImportError:
+            return None
+
+        s = Symbol('s')
+        u = inputs.get(0, Symbol('u'))
+
+        # Get numerator and denominator coefficients
+        num = params.get('numerator', [1.0])
+        den = params.get('denominator', [1.0, 1.0])
+
+        # Ensure they are lists
+        if not isinstance(num, (list, tuple)):
+            num = [num]
+        if not isinstance(den, (list, tuple)):
+            den = [den]
+
+        # Build polynomials in s (coefficients from highest to lowest power)
+        num_poly = sum(float(coef) * s**i for i, coef in enumerate(reversed(num)))
+        den_poly = sum(float(coef) * s**i for i, coef in enumerate(reversed(den)))
+
+        # G(s) = num(s) / den(s)
+        G = num_poly / den_poly
+
+        return {0: G * u}
+
     def execute(self, time, inputs, params, **kwargs):
         """Execute continuous transfer function (discretized for simulation)."""
         output_only = kwargs.get('output_only', False)

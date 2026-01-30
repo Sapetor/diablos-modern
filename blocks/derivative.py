@@ -54,6 +54,30 @@ class DerivativeBlock(BaseBlock):
         """Derivative uses dy/dt text rendering - handled in DBlock switch."""
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        In Laplace domain: Y(s) = s * U(s)
+
+        Args:
+            inputs: Dict of symbolic input expressions {port_idx: sympy_expr}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: s * u}
+        """
+        try:
+            from sympy import Symbol
+        except ImportError:
+            return None
+
+        s = Symbol('s')
+        u = inputs.get(0, Symbol('u'))
+
+        # Y(s) = s * U(s) (Laplace domain derivative)
+        return {0: s * u}
+
     def execute(self, time, inputs, params):
         if params.get('_init_start_', True):
             self.t_old = time

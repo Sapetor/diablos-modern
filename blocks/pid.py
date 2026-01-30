@@ -60,6 +60,59 @@ class PIDBlock(BaseBlock):
         """PID uses text rendering - handled in DBlock switch."""
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        PID transfer function: C(s) = Kp + Ki/s + Kd*N*s/(s + N)
+
+        Args:
+            inputs: Dict of symbolic input expressions {0: setpoint, 1: measurement}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: C(s) * error}
+        """
+        try:
+            from sympy import Symbol, simplify
+        except ImportError:
+            return None
+
+        s = Symbol('s')
+
+        # Get gains
+        Kp = float(params.get('Kp', 1.0))
+        Ki = float(params.get('Ki', 0.0))
+        Kd = float(params.get('Kd', 0.0))
+        N = float(params.get('N', 20.0))
+
+        # Get input symbols (setpoint and measurement)
+        sp = inputs.get(0, Symbol('sp'))
+        meas = inputs.get(1, Symbol('meas'))
+        e = sp - meas  # error = setpoint - measurement
+
+        # PID transfer function: C(s) = Kp + Ki/s + Kd*N*s/(s + N)
+        C_pid = Kp
+        if Ki != 0:
+            C_pid = C_pid + Ki / s
+        if Kd != 0:
+            C_pid = C_pid + Kd * N * s / (s + N)
+
+        # Output = C(s) * error
+        return {0: simplify(C_pid * e)}
+
+    def get_symbolic_params(self, params):
+        """Return symbolic parameters for equation extraction."""
+        try:
+            from sympy import Symbol
+            return {
+                'Kp': Symbol('K_p'),
+                'Ki': Symbol('K_i'),
+                'Kd': Symbol('K_d'),
+            }
+        except ImportError:
+            return {}
+
     def execute(self, time, inputs, params):
         dt = float(params.get("dtime", 0.01))
         sp = float(np.atleast_1d(inputs[0])[0])

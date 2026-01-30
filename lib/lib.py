@@ -1633,6 +1633,242 @@ class DSim:
             np.savez('saves/' + self.filename[:-4], t=self.timeline, **vec_dict)
             logger.info("DATA EXPORTED TO " + 'saves/' + self.filename[:-4] + '.npz')
 
+    def run_optimization(self, callback=None):
+        """
+        Run parameter optimization on the current diagram.
+
+        This method looks for Parameter, CostFunction, Constraint, and Optimizer
+        blocks in the diagram and uses scipy.optimize to find optimal parameter
+        values that minimize the cost function(s).
+
+        Workflow:
+        1. Find all optimization-related blocks in the diagram
+        2. Extract tunable parameters from Parameter blocks
+        3. Create objective function that runs simulation and returns cost
+        4. Call scipy.optimize with the configured method
+        5. Write optimal parameters back to Parameter blocks
+
+        Args:
+            callback: Optional callback function called after each evaluation
+                      with signature callback(n_eval, cost, params_dict)
+
+        Returns:
+            Dict with optimization results:
+                - success: bool, whether optimization converged
+                - optimal_cost: float, final cost value
+                - optimal_params: dict, parameter name -> optimal value
+                - n_evaluations: int, number of function evaluations
+                - history: list of dicts with evaluation history
+                - message: str, optimizer message
+
+        Example:
+            # Place Parameter, CostFunction, and Optimizer blocks in diagram
+            result = dsim.run_optimization()
+            if result['success']:
+                print(f"Optimal cost: {result['optimal_cost']}")
+                print(f"Optimal parameters: {result['optimal_params']}")
+        """
+        from lib.engine.optimization_engine import OptimizationEngine
+
+        logger.info("Starting optimization...")
+
+        # Create optimization engine
+        opt_engine = OptimizationEngine(dsim=self)
+
+        # Get root context for optimization
+        root_blocks, root_lines = self.get_root_context()
+
+        # Run optimization
+        result = opt_engine.run_optimization(blocks=root_blocks)
+
+        if result.get('success'):
+            logger.info(f"Optimization completed successfully!")
+            logger.info(f"Optimal cost: {result.get('optimal_cost')}")
+            logger.info(f"Optimal parameters: {result.get('optimal_params')}")
+        else:
+            logger.warning(f"Optimization did not converge: {result.get('message')}")
+
+        return result
+
+    def get_symbolic_equations(self, input_blocks=None, output_blocks=None):
+        """
+        Extract symbolic equations from the block diagram.
+
+        Uses the SymbolicEngine to trace signal flow through the diagram
+        and compose symbolic expressions (using SymPy).
+
+        Args:
+            input_blocks: List of block names to treat as inputs (auto-detected if None)
+            output_blocks: List of block names to get equations for (all if None)
+
+        Returns:
+            Dict with:
+                - equations: dict of block_name -> symbolic expression
+                - transfer_functions: dict of (from, to) -> G(s) if computed
+                - latex: dict of block_name -> LaTeX string
+
+        Example:
+            result = dsim.get_symbolic_equations()
+            for name, eq in result['equations'].items():
+                print(f"{name}: {eq}")
+        """
+        try:
+            from lib.engine.symbolic_engine import SymbolicEngine
+        except ImportError:
+            logger.error("SymPy is required for symbolic features. Install with: pip install sympy")
+            return None
+
+        logger.info("Extracting symbolic equations...")
+
+        # Create symbolic engine
+        sym_engine = SymbolicEngine(dsim=self)
+
+        # Get root context
+        root_blocks, root_lines = self.get_root_context()
+
+        # Build graph
+        sym_engine.build_graph(blocks=root_blocks, lines=root_lines)
+
+        # Create input symbols
+        input_symbols = sym_engine.create_input_symbols(input_blocks)
+
+        # Get all equations
+        equations = sym_engine.get_all_equations(input_symbols)
+
+        # Convert to LaTeX
+        latex_eqs = {}
+        for name, expr in equations.items():
+            if expr is not None:
+                try:
+                    latex_eqs[name] = sym_engine.to_latex(expr)
+                except Exception:
+                    latex_eqs[name] = str(expr)
+
+        return {
+            'equations': equations,
+            'latex': latex_eqs,
+            'input_symbols': input_symbols,
+        }
+
+    def extract_transfer_function(self, from_block, to_block):
+        """
+        Extract transfer function G(s) between two signals.
+
+        Args:
+            from_block: Input block name
+            to_block: Output block name
+
+        Returns:
+            SymPy expression for G(s) = Y(s)/U(s), or None on error
+        """
+        try:
+            from lib.engine.symbolic_engine import SymbolicEngine
+        except ImportError:
+            logger.error("SymPy is required for symbolic features.")
+            return None
+
+        # Create symbolic engine
+        sym_engine = SymbolicEngine(dsim=self)
+
+        # Get root context
+        root_blocks, root_lines = self.get_root_context()
+
+        # Build graph
+        sym_engine.build_graph(blocks=root_blocks, lines=root_lines)
+
+        # Extract transfer function
+        G = sym_engine.extract_transfer_function(from_block, to_block)
+
+        return G
+
+    def linearize(self, operating_point=None, input_blocks=None, output_blocks=None):
+        """
+        Linearize the system at an operating point.
+
+        Computes state-space matrices (A, B, C, D) using numerical Jacobians.
+
+        Args:
+            operating_point: Dict of block_name -> value (uses current state if None)
+            input_blocks: List of input block names
+            output_blocks: List of output block names
+
+        Returns:
+            Dict with:
+                - A, B, C, D: State-space matrices
+                - n_states: Number of states
+                - state_names: List of state variable names
+                - eigenvalues: System eigenvalues
+                - is_stable: Whether system is stable
+                - is_controllable: Whether system is controllable
+                - is_observable: Whether system is observable
+        """
+        from lib.analysis.linearizer import Linearizer
+
+        logger.info("Linearizing system...")
+
+        # Create linearizer
+        linearizer = Linearizer(dsim=self)
+
+        # Get root context
+        root_blocks, root_lines = self.get_root_context()
+
+        # Linearize
+        result = linearizer.linearize_at_point(
+            operating_point=operating_point,
+            input_blocks=input_blocks,
+            output_blocks=output_blocks
+        )
+
+        if result is not None:
+            # Add controllability/observability
+            A, B, C = result['A'], result['B'], result['C']
+            result['is_controllable'] = linearizer.is_controllable(A, B)
+            result['is_observable'] = linearizer.is_observable(A, C)
+
+            logger.info(f"System linearized: {result['n_states']} states")
+            logger.info(f"Stable: {result['is_stable']}")
+            logger.info(f"Controllable: {result['is_controllable']}")
+            logger.info(f"Observable: {result['is_observable']}")
+
+        return result
+
+    def export_equations_latex(self, filename=None):
+        """
+        Export block diagram equations to LaTeX document.
+
+        Args:
+            filename: Output file path (returns string if None)
+
+        Returns:
+            LaTeX document string
+        """
+        try:
+            from lib.engine.symbolic_engine import SymbolicEngine
+        except ImportError:
+            logger.error("SymPy is required for symbolic features.")
+            return None
+
+        # Get equations first
+        result = self.get_symbolic_equations()
+        if result is None:
+            return None
+
+        # Create symbolic engine for export
+        sym_engine = SymbolicEngine(dsim=self)
+        root_blocks, root_lines = self.get_root_context()
+        sym_engine.build_graph(blocks=root_blocks, lines=root_lines)
+
+        # Export to LaTeX
+        latex_doc = sym_engine.export_equations_latex(
+            equations=result['equations'],
+            filename=filename
+        )
+
+        if filename:
+            logger.info(f"Equations exported to {filename}")
+
+        return latex_doc
+
     def _is_discrete_upstream(self, block_name, visited=None):
         """
         Determine if a block (or any of its ancestors) is discrete-time/ZOH.

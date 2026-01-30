@@ -1,0 +1,262 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.01,
+        "sim_trange": 500
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "LeftBC_100",
+            "coords_left": 50,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 100.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "RightBC_0",
+            "coords_left": 50,
+            "coords_top": 250,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 3,
+            "username": "HeatSource_0",
+            "coords_left": 50,
+            "coords_top": 50,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "HeatEquation1D",
+            "sid": 4,
+            "username": "HeatEquation",
+            "coords_left": 250,
+            "coords_top": 120,
+            "coords_width": 120,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 3,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFA500",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "heatequation1d",
+            "params": {
+                "alpha": 0.1,
+                "L": 1.0,
+                "N": 20,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_conds": [20.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 5,
+            "username": "Probe_Center",
+            "coords_left": 450,
+            "coords_top": 80,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 6,
+            "username": "Probe_Quarter",
+            "coords_left": 450,
+            "coords_top": 180,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.25,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "Temperature_Scope",
+            "coords_left": 620,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "T_center, T_quarter"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 8,
+            "username": "Field_Heatmap",
+            "coords_left": 450,
+            "coords_top": 280,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "hot",
+                "title": "Temperature Field"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "srcblock": "HeatSource_0",
+            "srcport": 0,
+            "dstblock": "HeatEquation",
+            "dstport": 0
+        },
+        {
+            "srcblock": "LeftBC_100",
+            "srcport": 0,
+            "dstblock": "HeatEquation",
+            "dstport": 1
+        },
+        {
+            "srcblock": "RightBC_0",
+            "srcport": 0,
+            "dstblock": "HeatEquation",
+            "dstport": 2
+        },
+        {
+            "srcblock": "HeatEquation",
+            "srcport": 0,
+            "dstblock": "Probe_Center",
+            "dstport": 0
+        },
+        {
+            "srcblock": "HeatEquation",
+            "srcport": 0,
+            "dstblock": "Probe_Quarter",
+            "dstport": 0
+        },
+        {
+            "srcblock": "Probe_Center",
+            "srcport": 0,
+            "dstblock": "Temperature_Scope",
+            "dstport": 0
+        },
+        {
+            "srcblock": "Probe_Quarter",
+            "srcport": 0,
+            "dstblock": "Temperature_Scope",
+            "dstport": 1
+        },
+        {
+            "srcblock": "HeatEquation",
+            "srcport": 0,
+            "dstblock": "Field_Heatmap",
+            "dstport": 0
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

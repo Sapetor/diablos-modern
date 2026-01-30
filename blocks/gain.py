@@ -70,6 +70,67 @@ class GainBlock(BaseBlock):
         """Gain uses triangular shape - handled specially in DBlock.draw_Block."""
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        Returns symbolic expression: y = K * u
+
+        Args:
+            inputs: Dict of symbolic input expressions {port_idx: sympy_expr}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: K * u}
+        """
+        try:
+            from sympy import Symbol, Matrix, Float
+        except ImportError:
+            return None
+
+        # Get input symbol
+        u = inputs.get(0, Symbol('u'))
+
+        # Get gain - can be scalar, vector, or matrix
+        K_raw = params.get('gain', 1.0)
+
+        if isinstance(K_raw, (int, float)):
+            K = Float(K_raw)
+            return {0: K * u}
+        elif isinstance(K_raw, str):
+            try:
+                import numpy as np
+                K_arr = np.array(eval(K_raw), dtype=float)
+                if K_arr.ndim == 0 or K_arr.size == 1:
+                    return {0: Float(float(K_arr.flatten()[0])) * u}
+                elif K_arr.ndim == 2:
+                    K_sym = Matrix(K_arr.tolist())
+                    return {0: K_sym * u}
+                else:
+                    # Vector gain - element-wise (return as scalar for simplicity)
+                    return {0: Float(float(K_arr[0])) * u}
+            except Exception:
+                K_sym = Symbol('K')
+                return {0: K_sym * u}
+        else:
+            import numpy as np
+            K_arr = np.atleast_1d(K_raw)
+            if K_arr.size == 1:
+                return {0: Float(float(K_arr.flatten()[0])) * u}
+            elif K_arr.ndim == 2:
+                K_sym = Matrix(K_arr.tolist())
+                return {0: K_sym * u}
+            else:
+                return {0: Float(float(K_arr[0])) * u}
+
+    def get_symbolic_params(self, params):
+        """Return symbolic parameter for equation extraction."""
+        try:
+            from sympy import Symbol
+            return {'K': Symbol('K')}
+        except ImportError:
+            return {}
+
     def execute(self, time, inputs, params):
         try:
             # Get input as numpy array

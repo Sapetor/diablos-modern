@@ -1,0 +1,45 @@
+"""
+PDE Blocks Package - Distributed Parameter Model Blocks
+
+This package provides blocks for solving Partial Differential Equations (PDEs)
+using the Method of Lines (MOL) approach. Space is discretized while time
+remains continuous, converting PDEs into large ODE systems that the existing
+solver infrastructure can handle.
+
+Supported equations:
+- HeatEquation1D: 1D heat/diffusion equation (∂T/∂t = α∇²T + q)
+- WaveEquation1D: 1D wave equation (∂²u/∂t² = c²∇²u)
+- AdvectionEquation1D: 1D advection equation (∂c/∂t + v∂c/∂x = 0)
+- DiffusionReaction1D: 1D diffusion-reaction (∂c/∂t = D∇²c - kc)
+
+Boundary condition types:
+- Dirichlet: Fixed value (T = T₀)
+- Neumann: Fixed flux (∂T/∂x = q)
+- Robin: Mixed/convective (h(T - T∞))
+"""
+
+from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+from blocks.pde.advection_equation_1d import AdvectionEquation1DBlock
+from blocks.pde.diffusion_reaction_1d import DiffusionReaction1DBlock
+from blocks.pde.field_processing import (
+    FieldProbeBlock,
+    FieldIntegralBlock,
+    FieldMaxBlock,
+    FieldScopeBlock,
+    FieldGradientBlock,
+    FieldLaplacianBlock,
+)
+
+__all__ = [
+    'HeatEquation1DBlock',
+    'WaveEquation1DBlock',
+    'AdvectionEquation1DBlock',
+    'DiffusionReaction1DBlock',
+    'FieldProbeBlock',
+    'FieldIntegralBlock',
+    'FieldMaxBlock',
+    'FieldScopeBlock',
+    'FieldGradientBlock',
+    'FieldLaplacianBlock',
+]

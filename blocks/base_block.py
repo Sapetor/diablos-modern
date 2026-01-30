@@ -84,18 +84,64 @@ class BaseBlock(ABC):
     def draw_icon(self, block_rect):
         """
         Return a QPainterPath for the block's icon in normalized coordinates.
-        
+
         The path should use coordinates from 0.0 to 1.0 where (0,0) is top-left
-        and (1,1) is bottom-right. The path will be automatically scaled and 
+        and (1,1) is bottom-right. The path will be automatically scaled and
         positioned within the block's drawing area.
-        
+
         Override this method in subclasses to provide custom block icons.
         If not overridden, the fallback switch-based drawing in DBlock is used.
-        
+
         Args:
             block_rect: QRect of the block (for context, not for positioning)
-            
+
         Returns:
             QPainterPath in 0-1 normalized coordinates, or None to use fallback
         """
         return None  # Default: use fallback switch-based drawing
+
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction and linearization.
+
+        This method returns symbolic expressions (using SymPy) instead of
+        numeric values. Used by the SymbolicEngine for:
+        - Automatic equation extraction
+        - Transfer function computation
+        - Linearization at operating points
+        - LaTeX/MathML export
+
+        Override this method in subclasses to provide symbolic behavior.
+        If not overridden, returns None indicating no symbolic support.
+
+        Args:
+            inputs: Dict of symbolic input expressions (port_idx -> sympy expr)
+            params: Dict of block parameters (may contain symbolic params)
+
+        Returns:
+            Dict of symbolic output expressions {port_idx: sympy_expr}, or
+            None if block doesn't support symbolic execution
+
+        Example for Gain block:
+            def symbolic_execute(self, inputs, params):
+                from sympy import Symbol
+                K = params.get('gain', Symbol('K'))
+                u = inputs.get(0, Symbol('u'))
+                return {0: K * u}
+        """
+        return None  # Default: no symbolic support
+
+    def get_symbolic_params(self, params):
+        """
+        Convert numeric parameters to symbolic for equation extraction.
+
+        Override to specify which parameters should be symbolic
+        and how they should be named.
+
+        Args:
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic parameters (name -> sympy Symbol)
+        """
+        return {}  # Default: no symbolic parameters

@@ -67,7 +67,15 @@ class ScopePlotter:
                     buffer = params.get('_fft_buffer_', [])
                     if buffer and len(buffer) > 1:
                         self._plot_fft(block)
-                        
+
+            # Plot FieldScope (spatiotemporal field visualization)
+            for block in source_blocks:
+                if block.block_fn == 'FieldScope':
+                    params = getattr(block, 'exec_params', block.params)
+                    field_history = params.get('_field_history_', [])
+                    if field_history and len(field_history) > 1:
+                        self._plot_field_scope(block)
+
         except Exception as e:
             logger.info(f"PLOT: Skipping plot; scope data not available yet ({str(e)})")
 
@@ -101,26 +109,26 @@ class ScopePlotter:
     def _plot_fft(self, block):
         """Plot FFT spectrum for a single FFT block."""
         import matplotlib.pyplot as plt
-        
+
         params = getattr(block, 'exec_params', block.params)
         buffer = params.get('_fft_buffer_', [])
         time_data = params.get('_fft_time_', [])
-        
+
         if not buffer or len(buffer) < 2:
             return
-        
+
         # Convert to numpy array
         signal = np.array(buffer)
         if signal.ndim > 1:
             signal = signal[:, 0]  # Take first channel
-        
+
         # Calculate sample rate
         if len(time_data) > 1:
             dt = np.mean(np.diff(time_data))
             fs = 1.0 / dt if dt > 0 else 1.0
         else:
             fs = 1.0 / self.dsim.sim_dt if hasattr(self.dsim, 'sim_dt') else 1.0
-        
+
         # Apply window function
         window_type = params.get('window', 'hann')
         n = len(signal)
@@ -132,24 +140,24 @@ class ScopePlotter:
             window = np.blackman(n)
         else:
             window = np.ones(n)
-        
+
         windowed_signal = signal * window
-        
+
         # Compute FFT
         fft_result = np.fft.rfft(windowed_signal)
         freqs = np.fft.rfftfreq(n, d=1.0/fs)
         magnitude = np.abs(fft_result)
-        
+
         # Normalize
         if params.get('normalize', True):
             max_mag = np.max(magnitude)
             if max_mag > 0:
                 magnitude = magnitude / max_mag
-        
+
         # Convert to dB if requested
         if params.get('log_scale', False):
             magnitude = 20 * np.log10(magnitude + 1e-12)
-        
+
         # Plot
         title = params.get('title', 'FFT Spectrum')
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -159,9 +167,187 @@ class ScopePlotter:
         ax.set_title(f"{title} ({block.name})")
         ax.grid(True, alpha=0.3)
         ax.set_xlim([0, fs/2])
-        
+
         plt.tight_layout()
         plt.show()
+
+    def _plot_field_scope(self, block):
+        """
+        Plot spatiotemporal field data as a 2D heatmap.
+
+        Displays field evolution over time:
+        - X-axis: spatial position (0 to L)
+        - Y-axis: time
+        - Color: field value
+
+        Used for visualizing PDE simulation results.
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import Normalize
+        import matplotlib.cm as cm
+
+        params = getattr(block, 'exec_params', block.params)
+
+        # Get stored field history
+        field_history = params.get('_field_history_', [])
+        time_history = params.get('_time_history_', [])
+
+        if not field_history or len(field_history) < 2:
+            logger.warning(f"FieldScope {block.name}: No field data to plot")
+            return
+
+        # Convert to numpy arrays
+        try:
+            field_data = np.array(field_history)  # Shape: (n_times, n_nodes)
+            time_data = np.array(time_history)
+        except Exception as e:
+            logger.error(f"FieldScope {block.name}: Error converting data: {e}")
+            return
+
+        if field_data.ndim != 2:
+            logger.warning(f"FieldScope {block.name}: Expected 2D field data, got {field_data.ndim}D")
+            return
+
+        n_times, n_nodes = field_data.shape
+
+        # Get spatial parameters
+        L = float(params.get('L', 1.0))
+        x_positions = np.linspace(0, L, n_nodes)
+
+        # Get plot configuration
+        title = params.get('title', 'Field Evolution')
+        colormap = params.get('colormap', 'viridis')
+        clim_min = params.get('clim_min', None)
+        clim_max = params.get('clim_max', None)
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        # Create 2D heatmap using imshow
+        # Extent: [x_min, x_max, t_min, t_max]
+        extent = [0, L, time_data[0] if len(time_data) > 0 else 0,
+                  time_data[-1] if len(time_data) > 0 else 1]
+
+        # Set color limits
+        if clim_min is None:
+            clim_min = np.min(field_data)
+        if clim_max is None:
+            clim_max = np.max(field_data)
+
+        # Plot the field data
+        # Note: imshow expects data as [rows, cols] where rows=y, cols=x
+        # Our data is [time, space], so we need origin='lower' to have time increase upward
+        im = ax.imshow(field_data,
+                       aspect='auto',
+                       origin='lower',
+                       extent=extent,
+                       cmap=colormap,
+                       vmin=clim_min,
+                       vmax=clim_max,
+                       interpolation='bilinear')
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label('Field Value')
+
+        # Labels and title
+        ax.set_xlabel('Position (x)')
+        ax.set_ylabel('Time (t)')
+        ax.set_title(f"{title} ({block.name})")
+
+        plt.tight_layout()
+        plt.show()
+
+    def _plot_field_snapshot(self, block):
+        """
+        Plot the current field snapshot as a 1D profile.
+
+        Useful for viewing instantaneous field distribution.
+        """
+        import matplotlib.pyplot as plt
+
+        params = getattr(block, 'exec_params', block.params)
+
+        # Get the latest field
+        field_history = params.get('_field_history_', [])
+        time_history = params.get('_time_history_', [])
+
+        if not field_history:
+            logger.warning(f"FieldScope {block.name}: No field data for snapshot")
+            return
+
+        # Get the last field
+        field = np.array(field_history[-1])
+        current_time = time_history[-1] if time_history else 0.0
+
+        L = float(params.get('L', 1.0))
+        n_nodes = len(field)
+        x = np.linspace(0, L, n_nodes)
+
+        title = params.get('title', 'Field Profile')
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(x, field, 'b-', linewidth=2)
+        ax.set_xlabel('Position (x)')
+        ax.set_ylabel('Field Value')
+        ax.set_title(f"{title} at t={current_time:.4f} ({block.name})")
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.show()
+
+    def _plot_field_animation(self, block, interval=50):
+        """
+        Create an animated plot of field evolution.
+
+        Args:
+            block: FieldScope block
+            interval: Time between frames in milliseconds
+        """
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FuncAnimation
+
+        params = getattr(block, 'exec_params', block.params)
+
+        field_history = params.get('_field_history_', [])
+        time_history = params.get('_time_history_', [])
+
+        if not field_history or len(field_history) < 2:
+            logger.warning(f"FieldScope {block.name}: Not enough data for animation")
+            return
+
+        field_data = np.array(field_history)
+        time_data = np.array(time_history)
+        n_times, n_nodes = field_data.shape
+
+        L = float(params.get('L', 1.0))
+        x = np.linspace(0, L, n_nodes)
+
+        title = params.get('title', 'Field Evolution')
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+        line, = ax.plot(x, field_data[0], 'b-', linewidth=2)
+
+        ax.set_xlim(0, L)
+        ax.set_ylim(np.min(field_data) * 1.1, np.max(field_data) * 1.1)
+        ax.set_xlabel('Position (x)')
+        ax.set_ylabel('Field Value')
+        time_text = ax.set_title(f"{title} t=0.000 ({block.name})")
+        ax.grid(True, alpha=0.3)
+
+        def animate(frame):
+            line.set_ydata(field_data[frame])
+            time_text.set_text(f"{title} t={time_data[frame]:.3f} ({block.name})")
+            return line, time_text
+
+        anim = FuncAnimation(fig, animate, frames=n_times,
+                            interval=interval, blit=True, repeat=True)
+
+        plt.tight_layout()
+        plt.show()
+
+        return anim
 
     def _is_discrete_upstream(self, block_name, visited=None):
         """
