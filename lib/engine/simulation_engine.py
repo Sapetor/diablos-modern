@@ -192,12 +192,24 @@ class SimulationEngine:
             h_count = 1
             while not self.check_global_list():
                 for block in blocks_to_exec:
-                    # Check execution readiness
-                    can_execute = block.data_recieved == block.in_ports
+                    # Check execution readiness - account for optional inputs
+                    optional_inputs = set()
+                    if hasattr(block, 'block_instance') and block.block_instance:
+                        if hasattr(block.block_instance, 'optional_inputs'):
+                            optional_inputs = set(block.block_instance.optional_inputs)
+
+                    required_ports = block.in_ports - len(optional_inputs)
+                    # Count how many required ports have data
+                    required_received = 0
+                    for port_idx in range(block.in_ports):
+                        if port_idx not in optional_inputs and port_idx in block.input_queue:
+                            required_received += 1
+
+                    can_execute = required_received >= required_ports
                     if block.block_fn == 'From':
                         can_execute = 0 in block.input_queue and block.input_queue[0] is not None
-                    
-                    logger.info(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports})")
+
+                    logger.info(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_received}/{required_ports})")
 
                     if can_execute and not block.computed_data:
                         # OUT_VALUE execute_block...
