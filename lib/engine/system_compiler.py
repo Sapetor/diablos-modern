@@ -656,21 +656,24 @@ class SystemCompiler:
 
                 # Left boundary
                 if _bc_type_left == 'Dirichlet':
-                    dT_dt[0] = 0.0
+                    # Force boundary to match input value using penalty method
+                    dT_dt[0] = 1000.0 * (bc_left_val - T[0])
                 elif _bc_type_left == 'Neumann':
                     d2T_dx2 = (2*T[1] - 2*T[0] - 2*_dx*bc_left_val) / dx_sq
                     dT_dt[0] = _alpha * d2T_dx2 + q_src[0]
                 elif _bc_type_left == 'Robin':
-                    dT_dt[0] = 0.0
+                    # Robin BC: k*dT/dx = h*(T_inf - T)
+                    dT_dt[0] = 1000.0 * (bc_left_val - T[0])
 
                 # Right boundary
                 if _bc_type_right == 'Dirichlet':
-                    dT_dt[_N-1] = 0.0
+                    # Force boundary to match input value using penalty method
+                    dT_dt[_N-1] = 1000.0 * (bc_right_val - T[_N-1])
                 elif _bc_type_right == 'Neumann':
                     d2T_dx2 = (2*T[_N-2] - 2*T[_N-1] + 2*_dx*bc_right_val) / dx_sq
                     dT_dt[_N-1] = _alpha * d2T_dx2 + q_src[_N-1]
                 elif _bc_type_right == 'Robin':
-                    dT_dt[_N-1] = 0.0
+                    dT_dt[_N-1] = 1000.0 * (bc_right_val - T[_N-1])
 
                 # Output: temperature field and average
                 signals[b_name] = T
