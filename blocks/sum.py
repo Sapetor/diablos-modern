@@ -71,6 +71,38 @@ class SumBlock(BaseBlock):
         # Sum uses text rendering, so we return None and let the switch handle it
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        Returns symbolic expression: y = +/- u1 +/- u2 + ...
+
+        Args:
+            inputs: Dict of symbolic input expressions {port_idx: sympy_expr}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: sum_expr}
+        """
+        try:
+            from sympy import Symbol, Integer
+        except ImportError:
+            return None
+
+        sign_string = params.get('sign', '++')
+        result = Integer(0)
+
+        for i in range(len(sign_string)):
+            sign = sign_string[i] if i < len(sign_string) else '+'
+            u = inputs.get(i, Symbol(f'u{i}'))
+
+            if sign == '+':
+                result = result + u
+            else:
+                result = result - u
+
+        return {0: result}
+
     def execute(self, time, inputs, params):
         try:
             suma = 0.0

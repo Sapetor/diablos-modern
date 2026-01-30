@@ -44,6 +44,18 @@ class SystemCompiler:
             'MathFunction',
             'Selector',
             'Hysteresis',
+            # PDE Blocks (Method of Lines)
+            'HeatEquation1D',
+            'WaveEquation1D',
+            'AdvectionEquation1D',
+            'DiffusionReaction1D',
+            # Field Processing Blocks
+            'FieldProbe',
+            'FieldIntegral',
+            'FieldMax',
+            'FieldScope',
+            'FieldGradient',
+            'FieldLaplacian',
         }
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
@@ -113,6 +125,11 @@ class SystemCompiler:
         if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
         if block.block_fn == 'PID': fn = 'PID'
         if fn == 'Ratelimiter': fn = 'RateLimiter'
+        # PDE blocks normalization
+        if fn == 'Heatequation1d': fn = 'Heatequation1D'
+        if fn == 'Waveequation1d': fn = 'Waveequation1D'
+        if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
+        if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
         
         # Pre-resolve Inputs
         # We need a list of source keys to fetch from 'signals'
@@ -591,6 +608,390 @@ class SystemCompiler:
                 signals[b_name] = _state[0]
             return exec_hysteresis
 
+        # ==================== PDE BLOCKS ====================
+
+        elif fn == 'Heatequation1D':
+            start, size = state_map[b_name]
+            alpha = float(block.params.get('alpha', 1.0))
+            L = float(block.params.get('L', 1.0))
+            N = int(block.params.get('N', 20))
+            dx = L / (N - 1)
+            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = block.params.get('bc_type_right', 'Dirichlet')
+            h_left = float(block.params.get('h_left', 10.0))
+            h_right = float(block.params.get('h_right', 10.0))
+            k_thermal = float(block.params.get('k_thermal', 1.0))
+
+            q_src_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_left_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_right_key = input_sources[2] if len(input_sources) > 2 else None
+
+            def exec_heat1d(t, y, dy_vec, signals,
+                           _start=start, _N=N, _alpha=alpha, _dx=dx,
+                           _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                           _h_left=h_left, _h_right=h_right, _k=k_thermal,
+                           _q_key=q_src_key, _bc_l_key=bc_left_key, _bc_r_key=bc_right_key):
+                T = y[_start:_start + _N]
+
+                # Get inputs
+                q_src = signals.get(_q_key, 0.0) if _q_key else 0.0
+                bc_left_val = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right_val = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+
+                # Ensure q_src is array
+                if isinstance(q_src, (int, float)):
+                    q_src = np.full(_N, float(q_src))
+                else:
+                    q_src = np.atleast_1d(q_src).flatten()
+                    if len(q_src) != _N:
+                        q_src = np.full(_N, q_src[0] if len(q_src) > 0 else 0.0)
+
+                dT_dt = np.zeros(_N)
+                dx_sq = _dx * _dx
+
+                # Interior nodes: central difference
+                for i in range(1, _N-1):
+                    d2T_dx2 = (T[i+1] - 2*T[i] + T[i-1]) / dx_sq
+                    dT_dt[i] = _alpha * d2T_dx2 + q_src[i]
+
+                # Left boundary
+                if _bc_type_left == 'Dirichlet':
+                    dT_dt[0] = 0.0
+                elif _bc_type_left == 'Neumann':
+                    d2T_dx2 = (2*T[1] - 2*T[0] - 2*_dx*bc_left_val) / dx_sq
+                    dT_dt[0] = _alpha * d2T_dx2 + q_src[0]
+                elif _bc_type_left == 'Robin':
+                    dT_dt[0] = 0.0
+
+                # Right boundary
+                if _bc_type_right == 'Dirichlet':
+                    dT_dt[_N-1] = 0.0
+                elif _bc_type_right == 'Neumann':
+                    d2T_dx2 = (2*T[_N-2] - 2*T[_N-1] + 2*_dx*bc_right_val) / dx_sq
+                    dT_dt[_N-1] = _alpha * d2T_dx2 + q_src[_N-1]
+                elif _bc_type_right == 'Robin':
+                    dT_dt[_N-1] = 0.0
+
+                # Output: temperature field and average
+                signals[b_name] = T
+                signals[b_name + '_avg'] = np.mean(T)
+
+                dy_vec[_start:_start + _N] = dT_dt
+            return exec_heat1d
+
+        elif fn == 'Waveequation1D':
+            start, size = state_map[b_name]
+            c = float(block.params.get('c', 1.0))
+            damping = float(block.params.get('damping', 0.0))
+            L = float(block.params.get('L', 1.0))
+            N = int(block.params.get('N', 50))
+            dx = L / (N - 1)
+            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = block.params.get('bc_type_right', 'Dirichlet')
+
+            force_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_left_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_right_key = input_sources[2] if len(input_sources) > 2 else None
+
+            def exec_wave1d(t, y, dy_vec, signals,
+                           _start=start, _N=N, _c=c, _damping=damping, _dx=dx,
+                           _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                           _f_key=force_key, _bc_l_key=bc_left_key, _bc_r_key=bc_right_key):
+                u = y[_start:_start + _N]
+                v = y[_start + _N:_start + 2*_N]
+
+                # Get inputs
+                force = signals.get(_f_key, 0.0) if _f_key else 0.0
+                bc_left = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+
+                if isinstance(force, (int, float)):
+                    force = np.full(_N, float(force))
+                else:
+                    force = np.atleast_1d(force).flatten()
+                    if len(force) != _N:
+                        force = np.full(_N, force[0] if len(force) > 0 else 0.0)
+
+                c_sq = _c * _c
+                dx_sq = _dx * _dx
+
+                du_dt = v.copy()
+                dv_dt = np.zeros(_N)
+
+                # Interior
+                for i in range(1, _N-1):
+                    d2u_dx2 = (u[i+1] - 2*u[i] + u[i-1]) / dx_sq
+                    dv_dt[i] = c_sq * d2u_dx2 - _damping * v[i] + force[i]
+
+                # Boundaries
+                if _bc_type_left == 'Dirichlet':
+                    du_dt[0] = 0.0
+                    dv_dt[0] = 0.0
+                elif _bc_type_left == 'Neumann':
+                    d2u_dx2 = (2*u[1] - 2*u[0] - 2*_dx*bc_left) / dx_sq
+                    dv_dt[0] = c_sq * d2u_dx2 - _damping * v[0] + force[0]
+
+                if _bc_type_right == 'Dirichlet':
+                    du_dt[_N-1] = 0.0
+                    dv_dt[_N-1] = 0.0
+                elif _bc_type_right == 'Neumann':
+                    d2u_dx2 = (2*u[_N-2] - 2*u[_N-1] + 2*_dx*bc_right) / dx_sq
+                    dv_dt[_N-1] = c_sq * d2u_dx2 - _damping * v[_N-1] + force[_N-1]
+
+                signals[b_name] = u
+                signals[b_name + '_v'] = v
+
+                dy_vec[_start:_start + _N] = du_dt
+                dy_vec[_start + _N:_start + 2*_N] = dv_dt
+            return exec_wave1d
+
+        elif fn == 'Advectionequation1D':
+            start, size = state_map[b_name]
+            velocity = float(block.params.get('velocity', 1.0))
+            L = float(block.params.get('L', 1.0))
+            N = int(block.params.get('N', 50))
+            dx = L / (N - 1)
+            bc_type = block.params.get('bc_type', 'Dirichlet')
+
+            inlet_key = input_sources[0] if len(input_sources) > 0 else None
+
+            def exec_advection1d(t, y, dy_vec, signals,
+                                _start=start, _N=N, _v=velocity, _dx=dx,
+                                _bc_type=bc_type, _inlet_key=inlet_key):
+                c = y[_start:_start + _N]
+
+                c_inlet = signals.get(_inlet_key, 0.0) if _inlet_key else 0.0
+
+                dc_dt = np.zeros(_N)
+
+                if _v >= 0:
+                    # Backward difference (upwind)
+                    for i in range(1, _N):
+                        dc_dx = (c[i] - c[i-1]) / _dx
+                        dc_dt[i] = -_v * dc_dx
+                    if _bc_type == 'Dirichlet':
+                        dc_dt[0] = 0.0
+                    elif _bc_type == 'Periodic':
+                        dc_dx = (c[0] - c[_N-1]) / _dx
+                        dc_dt[0] = -_v * dc_dx
+                else:
+                    # Forward difference
+                    for i in range(_N-1):
+                        dc_dx = (c[i+1] - c[i]) / _dx
+                        dc_dt[i] = -_v * dc_dx
+                    if _bc_type == 'Dirichlet':
+                        dc_dt[_N-1] = 0.0
+                    elif _bc_type == 'Periodic':
+                        dc_dx = (c[0] - c[_N-1]) / _dx
+                        dc_dt[_N-1] = -_v * dc_dx
+
+                signals[b_name] = c
+                signals[b_name + '_total'] = np.sum(c) * _dx
+
+                dy_vec[_start:_start + _N] = dc_dt
+            return exec_advection1d
+
+        elif fn == 'Diffusionreaction1D':
+            start, size = state_map[b_name]
+            D = float(block.params.get('D', 0.01))
+            k = float(block.params.get('k', 0.1))
+            n = int(block.params.get('n', 1))
+            L = float(block.params.get('L', 1.0))
+            N = int(block.params.get('N', 30))
+            dx = L / (N - 1)
+            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = block.params.get('bc_type_right', 'Neumann')
+
+            src_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_left_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_right_key = input_sources[2] if len(input_sources) > 2 else None
+
+            def exec_diffreact1d(t, y, dy_vec, signals,
+                                _start=start, _N=N, _D=D, _k=k, _n=n, _dx=dx,
+                                _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                                _s_key=src_key, _bc_l_key=bc_left_key, _bc_r_key=bc_right_key):
+                c = y[_start:_start + _N]
+
+                source = signals.get(_s_key, 0.0) if _s_key else 0.0
+                bc_left = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+
+                if isinstance(source, (int, float)):
+                    source = np.full(_N, float(source))
+                else:
+                    source = np.atleast_1d(source).flatten()
+                    if len(source) != _N:
+                        source = np.full(_N, source[0] if len(source) > 0 else 0.0)
+
+                dc_dt = np.zeros(_N)
+                dx_sq = _dx * _dx
+
+                # Interior
+                for i in range(1, _N-1):
+                    d2c_dx2 = (c[i+1] - 2*c[i] + c[i-1]) / dx_sq
+                    reaction = _k * np.power(max(c[i], 0), _n)
+                    dc_dt[i] = _D * d2c_dx2 - reaction + source[i]
+
+                # Boundaries
+                if _bc_type_left == 'Dirichlet':
+                    dc_dt[0] = 0.0
+                elif _bc_type_left == 'Neumann':
+                    d2c_dx2 = (2*c[1] - 2*c[0] - 2*_dx*bc_left) / dx_sq
+                    reaction = _k * np.power(max(c[0], 0), _n)
+                    dc_dt[0] = _D * d2c_dx2 - reaction + source[0]
+
+                if _bc_type_right == 'Dirichlet':
+                    dc_dt[_N-1] = 0.0
+                elif _bc_type_right == 'Neumann':
+                    d2c_dx2 = (2*c[_N-2] - 2*c[_N-1] + 2*_dx*bc_right) / dx_sq
+                    reaction = _k * np.power(max(c[_N-1], 0), _n)
+                    dc_dt[_N-1] = _D * d2c_dx2 - reaction + source[_N-1]
+
+                signals[b_name] = c
+                signals[b_name + '_total'] = np.sum(c) * _dx
+
+                dy_vec[_start:_start + _N] = dc_dt
+            return exec_diffreact1d
+
+        # ==================== FIELD PROCESSING BLOCKS ====================
+
+        elif fn == 'Fieldprobe':
+            src = input_sources[0] if input_sources else None
+            pos_src = input_sources[1] if len(input_sources) > 1 else None
+            position = float(block.params.get('position', 0.5))
+            mode = block.params.get('position_mode', 'normalized')
+            L = float(block.params.get('L', 1.0))
+
+            def exec_fieldprobe(t, y, dy_vec, signals, _src=src, _pos_src=pos_src,
+                               _position=position, _mode=mode, _L=L):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                field = np.atleast_1d(field).flatten()
+
+                if len(field) == 0:
+                    signals[b_name] = 0.0
+                    return
+
+                pos = signals.get(_pos_src, _position) if _pos_src else _position
+
+                if _mode == 'absolute':
+                    pos_norm = pos / _L
+                else:
+                    pos_norm = pos
+
+                pos_norm = np.clip(pos_norm, 0.0, 1.0)
+                N = len(field)
+                idx_float = pos_norm * (N - 1)
+                idx_low = int(np.floor(idx_float))
+                idx_high = min(idx_low + 1, N - 1)
+                frac = idx_float - idx_low
+
+                value = field[idx_low] * (1 - frac) + field[idx_high] * frac
+                signals[b_name] = float(value)
+            return exec_fieldprobe
+
+        elif fn == 'Fieldintegral':
+            src = input_sources[0] if input_sources else None
+            L = float(block.params.get('L', 1.0))
+            normalize = block.params.get('normalize', False)
+
+            def exec_fieldintegral(t, y, dy_vec, signals, _src=src, _L=L, _norm=normalize):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                field = np.atleast_1d(field).flatten()
+
+                if len(field) == 0:
+                    signals[b_name] = 0.0
+                    return
+
+                N = len(field)
+                dx = _L / (N - 1) if N > 1 else _L
+                integral = np.trapz(field, dx=dx)
+
+                if _norm:
+                    integral = integral / _L
+
+                signals[b_name] = float(integral)
+            return exec_fieldintegral
+
+        elif fn == 'Fieldmax':
+            src = input_sources[0] if input_sources else None
+            mode = block.params.get('mode', 'max')
+            L = float(block.params.get('L', 1.0))
+
+            def exec_fieldmax(t, y, dy_vec, signals, _src=src, _mode=mode, _L=L):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                field = np.atleast_1d(field).flatten()
+
+                if len(field) == 0:
+                    signals[b_name] = 0.0
+                    return
+
+                if _mode == 'min':
+                    idx = int(np.argmin(field))
+                else:
+                    idx = int(np.argmax(field))
+
+                value = field[idx]
+                N = len(field)
+                location = (idx / (N - 1)) * _L if N > 1 else 0.0
+
+                signals[b_name] = float(value)
+                signals[b_name + '_loc'] = float(location)
+                signals[b_name + '_idx'] = idx
+            return exec_fieldmax
+
+        elif fn == 'Fieldgradient':
+            src = input_sources[0] if input_sources else None
+            L = float(block.params.get('L', 1.0))
+
+            def exec_fieldgradient(t, y, dy_vec, signals, _src=src, _L=L):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                field = np.atleast_1d(field).flatten()
+
+                if len(field) < 2:
+                    signals[b_name] = np.array([0.0])
+                    return
+
+                N = len(field)
+                dx = _L / (N - 1)
+                gradient = np.gradient(field, dx)
+                signals[b_name] = gradient
+            return exec_fieldgradient
+
+        elif fn == 'Fieldlaplacian':
+            src = input_sources[0] if input_sources else None
+            L = float(block.params.get('L', 1.0))
+
+            def exec_fieldlaplacian(t, y, dy_vec, signals, _src=src, _L=L):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                field = np.atleast_1d(field).flatten()
+
+                if len(field) < 3:
+                    signals[b_name] = np.zeros(len(field))
+                    return
+
+                N = len(field)
+                dx = _L / (N - 1)
+                dx_sq = dx * dx
+
+                laplacian = np.zeros(N)
+                for i in range(1, N-1):
+                    laplacian[i] = (field[i+1] - 2*field[i] + field[i-1]) / dx_sq
+
+                laplacian[0] = (field[2] - 2*field[1] + field[0]) / dx_sq
+                laplacian[N-1] = (field[N-1] - 2*field[N-2] + field[N-3]) / dx_sq
+
+                signals[b_name] = laplacian
+            return exec_fieldlaplacian
+
+        elif fn == 'Fieldscope':
+            # FieldScope is a sink - just pass through
+            src = input_sources[0] if input_sources else None
+
+            def exec_fieldscope(t, y, dy_vec, signals, _src=src):
+                field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
+                signals[b_name] = np.atleast_1d(field).flatten()
+            return exec_fieldscope
+
         # Generic catch-all or pass
         def exec_noop(t, y, dy_vec, signals):
             pass
@@ -639,6 +1040,11 @@ class SystemCompiler:
             if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
             if block.block_fn == 'PID': fn = 'PID' # Keep uppercase
             if fn == 'Ratelimiter': fn = 'RateLimiter'
+            # PDE blocks normalization
+            if fn == 'Heatequation1d': fn = 'Heatequation1D'
+            if fn == 'Waveequation1d': fn = 'Waveequation1D'
+            if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
+            if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
             
             if fn == 'Integrator':
                 ic = np.array(block.params.get('init_conds', 0.0), dtype=float)
@@ -725,7 +1131,144 @@ class SystemCompiler:
                 ic = float(block.params.get('init_cond', 0.0))
                 y0_list.append(ic)
                 current_state_idx += 1
-            
+
+            # ==================== PDE BLOCKS STATE ALLOCATION ====================
+
+            elif fn == 'Heatequation1D':
+                # HeatEquation1D has N states (one per spatial node)
+                N = int(block.params.get('N', 20))
+                state_map[b_name] = (current_state_idx, N)
+
+                # Get initial conditions
+                ic = block.params.get('init_conds', [0.0])
+                if isinstance(ic, (int, float)):
+                    ic_flat = np.full(N, float(ic))
+                else:
+                    ic_arr = np.array(ic, dtype=float).flatten()
+                    if len(ic_arr) == 1:
+                        ic_flat = np.full(N, ic_arr[0])
+                    elif len(ic_arr) == N:
+                        ic_flat = ic_arr
+                    elif len(ic_arr) < N:
+                        x_old = np.linspace(0, 1, len(ic_arr))
+                        x_new = np.linspace(0, 1, N)
+                        ic_flat = np.interp(x_new, x_old, ic_arr)
+                    else:
+                        indices = np.linspace(0, len(ic_arr)-1, N, dtype=int)
+                        ic_flat = ic_arr[indices]
+
+                y0_list.extend(ic_flat)
+                current_state_idx += N
+
+            elif fn == 'Waveequation1D':
+                # WaveEquation1D has 2N states (N displacement + N velocity)
+                N = int(block.params.get('N', 50))
+                L = float(block.params.get('L', 1.0))
+                state_map[b_name] = (current_state_idx, 2 * N)
+
+                # Initial displacement
+                init_u = block.params.get('init_displacement', [0.0])
+                x = np.linspace(0, L, N)
+
+                if isinstance(init_u, str):
+                    if init_u.lower() == 'gaussian':
+                        u0 = np.exp(-100 * (x - L/2)**2)
+                    elif init_u.lower() == 'sine':
+                        u0 = np.sin(np.pi * x / L)
+                    else:
+                        u0 = np.zeros(N)
+                elif isinstance(init_u, (int, float)):
+                    u0 = np.full(N, float(init_u))
+                else:
+                    u0 = np.array(init_u, dtype=float).flatten()
+                    if len(u0) == 1:
+                        u0 = np.full(N, u0[0])
+                    elif len(u0) != N:
+                        x_old = np.linspace(0, 1, len(u0))
+                        x_new = np.linspace(0, 1, N)
+                        u0 = np.interp(x_new, x_old, u0)
+
+                # Initial velocity
+                init_v = block.params.get('init_velocity', [0.0])
+                if isinstance(init_v, (int, float)):
+                    v0 = np.full(N, float(init_v))
+                else:
+                    v0 = np.array(init_v, dtype=float).flatten()
+                    if len(v0) == 1:
+                        v0 = np.full(N, v0[0])
+                    elif len(v0) != N:
+                        x_old = np.linspace(0, 1, len(v0))
+                        x_new = np.linspace(0, 1, N)
+                        v0 = np.interp(x_new, x_old, v0)
+
+                y0_list.extend(u0)
+                y0_list.extend(v0)
+                current_state_idx += 2 * N
+
+            elif fn == 'Advectionequation1D':
+                # AdvectionEquation1D has N states
+                N = int(block.params.get('N', 50))
+                L = float(block.params.get('L', 1.0))
+                state_map[b_name] = (current_state_idx, N)
+
+                ic = block.params.get('init_conds', [0.0])
+                x = np.linspace(0, L, N)
+
+                if isinstance(ic, str):
+                    if ic.lower() == 'gaussian':
+                        c0 = np.exp(-100 * (x - L/4)**2)
+                    elif ic.lower() == 'step':
+                        c0 = np.where(x < L/4, 1.0, 0.0)
+                    elif ic.lower() == 'sine':
+                        c0 = 0.5 * (1 + np.sin(2 * np.pi * x / L))
+                    else:
+                        c0 = np.zeros(N)
+                elif isinstance(ic, (int, float)):
+                    c0 = np.full(N, float(ic))
+                else:
+                    c0 = np.array(ic, dtype=float).flatten()
+                    if len(c0) == 1:
+                        c0 = np.full(N, c0[0])
+                    elif len(c0) != N:
+                        x_old = np.linspace(0, 1, len(c0))
+                        x_new = np.linspace(0, 1, N)
+                        c0 = np.interp(x_new, x_old, c0)
+
+                y0_list.extend(c0)
+                current_state_idx += N
+
+            elif fn == 'Diffusionreaction1D':
+                # DiffusionReaction1D has N states
+                N = int(block.params.get('N', 30))
+                L = float(block.params.get('L', 1.0))
+                state_map[b_name] = (current_state_idx, N)
+
+                ic = block.params.get('init_conds', [1.0])
+                x = np.linspace(0, L, N)
+
+                if isinstance(ic, str):
+                    if ic.lower() == 'uniform':
+                        c0 = np.ones(N)
+                    elif ic.lower() == 'gaussian':
+                        c0 = np.exp(-50 * (x - L/2)**2)
+                    elif ic.lower() == 'linear':
+                        c0 = 1 - x/L
+                    else:
+                        c0 = np.ones(N)
+                elif isinstance(ic, (int, float)):
+                    c0 = np.full(N, float(ic))
+                else:
+                    c0 = np.array(ic, dtype=float).flatten()
+                    if len(c0) == 1:
+                        c0 = np.full(N, c0[0])
+                    elif len(c0) != N:
+                        x_old = np.linspace(0, 1, len(c0))
+                        x_new = np.linspace(0, 1, N)
+                        c0 = np.interp(x_new, x_old, c0)
+
+                y0_list.extend(c0)
+                current_state_idx += N
+
         y0 = np.array(y0_list, dtype=float)
         
         # 3. Compile Execution Sequence

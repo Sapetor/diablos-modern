@@ -56,6 +56,30 @@ class IntegratorBlock(BaseBlock):
         """Integrator uses 1/s text rendering - handled in DBlock switch."""
         return None
 
+    def symbolic_execute(self, inputs, params):
+        """
+        Symbolic execution for equation extraction.
+
+        In Laplace domain: Y(s) = U(s) / s
+
+        Args:
+            inputs: Dict of symbolic input expressions {port_idx: sympy_expr}
+            params: Dict of block parameters
+
+        Returns:
+            Dict of symbolic output expressions {0: u/s}
+        """
+        try:
+            from sympy import Symbol
+        except ImportError:
+            return None
+
+        s = Symbol('s')
+        u = inputs.get(0, Symbol('u'))
+
+        # Y(s) = U(s) / s (Laplace domain integrator)
+        return {0: u / s}
+
     def execute(self, time, inputs, params, **kwargs):
         """
         Integrator block with multiple integration methods.
