@@ -72,8 +72,13 @@ class ScopePlotter:
             for block in source_blocks:
                 if block.block_fn == 'FieldScope':
                     params = getattr(block, 'exec_params', block.params)
-                    field_history = params.get('_field_history_', [])
-                    if field_history and len(field_history) > 1:
+                    field_history = params.get('_field_history_', None)
+                    # Handle both list and numpy array
+                    has_data = field_history is not None and (
+                        (hasattr(field_history, '__len__') and len(field_history) > 1) or
+                        (hasattr(field_history, 'shape') and field_history.shape[0] > 1)
+                    )
+                    if has_data:
                         self._plot_field_scope(block)
 
         except Exception as e:
@@ -189,10 +194,15 @@ class ScopePlotter:
         params = getattr(block, 'exec_params', block.params)
 
         # Get stored field history
-        field_history = params.get('_field_history_', [])
-        time_history = params.get('_time_history_', [])
+        field_history = params.get('_field_history_', None)
+        time_history = params.get('_time_history_', None)
 
-        if not field_history or len(field_history) < 2:
+        # Check for valid data (handle both list and numpy array)
+        has_field_data = field_history is not None and (
+            (hasattr(field_history, '__len__') and len(field_history) >= 2) or
+            (hasattr(field_history, 'shape') and field_history.shape[0] >= 2)
+        )
+        if not has_field_data:
             logger.warning(f"FieldScope {block.name}: No field data to plot")
             return
 
