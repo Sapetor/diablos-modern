@@ -1460,12 +1460,12 @@ class SimulationEngine:
                             block.exec_params = block.params.copy()
 
                         if i == 0:
-                            block.exec_params['field_history'] = []
+                            block.exec_params['_field_history_'] = []
 
-                        block.exec_params['field_history'].append(field.copy())
+                        block.exec_params['_field_history_'].append(field.copy())
 
                         if i == num_steps - 1:
-                            logger.info(f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['field_history'])}")
+                            logger.info(f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['_field_history_'])}")
 
             # Finalize Scope Vectors (convert to numpy)
             for block in current_blocks:
@@ -1473,8 +1473,8 @@ class SimulationEngine:
                      if hasattr(block, 'exec_params') and 'vector' in block.exec_params:
                         block.exec_params['vector'] = np.array(block.exec_params['vector'])
                 elif block.block_fn == 'FieldScope':
-                    if hasattr(block, 'exec_params') and 'field_history' in block.exec_params:
-                        block.exec_params['field_history'] = np.array(block.exec_params['field_history'])
+                    if hasattr(block, 'exec_params') and '_field_history_' in block.exec_params:
+                        block.exec_params['_field_history_'] = np.array(block.exec_params['_field_history_'])
             
             return True
             
