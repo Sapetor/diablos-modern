@@ -1,0 +1,87 @@
+site_name: DiaBloS Modern Documentation
+site_description: Documentation for DiaBloS Modern - A Simulink-like block diagram simulation tool
+site_author: DiaBloS Project
+
+repo_name: diablos-modern
+repo_url: https://github.com/diablos-project/diablos-modern
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            docstring_style: google
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - User Guide:
+      - Creating Diagrams: user-guide/creating-diagrams.md
+      - Running Simulations: user-guide/running-simulations.md
+      - Block Reference: user-guide/block-reference.md
+  - API Reference:
+      - Core Library: api/lib.md
+      - Simulation Engine: api/engine.md
+      - Blocks: api/blocks.md
+      - UI Widgets: api/widgets.md
+  - Wiki:
+      - Home: wiki/Home.md
+      - PDE: wiki/PDE.md
+      - Optimization: wiki/Optimization.md
+      - Optimization Primitives: wiki/Optimization_Primitives.md
+      - Examples: wiki/Examples.md
+      - Sources: wiki/Sources.md
+      - Sinks: wiki/Sinks.md
+      - Math: wiki/Math.md
+      - Control: wiki/Control.md
+      - Routing: wiki/Routing.md
+      - Subsystems: wiki/Subsystems_Architecture.md
+      - Modern UI: wiki/ModernUI_Architecture.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/diablos-project/diablos-modern

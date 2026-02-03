@@ -53,25 +53,10 @@ from modern_ui.main_window import ModernDiaBloSWindow
 from modern_ui.styles.qss_styles import apply_modern_theme
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('diablos_modern.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Setup logging from config file
+from lib.logging_config import setup_logging
+setup_logging()
 logger = logging.getLogger(__name__)
-
-# Set specific logger levels - reduce verbosity for simulation
-logging.getLogger('lib.lib').setLevel(logging.WARNING)
-logging.getLogger('lib.improvements').setLevel(logging.WARNING)
-logging.getLogger('lib.engine').setLevel(logging.WARNING)
-logging.getLogger('lib.engine.simulation_engine').setLevel(logging.WARNING)
-logging.getLogger('lib.plotting').setLevel(logging.WARNING)
-logging.getLogger('modern_ui.widgets.modern_canvas').setLevel(logging.WARNING)
-logging.getLogger('modern_ui.renderers').setLevel(logging.WARNING)
 
 
 def setup_application():

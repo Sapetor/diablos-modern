@@ -38,24 +38,6 @@ class FileService:
         self.SCREEN_WIDTH: int = 1280
         self.SCREEN_HEIGHT: int = 770
 
-    def save(self, autosave: bool = False, modern_ui_data: Optional[Dict[str, Any]] = None,
-             sim_params: Optional[Dict[str, Any]] = None) -> int:
-        """
-        Save diagram to a JSON file.
-
-        Args:
-            autosave: If True, save to autosave location without dialog
-            modern_ui_data: Additional UI state data to save (theme, window position, etc.)
-            sim_params: Simulation parameters dict containing sim_time, sim_dt, plot_trange
-
-        Returns:
-            0 on success, 1 if user cancelled the save dialog
-        """
-        if modern_ui_data:
-            main_dict["modern_ui_data"] = modern_ui_data
-
-        return main_dict
-
     def serialize(self, modern_ui_data: Optional[Dict[str, Any]] = None, sim_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Serialize the current diagram state into a dictionary.

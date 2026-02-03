@@ -65,8 +65,6 @@ class SimulationEngine:
         self.max_hier: int = 0
         self.rk45_len: bool = False
         self.rk_counter: int = 0
-        self.rk45_len: bool = False
-        self.rk_counter: int = 0
         self.execution_time_start: float = 0.0
         
         # System Compiler
@@ -634,59 +632,6 @@ class SimulationEngine:
                 self.children_recognition(child_name, children_list)
 
         return children_list
-
-    def reset_execution_data(self):
-        """Reset execution state for all blocks.
-        
-        IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
-        """
-        # Safety check - if global_computed_list isn't populated yet, use simple reset
-        if not self.global_computed_list or len(self.global_computed_list) != len(self.active_blocks_list):
-            for block in self.active_blocks_list:
-                block.computed_data = False
-                block.data_recieved = 0
-                block.data_sent = 0
-                block.hierarchy = -1
-                block.input_queue = {}
-            return
-            
-        for i in range(len(self.active_blocks_list)):
-            self.global_computed_list[i]['computed_data'] = False
-            self.active_blocks_list[i].computed_data = False
-            self.active_blocks_list[i].data_recieved = 0
-            self.active_blocks_list[i].data_sent = 0
-            self.active_blocks_list[i].input_queue = {}
-            self.active_blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
-
-    def count_rk45_integrators(self):
-        """
-        Check if any integrators use RK45 method.
-
-        Returns:
-            bool: True if RK45 integrators exist
-        """
-        for block in self.model.blocks_list:
-            if block.block_fn == 'Integrator' and block.params.get('method') == 'RK45':
-                return True
-            elif block.block_fn == 'External' and block.params.get('method') == 'RK45':
-                return True
-        return False
-
-    def reset_memblocks(self):
-        """Reset memory blocks (integrators, transfer functions, etc.).
-        
-        Resets _init_start_ in both params and exec_params, and clears _prev state.
-        """
-        for block in self.model.blocks_list:
-            if '_init_start_' in block.params:
-                block.params['_init_start_'] = True
-            # Also reset in exec_params if it exists (used during execution)
-            if hasattr(block, 'exec_params') and block.exec_params:
-                if '_init_start_' in block.exec_params:
-                    block.exec_params['_init_start_'] = True
-                # Clear any stored state like _prev
-                if '_prev' in block.exec_params:
-                    del block.exec_params['_prev']
 
     def update_sim_params(self, sim_time, sim_dt):
         """

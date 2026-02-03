@@ -1,6 +1,8 @@
-
+import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
 
 class DemuxBlock(BaseBlock):
     """
@@ -64,11 +66,10 @@ class DemuxBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         # Check input dimensions first
         if len(inputs[0]) / params['output_shape'] < len(self.outputs):
-            print("ERROR: Not enough inputs or wrong output shape in", params['_name_'])
-            return {'E': True}
+            return {'E': True, 'error': f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}"}
 
         elif len(inputs[0]) / params['output_shape'] > len(self.outputs):
-            print("WARNING: There are more elements in vector for the expected outputs. System will truncate. Block", params['_name_'])
+            logger.warning(f"More elements in vector than expected outputs. Truncating. Block: {params.get('_name_', 'Demux')}")
 
         try:
             input_array = np.array(inputs[0], dtype=float).flatten()
@@ -80,6 +81,5 @@ class DemuxBlock(BaseBlock):
                 outputs[i] = input_array[start:end]
             return outputs
         except (ValueError, TypeError):
-            print(f"ERROR: Invalid input type in demux block. Expected numeric.")
-            return {'E': True}
+            return {'E': True, 'error': 'Invalid input type in demux block. Expected numeric.'}
 
