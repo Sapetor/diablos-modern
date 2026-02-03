@@ -33,7 +33,7 @@ class ConstantBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "value": {"type": "float", "default": 1.0, "doc": "Constant output value."},
+            "value": {"type": "float", "default": 1.0, "doc": "Constant output value.", "accepts_array": True},
         }
 
     @property

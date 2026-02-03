@@ -426,6 +426,7 @@ class ModernBlockPalette(QWidget):
             "Filters": [],
             "Sinks": [],
             "Routing": [],
+            "Optimization Primitives": [],
             "Other": []
         }
 

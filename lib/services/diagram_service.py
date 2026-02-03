@@ -22,12 +22,14 @@ class DiagramService:
         self.main_window = main_window
         self.dsim = main_window.dsim
         
-        # Set default directory to 'saves' relative to current working directory
+        # Set default directory to 'examples' relative to current working directory
         project_root = os.getcwd()
-        self.last_directory = os.path.join(project_root, 'saves')
-        
+        self.last_directory = os.path.join(project_root, 'examples')
+
+        # Fall back to 'saves' if examples doesn't exist
         if not os.path.exists(self.last_directory):
-             os.makedirs(self.last_directory, exist_ok=True)
+            self.last_directory = os.path.join(project_root, 'saves')
+            os.makedirs(self.last_directory, exist_ok=True)
              
         self.current_file = None
 

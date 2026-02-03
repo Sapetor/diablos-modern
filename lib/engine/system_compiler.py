@@ -44,18 +44,24 @@ class SystemCompiler:
             'MathFunction',
             'Selector',
             'Hysteresis',
-            # PDE Blocks (Method of Lines)
+            # PDE Blocks (Method of Lines) - 1D
             'HeatEquation1D',
             'WaveEquation1D',
             'AdvectionEquation1D',
             'DiffusionReaction1D',
-            # Field Processing Blocks
+            # PDE Blocks (Method of Lines) - 2D
+            'HeatEquation2D',
+            # Field Processing Blocks - 1D
             'FieldProbe',
             'FieldIntegral',
             'FieldMax',
             'FieldScope',
             'FieldGradient',
             'FieldLaplacian',
+            # Field Processing Blocks - 2D
+            'FieldProbe2D',
+            'FieldScope2D',
+            'FieldSlice',
         }
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
@@ -130,7 +136,11 @@ class SystemCompiler:
         if fn == 'Waveequation1d': fn = 'Waveequation1D'
         if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
         if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
-        
+
+        # Use resolved params if available (exec_params), otherwise fall back to params
+        # This ensures workspace variables are properly resolved
+        params = getattr(block, 'exec_params', None) or block.params
+
         # Pre-resolve Inputs
         # We need a list of source keys to fetch from 'signals'
         # keys are strings (b_name).
@@ -182,7 +192,14 @@ class SystemCompiler:
             return exec_sum
             
         elif fn == 'Constant':
-            val = float(block.params.get('value', 0.0))
+            raw_val = block.params.get('value', 0.0)
+            # Handle both scalar and array values
+            if isinstance(raw_val, (list, tuple)):
+                val = np.atleast_1d(raw_val)
+            elif hasattr(raw_val, '__iter__') and not isinstance(raw_val, str):
+                val = np.atleast_1d(raw_val)
+            else:
+                val = float(raw_val)
             def exec_constant(t, y, dy_vec, signals):
                 signals[b_name] = val
             return exec_constant
@@ -612,15 +629,15 @@ class SystemCompiler:
 
         elif fn == 'Heatequation1D':
             start, size = state_map[b_name]
-            alpha = float(block.params.get('alpha', 1.0))
-            L = float(block.params.get('L', 1.0))
-            N = int(block.params.get('N', 20))
+            alpha = float(params.get('alpha', 1.0))
+            L = float(params.get('L', 1.0))
+            N = int(params.get('N', 20))
             dx = L / (N - 1)
-            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
-            bc_type_right = block.params.get('bc_type_right', 'Dirichlet')
-            h_left = float(block.params.get('h_left', 10.0))
-            h_right = float(block.params.get('h_right', 10.0))
-            k_thermal = float(block.params.get('k_thermal', 1.0))
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Dirichlet')
+            h_left = float(params.get('h_left', 10.0))
+            h_right = float(params.get('h_right', 10.0))
+            k_thermal = float(params.get('k_thermal', 1.0))
 
             q_src_key = input_sources[0] if len(input_sources) > 0 else None
             bc_left_key = input_sources[1] if len(input_sources) > 1 else None
@@ -684,13 +701,13 @@ class SystemCompiler:
 
         elif fn == 'Waveequation1D':
             start, size = state_map[b_name]
-            c = float(block.params.get('c', 1.0))
-            damping = float(block.params.get('damping', 0.0))
-            L = float(block.params.get('L', 1.0))
-            N = int(block.params.get('N', 50))
+            c = float(params.get('c', 1.0))
+            damping = float(params.get('damping', 0.0))
+            L = float(params.get('L', 1.0))
+            N = int(params.get('N', 50))
             dx = L / (N - 1)
-            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
-            bc_type_right = block.params.get('bc_type_right', 'Dirichlet')
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Dirichlet')
 
             force_key = input_sources[0] if len(input_sources) > 0 else None
             bc_left_key = input_sources[1] if len(input_sources) > 1 else None
@@ -750,11 +767,11 @@ class SystemCompiler:
 
         elif fn == 'Advectionequation1D':
             start, size = state_map[b_name]
-            velocity = float(block.params.get('velocity', 1.0))
-            L = float(block.params.get('L', 1.0))
-            N = int(block.params.get('N', 50))
+            velocity = float(params.get('velocity', 1.0))
+            L = float(params.get('L', 1.0))
+            N = int(params.get('N', 50))
             dx = L / (N - 1)
-            bc_type = block.params.get('bc_type', 'Dirichlet')
+            bc_type = params.get('bc_type', 'Dirichlet')
 
             inlet_key = input_sources[0] if len(input_sources) > 0 else None
 
@@ -773,7 +790,7 @@ class SystemCompiler:
                         dc_dx = (c[i] - c[i-1]) / _dx
                         dc_dt[i] = -_v * dc_dx
                     if _bc_type == 'Dirichlet':
-                        dc_dt[0] = 0.0
+                        dc_dt[0] = 1000.0 * (c_inlet - c[0])  # Penalty method for inlet BC
                     elif _bc_type == 'Periodic':
                         dc_dx = (c[0] - c[_N-1]) / _dx
                         dc_dt[0] = -_v * dc_dx
@@ -783,7 +800,7 @@ class SystemCompiler:
                         dc_dx = (c[i+1] - c[i]) / _dx
                         dc_dt[i] = -_v * dc_dx
                     if _bc_type == 'Dirichlet':
-                        dc_dt[_N-1] = 0.0
+                        dc_dt[_N-1] = 1000.0 * (c_inlet - c[_N-1])  # Penalty method for outlet BC
                     elif _bc_type == 'Periodic':
                         dc_dx = (c[0] - c[_N-1]) / _dx
                         dc_dt[_N-1] = -_v * dc_dx
@@ -796,14 +813,14 @@ class SystemCompiler:
 
         elif fn == 'Diffusionreaction1D':
             start, size = state_map[b_name]
-            D = float(block.params.get('D', 0.01))
-            k = float(block.params.get('k', 0.1))
-            n = int(block.params.get('n', 1))
-            L = float(block.params.get('L', 1.0))
-            N = int(block.params.get('N', 30))
+            D = float(params.get('D', 0.01))
+            k = float(params.get('k', 0.1))
+            n = int(params.get('n', 1))
+            L = float(params.get('L', 1.0))
+            N = int(params.get('N', 30))
             dx = L / (N - 1)
-            bc_type_left = block.params.get('bc_type_left', 'Dirichlet')
-            bc_type_right = block.params.get('bc_type_right', 'Neumann')
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Neumann')
 
             src_key = input_sources[0] if len(input_sources) > 0 else None
             bc_left_key = input_sources[1] if len(input_sources) > 1 else None
@@ -835,16 +852,16 @@ class SystemCompiler:
                     reaction = _k * np.power(max(c[i], 0), _n)
                     dc_dt[i] = _D * d2c_dx2 - reaction + source[i]
 
-                # Boundaries
+                # Boundaries - use penalty method for Dirichlet to force value
                 if _bc_type_left == 'Dirichlet':
-                    dc_dt[0] = 0.0
+                    dc_dt[0] = 1000.0 * (bc_left - c[0])  # Force c[0] → bc_left
                 elif _bc_type_left == 'Neumann':
                     d2c_dx2 = (2*c[1] - 2*c[0] - 2*_dx*bc_left) / dx_sq
                     reaction = _k * np.power(max(c[0], 0), _n)
                     dc_dt[0] = _D * d2c_dx2 - reaction + source[0]
 
                 if _bc_type_right == 'Dirichlet':
-                    dc_dt[_N-1] = 0.0
+                    dc_dt[_N-1] = 1000.0 * (bc_right - c[_N-1])  # Force c[N-1] → bc_right
                 elif _bc_type_right == 'Neumann':
                     d2c_dx2 = (2*c[_N-2] - 2*c[_N-1] + 2*_dx*bc_right) / dx_sq
                     reaction = _k * np.power(max(c[_N-1], 0), _n)
@@ -855,6 +872,109 @@ class SystemCompiler:
 
                 dy_vec[_start:_start + _N] = dc_dt
             return exec_diffreact1d
+
+        # ==================== 2D PDE BLOCKS ====================
+
+        elif fn == 'Heatequation2D':
+            start, size = state_map[b_name]
+            alpha = float(params.get('alpha', 0.01))
+            Lx = float(params.get('Lx', 1.0))
+            Ly = float(params.get('Ly', 1.0))
+            Nx = int(params.get('Nx', 20))
+            Ny = int(params.get('Ny', 20))
+            dx = Lx / (Nx - 1)
+            dy = Ly / (Ny - 1)
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Dirichlet')
+            bc_type_bottom = params.get('bc_type_bottom', 'Dirichlet')
+            bc_type_top = params.get('bc_type_top', 'Dirichlet')
+
+            q_src_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_left_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_right_key = input_sources[2] if len(input_sources) > 2 else None
+            bc_bottom_key = input_sources[3] if len(input_sources) > 3 else None
+            bc_top_key = input_sources[4] if len(input_sources) > 4 else None
+
+            def exec_heat2d(t, y, dy_vec, signals,
+                           _start=start, _Nx=Nx, _Ny=Ny, _alpha=alpha, _dx=dx, _dy=dy,
+                           _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                           _bc_type_bottom=bc_type_bottom, _bc_type_top=bc_type_top,
+                           _q_key=q_src_key, _bc_l_key=bc_left_key, _bc_r_key=bc_right_key,
+                           _bc_b_key=bc_bottom_key, _bc_t_key=bc_top_key):
+                n_states = _Nx * _Ny
+                T_flat = y[_start:_start + n_states]
+                T = T_flat.reshape((_Ny, _Nx))
+
+                # Get inputs
+                q_src = signals.get(_q_key, 0.0) if _q_key else 0.0
+                bc_left = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+                bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
+                bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
+
+                # Ensure q_src is scalar (simplified)
+                if isinstance(q_src, np.ndarray):
+                    q_src = float(q_src.flat[0]) if q_src.size > 0 else 0.0
+
+                dT_dt = np.zeros((_Ny, _Nx))
+                dx_sq = _dx * _dx
+                dy_sq = _dy * _dy
+                penalty = 1000.0
+
+                # Interior nodes: 5-point stencil
+                for j in range(1, _Ny - 1):
+                    for i in range(1, _Nx - 1):
+                        d2Tdx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / dx_sq
+                        d2Tdy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / dy_sq
+                        dT_dt[j, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+
+                # Left boundary (i=0)
+                if _bc_type_left == 'Dirichlet':
+                    for j in range(_Ny):
+                        dT_dt[j, 0] = penalty * (bc_left - T[j, 0])
+                else:  # Neumann
+                    for j in range(1, _Ny - 1):
+                        d2Tdx2 = (2*T[j, 1] - 2*T[j, 0] - 2*_dx*bc_left) / dx_sq
+                        d2Tdy2 = (T[j+1, 0] - 2*T[j, 0] + T[j-1, 0]) / dy_sq
+                        dT_dt[j, 0] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+
+                # Right boundary (i=Nx-1)
+                if _bc_type_right == 'Dirichlet':
+                    for j in range(_Ny):
+                        dT_dt[j, _Nx-1] = penalty * (bc_right - T[j, _Nx-1])
+                else:  # Neumann
+                    for j in range(1, _Ny - 1):
+                        d2Tdx2 = (2*T[j, _Nx-2] - 2*T[j, _Nx-1] + 2*_dx*bc_right) / dx_sq
+                        d2Tdy2 = (T[j+1, _Nx-1] - 2*T[j, _Nx-1] + T[j-1, _Nx-1]) / dy_sq
+                        dT_dt[j, _Nx-1] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+
+                # Bottom boundary (j=0)
+                if _bc_type_bottom == 'Dirichlet':
+                    for i in range(_Nx):
+                        dT_dt[0, i] = penalty * (bc_bottom - T[0, i])
+                else:  # Neumann
+                    for i in range(1, _Nx - 1):
+                        d2Tdx2 = (T[0, i+1] - 2*T[0, i] + T[0, i-1]) / dx_sq
+                        d2Tdy2 = (2*T[1, i] - 2*T[0, i] - 2*_dy*bc_bottom) / dy_sq
+                        dT_dt[0, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+
+                # Top boundary (j=Ny-1)
+                if _bc_type_top == 'Dirichlet':
+                    for i in range(_Nx):
+                        dT_dt[_Ny-1, i] = penalty * (bc_top - T[_Ny-1, i])
+                else:  # Neumann
+                    for i in range(1, _Nx - 1):
+                        d2Tdx2 = (T[_Ny-1, i+1] - 2*T[_Ny-1, i] + T[_Ny-1, i-1]) / dx_sq
+                        d2Tdy2 = (2*T[_Ny-2, i] - 2*T[_Ny-1, i] + 2*_dy*bc_top) / dy_sq
+                        dT_dt[_Ny-1, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+
+                # Output: temperature field (2D), average, max
+                signals[b_name] = T
+                signals[b_name + '_avg'] = np.mean(T)
+                signals[b_name + '_max'] = np.max(T)
+
+                dy_vec[_start:_start + n_states] = dT_dt.flatten()
+            return exec_heat2d
 
         # ==================== FIELD PROCESSING BLOCKS ====================
 
@@ -994,6 +1114,102 @@ class SystemCompiler:
                 field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
                 signals[b_name] = np.atleast_1d(field).flatten()
             return exec_fieldscope
+
+        # ==================== 2D FIELD PROCESSING BLOCKS ====================
+
+        elif fn == 'Fieldprobe2D':
+            src = input_sources[0] if input_sources else None
+            x_pos_src = input_sources[1] if len(input_sources) > 1 else None
+            y_pos_src = input_sources[2] if len(input_sources) > 2 else None
+            x_position = float(block.params.get('x_position', 0.5))
+            y_position = float(block.params.get('y_position', 0.5))
+            position_mode = block.params.get('position_mode', 'normalized')
+            Lx = float(block.params.get('Lx', 1.0))
+            Ly = float(block.params.get('Ly', 1.0))
+
+            def exec_fieldprobe2d(t, y, dy_vec, signals, _src=src,
+                                  _x_pos_src=x_pos_src, _y_pos_src=y_pos_src,
+                                  _x_pos=x_position, _y_pos=y_position,
+                                  _mode=position_mode, _Lx=Lx, _Ly=Ly):
+                field = signals.get(_src, None) if _src else None
+                if field is None:
+                    signals[b_name] = 0.0
+                    return
+
+                field = np.atleast_2d(field)
+                Ny, Nx = field.shape
+
+                # Get positions
+                x_pos = signals.get(_x_pos_src, _x_pos) if _x_pos_src else _x_pos
+                y_pos = signals.get(_y_pos_src, _y_pos) if _y_pos_src else _y_pos
+
+                # Convert to normalized
+                if _mode == 'absolute':
+                    x_norm = x_pos / _Lx
+                    y_norm = y_pos / _Ly
+                else:
+                    x_norm = x_pos
+                    y_norm = y_pos
+
+                x_norm = max(0, min(1, x_norm))
+                y_norm = max(0, min(1, y_norm))
+
+                # Bilinear interpolation
+                i_float = x_norm * (Nx - 1)
+                j_float = y_norm * (Ny - 1)
+                i0 = int(np.floor(i_float))
+                i1 = min(i0 + 1, Nx - 1)
+                j0 = int(np.floor(j_float))
+                j1 = min(j0 + 1, Ny - 1)
+                di = i_float - i0
+                dj = j_float - j0
+
+                val = (field[j0, i0] * (1 - di) * (1 - dj) +
+                       field[j0, i1] * di * (1 - dj) +
+                       field[j1, i0] * (1 - di) * dj +
+                       field[j1, i1] * di * dj)
+
+                signals[b_name] = float(val)
+            return exec_fieldprobe2d
+
+        elif fn == 'Fieldscope2D':
+            # FieldScope2D is a sink - pass through 2D field
+            src = input_sources[0] if input_sources else None
+
+            def exec_fieldscope2d(t, y, dy_vec, signals, _src=src):
+                field = signals.get(_src, np.zeros((1, 1))) if _src else np.zeros((1, 1))
+                signals[b_name] = np.atleast_2d(field)
+            return exec_fieldscope2d
+
+        elif fn == 'Fieldslice':
+            src = input_sources[0] if input_sources else None
+            pos_src = input_sources[1] if len(input_sources) > 1 else None
+            slice_direction = block.params.get('slice_direction', 'x')
+            slice_position = float(block.params.get('slice_position', 0.5))
+
+            def exec_fieldslice(t, y, dy_vec, signals, _src=src, _pos_src=pos_src,
+                               _direction=slice_direction, _pos=slice_position):
+                field = signals.get(_src, None) if _src else None
+                if field is None:
+                    signals[b_name] = np.array([0.0])
+                    return
+
+                field = np.atleast_2d(field)
+                Ny, Nx = field.shape
+
+                position = signals.get(_pos_src, _pos) if _pos_src else _pos
+
+                if _direction.lower() == 'x':
+                    j = int(position * (Ny - 1))
+                    j = max(0, min(Ny - 1, j))
+                    slice_arr = field[j, :]
+                else:
+                    i = int(position * (Nx - 1))
+                    i = max(0, min(Nx - 1, i))
+                    slice_arr = field[:, i]
+
+                signals[b_name] = slice_arr
+            return exec_fieldslice
 
         # Generic catch-all or pass
         def exec_noop(t, y, dy_vec, signals):
@@ -1136,14 +1352,18 @@ class SystemCompiler:
                 current_state_idx += 1
 
             # ==================== PDE BLOCKS STATE ALLOCATION ====================
+            # NOTE: PDE blocks need resolved params (exec_params) for initial conditions
+            # because they may be set dynamically or through workspace variables
 
             elif fn == 'Heatequation1D':
                 # HeatEquation1D has N states (one per spatial node)
-                N = int(block.params.get('N', 20))
+                # Use exec_params if available (resolved), otherwise fall back to params
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                N = int(pde_params.get('N', 20))
                 state_map[b_name] = (current_state_idx, N)
 
-                # Get initial conditions
-                ic = block.params.get('init_conds', [0.0])
+                # Get initial conditions from resolved params
+                ic = pde_params.get('init_conds', [0.0])
                 if isinstance(ic, (int, float)):
                     ic_flat = np.full(N, float(ic))
                 else:
@@ -1165,12 +1385,13 @@ class SystemCompiler:
 
             elif fn == 'Waveequation1D':
                 # WaveEquation1D has 2N states (N displacement + N velocity)
-                N = int(block.params.get('N', 50))
-                L = float(block.params.get('L', 1.0))
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                N = int(pde_params.get('N', 50))
+                L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, 2 * N)
 
                 # Initial displacement
-                init_u = block.params.get('init_displacement', [0.0])
+                init_u = pde_params.get('init_displacement', [0.0])
                 x = np.linspace(0, L, N)
 
                 if isinstance(init_u, str):
@@ -1192,7 +1413,7 @@ class SystemCompiler:
                         u0 = np.interp(x_new, x_old, u0)
 
                 # Initial velocity
-                init_v = block.params.get('init_velocity', [0.0])
+                init_v = pde_params.get('init_velocity', [0.0])
                 if isinstance(init_v, (int, float)):
                     v0 = np.full(N, float(init_v))
                 else:
@@ -1210,11 +1431,12 @@ class SystemCompiler:
 
             elif fn == 'Advectionequation1D':
                 # AdvectionEquation1D has N states
-                N = int(block.params.get('N', 50))
-                L = float(block.params.get('L', 1.0))
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                N = int(pde_params.get('N', 50))
+                L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, N)
 
-                ic = block.params.get('init_conds', [0.0])
+                ic = pde_params.get('init_conds', [0.0])
                 x = np.linspace(0, L, N)
 
                 if isinstance(ic, str):
@@ -1242,11 +1464,12 @@ class SystemCompiler:
 
             elif fn == 'Diffusionreaction1D':
                 # DiffusionReaction1D has N states
-                N = int(block.params.get('N', 30))
-                L = float(block.params.get('L', 1.0))
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                N = int(pde_params.get('N', 30))
+                L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, N)
 
-                ic = block.params.get('init_conds', [1.0])
+                ic = pde_params.get('init_conds', [1.0])
                 x = np.linspace(0, L, N)
 
                 if isinstance(ic, str):
@@ -1256,6 +1479,8 @@ class SystemCompiler:
                         c0 = np.exp(-50 * (x - L/2)**2)
                     elif ic.lower() == 'linear':
                         c0 = 1 - x/L
+                    elif ic.lower() == 'sine':
+                        c0 = np.sin(np.pi * x / L)
                     else:
                         c0 = np.ones(N)
                 elif isinstance(ic, (int, float)):
@@ -1271,6 +1496,49 @@ class SystemCompiler:
 
                 y0_list.extend(c0)
                 current_state_idx += N
+
+            # ==================== 2D PDE BLOCKS STATE ALLOCATION ====================
+
+            elif fn == 'Heatequation2D':
+                # HeatEquation2D has Nx*Ny states (one per spatial node)
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                Nx = int(pde_params.get('Nx', 20))
+                Ny = int(pde_params.get('Ny', 20))
+                Lx = float(pde_params.get('Lx', 1.0))
+                Ly = float(pde_params.get('Ly', 1.0))
+                n_states = Nx * Ny
+                state_map[b_name] = (current_state_idx, n_states)
+
+                # Get initial temperature from resolved params
+                init_temp = pde_params.get('init_temp', '0.0')
+                amplitude = float(pde_params.get('init_amplitude', 1.0))
+
+                x = np.linspace(0, Lx, Nx)
+                y = np.linspace(0, Ly, Ny)
+                X, Y = np.meshgrid(x, y)  # Shape: (Ny, Nx)
+
+                if isinstance(init_temp, str):
+                    if init_temp.lower() == 'sinusoidal':
+                        # T = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode of Laplacian
+                        T0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
+                    elif init_temp.lower() == 'gaussian':
+                        # Gaussian bump at center
+                        T0 = amplitude * np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
+                    elif init_temp.lower() == 'hot_spot':
+                        # Hot spot in corner
+                        T0 = amplitude * np.exp(-100 * (X**2 + Y**2))
+                    else:
+                        # Try to parse as number
+                        try:
+                            T0 = np.full((Ny, Nx), float(init_temp))
+                        except ValueError:
+                            T0 = np.zeros((Ny, Nx))
+                else:
+                    T0 = np.full((Ny, Nx), float(init_temp))
+
+                ic_flat = T0.flatten()
+                y0_list.extend(ic_flat)
+                current_state_idx += n_states
 
         y0 = np.array(y0_list, dtype=float)
         

@@ -111,10 +111,24 @@ class ValidationHelper:
         
         # Memory blocks break algebraic loops - their output depends on previous state
         MEMORY_BLOCK_TYPES = {
-            'Integrator', 'StateSpace', 'DiscreteStateSpace', 
+            'Integrator', 'StateSpace', 'DiscreteStateSpace',
             'DiscreteTranFn', 'ZeroOrderHold', 'Delay'
         }
-        
+
+        def subsystem_contains_memory(block) -> bool:
+            """Check if a subsystem contains any memory blocks internally."""
+            if not hasattr(block, 'sub_blocks') or not block.sub_blocks:
+                return False
+            for sub_block in block.sub_blocks:
+                if sub_block.b_type == 1:
+                    return True
+                if sub_block.block_fn in MEMORY_BLOCK_TYPES:
+                    return True
+                # Recursively check nested subsystems
+                if sub_block.block_fn == 'Subsystem' and subsystem_contains_memory(sub_block):
+                    return True
+            return False
+
         graph = defaultdict(list)
         in_degree = defaultdict(int)
         block_map = {block.name: block for block in blocks_list}
@@ -156,6 +170,11 @@ class ValidationHelper:
                 if len(den) > len(num):
                     is_memory_block = True
                     logger.debug(f"  {dst_block.name} (DiscreteTranFn) is strictly proper - memory block")
+
+            # Subsystem is treated as memory block if it contains any memory blocks
+            if dst_block.block_fn == 'Subsystem' and subsystem_contains_memory(dst_block):
+                is_memory_block = True
+                logger.debug(f"  {dst_block.name} (Subsystem) contains memory block - breaks loop")
 
             if is_memory_block:
                 logger.debug(f"Memory block {dst_block.name} breaks loop from {src_block.name}")

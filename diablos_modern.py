@@ -22,7 +22,7 @@ from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
 # Setup logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('diablos_modern.log'),
@@ -31,9 +31,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Set specific logger levels for debugging
-logging.getLogger('lib.lib').setLevel(logging.INFO)
-logging.getLogger('lib.improvements').setLevel(logging.INFO)
+# Set specific logger levels - reduce verbosity for simulation
+logging.getLogger('lib.lib').setLevel(logging.WARNING)
+logging.getLogger('lib.improvements').setLevel(logging.WARNING)
+logging.getLogger('lib.engine').setLevel(logging.WARNING)
+logging.getLogger('lib.engine.simulation_engine').setLevel(logging.WARNING)
+logging.getLogger('lib.plotting').setLevel(logging.WARNING)
+logging.getLogger('modern_ui.widgets.modern_canvas').setLevel(logging.WARNING)
+logging.getLogger('modern_ui.renderers').setLevel(logging.WARNING)
 
 
 def setup_application():
@@ -79,19 +84,37 @@ def main():
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
         logger.info("Starting Modern DiaBloS Application - Phase 1")
-        
+
         # Set the initial theme to light
         theme_manager.set_theme(ThemeType.LIGHT)
 
         # Setup application
         app = setup_application()
-        
+
         # Get available screen geometry (excludes taskbar)
         screen_geometry = app.primaryScreen().availableGeometry()
 
         # Create main window with screen-aware sizing
         window = ModernDiaBloSWindow(screen_geometry)
         window.show()
+
+        # Check for file argument (open diagram on startup)
+        if len(sys.argv) > 1:
+            file_path = sys.argv[1]
+            if os.path.isfile(file_path) and file_path.endswith('.diablos'):
+                logger.info(f"Opening diagram from command line: {file_path}")
+                # Use QTimer to load after event loop starts
+                from PyQt5.QtCore import QTimer
+                def load_file():
+                    try:
+                        if hasattr(window.dsim, 'file_service'):
+                            block_data = window.dsim.file_service.load(filepath=file_path)
+                            window.dsim.deserialize(block_data)
+                        window.canvas.update()
+                        logger.info(f"Diagram loaded: {file_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to load diagram: {e}")
+                QTimer.singleShot(200, load_file)
 
         # Center window on screen
         window_size = window.geometry()

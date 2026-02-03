@@ -149,6 +149,7 @@ class BlockRenderer:
         # Draw ports
         if draw_ports:
             self.draw_ports(block, painter)
+            self.draw_port_labels(block, painter)
 
         if draw_name:
             text_color = theme_manager.get_color('text_primary')
@@ -217,6 +218,93 @@ class BlockRenderer:
             highlight_offset = int(port_draw_radius * 0.3)
             highlight_size = int(port_draw_radius * 0.4)
             painter.drawEllipse(port_out_location.x() - highlight_offset, port_out_location.y() - highlight_offset, highlight_size, highlight_size)
+
+    def draw_port_labels(self, block, painter: Optional[QPainter], show_labels: bool = True) -> None:
+        """
+        Draw labels next to input and output ports for blocks with multiple ports.
+
+        Args:
+            block: The DBlock instance
+            painter: QPainter instance for rendering
+            show_labels: Whether to show port labels (can be toggled in settings)
+        """
+        if painter is None or not show_labels:
+            return
+
+        # Only show labels for blocks with multiple ports on either side
+        if block.in_ports <= 1 and block.out_ports <= 1:
+            return
+
+        # Skip blocks where port meaning is obvious from the icon
+        skip_blocks = {'Sum', 'SgProd', 'Product', 'Mux', 'Demux'}
+        if block.block_fn in skip_blocks:
+            return
+
+        # Get port names from block
+        input_names, output_names = block.get_port_names()
+
+        # Setup font for labels
+        from PyQt5.QtGui import QFont, QFontMetrics
+        label_font = QFont("Arial", 8)
+        label_font.setBold(False)
+        painter.setFont(label_font)
+        font_metrics = QFontMetrics(label_font)
+
+        # Qt 5.11+ uses horizontalAdvance, older versions use width
+        def get_text_width(text):
+            if hasattr(font_metrics, 'horizontalAdvance'):
+                return font_metrics.horizontalAdvance(text)
+            return font_metrics.width(text)
+
+        # Label colors
+        text_color = theme_manager.get_color('text_primary')
+        bg_color = theme_manager.get_color('background_secondary')
+        bg_color.setAlpha(200)
+
+        port_radius = block.port_radius
+        label_offset = port_radius + 4  # Offset from port edge
+
+        # Draw input port labels (on left side, text inside block)
+        for i, port_coord in enumerate(block.in_coords):
+            if i < len(input_names):
+                label = input_names[i]
+                # Position label to the right of the port (inside block)
+                text_width = get_text_width(label)
+                text_height = font_metrics.height()
+
+                x = port_coord.x() + label_offset
+                y = port_coord.y() + text_height // 4
+
+                # Draw background for readability
+                bg_rect = QRect(int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height))
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(bg_color)
+                painter.drawRoundedRect(bg_rect, 2, 2)
+
+                # Draw text
+                painter.setPen(text_color)
+                painter.drawText(int(x), int(y), label)
+
+        # Draw output port labels (on right side, text inside block)
+        for i, port_coord in enumerate(block.out_coords):
+            if i < len(output_names):
+                label = output_names[i]
+                # Position label to the left of the port (inside block)
+                text_width = get_text_width(label)
+                text_height = font_metrics.height()
+
+                x = port_coord.x() - label_offset - text_width
+                y = port_coord.y() + text_height // 4
+
+                # Draw background for readability
+                bg_rect = QRect(int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height))
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(bg_color)
+                painter.drawRoundedRect(bg_rect, 2, 2)
+
+                # Draw text
+                painter.setPen(text_color)
+                painter.drawText(int(x), int(y), label)
 
     def draw_resize_handles(self, block, painter):
         """Draw resize handles on the corners and edges of selected blocks."""
@@ -352,7 +440,10 @@ class BlockRenderer:
         elif block.block_fn == "Display":
              params_source = getattr(block, 'exec_params', block.params) or block.params
              display_val = params_source.get('_display_value_', '---')
-             if len(str(display_val)) > 10: display_val = str(display_val)[:9] + "…"
+             # Dynamic character limit based on block width (approx 8 pixels per char)
+             block_width = getattr(block, 'width', 80)
+             max_chars = max(10, int(block_width / 8))
+             if len(str(display_val)) > max_chars: display_val = str(display_val)[:max_chars-1] + "…"
              self._draw_centered_text(block, painter, str(display_val), bold=True, size_delta=2)
         elif block.block_fn == "Term":
              path.moveTo(0.5, 0.2); path.lineTo(0.5, 0.6)

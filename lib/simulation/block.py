@@ -151,6 +151,51 @@ class DBlock:
             return self.block_instance.doc
         return ""
 
+    def get_port_names(self) -> tuple:
+        """
+        Get the names of input and output ports.
+
+        Returns:
+            tuple: (input_names: List[str], output_names: List[str])
+        """
+        input_names = []
+        output_names = []
+
+        if self.block_instance:
+            # Get input names
+            try:
+                if hasattr(self.block_instance, 'get_inputs'):
+                    inputs = self.block_instance.get_inputs(self.params)
+                elif hasattr(self.block_instance, 'inputs'):
+                    inputs = self.block_instance.inputs
+                else:
+                    inputs = []
+                input_names = [inp.get('name', f'in{i}') for i, inp in enumerate(inputs)]
+            except Exception:
+                input_names = [f'in{i}' for i in range(self.in_ports)]
+
+            # Get output names
+            try:
+                if hasattr(self.block_instance, 'outputs'):
+                    outputs = self.block_instance.outputs
+                else:
+                    outputs = []
+                output_names = [out.get('name', f'out{i}') for i, out in enumerate(outputs)]
+            except Exception:
+                output_names = [f'out{i}' for i in range(self.out_ports)]
+        else:
+            # Fallback to generic names
+            input_names = [f'in{i}' for i in range(self.in_ports)]
+            output_names = [f'out{i}' for i in range(self.out_ports)]
+
+        # Ensure we have the right number of names
+        while len(input_names) < self.in_ports:
+            input_names.append(f'in{len(input_names)}')
+        while len(output_names) < self.out_ports:
+            output_names.append(f'out{len(output_names)}')
+
+        return (input_names[:self.in_ports], output_names[:self.out_ports])
+
     def calculate_min_size(self) -> int:
         """
         Calculate the minimum height required for the block based on its ports.
@@ -229,16 +274,15 @@ class DBlock:
             self.height = self.height_base
             
         self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
-
-        port_spacing = max(self.port_radius * 4, self.height / (max(self.in_ports, self.out_ports) + 1))
+        self.rect = QRect(self.left, self.top, self.width, self.height)
 
         in_x = self.left if not self.flipped else self.left + self.width
         out_x = self.left + self.width if not self.flipped else self.left
 
+        # Port grid snapping disabled by default for smooth resize behavior
+        # Blocks can opt-in via block_instance.use_port_grid_snap = True
         grid_size = 10
-
-        # Check if block wants port grid snapping (property-based, not hardcoded)
-        use_grid_snap = True
+        use_grid_snap = False
         if hasattr(self, 'block_instance') and self.block_instance and hasattr(self.block_instance, 'use_port_grid_snap'):
             use_grid_snap = self.block_instance.use_port_grid_snap
 

@@ -1185,7 +1185,14 @@ class ModernDiaBloSWindow(QMainWindow):
                 if block.name == block_name:
                     param_type = type(block.params.get(prop_name))
 
-                    converted_value = self._convert_param_value(new_value, param_type)
+                    # If the value is already a list or numpy array, preserve it
+                    # (property editor may have already converted it for accepts_array params)
+                    if isinstance(new_value, (list, tuple)):
+                        converted_value = list(new_value)
+                    elif hasattr(new_value, 'tolist'):  # numpy array
+                        converted_value = new_value
+                    else:
+                        converted_value = self._convert_param_value(new_value, param_type)
 
                     logger.debug(f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})")
                     block.update_params({prop_name: converted_value})
