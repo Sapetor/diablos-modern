@@ -67,30 +67,32 @@ class StepBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
             self.step_old = time
-            self.change_old = not params['pulse_start_up']
+            self.change_old = not params.get('pulse_start_up', True)
             params['_init_start_'] = False
-        
-        delay = float(params['delay'])
-        
-        if params['type'] == 'up':
+
+        delay = float(params.get('delay', 0.0))
+        step_type = params.get('type', 'up')
+
+        if step_type == 'up':
             change = True if time < delay else False
-        elif params['type'] == 'down':
+        elif step_type == 'down':
             change = True if time > delay else False
-        elif params['type'] == 'pulse':
+        elif step_type == 'pulse':
             if time - self.step_old >= delay:
                 self.step_old += delay
                 change = not self.change_old
             else:
                 change = self.change_old
-        elif params['type'] == 'constant':
+        elif step_type == 'constant':
             change = False
         else:
-            print("ERROR: 'type' not correctly defined in", params['_name_'])
-            return {'E': True}
+            print("ERROR: 'type' not correctly defined in", params.get('_name_', 'unknown'))
+            return {0: 0.0, 'E': True}
 
+        value = params.get('value', 1.0)
         if change:
             self.change_old = True
-            return {0: np.atleast_1d(np.zeros_like(np.array(params['value'], dtype=float)))}
+            return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), 'E': False}
         else:
             self.change_old = False
-            return {0: np.atleast_1d(np.array(params['value'], dtype=float))}
+            return {0: np.atleast_1d(np.array(value, dtype=float)), 'E': False}

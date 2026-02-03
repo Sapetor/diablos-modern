@@ -293,15 +293,15 @@ def test_rootlocus_block():
 
 
 def test_external_block():
-    """Test ExternalBlock (placeholder, returns None during sim)."""
+    """Test ExternalBlock (not fully implemented, returns error)."""
     from blocks.external import ExternalBlock
-    
+
     block = ExternalBlock()
     params = {'filename': 'test.py'}
-    
-    # External block returns None (executed externally)
+
+    # External block returns error dict when file not loaded
     result = block.execute(0, {0: np.array([1.0])}, params)
-    assert result is None, f"External: expected None, got {result}"
+    assert result['E'] is True, f"External: expected error, got {result}"
     print("[PASS] ExternalBlock")
 
 

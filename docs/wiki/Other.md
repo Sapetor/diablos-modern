@@ -28,21 +28,24 @@ Right-click to generate a Bode magnitude plot from a connected Transfer Function
 
 External Function Block.
 
-Executes custom Python code loaded from an external file.
+> **⚠️ NOT IMPLEMENTED**: This block is a stub. It returns an error when executed.
+> If you need custom Python code, consider using the Python block or submitting a feature request.
+
+Intended to execute custom Python code loaded from an external file.
 
 Parameters:
 - Script Path: Path to the .py file.
 - Function Name: Name of the function to call.
 
-Usage:
-Integrate custom logic, complex math, or hardware interfaces not provided by standard blocks.
-
 #### Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `filename` | string | `<no filename>` |  |
+| `filename` | string | `` | Path to external Python script |
+| `function` | string | `execute` | Function name to call |
 
 **Ports**: 1 In, 1 Out
+
+**Status**: Returns error `{'E': True, 'error': 'External file not loaded: ...'}` when executed.
 
 ---
 

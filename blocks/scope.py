@@ -81,9 +81,9 @@ class ScopeBlock(BaseBlock):
             except TypeError:
                 params['vec_dim'] = 1
 
-            labels = params['labels']
+            labels = params.get('labels', 'default')
             if labels == 'default':
-                labels = params['_name_'] + '-0'
+                labels = params.get('_name_', 'scope') + '-0'
             labels = labels.replace(' ', '').split(',')
             if len(labels) - params['vec_dim'] >= 0:
                 labels = labels[:params['vec_dim']]
