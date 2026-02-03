@@ -1,0 +1,360 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.01,
+        "sim_trange": 500
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "NoSource",
+            "coords_left": 80,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "LeftBC_High",
+            "coords_left": 80,
+            "coords_top": 180,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 3,
+            "username": "RightBC_Zero",
+            "coords_left": 80,
+            "coords_top": 260,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "DiffusionReaction1D",
+            "sid": 4,
+            "username": "ChemicalReactor",
+            "coords_left": 250,
+            "coords_top": 130,
+            "coords_width": 140,
+            "coords_height": 110,
+            "coords_height_base": 110,
+            "in_ports": 3,
+            "out_ports": 3,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#32CD32",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "diffusionreaction1d",
+            "params": {
+                "D": 0.02,
+                "k": 0.5,
+                "n": 1,
+                "L": 1.0,
+                "N": 30,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_conds": [0.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 5,
+            "username": "Probe_x025",
+            "coords_left": 460,
+            "coords_top": 80,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.25,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 6,
+            "username": "Probe_x050",
+            "coords_left": 460,
+            "coords_top": 160,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 7,
+            "username": "Probe_x075",
+            "coords_left": 460,
+            "coords_top": 240,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.75,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "username": "ConcentrationScope",
+            "coords_left": 630,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 3,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "c(0.25), c(0.50), c(0.75)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 9,
+            "username": "ReactionHeatmap",
+            "coords_left": 460,
+            "coords_top": 320,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "viridis",
+                "title": "Concentration Profile"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 10,
+            "username": "MassScope",
+            "coords_left": 630,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Total Mass, Reaction Rate"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "NoSource",
+            "srcport": 0,
+            "dstblock": "ChemicalReactor",
+            "dstport": 0,
+            "points": [[160, 120], [250, 157]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "LeftBC_High",
+            "srcport": 0,
+            "dstblock": "ChemicalReactor",
+            "dstport": 1,
+            "points": [[160, 200], [250, 185]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "RightBC_Zero",
+            "srcport": 0,
+            "dstblock": "ChemicalReactor",
+            "dstport": 2,
+            "points": [[160, 280], [200, 280], [200, 213], [250, 213]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "ChemicalReactor",
+            "srcport": 0,
+            "dstblock": "Probe_x025",
+            "dstport": 0,
+            "points": [[390, 163], [425, 163], [425, 97], [460, 97]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "ChemicalReactor",
+            "srcport": 0,
+            "dstblock": "Probe_x050",
+            "dstport": 0,
+            "points": [[390, 163], [425, 163], [425, 177], [460, 177]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "ChemicalReactor",
+            "srcport": 0,
+            "dstblock": "Probe_x075",
+            "dstport": 0,
+            "points": [[390, 163], [425, 163], [425, 257], [460, 257]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "ChemicalReactor",
+            "srcport": 0,
+            "dstblock": "ReactionHeatmap",
+            "dstport": 0,
+            "points": [[390, 163], [425, 163], [425, 342], [460, 342]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Probe_x025",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 0,
+            "points": [[560, 105], [595, 105], [595, 120], [630, 120]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Probe_x050",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 1,
+            "points": [[560, 185], [595, 185], [595, 140], [630, 140]]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Probe_x075",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 2,
+            "points": [[560, 265], [595, 265], [595, 160], [630, 160]]
+        },
+        {
+            "sid": 111,
+            "srcblock": "ChemicalReactor",
+            "srcport": 1,
+            "dstblock": "MassScope",
+            "dstport": 0,
+            "points": [[390, 191], [520, 191], [520, 240], [630, 240]]
+        },
+        {
+            "sid": 112,
+            "srcblock": "ChemicalReactor",
+            "srcport": 2,
+            "dstblock": "MassScope",
+            "dstport": 1,
+            "points": [[390, 218], [520, 218], [520, 260], [630, 260]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

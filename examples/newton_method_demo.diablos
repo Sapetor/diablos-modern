@@ -1,0 +1,250 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 20.0,
+        "sim_dt": 1.0,
+        "sim_trange": 20
+    },
+    "blocks_data": [
+        {
+            "block_fn": "StateVariable",
+            "sid": 1,
+            "username": "X_State",
+            "coords_left": 100,
+            "coords_top": 200,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#6495ED",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "statevariable",
+            "params": {
+                "initial_value": [0.5, 0.5],
+                "dimension": 2
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "RootFinder",
+            "sid": 2,
+            "username": "NewtonStep",
+            "coords_left": 280,
+            "coords_top": 200,
+            "coords_width": 120,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DC143C",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "rootfinder",
+            "params": {
+                "expressions": "x1**2 + x2 - 1, x1 + x2**2 - 1",
+                "variables": "x1,x2",
+                "epsilon": 1e-8,
+                "damping": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 3,
+            "username": "F1_eval",
+            "coords_left": 280,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2 - 1",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 4,
+            "username": "F2_eval",
+            "coords_left": 280,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1 + x2**2 - 1",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 5,
+            "username": "ResidualScope",
+            "coords_left": 480,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "F1(x), F2(x)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ResidualNorm",
+            "sid": 6,
+            "username": "Convergence",
+            "coords_left": 280,
+            "coords_top": 400,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#808080",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "residualnorm",
+            "params": {
+                "norm_type": "2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "NormScope",
+            "coords_left": 480,
+            "coords_top": 390,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "||F(x)||"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "X_State",
+            "srcport": 0,
+            "dstblock": "NewtonStep",
+            "dstport": 0,
+            "points": [[180, 225], [260, 225], [260, 230], [280, 230]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "NewtonStep",
+            "srcport": 0,
+            "dstblock": "X_State",
+            "dstport": 0,
+            "points": [[400, 230], [450, 230], [450, 450], [50, 450], [50, 225], [100, 225]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "X_State",
+            "srcport": 0,
+            "dstblock": "F1_eval",
+            "dstport": 0,
+            "points": [[180, 225], [220, 225], [220, 125], [280, 125]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "X_State",
+            "srcport": 0,
+            "dstblock": "F2_eval",
+            "dstport": 0,
+            "points": [[180, 225], [220, 225], [220, 325], [280, 325]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "F1_eval",
+            "srcport": 0,
+            "dstblock": "ResidualScope",
+            "dstport": 0,
+            "points": [[380, 125], [430, 125], [430, 120], [480, 120]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "F2_eval",
+            "srcport": 0,
+            "dstblock": "ResidualScope",
+            "dstport": 1,
+            "points": [[380, 325], [430, 325], [430, 140], [480, 140]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "F1_eval",
+            "srcport": 0,
+            "dstblock": "Convergence",
+            "dstport": 0,
+            "points": [[380, 125], [420, 125], [420, 370], [240, 370], [240, 420], [280, 420]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Convergence",
+            "srcport": 0,
+            "dstblock": "NormScope",
+            "dstport": 0,
+            "points": [[360, 420], [430, 420], [430, 415], [480, 415]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

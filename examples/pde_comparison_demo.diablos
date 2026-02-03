@@ -1,0 +1,482 @@
+{
+    "sim_data": {
+        "wind_width": 1400,
+        "wind_height": 900,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.005,
+        "sim_trange": 1000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "ZeroSource",
+            "coords_left": 60,
+            "coords_top": 80,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "LeftBC",
+            "coords_left": 60,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 3,
+            "username": "RightBC",
+            "coords_left": 60,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "HeatEquation1D",
+            "sid": 4,
+            "username": "HeatEqn",
+            "coords_left": 220,
+            "coords_top": 80,
+            "coords_width": 120,
+            "coords_height": 100,
+            "coords_height_base": 100,
+            "in_ports": 3,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFA500",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "heatequation1d",
+            "params": {
+                "alpha": 0.1,
+                "L": 1.0,
+                "N": 40,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_conds": "sin"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "WaveEquation1D",
+            "sid": 5,
+            "username": "WaveEqn",
+            "coords_left": 220,
+            "coords_top": 220,
+            "coords_width": 130,
+            "coords_height": 110,
+            "coords_height_base": 110,
+            "in_ports": 3,
+            "out_ports": 3,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#4169E1",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "waveequation1d",
+            "params": {
+                "c": 1.0,
+                "damping": 0.0,
+                "L": 1.0,
+                "N": 40,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_displacement": "sin",
+                "init_velocity": [0.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "AdvectionEquation1D",
+            "sid": 6,
+            "username": "AdvectionEqn",
+            "coords_left": 220,
+            "coords_top": 370,
+            "coords_width": 130,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#32CD32",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "advectionequation1d",
+            "params": {
+                "velocity": 0.5,
+                "L": 1.0,
+                "N": 40,
+                "bc_type": "periodic",
+                "init_conds": "sin"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 7,
+            "username": "HeatScope",
+            "coords_left": 420,
+            "coords_top": 80,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "hot",
+                "title": "Heat Equation: Diffusion"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 8,
+            "username": "WaveScope",
+            "coords_left": 420,
+            "coords_top": 220,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "RdBu",
+                "title": "Wave Equation: Oscillation"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 9,
+            "username": "AdvectionScope",
+            "coords_left": 420,
+            "coords_top": 370,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "viridis",
+                "title": "Advection Equation: Transport"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 10,
+            "username": "HeatProbe",
+            "coords_left": 420,
+            "coords_top": 150,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 11,
+            "username": "WaveProbe",
+            "coords_left": 420,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 12,
+            "username": "AdvectionProbe",
+            "coords_left": 420,
+            "coords_top": 450,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 13,
+            "username": "CompareScope",
+            "coords_left": 600,
+            "coords_top": 220,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 3,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Heat(x=0.5), Wave(x=0.5), Advection(x=0.5)"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "ZeroSource",
+            "srcport": 0,
+            "dstblock": "HeatEqn",
+            "dstport": 0,
+            "points": [[140, 100], [180, 100], [180, 105], [220, 105]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "LeftBC",
+            "srcport": 0,
+            "dstblock": "HeatEqn",
+            "dstport": 1,
+            "points": [[140, 170], [180, 170], [180, 130], [220, 130]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "RightBC",
+            "srcport": 0,
+            "dstblock": "HeatEqn",
+            "dstport": 2,
+            "points": [[140, 240], [180, 240], [180, 155], [220, 155]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "ZeroSource",
+            "srcport": 0,
+            "dstblock": "WaveEqn",
+            "dstport": 0,
+            "points": [[140, 100], [160, 100], [160, 247], [220, 247]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "LeftBC",
+            "srcport": 0,
+            "dstblock": "WaveEqn",
+            "dstport": 1,
+            "points": [[140, 170], [170, 170], [170, 275], [220, 275]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "RightBC",
+            "srcport": 0,
+            "dstblock": "WaveEqn",
+            "dstport": 2,
+            "points": [[140, 240], [175, 240], [175, 303], [220, 303]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "ZeroSource",
+            "srcport": 0,
+            "dstblock": "AdvectionEqn",
+            "dstport": 0,
+            "points": [[140, 100], [155, 100], [155, 395], [220, 395]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "LeftBC",
+            "srcport": 0,
+            "dstblock": "AdvectionEqn",
+            "dstport": 1,
+            "points": [[140, 170], [165, 170], [165, 425], [220, 425]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "HeatEqn",
+            "srcport": 0,
+            "dstblock": "HeatScope",
+            "dstport": 0,
+            "points": [[340, 117], [380, 117], [380, 102], [420, 102]]
+        },
+        {
+            "sid": 110,
+            "srcblock": "HeatEqn",
+            "srcport": 0,
+            "dstblock": "HeatProbe",
+            "dstport": 0,
+            "points": [[340, 117], [380, 117], [380, 167], [420, 167]]
+        },
+        {
+            "sid": 111,
+            "srcblock": "WaveEqn",
+            "srcport": 0,
+            "dstblock": "WaveScope",
+            "dstport": 0,
+            "points": [[350, 257], [385, 257], [385, 242], [420, 242]]
+        },
+        {
+            "sid": 112,
+            "srcblock": "WaveEqn",
+            "srcport": 0,
+            "dstblock": "WaveProbe",
+            "dstport": 0,
+            "points": [[350, 257], [385, 257], [385, 317], [420, 317]]
+        },
+        {
+            "sid": 113,
+            "srcblock": "AdvectionEqn",
+            "srcport": 0,
+            "dstblock": "AdvectionScope",
+            "dstport": 0,
+            "points": [[350, 410], [385, 410], [385, 392], [420, 392]]
+        },
+        {
+            "sid": 114,
+            "srcblock": "AdvectionEqn",
+            "srcport": 0,
+            "dstblock": "AdvectionProbe",
+            "dstport": 0,
+            "points": [[350, 410], [385, 410], [385, 467], [420, 467]]
+        },
+        {
+            "sid": 115,
+            "srcblock": "HeatProbe",
+            "srcport": 0,
+            "dstblock": "CompareScope",
+            "dstport": 0,
+            "points": [[520, 175], [560, 175], [560, 247], [600, 247]]
+        },
+        {
+            "sid": 116,
+            "srcblock": "WaveProbe",
+            "srcport": 0,
+            "dstblock": "CompareScope",
+            "dstport": 1,
+            "points": [[520, 325], [560, 325], [560, 260], [600, 260]]
+        },
+        {
+            "sid": 117,
+            "srcblock": "AdvectionProbe",
+            "srcport": 0,
+            "dstblock": "CompareScope",
+            "dstport": 2,
+            "points": [[520, 475], [560, 475], [560, 273], [600, 273]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

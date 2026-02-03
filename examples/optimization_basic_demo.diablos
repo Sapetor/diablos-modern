@@ -1,0 +1,313 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 10.0,
+        "sim_dt": 0.01,
+        "sim_trange": 1000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 1,
+            "username": "Reference",
+            "coords_left": 60,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "step",
+            "params": {
+                "step_time": 1.0,
+                "initial_value": 0.0,
+                "final_value": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 2,
+            "username": "Error",
+            "coords_left": 180,
+            "coords_top": 150,
+            "coords_width": 50,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Parameter",
+            "sid": 3,
+            "username": "Kp",
+            "coords_left": 260,
+            "coords_top": 80,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "parameter",
+            "params": {
+                "name": "Kp",
+                "value": 1.0,
+                "lower": 0.1,
+                "upper": 20.0,
+                "scale": "linear",
+                "fixed": false
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 4,
+            "username": "Controller",
+            "coords_left": 260,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": 1.0,
+                "use_input_gain": true
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 5,
+            "username": "Plant",
+            "coords_left": 380,
+            "coords_top": 150,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "transferfunction",
+            "params": {
+                "num": [1.0],
+                "den": [1.0, 2.0, 1.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 6,
+            "username": "ResponseScope",
+            "coords_left": 620,
+            "coords_top": 130,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Reference, Output"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "CostFunction",
+            "sid": 7,
+            "username": "ISE_Cost",
+            "coords_left": 380,
+            "coords_top": 250,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF0000",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "costfunction",
+            "params": {
+                "type": "ISE",
+                "target": 0.0,
+                "weight": 1.0,
+                "start_time": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Optimizer",
+            "sid": 8,
+            "username": "Optimizer",
+            "coords_left": 520,
+            "coords_top": 250,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "optimizer",
+            "params": {
+                "method": "L-BFGS-B",
+                "max_iter": 50,
+                "tol": 1e-6,
+                "verbose": true
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 9,
+            "username": "CostScope",
+            "coords_left": 620,
+            "coords_top": 250,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "ISE Cost"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Reference",
+            "srcport": 0,
+            "dstblock": "Error",
+            "dstport": 0,
+            "points": [[140, 170], [160, 170], [160, 167], [180, 167]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "Error",
+            "srcport": 0,
+            "dstblock": "Controller",
+            "dstport": 0,
+            "points": [[230, 175], [245, 175], [245, 170], [260, 170]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Kp",
+            "srcport": 0,
+            "dstblock": "Controller",
+            "dstport": 0,
+            "points": [[340, 100], [350, 100], [350, 140], [250, 140], [250, 170], [260, 170]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "Controller",
+            "srcport": 0,
+            "dstblock": "Plant",
+            "dstport": 0,
+            "points": [[340, 170], [360, 170], [360, 175], [380, 175]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "Plant",
+            "srcport": 0,
+            "dstblock": "ResponseScope",
+            "dstport": 1,
+            "points": [[480, 175], [550, 175], [550, 170], [620, 170]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Plant",
+            "srcport": 0,
+            "dstblock": "Error",
+            "dstport": 1,
+            "points": [[480, 175], [500, 175], [500, 220], [160, 220], [160, 183], [180, 183]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "Reference",
+            "srcport": 0,
+            "dstblock": "ResponseScope",
+            "dstport": 0,
+            "points": [[140, 170], [150, 170], [150, 100], [590, 100], [590, 150], [620, 150]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Error",
+            "srcport": 0,
+            "dstblock": "ISE_Cost",
+            "dstport": 0,
+            "points": [[230, 175], [245, 175], [245, 267], [380, 267]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "ISE_Cost",
+            "srcport": 0,
+            "dstblock": "CostScope",
+            "dstport": 0,
+            "points": [[480, 275], [550, 275], [550, 270], [620, 270]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}
