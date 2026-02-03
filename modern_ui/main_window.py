@@ -11,6 +11,7 @@ Features modern layout, theming, and enhanced user interface.
 import os
 import logging
 import ast
+from typing import Any, Optional
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QLabel, QFrame,
                              QMessageBox, QScrollArea, QFileDialog)
@@ -1178,7 +1179,7 @@ class ModernDiaBloSWindow(QMainWindow):
             logger.debug(f"Could not convert '{new_value}' to {target_type}, keeping as string.")
             return str(new_value)
 
-    def _on_property_changed(self, block_name, prop_name, new_value):
+    def _on_property_changed(self, block_name: str, prop_name: str, new_value: Any) -> None:
         """Handle property changes from the property editor."""
         try:
             for block in self.canvas.dsim.blocks_list:
@@ -1340,7 +1341,7 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.clear_canvas()
         self.status_message.setText("New diagram created")
     
-    def start_simulation(self):
+    def start_simulation(self) -> None:
         """Start simulation with validation."""
         if not hasattr(self, 'canvas'):
             self.status_message.setText("Canvas not available")

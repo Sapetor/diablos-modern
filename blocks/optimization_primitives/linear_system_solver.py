@@ -40,11 +40,15 @@ class LinearSystemSolverBlock(BaseBlock):
             "Solves the linear system Ax = b for x."
             "\n\nParameters:"
             "\n- method: 'direct' (LU), 'lstsq' (least squares), or 'pinv' (pseudo-inverse)"
+            "\n- dimension: System size n (for n×n matrix A)"
             "\n- regularization: Small value added to diagonal for stability (default: 0)"
             "\n\nInputs:"
-            "\n- A: Matrix (flattened, with dimension parameter)"
-            "\n- b: Vector"
+            "\n- A: Matrix - accepts nested [[1,2],[3,4]] or flattened [1,2,3,4]"
+            "\n- b: Vector - accepts nested [[1],[2]] or flat [1,2]"
             "\n\nOutput: Solution vector x"
+            "\n\nExample (2×2 system):"
+            "\n  A = [[2,1],[1,3]] or [2,1,1,3]"
+            "\n  b = [5,7] → x ≈ [1.6, 1.8]"
         )
 
     @property
@@ -85,20 +89,27 @@ class LinearSystemSolverBlock(BaseBlock):
             dimension = int(params.get('dimension', 2))
             regularization = float(params.get('regularization', 0.0))
 
-            # Get A matrix - could be flattened or 2D
+            # Get A matrix - handles nested [[1,2],[3,4]] or flattened [1,2,3,4]
             A_input = inputs.get(0, np.eye(dimension))
-            A = np.atleast_1d(A_input).astype(float)
+            A = np.array(A_input, dtype=float)
 
-            # Reshape if flattened
-            if A.ndim == 1:
+            # Handle nested list input like [[1,2],[3,4]]
+            if A.ndim == 2:
+                pass  # Already 2D, use as-is
+            elif A.ndim == 1:
+                # Flattened - reshape to square matrix
                 n = int(np.sqrt(len(A)))
                 if n * n == len(A):
                     A = A.reshape(n, n)
                 else:
                     A = A.reshape(dimension, -1)
+            else:
+                # Unexpected shape, flatten and reshape
+                A = A.flatten().reshape(dimension, dimension)
 
-            # Get b vector
-            b = np.atleast_1d(inputs.get(1, np.zeros(dimension))).astype(float)
+            # Get b vector - handles nested [[1],[2]] or flat [1,2]
+            b_input = inputs.get(1, np.zeros(dimension))
+            b = np.array(b_input, dtype=float).flatten()  # Flatten handles both cases
 
             # Apply regularization if needed
             if regularization > 0:

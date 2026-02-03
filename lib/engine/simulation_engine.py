@@ -5,7 +5,7 @@ Handles simulation initialization, execution loops, and diagram analysis.
 
 import logging
 import time as time_module
-from typing import List, Dict, Tuple, Any, Optional
+from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
 from scipy import signal
 from lib.simulation.block import DBlock
@@ -283,7 +283,7 @@ class SimulationEngine:
             self.error_msg = str(e)
             return False
 
-    def update_global_list(self, block_name, h_value=0, h_assign=False, reset_computed=False):
+    def update_global_list(self, block_name: str, h_value: int = 0, h_assign: bool = False, reset_computed: bool = False) -> None:
         """Update global computed list."""
         for g_block in self.global_computed_list:
             if g_block['name'] == block_name:
@@ -296,9 +296,9 @@ class SimulationEngine:
                     g_block['hierarchy'] = h_value
                 break
 
-    def execute_block(self, block, output_only=False):
+    def execute_block(self, block: DBlock, output_only: bool = False) -> Union[Dict[int, Any], bool]:
         """
-        Execute a single block. 
+        Execute a single block.
         Returns output value (dict) or False on failure.
         """
         try:
@@ -493,9 +493,9 @@ class SimulationEngine:
 
     # children_recognition uses get_outputs
 
-    def reset_execution_data(self):
+    def reset_execution_data(self) -> None:
         """Reset execution state for all blocks.
-        
+
         IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
         """
         # Safety check - if global_computed_list isn't populated yet, use simple reset
@@ -534,9 +534,9 @@ class SimulationEngine:
                 return True
         return False
 
-    def reset_memblocks(self):
+    def reset_memblocks(self) -> None:
         """Reset memory blocks (integrators, transfer functions, etc.).
-        
+
         Resets _init_start_ in both params and exec_params, and clears _prev state.
         """
         for block in self.active_blocks_list:
@@ -633,7 +633,7 @@ class SimulationEngine:
 
         return children_list
 
-    def update_sim_params(self, sim_time, sim_dt):
+    def update_sim_params(self, sim_time: float, sim_dt: float) -> None:
         """
         Update simulation parameters.
 

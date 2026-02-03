@@ -3,6 +3,7 @@
 import numpy as np
 import time
 import sys
+from typing import Dict, Any, Optional, List
 from tqdm import tqdm
 from PyQt5.QtWidgets import QDialog
 from PyQt5.QtCore import QPoint
@@ -281,14 +282,14 @@ class DSim:
 
     ##### LOADING AND SAVING #####
 
-    def save(self, autosave=False, modern_ui_data=None):
+    def save(self, autosave: bool = False, modern_ui_data: Optional[Dict] = None) -> int:
         """
         Save diagram to file. Delegates to FileService.
-        
+
         Args:
             autosave: If True, save to autosave location without dialog
             modern_ui_data: Additional UI state data to save
-        
+
         Returns:
             0 on success, 1 if user cancelled
         """
@@ -313,7 +314,7 @@ class DSim:
             
         return result
 
-    def serialize(self, modern_ui_data=None):
+    def serialize(self, modern_ui_data: Optional[Dict] = None) -> Dict[str, Any]:
         """
         Serialize current diagram state to dict.
         Used by DiagramService.
@@ -325,7 +326,7 @@ class DSim:
         }
         return self.file_service.serialize(modern_ui_data, sim_params)
 
-    def deserialize(self, data):
+    def deserialize(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Deserialize diagram state from dict.
         Used by DiagramService.
@@ -341,10 +342,10 @@ class DSim:
         return sim_params
 
 
-    def open(self):
+    def open(self) -> Optional[Dict]:
         """
         Load diagram from file. Delegates to FileService.
-        
+
         Returns:
             modern_ui_data dict if present in file, None otherwise
         """
@@ -405,7 +406,7 @@ class DSim:
         else:
             return -1
 
-    def execution_init(self):
+    def execution_init(self) -> bool:
         """
         :purpose: Initializes the graph execution.
         :description: This is the first stage of the graph simulation, where variables and vectors are initialized, as well as testing to verify that everything is working properly. A previous autosave is done, as well as a block connection check and possible algebraic loops. If everything goes well, we continue with the loop stage.
@@ -553,7 +554,7 @@ class DSim:
 
         return True
 
-    def execution_batch(self):
+    def execution_batch(self) -> None:
         """Run the entire simulation as fast as possible."""
         _tb0 = time.time()
         # FAST SOLVER CHECK
@@ -606,7 +607,7 @@ class DSim:
         while self.execution_initialized:
             self.execution_loop()
 
-    def single_step(self):
+    def single_step(self) -> bool:
         """
         Execute exactly one timestep of the simulation.
         Used for step-by-step debugging when simulation is paused.
