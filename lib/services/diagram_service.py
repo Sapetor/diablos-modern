@@ -85,20 +85,23 @@ class DiagramService:
     def load_diagram(self, filename=None):
         """
         Load a diagram from a file.
-        
+
         Args:
             filename (str, optional): Path to load from. If None, asks user.
-            
+
         Returns:
             dict: Loaded data if successful, None otherwise.
         """
+        logger.info(f"load_diagram called, filename={filename}, last_directory={self.last_directory}")
         if not filename:
+            logger.info("Opening file dialog...")
             filename, _ = QFileDialog.getOpenFileName(
                 self.main_window,
                 "Open Diagram",
                 self.last_directory,
                 "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)"
             )
+            logger.info(f"File dialog returned: {filename}")
 
         if not filename:
             return None

@@ -250,11 +250,43 @@ class AdvectionEquation1DBlock(BaseBlock):
             else:
                 c[N-1] = c_inlet
 
-        # Forward Euler update
-        c_new = c + dc_dt * dtime
+        # RK4 time integration for better accuracy
+        def compute_rhs(c_state):
+            """Compute dc/dt for given state."""
+            rhs = np.zeros(N)
+            if v >= 0:
+                for i in range(2, N):
+                    dc_dx = (3*c_state[i] - 4*c_state[i-1] + c_state[i-2]) / (2*dx)
+                    rhs[i] = -v * dc_dx
+                if N > 1:
+                    dc_dx = (c_state[1] - c_state[0]) / dx
+                    rhs[1] = -v * dc_dx
+                if bc_type == 'Dirichlet':
+                    rhs[0] = 0.0
+                elif bc_type == 'Periodic':
+                    dc_dx = (3*c_state[0] - 4*c_state[N-1] + c_state[N-2]) / (2*dx)
+                    rhs[0] = -v * dc_dx
+            else:
+                for i in range(N-2):
+                    dc_dx = (-3*c_state[i] + 4*c_state[i+1] - c_state[i+2]) / (2*dx)
+                    rhs[i] = -v * dc_dx
+                if N > 1:
+                    dc_dx = (c_state[N-1] - c_state[N-2]) / dx
+                    rhs[N-2] = -v * dc_dx
+                if bc_type == 'Dirichlet':
+                    rhs[N-1] = 0.0
+                elif bc_type == 'Periodic':
+                    dc_dx = (-3*c_state[N-1] + 4*c_state[0] - c_state[1]) / (2*dx)
+                    rhs[N-1] = -v * dc_dx
+            return rhs
 
-        # Ensure non-negativity (optional, for physical concentrations)
-        c_new = np.maximum(c_new, 0.0)
+        # RK4 stages
+        k1 = compute_rhs(c)
+        k2 = compute_rhs(c + 0.5 * dtime * k1)
+        k3 = compute_rhs(c + 0.5 * dtime * k2)
+        k4 = compute_rhs(c + dtime * k3)
+
+        c_new = c + (dtime / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
 
         params['c'] = c_new
 
