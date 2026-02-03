@@ -1,0 +1,68 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "standard": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        },
+        "brief": {
+            "format": "%(levelname)s - %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "brief",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "level": "DEBUG",
+            "formatter": "standard",
+            "filename": "diablos_modern.log",
+            "mode": "a"
+        }
+    },
+    "loggers": {
+        "lib.lib": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "lib.improvements": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "lib.engine": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "lib.engine.simulation_engine": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "lib.plotting": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "modern_ui.widgets.modern_canvas": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        },
+        "modern_ui.renderers": {
+            "level": "WARNING",
+            "handlers": ["console", "file"],
+            "propagate": false
+        }
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["console", "file"]
+    }
+}

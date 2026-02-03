@@ -60,6 +60,5 @@ class SigProductBlock(BaseBlock):
                 mult *= np.array(input_value, dtype=float)
             return {0: mult}
         except (ValueError, TypeError):
-            print(f"ERROR: Invalid input type in sigproduct block. Expected numeric.")
-            return {'E': True}
+            return {'E': True, 'error': 'Invalid input type in sigproduct block. Expected numeric.'}
 
