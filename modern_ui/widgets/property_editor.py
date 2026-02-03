@@ -124,9 +124,28 @@ class PropertyEditor(QFrame):
             link_label.setStyleSheet(f"color: {theme_manager.get_color('accent').name()};")
             self.layout.addRow(link_label)
 
+    def _get_param_metadata(self, key):
+        """Get the original param metadata from the block class definition."""
+        if self.block is None:
+            return {}
+        # DBlock stores the actual block instance in block_instance attribute
+        block_instance = getattr(self.block, 'block_instance', None)
+        if block_instance is None:
+            return {}
+        # Access the params property from the block instance
+        if hasattr(block_instance, 'params'):
+            block_params = block_instance.params
+            if key in block_params and isinstance(block_params[key], dict):
+                return block_params[key]
+        return {}
+
     def _create_editor_for_value(self, key, value):
         """Factory method to create the appropriate editor widget based on value type."""
-        
+
+        # Check if this param accepts arrays (use QLineEdit instead of spinbox)
+        param_meta = self._get_param_metadata(key)
+        accepts_array = param_meta.get('accepts_array', False)
+
         # 1. Boolean -> QCheckBox
         if isinstance(value, bool):
             cx = QCheckBox()
@@ -156,15 +175,24 @@ class PropertyEditor(QFrame):
             self._apply_widget_sizing(sb)
             return sb
             
-        # 4. Floats -> QDoubleSpinBox
+        # 4. Floats -> QDoubleSpinBox (unless accepts_array, then QLineEdit)
         if isinstance(value, float):
-            dsb = QDoubleSpinBox()
-            dsb.setRange(-float('inf'), float('inf'))
-            dsb.setDecimals(4) # Reasonable default
-            dsb.setValue(value)
-            dsb.editingFinished.connect(lambda: self._on_property_changed(key, dsb.value()))
-            self._apply_widget_sizing(dsb)
-            return dsb
+            if accepts_array:
+                # Use QLineEdit to allow array input like [1, 2, 3]
+                le = QLineEdit(str(value))
+                self._apply_widget_sizing(le)
+                le.setPlaceholderText("e.g. 1.0 or [1, 2, 3]")
+                le.setToolTip("Enter a scalar or array, e.g., 1.0 or [1, 2, 3]")
+                le.editingFinished.connect(lambda: self._validate_and_submit_numeric(key, le))
+                return le
+            else:
+                dsb = QDoubleSpinBox()
+                dsb.setRange(-float('inf'), float('inf'))
+                dsb.setDecimals(4) # Reasonable default
+                dsb.setValue(value)
+                dsb.editingFinished.connect(lambda: self._on_property_changed(key, dsb.value()))
+                self._apply_widget_sizing(dsb)
+                return dsb
             
         # 5. Lists/Arrays or Complex Strings -> QLineEdit with Validation support
         # We'll use a generic LineEdit but try to validate
@@ -254,6 +282,37 @@ class PropertyEditor(QFrame):
             # set error style
             self._set_widget_error_state(widget, True)
             self.logger.warning(f"Invalid input not submitted for {key}: {text}")
+
+    def _validate_and_submit_numeric(self, key, widget):
+        """Validate input that can be either a scalar or array."""
+        text = widget.text().strip()
+        is_valid = True
+        converted_value = None
+
+        try:
+            # First, try parsing as a Python literal (handles [1,2,3], 1.0, etc.)
+            val = ast.literal_eval(text)
+            if isinstance(val, (int, float)):
+                converted_value = float(val)
+            elif isinstance(val, (list, tuple)):
+                # Convert to list of floats
+                converted_value = [float(x) for x in val]
+            else:
+                raise ValueError("Must be a number or list of numbers")
+        except (ValueError, SyntaxError):
+            # Check if it's a workspace variable
+            ws = WorkspaceManager()
+            if text in ws.variables:
+                converted_value = text  # Keep as string reference
+            else:
+                is_valid = False
+
+        if is_valid:
+            self._set_widget_error_state(widget, False)
+            self._on_property_changed(key, converted_value)
+        else:
+            self._set_widget_error_state(widget, True)
+            self.logger.warning(f"Invalid numeric input for {key}: {text}")
 
     def _set_widget_error_state(self, widget, is_error):
         """Apply error styling to widget."""

@@ -162,8 +162,17 @@ class DiagramValidator:
             elif hasattr(block, 'category') and block.category in ['Sinks', 'Other']:
                 continue
 
+            # Get optional outputs (ports that don't need to be connected)
+            optional_outputs = set()
+            if hasattr(block, 'block_instance') and block.block_instance:
+                if hasattr(block.block_instance, 'optional_outputs'):
+                    optional_outputs = set(block.block_instance.optional_outputs)
+
             # Check for disconnected outputs using pre-built map
             for i in range(block.out_ports):
+                # Skip optional output ports
+                if i in optional_outputs:
+                    continue
                 if (block.name, i) not in output_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.WARNING,

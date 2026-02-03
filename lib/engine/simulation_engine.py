@@ -909,26 +909,37 @@ class SimulationEngine:
         """
         try:
             from scipy.integrate import solve_ivp
-            
+            from lib.workspace import WorkspaceManager
+
             # Ensure hierarchy is calculated for topological sort
             # Pass lines to allow flattening
             # initialize_execution populates self.active_blocks_list and self.active_line_list
             if not self.initialize_execution(blocks, lines):
                 logger.error("Failed to initialize execution (algebraic loop or error).")
                 return False
-            
+
             # Use the FLATTENED lists for checking and compilation
             current_blocks = self.active_blocks_list
             current_lines = self.active_line_list
-            
+
+            # CRITICAL: Resolve parameters before compilation
+            # This populates exec_params with resolved values (workspace variables, etc.)
+            # Without this, PDE blocks get default/zero initial conditions
+            workspace_manager = WorkspaceManager()
+            for block in current_blocks:
+                block.exec_params = workspace_manager.resolve_params(block.params)
+                # Copy internal parameters (those starting with '_')
+                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+                block.exec_params['dtime'] = dt
+
             # Final check on flattened system
             if not self.compiler.check_compilability(current_blocks):
                 logger.error("Flattened system contains uncompilable blocks.")
                 return False
-            
+
             # Topological sort via hierarchy
             sorted_blocks = sorted(current_blocks, key=lambda b: b.hierarchy)
-            
+
             logger.info("Compiling system...")
             model_func, y0, state_map, block_matrices = self.compiler.compile_system(current_blocks, sorted_blocks, current_lines)
             
@@ -1067,8 +1078,15 @@ class SimulationEngine:
                     inputs = {}
                     for line in current_lines:
                         if line.dstblock == b_name:
-                            # Direct feedthrough lookup
-                            val = current_signals.get(line.srcblock, 0.0)
+                            # Direct feedthrough lookup - handle multi-output blocks
+                            src_port = getattr(line, 'srcport', 0) or 0
+                            if src_port == 0:
+                                val = current_signals.get(line.srcblock, 0.0)
+                            else:
+                                # Secondary output - use suffix naming convention
+                                # Check for common suffixes used by multi-output blocks
+                                src_key = f"{line.srcblock}_out{src_port}"
+                                val = current_signals.get(src_key, current_signals.get(line.srcblock, 0.0))
                             inputs[line.dstport] = val
                     
                     out_val = 0.0
@@ -1102,32 +1120,118 @@ class SimulationEngine:
                     elif fn == 'Heatequation1D':
                         # HeatEquation1D: output is the temperature field (state vector)
                         if b_name in current_states:
-                            out_val = current_states[b_name]
+                            T = current_states[b_name]
+                            out_val = T
+                            current_signals[b_name + '_out1'] = float(np.mean(T))  # T_avg
                         else:
                             out_val = np.zeros(int(block.params.get('N', 20)))
 
                     elif fn == 'Waveequation1D':
                         # WaveEquation1D: state is [u, v], output primary is u (displacement)
+                        N = int(block.params.get('N', 50))
                         if b_name in current_states:
-                            N = int(block.params.get('N', 50))
                             state = current_states[b_name]
-                            out_val = state[:N]  # Displacement field
+                            u = state[:N]   # Displacement field
+                            v = state[N:]   # Velocity field
+                            out_val = u
+                            current_signals[b_name + '_out1'] = v  # v_field
+                            # Energy = 0.5 * (kinetic + potential)
+                            L = float(block.params.get('L', 1.0))
+                            dx = L / (N - 1)
+                            energy = 0.5 * np.sum(v**2) * dx  # Simplified
+                            current_signals[b_name + '_out2'] = float(energy)
                         else:
-                            out_val = np.zeros(int(block.params.get('N', 50)))
+                            out_val = np.zeros(N)
 
                     elif fn == 'Advectionequation1D':
                         # AdvectionEquation1D: output is concentration field
                         if b_name in current_states:
-                            out_val = current_states[b_name]
+                            c = current_states[b_name]
+                            out_val = c
+                            L = float(block.params.get('L', 1.0))
+                            N = len(c)
+                            dx = L / (N - 1) if N > 1 else 1.0
+                            current_signals[b_name + '_out1'] = float(np.sum(c) * dx)  # c_total
                         else:
                             out_val = np.zeros(int(block.params.get('N', 50)))
 
                     elif fn == 'Diffusionreaction1D':
                         # DiffusionReaction1D: output is concentration field
                         if b_name in current_states:
-                            out_val = current_states[b_name]
+                            c = current_states[b_name]
+                            out_val = c
+                            L = float(block.params.get('L', 1.0))
+                            N = len(c)
+                            dx = L / (N - 1) if N > 1 else 1.0
+                            current_signals[b_name + '_out1'] = float(np.sum(c) * dx)  # c_total
+                            k = float(block.params.get('k', 0.1))
+                            n_order = int(block.params.get('n', 1))
+                            reaction = np.sum(k * np.power(np.maximum(c, 0), n_order)) * dx
+                            current_signals[b_name + '_out2'] = float(reaction)  # reaction_rate
                         else:
                             out_val = np.zeros(int(block.params.get('N', 50)))
+
+                    # ==================== 2D PDE BLOCKS ====================
+                    elif fn == 'Heatequation2D':
+                        # HeatEquation2D: output is 2D temperature field
+                        Nx = int(block.params.get('Nx', 20))
+                        Ny = int(block.params.get('Ny', 20))
+                        if b_name in current_states:
+                            state = current_states[b_name]
+                            T_field = state.reshape((Ny, Nx))
+                        else:
+                            T_field = np.zeros((Ny, Nx))
+                        out_val = T_field
+                        # Store secondary outputs for multi-port access
+                        current_signals[b_name + '_out1'] = float(np.mean(T_field))  # T_avg
+                        current_signals[b_name + '_out2'] = float(np.max(T_field))   # T_max
+
+                    elif fn == 'Fieldprobe2D':
+                        # FieldProbe2D: bilinear interpolation from 2D field
+                        field = inputs.get(0, None)
+                        if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
+                            out_val = 0.0
+                        else:
+                            Ny_f, Nx_f = field.shape
+                            x_pos = float(block.params.get('x_position', 0.5))
+                            y_pos = float(block.params.get('y_position', 0.5))
+                            x_norm = max(0, min(1, x_pos))
+                            y_norm = max(0, min(1, y_pos))
+                            i_float = x_norm * (Nx_f - 1)
+                            j_float = y_norm * (Ny_f - 1)
+                            i0 = int(np.floor(i_float))
+                            i1 = min(i0 + 1, Nx_f - 1)
+                            j0 = int(np.floor(j_float))
+                            j1 = min(j0 + 1, Ny_f - 1)
+                            di = i_float - i0
+                            dj = j_float - j0
+                            out_val = (field[j0, i0] * (1 - di) * (1 - dj) +
+                                      field[j0, i1] * di * (1 - dj) +
+                                      field[j1, i0] * (1 - di) * dj +
+                                      field[j1, i1] * di * dj)
+
+                    elif fn == 'Fieldscope2D':
+                        # FieldScope2D: pass through 2D field
+                        field = inputs.get(0, np.zeros((1, 1)))
+                        out_val = np.atleast_2d(field)
+
+                    elif fn == 'Fieldslice':
+                        # FieldSlice: extract 1D slice from 2D field
+                        field = inputs.get(0, None)
+                        if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
+                            out_val = np.array([0.0])
+                        else:
+                            Ny_f, Nx_f = field.shape
+                            direction = block.params.get('slice_direction', 'x')
+                            position = float(block.params.get('slice_position', 0.5))
+                            if direction.lower() == 'x':
+                                j = int(position * (Ny_f - 1))
+                                j = max(0, min(Ny_f - 1, j))
+                                out_val = field[j, :]
+                            else:
+                                i = int(position * (Nx_f - 1))
+                                i = max(0, min(Nx_f - 1, i))
+                                out_val = field[:, i]
 
                     elif fn == 'PID':
                          # Inputs
@@ -1171,7 +1275,13 @@ class SimulationEngine:
                         out_val = amp * np.sin(freq * t + phase) + bias
                         
                     elif fn == 'Constant':
-                        out_val = float(block.params.get('value', 0.0))
+                        raw_val = block.params.get('value', 0.0)
+                        if isinstance(raw_val, (list, tuple)):
+                            out_val = np.atleast_1d(raw_val)
+                        elif hasattr(raw_val, '__iter__') and not isinstance(raw_val, str):
+                            out_val = np.atleast_1d(raw_val)
+                        else:
+                            out_val = float(raw_val)
                         
                     elif fn == 'Gain':
                         out_val = inputs.get(0, 0.0) * float(block.params.get('gain', 1.0))
@@ -1429,27 +1539,38 @@ class SimulationEngine:
                     # Standard blocks don't save history unless probed.
                     # But Scopes DO.
                     if fn == 'Scope':
-                        # Scope consumes input 0
-                        val = inputs.get(0, 0.0)
-                        
+                        # Scope can have multiple inputs - collect all of them
                         # Ensure we write to exec_params as ScopePlotter prioritizes it
                         if not hasattr(block, 'exec_params'):
                             block.exec_params = block.params.copy()
-                        
-                        # Flatten single-element arrays to scalars for compatibility with SignalPlot
-                        if isinstance(val, (np.ndarray, list)):
-                            if np.size(val) == 1:
-                                val = float(val[0]) if isinstance(val, np.ndarray) else val[0]
-                            
-                        # Initialize if check
-                        # Note: We need to handle the case where exec_params['vector'] might be None
+
+                        # Get number of input ports
+                        n_inputs = block.in_ports if hasattr(block, 'in_ports') else 1
+
+                        # Collect all input values
+                        vals = []
+                        for port in range(n_inputs):
+                            val = inputs.get(port, 0.0)
+                            # Flatten single-element arrays to scalars
+                            if isinstance(val, (np.ndarray, list)):
+                                if np.size(val) == 1:
+                                    val = float(val[0]) if isinstance(val, np.ndarray) else val[0]
+                            vals.append(val)
+
+                        # Store as single value or row depending on number of inputs
+                        if n_inputs == 1:
+                            row = vals[0]
+                        else:
+                            row = vals  # List of values for this time step
+
+                        # Initialize vector list
                         if i == 0:
-                             block.exec_params['vector'] = []
-                             
-                        block.exec_params['vector'].append(val)
-                        
+                            block.exec_params['vector'] = []
+
+                        block.exec_params['vector'].append(row)
+
                         if i == num_steps - 1:
-                            logger.info(f"DEBUG Replay Scope {b_name}: input={val}, vec_len={len(block.exec_params['vector'])}")
+                            logger.info(f"DEBUG Replay Scope {b_name}: inputs={n_inputs}, vec_len={len(block.exec_params['vector'])}")
 
                     if fn == 'Fieldscope':
                         # FieldScope: Store field history for 2D heatmap
@@ -1461,11 +1582,34 @@ class SimulationEngine:
 
                         if i == 0:
                             block.exec_params['_field_history_'] = []
+                            block.exec_params['_time_history_'] = []
 
                         block.exec_params['_field_history_'].append(field.copy())
+                        block.exec_params['_time_history_'].append(t)
 
                         if i == num_steps - 1:
                             logger.info(f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['_field_history_'])}")
+
+                    if fn == 'Fieldscope2D':
+                        # FieldScope2D: Store 2D field history for animated heatmap
+                        field = inputs.get(0, np.zeros((1, 1)))
+                        field = np.atleast_2d(field)
+
+                        if not hasattr(block, 'exec_params'):
+                            block.exec_params = block.params.copy()
+
+                        if i == 0:
+                            block.exec_params['_field_history_2d_'] = []
+                            block.exec_params['_time_history_'] = []
+
+                        # Store every N frames to reduce memory
+                        sample_interval = int(block.params.get('sample_interval', 5))
+                        if i % sample_interval == 0:
+                            block.exec_params['_field_history_2d_'].append(field.copy())
+                            block.exec_params['_time_history_'].append(t)
+
+                        if i == num_steps - 1:
+                            logger.info(f"DEBUG Replay FieldScope2D {b_name}: field_shape={field.shape}, history_len={len(block.exec_params['_field_history_2d_'])}")
 
             # Finalize Scope Vectors (convert to numpy)
             for block in current_blocks:
@@ -1475,6 +1619,13 @@ class SimulationEngine:
                 elif block.block_fn == 'FieldScope':
                     if hasattr(block, 'exec_params') and '_field_history_' in block.exec_params:
                         block.exec_params['_field_history_'] = np.array(block.exec_params['_field_history_'])
+                    if hasattr(block, 'exec_params') and '_time_history_' in block.exec_params:
+                        block.exec_params['_time_history_'] = np.array(block.exec_params['_time_history_'])
+                elif block.block_fn == 'FieldScope2D':
+                    if hasattr(block, 'exec_params') and '_field_history_2d_' in block.exec_params:
+                        block.exec_params['_field_history_2d_'] = np.array(block.exec_params['_field_history_2d_'])
+                    if hasattr(block, 'exec_params') and '_time_history_' in block.exec_params:
+                        block.exec_params['_time_history_'] = np.array(block.exec_params['_time_history_'])
             
             return True
             

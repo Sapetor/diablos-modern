@@ -3,7 +3,7 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu
+from PyQt5.QtWidgets import QWidget, QApplication, QMessageBox, QMenu, QToolTip
 from PyQt5.QtCore import Qt, QPoint, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor
 
@@ -279,15 +279,51 @@ class ModernCanvas(QWidget):
         """Run the simulation in batch mode (as fast as possible)."""
         logger.info("Running simulation in batch mode.")
         self.simulation_status_changed.emit("Running simulation...")
-        
+
         # This will block the UI. In a real application, this should be run in a separate thread.
         self.dsim.execution_batch()
-        
+
         solver_type = getattr(self.dsim, 'last_solver_type', 'Standard')
         self.simulation_status_changed.emit(f"Simulation finished [{solver_type}]")
         logger.info(f"Batch simulation finished. Solver: {solver_type}")
         self.dsim.plot_again()
-    
+
+        # Print verification results to terminal
+        self._print_terminal_verification()
+
+    def _print_terminal_verification(self):
+        """Print verification results to terminal after simulation completes."""
+        try:
+            # Collect Display block values
+            display_values = {}
+            for block in self.dsim.use_active:
+                if block.block_fn == 'Display':
+                    # Get params - during execution, values are stored in block.params directly
+                    params = block.params or {}
+                    display_val = params.get('_display_value_', '---')
+                    label = params.get('label', '')
+                    block_name = label if label else block.username
+                    display_values[block_name] = display_val
+
+            # Print to terminal with explicit flush
+            if display_values:
+                print("\n" + "=" * 50, flush=True)
+                print("SIMULATION RESULTS", flush=True)
+                print("=" * 50, flush=True)
+                for name, value in display_values.items():
+                    print(f"  {name}: {value}", flush=True)
+                print("=" * 50 + "\n", flush=True)
+                sys.stdout.flush()
+            else:
+                # No display blocks found - still provide feedback
+                print("\n[Simulation completed - no Display blocks to report]", flush=True)
+                sys.stdout.flush()
+
+        except Exception as e:
+            # Log the actual error for debugging
+            print(f"\n[Could not print verification results: {e}]", file=sys.stderr, flush=True)
+            logger.warning(f"Could not print verification results: {e}")
+
     def stop_simulation(self):
         """Stop simulation safely."""
         try:
@@ -406,11 +442,12 @@ class ModernCanvas(QWidget):
 
     def _render_ports(self, painter):
         """Render all ports on top of lines for better visibility.
-        
+
         This replaces DSim.display_ports() - rendering logic belongs in canvas.
         """
         for block in self.dsim.blocks_list:
             self.block_renderer.draw_ports(block, painter)
+            self.block_renderer.draw_port_labels(block, painter)
 
     def _update_line_positions(self):
         """Update line positions after block movement.
@@ -1879,6 +1916,29 @@ class ModernCanvas(QWidget):
             if new_hovered_port != self.hovered_port:
                 self.hovered_port = new_hovered_port
                 needs_repaint = True
+
+                # Show tooltip for hovered port
+                if new_hovered_port:
+                    block, port_idx, is_output = new_hovered_port
+                    input_names, output_names = block.get_port_names()
+                    if is_output and port_idx < len(output_names):
+                        port_name = output_names[port_idx]
+                        tooltip = f"Output: {port_name}"
+                    elif not is_output and port_idx < len(input_names):
+                        port_name = input_names[port_idx]
+                        tooltip = f"Input: {port_name}"
+                    else:
+                        tooltip = f"Port {port_idx}"
+
+                    # Include block documentation excerpt if available
+                    if block.doc:
+                        doc_lines = block.doc.split('\n')
+                        short_doc = doc_lines[0][:60] + '...' if len(doc_lines[0]) > 60 else doc_lines[0]
+                        tooltip = f"{tooltip}\n{short_doc}"
+
+                    QToolTip.showText(self.mapToGlobal(pos), tooltip, self)
+                else:
+                    QToolTip.hideText()
 
             # Reset cursor if not over resize handle or port
             if not new_hovered_port:

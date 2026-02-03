@@ -29,7 +29,7 @@ class FieldProbeBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):
@@ -155,7 +155,7 @@ class FieldIntegralBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):
@@ -250,7 +250,7 @@ class FieldMaxBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):
@@ -360,7 +360,7 @@ class FieldScopeBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):
@@ -398,6 +398,11 @@ class FieldScopeBlock(BaseBlock):
                 "type": "string",
                 "default": "Field Evolution",
                 "doc": "Plot title"
+            },
+            "display_mode": {
+                "type": "string",
+                "default": "heatmap",
+                "doc": "Display mode: 'heatmap' (space-time plot) or 'slider' (animated line plot with time slider)"
             },
             "vec_labels": {
                 "type": "string",
@@ -523,7 +528,7 @@ class FieldGradientBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):
@@ -609,7 +614,7 @@ class FieldLaplacianBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "Field Processing"
 
     @property
     def color(self):

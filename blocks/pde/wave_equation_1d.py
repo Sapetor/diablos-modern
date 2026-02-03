@@ -38,7 +38,7 @@ class WaveEquation1DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE"
+        return "PDE Equations"
 
     @property
     def color(self):

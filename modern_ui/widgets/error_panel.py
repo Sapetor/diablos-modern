@@ -5,10 +5,10 @@ Displays validation errors and warnings in a collapsible panel.
 import logging
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame
+    QScrollArea, QFrame, QMenu, QApplication
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QCursor
 from modern_ui.themes.theme_manager import theme_manager
 from lib.diagram_validator import ErrorSeverity
 
@@ -93,6 +93,22 @@ class ErrorItemWidget(QFrame):
             self.clicked.emit(self.error)
         super().mousePressEvent(event)
 
+    def contextMenuEvent(self, event):
+        """Show context menu with copy option."""
+        menu = QMenu(self)
+        copy_action = menu.addAction("Copy Message")
+        copy_action.triggered.connect(self._copy_to_clipboard)
+        menu.exec_(QCursor.pos())
+
+    def _copy_to_clipboard(self):
+        """Copy the error message to clipboard."""
+        clipboard = QApplication.clipboard()
+        severity_text = self.error.severity.name if hasattr(self.error.severity, 'name') else str(self.error.severity)
+        text = f"[{severity_text}] {self.error.message}"
+        if hasattr(self.error, 'block_name') and self.error.block_name:
+            text += f" (Block: {self.error.block_name})"
+        clipboard.setText(text)
+
 
 class ErrorPanel(QWidget):
     """Panel displaying validation errors and warnings."""
@@ -131,6 +147,13 @@ class ErrorPanel(QWidget):
         header_layout.addWidget(self.count_label)
 
         header_layout.addStretch()
+
+        # Copy all button
+        self.copy_btn = QPushButton("📋")
+        self.copy_btn.setFixedSize(24, 24)
+        self.copy_btn.setToolTip("Copy all messages")
+        self.copy_btn.clicked.connect(self._copy_all_to_clipboard)
+        header_layout.addWidget(self.copy_btn)
 
         # Collapse/expand button
         self.collapse_btn = QPushButton("▼")
@@ -260,3 +283,19 @@ class ErrorPanel(QWidget):
         # Re-create error widgets to apply new theme colors
         if self.errors:
             self.set_errors(self.errors)
+
+    def _copy_all_to_clipboard(self):
+        """Copy all error/warning messages to clipboard."""
+        if not self.errors:
+            return
+
+        lines = []
+        for error in self.errors:
+            severity_text = error.severity.name if hasattr(error.severity, 'name') else str(error.severity)
+            text = f"[{severity_text}] {error.message}"
+            if hasattr(error, 'block_name') and error.block_name:
+                text += f" (Block: {error.block_name})"
+            lines.append(text)
+
+        clipboard = QApplication.clipboard()
+        clipboard.setText("\n".join(lines))
