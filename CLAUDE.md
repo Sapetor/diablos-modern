@@ -12,6 +12,13 @@ DiaBloS is a Simulink-like block diagram simulation tool built with Python and P
 
 ## Recent Work (February 2026)
 
+### First-Simulation Performance Fix
+Fixed 3-second delay on first simulation caused by `scipy.signal.cont2discrete()` lazy initialization.
+
+- **Root cause**: Transfer Function blocks call `cont2discrete()` which has ~3s lazy init on first use
+- **Solution**: Background preload thread in `diablos_modern.py` calls `cont2discrete()` with dummy system at startup
+- **Result**: First simulation now runs instantly (preload happens in background during app startup)
+
 ### Animation Export for FieldScope Visualizations
 Added ability to export FieldScope (1D) and FieldScope2D (2D) time-series visualizations as animated GIF or MP4 files.
 

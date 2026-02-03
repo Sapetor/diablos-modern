@@ -794,8 +794,10 @@ class DSim:
                 return False
 
             logger.debug("*****INIT NEW EXECUTION*****")
+            _t0 = time.time()
 
             workspace_manager = WorkspaceManager()
+            logger.debug(f"[TIMING] WorkspaceManager created: {time.time() - _t0:.3f}s")
 
             # Helper for recursive parameter resolution
             def resolve_recursive(blocks):
@@ -832,16 +834,20 @@ class DSim:
 
             # Resolve params for ALL blocks in hierarchy
             logger.debug(f"Resolving parameters for hierarchy...")
+            _t1 = time.time()
             if not resolve_recursive(root_blocks):
                  return False
+            logger.debug(f"[TIMING] resolve_recursive: {time.time() - _t1:.3f}s")
 
             logger.debug("Initializing execution...")
 
             # Initialize engine with ROOT context (will trigger flattening)
             # Pass lines explicitly!
+            _t2 = time.time()
             if not self.engine.initialize_execution(root_blocks, root_lines):
                 self.execution_failed(self.engine.error_msg)
                 return False
+            logger.debug(f"[TIMING] engine.initialize_execution: {time.time() - _t2:.3f}s")
                 
             # Generation of a checklist for the computation of functions (Legacy? Engine handles global_computed_list now)
             # self.global_computed_list is synced from engine via property
@@ -854,6 +860,7 @@ class DSim:
             return False
 
         logger.debug("*****EXECUTION START*****")
+        _t3 = time.time()
 
         # Initialization of the progress bar
         self.pbar = tqdm(desc='SIMULATION PROGRESS', total=int(self.execution_time/self.sim_dt), unit='itr')
@@ -880,11 +887,11 @@ class DSim:
 
         # Validate signal dimensions between connected blocks
         self._validate_signal_dimensions()
+        logger.debug(f"[TIMING] post-init checks: {time.time() - _t3:.3f}s")
 
-        # Initialize execution via engine
-        if not self.engine.initialize_execution(self.blocks_list):
-            self.execution_failed(self.engine.error_msg)
-            return False
+        # NOTE: Removed redundant second call to engine.initialize_execution()
+        # The first call at line 842 already initialized the engine with root_blocks/root_lines
+        # This duplicate was causing 2x initialization overhead
 
         # Retrieve state from engine
         self.max_hier = self.engine.max_hier
@@ -901,26 +908,36 @@ class DSim:
                 self.buttons_list[6].active = True
 
         # The dynamic plot function is initialized, if the Boolean is active
+        _t4 = time.time()
         self.dynamic_pyqtPlotScope(step=0)
+        logger.debug(f"[TIMING] dynamic_pyqtPlotScope: {time.time() - _t4:.3f}s")
+        logger.debug(f"[TIMING] execution_init TOTAL: {time.time() - _t0:.3f}s")
 
         return True
 
     def execution_batch(self):
         """Run the entire simulation as fast as possible."""
+        _tb0 = time.time()
         # FAST SOLVER CHECK
         # Check if fast solver is enabled (default True if attr missing)
         use_fast = getattr(self, 'use_fast_solver', True)
-        
-        if use_fast and self.engine.check_compilability(self.blocks_list):
+
+        _tb1 = time.time()
+        compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
+        logger.debug(f"[TIMING] check_compilability: {time.time() - _tb1:.3f}s")
+
+        if use_fast and compilable:
             logger.info("System is compilable. Using Fast Solver.")
             self.last_solver_type = "Fast (Compiled)"
             t_span = (0.0, self.execution_time)
+            _tb2 = time.time()
             success = self.engine.run_compiled_simulation(
-                self.blocks_list, 
-                self.line_list, 
-                t_span, 
+                self.blocks_list,
+                self.line_list,
+                t_span,
                 self.sim_dt
             )
+            logger.debug(f"[TIMING] run_compiled_simulation: {time.time() - _tb2:.3f}s")
             if success:
                 logger.info("Fast simulation successful.")
                 
