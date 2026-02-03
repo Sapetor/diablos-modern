@@ -60,7 +60,7 @@
             "block_fn": "Parameter",
             "sid": 3,
             "username": "Kp_param",
-            "coords_left": 260,
+            "coords_left": 320,
             "coords_top": 80,
             "coords_width": 80,
             "coords_height": 40,
@@ -88,7 +88,7 @@
             "block_fn": "Parameter",
             "sid": 4,
             "username": "Ki_param",
-            "coords_left": 360,
+            "coords_left": 420,
             "coords_top": 80,
             "coords_width": 80,
             "coords_height": 40,
@@ -116,7 +116,7 @@
             "block_fn": "Parameter",
             "sid": 5,
             "username": "Kd_param",
-            "coords_left": 460,
+            "coords_left": 520,
             "coords_top": 80,
             "coords_width": 80,
             "coords_height": 40,
@@ -313,7 +313,7 @@
             "srcport": 0,
             "dstblock": "PID_Controller",
             "dstport": 1,
-            "points": [[340, 100], [350, 100], [350, 140], [265, 140], [265, 210], [280, 210]]
+            "points": [[400, 100], [405, 100], [405, 55], [250, 55], [250, 210], [280, 210]]
         },
         {
             "sid": 104,
@@ -321,7 +321,7 @@
             "srcport": 0,
             "dstblock": "PID_Controller",
             "dstport": 2,
-            "points": [[440, 100], [450, 100], [450, 135], [270, 135], [270, 225], [280, 225]]
+            "points": [[500, 100], [505, 100], [505, 50], [255, 50], [255, 225], [280, 225]]
         },
         {
             "sid": 105,
@@ -329,7 +329,7 @@
             "srcport": 0,
             "dstblock": "PID_Controller",
             "dstport": 3,
-            "points": [[540, 100], [550, 100], [550, 130], [275, 130], [275, 240], [280, 240]]
+            "points": [[600, 100], [605, 100], [605, 45], [260, 45], [260, 240], [280, 240]]
         },
         {
             "sid": 106,
