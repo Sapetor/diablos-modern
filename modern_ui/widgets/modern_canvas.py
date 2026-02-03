@@ -29,6 +29,8 @@ from modern_ui.managers.menu_manager import MenuManager
 from modern_ui.managers.selection_manager import SelectionManager
 from modern_ui.managers.clipboard_manager import ClipboardManager
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
+from modern_ui.managers.connection_manager import ConnectionManager
+from modern_ui.managers.rendering_manager import RenderingManager
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +137,8 @@ class ModernCanvas(QWidget):
         self.selection_manager = SelectionManager(self)
         self.clipboard_manager = ClipboardManager(self)
         self.zoom_pan_manager = ZoomPanManager(self)
+        self.connection_manager = ConnectionManager(self)
+        self.rendering_manager = RenderingManager(self)
         
         # Initialize Analysis Tool
         self.analyzer = ControlSystemAnalyzer(self, parent=self)
@@ -427,47 +431,23 @@ class ModernCanvas(QWidget):
                 except Exception:
                     pass
 
-    # ===== Rendering Methods (moved from DSim) =====
-    
+    # ===== Rendering Methods =====
+
     def _render_blocks(self, painter, draw_ports=True):
-        """Render all blocks to canvas.
-        
-        This replaces DSim.display_blocks() - rendering logic belongs in canvas.
-        """
-        if painter is None:
-            return
-        for block in self.dsim.blocks_list:
-            self.block_renderer.draw_block(block, painter, draw_ports=draw_ports)
-            if block.selected:
-                self.block_renderer.draw_resize_handles(block, painter)
+        """Render all blocks to canvas."""
+        self.rendering_manager.render_blocks(painter, draw_ports)
 
     def _render_lines(self, painter):
-        """Render all connection lines.
-        
-        This replaces DSim.display_lines() - rendering logic belongs in canvas.
-        """
-        if painter is None:
-            return
-        for line in self.dsim.line_list:
-            if not getattr(line, "hidden", False):
-                self.connection_renderer.draw_line(line, painter)
+        """Render all connection lines."""
+        self.rendering_manager.render_lines(painter)
 
     def _render_ports(self, painter):
-        """Render all ports on top of lines for better visibility.
-
-        This replaces DSim.display_ports() - rendering logic belongs in canvas.
-        """
-        for block in self.dsim.blocks_list:
-            self.block_renderer.draw_ports(block, painter)
-            self.block_renderer.draw_port_labels(block, painter)
+        """Render all ports on top of lines for better visibility."""
+        self.rendering_manager.render_ports(painter)
 
     def _update_line_positions(self):
-        """Update line positions after block movement.
-        
-        This replaces DSim.update_lines() - line position logic belongs in canvas.
-        """
-        for line in self.dsim.line_list:
-            line.update_line(self.dsim.blocks_list)
+        """Update line positions after block movement."""
+        self.connection_manager.update_line_positions()
 
 
 
@@ -629,14 +609,8 @@ class ModernCanvas(QWidget):
         return None
 
     def _get_clicked_line(self, pos):
-        for line in getattr(self.dsim, 'line_list', []):
-            if getattr(line, "hidden", False):
-                continue
-            if hasattr(line, 'collision'):
-                result = line.collision(pos)
-                if result:
-                    return line, result
-        return None, None
+        """Get the line at the given position."""
+        return self.connection_manager.get_clicked_line(pos)
 
     def _clear_selections(self):
         for block in getattr(self.dsim, 'blocks_list', []):
@@ -759,221 +733,31 @@ class ModernCanvas(QWidget):
 
     def _check_port_clicks(self, pos):
         """Check for port clicks to create connections. Returns True if a port was clicked."""
-        try:
-            # Check all blocks for port collisions
-            for block in getattr(self.dsim, 'blocks_list', []):
-                if hasattr(block, 'port_collision'):
-                    # Convert QPoint to tuple for collision detection
-                    point_tuple = (pos.x(), pos.y())
-                    port_result = block.port_collision(point_tuple)
-                    if port_result != (-1, -1):
-                        port_type, port_index = port_result
-                        logger.debug(f"Port clicked: {port_type}{port_index} on block {getattr(block, 'name', 'Unknown')}")
-                        self._handle_port_click(block, port_type, port_index, pos)
-                        return True # Port was clicked
-            return False # No port was clicked
-        except Exception as e:
-            logger.error(f"Error in _check_port_clicks: {str(e)}")
-            return False
+        return self.connection_manager.check_port_clicks(pos)
 
     def _handle_port_click(self, block, port_type, port_index, pos):
         """Handle port click for connection creation."""
-        try:
-            block_name = getattr(block, 'name', 'Unknown')
-            logger.debug(f"Port clicked on block {block_name}, port: {port_type}{port_index}")
-
-            if self.line_creation_state is None:
-                if port_type == 'o': # Start line from output port
-                    self.state = State.CONNECTING
-                    self.line_creation_state = 'start'
-                    self.line_start_block = block
-                    self.line_start_port = port_index
-                    # Get the output port coordinates
-                    if hasattr(block, 'out_coords') and port_index < len(block.out_coords):
-                        start_point = block.out_coords[port_index]
-                        self.temp_line = (start_point, pos)
-                    logger.info(f"Started line creation from {block_name} output port {port_index}")
-            elif self.line_creation_state == 'start':
-                if port_type == 'i': # End line at input port
-                    logger.info(f"Completing line to {block_name} input port {port_index}")
-                    self._finish_line_creation(block, port_index)
-                else:
-                    logger.info("Canceling line creation - clicked on output port")
-                    self._cancel_line_creation()
-            self.update()
-        except Exception as e:
-            logger.error(f"Error in _handle_port_click: {str(e)}")
+        self.connection_manager.handle_port_click(block, port_type, port_index, pos)
 
     def _finish_line_creation(self, end_block, end_port):
         """Complete line creation between two blocks."""
-        try:
-            start_block_name = getattr(self.line_start_block, 'name', 'Unknown')
-            end_block_name = getattr(end_block, 'name', 'Unknown')
-            logger.debug(f"Finishing line creation from {start_block_name} to {end_block_name}")
-
-            if hasattr(self.dsim, 'add_line'):
-                # Get coordinates for the line
-                start_coords = None
-                end_coords = None
-                if (hasattr(self.line_start_block, 'out_coords') and
-                    self.line_start_port < len(self.line_start_block.out_coords)):
-                    start_coords = self.line_start_block.out_coords[self.line_start_port]
-                if (hasattr(end_block, 'in_coords') and
-                    end_port < len(end_block.in_coords)):
-                    end_coords = end_block.in_coords[end_port]
-
-                if start_coords and end_coords:
-                    # Validate connection before creating
-                    is_valid, validation_errors = self._validate_connection(
-                        self.line_start_block, self.line_start_port,
-                        end_block, end_port
-                    )
-                    if not is_valid:
-                        error_msg = "\n".join(validation_errors)
-                        logger.warning(f"Connection validation failed: {error_msg}")
-                        self.simulation_status_changed.emit(f"Connection invalid: {error_msg}")
-                        self._cancel_line_creation()
-                        return
-
-                    # Push undo state before creating connection
-                    self._push_undo("Connect")
-
-                    # Create line using DSim's add_line method
-                    new_line = self.dsim.add_line(
-                        (start_block_name, self.line_start_port, start_coords),
-                        (end_block_name, end_port, end_coords)
-                    )
-                    if new_line:
-                        # Set the default routing mode for the new connection
-                        new_line.routing_mode = self.default_routing_mode
-                        logger.info(f"Line created: {start_block_name} -> {end_block_name} (routing: {self.default_routing_mode})")
-                        # If Goto/From involved, relink to sync labels/virtual lines
-                        if getattr(self.line_start_block, "block_fn", "") in ("Goto", "From") or getattr(end_block, "block_fn", "") in ("Goto", "From"):
-                            try:
-                                self.dsim.model.link_goto_from()
-                            except Exception as e:
-                                logger.warning(f"Could not relink Goto/From after connection: {e}")
-                        self._update_line_positions()
-                        self.connection_created.emit(self.line_start_block, end_block)
-                    else:
-                        logger.warning("Failed to create line")
-                else:
-                    logger.error("Could not get port coordinates for line creation")
-            self._cancel_line_creation()
-        except Exception as e:
-            logger.error(f"Error in _finish_line_creation: {str(e)}")
-            self._cancel_line_creation()
+        self.connection_manager.finish_line_creation(end_block, end_port)
 
     def _check_line_clicks(self, pos):
         """Check for clicks on connection lines."""
-        try:
-            # Check for clicks near existing lines
-            for line in getattr(self.dsim, 'line_list', []):
-                if hasattr(line, 'points') and self._point_near_line(pos, line):
-                    self._handle_line_click(line, pos)
-                    return
-        except Exception as e:
-            logger.error(f"Error in _check_line_clicks: {str(e)}")
+        self.connection_manager.check_line_clicks(pos)
 
     def _point_near_line(self, pos, line):
         """Check if a point is near a line."""
-        try:
-            if not hasattr(line, 'points') or len(line.points) < 2:
-                return False
-
-            threshold = 10 # pixels
-            point_tuple = (pos.x(), pos.y())
-
-            # Check each segment of the line
-            for i in range(len(line.points) - 1):
-                start = line.points[i]
-                end = line.points[i + 1]
-
-                # Convert QPoint to tuple if needed
-                if hasattr(start, 'x'):
-                    start = (start.x(), start.y())
-                if hasattr(end, 'x'):
-                    end = (end.x(), end.y())
-
-                # Calculate distance from point to line segment
-                distance = self._point_to_line_distance(point_tuple, start, end)
-                if distance <= threshold:
-                    return True
-            return False
-        except Exception as e:
-            logger.error(f"Error in _point_near_line: {str(e)}")
-            return False
+        return self.connection_manager.point_near_line(pos, line)
 
     def _point_to_line_distance(self, point, line_start, line_end):
         """Calculate minimum distance from point to line segment."""
-        try:
-            x0, y0 = point
-            x1, y1 = line_start
-            x2, y2 = line_end
-
-            # Calculate the distance
-            A = x0 - x1
-            B = y0 - y1
-            C = x2 - x1
-            D = y2 - y1
-
-            dot = A * C + B * D
-            len_sq = C * C + D * D
-
-            if len_sq == 0: # Line start and end are the same point
-                return ((x0 - x1) ** 2 + (y0 - y1) ** 2) ** 0.5
-
-            param = dot / len_sq
-
-            if param < 0:
-                xx, yy = x1, y1
-            elif param > 1:
-                xx, yy = x2, y2
-            else:
-                xx = x1 + param * C
-                yy = y1 + param * D
-
-            dx = x0 - xx
-            dy = y0 - yy
-            return (dx * dx + dy * dy) ** 0.5
-        except Exception as e:
-            logger.error(f"Error calculating point to line distance: {str(e)}")
-            return float('inf')
+        return self.connection_manager.point_to_line_distance(point, line_start, line_end)
 
     def _handle_line_click(self, line, collision_result, pos):
         """Handle clicking on a connection line."""
-        try:
-            line_name = getattr(line, 'name', 'Unknown')
-            logger.info(f"Line clicked: {line_name}")
-
-            collision_type, collision_index = collision_result
-
-            if not (QApplication.keyboardModifiers() & Qt.ControlModifier):
-                self._clear_selections()
-            
-            line.selected = True
-            line.modified = True # Always allow modification on click
-
-            if collision_type == "point":
-                self.state = State.DRAGGING_LINE_POINT
-                self.dragging_item = (line, collision_index)
-                self.drag_offset = pos
-                line.selected_segment = -1 # A point is selected, not a segment
-                logger.info(f"Dragging point {collision_index} of line {line_name}")
-            elif collision_type == "segment":
-                self.state = State.DRAGGING_LINE_SEGMENT
-                self.dragging_item = (line, collision_index)
-                self.drag_offset = pos
-                line.selected_segment = collision_index # A segment is selected
-                logger.info(f"Dragging segment {collision_index} of line {line_name}")
-            else: # "line" or None
-                line.selected_segment = -1 # The whole line is selected
-            
-            self.update()
-        except Exception as e:
-            logger.error(f"Error in _handle_line_click: {str(e)}")
-        except Exception as e:
-            logger.error(f"Error in _handle_line_click: {str(e)}")
+        self.connection_manager.handle_line_click(line, collision_result, pos)
 
     def _configure_block(self, block):
         """Configure a block (right-click action)."""
@@ -1195,16 +979,7 @@ class ModernCanvas(QWidget):
 
     def _cancel_line_creation(self):
         """Cancel line creation process."""
-        try:
-            self.line_creation_state = None
-            self.line_start_block = None
-            self.line_start_port = None
-            self.temp_line = None
-            self.state = State.IDLE
-            self.update()
-            logger.debug("Line creation cancelled")
-        except Exception as e:
-            logger.error(f"Error cancelling line creation: {str(e)}")
+        self.connection_manager.cancel_line_creation()
 
     def keyPressEvent(self, event):
         """Handle keyboard events."""
@@ -1550,248 +1325,44 @@ class ModernCanvas(QWidget):
 
     def _delete_line(self, line):
         """Delete a specific connection line."""
-        try:
-            if line in self.dsim.line_list:
-                # Push undo state before deleting line
-                self._push_undo("Delete Connection")
-
-                self.dsim.line_list.remove(line)
-                logger.info(f"Deleted connection: {line.name}")
-                self.update()
-        except Exception as e:
-            logger.error(f"Error deleting line: {str(e)}")
+        self.connection_manager.delete_line(line)
 
     def _highlight_connection_path(self, line):
         """Temporarily highlight a connection path."""
-        # This could be enhanced with animation
-        line.selected = True
-        self.update()
+        self.connection_manager.highlight_connection_path(line)
 
     def _edit_connection_label(self, line):
         """Edit the label of a connection."""
-        from PyQt5.QtWidgets import QInputDialog
-
-        # Get current label
-        current_label = line.label if hasattr(line, 'label') else ""
-
-        # Show input dialog
-        text, ok = QInputDialog.getText(
-            self,
-            "Edit Connection Label",
-            f"Enter label for connection {line.srcblock} → {line.dstblock}:",
-            text=current_label
-        )
-
-        if ok:
-            line.label = str(text)
-            self.update()
-            logger.info(f"Updated connection label: {line.name} -> '{text}'")
+        self.connection_manager.edit_connection_label(line)
 
     def _set_connection_routing_mode(self, line, mode):
         """Change the routing mode for a connection."""
-        if mode in ["bezier", "orthogonal"]:
-            line.set_routing_mode(mode)
-            # Force update of the line path
-            line.update_line(self.dsim.blocks_list)
-            self._capture_state()  # Capture state for undo
-            self.update()
-            logger.info(f"Changed routing mode for {line.name} to {mode}")
+        self.connection_manager.set_connection_routing_mode(line, mode)
 
     def _update_hover_states(self, pos):
         """Update hover states for blocks, ports, and connections."""
-        needs_repaint = False
-
-        # Check for resize handles on selected blocks (highest priority)
-        resize_handle = None
-        for block in self.dsim.blocks_list:
-            if block.selected:
-                handle = self.block_renderer.get_resize_handle_at(block, pos)
-                if handle:
-                    resize_handle = handle
-                    self._set_resize_cursor(handle)
-                    break
-
-        # Initialize variables
-        new_hovered_port = None
-
-        if not resize_handle:
-            # Check for hovered port
-            for block in self.dsim.blocks_list:
-                # Check output ports
-                for i, port_pos in enumerate(block.out_coords):
-                    if self._point_near_port(pos, port_pos):
-                        new_hovered_port = (block, i, True)  # True = output port
-                        break
-                # Check input ports
-                if not new_hovered_port:
-                    for i, port_pos in enumerate(block.in_coords):
-                        if self._point_near_port(pos, port_pos):
-                            new_hovered_port = (block, i, False)  # False = input port
-                            break
-                if new_hovered_port:
-                    break
-
-            if new_hovered_port != self.hovered_port:
-                self.hovered_port = new_hovered_port
-                needs_repaint = True
-
-                # Show tooltip for hovered port
-                if new_hovered_port:
-                    block, port_idx, is_output = new_hovered_port
-                    input_names, output_names = block.get_port_names()
-                    if is_output and port_idx < len(output_names):
-                        port_name = output_names[port_idx]
-                        tooltip = f"Output: {port_name}"
-                    elif not is_output and port_idx < len(input_names):
-                        port_name = input_names[port_idx]
-                        tooltip = f"Input: {port_name}"
-                    else:
-                        tooltip = f"Port {port_idx}"
-
-                    # Include block documentation excerpt if available
-                    if block.doc:
-                        doc_lines = block.doc.split('\n')
-                        short_doc = doc_lines[0][:60] + '...' if len(doc_lines[0]) > 60 else doc_lines[0]
-                        tooltip = f"{tooltip}\n{short_doc}"
-
-                    QToolTip.showText(self.mapToGlobal(pos), tooltip, self)
-                else:
-                    QToolTip.hideText()
-
-            # Reset cursor if not over resize handle or port
-            if not new_hovered_port:
-                self.setCursor(Qt.ArrowCursor)
-
-        # Check for hovered block (if no port is hovered)
-        if not new_hovered_port:
-            new_hovered_block = self._get_clicked_block(pos)
-            if new_hovered_block != self.hovered_block:
-                self.hovered_block = new_hovered_block
-                needs_repaint = True
-        else:
-            if self.hovered_block is not None:
-                self.hovered_block = None
-                needs_repaint = True
-
-        # Check for hovered line (if no block/port is hovered)
-        if not new_hovered_port and not self.hovered_block:
-            line_result, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
-            if line_result != self.hovered_line:
-                self.hovered_line = line_result
-                needs_repaint = True
-        else:
-            if self.hovered_line is not None:
-                self.hovered_line = None
-                needs_repaint = True
-
-        if needs_repaint:
-            self.update()
+        self.rendering_manager.update_hover_states(pos)
 
     def _point_near_port(self, point, port_pos, threshold=12):
         """Check if a point is near a port position."""
-        dx = point.x() - port_pos.x()
-        dy = point.y() - port_pos.y()
-        return (dx * dx + dy * dy) < (threshold * threshold)
+        return self.rendering_manager.point_near_port(point, port_pos, threshold)
 
     def _set_resize_cursor(self, handle):
         """Set the appropriate cursor for a resize handle."""
-        cursor_map = {
-            'top_left': Qt.SizeFDiagCursor,
-            'top_right': Qt.SizeBDiagCursor,
-            'bottom_left': Qt.SizeBDiagCursor,
-            'bottom_right': Qt.SizeFDiagCursor,
-            'top': Qt.SizeVerCursor,
-            'bottom': Qt.SizeVerCursor,
-            'left': Qt.SizeHorCursor,
-            'right': Qt.SizeHorCursor,
-        }
-        self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+        self.rendering_manager.set_resize_cursor(handle)
 
     # Validation System
     def run_validation(self):
         """Run diagram validation and update error visualization."""
-        try:
-            from lib.diagram_validator import DiagramValidator
-
-            validator = DiagramValidator(self.dsim)
-            self.validation_errors = validator.validate()
-
-            # Update sets of blocks with errors/warnings
-            self.blocks_with_errors = validator.get_blocks_with_errors()
-            self.blocks_with_warnings = validator.get_blocks_with_warnings()
-
-            # Enable error visualization
-            self.show_validation_errors = True
-
-            # Trigger repaint
-            self.update()
-
-            logger.info(f"Validation complete: {len(self.validation_errors)} issues found")
-            return self.validation_errors
-
-        except Exception as e:
-            logger.error(f"Error running validation: {str(e)}")
-            return []
+        return self.rendering_manager.run_validation()
 
     def clear_validation(self):
         """Clear validation errors and hide indicators."""
-        self.validation_errors = []
-        self.blocks_with_errors = set()
-        self.blocks_with_warnings = set()
-        self.show_validation_errors = False
-        self.update()
-
-
+        self.rendering_manager.clear_validation()
 
     def _draw_block_error_indicator(self, painter, block, is_error=True):
         """Draw error/warning indicator on a specific block."""
-        try:
-            # Choose color based on severity
-            if is_error:
-                indicator_color = QColor(220, 53, 69)  # Red for errors
-                border_width = 3
-            else:
-                indicator_color = QColor(255, 193, 7)  # Yellow/orange for warnings
-                border_width = 2
-
-            # Draw pulsing border around block
-            painter.setPen(QPen(indicator_color, border_width, Qt.SolidLine))
-            painter.setBrush(Qt.NoBrush)
-
-            # Draw outline around block
-            padding = 4
-            error_rect = QRect(
-                block.left - padding,
-                block.top - padding,
-                block.width + 2 * padding,
-                block.height + 2 * padding
-            )
-            painter.drawRoundedRect(error_rect, 10, 10)
-
-            # Draw error/warning icon in top-right corner
-            icon_size = 16
-            icon_x = block.left + block.width - icon_size - 2
-            icon_y = block.top + 2
-
-            # Draw icon background circle
-            icon_bg = QColor(indicator_color)
-            icon_bg.setAlpha(200)
-            painter.setBrush(icon_bg)
-            painter.setPen(QPen(QColor(255, 255, 255), 1))
-            painter.drawEllipse(icon_x, icon_y, icon_size, icon_size)
-
-            # Draw exclamation mark
-            painter.setPen(QPen(QColor(255, 255, 255), 2))
-            # Vertical line
-            painter.drawLine(
-                icon_x + icon_size // 2, icon_y + 3,
-                icon_x + icon_size // 2, icon_y + icon_size - 6
-            )
-            # Dot
-            painter.drawPoint(icon_x + icon_size // 2, icon_y + icon_size - 3)
-
-        except Exception as e:
-            logger.error(f"Error drawing block error indicator: {str(e)}")
+        self.rendering_manager.draw_block_error_indicator(painter, block, is_error)
 
     # Undo/Redo System
 

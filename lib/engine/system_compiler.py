@@ -4,6 +4,12 @@ import numpy as np
 from typing import List, Callable, Dict, Any, Tuple
 from lib.simulation.block import DBlock
 from scipy import signal
+from lib.engine.pde_helpers import (
+    parse_pde_initial_condition,
+    parse_pde_2d_initial_condition,
+    get_input_source,
+    ensure_field_array
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1367,28 +1373,14 @@ class SystemCompiler:
 
             elif fn == 'Heatequation1D':
                 # HeatEquation1D has N states (one per spatial node)
-                # Use exec_params if available (resolved), otherwise fall back to params
                 pde_params = getattr(block, 'exec_params', None) or block.params
                 N = int(pde_params.get('N', 20))
+                L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, N)
 
-                # Get initial conditions from resolved params
+                # Get initial conditions using helper
                 ic = pde_params.get('init_conds', [0.0])
-                if isinstance(ic, (int, float)):
-                    ic_flat = np.full(N, float(ic))
-                else:
-                    ic_arr = np.array(ic, dtype=float).flatten()
-                    if len(ic_arr) == 1:
-                        ic_flat = np.full(N, ic_arr[0])
-                    elif len(ic_arr) == N:
-                        ic_flat = ic_arr
-                    elif len(ic_arr) < N:
-                        x_old = np.linspace(0, 1, len(ic_arr))
-                        x_new = np.linspace(0, 1, N)
-                        ic_flat = np.interp(x_new, x_old, ic_arr)
-                    else:
-                        indices = np.linspace(0, len(ic_arr)-1, N, dtype=int)
-                        ic_flat = ic_arr[indices]
+                ic_flat = parse_pde_initial_condition(ic, N, L, pde_type='heat')
 
                 y0_list.extend(ic_flat)
                 current_state_idx += N
@@ -1400,40 +1392,13 @@ class SystemCompiler:
                 L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, 2 * N)
 
-                # Initial displacement
+                # Initial displacement using helper
                 init_u = pde_params.get('init_displacement', [0.0])
-                x = np.linspace(0, L, N)
+                u0 = parse_pde_initial_condition(init_u, N, L, pde_type='wave')
 
-                if isinstance(init_u, str):
-                    if init_u.lower() == 'gaussian':
-                        u0 = np.exp(-100 * (x - L/2)**2)
-                    elif init_u.lower() == 'sine':
-                        u0 = np.sin(np.pi * x / L)
-                    else:
-                        u0 = np.zeros(N)
-                elif isinstance(init_u, (int, float)):
-                    u0 = np.full(N, float(init_u))
-                else:
-                    u0 = np.array(init_u, dtype=float).flatten()
-                    if len(u0) == 1:
-                        u0 = np.full(N, u0[0])
-                    elif len(u0) != N:
-                        x_old = np.linspace(0, 1, len(u0))
-                        x_new = np.linspace(0, 1, N)
-                        u0 = np.interp(x_new, x_old, u0)
-
-                # Initial velocity
+                # Initial velocity using helper
                 init_v = pde_params.get('init_velocity', [0.0])
-                if isinstance(init_v, (int, float)):
-                    v0 = np.full(N, float(init_v))
-                else:
-                    v0 = np.array(init_v, dtype=float).flatten()
-                    if len(v0) == 1:
-                        v0 = np.full(N, v0[0])
-                    elif len(v0) != N:
-                        x_old = np.linspace(0, 1, len(v0))
-                        x_new = np.linspace(0, 1, N)
-                        v0 = np.interp(x_new, x_old, v0)
+                v0 = parse_pde_initial_condition(init_v, N, L, pde_type='wave')
 
                 y0_list.extend(u0)
                 y0_list.extend(v0)
@@ -1446,29 +1411,9 @@ class SystemCompiler:
                 L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, N)
 
+                # Get initial conditions using helper
                 ic = pde_params.get('init_conds', [0.0])
-                x = np.linspace(0, L, N)
-
-                if isinstance(ic, str):
-                    if ic.lower() == 'gaussian':
-                        # Wider Gaussian for better numerical resolution
-                        c0 = np.exp(-25 * (x - L/4)**2)
-                    elif ic.lower() == 'step':
-                        c0 = np.where(x < L/4, 1.0, 0.0)
-                    elif ic.lower() == 'sine':
-                        c0 = 0.5 * (1 + np.sin(2 * np.pi * x / L))
-                    else:
-                        c0 = np.zeros(N)
-                elif isinstance(ic, (int, float)):
-                    c0 = np.full(N, float(ic))
-                else:
-                    c0 = np.array(ic, dtype=float).flatten()
-                    if len(c0) == 1:
-                        c0 = np.full(N, c0[0])
-                    elif len(c0) != N:
-                        x_old = np.linspace(0, 1, len(c0))
-                        x_new = np.linspace(0, 1, N)
-                        c0 = np.interp(x_new, x_old, c0)
+                c0 = parse_pde_initial_condition(ic, N, L, pde_type='advection')
 
                 y0_list.extend(c0)
                 current_state_idx += N
@@ -1480,30 +1425,9 @@ class SystemCompiler:
                 L = float(pde_params.get('L', 1.0))
                 state_map[b_name] = (current_state_idx, N)
 
+                # Get initial conditions using helper
                 ic = pde_params.get('init_conds', [1.0])
-                x = np.linspace(0, L, N)
-
-                if isinstance(ic, str):
-                    if ic.lower() == 'uniform':
-                        c0 = np.ones(N)
-                    elif ic.lower() == 'gaussian':
-                        c0 = np.exp(-50 * (x - L/2)**2)
-                    elif ic.lower() == 'linear':
-                        c0 = 1 - x/L
-                    elif ic.lower() == 'sine':
-                        c0 = np.sin(np.pi * x / L)
-                    else:
-                        c0 = np.ones(N)
-                elif isinstance(ic, (int, float)):
-                    c0 = np.full(N, float(ic))
-                else:
-                    c0 = np.array(ic, dtype=float).flatten()
-                    if len(c0) == 1:
-                        c0 = np.full(N, c0[0])
-                    elif len(c0) != N:
-                        x_old = np.linspace(0, 1, len(c0))
-                        x_new = np.linspace(0, 1, N)
-                        c0 = np.interp(x_new, x_old, c0)
+                c0 = parse_pde_initial_condition(ic, N, L, pde_type='diffusion_reaction')
 
                 y0_list.extend(c0)
                 current_state_idx += N
@@ -1520,32 +1444,10 @@ class SystemCompiler:
                 n_states = Nx * Ny
                 state_map[b_name] = (current_state_idx, n_states)
 
-                # Get initial temperature from resolved params
+                # Get initial temperature using 2D helper
                 init_temp = pde_params.get('init_temp', '0.0')
                 amplitude = float(pde_params.get('init_amplitude', 1.0))
-
-                x = np.linspace(0, Lx, Nx)
-                y = np.linspace(0, Ly, Ny)
-                X, Y = np.meshgrid(x, y)  # Shape: (Ny, Nx)
-
-                if isinstance(init_temp, str):
-                    if init_temp.lower() == 'sinusoidal':
-                        # T = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode of Laplacian
-                        T0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-                    elif init_temp.lower() == 'gaussian':
-                        # Gaussian bump at center
-                        T0 = amplitude * np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
-                    elif init_temp.lower() == 'hot_spot':
-                        # Hot spot in corner
-                        T0 = amplitude * np.exp(-100 * (X**2 + Y**2))
-                    else:
-                        # Try to parse as number
-                        try:
-                            T0 = np.full((Ny, Nx), float(init_temp))
-                        except ValueError:
-                            T0 = np.zeros((Ny, Nx))
-                else:
-                    T0 = np.full((Ny, Nx), float(init_temp))
+                T0 = parse_pde_2d_initial_condition(init_temp, Nx, Ny, Lx, Ly, amplitude)
 
                 ic_flat = T0.flatten()
                 y0_list.extend(ic_flat)
