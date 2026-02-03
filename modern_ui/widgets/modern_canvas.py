@@ -296,7 +296,11 @@ class ModernCanvas(QWidget):
         try:
             # Collect Display block values
             display_values = {}
-            for block in self.dsim.use_active:
+            # Use active blocks from engine if available, otherwise fall back to blocks_list
+            has_engine = hasattr(self.dsim, 'engine') and self.dsim.engine is not None
+            use_active = has_engine and len(self.dsim.engine.active_blocks_list) > 0
+            blocks_source = self.dsim.engine.active_blocks_list if use_active else self.dsim.blocks_list
+            for block in blocks_source:
                 if block.block_fn == 'Display':
                     # Get params - during execution, values are stored in block.params directly
                     params = block.params or {}
