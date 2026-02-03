@@ -785,24 +785,34 @@ class SystemCompiler:
                 dc_dt = np.zeros(_N)
 
                 if _v >= 0:
-                    # Backward difference (upwind)
-                    for i in range(1, _N):
-                        dc_dx = (c[i] - c[i-1]) / _dx
+                    # Second-order backward difference (upwind) - reduces numerical diffusion
+                    # Interior: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
+                    for i in range(2, _N):
+                        dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*_dx)
                         dc_dt[i] = -_v * dc_dx
+                    # First interior point: first-order fallback
+                    if _N > 1:
+                        dc_dx = (c[1] - c[0]) / _dx
+                        dc_dt[1] = -_v * dc_dx
                     if _bc_type == 'Dirichlet':
                         dc_dt[0] = 1000.0 * (c_inlet - c[0])  # Penalty method for inlet BC
                     elif _bc_type == 'Periodic':
-                        dc_dx = (c[0] - c[_N-1]) / _dx
+                        dc_dx = (3*c[0] - 4*c[_N-1] + c[_N-2]) / (2*_dx)
                         dc_dt[0] = -_v * dc_dx
                 else:
-                    # Forward difference
-                    for i in range(_N-1):
-                        dc_dx = (c[i+1] - c[i]) / _dx
+                    # Second-order forward difference (upwind)
+                    # Interior: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
+                    for i in range(_N-2):
+                        dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*_dx)
                         dc_dt[i] = -_v * dc_dx
+                    # Last interior point: first-order fallback
+                    if _N > 1:
+                        dc_dx = (c[_N-1] - c[_N-2]) / _dx
+                        dc_dt[_N-2] = -_v * dc_dx
                     if _bc_type == 'Dirichlet':
                         dc_dt[_N-1] = 1000.0 * (c_inlet - c[_N-1])  # Penalty method for outlet BC
                     elif _bc_type == 'Periodic':
-                        dc_dx = (c[0] - c[_N-1]) / _dx
+                        dc_dx = (-3*c[_N-1] + 4*c[0] - c[1]) / (2*_dx)
                         dc_dt[_N-1] = -_v * dc_dx
 
                 signals[b_name] = c
@@ -1441,7 +1451,8 @@ class SystemCompiler:
 
                 if isinstance(ic, str):
                     if ic.lower() == 'gaussian':
-                        c0 = np.exp(-100 * (x - L/4)**2)
+                        # Wider Gaussian for better numerical resolution
+                        c0 = np.exp(-25 * (x - L/4)**2)
                     elif ic.lower() == 'step':
                         c0 = np.where(x < L/4, 1.0, 0.0)
                     elif ic.lower() == 'sine':
