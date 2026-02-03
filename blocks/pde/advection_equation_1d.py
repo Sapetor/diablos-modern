@@ -149,7 +149,8 @@ class AdvectionEquation1DBlock(BaseBlock):
         if isinstance(ic, str):
             if ic.lower() == 'gaussian':
                 # Gaussian pulse centered at L/4
-                c0 = np.exp(-100 * (x - L/4)**2)
+                # Width sigma = 0.14m (~7 grid points at N=101, L=2)
+                c0 = np.exp(-25 * (x - L/4)**2)
             elif ic.lower() == 'step':
                 # Step function at L/4
                 c0 = np.where(x < L/4, 1.0, 0.0)
@@ -203,32 +204,43 @@ class AdvectionEquation1DBlock(BaseBlock):
         # Get inputs
         c_inlet = inputs.get(0, 0.0)
 
-        # Compute spatial derivative using upwind scheme
+        # Compute spatial derivative using second-order upwind scheme
+        # This reduces numerical diffusion compared to first-order upwind
         dc_dt = np.zeros(N)
 
         if v >= 0:
-            # Positive velocity: backward difference (upwind from left)
-            for i in range(1, N):
-                dc_dx = (c[i] - c[i-1]) / dx
+            # Positive velocity: second-order backward difference (upwind from left)
+            # Interior points: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
+            for i in range(2, N):
+                dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
                 dc_dt[i] = -v * dc_dx
+            # First interior point: first-order fallback
+            if N > 1:
+                dc_dx = (c[1] - c[0]) / dx
+                dc_dt[1] = -v * dc_dx
 
             # Left boundary (inlet)
             if bc_type == 'Dirichlet':
                 dc_dt[0] = 0.0  # Fixed by inlet
             elif bc_type == 'Periodic':
-                dc_dx = (c[0] - c[N-1]) / dx
+                dc_dx = (3*c[0] - 4*c[N-1] + c[N-2]) / (2*dx)
                 dc_dt[0] = -v * dc_dx
         else:
-            # Negative velocity: forward difference (upwind from right)
-            for i in range(N-1):
-                dc_dx = (c[i+1] - c[i]) / dx
+            # Negative velocity: second-order forward difference (upwind from right)
+            # Interior points: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
+            for i in range(N-2):
+                dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
                 dc_dt[i] = -v * dc_dx
+            # Last interior point: first-order fallback
+            if N > 1:
+                dc_dx = (c[N-1] - c[N-2]) / dx
+                dc_dt[N-2] = -v * dc_dx
 
             # Right boundary (inlet for negative velocity)
             if bc_type == 'Dirichlet':
                 dc_dt[N-1] = 0.0
             elif bc_type == 'Periodic':
-                dc_dx = (c[0] - c[N-1]) / dx
+                dc_dx = (-3*c[N-1] + 4*c[0] - c[1]) / (2*dx)
                 dc_dt[N-1] = -v * dc_dx
 
         # Apply inlet BC
@@ -254,7 +266,7 @@ class AdvectionEquation1DBlock(BaseBlock):
         """
         Compute dc/dt for the ODE solver.
 
-        Uses upwind differencing for numerical stability.
+        Uses second-order upwind differencing for reduced numerical diffusion.
         """
         N = int(params.get('N', 50))
         v = float(params.get('velocity', 1.0))
@@ -267,26 +279,32 @@ class AdvectionEquation1DBlock(BaseBlock):
         dc_dt = np.zeros(N)
 
         if v >= 0:
-            # Backward difference
-            for i in range(1, N):
-                dc_dx = (c[i] - c[i-1]) / dx
+            # Second-order backward difference
+            for i in range(2, N):
+                dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
                 dc_dt[i] = -v * dc_dx
+            if N > 1:
+                dc_dx = (c[1] - c[0]) / dx
+                dc_dt[1] = -v * dc_dx
 
             if bc_type == 'Dirichlet':
                 dc_dt[0] = 0.0
             elif bc_type == 'Periodic':
-                dc_dx = (c[0] - c[N-1]) / dx
+                dc_dx = (3*c[0] - 4*c[N-1] + c[N-2]) / (2*dx)
                 dc_dt[0] = -v * dc_dx
         else:
-            # Forward difference
-            for i in range(N-1):
-                dc_dx = (c[i+1] - c[i]) / dx
+            # Second-order forward difference
+            for i in range(N-2):
+                dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
                 dc_dt[i] = -v * dc_dx
+            if N > 1:
+                dc_dx = (c[N-1] - c[N-2]) / dx
+                dc_dt[N-2] = -v * dc_dx
 
             if bc_type == 'Dirichlet':
                 dc_dt[N-1] = 0.0
             elif bc_type == 'Periodic':
-                dc_dx = (c[0] - c[N-1]) / dx
+                dc_dx = (-3*c[N-1] + 4*c[0] - c[1]) / (2*dx)
                 dc_dt[N-1] = -v * dc_dx
 
         return dc_dt
