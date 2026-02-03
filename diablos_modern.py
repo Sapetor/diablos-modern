@@ -11,9 +11,42 @@ import os
 import logging
 import json
 import warnings
+import threading
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+
+
+def _preload_heavy_modules():
+    """Preload heavy modules in background thread to avoid first-simulation delay."""
+    import time as _t
+    _start = _t.time()
+    try:
+        # scipy.signal takes ~3s to import on first use
+        from scipy import signal
+        from scipy.integrate import solve_ivp  # noqa: F401
+        # numpy should already be loaded, but ensure it's ready
+        import numpy as np
+
+        # CRITICAL: signal.cont2discrete has lazy init that takes ~3s on first call
+        # Trigger it now with a dummy system to avoid delay during first simulation
+        _dummy_A = np.array([[0, 1], [-1, -1]])
+        _dummy_B = np.array([[0], [1]])
+        _dummy_C = np.array([[1, 0]])
+        _dummy_D = np.array([[0]])
+        signal.cont2discrete((_dummy_A, _dummy_B, _dummy_C, _dummy_D), 0.01)
+
+        print(f"[PRELOAD] Heavy modules loaded in {_t.time() - _start:.2f}s")
+    except ImportError as e:
+        print(f"[PRELOAD] Failed: {e}")
+    except Exception as e:
+        print(f"[PRELOAD] Warning: {e}")
+
+
+# Start preloading immediately in background thread
+print("[PRELOAD] Starting background import of scipy...")
+_preload_thread = threading.Thread(target=_preload_heavy_modules, daemon=True)
+_preload_thread.start()
 
 # Import modern UI components
 from modern_ui.main_window import ModernDiaBloSWindow

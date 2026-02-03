@@ -80,15 +80,17 @@ class SimulationEngine:
     def initialize_execution(self, blocks_list: List[DBlock], lines_list: Optional[List[DLine]] = None) -> bool:
         """
         Initialize the execution sequence for the simulation.
-        
+
         Args:
             blocks_list: List of blocks (Top Level)
             lines_list: List of lines (Top Level). Required for flattening.
-            
+
         Returns:
             bool: True if block initialization successful
         """
         try:
+            import time as _time
+            _te0 = _time.time()
             logger.debug("Engine: Initializing execution...")
             
             # 1. Flatten Hierarchy if lines provided
@@ -100,7 +102,7 @@ class SimulationEngine:
 
             # Check if flattening needed (if any Subsystem block exists)
             has_subsystems = any(getattr(b, 'block_type', '') == 'Subsystem' for b in blocks_list)
-            
+
             if has_subsystems:
                 logger.info("Flattening hierarchical system...")
                 self.active_blocks_list, self.active_line_list = self.flattener.flatten(blocks_list, lines_list)
@@ -108,49 +110,56 @@ class SimulationEngine:
             else:
                  self.active_blocks_list = blocks_list
                  self.active_line_list = lines_list
+            logger.debug(f"[ENGINE TIMING] flattening check: {_time.time() - _te0:.3f}s")
 
             # Integrity Check on the Active (Flattened) System
+            _te1 = _time.time()
             if not self.check_diagram_integrity():
                  self.error_msg = "Diagram integrity check failed (connections)."
                  logger.error(self.error_msg)
                  return False
+            logger.debug(f"[ENGINE TIMING] integrity check: {_time.time() - _te1:.3f}s")
 
             # Reset temporary lists using ACTIVE list
             self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
                                        for x in self.active_blocks_list]
             self.reset_execution_data()
             self.execution_time_start = time_module.time()
-            
+
             # Check for algebraic loops (part 1)
             check_loop = self.count_computed_global_list()
-            
+
             # Identify memory blocks (on ACTIVE list)
             self.identify_memory_blocks()
-            
+
             # Count RK45 integrators
             self.rk45_len = self.count_rk45_integrators()
             self.rk_counter = 0
-            
-            # Initial validation of signal dimensions happens in DSim or can remain there for now 
-            # as it relies on line_list which is in DSim/Model. 
+            logger.debug(f"[ENGINE TIMING] pre-loop setup: {_time.time() - _te0:.3f}s")
+
+            # Initial validation of signal dimensions happens in DSim or can remain there for now
+            # as it relies on line_list which is in DSim/Model.
             # For this refactor, we assume DSim handles the pre-checks on lines.
 
             # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
             # Iterate active_blocks_list instead of blocks_list input
             blocks_to_exec = self.active_blocks_list
             logger.info(f"Engine: Initializing execution for {len(blocks_to_exec)} blocks (flattened)")
+            _te2 = _time.time()
             
             for block in blocks_to_exec:
                 logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
                 children = {}
                 out_value = {}
-                
+
                 if block.b_type == 0:
                     # Execute source block
+                    _tblk = _time.time()
                     out_value = self.execute_block(block)
+                    logger.debug(f"[ENGINE TIMING] execute_block({block.name}): {_time.time() - _tblk:.3f}s")
                     if out_value is False: # execute_block handles errors and returns None/False/Dict
                         return False
-                        
+
                     block.computed_data = True
                     block.hierarchy = 0
                     self.update_global_list(block.name, h_value=0, h_assign=True)
@@ -158,7 +167,9 @@ class SimulationEngine:
 
                 elif block.name in self.memory_blocks:
                     # Execute memory block (output_only=True)
+                    _tblk = _time.time()
                     out_value = self.execute_block(block, output_only=True)
+                    logger.debug(f"[ENGINE TIMING] execute_block({block.name}, memory): {_time.time() - _tblk:.3f}s")
                     if out_value is False:
                          return False
 
@@ -177,18 +188,24 @@ class SimulationEngine:
                     if block.b_type not in [1, 3]: # Only propagate if valid type logic applies (memory blocks propagate manually here)
                          # Note: The original logic had custom propagation here.
                          pass
-                    
+
                     # We can reuse propagate_outputs but need to be careful about the specific logic used in init
                     # Original logic manually iterated children. Let's replicate or delegate.
+                    _tprop = _time.time()
                     self.propagate_outputs(block, out_value)
+                    _prop_time = _time.time() - _tprop
+                    if _prop_time > 0.01:
+                        logger.debug(f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s")
 
             # Un-compute memory blocks for the main loop
             for block in blocks_to_exec:
                 if block.name in self.memory_blocks:
                     block.computed_data = False
                     self.update_global_list(block.name, h_value=0, h_assign=False, reset_computed=True)
-            
+            logger.debug(f"[ENGINE TIMING] Loop 1 (source blocks): {_time.time() - _te2:.3f}s")
+
             # Loop 2: Hierarchy Resolution Matrix
+            _te3 = _time.time()
             h_count = 1
             while not self.check_global_list():
                 for block in blocks_to_exec:
@@ -248,14 +265,16 @@ class SimulationEngine:
                     check_loop = computed_count
                 
                 h_count += 1
-            
+            logger.debug(f"[ENGINE TIMING] Loop 2 (hierarchy): {_time.time() - _te3:.3f}s")
+
             # Sync hierarchies back to blocks
             self.reset_execution_data()
-            
+
             # Calculate max hierarchy
             self.max_hier = self.get_max_hierarchy()
-            
+
             logger.debug(f"Engine: Execution initialized. Max hierarchy: {self.max_hier}")
+            logger.debug(f"[ENGINE TIMING] initialize_execution TOTAL: {_time.time() - _te0:.3f}s")
             self.execution_initialized = True
             return True
 
@@ -911,16 +930,19 @@ class SimulationEngine:
             from scipy.integrate import solve_ivp
             from lib.workspace import WorkspaceManager
 
-            # Ensure hierarchy is calculated for topological sort
-            # Pass lines to allow flattening
-            # initialize_execution populates self.active_blocks_list and self.active_line_list
-            if not self.initialize_execution(blocks, lines):
-                logger.error("Failed to initialize execution (algebraic loop or error).")
-                return False
+            # Check if already initialized (by DSim.execution_init)
+            # Skip redundant initialization to avoid 2x overhead
+            if len(self.active_blocks_list) == 0:
+                # Not yet initialized - do it now
+                if not self.initialize_execution(blocks, lines):
+                    logger.error("Failed to initialize execution (algebraic loop or error).")
+                    return False
+            else:
+                logger.debug("Engine already initialized, skipping redundant initialization")
 
             # Use the FLATTENED lists for checking and compilation
             current_blocks = self.active_blocks_list
-            current_lines = self.active_line_list
+            current_lines = self.active_line_list if self.active_line_list else lines
 
             # CRITICAL: Resolve parameters before compilation
             # This populates exec_params with resolved values (workspace variables, etc.)
