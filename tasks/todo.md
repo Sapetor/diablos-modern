@@ -35,12 +35,12 @@
 ## Medium Priority
 
 ### Refactoring (from REFACTORING_TODO.md)
-- [ ] **Extract SubsystemManager from lib.py** - Complex extraction, needs careful testing
-  - File: `lib/lib.py` (1,948 lines)
-  - Risk: High - core functionality
-- [ ] **Standardize block error returns** - All blocks should return consistent error signals
-  - Currently 14 blocks return empty `{}` on execution
-  - Target: `{0: value, 'E': False}` or `{'E': True, 'error': msg}`
+- [x] **Extract SubsystemManager from lib.py** - Done in Phase 3 of improvement plan
+  - File: `lib/managers/subsystem_manager.py` (extracted)
+  - Delegated from `lib/lib.py`
+- [x] **Standardize block error returns** - Done in Phase 2 of improvement plan
+  - Fixed blocks: demux.py, sigproduct.py, pid.py
+  - All blocks now return `{0: value, 'E': False}` or `{'E': True, 'error': msg}`
 
 ### PDE Phase 1: Quick Wins (from PDE_ROADMAP.md)
 - [ ] **Periodic BCs** - Add to HeatEquation1D/2D, WaveEquation1D/2D
@@ -57,11 +57,14 @@
 ## Low Priority
 
 ### Refactoring (optional)
-- [ ] **Split modern_canvas.py** - Further modularization (currently 2,267 lines)
-  - Optional - already has extracted managers
+- [x] **Split modern_canvas.py** - Done in Phase 4 of improvement plan
+  - Extracted: ClipboardManager, ZoomPanManager
+  - File: `modern_ui/managers/`
 
 ### Documentation
-- [ ] **API documentation** - Generate docs from docstrings
+- [x] **API documentation** - Done in Phase 7 of improvement plan
+  - Files: `mkdocs.yml`, `docs/api/*.md`
+  - Using mkdocs + mkdocstrings with Google-style docstrings
 - [ ] **Video tutorials** - Demo videos for key features
 
 ---
@@ -93,12 +96,22 @@
 ## Completed
 
 ### February 2026
+- [x] **7-Phase Improvement Plan** - Comprehensive code quality improvements
+  - Phase 1: Bug fixes (FileService.save, SimulationEngine duplicates, sys.path)
+  - Phase 2: Block error handling standardization
+  - Phase 3: SubsystemManager extraction from lib.py
+  - Phase 4: modern_canvas.py split (ClipboardManager, ZoomPanManager)
+  - Phase 5: Config-driven logging (`lib/logging_config.py`, `config/logging.json`)
+  - Phase 6: Type hints (`lib/types.py`, base_block.py)
+  - Phase 7: API documentation (mkdocs + mkdocstrings)
+- [x] **Advection equation fix** - Second-order upwind scheme reduces error from 30% to <1%
+  - Files: `blocks/pde/advection_equation_1d.py`, `lib/engine/system_compiler.py`
 - [x] **Animation export for FieldScope** - GIF/MP4 export with dialog
   - Files: `lib/plotting/animation_exporter.py`, `modern_ui/widgets/animation_export_dialog.py`
 - [x] **Unit tests for 14 untested blocks** - 160 new tests added
   - TransportDelay, DiscreteTranFn, External, Assert, FFT, Subsystem, Inport, Outport, Abs, Terminator
 - [x] **Test coverage improvement** - 44% → 57% of blocks tested
-- [x] **Total tests** - 346 → 573 (421 unit + 152 integration)
+- [x] **Total tests** - 346 → 573 (422 unit + 152 integration)
 
 ### January 2026
 - [x] **Optimization Primitives** - 11 blocks for visual algorithm building
@@ -117,6 +130,8 @@
 
 | Date | Change |
 |------|--------|
+| 2026-02-03 | Completed 7-phase improvement plan (bugs, refactoring, code quality) |
+| 2026-02-03 | Fixed advection equation numerical diffusion (second-order upwind) |
 | 2026-02-02 | Created consolidated TODO from REFACTORING_TODO.md, PDE_ROADMAP.md, CLAUDE.md |
 | 2026-02-02 | Added animation export feature to completed |
 | 2026-02-02 | Added 160 new unit tests to completed |
