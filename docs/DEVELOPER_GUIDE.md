@@ -422,7 +422,43 @@ pytest -m unit
 
 # Only integration tests
 pytest -m integration
+
+# Only regression tests
+pytest -m regression
 ```
+
+### Test Categories
+
+| Category | Location | Purpose |
+|----------|----------|---------|
+| Unit | `tests/unit/` | Individual block and component tests |
+| Integration | `tests/integration/` | End-to-end simulation tests |
+| Regression | `tests/regression/` | Prevent breaking existing functionality |
+| Profiling | `tests/profiling/` | Performance analysis scripts |
+
+### Regression Tests
+
+The regression test suite (`tests/regression/test_regression_suite.py`) verifies:
+- Numerical accuracy of key blocks (integrators, TFs, state-space)
+- Previously fixed bugs don't regress
+- Critical block behaviors remain correct
+
+Run regression tests before merging any changes:
+```bash
+pytest tests/regression/ -v
+```
+
+### Profiling
+
+Profile simulation performance using:
+```bash
+python tests/profiling/profile_simulation.py
+```
+
+This measures execution time for:
+- Block-level control system simulations
+- PDE heat equation simulations
+- Optimization primitive workflows
 
 ### Writing Tests
 
