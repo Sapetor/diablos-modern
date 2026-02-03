@@ -51,7 +51,7 @@
             "params": {
                 "velocity": 0.5,
                 "L": 2.0,
-                "N": 101,
+                "N": 201,
                 "bc_type": "Dirichlet",
                 "init_conds": "gaussian"
             },
