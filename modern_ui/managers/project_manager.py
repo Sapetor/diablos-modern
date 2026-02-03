@@ -31,14 +31,18 @@ class ProjectManager:
 
     def open_diagram(self):
         """Open diagram."""
+        logger.info("open_diagram called")
         if self.diagram_service:
+            logger.info("Calling diagram_service.load_diagram()")
             # DiagramService handles dialogs?
             # Existing mainWindow implementation: self.diagram_service.load_diagram()
-            if self.diagram_service.load_diagram():
+            result = self.diagram_service.load_diagram()
+            logger.info(f"load_diagram returned: {result is not None}")
+            if result:
                  self.window.status_message.setText("Diagram opened")
-                 self.add_recent_file(self.diagram_service.current_file) # Assuming service tracks it? 
-                 # DiagramService doesn't expose current_file easily maybe? 
-                 # Let's check DiagramService later. For now assume we need to handle recent files here.
+                 self.add_recent_file(self.diagram_service.current_file)
+        else:
+            logger.warning("diagram_service is None!")
 
     def open_example(self, filename):
         """Open an example diagram."""
