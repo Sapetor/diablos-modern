@@ -52,7 +52,7 @@
                 "c": 1.0,
                 "damping": 0.0,
                 "L": 1.0,
-                "N": 51,
+                "N": 101,
                 "bc_type_left": "Dirichlet",
                 "bc_type_right": "Dirichlet",
                 "init_displacement": "sine",
