@@ -225,6 +225,8 @@ class TestGetMaxHierarchy:
         block3.hierarchy = 2
 
         simulation_model.blocks_list.extend([block1, block2, block3])
+        # Also populate active_blocks_list which is what get_max_hierarchy uses
+        simulation_engine.active_blocks_list = [block1, block2, block3]
 
         max_h = simulation_engine.get_max_hierarchy()
         assert max_h == 2
@@ -249,6 +251,8 @@ class TestResetExecutionData:
         block.input_queue = {0: 1.0, 1: 2.0}
 
         simulation_model.blocks_list.append(block)
+        # Also populate active_blocks_list which is what reset_execution_data uses
+        simulation_engine.active_blocks_list = [block]
 
         simulation_engine.reset_execution_data()
 

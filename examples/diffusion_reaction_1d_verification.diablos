@@ -1,0 +1,599 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 800,
+        "fps": 60,
+        "sim_time": 5.0,
+        "sim_dt": 0.005,
+        "sim_trange": 1000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "Source_Zero",
+            "coords_left": 60,
+            "coords_top": 140,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "BC_Zero",
+            "coords_left": 60,
+            "coords_top": 200,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "DiffusionReaction1D",
+            "sid": 3,
+            "username": "DiffReact_Numerical",
+            "coords_left": 200,
+            "coords_top": 120,
+            "coords_width": 130,
+            "coords_height": 110,
+            "coords_height_base": 110,
+            "in_ports": 3,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF8C00",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "diffusionreaction1d",
+            "params": {
+                "D": 0.1,
+                "k": 0.5,
+                "n": 1,
+                "L": 1.0,
+                "N": 51,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_conds": "sine"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 4,
+            "username": "Probe_Center",
+            "coords_left": 400,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Ramp",
+            "sid": 5,
+            "username": "Time",
+            "coords_left": 400,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "ramp",
+            "params": {
+                "slope": 1.0,
+                "delay": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 6,
+            "username": "TotalDecayRate",
+            "coords_left": 520,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": -1.4869604401089358
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 7,
+            "username": "Exp_Decay",
+            "coords_left": 640,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DDA0DD",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "mathfunction",
+            "params": {
+                "function": "exp"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "username": "Comparison",
+            "coords_left": 640,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Numerical, Analytical"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 9,
+            "username": "Error_Calc",
+            "coords_left": 560,
+            "coords_top": 220,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 10,
+            "username": "Error_Scope",
+            "coords_left": 680,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Error"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 11,
+            "username": "Field_View",
+            "coords_left": 400,
+            "coords_top": 180,
+            "coords_width": 100,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "magma",
+                "title": "c(x,t) Concentration",
+                "display_mode": "slider"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Source_Zero",
+            "srcport": 0,
+            "dstblock": "DiffReact_Numerical",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    160
+                ],
+                [
+                    170,
+                    160
+                ],
+                [
+                    170,
+                    150
+                ],
+                [
+                    200,
+                    150
+                ]
+            ]
+        },
+        {
+            "sid": 102,
+            "srcblock": "BC_Zero",
+            "srcport": 0,
+            "dstblock": "DiffReact_Numerical",
+            "dstport": 1,
+            "points": [
+                [
+                    140,
+                    220
+                ],
+                [
+                    170,
+                    220
+                ],
+                [
+                    170,
+                    180
+                ],
+                [
+                    200,
+                    180
+                ]
+            ]
+        },
+        {
+            "sid": 103,
+            "srcblock": "BC_Zero",
+            "srcport": 0,
+            "dstblock": "DiffReact_Numerical",
+            "dstport": 2,
+            "points": [
+                [
+                    140,
+                    220
+                ],
+                [
+                    170,
+                    220
+                ],
+                [
+                    170,
+                    210
+                ],
+                [
+                    200,
+                    210
+                ]
+            ]
+        },
+        {
+            "sid": 104,
+            "srcblock": "DiffReact_Numerical",
+            "srcport": 0,
+            "dstblock": "Probe_Center",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    160
+                ],
+                [
+                    365,
+                    160
+                ],
+                [
+                    365,
+                    125
+                ],
+                [
+                    400,
+                    125
+                ]
+            ]
+        },
+        {
+            "sid": 105,
+            "srcblock": "DiffReact_Numerical",
+            "srcport": 0,
+            "dstblock": "Field_View",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    160
+                ],
+                [
+                    365,
+                    160
+                ],
+                [
+                    365,
+                    207
+                ],
+                [
+                    400,
+                    207
+                ]
+            ]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Probe_Center",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    570,
+                    125
+                ],
+                [
+                    570,
+                    120
+                ],
+                [
+                    640,
+                    120
+                ]
+            ]
+        },
+        {
+            "sid": 107,
+            "srcblock": "Time",
+            "srcport": 0,
+            "dstblock": "TotalDecayRate",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    340
+                ],
+                [
+                    520,
+                    340
+                ]
+            ]
+        },
+        {
+            "sid": 108,
+            "srcblock": "TotalDecayRate",
+            "srcport": 0,
+            "dstblock": "Exp_Decay",
+            "dstport": 0,
+            "points": [
+                [
+                    600,
+                    340
+                ],
+                [
+                    640,
+                    340
+                ]
+            ]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Exp_Decay",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 1,
+            "points": [
+                [
+                    720,
+                    340
+                ],
+                [
+                    780,
+                    340
+                ],
+                [
+                    780,
+                    60
+                ],
+                [
+                    610,
+                    60
+                ],
+                [
+                    610,
+                    160
+                ],
+                [
+                    640,
+                    160
+                ]
+            ]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Probe_Center",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    530,
+                    125
+                ],
+                [
+                    530,
+                    235
+                ],
+                [
+                    560,
+                    235
+                ]
+            ]
+        },
+        {
+            "sid": 111,
+            "srcblock": "Exp_Decay",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 1,
+            "points": [
+                [
+                    720,
+                    340
+                ],
+                [
+                    780,
+                    340
+                ],
+                [
+                    780,
+                    280
+                ],
+                [
+                    540,
+                    280
+                ],
+                [
+                    540,
+                    255
+                ],
+                [
+                    560,
+                    255
+                ]
+            ]
+        },
+        {
+            "sid": 112,
+            "srcblock": "Error_Calc",
+            "srcport": 0,
+            "dstblock": "Error_Scope",
+            "dstport": 0,
+            "points": [
+                [
+                    620,
+                    245
+                ],
+                [
+                    680,
+                    245
+                ]
+            ]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    },
+    "_verification_notes": {
+        "problem": "1D Diffusion-Reaction with LINEAR decay (n=1)",
+        "equation": "dc/dt = D*d\u00b2c/dx\u00b2 - k*c",
+        "initial_condition": "c(x,0) = sin(pi*x/L)",
+        "boundary_conditions": "c(0) = c(L) = 0 (Dirichlet)",
+        "analytical_solution": "c(x,t) = sin(pi*x/L) * exp(-(D*(pi/L)\u00b2 + k)*t)",
+        "parameters": {
+            "D": 0.1,
+            "k": 0.5,
+            "L": 1.0,
+            "n": 1
+        },
+        "at_center": "c(0.5,t) = 1.0 * exp(-(0.1*pi\u00b2 + 0.5)*t) = exp(-1.487*t)",
+        "total_decay_rate": "lambda = D*(pi/L)\u00b2 + k = 0.1*9.87 + 0.5 = 1.487",
+        "expected_values": {
+            "t=0": 1.0,
+            "t=1": 0.226,
+            "t=2": 0.051,
+            "t=5": 0.0006
+        },
+        "note": "This verification only works for LINEAR reaction (n=1). For nonlinear reaction (n\u22601), analytical solutions are generally not available."
+    }
+}

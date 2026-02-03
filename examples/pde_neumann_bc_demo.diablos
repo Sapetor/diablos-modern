@@ -1,0 +1,445 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 20.0,
+        "sim_dt": 0.01,
+        "sim_trange": 2000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "NoHeatSource",
+            "coords_left": 60,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "LeftFlux_Zero",
+            "coords_left": 60,
+            "coords_top": 180,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 3,
+            "username": "RightFlux_Zero",
+            "coords_left": 60,
+            "coords_top": 260,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "HeatEquation1D",
+            "sid": 4,
+            "username": "InsulatedRod",
+            "coords_left": 220,
+            "coords_top": 140,
+            "coords_width": 120,
+            "coords_height": 100,
+            "coords_height_base": 100,
+            "in_ports": 3,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFA500",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "heatequation1d",
+            "params": {
+                "alpha": 0.05,
+                "L": 1.0,
+                "N": 30,
+                "bc_type_left": "Neumann",
+                "bc_type_right": "Neumann",
+                "init_conds": "gaussian"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 5,
+            "username": "TempFieldScope",
+            "coords_left": 420,
+            "coords_top": 120,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "hot",
+                "title": "Insulated Rod Temperature (Neumann BC)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldIntegral",
+            "sid": 6,
+            "username": "TotalHeat",
+            "coords_left": 420,
+            "coords_top": 200,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldintegral",
+            "params": {
+                "L": 1.0,
+                "normalize": false
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "EnergyScope",
+            "coords_left": 600,
+            "coords_top": 200,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Total Heat Energy"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 8,
+            "username": "ProbeLeft",
+            "coords_left": 420,
+            "coords_top": 280,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.0,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 9,
+            "username": "ProbeCenter",
+            "coords_left": 420,
+            "coords_top": 350,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 10,
+            "username": "ProbeRight",
+            "coords_left": 420,
+            "coords_top": 420,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 1.0,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 11,
+            "username": "TempProbesScope",
+            "coords_left": 600,
+            "coords_top": 320,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 3,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "T(x=0), T(x=0.5), T(x=1)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldMax",
+            "sid": 12,
+            "username": "MaxTemp",
+            "coords_left": 420,
+            "coords_top": 490,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 3,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldmax",
+            "params": {
+                "mode": "max",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 13,
+            "username": "MaxTempScope",
+            "coords_left": 600,
+            "coords_top": 470,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Max Temperature"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "NoHeatSource",
+            "srcport": 0,
+            "dstblock": "InsulatedRod",
+            "dstport": 0,
+            "points": [[140, 120], [180, 120], [180, 165], [220, 165]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "LeftFlux_Zero",
+            "srcport": 0,
+            "dstblock": "InsulatedRod",
+            "dstport": 1,
+            "points": [[140, 200], [180, 200], [180, 190], [220, 190]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "RightFlux_Zero",
+            "srcport": 0,
+            "dstblock": "InsulatedRod",
+            "dstport": 2,
+            "points": [[140, 280], [180, 280], [180, 215], [220, 215]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "TempFieldScope",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 142], [420, 142]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "TotalHeat",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 217], [420, 217]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "TotalHeat",
+            "srcport": 0,
+            "dstblock": "EnergyScope",
+            "dstport": 0,
+            "points": [[520, 225], [560, 225], [560, 217], [600, 217]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "ProbeLeft",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 297], [420, 297]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "ProbeCenter",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 367], [420, 367]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "ProbeRight",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 437], [420, 437]]
+        },
+        {
+            "sid": 110,
+            "srcblock": "ProbeLeft",
+            "srcport": 0,
+            "dstblock": "TempProbesScope",
+            "dstport": 0,
+            "points": [[520, 305], [560, 305], [560, 347], [600, 347]]
+        },
+        {
+            "sid": 111,
+            "srcblock": "ProbeCenter",
+            "srcport": 0,
+            "dstblock": "TempProbesScope",
+            "dstport": 1,
+            "points": [[520, 375], [560, 375], [560, 360], [600, 360]]
+        },
+        {
+            "sid": 112,
+            "srcblock": "ProbeRight",
+            "srcport": 0,
+            "dstblock": "TempProbesScope",
+            "dstport": 2,
+            "points": [[520, 445], [560, 445], [560, 373], [600, 373]]
+        },
+        {
+            "sid": 113,
+            "srcblock": "InsulatedRod",
+            "srcport": 0,
+            "dstblock": "MaxTemp",
+            "dstport": 0,
+            "points": [[340, 177], [380, 177], [380, 507], [420, 507]]
+        },
+        {
+            "sid": 114,
+            "srcblock": "MaxTemp",
+            "srcport": 0,
+            "dstblock": "MaxTempScope",
+            "dstport": 0,
+            "points": [[520, 502], [560, 502], [560, 487], [600, 487]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

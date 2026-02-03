@@ -1,0 +1,287 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 2.0,
+        "sim_dt": 0.005,
+        "sim_trange": 400
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "Inlet_Zero",
+            "coords_left": 80,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "AdvectionEquation1D",
+            "sid": 2,
+            "username": "Transport",
+            "coords_left": 250,
+            "coords_top": 130,
+            "coords_width": 130,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#00CED1",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "advectionequation1d",
+            "params": {
+                "velocity": 1.0,
+                "L": 2.0,
+                "N": 100,
+                "bc_type": "Dirichlet",
+                "init_conds": "gaussian"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 3,
+            "username": "Probe_Inlet",
+            "coords_left": 450,
+            "coords_top": 80,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.1,
+                "position_mode": "normalized",
+                "L": 2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 4,
+            "username": "Probe_Middle",
+            "coords_left": 450,
+            "coords_top": 160,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 5,
+            "username": "Probe_Outlet",
+            "coords_left": 450,
+            "coords_top": 240,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.9,
+                "position_mode": "normalized",
+                "L": 2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 6,
+            "username": "ConcentrationScope",
+            "coords_left": 620,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 3,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "c(inlet), c(middle), c(outlet)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 7,
+            "username": "TransportHeatmap",
+            "coords_left": 450,
+            "coords_top": 320,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 2.0,
+                "colormap": "plasma",
+                "title": "Concentration Transport"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "username": "MassScope",
+            "coords_left": 620,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Total Mass"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Inlet_Zero",
+            "srcport": 0,
+            "dstblock": "Transport",
+            "dstport": 0,
+            "points": [[160, 170], [250, 157]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "Transport",
+            "srcport": 0,
+            "dstblock": "Probe_Inlet",
+            "dstport": 0,
+            "points": [[380, 151], [415, 151], [415, 97], [450, 97]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Transport",
+            "srcport": 0,
+            "dstblock": "Probe_Middle",
+            "dstport": 0,
+            "points": [[380, 151], [415, 151], [415, 177], [450, 177]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "Transport",
+            "srcport": 0,
+            "dstblock": "Probe_Outlet",
+            "dstport": 0,
+            "points": [[380, 151], [415, 151], [415, 257], [450, 257]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "Transport",
+            "srcport": 0,
+            "dstblock": "TransportHeatmap",
+            "dstport": 0,
+            "points": [[380, 151], [415, 151], [415, 342], [450, 342]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Probe_Inlet",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 0,
+            "points": [[550, 105], [585, 105], [585, 120], [620, 120]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "Probe_Middle",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 1,
+            "points": [[550, 185], [585, 185], [585, 140], [620, 140]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Probe_Outlet",
+            "srcport": 0,
+            "dstblock": "ConcentrationScope",
+            "dstport": 2,
+            "points": [[550, 265], [585, 265], [585, 160], [620, 160]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Transport",
+            "srcport": 1,
+            "dstblock": "MassScope",
+            "dstport": 0,
+            "points": [[380, 177], [500, 177], [500, 240], [620, 240]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

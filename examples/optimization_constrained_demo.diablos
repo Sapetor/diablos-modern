@@ -1,0 +1,388 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 15.0,
+        "sim_dt": 0.01,
+        "sim_trange": 1500
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 1,
+            "username": "Reference",
+            "coords_left": 60,
+            "coords_top": 200,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "step",
+            "params": {
+                "step_time": 1.0,
+                "initial_value": 0.0,
+                "final_value": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 2,
+            "username": "Error",
+            "coords_left": 180,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Parameter",
+            "sid": 3,
+            "username": "Kp_param",
+            "coords_left": 260,
+            "coords_top": 80,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "parameter",
+            "params": {
+                "name": "Kp",
+                "value": 5.0,
+                "lower": 0.5,
+                "upper": 30.0,
+                "scale": "linear",
+                "fixed": false
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Parameter",
+            "sid": 4,
+            "username": "Ki_param",
+            "coords_left": 360,
+            "coords_top": 80,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "parameter",
+            "params": {
+                "name": "Ki",
+                "value": 1.0,
+                "lower": 0.0,
+                "upper": 15.0,
+                "scale": "linear",
+                "fixed": false
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "PID",
+            "sid": 5,
+            "username": "PID_Controller",
+            "coords_left": 280,
+            "coords_top": 180,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 4,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "pid",
+            "params": {
+                "Kp": 5.0,
+                "Ki": 1.0,
+                "Kd": 0.0,
+                "use_input_gains": true,
+                "derivative_filter": 0.01
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 6,
+            "username": "Plant",
+            "coords_left": 420,
+            "coords_top": 190,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "transferfunction",
+            "params": {
+                "num": [1.0],
+                "den": [1.0, 0.8, 1.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "ResponseScope",
+            "coords_left": 700,
+            "coords_top": 160,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Reference, Output"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "CostFunction",
+            "sid": 8,
+            "username": "ISE_Cost",
+            "coords_left": 420,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF0000",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "costfunction",
+            "params": {
+                "type": "ISE",
+                "target": 0.0,
+                "weight": 1.0,
+                "start_time": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constraint",
+            "sid": 9,
+            "username": "MaxOvershoot",
+            "coords_left": 560,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFA500",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constraint",
+            "params": {
+                "type": "<=",
+                "bound": 1.15,
+                "mode": "max",
+                "tolerance": 1e-6,
+                "penalty_weight": 1000.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Optimizer",
+            "sid": 10,
+            "username": "SLSQP_Optimizer",
+            "coords_left": 700,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "optimizer",
+            "params": {
+                "method": "SLSQP",
+                "max_iter": 100,
+                "tol": 1e-5,
+                "use_constraints": true,
+                "verbose": true
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 11,
+            "username": "CostScope",
+            "coords_left": 700,
+            "coords_top": 250,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "ISE Cost"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Reference",
+            "srcport": 0,
+            "dstblock": "Error",
+            "dstport": 0,
+            "points": [[140, 220], [160, 220], [160, 217], [180, 217]]
+        },
+        {
+            "sid": 102,
+            "srcblock": "Error",
+            "srcport": 0,
+            "dstblock": "PID_Controller",
+            "dstport": 0,
+            "points": [[230, 225], [255, 225], [255, 195], [280, 195]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Kp_param",
+            "srcport": 0,
+            "dstblock": "PID_Controller",
+            "dstport": 1,
+            "points": [[340, 100], [350, 100], [350, 140], [265, 140], [265, 210], [280, 210]]
+        },
+        {
+            "sid": 104,
+            "srcblock": "Ki_param",
+            "srcport": 0,
+            "dstblock": "PID_Controller",
+            "dstport": 2,
+            "points": [[440, 100], [450, 100], [450, 135], [270, 135], [270, 225], [280, 225]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "PID_Controller",
+            "srcport": 0,
+            "dstblock": "Plant",
+            "dstport": 0,
+            "points": [[380, 210], [400, 210], [400, 215], [420, 215]]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Plant",
+            "srcport": 0,
+            "dstblock": "ResponseScope",
+            "dstport": 1,
+            "points": [[520, 215], [660, 215], [660, 200], [700, 200]]
+        },
+        {
+            "sid": 107,
+            "srcblock": "Plant",
+            "srcport": 0,
+            "dstblock": "Error",
+            "dstport": 1,
+            "points": [[520, 215], [540, 215], [540, 270], [160, 270], [160, 233], [180, 233]]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Reference",
+            "srcport": 0,
+            "dstblock": "ResponseScope",
+            "dstport": 0,
+            "points": [[140, 220], [150, 220], [150, 150], [670, 150], [670, 180], [700, 180]]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Error",
+            "srcport": 0,
+            "dstblock": "ISE_Cost",
+            "dstport": 0,
+            "points": [[230, 225], [245, 225], [245, 317], [420, 317]]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Plant",
+            "srcport": 0,
+            "dstblock": "MaxOvershoot",
+            "dstport": 0,
+            "points": [[520, 215], [540, 215], [540, 325], [560, 325]]
+        },
+        {
+            "sid": 111,
+            "srcblock": "ISE_Cost",
+            "srcport": 0,
+            "dstblock": "CostScope",
+            "dstport": 0,
+            "points": [[520, 325], [540, 325], [540, 280], [660, 280], [660, 270], [700, 270]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

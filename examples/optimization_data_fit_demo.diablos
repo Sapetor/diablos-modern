@@ -1,0 +1,139 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 10.0,
+        "sim_dt": 0.01,
+        "sim_trange": 1000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 1,
+            "username": "Input",
+            "coords_left": 60,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "step",
+            "params": {
+                "delay": 0.0,
+                "value": 1.0,
+                "type": "up",
+                "pulse_start_up": true
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 4,
+            "username": "Gain_K",
+            "coords_left": 180,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": 0.5
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 5,
+            "username": "FirstOrder_tau",
+            "coords_left": 300,
+            "coords_top": 150,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "transferfunction",
+            "params": {
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 6,
+            "username": "OutputScope",
+            "coords_left": 500,
+            "coords_top": 130,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "System Output"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Input",
+            "srcport": 0,
+            "dstblock": "Gain_K",
+            "dstport": 0,
+            "points": [[140, 170], [160, 170], [160, 170], [180, 170]]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Gain_K",
+            "srcport": 0,
+            "dstblock": "FirstOrder_tau",
+            "dstport": 0,
+            "points": [[260, 170], [280, 170], [280, 175], [300, 175]]
+        },
+        {
+            "sid": 105,
+            "srcblock": "FirstOrder_tau",
+            "srcport": 0,
+            "dstblock": "OutputScope",
+            "dstport": 0,
+            "points": [[400, 175], [440, 175], [440, 150], [500, 150]]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    }
+}

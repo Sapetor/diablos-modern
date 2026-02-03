@@ -1,0 +1,545 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 800,
+        "fps": 60,
+        "sim_time": 4.0,
+        "sim_dt": 0.002,
+        "sim_trange": 2000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "BC_Zero",
+            "coords_left": 60,
+            "coords_top": 180,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "WaveEquation1D",
+            "sid": 2,
+            "username": "Wave1D_Numerical",
+            "coords_left": 200,
+            "coords_top": 120,
+            "coords_width": 130,
+            "coords_height": 100,
+            "coords_height_base": 100,
+            "in_ports": 3,
+            "out_ports": 2,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#4169E1",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "waveequation1d",
+            "params": {
+                "c": 1.0,
+                "damping": 0.0,
+                "L": 1.0,
+                "N": 51,
+                "bc_type_left": "Dirichlet",
+                "bc_type_right": "Dirichlet",
+                "init_displacement": "sine",
+                "init_velocity": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 3,
+            "username": "Probe_Center",
+            "coords_left": 400,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.5,
+                "position_mode": "normalized",
+                "L": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Ramp",
+            "sid": 4,
+            "username": "Time",
+            "coords_left": 400,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "ramp",
+            "params": {
+                "slope": 1.0,
+                "delay": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 5,
+            "username": "OmegaScale",
+            "coords_left": 520,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": 3.141592653589793
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 6,
+            "username": "Cos_Wave",
+            "coords_left": 640,
+            "coords_top": 320,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DDA0DD",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "mathfunction",
+            "params": {
+                "function": "cos"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "username": "Comparison",
+            "coords_left": 640,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Numerical, Analytical"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 8,
+            "username": "Error_Calc",
+            "coords_left": 560,
+            "coords_top": 220,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 9,
+            "username": "Error_Scope",
+            "coords_left": 680,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Error"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 10,
+            "username": "Field_View",
+            "coords_left": 400,
+            "coords_top": 180,
+            "coords_width": 100,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 1.0,
+                "colormap": "coolwarm",
+                "title": "u(x,t) Wave Evolution",
+                "display_mode": "slider"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "BC_Zero",
+            "srcport": 0,
+            "dstblock": "Wave1D_Numerical",
+            "dstport": 1,
+            "points": [
+                [
+                    140,
+                    200
+                ],
+                [
+                    170,
+                    200
+                ],
+                [
+                    170,
+                    155
+                ],
+                [
+                    200,
+                    155
+                ]
+            ]
+        },
+        {
+            "sid": 102,
+            "srcblock": "BC_Zero",
+            "srcport": 0,
+            "dstblock": "Wave1D_Numerical",
+            "dstport": 2,
+            "points": [
+                [
+                    140,
+                    200
+                ],
+                [
+                    170,
+                    200
+                ],
+                [
+                    170,
+                    185
+                ],
+                [
+                    200,
+                    185
+                ]
+            ]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Wave1D_Numerical",
+            "srcport": 0,
+            "dstblock": "Probe_Center",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    155
+                ],
+                [
+                    365,
+                    155
+                ],
+                [
+                    365,
+                    125
+                ],
+                [
+                    400,
+                    125
+                ]
+            ]
+        },
+        {
+            "sid": 104,
+            "srcblock": "Wave1D_Numerical",
+            "srcport": 0,
+            "dstblock": "Field_View",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    155
+                ],
+                [
+                    365,
+                    155
+                ],
+                [
+                    365,
+                    207
+                ],
+                [
+                    400,
+                    207
+                ]
+            ]
+        },
+        {
+            "sid": 105,
+            "srcblock": "Probe_Center",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    570,
+                    125
+                ],
+                [
+                    570,
+                    120
+                ],
+                [
+                    640,
+                    120
+                ]
+            ]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Time",
+            "srcport": 0,
+            "dstblock": "OmegaScale",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    340
+                ],
+                [
+                    520,
+                    340
+                ]
+            ]
+        },
+        {
+            "sid": 107,
+            "srcblock": "OmegaScale",
+            "srcport": 0,
+            "dstblock": "Cos_Wave",
+            "dstport": 0,
+            "points": [
+                [
+                    600,
+                    340
+                ],
+                [
+                    640,
+                    340
+                ]
+            ]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Cos_Wave",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 1,
+            "points": [
+                [
+                    720,
+                    340
+                ],
+                [
+                    780,
+                    340
+                ],
+                [
+                    780,
+                    60
+                ],
+                [
+                    610,
+                    60
+                ],
+                [
+                    610,
+                    160
+                ],
+                [
+                    640,
+                    160
+                ]
+            ]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Probe_Center",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    530,
+                    125
+                ],
+                [
+                    530,
+                    235
+                ],
+                [
+                    560,
+                    235
+                ]
+            ]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Cos_Wave",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 1,
+            "points": [
+                [
+                    720,
+                    340
+                ],
+                [
+                    780,
+                    340
+                ],
+                [
+                    780,
+                    280
+                ],
+                [
+                    540,
+                    280
+                ],
+                [
+                    540,
+                    255
+                ],
+                [
+                    560,
+                    255
+                ]
+            ]
+        },
+        {
+            "sid": 111,
+            "srcblock": "Error_Calc",
+            "srcport": 0,
+            "dstblock": "Error_Scope",
+            "dstport": 0,
+            "points": [
+                [
+                    620,
+                    245
+                ],
+                [
+                    680,
+                    245
+                ]
+            ]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    },
+    "_verification_notes": {
+        "problem": "1D Wave Equation - Standing Wave (undamped)",
+        "initial_condition": "u(x,0) = sin(pi*x/L), du/dt(x,0) = 0",
+        "boundary_conditions": "u(0) = u(L) = 0 (fixed ends)",
+        "analytical_solution": "u(x,t) = sin(pi*x/L) * cos(pi*c*t/L)",
+        "at_center": "u(0.5,t) = sin(pi*0.5) * cos(pi*t) = 1.0 * cos(pi*t)",
+        "angular_frequency": "omega = pi*c/L = pi*1.0/1.0 = pi rad/s",
+        "period": "T = 2*L/c = 2.0 s",
+        "expected_values": {
+            "t=0": 1.0,
+            "t=0.5": 0.0,
+            "t=1.0": -1.0,
+            "t=1.5": 0.0,
+            "t=2.0": 1.0
+        }
+    }
+}

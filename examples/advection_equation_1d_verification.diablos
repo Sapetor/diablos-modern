@@ -1,0 +1,711 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 800,
+        "fps": 60,
+        "sim_time": 2.0,
+        "sim_dt": 0.002,
+        "sim_trange": 1000
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "Inlet_Zero",
+            "coords_left": 60,
+            "coords_top": 160,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "AdvectionEquation1D",
+            "sid": 2,
+            "username": "Advection_Numerical",
+            "coords_left": 200,
+            "coords_top": 120,
+            "coords_width": 130,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#32CD32",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "advectionequation1d",
+            "params": {
+                "velocity": 0.5,
+                "L": 2.0,
+                "N": 101,
+                "bc_type": "Dirichlet",
+                "init_conds": "gaussian"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldProbe",
+            "sid": 3,
+            "username": "Probe_Position",
+            "coords_left": 400,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#9370DB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldprobe",
+            "params": {
+                "position": 0.375,
+                "position_mode": "normalized",
+                "L": 2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FieldScope",
+            "sid": 4,
+            "username": "Field_View",
+            "coords_left": 400,
+            "coords_top": 180,
+            "coords_width": 100,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "fieldscope",
+            "params": {
+                "L": 2.0,
+                "colormap": "viridis",
+                "title": "c(x,t) Advection",
+                "display_mode": "slider"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Ramp",
+            "sid": 5,
+            "username": "Time",
+            "coords_left": 400,
+            "coords_top": 340,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#87CEEB",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "ramp",
+            "params": {
+                "slope": 1.0,
+                "delay": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 6,
+            "username": "Velocity",
+            "coords_left": 520,
+            "coords_top": 340,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": -0.5
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 7,
+            "username": "ProbePos_Offset",
+            "coords_left": 520,
+            "coords_top": 400,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "constant",
+            "params": {
+                "value": 0.25
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 8,
+            "username": "Xi_Calc",
+            "coords_left": 620,
+            "coords_top": 360,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "++"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 9,
+            "username": "Gaussian_Scale",
+            "coords_left": 720,
+            "coords_top": 360,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFD700",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "gain",
+            "params": {
+                "gain": -100.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 10,
+            "username": "Square",
+            "coords_left": 720,
+            "coords_top": 420,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DDA0DD",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "mathfunction",
+            "params": {
+                "function": "square"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 11,
+            "username": "Exp_Gaussian",
+            "coords_left": 820,
+            "coords_top": 360,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#DDA0DD",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "mathfunction",
+            "params": {
+                "function": "exp"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 12,
+            "username": "Comparison",
+            "coords_left": 640,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Numerical, Analytical"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 13,
+            "username": "Error_Calc",
+            "coords_left": 560,
+            "coords_top": 220,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ADD8E6",
+            "b_type": 1,
+            "io_edit": false,
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 14,
+            "username": "Error_Scope",
+            "coords_left": 680,
+            "coords_top": 220,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF6347",
+            "b_type": 1,
+            "io_edit": true,
+            "fn_name": "scope",
+            "params": {
+                "labels": "Error"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "sid": 101,
+            "srcblock": "Inlet_Zero",
+            "srcport": 0,
+            "dstblock": "Advection_Numerical",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    180
+                ],
+                [
+                    170,
+                    180
+                ],
+                [
+                    170,
+                    160
+                ],
+                [
+                    200,
+                    160
+                ]
+            ]
+        },
+        {
+            "sid": 102,
+            "srcblock": "Advection_Numerical",
+            "srcport": 0,
+            "dstblock": "Probe_Position",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    160
+                ],
+                [
+                    365,
+                    160
+                ],
+                [
+                    365,
+                    125
+                ],
+                [
+                    400,
+                    125
+                ]
+            ]
+        },
+        {
+            "sid": 103,
+            "srcblock": "Advection_Numerical",
+            "srcport": 0,
+            "dstblock": "Field_View",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    160
+                ],
+                [
+                    365,
+                    160
+                ],
+                [
+                    365,
+                    207
+                ],
+                [
+                    400,
+                    207
+                ]
+            ]
+        },
+        {
+            "sid": 104,
+            "srcblock": "Probe_Position",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    570,
+                    125
+                ],
+                [
+                    570,
+                    120
+                ],
+                [
+                    640,
+                    120
+                ]
+            ]
+        },
+        {
+            "sid": 105,
+            "srcblock": "Time",
+            "srcport": 0,
+            "dstblock": "Velocity",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    360
+                ],
+                [
+                    520,
+                    360
+                ]
+            ]
+        },
+        {
+            "sid": 106,
+            "srcblock": "Velocity",
+            "srcport": 0,
+            "dstblock": "Xi_Calc",
+            "dstport": 0,
+            "points": [
+                [
+                    590,
+                    360
+                ],
+                [
+                    600,
+                    360
+                ],
+                [
+                    600,
+                    375
+                ],
+                [
+                    620,
+                    375
+                ]
+            ]
+        },
+        {
+            "sid": 107,
+            "srcblock": "ProbePos_Offset",
+            "srcport": 0,
+            "dstblock": "Xi_Calc",
+            "dstport": 1,
+            "points": [
+                [
+                    600,
+                    420
+                ],
+                [
+                    610,
+                    420
+                ],
+                [
+                    610,
+                    395
+                ],
+                [
+                    620,
+                    395
+                ]
+            ]
+        },
+        {
+            "sid": 108,
+            "srcblock": "Xi_Calc",
+            "srcport": 0,
+            "dstblock": "Square",
+            "dstport": 0,
+            "points": [
+                [
+                    680,
+                    385
+                ],
+                [
+                    700,
+                    385
+                ],
+                [
+                    700,
+                    440
+                ],
+                [
+                    720,
+                    440
+                ]
+            ]
+        },
+        {
+            "sid": 109,
+            "srcblock": "Square",
+            "srcport": 0,
+            "dstblock": "Gaussian_Scale",
+            "dstport": 0,
+            "points": [
+                [
+                    790,
+                    440
+                ],
+                [
+                    810,
+                    440
+                ],
+                [
+                    810,
+                    380
+                ],
+                [
+                    790,
+                    380
+                ]
+            ]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Gaussian_Scale",
+            "srcport": 0,
+            "dstblock": "Exp_Gaussian",
+            "dstport": 0,
+            "points": [
+                [
+                    790,
+                    380
+                ],
+                [
+                    820,
+                    380
+                ]
+            ]
+        },
+        {
+            "sid": 111,
+            "srcblock": "Exp_Gaussian",
+            "srcport": 0,
+            "dstblock": "Comparison",
+            "dstport": 1,
+            "points": [
+                [
+                    890,
+                    380
+                ],
+                [
+                    920,
+                    380
+                ],
+                [
+                    920,
+                    60
+                ],
+                [
+                    610,
+                    60
+                ],
+                [
+                    610,
+                    160
+                ],
+                [
+                    640,
+                    160
+                ]
+            ]
+        },
+        {
+            "sid": 112,
+            "srcblock": "Probe_Position",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 0,
+            "points": [
+                [
+                    500,
+                    125
+                ],
+                [
+                    530,
+                    125
+                ],
+                [
+                    530,
+                    235
+                ],
+                [
+                    560,
+                    235
+                ]
+            ]
+        },
+        {
+            "sid": 113,
+            "srcblock": "Exp_Gaussian",
+            "srcport": 0,
+            "dstblock": "Error_Calc",
+            "dstport": 1,
+            "points": [
+                [
+                    890,
+                    380
+                ],
+                [
+                    920,
+                    380
+                ],
+                [
+                    920,
+                    280
+                ],
+                [
+                    540,
+                    280
+                ],
+                [
+                    540,
+                    255
+                ],
+                [
+                    560,
+                    255
+                ]
+            ]
+        },
+        {
+            "sid": 114,
+            "srcblock": "Error_Calc",
+            "srcport": 0,
+            "dstblock": "Error_Scope",
+            "dstport": 0,
+            "points": [
+                [
+                    620,
+                    245
+                ],
+                [
+                    680,
+                    245
+                ]
+            ]
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    },
+    "_verification_notes": {
+        "problem": "1D Advection Equation - Traveling Gaussian Pulse",
+        "initial_condition": "c(x,0) = exp(-100*(x - L/4)^2) = Gaussian at x=0.5 (L=2)",
+        "boundary_conditions": "c(0,t) = 0 (Dirichlet inlet)",
+        "analytical_solution": "c(x,t) = exp(-100*(x - v*t - L/4)^2)",
+        "probe_position": "x = 0.75 (normalized 0.375 of L=2)",
+        "analytical_at_probe": "c(0.75, t) = exp(-100*(0.75 - 0.5*t - 0.5)^2) = exp(-100*(0.25 - 0.5*t)^2)",
+        "parameters": {
+            "velocity": "v = 0.5 m/s",
+            "domain": "L = 2.0 m",
+            "gaussian_width": "sigma = sqrt(1/200) \u2248 0.07 m"
+        },
+        "expected_behavior": {
+            "t=0": "Probe at x=0.75 sees c \u2248 exp(-100*0.0625) \u2248 0.002 (far from peak)",
+            "t=0.5": "Peak at x=0.75, probe sees c \u2248 1.0",
+            "t=1.0": "Probe sees c \u2248 exp(-100*0.0625) \u2248 0.002 (peak has passed)"
+        }
+    }
+}
