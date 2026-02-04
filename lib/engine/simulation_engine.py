@@ -139,6 +139,15 @@ class SimulationEngine:
             # as it relies on line_list which is in DSim/Model.
             # For this refactor, we assume DSim handles the pre-checks on lines.
 
+            # Initialize exec_params for all blocks before execution
+            from lib.workspace import WorkspaceManager
+            workspace_manager = WorkspaceManager()
+            for block in self.active_blocks_list:
+                block.exec_params = workspace_manager.resolve_params(block.params)
+                # Copy internal parameters (those starting with '_')
+                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+                block.exec_params['dtime'] = self.sim_dt if hasattr(self, 'sim_dt') else 0.01
+
             # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
             # Iterate active_blocks_list instead of blocks_list input
             blocks_to_exec = self.active_blocks_list
@@ -195,11 +204,10 @@ class SimulationEngine:
                     if _prop_time > 0.01:
                         logger.debug(f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s")
 
-            # Un-compute memory blocks for the main loop
-            for block in blocks_to_exec:
-                if block.name in self.memory_blocks:
-                    block.computed_data = False
-                    self.update_global_list(block.name, h_value=0, h_assign=False, reset_computed=True)
+            # Note: Memory blocks stay computed - they executed in Loop 1 and will receive
+            # feedback via propagation. They don't need to re-execute in Loop 2.
+            # Their input_queue is preserved between time steps so feedback is applied
+            # at the START of the NEXT time step in Loop 1.
             logger.debug(f"[ENGINE TIMING] Loop 1 (source blocks): {_time.time() - _te2:.3f}s")
 
             # Loop 2: Hierarchy Resolution Matrix
@@ -230,6 +238,11 @@ class SimulationEngine:
                         # OUT_VALUE execute_block...
                         out_value = self.execute_block(block)
                         if out_value is False:
+                            return False
+                        # Check for error dict from block
+                        if isinstance(out_value, dict) and out_value.get('E') or out_value.get('error'):
+                            self.error_msg = out_value.get('error', 'Block returned error')
+                            logger.error(f"Block {block.name} error: {self.error_msg}")
                             return False
                             
                         # Memory block special output update
@@ -497,6 +510,7 @@ class SimulationEngine:
         """Reset execution state for all blocks.
 
         IMPORTANT: Must update global_computed_list AND restore hierarchy from it.
+        Memory blocks preserve their input_queue so feedback from previous step can be used.
         """
         # Safety check - if global_computed_list isn't populated yet, use simple reset
         if not self.global_computed_list or len(self.global_computed_list) != len(self.active_blocks_list):
@@ -505,16 +519,21 @@ class SimulationEngine:
                 block.data_recieved = 0
                 block.data_sent = 0
                 block.hierarchy = -1
-                block.input_queue = {}
+                # Preserve input_queue for memory blocks (they need feedback from previous step)
+                if block.name not in self.memory_blocks:
+                    block.input_queue = {}
             return
-            
+
         for i in range(len(self.active_blocks_list)):
+            block = self.active_blocks_list[i]
             self.global_computed_list[i]['computed_data'] = False
-            self.active_blocks_list[i].computed_data = False
-            self.active_blocks_list[i].data_recieved = 0
-            self.active_blocks_list[i].data_sent = 0
-            self.active_blocks_list[i].input_queue = {}
-            self.active_blocks_list[i].hierarchy = self.global_computed_list[i]['hierarchy']
+            block.computed_data = False
+            block.data_recieved = 0
+            block.data_sent = 0
+            # Preserve input_queue for memory blocks (they need feedback from previous step)
+            if block.name not in self.memory_blocks:
+                block.input_queue = {}
+            block.hierarchy = self.global_computed_list[i]['hierarchy']
     
     # Duplicate definition of count_rk45_integrators here? 
     # Yes, previous edit might have left one. 
@@ -750,12 +769,22 @@ class SimulationEngine:
             block.b_type = 1 if np.all(D == 0) else 2
 
     def identify_memory_blocks(self) -> None:
-        """Identify blocks with memory (integrators, strictly proper TFs)."""
+        """Identify blocks with memory (integrators, strictly proper TFs, state variables)."""
         self.memory_blocks = set()
         for block in self.active_blocks_list:
-            if block.b_type == 1:
-                self.memory_blocks.add(block.name)
-            elif block.block_fn == 'Integrator':
+            # Check if block has requires_inputs=False property (can output without inputs)
+            block_class = getattr(block, 'block_class', None)
+            if block_class:
+                try:
+                    instance = block_class()
+                    if hasattr(instance, 'requires_inputs') and not instance.requires_inputs:
+                        self.memory_blocks.add(block.name)
+                        continue
+                except Exception:
+                    pass
+
+            # Check for known memory block types by name
+            if block.block_fn in ('Integrator', 'StateVariable', 'TransportDelay', 'Delay'):
                 self.memory_blocks.add(block.name)
             elif block.block_fn == 'TranFn':
                 num = block.params.get('numerator', [])
@@ -1276,6 +1305,49 @@ class SimulationEngine:
                              res = 1.0
                          out_val = res
 
+                    elif fn == 'Product':
+                         # Product block with configurable * and / operations
+                         ops = block.params.get('ops', '**')
+                         res = 1.0
+                         for idx, val in sorted(inputs.items()):
+                             op = ops[idx] if idx < len(ops) else '*'
+                             if op == '*':
+                                 res *= float(val)
+                             elif op == '/':
+                                 res = res / float(val) if val != 0 else 1e308
+                         out_val = res
+
+                    elif fn in ('Statevariable', 'StateVariable'):
+                         # StateVariable: manage discrete state across iterations
+                         # State is stored in block.params for persistence across replay steps
+                         # Key insight: We must update state from PREVIOUS iteration's computed input
+                         # before outputting, not after.
+                         if '_replay_state_' not in block.params:
+                             initial = block.params.get('initial_value', [1.0])
+                             if isinstance(initial, str):
+                                 try:
+                                     initial = eval(initial)
+                                 except:
+                                     initial = [1.0]
+                             # Preserve full vector state, not just first element
+                             block.params['_replay_state_'] = np.atleast_1d(initial).copy()
+                             block.params['_replay_pending_'] = None  # Input from previous step
+
+                         # First: Apply pending update from previous iteration
+                         if block.params['_replay_pending_'] is not None:
+                             block.params['_replay_state_'] = block.params['_replay_pending_']
+                             block.params['_replay_pending_'] = None
+
+                         # Output current state (preserve vector or return scalar if 1D)
+                         state = block.params['_replay_state_']
+                         out_val = state if np.atleast_1d(state).size > 1 else float(np.atleast_1d(state)[0])
+
+                         # Store input for next iteration (will be applied next time step)
+                         if 0 in inputs:
+                             new_val = inputs[0]
+                             # Preserve full vector, not just first element
+                             block.params['_replay_pending_'] = np.atleast_1d(new_val).copy()
+
                     elif fn == 'Exponential':
                         # y = a * exp(b * x)
                         a = float(block.params.get('a', 1.0))
@@ -1360,7 +1432,9 @@ class SimulationEngine:
 
                     elif fn == 'Mathfunction':
                         val = float(inputs.get(0, 0.0))
-                        func = str(block.params.get('function', 'sin')).lower()
+                        # Check both 'function' and 'expression' keys for backward compatibility
+                        func_raw = block.params.get('function', block.params.get('expression', 'sin'))
+                        func = str(func_raw).lower()
 
                         try:
                             if func == 'sin':
@@ -1398,7 +1472,17 @@ class SimulationEngine:
                             elif func == 'cube':
                                 out_val = val * val * val
                             else:
-                                out_val = np.sin(val)
+                                # Python expression fallback
+                                context = {
+                                    "u": val, "t": t,
+                                    "sin": np.sin, "cos": np.cos, "tan": np.tan,
+                                    "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
+                                    "exp": np.exp, "log": np.log, "log10": np.log10,
+                                    "sqrt": np.sqrt, "abs": np.abs, "sign": np.sign,
+                                    "ceil": np.ceil, "floor": np.floor,
+                                    "pi": np.pi, "e": np.e, "np": np
+                                }
+                                out_val = float(eval(str(func_raw), {"__builtins__": None}, context))
                         except (ValueError, ZeroDivisionError):
                             out_val = 0.0
 
@@ -1494,7 +1578,22 @@ class SimulationEngine:
 
                     elif fn in ('Terminator', 'Display'):
                         pass # Do nothing
-                        
+
+                    else:
+                        # Fallback: call block.execute() for unhandled block types
+                        # This handles optimization primitives and custom blocks
+                        if block.block_instance is not None:
+                            try:
+                                result = block.block_instance.execute(
+                                    time=t,
+                                    inputs=inputs,
+                                    params=block.params
+                                )
+                                if result and 0 in result:
+                                    out_val = result[0]
+                            except Exception as e:
+                                logger.debug(f"Replay fallback execute failed for {b_name}: {e}")
+
                     # Store
                     current_signals[b_name] = out_val
                     # logger.info(f"DEBUG Replay {b_name} t={t:.2f} out={out_val}") # Uncomment for verbose debug
