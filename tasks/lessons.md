@@ -195,3 +195,46 @@ has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
 
 **Lesson**: When adding `optional_inputs` support to a new code path (like `initialize_execution`), ensure ALL code paths that check input readiness are updated. The interpreter mode `execution_loop` was missed.
 
+---
+
+### Memory Block Feedback Not Applied (February 2026)
+
+**Problem**: StateVariable blocks in optimization diagrams stayed at initial value - gradient descent didn't converge. The feedback computed in the diagram was never applied to update the state.
+
+**Root Cause**: Two issues in `lib/engine/simulation_engine.py`:
+
+1. **input_queue cleared between time steps** (lines 522, 530): `reset_execution_data()` cleared `input_queue = {}` for ALL blocks. Memory blocks receive their feedback at the END of time step t, but need that feedback at the START of time step t+1. Clearing the queue erased the feedback.
+
+2. **Memory blocks un-computed after Loop 1** (lines 207-211): After memory blocks output their state in Loop 1 (with `output_only=True`), they were un-computed and would re-execute in Loop 2. With `optional_inputs = [0]`, StateVariable would execute IMMEDIATELY at the start of Loop 2 (before feedback was computed), with empty `input_queue`, so state never updated.
+
+**The Execution Flow Bug**:
+```
+Time t=0:
+- Loop 1: StateVariable outputs [5,5], input_queue empty
+- Memory blocks UN-COMPUTED (bug!)
+- Loop 2: StateVariable re-executes immediately (optional input), input_queue still empty
+- Loop 2 continues: X_update computes [3,3], propagates to StateVariable
+- End: input_queue = {0: [3,3]}
+
+Time t=1:
+- reset_execution_data() clears input_queue = {} (bug!)
+- Loop 1: StateVariable executes with empty input, outputs [5,5] again
+```
+
+**Fix**:
+1. Preserve `input_queue` for memory blocks in `reset_execution_data()`:
+```python
+if block.name not in self.memory_blocks:
+    block.input_queue = {}
+```
+
+2. Don't un-compute memory blocks after Loop 1 - remove lines 207-211. Memory blocks stay computed and receive feedback via propagation.
+
+**Lesson**: For memory blocks with feedback loops, the execution model must support:
+- Memory blocks output CURRENT state in Loop 1
+- Diagram computes NEXT state based on current state
+- Feedback arrives via propagation (stored in `input_queue`)
+- On NEXT time step, memory block uses preserved `input_queue` to update state
+
+Never clear `input_queue` for memory blocks between time steps, and don't re-execute them in Loop 2.
+

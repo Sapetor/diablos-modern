@@ -305,34 +305,179 @@ class ModernCanvas(QWidget):
 
     def _print_terminal_verification(self):
         """Print verification results to terminal after simulation completes."""
+        import numpy as np
         try:
-            # Collect Display block values
-            display_values = {}
             # Use active blocks from engine if available, otherwise fall back to blocks_list
             has_engine = hasattr(self.dsim, 'engine') and self.dsim.engine is not None
             use_active = has_engine and len(self.dsim.engine.active_blocks_list) > 0
             blocks_source = self.dsim.engine.active_blocks_list if use_active else self.dsim.blocks_list
+
+            # Collect Display block values
+            display_values = {}
             for block in blocks_source:
                 if block.block_fn == 'Display':
-                    # Get params - during execution, values are stored in block.params directly
                     params = block.params or {}
                     display_val = params.get('_display_value_', '---')
                     label = params.get('label', '')
                     block_name = label if label else block.username
                     display_values[block_name] = display_val
 
-            # Print to terminal with explicit flush
-            if display_values:
-                print("\n" + "=" * 50, flush=True)
-                print("SIMULATION RESULTS", flush=True)
-                print("=" * 50, flush=True)
-                for name, value in display_values.items():
-                    print(f"  {name}: {value}", flush=True)
-                print("=" * 50 + "\n", flush=True)
+            # Collect StateVariable final states (optimization convergence)
+            state_values = {}
+            for block in blocks_source:
+                if block.block_fn == 'StateVariable':
+                    exec_params = getattr(block, 'exec_params', {}) or {}
+                    state = exec_params.get('_state_')
+                    initial = exec_params.get('initial_value')
+                    if state is not None:
+                        state_arr = np.atleast_1d(state)
+                        initial_arr = np.atleast_1d(initial) if initial is not None else None
+                        block_name = block.username if block.username else block.name
+                        state_values[block_name] = {'final': state_arr, 'initial': initial_arr}
+
+            # Collect Scope convergence info (first/last values)
+            scope_convergence = {}
+            for block in blocks_source:
+                if block.block_fn == 'Scope':
+                    exec_params = getattr(block, 'exec_params', {}) or {}
+                    vec = exec_params.get('vector')
+                    if vec is not None and hasattr(vec, '__len__') and len(vec) > 0:
+                        arr = np.array(vec)
+                        vec_dim = exec_params.get('vec_dim', 1)
+                        labels = exec_params.get('vec_labels', block.username)
+
+                        # Reshape if interleaved multi-dimensional
+                        if arr.ndim == 1 and vec_dim > 1 and len(arr) >= vec_dim:
+                            num_samples = len(arr) // vec_dim
+                            arr = arr[:num_samples * vec_dim].reshape(num_samples, vec_dim)
+
+                        block_name = block.username if block.username else block.name
+                        if arr.ndim == 2:
+                            first_val = arr[0, :]
+                            last_val = arr[-1, :]
+                        else:
+                            first_val = arr[0] if len(arr) > 0 else None
+                            last_val = arr[-1] if len(arr) > 0 else None
+                        scope_convergence[block_name] = {
+                            'labels': labels,
+                            'first': first_val,
+                            'last': last_val,
+                            'samples': len(arr),
+                            'data': arr
+                        }
+
+            # Build output with verification checks
+            has_output = display_values or state_values or scope_convergence
+            all_checks_passed = True
+            check_results = []
+
+            if has_output:
+                print("\n" + "=" * 60, flush=True)
+                print("VERIFICATION RESULTS", flush=True)
+                print("=" * 60, flush=True)
+
+                # Display block values
+                if display_values:
+                    print("\n📊 Display Values:", flush=True)
+                    for name, value in display_values.items():
+                        print(f"   {name}: {value}", flush=True)
+
+                # StateVariable convergence check
+                if state_values:
+                    print("\n🎯 Optimization Convergence:", flush=True)
+                    for name, info in state_values.items():
+                        final = info['final']
+                        initial = info['initial']
+
+                        # Check if converged to near zero (common for quadratic minimization)
+                        final_norm = np.linalg.norm(final)
+                        converged_to_zero = final_norm < 1e-3
+
+                        # Check if state changed from initial
+                        if initial is not None:
+                            initial_norm = np.linalg.norm(initial)
+                            state_changed = not np.allclose(final, initial, rtol=1e-2)
+                            reduction = (initial_norm - final_norm) / initial_norm if initial_norm > 0 else 0
+                        else:
+                            state_changed = True
+                            reduction = None
+
+                        # Format output
+                        if len(final) <= 4:
+                            final_str = np.array2string(final, precision=6, suppress_small=True)
+                        else:
+                            final_str = f"[{final[0]:.4g}, ..., {final[-1]:.4g}]"
+
+                        status = "✓" if (converged_to_zero or state_changed) else "✗"
+                        if not (converged_to_zero or state_changed):
+                            all_checks_passed = False
+
+                        print(f"   {status} {name}: {final_str}", flush=True)
+                        if reduction is not None and reduction > 0:
+                            print(f"      ‖x‖ reduced by {reduction*100:.1f}%", flush=True)
+                        if converged_to_zero:
+                            print(f"      Converged to ‖x‖ = {final_norm:.2e}", flush=True)
+
+                # Scope convergence verification
+                if scope_convergence:
+                    print("\n📈 Signal Convergence:", flush=True)
+                    for name, info in scope_convergence.items():
+                        first = info['first']
+                        last = info['last']
+                        samples = info['samples']
+                        data = info['data']
+
+                        def format_val(v):
+                            if v is None:
+                                return "N/A"
+                            v = np.atleast_1d(v)
+                            if len(v) == 1:
+                                return f"{float(v[0]):.6g}"
+                            elif len(v) <= 3:
+                                return np.array2string(v, precision=4, suppress_small=True)
+                            else:
+                                return f"[{v[0]:.4g}, {v[1]:.4g}, ...]"
+
+                        # Check convergence criteria
+                        first_norm = np.linalg.norm(np.atleast_1d(first))
+                        last_norm = np.linalg.norm(np.atleast_1d(last))
+
+                        # Determine if this looks like an objective function (should decrease)
+                        is_objective = any(kw in name.lower() for kw in ['f_', 'cost', 'obj', 'error', 'norm', 'value'])
+                        # Determine if this looks like a state trajectory
+                        is_state = any(kw in name.lower() for kw in ['x_', 'state', 'traj', 'position'])
+
+                        if is_objective and first_norm > 0:
+                            # Objective should decrease significantly
+                            reduction = (first_norm - last_norm) / first_norm
+                            converged = reduction > 0.9 or last_norm < 1e-6
+                            status = "✓" if converged else "✗"
+                            if not converged:
+                                all_checks_passed = False
+                            print(f"   {status} {name}: {format_val(first)} → {format_val(last)}", flush=True)
+                            if reduction > 0:
+                                print(f"      Reduced by {reduction*100:.1f}%", flush=True)
+                        elif is_state:
+                            # State should change and ideally converge
+                            changed = not np.allclose(first, last, rtol=0.01)
+                            status = "✓" if changed else "✗"
+                            if not changed:
+                                all_checks_passed = False
+                            print(f"   {status} {name}: {format_val(first)} → {format_val(last)}", flush=True)
+                        else:
+                            # Generic scope - just show values
+                            print(f"   • {name} ({samples} pts): {format_val(first)} → {format_val(last)}", flush=True)
+
+                # Final verdict
+                print("\n" + "-" * 60, flush=True)
+                if all_checks_passed:
+                    print("✓ VERIFICATION PASSED", flush=True)
+                else:
+                    print("✗ VERIFICATION FAILED - Check values above", flush=True)
+                print("=" * 60 + "\n", flush=True)
                 sys.stdout.flush()
             else:
-                # No display blocks found - still provide feedback
-                print("\n[Simulation completed - no Display blocks to report]", flush=True)
+                print("\n[Simulation completed - no verification data]", flush=True)
                 sys.stdout.flush()
 
         except Exception as e:
@@ -1121,32 +1266,9 @@ class ModernCanvas(QWidget):
 
     def contextMenuEvent(self, event):
         """Handle context menu events."""
-        # This might be called automatically by Qt on right click.
-        # Check if we should delegate or handle here.
-        # Since _handle_right_click also exists (called by interaction manager), 
-        # let's try to map event position to items.
-        
-        pos = event.pos()
-        # Convert to world pos if needed? 
-        # _get_clicked_block expects... screen pos?
-        # _get_clicked_block uses block.rect (world coords usually? no rect is screen/canvas coords?).
-        # Blocks are stored in world coords? Need validation.
-        # Mouse events usually give widget coords.
-        # _get_clicked_block expects 'pos' in same system as block.rect.
-        # If block.rect is in logical coords, we need screen_to_world.
-        
-        world_pos = self.screen_to_world(pos)
-        block = self._get_clicked_block(world_pos)
-        
-        if block:
-            self._show_block_context_menu(block, event.globalPos())
-        else:
-             # Check line?
-             line, _ = self._get_clicked_line(world_pos)
-             if line:
-                 self._show_connection_context_menu(line, event.globalPos())
-             else:
-                 self._show_canvas_context_menu(event.globalPos())
+        # Context menu is already handled by _handle_right_click via interaction_manager.
+        # Just accept the event to prevent duplicate menu from appearing.
+        event.accept()
 
     def _show_block_context_menu(self, block, global_pos):
         """Show context menu for a block."""
@@ -1257,6 +1379,7 @@ class ModernCanvas(QWidget):
         logger.info("Create subsystem trigger called")
         subsys = self.dsim.create_subsystem_from_selection()
         if subsys:
+            self._update_line_positions()  # Recalculate line paths to connect to new subsystem ports
             self.update()
 
     def _paste_blocks(self, pos):
