@@ -26,9 +26,9 @@
             "io_edit": false,
             "fn_name": "step",
             "params": {
-                "step_time": 1.0,
-                "initial_value": 0.0,
-                "final_value": 1.0
+                "delay": 1.0,
+                "value": 1.0,
+                "type": "up"
             },
             "external": false,
             "flipped": false
@@ -47,7 +47,7 @@
             "dragging": false,
             "selected": false,
             "b_color": "#ADD8E6",
-            "b_type": 1,
+            "b_type": 2,
             "io_edit": false,
             "fn_name": "sum",
             "params": {
@@ -85,26 +85,23 @@
             "flipped": false
         },
         {
-            "block_fn": "Gain",
+            "block_fn": "SgProd",
             "sid": 4,
             "username": "Controller",
             "coords_left": 260,
             "coords_top": 150,
-            "coords_width": 80,
-            "coords_height": 40,
+            "coords_width": 60,
+            "coords_height": 60,
             "coords_height_base": 40,
-            "in_ports": 1,
+            "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
             "b_color": "#ADD8E6",
-            "b_type": 1,
+            "b_type": 2,
             "io_edit": false,
-            "fn_name": "gain",
-            "params": {
-                "gain": 1.0,
-                "use_input_gain": true
-            },
+            "fn_name": "sigproduct",
+            "params": {},
             "external": false,
             "flipped": false
         },
@@ -126,8 +123,14 @@
             "io_edit": false,
             "fn_name": "transferfunction",
             "params": {
-                "num": [1.0],
-                "den": [1.0, 2.0, 1.0]
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.0,
+                    2.0,
+                    1.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -146,7 +149,7 @@
             "dragging": false,
             "selected": false,
             "b_color": "#FF6347",
-            "b_type": 1,
+            "b_type": 3,
             "io_edit": true,
             "fn_name": "scope",
             "params": {
@@ -169,7 +172,7 @@
             "dragging": false,
             "selected": false,
             "b_color": "#FF0000",
-            "b_type": 1,
+            "b_type": 2,
             "io_edit": false,
             "fn_name": "costfunction",
             "params": {
@@ -195,13 +198,13 @@
             "dragging": false,
             "selected": false,
             "b_color": "#9370DB",
-            "b_type": 1,
+            "b_type": 2,
             "io_edit": false,
             "fn_name": "optimizer",
             "params": {
                 "method": "L-BFGS-B",
                 "max_iter": 50,
-                "tol": 1e-6,
+                "tol": 1e-06,
                 "verbose": true
             },
             "external": false,
@@ -221,7 +224,7 @@
             "dragging": false,
             "selected": false,
             "b_color": "#FF6347",
-            "b_type": 1,
+            "b_type": 3,
             "io_edit": true,
             "fn_name": "scope",
             "params": {
@@ -238,7 +241,24 @@
             "srcport": 0,
             "dstblock": "Error",
             "dstport": 0,
-            "points": [[140, 170], [160, 170], [160, 167], [180, 167]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    160,
+                    170
+                ],
+                [
+                    160,
+                    167
+                ],
+                [
+                    180,
+                    167
+                ]
+            ]
         },
         {
             "sid": 102,
@@ -246,15 +266,24 @@
             "srcport": 0,
             "dstblock": "Controller",
             "dstport": 0,
-            "points": [[230, 175], [245, 175], [245, 170], [260, 170]]
-        },
-        {
-            "sid": 103,
-            "srcblock": "Kp",
-            "srcport": 0,
-            "dstblock": "Controller",
-            "dstport": 0,
-            "points": [[340, 100], [350, 100], [350, 140], [250, 140], [250, 170], [260, 170]]
+            "points": [
+                [
+                    230,
+                    175
+                ],
+                [
+                    245,
+                    175
+                ],
+                [
+                    245,
+                    170
+                ],
+                [
+                    260,
+                    170
+                ]
+            ]
         },
         {
             "sid": 104,
@@ -262,7 +291,24 @@
             "srcport": 0,
             "dstblock": "Plant",
             "dstport": 0,
-            "points": [[340, 170], [360, 170], [360, 175], [380, 175]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    360,
+                    170
+                ],
+                [
+                    360,
+                    175
+                ],
+                [
+                    380,
+                    175
+                ]
+            ]
         },
         {
             "sid": 105,
@@ -270,7 +316,24 @@
             "srcport": 0,
             "dstblock": "ResponseScope",
             "dstport": 1,
-            "points": [[480, 175], [550, 175], [550, 170], [620, 170]]
+            "points": [
+                [
+                    480,
+                    175
+                ],
+                [
+                    550,
+                    175
+                ],
+                [
+                    550,
+                    170
+                ],
+                [
+                    620,
+                    170
+                ]
+            ]
         },
         {
             "sid": 106,
@@ -278,7 +341,32 @@
             "srcport": 0,
             "dstblock": "Error",
             "dstport": 1,
-            "points": [[480, 175], [500, 175], [500, 220], [160, 220], [160, 183], [180, 183]]
+            "points": [
+                [
+                    480,
+                    175
+                ],
+                [
+                    500,
+                    175
+                ],
+                [
+                    500,
+                    220
+                ],
+                [
+                    160,
+                    220
+                ],
+                [
+                    160,
+                    183
+                ],
+                [
+                    180,
+                    183
+                ]
+            ]
         },
         {
             "sid": 107,
@@ -286,7 +374,32 @@
             "srcport": 0,
             "dstblock": "ResponseScope",
             "dstport": 0,
-            "points": [[140, 170], [150, 170], [150, 60], [590, 60], [590, 150], [620, 150]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    150,
+                    170
+                ],
+                [
+                    150,
+                    60
+                ],
+                [
+                    590,
+                    60
+                ],
+                [
+                    590,
+                    150
+                ],
+                [
+                    620,
+                    150
+                ]
+            ]
         },
         {
             "sid": 108,
@@ -294,7 +407,24 @@
             "srcport": 0,
             "dstblock": "ISE_Cost",
             "dstport": 0,
-            "points": [[230, 175], [245, 175], [245, 267], [380, 267]]
+            "points": [
+                [
+                    230,
+                    175
+                ],
+                [
+                    245,
+                    175
+                ],
+                [
+                    245,
+                    267
+                ],
+                [
+                    380,
+                    267
+                ]
+            ]
         },
         {
             "sid": 109,
@@ -302,7 +432,49 @@
             "srcport": 0,
             "dstblock": "CostScope",
             "dstport": 0,
-            "points": [[480, 275], [500, 275], [500, 230], [710, 230], [710, 270], [700, 270]]
+            "points": [
+                [
+                    480,
+                    275
+                ],
+                [
+                    500,
+                    275
+                ],
+                [
+                    500,
+                    230
+                ],
+                [
+                    710,
+                    230
+                ],
+                [
+                    710,
+                    270
+                ],
+                [
+                    700,
+                    270
+                ]
+            ]
+        },
+        {
+            "sid": 110,
+            "srcblock": "Kp",
+            "srcport": 0,
+            "dstblock": "Controller",
+            "dstport": 1,
+            "points": [
+                [
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0
+                ]
+            ]
         }
     ],
     "version": "2.0",

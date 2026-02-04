@@ -55,10 +55,10 @@ class SigProductBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            mult = np.array(1.0, dtype=float)
+            mult = 1.0
             for input_value in inputs.values():
-                mult *= np.array(input_value, dtype=float)
+                mult = mult * np.atleast_1d(np.array(input_value, dtype=float))
             return {0: mult}
-        except (ValueError, TypeError):
-            return {'E': True, 'error': 'Invalid input type in sigproduct block. Expected numeric.'}
+        except (ValueError, TypeError) as e:
+            return {'E': True, 'error': f'Invalid input type in sigproduct block. Expected numeric. Error: {e}'}
 

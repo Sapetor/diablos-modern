@@ -52,7 +52,7 @@ class SumBlock(BaseBlock):
             params = self.params
 
         # Get the sign string - params is a flat dict like {'sign': '++'}
-        sign_string = params.get('sign', '++')
+        sign_string = params.get('signs', params.get('sign', '++'))
 
         # Handle case where sign might still be wrapped in a dict (initialization)
         if isinstance(sign_string, dict):
@@ -89,7 +89,7 @@ class SumBlock(BaseBlock):
         except ImportError:
             return None
 
-        sign_string = params.get('sign', '++')
+        sign_string = params.get('signs', params.get('sign', '++'))
         result = Integer(0)
 
         for i in range(len(sign_string)):
@@ -106,7 +106,8 @@ class SumBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             suma = 0.0
-            sign_string = params.get('sign', '++')
+            # Accept both 'sign' and 'signs' for backward compatibility
+            sign_string = params.get('signs', params.get('sign', '++'))
 
             for i in sorted(inputs.keys()):
                 sign = '+' # Default sign
@@ -123,5 +124,5 @@ class SumBlock(BaseBlock):
             return {0: suma}
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid input type in sum block. Expected numeric. Error: {str(e)}")
-            return {'error': True}
+            return {'E': True, 'error': f'Invalid input type in sum block: {str(e)}'}
 
