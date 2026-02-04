@@ -11,7 +11,8 @@ You can find detailed information about parameters and usage below.
 | [Exp](#exp) | Exponential Signal. |
 | [Gain](#gain) | Scales the input signal by a specified Gain. |
 | [MathFunction](#mathfunction) | Apply a mathematical function (sin, cos, sqrt, etc.). |
-| [SgProd](#sgprod) | Computes the product of input signals. |
+| [Product](#product) | Multiplies or divides multiple input signals. |
+| [SgProd](#sgprod) | Computes the element-wise product of input signals. |
 | [Sum](#sum) | Adds or subtracts multiple input signals. |
 
 ---
@@ -93,9 +94,32 @@ Use Matrix Gain (nested lists like [[1], [2]]) to expand scalars to vectors.
 
 ---
 
+### Product
+
+Multiplies or divides multiple input signals.
+
+Similar to Sum block but for multiplication/division operations.
+
+Parameters:
+- Ops: A string of '*' and '/' characters defining the operation for each input port.
+  Example: '*/' creates 2 ports: (in1 / in2).
+  Example: '**' creates 2 ports: (in1 * in2).
+
+Usage:
+Signal modulation, ratio calculations, or Newton's method (f/f').
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `ops` | string | `**` | Operations string: '*' for multiply, '/' for divide |
+
+**Ports**: 2 In (configurable), 1 Out
+
+---
+
 ### SgProd
 
-Computes the product of input signals.
+Computes the element-wise product of input signals.
 
 Operation:
 y = u1 * u2 * ... * un (Element-wise multiplication).

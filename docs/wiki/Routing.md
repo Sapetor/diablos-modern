@@ -9,8 +9,11 @@ You can find detailed information about parameters and usage below.
 | [Demux](#demux) | Demultiplexer (Demux). |
 | [From](#from) | From Tag. |
 | [Goto](#goto) | Goto Tag. |
+| [Inport](#inport) | Subsystem input port. |
 | [Mux](#mux) | Multiplexer (Mux). |
+| [Outport](#outport) | Subsystem output port. |
 | [Selector](#selector) | Selector / Indexer. |
+| [Subsystem](#subsystem) | Hierarchical container block. |
 | [Switch](#switch) | Signal Switch. |
 
 ---
@@ -80,6 +83,21 @@ Reduces visual clutter by hiding long connections.
 
 ---
 
+### Inport
+
+Subsystem Input Port.
+
+Represents an input terminal of a Subsystem.
+When placed inside a subsystem, it creates an input port on the parent Subsystem block.
+
+Usage:
+Place inside a Subsystem to define external inputs.
+The port name (e.g., "In1", "In2") determines the label shown on the parent block.
+
+**Ports**: 0 In, 1 Out
+
+---
+
 ### Mux
 
 Multiplexer (Mux).
@@ -93,6 +111,21 @@ Usage:
 Use to bundle signals for Scope plotting or bus routing.
 
 **Ports**: 2 In, 1 Out
+
+---
+
+### Outport
+
+Subsystem Output Port.
+
+Represents an output terminal of a Subsystem.
+When placed inside a subsystem, it creates an output port on the parent Subsystem block.
+
+Usage:
+Place inside a Subsystem to define external outputs.
+The port name (e.g., "Out1", "Out2") determines the label shown on the parent block.
+
+**Ports**: 1 In, 0 Out
 
 ---
 
@@ -143,5 +176,27 @@ Conditional logic or selecting between valid signals.
 | `mode` | string | `threshold` | 'threshold' or 'index'. |
 
 **Ports**: 3 In, 1 Out
+
+---
+
+### Subsystem
+
+Hierarchical Container Block.
+
+A container block that holds other blocks and connections, used to simplify complex diagrams by grouping related functionality.
+
+Operations:
+- **Double-click** to enter the subsystem and edit its contents
+- **Add Inport blocks** inside to create input ports on the parent
+- **Add Outport blocks** inside to create output ports on the parent
+
+Usage:
+Organize complex diagrams into logical modules.
+Reuse functionality by copy-pasting subsystems.
+Create hierarchical multi-level designs.
+
+See [Subsystems Architecture](Subsystems_Architecture.md) for technical details on flattening and execution.
+
+**Ports**: Dynamic (based on internal Inport/Outport blocks)
 
 ---
