@@ -96,3 +96,102 @@ use_active = has_engine and len(self.dsim.engine.active_blocks_list) > 0
 ```
 
 **Lesson**: When test files become outdated, either update them or mark as skipped with clear documentation. Don't let broken tests accumulate.
+
+---
+
+## Subsystem Patterns
+
+### Inport/Outport Block Naming (February 2026)
+
+**Problem**: Simulation failed with "Could not find Outport Subsystem/outport2" when creating subsystems with multiple unconnected ports.
+
+**Root Cause**: `DBlock.__init__` sets `self.name = block_fn.lower() + str(sid)`. When creating Inport/Outport blocks:
+```python
+outport = Outport(block_name=f"Out{outport_idx}")  # username set
+outport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1  # sid set AFTER init
+```
+The `name` is computed during `__init__` with default `sid=1`, so ALL Outport blocks get `name="outport1"`. Setting `sid` afterwards doesn't update `name`. Multiple blocks with the same name overwrite each other in `block_map`.
+
+**The Flattener Expectation**: The flattener in `lib/engine/flattener.py` looks for Inport/Outport blocks by convention:
+- Port index 0 → looks for `Out1` or `outport1`
+- Port index 1 → looks for `Out2` or `outport2`
+
+**Fix**: Always set `name` explicitly after setting `sid` in `subsystem_manager.py`:
+```python
+inport = Inport(block_name=f"In{inport_idx}")
+inport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+inport.name = f"inport{inport_idx}"  # CRITICAL: Update name to match port index
+
+outport = Outport(block_name=f"Out{outport_idx}")
+outport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+outport.name = f"outport{outport_idx}"  # CRITICAL: Update name to match port index
+```
+
+**Lesson**: When creating Inport/Outport blocks programmatically, always explicitly set the `name` attribute to match the 1-based port index (`inport1`, `inport2`, `outport1`, `outport2`). The `name` is used by the flattener to resolve signal paths through subsystems.
+
+---
+
+## Block Parameter Naming
+
+### TranFn Parameter Names Must Match Block Definition (February 2026)
+
+**Problem**: Optimization examples failed with "Algebraic loop detected" even though the feedback loop contained a Transfer Function block (which should break the loop).
+
+**Root Cause**: The `.diablos` example files used abbreviated parameter names:
+```json
+"params": {
+    "num": [1.0],
+    "den": [1.0, 2.0, 1.0]
+}
+```
+
+But the TranFn block definition (`blocks/transfer_function.py`) and the `identify_memory_blocks()` function in the simulation engine expect the full names:
+```json
+"params": {
+    "numerator": [1.0],
+    "denominator": [1.0, 2.0, 1.0]
+}
+```
+
+The `identify_memory_blocks()` function checks:
+```python
+num = block.params.get('numerator', [])
+den = block.params.get('denominator', [])
+if len(den) > len(num):
+    self.memory_blocks.add(block.name)
+```
+
+With wrong parameter names, `num` and `den` are empty lists, so the TranFn is NOT identified as a memory block. The algebraic loop detector then incorrectly flags the feedback loop.
+
+**Fix**: Update example files to use correct parameter names (`numerator`/`denominator` not `num`/`den`).
+
+**Lesson**: When creating or editing `.diablos` files manually, always use the exact parameter names from the block's `PARAMS` definition. The simulation engine's memory block detection depends on these exact names.
+
+---
+
+### Optional Inputs Not Handled in Interpreter Mode execution_loop (February 2026)
+
+**Problem**: Blocks with optional inputs (like CostFunction with optional reference port) were not executing in interpreter mode. The ISE Cost plot was empty even though the block was properly connected.
+
+**Root Cause**: In `lib/lib.py` `execution_loop()`, line 703 checked:
+```python
+block.data_recieved == block.in_ports or block.in_ports == 0
+```
+
+This required ALL input ports to receive data. CostFunction has 2 ports (signal and reference), but reference is optional (`optional_inputs = [1]`). With only signal connected: `data_recieved=1` but `in_ports=2`, so `1 != 2` and the block was skipped.
+
+Note: The `initialize_execution()` method correctly handles optional inputs, but the main simulation loop did not.
+
+**Fix**: Added optional input handling to match `initialize_execution()`:
+```python
+# Check if block has enough required inputs (accounting for optional inputs)
+optional_inputs = set()
+if hasattr(block, 'block_instance') and block.block_instance:
+    if hasattr(block.block_instance, 'optional_inputs'):
+        optional_inputs = set(block.block_instance.optional_inputs)
+required_ports = block.in_ports - len(optional_inputs)
+has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
+```
+
+**Lesson**: When adding `optional_inputs` support to a new code path (like `initialize_execution`), ensure ALL code paths that check input readiness are updated. The interpreter mode `execution_loop` was missed.
+

@@ -239,6 +239,10 @@ class CostFunctionBlock(BaseBlock):
         # Apply weight
         weighted_cost = accumulated * weight
 
+        # Debug logging
+        if time < 1.1 or int(time * 10) % 10 == 0:  # Log at start and every second
+            logger.info(f"CostFunction: t={time:.2f}, signal={signal:.4f}, error={error:.4f}, cost={weighted_cost:.4f}")
+
         return {0: weighted_cost, 'E': False}
 
     def get_final_cost(self, params):

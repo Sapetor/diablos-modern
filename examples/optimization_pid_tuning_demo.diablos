@@ -185,8 +185,8 @@
             "io_edit": false,
             "fn_name": "transferfunction",
             "params": {
-                "num": [1.0],
-                "den": [1.0, 1.5, 1.0]
+                "numerator": [1.0],
+                "denominator": [1.0, 1.5, 1.0]
             },
             "external": false,
             "flipped": false

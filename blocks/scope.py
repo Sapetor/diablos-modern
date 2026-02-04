@@ -73,13 +73,16 @@ class ScopeBlock(BaseBlock):
             return {0: np.array([0.0]), 'E': False}
 
         # Initialization of the saving vector
+        # Handle multiple input ports by concatenating all inputs
         if params.get('_init_start_', True):
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initializing, inputs: {inputs}")
-            aux_vector = np.atleast_1d(inputs[0])
-            try:
-                params['vec_dim'] = len(inputs[0])
-            except TypeError:
-                params['vec_dim'] = 1
+            # Concatenate all input ports in order
+            combined_input = []
+            for port_idx in sorted(inputs.keys()):
+                val = inputs[port_idx]
+                combined_input.append(np.atleast_1d(val).flatten())
+            aux_vector = np.concatenate(combined_input) if combined_input else np.array([0.0])
+            params['vec_dim'] = len(aux_vector)
 
             labels = params.get('labels', 'default')
             if labels == 'default':
@@ -97,6 +100,12 @@ class ScopeBlock(BaseBlock):
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initialized, vec_labels: {params['vec_labels']}")
         else:
             aux_vector = params['vector']
-            aux_vector = np.concatenate((aux_vector, np.atleast_1d(inputs[0])))
+            # Concatenate all input ports in order
+            combined_input = []
+            for port_idx in sorted(inputs.keys()):
+                val = inputs[port_idx]
+                combined_input.append(np.atleast_1d(val).flatten())
+            new_sample = np.concatenate(combined_input) if combined_input else np.array([0.0])
+            aux_vector = np.concatenate((aux_vector, new_sample))
         params['vector'] = aux_vector
         return {0: np.array([0.0]), 'E': False}

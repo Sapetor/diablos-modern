@@ -699,8 +699,16 @@ class DSim:
             # All blocks are executed according to the hierarchy order defined in the first iteration
             for hier in range(self.max_hier + 1):
                 for block in current_blocks:
+                    # Check if block has enough required inputs (accounting for optional inputs)
+                    optional_inputs = set()
+                    if hasattr(block, 'block_instance') and block.block_instance:
+                        if hasattr(block.block_instance, 'optional_inputs'):
+                            optional_inputs = set(block.block_instance.optional_inputs)
+                    required_ports = block.in_ports - len(optional_inputs)
+                    has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
+
                     # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
-                    if block.hierarchy == hier and (block.data_recieved == block.in_ports or block.in_ports == 0) and not block.computed_data:
+                    if block.hierarchy == hier and has_enough_inputs and not block.computed_data:
                         # Execute using engine (handles external vs internal, kwargs building)
                         out_value = self.engine.execute_block(block)
                         
