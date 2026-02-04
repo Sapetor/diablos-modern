@@ -54,6 +54,57 @@ Fits model parameters to match experimental data from CSV file.
 
 ---
 
+## PDE Demo Examples
+
+Basic demonstrations of PDE solvers showing typical configurations and visualizations.
+
+### heat_equation_demo.diablos
+**1D Heat Diffusion Demo**
+
+Basic demonstration of the 1D heat equation with default parameters.
+
+- **Initial**: Sinusoidal temperature distribution
+- **Visualization**: FieldScope with slider for time evolution
+- **Use case**: Introduction to PDE blocks
+
+### wave_equation_demo.diablos
+**1D Wave Propagation Demo**
+
+Demonstrates wave propagation with a standing wave pattern.
+
+- **Initial**: Sinusoidal displacement
+- **Visualization**: FieldScope showing oscillating wave
+- **Use case**: Understanding wave dynamics
+
+### advection_equation_demo.diablos
+**1D Advection Demo**
+
+Shows a traveling pulse being transported by constant velocity.
+
+- **Initial**: Gaussian pulse
+- **Visualization**: FieldScope showing translation
+- **Use case**: Understanding transport phenomena
+
+### diffusion_reaction_demo.diablos
+**1D Diffusion-Reaction Demo**
+
+Demonstrates coupled diffusion with reaction kinetics.
+
+- **Initial**: Uniform concentration
+- **Visualization**: FieldScope showing decay patterns
+- **Use case**: Chemical reaction modeling
+
+### heat_equation_2d_demo.diablos
+**2D Heat Diffusion Demo**
+
+2D heat equation with hot spot initial condition.
+
+- **Initial**: Localized hot region
+- **Visualization**: FieldScope2D with time slider
+- **Use case**: Introduction to 2D PDE blocks
+
+---
+
 ## PDE Verification Examples
 
 These examples compare numerical solutions against known analytical solutions.
@@ -103,6 +154,16 @@ These examples compare numerical solutions against known analytical solutions.
 ## Optimization Primitives Examples
 
 These examples demonstrate building optimization algorithms visually using feedback loops.
+
+### gradient_descent_simple.diablos
+**Minimal Gradient Descent**
+
+Simplest possible gradient descent implementation for learning.
+
+- **Objective**: f(x) = x²
+- **Method**: Single-variable gradient descent
+- **Initial**: x₀ = 5
+- **Use case**: Introduction to optimization primitives concept
 
 ### gradient_descent_demo.diablos
 **Gradient Descent on Quadratic**
