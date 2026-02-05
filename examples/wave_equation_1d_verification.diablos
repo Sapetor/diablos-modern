@@ -220,7 +220,8 @@
             "io_edit": true,
             "fn_name": "scope",
             "params": {
-                "labels": "Error"
+                "labels": "Error",
+                "verify_mode": "comparison"
             },
             "external": false,
             "flipped": false

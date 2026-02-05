@@ -1,362 +1,602 @@
 {
-    "sim_data": {
-        "wind_width": 1280,
-        "wind_height": 770,
-        "fps": 60,
-        "sim_time": 100.0,
-        "sim_dt": 1.0,
-        "sim_trange": 100
+  "sim_data": {
+    "wind_width": 1280,
+    "wind_height": 770,
+    "fps": 60,
+    "sim_time": 100.0,
+    "sim_dt": 1.0,
+    "sim_trange": 100
+  },
+  "blocks_data": [
+    {
+      "block_fn": "StateVariable",
+      "sid": 1,
+      "username": "X_State",
+      "coords_left": 100,
+      "coords_top": 200,
+      "coords_width": 80,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#6495ED",
+      "b_type": 1,
+      "io_edit": false,
+      "fn_name": "statevariable",
+      "params": {
+        "initial_value": [
+          5.0,
+          5.0
+        ],
+        "dimension": 2
+      },
+      "external": false,
+      "flipped": false
     },
-    "blocks_data": [
-        {
-            "block_fn": "StateVariable",
-            "sid": 1,
-            "username": "X_State",
-            "coords_left": 100,
-            "coords_top": 200,
-            "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#6495ED",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "statevariable",
-            "params": {
-                "initial_value": [5.0, 5.0],
-                "dimension": 2
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ObjectiveFunction",
-            "sid": 2,
-            "username": "f_center",
-            "coords_left": 250,
-            "coords_top": 120,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "objectivefunction",
-            "params": {
-                "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
-                "variables": "x1,x2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "VectorPerturb",
-            "sid": 3,
-            "username": "Perturb_x1",
-            "coords_left": 250,
-            "coords_top": 200,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#00CED1",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "vectorperturb",
-            "params": {
-                "index": 0,
-                "epsilon": 1e-6
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "VectorPerturb",
-            "sid": 4,
-            "username": "Perturb_x2",
-            "coords_left": 250,
-            "coords_top": 280,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#00CED1",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "vectorperturb",
-            "params": {
-                "index": 1,
-                "epsilon": 1e-6
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ObjectiveFunction",
-            "sid": 5,
-            "username": "f_plus_0",
-            "coords_left": 380,
-            "coords_top": 200,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "objectivefunction",
-            "params": {
-                "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
-                "variables": "x1,x2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ObjectiveFunction",
-            "sid": 6,
-            "username": "f_plus_1",
-            "coords_left": 380,
-            "coords_top": 280,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "objectivefunction",
-            "params": {
-                "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
-                "variables": "x1,x2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "NumericalGradient",
-            "sid": 7,
-            "username": "Gradient",
-            "coords_left": 530,
-            "coords_top": 200,
-            "coords_width": 100,
-            "coords_height": 60,
-            "coords_height_base": 60,
-            "in_ports": 3,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#FFA500",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "numericalgradient",
-            "params": {
-                "dimension": 2,
-                "epsilon": 1e-6,
-                "method": "forward"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Momentum",
-            "sid": 8,
-            "username": "MomentumOpt",
-            "coords_left": 680,
-            "coords_top": 200,
-            "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#20B2AA",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "momentum",
-            "params": {
-                "alpha": 0.0001,
-                "beta": 0.9
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "VectorSum",
-            "sid": 9,
-            "username": "X_Next",
-            "coords_left": 800,
-            "coords_top": 200,
-            "coords_width": 60,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 2,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#32CD32",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "vectorsum",
-            "params": {
-                "signs": "++"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Scope",
-            "sid": 10,
-            "username": "CostMonitor",
-            "coords_left": 420,
-            "coords_top": 50,
-            "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
-            "fn_name": "scope",
-            "params": {
-                "labels": "Rosenbrock f(x)"
-            },
-            "external": false,
-            "flipped": false
-        }
-    ],
-    "lines_data": [
-        {
-            "sid": 101,
-            "srcblock": "X_State",
-            "srcport": 0,
-            "dstblock": "f_center",
-            "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 145], [250, 145]]
-        },
-        {
-            "sid": 102,
-            "srcblock": "X_State",
-            "srcport": 0,
-            "dstblock": "Perturb_x1",
-            "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 220], [250, 220]]
-        },
-        {
-            "sid": 103,
-            "srcblock": "X_State",
-            "srcport": 0,
-            "dstblock": "Perturb_x2",
-            "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 300], [250, 300]]
-        },
-        {
-            "sid": 104,
-            "srcblock": "Perturb_x1",
-            "srcport": 0,
-            "dstblock": "f_plus_0",
-            "dstport": 0,
-            "points": [[330, 220], [360, 220], [360, 225], [380, 225]]
-        },
-        {
-            "sid": 105,
-            "srcblock": "Perturb_x2",
-            "srcport": 0,
-            "dstblock": "f_plus_1",
-            "dstport": 0,
-            "points": [[330, 300], [360, 300], [360, 305], [380, 305]]
-        },
-        {
-            "sid": 106,
-            "srcblock": "f_center",
-            "srcport": 0,
-            "dstblock": "Gradient",
-            "dstport": 0,
-            "points": [[350, 145], [500, 145], [500, 210], [530, 210]]
-        },
-        {
-            "sid": 107,
-            "srcblock": "f_plus_0",
-            "srcport": 0,
-            "dstblock": "Gradient",
-            "dstport": 1,
-            "points": [[480, 225], [510, 225], [510, 230], [530, 230]]
-        },
-        {
-            "sid": 108,
-            "srcblock": "f_plus_1",
-            "srcport": 0,
-            "dstblock": "Gradient",
-            "dstport": 2,
-            "points": [[480, 305], [510, 305], [510, 250], [530, 250]]
-        },
-        {
-            "sid": 109,
-            "srcblock": "Gradient",
-            "srcport": 0,
-            "dstblock": "MomentumOpt",
-            "dstport": 0,
-            "points": [[630, 230], [660, 230], [660, 225], [680, 225]]
-        },
-        {
-            "sid": 110,
-            "srcblock": "MomentumOpt",
-            "srcport": 0,
-            "dstblock": "X_Next",
-            "dstport": 1,
-            "points": [[760, 225], [780, 225], [780, 235], [800, 235]]
-        },
-        {
-            "sid": 111,
-            "srcblock": "X_State",
-            "srcport": 0,
-            "dstblock": "X_Next",
-            "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 380], [890, 380], [890, 215], [800, 215]]
-        },
-        {
-            "sid": 112,
-            "srcblock": "X_Next",
-            "srcport": 0,
-            "dstblock": "X_State",
-            "dstport": 0,
-            "points": [[860, 225], [900, 225], [900, 400], [60, 400], [60, 225], [100, 225]]
-        },
-        {
-            "sid": 113,
-            "srcblock": "f_center",
-            "srcport": 0,
-            "dstblock": "CostMonitor",
-            "dstport": 0,
-            "points": [[350, 145], [390, 145], [390, 75], [420, 75]]
-        }
-    ],
-    "version": "2.0",
-    "modern_ui_data": {
-        "theme": "light",
-        "zoom_factor": 1.0
+    {
+      "block_fn": "ObjectiveFunction",
+      "sid": 2,
+      "username": "f_center",
+      "coords_left": 250,
+      "coords_top": 120,
+      "coords_width": 100,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#9370DB",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "objectivefunction",
+      "params": {
+        "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
+        "variables": "x1,x2"
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "VectorPerturb",
+      "sid": 3,
+      "username": "Perturb_x1",
+      "coords_left": 250,
+      "coords_top": 200,
+      "coords_width": 80,
+      "coords_height": 40,
+      "coords_height_base": 40,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#00CED1",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "vectorperturb",
+      "params": {
+        "index": 0,
+        "epsilon": 1e-06
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "VectorPerturb",
+      "sid": 4,
+      "username": "Perturb_x2",
+      "coords_left": 250,
+      "coords_top": 280,
+      "coords_width": 80,
+      "coords_height": 40,
+      "coords_height_base": 40,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#00CED1",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "vectorperturb",
+      "params": {
+        "index": 1,
+        "epsilon": 1e-06
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "ObjectiveFunction",
+      "sid": 5,
+      "username": "f_plus_0",
+      "coords_left": 380,
+      "coords_top": 200,
+      "coords_width": 100,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#9370DB",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "objectivefunction",
+      "params": {
+        "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
+        "variables": "x1,x2"
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "ObjectiveFunction",
+      "sid": 6,
+      "username": "f_plus_1",
+      "coords_left": 380,
+      "coords_top": 280,
+      "coords_width": 100,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#9370DB",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "objectivefunction",
+      "params": {
+        "expression": "(1-x1)**2 + 100*(x2-x1**2)**2",
+        "variables": "x1,x2"
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "NumericalGradient",
+      "sid": 7,
+      "username": "Gradient",
+      "coords_left": 530,
+      "coords_top": 200,
+      "coords_width": 100,
+      "coords_height": 60,
+      "coords_height_base": 60,
+      "in_ports": 3,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#FFA500",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "numericalgradient",
+      "params": {
+        "dimension": 2,
+        "epsilon": 1e-06,
+        "method": "forward"
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "Momentum",
+      "sid": 8,
+      "username": "MomentumOpt",
+      "coords_left": 680,
+      "coords_top": 200,
+      "coords_width": 80,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#20B2AA",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "momentum",
+      "params": {
+        "alpha": 0.0001,
+        "beta": 0.9
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "VectorSum",
+      "sid": 9,
+      "username": "X_Next",
+      "coords_left": 800,
+      "coords_top": 200,
+      "coords_width": 60,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 2,
+      "out_ports": 1,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#32CD32",
+      "b_type": 2,
+      "io_edit": false,
+      "fn_name": "vectorsum",
+      "params": {
+        "signs": "++"
+      },
+      "external": false,
+      "flipped": false
+    },
+    {
+      "block_fn": "Scope",
+      "sid": 10,
+      "username": "CostMonitor",
+      "coords_left": 420,
+      "coords_top": 50,
+      "coords_width": 80,
+      "coords_height": 50,
+      "coords_height_base": 50,
+      "in_ports": 1,
+      "out_ports": 0,
+      "dragging": false,
+      "selected": false,
+      "b_color": "#FF6347",
+      "b_type": 3,
+      "io_edit": true,
+      "fn_name": "scope",
+      "params": {
+        "labels": "Rosenbrock f(x)"
+      },
+      "external": false,
+      "flipped": false
     }
+  ],
+  "lines_data": [
+    {
+      "sid": 101,
+      "srcblock": "X_State",
+      "srcport": 0,
+      "dstblock": "f_center",
+      "dstport": 0,
+      "points": [
+        [
+          180,
+          225
+        ],
+        [
+          200,
+          225
+        ],
+        [
+          200,
+          145
+        ],
+        [
+          250,
+          145
+        ]
+      ]
+    },
+    {
+      "sid": 102,
+      "srcblock": "X_State",
+      "srcport": 0,
+      "dstblock": "Perturb_x1",
+      "dstport": 0,
+      "points": [
+        [
+          180,
+          225
+        ],
+        [
+          200,
+          225
+        ],
+        [
+          200,
+          220
+        ],
+        [
+          250,
+          220
+        ]
+      ]
+    },
+    {
+      "sid": 103,
+      "srcblock": "X_State",
+      "srcport": 0,
+      "dstblock": "Perturb_x2",
+      "dstport": 0,
+      "points": [
+        [
+          180,
+          225
+        ],
+        [
+          200,
+          225
+        ],
+        [
+          200,
+          300
+        ],
+        [
+          250,
+          300
+        ]
+      ]
+    },
+    {
+      "sid": 104,
+      "srcblock": "Perturb_x1",
+      "srcport": 0,
+      "dstblock": "f_plus_0",
+      "dstport": 0,
+      "points": [
+        [
+          330,
+          220
+        ],
+        [
+          360,
+          220
+        ],
+        [
+          360,
+          225
+        ],
+        [
+          380,
+          225
+        ]
+      ]
+    },
+    {
+      "sid": 105,
+      "srcblock": "Perturb_x2",
+      "srcport": 0,
+      "dstblock": "f_plus_1",
+      "dstport": 0,
+      "points": [
+        [
+          330,
+          300
+        ],
+        [
+          360,
+          300
+        ],
+        [
+          360,
+          305
+        ],
+        [
+          380,
+          305
+        ]
+      ]
+    },
+    {
+      "sid": 106,
+      "srcblock": "f_center",
+      "srcport": 0,
+      "dstblock": "Gradient",
+      "dstport": 0,
+      "points": [
+        [
+          350,
+          145
+        ],
+        [
+          500,
+          145
+        ],
+        [
+          500,
+          210
+        ],
+        [
+          530,
+          210
+        ]
+      ]
+    },
+    {
+      "sid": 107,
+      "srcblock": "f_plus_0",
+      "srcport": 0,
+      "dstblock": "Gradient",
+      "dstport": 1,
+      "points": [
+        [
+          480,
+          225
+        ],
+        [
+          510,
+          225
+        ],
+        [
+          510,
+          230
+        ],
+        [
+          530,
+          230
+        ]
+      ]
+    },
+    {
+      "sid": 108,
+      "srcblock": "f_plus_1",
+      "srcport": 0,
+      "dstblock": "Gradient",
+      "dstport": 2,
+      "points": [
+        [
+          480,
+          305
+        ],
+        [
+          510,
+          305
+        ],
+        [
+          510,
+          250
+        ],
+        [
+          530,
+          250
+        ]
+      ]
+    },
+    {
+      "sid": 109,
+      "srcblock": "Gradient",
+      "srcport": 0,
+      "dstblock": "MomentumOpt",
+      "dstport": 0,
+      "points": [
+        [
+          630,
+          230
+        ],
+        [
+          660,
+          230
+        ],
+        [
+          660,
+          225
+        ],
+        [
+          680,
+          225
+        ]
+      ]
+    },
+    {
+      "sid": 110,
+      "srcblock": "MomentumOpt",
+      "srcport": 0,
+      "dstblock": "X_Next",
+      "dstport": 1,
+      "points": [
+        [
+          760,
+          225
+        ],
+        [
+          780,
+          225
+        ],
+        [
+          780,
+          235
+        ],
+        [
+          800,
+          235
+        ]
+      ]
+    },
+    {
+      "sid": 111,
+      "srcblock": "X_State",
+      "srcport": 0,
+      "dstblock": "X_Next",
+      "dstport": 0,
+      "points": [
+        [
+          180,
+          225
+        ],
+        [
+          200,
+          225
+        ],
+        [
+          200,
+          380
+        ],
+        [
+          890,
+          380
+        ],
+        [
+          890,
+          215
+        ],
+        [
+          800,
+          215
+        ]
+      ]
+    },
+    {
+      "sid": 112,
+      "srcblock": "X_Next",
+      "srcport": 0,
+      "dstblock": "X_State",
+      "dstport": 0,
+      "points": [
+        [
+          860,
+          225
+        ],
+        [
+          900,
+          225
+        ],
+        [
+          900,
+          400
+        ],
+        [
+          60,
+          400
+        ],
+        [
+          60,
+          225
+        ],
+        [
+          100,
+          225
+        ]
+      ]
+    },
+    {
+      "sid": 113,
+      "srcblock": "f_center",
+      "srcport": 0,
+      "dstblock": "CostMonitor",
+      "dstport": 0,
+      "points": [
+        [
+          350,
+          145
+        ],
+        [
+          390,
+          145
+        ],
+        [
+          390,
+          75
+        ],
+        [
+          420,
+          75
+        ]
+      ]
+    }
+  ],
+  "version": "2.0",
+  "modern_ui_data": {
+    "theme": "light",
+    "zoom_factor": 1.0
+  }
 }
