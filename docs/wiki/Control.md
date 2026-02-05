@@ -10,10 +10,12 @@ You can find detailed information about parameters and usage below.
 | [Delay](#delay) | Discrete Integer Delay (z^-N). |
 | [DiscreteStateSpace](#discretestatespace) | Discrete State-Space Model. |
 | [DiscreteTranFn](#discretetranfn) | Represents a discrete-time linear time-invariant system as a transfer function in z-domain. |
+| [FirstOrderHold](#firstorderhold) | First-Order Hold (FOH) - linear extrapolation between samples. |
 | [Hysteresis](#hysteresis) | Hysteresis Relay. |
 | [Integrator](#integrator) | Continuous-time Integrator (1/s). |
 | [PID](#pid) | PID Controller. |
 | [RateLimiter](#ratelimiter) | Rate Limiter. |
+| [RateTransition](#ratetransition) | Rate Transition for multi-rate simulation. |
 | [Saturation](#saturation) | Limits the input signal to a specified range. |
 | [StateSpace](#statespace) | Continuous State-Space Model. |
 | [TranFn](#tranfn) | Represents a linear time-invariant system as a transfer function. |
@@ -308,6 +310,70 @@ Models pipe flow, conveyor belts, or communication latency.
 |------|------|---------|-------------|
 | `delay_time` | float | `0.1` | Delay time τ in seconds. |
 | `initial_value` | float | `0.0` | Output before delay time elapses. |
+
+**Ports**: 1 In, 1 Out
+
+---
+
+### FirstOrderHold
+
+First-Order Hold (FOH).
+
+Samples the input signal at a fixed rate and linearly extrapolates between samples.
+Unlike ZOH which holds constant, FOH computes the slope between the last two samples
+and extrapolates forward, producing a sawtooth-like output.
+
+Parameters:
+- Input Sample Time: The period (in seconds) between input samples.
+- Sampling Time: Block execution rate (-1 for continuous output).
+
+Usage:
+- Smoother output than Zero-Order Hold
+- Introduces one sample delay for extrapolation
+- Good for continuous-to-discrete conversion when smoothness matters
+- Models DACs with linear interpolation
+
+Note: Output = linear extrapolation from previous samples using computed slope.
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `input_sample_time` | float | `0.1` | Sample period for input (seconds). |
+| `sampling_time` | float | `-1.0` | Block runs continuously (-1) to interpolate. |
+
+**Ports**: 1 In, 1 Out
+
+---
+
+### RateTransition
+
+Rate Transition Block for multi-rate simulation.
+
+Safely transfers signals between blocks running at different sample rates.
+Handles both upsampling (slow to fast) and downsampling (fast to slow).
+
+Parameters:
+- Output Sample Time: Target output sample period (seconds). Set to -1 for continuous.
+- Transition Mode: How to handle rate conversion:
+  - **ZOH**: Zero-order hold (hold last sample, good for upsampling)
+  - **Linear**: Linear interpolation between samples (smooth ramps)
+  - **Filter**: Low-pass filter (anti-alias for downsampling)
+  - **Sample**: Take latest sample (simple downsampling)
+  - **Average**: Average samples in window (downsampling)
+- Filter Cutoff: Normalized cutoff frequency for Filter mode (0-0.5).
+
+Usage:
+- Place between blocks with different sample rates
+- For slow to fast (upsampling): Use ZOH or Linear
+- For fast to slow (downsampling): Use Filter, Sample, or Average
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `output_sample_time` | float | `0.1` | Target output sample period (seconds). |
+| `transition_mode` | string | `ZOH` | Mode: ZOH, Linear, Filter, Sample, Average. |
+| `filter_cutoff` | float | `0.4` | Normalized cutoff for Filter mode (0-0.5). |
+| `sampling_time` | float | `-1.0` | Block runs continuously (-1) for smooth output. |
 
 **Ports**: 1 In, 1 Out
 

@@ -74,8 +74,11 @@ class DiagramValidator:
         self._check_invalid_connections(connection_maps)
         self._check_duplicate_connections(connection_maps)
         self._check_goto_from_tags()
+        self._check_rate_mismatches(connection_maps)
 
         logger.info(f"Validation complete: {len(self.errors)} issues found")
+        for error in self.errors:
+            logger.info(f"  [{error.severity.value}] {error.message}")
         return self.errors
 
     def _build_connection_maps(self) -> dict:
@@ -187,6 +190,18 @@ class DiagramValidator:
         connected_blocks = connection_maps['connected_blocks']
 
         for block in self.dsim.blocks_list:
+            # Skip meta-blocks that don't require connections (e.g., Optimizer)
+            if hasattr(block, 'block_instance') and block.block_instance:
+                requires_inputs = getattr(block.block_instance, 'requires_inputs', True)
+                requires_outputs = getattr(block.block_instance, 'requires_outputs', True)
+                # If block doesn't require either inputs or outputs, it's a meta-block
+                if not requires_inputs and not requires_outputs:
+                    continue
+
+            # Also skip blocks with no ports at all (meta-blocks)
+            if block.in_ports == 0 and block.out_ports == 0:
+                continue
+
             # Block is isolated if it's not in the connected blocks set
             if block.name not in connected_blocks:
                 error = ValidationError(
@@ -320,3 +335,108 @@ class DiagramValidator:
             if error.severity == ErrorSeverity.WARNING:
                 blocks.update(error.blocks)
         return blocks
+
+    def _check_rate_mismatches(self, connection_maps: dict) -> None:
+        """
+        Check for sample rate mismatches between connected blocks.
+
+        Detects:
+        - Non-integer rate ratios (may cause aliasing)
+        - Discrete→continuous connections without proper rate transition
+        - Missing RateTransition blocks where recommended
+        """
+        # Build block lookup
+        block_map = {block.name: block for block in self.dsim.blocks_list}
+
+        def get_sample_time(block) -> float:
+            """Get effective sample time from block params. Returns -1 for continuous."""
+            if not block:
+                return -1.0
+            sample_time = block.params.get('sampling_time',
+                          block.params.get('sample_time',
+                          block.params.get('output_sample_time', -1.0)))
+            try:
+                return float(sample_time)
+            except (ValueError, TypeError):
+                return -1.0
+
+        def is_rate_transition_block(block) -> bool:
+            """Check if block is a rate transition type."""
+            if not block:
+                return False
+            return block.block_fn in ('RateTransition', 'ZeroOrderHold', 'FirstOrderHold')
+
+        # Check each connection for rate mismatches
+        for line in self.dsim.line_list:
+            if getattr(line, "hidden", False):
+                continue
+
+            src_block = block_map.get(line.srcblock)
+            dst_block = block_map.get(line.dstblock)
+
+            if not src_block or not dst_block:
+                continue
+
+            src_rate = get_sample_time(src_block)
+            dst_rate = get_sample_time(dst_block)
+
+            # Skip if both are continuous
+            if src_rate < 0 and dst_rate < 0:
+                continue
+
+            # Skip if destination is a rate transition block (it handles the conversion)
+            if is_rate_transition_block(dst_block):
+                continue
+
+            # Check for discrete → continuous without rate transition
+            if src_rate > 0 and dst_rate < 0:
+                # Source is discrete, destination is continuous
+                self.errors.append(
+                    ValidationError(
+                        severity=ErrorSeverity.INFO,
+                        message=f"Discrete signal from '{src_block.username or src_block.name}' "
+                               f"(Ts={src_rate}s) connects to continuous block "
+                               f"'{dst_block.username or dst_block.name}'",
+                        blocks=[src_block, dst_block],
+                        connections=[line],
+                        suggestion="Consider adding a RateTransition block for proper signal conversion"
+                    )
+                )
+
+            # Check for rate ratio issues (both discrete)
+            elif src_rate > 0 and dst_rate > 0:
+                # Calculate rate ratio
+                if src_rate > dst_rate:
+                    ratio = src_rate / dst_rate  # Downsampling
+                    direction = "slower→faster"
+                else:
+                    ratio = dst_rate / src_rate  # Upsampling
+                    direction = "faster→slower"
+
+                # Check if ratio is non-integer (potential aliasing)
+                if abs(ratio - round(ratio)) > 0.01:
+                    self.errors.append(
+                        ValidationError(
+                            severity=ErrorSeverity.WARNING,
+                            message=f"Non-integer sample rate ratio ({ratio:.2f}x, {direction}) "
+                                   f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
+                                   f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            blocks=[src_block, dst_block],
+                            connections=[line],
+                            suggestion="Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block"
+                        )
+                    )
+
+                # Check for significant rate difference without transition
+                elif ratio > 1.5 and not is_rate_transition_block(src_block):
+                    self.errors.append(
+                        ValidationError(
+                            severity=ErrorSeverity.INFO,
+                            message=f"Sample rate change ({ratio:.0f}x, {direction}) "
+                                   f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
+                                   f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            blocks=[src_block, dst_block],
+                            connections=[line],
+                            suggestion="Consider adding a RateTransition block for proper rate conversion"
+                        )
+                    )

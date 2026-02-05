@@ -130,6 +130,9 @@ class SimulationEngine:
             # Identify memory blocks (on ACTIVE list)
             self.identify_memory_blocks()
 
+            # Propagate sample times for multi-rate simulation
+            self.propagate_sample_times()
+
             # Count RK45 integrators
             self.rk45_len = self.count_rk45_integrators()
             self.rk_counter = 0
@@ -802,7 +805,80 @@ class SimulationEngine:
                     self.memory_blocks.add(block.name)
         logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
 
+    def propagate_sample_times(self) -> None:
+        """
+        Propagate sample times through the diagram.
 
+        Resolves effective sample times for all blocks based on:
+        - Explicit sample_time parameter (>0 = fixed discrete rate)
+        - Inherited rate (0 = inherit from fastest connected input)
+        - Continuous (-1 = execute every timestep, default)
+
+        Must be called after identify_memory_blocks() during initialization.
+        """
+        logger.debug("Propagating sample times...")
+
+        # Build connection map for efficient lookup
+        # Maps block_name -> list of source block names
+        input_sources: Dict[str, List[str]] = {b.name: [] for b in self.active_blocks_list}
+        for line in self.active_line_list:
+            if line.dstblock in input_sources:
+                input_sources[line.dstblock].append(line.srcblock)
+
+        # Create block lookup
+        block_map = {b.name: b for b in self.active_blocks_list}
+
+        # Phase 1: Resolve explicit sample times from parameters
+        for block in self.active_blocks_list:
+            declared_rate = block.resolve_sample_time()
+            block.effective_sample_time = declared_rate
+            # Reset execution state for new simulation
+            block.reset_sample_time_state()
+
+        # Phase 2: Propagate inherited rates (sample_time = 0)
+        # Use iterative propagation until no changes occur
+        max_iterations = len(self.active_blocks_list) + 1
+        for iteration in range(max_iterations):
+            changed = False
+
+            for block in self.active_blocks_list:
+                # Only process blocks that inherit (sample_time = 0)
+                if block.effective_sample_time != 0.0:
+                    continue
+
+                # Find fastest (smallest positive) sample time from inputs
+                fastest_rate = -1.0  # Default to continuous if no discrete inputs
+                for src_name in input_sources.get(block.name, []):
+                    src_block = block_map.get(src_name)
+                    if src_block and src_block.effective_sample_time > 0:
+                        if fastest_rate < 0 or src_block.effective_sample_time < fastest_rate:
+                            fastest_rate = src_block.effective_sample_time
+
+                # Apply inherited rate
+                if fastest_rate != block.effective_sample_time:
+                    block.effective_sample_time = fastest_rate
+                    changed = True
+
+            if not changed:
+                break
+
+        # Phase 3: Mark connections as discrete based on source block sample time
+        for line in self.active_line_list:
+            src_block = block_map.get(line.srcblock)
+            if src_block and src_block.effective_sample_time > 0:
+                line.discrete_signal = True
+            else:
+                line.discrete_signal = False
+
+        # Log resolved sample times
+        discrete_blocks = [(b.name, b.effective_sample_time)
+                          for b in self.active_blocks_list if b.effective_sample_time > 0]
+        if discrete_blocks:
+            logger.info(f"DISCRETE BLOCKS: {discrete_blocks}")
+        discrete_lines = sum(1 for line in self.active_line_list if getattr(line, 'discrete_signal', False))
+        if discrete_lines:
+            logger.info(f"DISCRETE CONNECTIONS: {discrete_lines}")
+        logger.debug("Sample time propagation complete")
 
     def propagate_outputs(self, block: DBlock, out_value: Dict[int, Any]) -> None:
         """

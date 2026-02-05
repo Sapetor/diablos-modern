@@ -174,6 +174,9 @@ class BlockRenderer:
             )
             painter.drawRoundedRect(selection_rect, 14, 14)
 
+        # Draw sample rate indicator for discrete blocks
+        self._draw_sample_rate_indicator(block, painter)
+
     def draw_ports(self, block, painter: Optional[QPainter]) -> None:
         """Draw input and output ports with modern styling."""
         if painter is None:
@@ -596,3 +599,74 @@ class BlockRenderer:
         painter.drawText(QRect(block.left + 4, block.top + block.height // 2, block.width // 2, block.height // 2), Qt.AlignLeft | Qt.AlignBottom, bl)
         font.setPointSize(orig)
         painter.setFont(font)
+
+    def _draw_sample_rate_indicator(self, block, painter: Optional[QPainter]) -> None:
+        """
+        Draw a small colored indicator for discrete blocks showing their sample rate.
+
+        Indicator colors:
+        - No indicator: Continuous block (sample_time < 0 or not set)
+        - Gray dot: Inherited sample time (sample_time = 0)
+        - Colored dot: Fixed discrete rate (sample_time > 0)
+          - Red = fast (small sample time)
+          - Blue = slow (large sample time)
+          - Gradient between based on log scale
+
+        Args:
+            block: The DBlock instance
+            painter: QPainter instance for rendering
+        """
+        if painter is None:
+            return
+
+        # Get sample time from block params
+        sample_time = block.params.get('sampling_time',
+                      block.params.get('sample_time',
+                      block.params.get('output_sample_time', -1.0)))
+
+        try:
+            sample_time = float(sample_time)
+        except (ValueError, TypeError):
+            sample_time = -1.0
+
+        # No indicator for continuous blocks
+        if sample_time < 0:
+            return
+
+        # Indicator properties
+        indicator_radius = 5
+        indicator_x = block.left + block.width - indicator_radius - 3
+        indicator_y = block.top + indicator_radius + 3
+
+        # Determine indicator color
+        if sample_time == 0:
+            # Inherited rate - gray
+            indicator_color = QColor(128, 128, 128)
+        else:
+            # Fixed discrete rate - color based on sample time
+            # Use log scale: 0.001s (1kHz) = red, 1s (1Hz) = blue
+            import math
+            log_min = math.log10(0.001)  # 1ms = fast (red)
+            log_max = math.log10(1.0)    # 1s = slow (blue)
+            log_sample = math.log10(max(0.001, min(1.0, sample_time)))
+
+            # Normalize to 0-1 range
+            t = (log_sample - log_min) / (log_max - log_min)
+            t = max(0.0, min(1.0, t))
+
+            # Interpolate from red (fast) to blue (slow)
+            r = int(255 * (1 - t))
+            g = int(100 * (1 - abs(t - 0.5) * 2))  # Green peak in middle
+            b = int(255 * t)
+            indicator_color = QColor(r, g, b)
+
+        # Draw the indicator dot
+        painter.save()
+        painter.setPen(QPen(QColor(50, 50, 50), 1))
+        painter.setBrush(indicator_color)
+        painter.drawEllipse(
+            QPoint(int(indicator_x), int(indicator_y)),
+            indicator_radius,
+            indicator_radius
+        )
+        painter.restore()

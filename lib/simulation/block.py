@@ -5,6 +5,7 @@ DBlock class - represents a block in the simulation diagram.
 import logging
 import copy
 from typing import Dict, List, Optional, Any, Union
+import math
 import numpy as np
 from PyQt5.QtGui import QColor, QFont, QPixmap
 from PyQt5.QtCore import QRect, QPoint
@@ -144,12 +145,110 @@ class DBlock:
         self.data_sent: int = 0
         self.input_queue: Dict[int, Any] = {}
 
+        # Multi-rate simulation support
+        # effective_sample_time: Resolved sample time for execution
+        #   -1.0 = continuous (execute every timestep)
+        #    0.0 = inherit from fastest connected input
+        #   >0.0 = fixed discrete rate (execute at this interval)
+        self.effective_sample_time: float = -1.0
+        self._next_execution_time: float = 0.0  # Next scheduled discrete execution
+        self._held_outputs: Dict[int, Any] = {}  # Held outputs between discrete executions
+        self._last_execution_time: float = -1.0  # Last time block was executed
+
     @property
     def doc(self) -> str:
         """Get the documentation string from the block instance."""
         if self.block_instance and hasattr(self.block_instance, 'doc'):
             return self.block_instance.doc
         return ""
+
+    # =========================================================================
+    # Multi-Rate Simulation Methods
+    # =========================================================================
+
+    def should_execute(self, current_time: float, tolerance: float = 1e-9) -> bool:
+        """
+        Check if block should execute at the current simulation time.
+
+        Args:
+            current_time: Current simulation time
+            tolerance: Floating-point comparison tolerance
+
+        Returns:
+            bool: True if block should execute, False if should skip
+        """
+        # Continuous blocks always execute
+        if self.effective_sample_time < 0:
+            return True
+
+        # Discrete blocks execute at their sample times
+        # Check if we're at or past the next scheduled execution time
+        if current_time >= self._next_execution_time - tolerance:
+            return True
+
+        return False
+
+    def schedule_next_execution(self, current_time: float) -> None:
+        """
+        Schedule the next execution time for a discrete block.
+
+        Args:
+            current_time: Current simulation time
+        """
+        if self.effective_sample_time > 0:
+            # Calculate next execution time based on sample period
+            # Align to sample time grid to avoid drift
+            n = math.floor(current_time / self.effective_sample_time + 0.5)
+            self._next_execution_time = (n + 1) * self.effective_sample_time
+            self._last_execution_time = current_time
+
+    def get_held_output(self, port: int) -> Any:
+        """
+        Get the held output value for a port (used between discrete executions).
+
+        Args:
+            port: Output port number
+
+        Returns:
+            The held output value, or 0.0 if not set
+        """
+        return self._held_outputs.get(port, 0.0)
+
+    def set_held_output(self, port: int, value: Any) -> None:
+        """
+        Set the held output value for a port.
+
+        Args:
+            port: Output port number
+            value: Value to hold
+        """
+        self._held_outputs[port] = value
+
+    def reset_sample_time_state(self) -> None:
+        """Reset sample time execution state for a new simulation run."""
+        self._next_execution_time = 0.0
+        self._last_execution_time = -1.0
+        self._held_outputs = {}
+
+    def resolve_sample_time(self) -> float:
+        """
+        Resolve the effective sample time from block parameters.
+
+        Checks params for 'sampling_time' or 'sample_time' keys.
+        Returns -1.0 for continuous, 0.0 for inherited, >0 for fixed rate.
+        """
+        # Check for explicit sample time in params
+        sample_time = self.params.get('sampling_time',
+                      self.params.get('sample_time', -1.0))
+
+        # Handle string values
+        if isinstance(sample_time, str):
+            try:
+                sample_time = float(sample_time)
+            except ValueError:
+                sample_time = -1.0
+
+        return float(sample_time)
 
     def get_port_names(self) -> tuple:
         """
@@ -475,16 +574,11 @@ class DBlock:
 
     def change_params(self):
         logger.info(f"change_params called for block {self.name}")
-        if not self.initial_params:
-            return
-
+        # Always show dialog so users can rename the block (Name field)
         ed_dict = {'Name': self.username}
         for key, value in self.initial_params.items():
             if not (key.startswith('_') and key.endswith('_')):
                 ed_dict[key] = self.params.get(key, value)  # Use current value if available
-
-        if len(ed_dict) <= 1:  # Only 'Name' is present
-            return
 
         dialog = ParamDialog(self.name, ed_dict)
         if dialog.exec_():
