@@ -363,7 +363,8 @@ class ModernCanvas(QWidget):
                             'first': first_val,
                             'last': last_val,
                             'samples': len(arr),
-                            'data': arr
+                            'data': arr,
+                            'verify_mode': exec_params.get('verify_mode', 'auto'),
                         }
 
             # Build output with verification checks
@@ -442,10 +443,27 @@ class ModernCanvas(QWidget):
                         first_norm = np.linalg.norm(np.atleast_1d(first))
                         last_norm = np.linalg.norm(np.atleast_1d(last))
 
-                        # Determine if this looks like an objective function (should decrease)
-                        is_objective = any(kw in name.lower() for kw in ['f_', 'cost', 'obj', 'error', 'norm', 'value'])
-                        # Determine if this looks like a state trajectory
-                        is_state = any(kw in name.lower() for kw in ['x_', 'state', 'traj', 'position'])
+                        # Get explicit verification mode or fall back to heuristics
+                        verify_mode = info.get('verify_mode', 'auto')
+
+                        if verify_mode == "none":
+                            # Skip this scope entirely
+                            continue
+
+                        if verify_mode == "auto":
+                            # Fall back to name-based heuristics (current behavior)
+                            # Note: removed 'error' from is_objective keywords to avoid false positives
+                            is_objective = any(kw in name.lower() for kw in ['f_', 'cost', 'obj', 'norm', 'value'])
+                            is_state = any(kw in name.lower() for kw in ['x_', 'state', 'traj', 'position'])
+                        elif verify_mode == "objective":
+                            is_objective = True
+                            is_state = False
+                        elif verify_mode == "trajectory":
+                            is_objective = False
+                            is_state = True
+                        else:  # "comparison" or unknown
+                            is_objective = False
+                            is_state = False
 
                         if is_objective and first_norm > 0:
                             # Objective should decrease significantly
@@ -465,7 +483,7 @@ class ModernCanvas(QWidget):
                                 all_checks_passed = False
                             print(f"   {status} {name}: {format_val(first)} → {format_val(last)}", flush=True)
                         else:
-                            # Generic scope - just show values
+                            # Generic scope or comparison mode - just show values (no pass/fail)
                             print(f"   • {name} ({samples} pts): {format_val(first)} → {format_val(last)}", flush=True)
 
                 # Final verdict
@@ -705,25 +723,10 @@ class ModernCanvas(QWidget):
     # Cleaned up dangling except block here
     
     def _handle_right_click(self, pos):
-        """Handle right mouse button clicks - show context menus."""
+        """Handle right mouse button clicks - delegate to MenuManager."""
         try:
-            # Check what was clicked and show appropriate context menu
-            clicked_block = self._get_clicked_block(pos)
-            clicked_line, _ = self._get_clicked_line(pos)  # Returns (line, collision_type) tuple
-
-            if clicked_block:
-                # Show block context menu - needs global screen position
-                from PyQt5.QtGui import QCursor
-                self._show_block_context_menu(clicked_block, QCursor.pos())
-            elif clicked_line:
-                # Show connection context menu
-                from PyQt5.QtGui import QCursor
-                self._show_connection_context_menu(clicked_line, QCursor.pos())
-            else:
-                # Show canvas context menu
-                from PyQt5.QtGui import QCursor
-                self._show_canvas_context_menu(QCursor.pos())
-
+            # Delegate to MenuManager for rich context menus
+            self.menu_manager.handle_context_menu(pos)
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
 

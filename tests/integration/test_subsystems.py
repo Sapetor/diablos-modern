@@ -266,3 +266,206 @@ class TestSubsystemEdgeCases:
 
         # Peak should be 5.0 (amplitude * gain)
         assert max(np.abs(vector)) <= 5.0 + 0.1, f"Max should be ~5.0"
+
+
+@pytest.mark.integration
+@pytest.mark.qt
+class TestSubsystemManagerUnconnectedPorts:
+    """Test subsystem creation with unconnected ports."""
+
+    @pytest.fixture
+    def mock_dsim(self, qapp):
+        """Create a mock dsim object for testing."""
+        from PyQt5.QtCore import QRect, QPoint
+
+        class MockBlock:
+            """Mock block with minimal attributes needed for subsystem creation."""
+            def __init__(self, name, in_ports=1, out_ports=1):
+                self.name = name
+                self.sid = 1
+                self.in_ports = in_ports
+                self.out_ports = out_ports
+                self.rect = QRect(0, 0, 50, 50)
+                self.width = 50
+                self.height = 50
+                self.top = 0
+                self.left = 0
+                self.selected = False
+                self.block_type = "MockBlock"
+                self.in_coords = [QPoint(0, 25 + i * 10) for i in range(in_ports)]
+                self.out_coords = [QPoint(50, 25 + i * 10) for i in range(out_ports)]
+
+            def relocate_Block(self, pos):
+                self.rect = QRect(pos.x(), pos.y(), self.width, self.height)
+                self.left = pos.x()
+                self.top = pos.y()
+                # Update coords
+                self.in_coords = [QPoint(self.left, self.top + 25 + i * 10) for i in range(self.in_ports)]
+                self.out_coords = [QPoint(self.left + self.width, self.top + 25 + i * 10) for i in range(self.out_ports)]
+
+        class MockModel:
+            def __init__(self):
+                self.blocks_list = []
+                self.line_list = []
+
+        class MockDSim:
+            def __init__(self):
+                self.blocks_list = []
+                self.line_list = []
+                self.connections_list = []
+                self.ss_count = 0
+                self.dirty = False
+
+        model = MockModel()
+        dsim = MockDSim()
+        dsim.blocks_list = model.blocks_list
+        dsim.line_list = model.line_list
+        dsim.connections_list = model.line_list
+        return model, dsim, MockBlock
+
+    def test_unconnected_gain_blocks_get_ports(self, qapp, mock_dsim):
+        """Test that unconnected blocks get Inport/Outport when grouped."""
+        from lib.managers.subsystem_manager import SubsystemManager
+        from PyQt5.QtCore import QPoint
+
+        model, dsim, MockBlock = mock_dsim
+
+        # Create two unconnected mock blocks (simulating Gain blocks)
+        block1 = MockBlock("Gain1", in_ports=1, out_ports=1)
+        block1.sid = 1
+        block1.relocate_Block(QPoint(100, 100))
+
+        block2 = MockBlock("Gain2", in_ports=1, out_ports=1)
+        block2.sid = 2
+        block2.relocate_Block(QPoint(100, 200))
+
+        dsim.blocks_list.append(block1)
+        dsim.blocks_list.append(block2)
+        model.blocks_list = dsim.blocks_list
+
+        # Create subsystem manager and create subsystem from selection
+        manager = SubsystemManager(model, dsim)
+        subsys = manager.create_subsystem_from_selection([block1, block2])
+
+        # Verify subsystem was created
+        assert subsys is not None
+        assert subsys.block_type == "Subsystem"
+
+        # Verify subsystem has 2 input ports (one for each block's input)
+        assert 'in' in subsys.ports
+        assert len(subsys.ports['in']) == 2, f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+
+        # Verify subsystem has 2 output ports (one for each block's output)
+        assert 'out' in subsys.ports
+        assert len(subsys.ports['out']) == 2, f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+
+        # Verify internal structure: should have 2 blocks + 2 Inports + 2 Outports = 6 blocks
+        assert len(subsys.sub_blocks) == 6, f"Expected 6 sub_blocks, got {len(subsys.sub_blocks)}"
+
+        # Verify internal connections: 2 from Inports + 2 to Outports = 4 lines
+        assert len(subsys.sub_lines) == 4, f"Expected 4 sub_lines, got {len(subsys.sub_lines)}"
+
+    def test_mixed_connected_and_unconnected_ports(self, qapp, mock_dsim):
+        """Test subsystem with both boundary connections and unconnected ports."""
+        from lib.managers.subsystem_manager import SubsystemManager
+        from lib.simulation.connection import DLine
+        from PyQt5.QtCore import QPoint
+
+        model, dsim, MockBlock = mock_dsim
+
+        # Create: Constant -> Gain1, and unconnected Gain2
+        constant = MockBlock("Constant1", in_ports=0, out_ports=1)
+        constant.sid = 1
+        constant.relocate_Block(QPoint(50, 100))
+
+        gain1 = MockBlock("Gain1", in_ports=1, out_ports=1)
+        gain1.sid = 2
+        gain1.relocate_Block(QPoint(150, 100))
+
+        gain2 = MockBlock("Gain2", in_ports=1, out_ports=1)
+        gain2.sid = 3
+        gain2.relocate_Block(QPoint(150, 200))
+
+        dsim.blocks_list.extend([constant, gain1, gain2])
+        model.blocks_list = dsim.blocks_list
+
+        # Create connection: Constant -> Gain1
+        line = DLine(
+            sid=1,
+            srcblock="Constant1", srcport=0,
+            dstblock="Gain1", dstport=0,
+            points=(constant.out_coords[0], gain1.in_coords[0])
+        )
+        dsim.line_list.append(line)
+        model.line_list = dsim.line_list
+
+        # Select only Gain1 and Gain2 (not Constant)
+        manager = SubsystemManager(model, dsim)
+        subsys = manager.create_subsystem_from_selection([gain1, gain2])
+
+        # Verify subsystem was created
+        assert subsys is not None
+
+        # Expected inputs:
+        # - 1 from boundary (Constant -> Gain1)
+        # - 1 from unconnected (Gain2's input)
+        assert 'in' in subsys.ports
+        assert len(subsys.ports['in']) == 2, f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+
+        # Expected outputs:
+        # - 1 from unconnected (Gain1's output - no external destination)
+        # - 1 from unconnected (Gain2's output)
+        assert 'out' in subsys.ports
+        assert len(subsys.ports['out']) == 2, f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+
+    def test_single_block_gets_all_ports(self, qapp, mock_dsim):
+        """Test that a single unconnected block gets Inport and Outport."""
+        from lib.managers.subsystem_manager import SubsystemManager
+        from PyQt5.QtCore import QPoint
+
+        model, dsim, MockBlock = mock_dsim
+
+        block = MockBlock("Gain1", in_ports=1, out_ports=1)
+        block.sid = 1
+        block.relocate_Block(QPoint(100, 100))
+
+        dsim.blocks_list.append(block)
+        model.blocks_list = dsim.blocks_list
+
+        manager = SubsystemManager(model, dsim)
+        subsys = manager.create_subsystem_from_selection([block])
+
+        # Single block has 1 input and 1 output
+        assert 'in' in subsys.ports
+        assert len(subsys.ports['in']) == 1
+
+        assert 'out' in subsys.ports
+        assert len(subsys.ports['out']) == 1
+
+        # Internal: 1 block + 1 Inport + 1 Outport = 3 blocks
+        assert len(subsys.sub_blocks) == 3
+
+    def test_block_with_multiple_ports(self, qapp, mock_dsim):
+        """Test block with multiple input/output ports."""
+        from lib.managers.subsystem_manager import SubsystemManager
+        from PyQt5.QtCore import QPoint
+
+        model, dsim, MockBlock = mock_dsim
+
+        # Block with 3 inputs and 1 output (like Sum block)
+        sum_block = MockBlock("Sum1", in_ports=3, out_ports=1)
+        sum_block.sid = 1
+        sum_block.relocate_Block(QPoint(100, 100))
+
+        dsim.blocks_list.append(sum_block)
+        model.blocks_list = dsim.blocks_list
+
+        manager = SubsystemManager(model, dsim)
+        subsys = manager.create_subsystem_from_selection([sum_block])
+
+        # Should get 3 Inports (one per input) and 1 Outport
+        assert 'in' in subsys.ports
+        assert len(subsys.ports['in']) == 3, f"Expected 3 inputs, got {len(subsys.ports['in'])}"
+
+        assert 'out' in subsys.ports
+        assert len(subsys.ports['out']) == 1, f"Expected 1 output, got {len(subsys.ports['out'])}"

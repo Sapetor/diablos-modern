@@ -153,3 +153,23 @@ Standard summing junction for feedback loops (set signs to '+-').
 **Ports**: 2 In, 1 Out
 
 ---
+
+### MathFunction
+
+Apply a mathematical function to the input signal.
+
+Supported Functions:
+- Trigonometric: sin, cos, tan, asin, acos, atan
+- Exponential: exp, log (ln), log10, sqrt, square
+- Operational: sign, abs, ceil, floor, reciprocal
+
+You can also enter any valid Python expression using `u` (input) and `t` (time), e.g., `u**2 + sin(t*10)`.
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `function` | choice | `sin` | Function to apply (sin, cos, tan, exp, log, sqrt, etc.) |
+
+**Ports**: 1 In, 1 Out
+
+---

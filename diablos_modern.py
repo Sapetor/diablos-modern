@@ -125,9 +125,16 @@ def main():
                 from PyQt5.QtCore import QTimer
                 def load_file():
                     try:
-                        if hasattr(window.dsim, 'file_service'):
-                            block_data = window.dsim.file_service.load(filepath=file_path)
-                            window.dsim.deserialize(block_data)
+                        # Use the same loading path as the file dialog
+                        if hasattr(window, 'project_manager') and window.project_manager:
+                            window.project_manager.diagram_service.load_diagram(file_path)
+                        elif hasattr(window, 'diagram_service') and window.diagram_service:
+                            window.diagram_service.load_diagram(file_path)
+                        else:
+                            # Fallback to old method
+                            if hasattr(window.dsim, 'file_service'):
+                                block_data = window.dsim.file_service.load(filepath=file_path)
+                                window.dsim.deserialize(block_data)
                         window.canvas.update()
                         logger.info(f"Diagram loaded: {file_path}")
                     except Exception as e:

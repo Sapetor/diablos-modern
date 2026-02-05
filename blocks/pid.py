@@ -46,6 +46,8 @@ class PIDBlock(BaseBlock):
             "u_min": {"type": "float", "default": -np.inf, "doc": "Output lower limit."},
             "u_max": {"type": "float", "default": np.inf, "doc": "Output upper limit."},
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
+            "sampling_time": {"type": "float", "default": -1.0,
+                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)."},
         }
 
     @property

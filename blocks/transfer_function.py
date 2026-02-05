@@ -17,6 +17,10 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
         return "TranFn"
 
     @property
+    def category(self):
+        return "Control"
+
+    @property
     def fn_name(self):
         return "transfer_function"
 
@@ -26,6 +30,8 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
             "numerator": {"default": [1.0], "type": "list"},
             "denominator": {"default": [1.0, 1.0], "type": "list"},
             "_init_start_": {"default": True, "type": "bool"},
+            "sampling_time": {"default": -1.0, "type": "float",
+                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
         }
 
     @property

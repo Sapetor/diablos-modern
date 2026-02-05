@@ -35,6 +35,11 @@ class ResidualNormBlock(BaseBlock):
         return "gray"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Computes the norm of a vector for convergence checking."

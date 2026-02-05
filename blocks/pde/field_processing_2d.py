@@ -27,7 +27,7 @@ class FieldProbe2DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -187,7 +187,7 @@ class FieldScope2DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -327,7 +327,7 @@ class FieldSliceBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):

@@ -35,6 +35,11 @@ class VectorGainBlock(BaseBlock):
         return "yellow"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Scales a vector by a scalar gain: y = α * x"

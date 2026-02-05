@@ -17,6 +17,10 @@ class DiscreteTransferFunctionBlock(StateSpaceBaseBlock):
         return "DiscreteTranFn"
 
     @property
+    def category(self):
+        return "Control"
+
+    @property
     def fn_name(self):
         return "discrete_transfer_function"
 

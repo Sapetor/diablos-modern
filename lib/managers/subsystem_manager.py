@@ -223,9 +223,12 @@ class SubsystemManager:
         # Create Subsystem block
         subsys = Subsystem()
         subsys.sid = max([b.sid for b in self.dsim.blocks_list] + [0]) + 1
-        subsys.rect = QRect(center_x - subsys.width//2, center_y - subsys.height//2,
-                           subsys.width, subsys.height)
         subsys.name = f"Subsystem{subsys.sid}"
+        subsys.ports = {}  # Initialize ports dict for boundary connections
+
+        # Position at center of selected blocks using relocate_Block to update all coords
+        target_pos = QPoint(center_x - subsys.width // 2, center_y - subsys.height // 2)
+        subsys.relocate_Block(target_pos)
 
         # Add to current scope
         self.dsim.blocks_list.append(subsys)
@@ -235,7 +238,9 @@ class SubsystemManager:
         boundary_lines = []
 
         selected_names = {b.name for b in selected_blocks}
-        current_lines = list(self.dsim.line_list)
+        current_lines = list(self.model.line_list)
+
+        logger.debug(f"Subsystem creation: {len(selected_blocks)} blocks selected, {len(current_lines)} lines")
 
         for line in current_lines:
             src_in = line.srcblock in selected_names
@@ -247,6 +252,34 @@ class SubsystemManager:
                 boundary_lines.append((line, 'out'))
             elif not src_in and dst_in:
                 boundary_lines.append((line, 'in'))
+
+        # Detect unconnected ports on selected blocks
+        # These need Inport/Outport blocks created for them
+        unconnected_inputs = []   # List of (block, port_idx)
+        unconnected_outputs = []  # List of (block, port_idx)
+
+        for block in selected_blocks:
+            # Check each input port
+            for port_idx in range(block.in_ports):
+                # Is there ANY line connecting to this input?
+                has_connection = any(
+                    line.dstblock == block.name and line.dstport == port_idx
+                    for line in current_lines
+                )
+                if not has_connection:
+                    unconnected_inputs.append((block, port_idx))
+
+            # Check each output port
+            for port_idx in range(block.out_ports):
+                # Is there ANY line connecting from this output?
+                has_connection = any(
+                    line.srcblock == block.name and line.srcport == port_idx
+                    for line in current_lines
+                )
+                if not has_connection:
+                    unconnected_outputs.append((block, port_idx))
+
+        logger.debug(f"Unconnected ports: {len(unconnected_inputs)} inputs, {len(unconnected_outputs)} outputs")
 
         # Move blocks and internal lines to subsystem
         for b in selected_blocks:
@@ -306,6 +339,8 @@ class SubsystemManager:
                 # External Source -> Subsystem (Inport) -> Internal Dest
                 inport = Inport(block_name=f"In{inport_idx}")
                 inport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+                # Update name to match inport_idx (flattener looks for inport1, inport2, etc.)
+                inport.name = f"inport{inport_idx}"
 
                 target_block = block_map.get(line.dstblock)
                 if target_block and line.dstport < len(target_block.in_coords):
@@ -362,6 +397,8 @@ class SubsystemManager:
                 # Internal Source -> Subsystem (Outport) -> External Dest
                 outport = Outport(block_name=f"Out{outport_idx}")
                 outport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+                # Update name to match outport_idx (flattener looks for outport1, outport2, etc.)
+                outport.name = f"outport{outport_idx}"
 
                 max_internal_x = max(b.rect.right() for b in subsys.sub_blocks)
                 source_block = block_map.get(line.srcblock)
@@ -415,6 +452,125 @@ class SubsystemManager:
                 line.srcport = port_idx
 
                 outport_idx += 1
+
+        # Handle unconnected input ports - create Inport blocks for them
+        for block, port_idx in unconnected_inputs:
+            inport = Inport(block_name=f"In{inport_idx}")
+            inport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+            # Update name to match inport_idx (flattener looks for inport1, inport2, etc.)
+            inport.name = f"inport{inport_idx}"
+
+            # Position Inport to the left of the target block's input port
+            target_block = block_map.get(block.name)
+            if target_block and port_idx < len(target_block.in_coords):
+                target_y = target_block.in_coords[port_idx].y()
+                inport.rect = QRect(20, target_y - inport.height // 2,
+                                   inport.width, inport.height)
+            else:
+                inport.rect = QRect(20, 50 * inport_idx, inport.width, inport.height)
+
+            inport.relocate_Block(inport.rect.topLeft())
+            subsys.sub_blocks.append(inport)
+            block_map[inport.name] = inport
+
+            # Create internal line from Inport to the block's input port
+            target_p = None
+            if target_block and port_idx < len(target_block.in_coords):
+                target_p = target_block.in_coords[port_idx]
+
+            internal_line = DLine(
+                sid=max([l.sid for l in subsys.sub_lines] + [0]) + 1,
+                srcblock=inport.name, srcport=0,
+                dstblock=block.name, dstport=port_idx,
+                points=(inport.out_coords[0], target_p if target_p else inport.out_coords[0])
+            )
+
+            try:
+                internal_line.path, internal_line.points, internal_line.segments = \
+                    internal_line.create_trajectory(
+                        inport.out_coords[0],
+                        target_p if target_p else inport.out_coords[0],
+                        subsys.sub_blocks
+                    )
+            except Exception as e:
+                logger.warning(f"Traj calc failed for unconnected input line: {e}")
+
+            subsys.sub_lines.append(internal_line)
+
+            # Add external input port to subsystem
+            if 'in' not in subsys.ports:
+                subsys.ports['in'] = []
+
+            total_inputs = len(boundary_lines) + len(unconnected_inputs)
+            port_pos = (0, (subsys.height / (total_inputs + 1)) * inport_idx)
+            subsys.ports['in'].append({
+                'pos': port_pos,
+                'type': 'input',
+                'name': str(inport_idx)
+            })
+
+            inport_idx += 1
+
+        # Handle unconnected output ports - create Outport blocks for them
+        for block, port_idx in unconnected_outputs:
+            outport = Outport(block_name=f"Out{outport_idx}")
+            outport.sid = max([b.sid for b in subsys.sub_blocks] + [0]) + 1
+            # Update name to match outport_idx (flattener looks for outport1, outport2, etc.)
+            outport.name = f"outport{outport_idx}"
+
+            # Position Outport to the right of all internal blocks
+            max_internal_x = max(b.rect.right() for b in subsys.sub_blocks)
+            source_block = block_map.get(block.name)
+
+            if source_block and port_idx < len(source_block.out_coords):
+                source_y = source_block.out_coords[port_idx].y()
+                outport.rect = QRect(max_internal_x + 50, source_y - outport.height // 2,
+                                    outport.width, outport.height)
+            else:
+                outport.rect = QRect(max_internal_x + 50, 50 * outport_idx,
+                                    outport.width, outport.height)
+
+            outport.relocate_Block(outport.rect.topLeft())
+            subsys.sub_blocks.append(outport)
+            block_map[outport.name] = outport
+
+            # Create internal line from the block's output port to Outport
+            src_p = None
+            if source_block and port_idx < len(source_block.out_coords):
+                src_p = source_block.out_coords[port_idx]
+
+            internal_line = DLine(
+                sid=max([l.sid for l in subsys.sub_lines] + [0]) + 1,
+                srcblock=block.name, srcport=port_idx,
+                dstblock=outport.name, dstport=0,
+                points=(src_p if src_p else outport.in_coords[0], outport.in_coords[0])
+            )
+
+            try:
+                internal_line.path, internal_line.points, internal_line.segments = \
+                    internal_line.create_trajectory(
+                        src_p if src_p else outport.in_coords[0],
+                        outport.in_coords[0],
+                        subsys.sub_blocks
+                    )
+            except Exception:
+                pass
+
+            subsys.sub_lines.append(internal_line)
+
+            # Add external output port to subsystem
+            if 'out' not in subsys.ports:
+                subsys.ports['out'] = []
+
+            total_outputs = len(boundary_lines) + len(unconnected_outputs)
+            port_pos = (subsys.width, (subsys.height / (total_outputs + 1)) * outport_idx)
+            subsys.ports['out'].append({
+                'pos': port_pos,
+                'type': 'output',
+                'name': str(outport_idx)
+            })
+
+            outport_idx += 1
 
         self.dsim.dirty = True
         subsys.update_Block()

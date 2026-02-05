@@ -1,5 +1,7 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import limit_params
+from blocks.input_helpers import get_vector, clip_to_limits
 
 
 class SaturationBlock(BaseBlock):
@@ -33,10 +35,10 @@ class SaturationBlock(BaseBlock):
 
     @property
     def params(self):
-        return {
-            "min": {"type": "float", "default": -np.inf, "doc": "Lower saturation limit."},
-            "max": {"type": "float", "default": np.inf, "doc": "Upper saturation limit."},
-        }
+        return limit_params(
+            min_doc="Lower saturation limit.",
+            max_doc="Upper saturation limit."
+        )
 
     @property
     def inputs(self):
@@ -63,7 +65,7 @@ class SaturationBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        u = np.array(inputs[0], dtype=float)
-        u_sat = np.clip(u, params["min"], params["max"])
+        u = get_vector(inputs, 0)
+        u_sat = clip_to_limits(u, params)
         return {0: u_sat}
 

@@ -1,5 +1,7 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import slew_rate_params, init_flag_param
+from blocks.input_helpers import get_vector, InitStateManager
 
 
 class RateLimiterBlock(BaseBlock):
@@ -35,9 +37,8 @@ class RateLimiterBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "rising_slew": {"type": "float", "default": np.inf, "doc": "Max positive slope (units/sec)."},
-            "falling_slew": {"type": "float", "default": np.inf, "doc": "Max negative slope magnitude (units/sec)."},
-            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
+            **slew_rate_params(),
+            **init_flag_param(),
         }
 
     @property
@@ -61,11 +62,12 @@ class RateLimiterBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         dt = float(params.get("dtime", 0.01))
-        u = np.array(inputs[0], dtype=float)
+        u = get_vector(inputs, 0)
 
-        if params.get("_init_start_", True):
+        init_mgr = InitStateManager(params)
+        if init_mgr.needs_init():
             params["_prev"] = u
-            params["_init_start_"] = False
+            init_mgr.mark_initialized()
             return {0: u}
 
         prev = np.array(params["_prev"], dtype=float)

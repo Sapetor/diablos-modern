@@ -20,6 +20,10 @@ This results in 2N state variables for N spatial nodes.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import (
+    wave_speed_param, domain_params_1d, init_flag_param
+)
+from lib.engine.pde_helpers import bc_params_1d
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +42,7 @@ class WaveEquation1DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):
@@ -71,36 +75,14 @@ class WaveEquation1DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "c": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Wave speed [m/s]"
-            },
+            **wave_speed_param(default=1.0),
             "damping": {
                 "type": "float",
                 "default": 0.0,
                 "doc": "Damping coefficient"
             },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
-            "N": {
-                "type": "int",
-                "default": 50,
-                "doc": "Number of spatial nodes"
-            },
-            "bc_type_left": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Left BC type: Dirichlet or Neumann"
-            },
-            "bc_type_right": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Right BC type: Dirichlet or Neumann"
-            },
+            **domain_params_1d(default_length=1.0, default_nodes=50),
+            **bc_params_1d(include_robin=False),
             "init_displacement": {
                 "type": "list",
                 "default": [0.0],
@@ -111,11 +93,7 @@ class WaveEquation1DBlock(BaseBlock):
                 "default": [0.0],
                 "doc": "Initial velocity (scalar or list)"
             },
-            "_init_start_": {
-                "type": "bool",
-                "default": True,
-                "doc": "Internal: initialization flag"
-            },
+            **init_flag_param(),
         }
 
     @property

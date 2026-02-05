@@ -35,6 +35,11 @@ class VectorPerturbBlock(BaseBlock):
         return "cyan"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Perturbs x[index] by epsilon for finite difference gradient computation."

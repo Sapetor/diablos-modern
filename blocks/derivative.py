@@ -40,7 +40,10 @@ class DerivativeBlock(BaseBlock):
 
     @property
     def params(self):
-        return {}
+        return {
+            "sampling_time": {"default": -1.0, "type": "float",
+                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
+        }
 
     @property
     def inputs(self):

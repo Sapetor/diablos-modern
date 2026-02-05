@@ -176,6 +176,24 @@ Extracts scalar value at a specific location from a field.
 
 ---
 
+### FieldProbe2D
+
+Extracts scalar value at a specific (x,y) location from a 2D field.
+
+Uses bilinear interpolation for positions between nodes.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `x_position` | float | 0.5 | X probe position |
+| `y_position` | float | 0.5 | Y probe position |
+| `position_mode` | string | "normalized" | "normalized" (0-1) or "absolute" (meters) |
+| `Lx`, `Ly` | float | 1.0 | Domain dimensions for absolute mode |
+
+**Inputs:** 2D field array, (optional) dynamic x_pos, y_pos
+**Outputs:** scalar value at probed location
+
+---
+
 ### FieldScope
 
 Visualizes 1D field evolution over time.

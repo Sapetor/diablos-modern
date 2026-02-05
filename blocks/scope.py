@@ -23,8 +23,10 @@ class ScopeBlock(BaseBlock):
 
     @property
     def params(self):
+        from blocks.param_templates import verification_mode_param
         return {
             "labels": {"default": "default", "type": "string"},
+            **verification_mode_param(),
             "_init_start_": {"default": True, "type": "bool"},
         }
 

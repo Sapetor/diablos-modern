@@ -40,6 +40,11 @@ class AdamBlock(BaseBlock):
         return "pink"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Adam optimizer with adaptive learning rates."

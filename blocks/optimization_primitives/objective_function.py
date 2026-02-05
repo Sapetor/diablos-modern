@@ -34,6 +34,11 @@ class ObjectiveFunctionBlock(BaseBlock):
         return "purple"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Evaluates an objective function f(x) from a Python expression."
