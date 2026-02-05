@@ -682,12 +682,27 @@ class DSim:
             for block in current_blocks:
                 try:
                     if block.name in self.memory_blocks:
+                        # Multi-rate: Check if discrete block should execute at this time
+                        if not block.should_execute(self.time_step):
+                            # Propagate held outputs instead of executing
+                            if block.b_type not in [1, 3]:
+                                held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                self.engine.propagate_outputs(block, held_outputs)
+                            continue
+
                         # Execute memory blocks with output_only=True using engine
                         out_value = self.engine.execute_block(block, output_only=True)
 
                         if out_value is None or ('E' in out_value and out_value['E']):
                             self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
                             return
+
+                        # Multi-rate: Store outputs and schedule next execution for discrete blocks
+                        if block.effective_sample_time > 0:
+                            for port, value in out_value.items():
+                                if isinstance(port, int):
+                                    block.set_held_output(port, value)
+                            block.schedule_next_execution(self.time_step)
 
                         # Propagate outputs to children
                         self.engine.propagate_outputs(block, out_value)
@@ -712,9 +727,19 @@ class DSim:
 
                     # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
                     if block.hierarchy == hier and has_enough_inputs and not block.computed_data:
+                        # Multi-rate: Check if discrete block should execute at this time
+                        if not block.should_execute(self.time_step):
+                            # Mark as computed and propagate held outputs
+                            self.engine.update_global_list(block.name, h_value=0)
+                            block.computed_data = True
+                            if block.b_type not in [1, 3]:
+                                held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                self.engine.propagate_outputs(block, held_outputs)
+                            continue
+
                         # Execute using engine (handles external vs internal, kwargs building)
                         out_value = self.engine.execute_block(block)
-                        
+
                         # After execution, for memory blocks, update the 'output' state for the next step
                         if block.name in self.memory_blocks:
                             if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
@@ -724,6 +749,13 @@ class DSim:
                         if out_value is None or ('E' in out_value and out_value['E']):
                             self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
                             return
+
+                        # Multi-rate: Store outputs and schedule next execution for discrete blocks
+                        if block.effective_sample_time > 0:
+                            for port, value in out_value.items():
+                                if isinstance(port, int):
+                                    block.set_held_output(port, value)
+                            block.schedule_next_execution(self.time_step)
 
                         # The computed_data booleans are updated in the global list as well as in the block itself
                         self.engine.update_global_list(block.name, h_value=0)

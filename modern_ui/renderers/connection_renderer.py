@@ -59,8 +59,16 @@ class ConnectionRenderer:
                 painter.setBrush(Qt.NoBrush)
                 painter.drawPath(line.path)
 
+            # Determine line style based on signal type
+            # Discrete signals use dashed lines
+            is_discrete = getattr(line, 'discrete_signal', False)
+            line_style = Qt.DashLine if is_discrete else Qt.SolidLine
+
             # Draw main connection line
-            pen = QPen(pen_color, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            pen = QPen(pen_color, line_width, line_style, Qt.RoundCap, Qt.RoundJoin)
+            if is_discrete:
+                # Set dash pattern for discrete signals: dash-space-dash-space
+                pen.setDashPattern([6, 3])  # 6 pixels dash, 3 pixels space
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawPath(line.path)

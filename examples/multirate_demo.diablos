@@ -1,0 +1,248 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 2.0,
+        "sim_dt": 0.001,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Sine",
+            "sid": 0,
+            "username": "Sine 2Hz",
+            "coords_left": 50,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#90EE90",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sine",
+            "params": {
+                "amplitude": 1.0,
+                "omega": 12.566,
+                "init_angle": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ZeroOrderHold",
+            "sid": 1,
+            "username": "ZOH 10Hz",
+            "coords_left": 200,
+            "coords_top": 100,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF00FF",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "zeroorderhold",
+            "params": {
+                "sampling_time": 0.1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "RateTransition",
+            "sid": 2,
+            "username": "Rate 10Hz→100Hz",
+            "coords_left": 350,
+            "coords_top": 100,
+            "coords_width": 90,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF00FF",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "rate_transition",
+            "params": {
+                "output_sample_time": 0.01,
+                "transition_mode": "Linear",
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "FirstOrderHold",
+            "sid": 3,
+            "username": "FOH 10Hz",
+            "coords_left": 200,
+            "coords_top": 250,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FF00FF",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "first_order_hold",
+            "params": {
+                "input_sample_time": 0.1,
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 4,
+            "username": "Continuous vs Sampled",
+            "coords_left": 550,
+            "coords_top": 100,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 3,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "title": "Multi-Rate Comparison",
+                "labels": "Continuous,ZOH 10Hz,Rate Trans"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 5,
+            "username": "ZOH vs FOH",
+            "coords_left": 550,
+            "coords_top": 250,
+            "coords_width": 100,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#FFB6C1",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "title": "ZOH vs FOH Comparison",
+                "labels": "ZOH,FOH"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "line0",
+            "sid": 0,
+            "srcblock": "Sine 2Hz",
+            "srcport": 0,
+            "dstblock": "ZOH 10Hz",
+            "dstport": 0,
+            "points": [[130, 125], [200, 125]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line1",
+            "sid": 1,
+            "srcblock": "ZOH 10Hz",
+            "srcport": 0,
+            "dstblock": "Rate 10Hz→100Hz",
+            "dstport": 0,
+            "points": [[270, 125], [350, 125]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line2",
+            "sid": 2,
+            "srcblock": "Sine 2Hz",
+            "srcport": 0,
+            "dstblock": "Continuous vs Sampled",
+            "dstport": 0,
+            "points": [[130, 125], [150, 125], [150, 50], [500, 50], [500, 115], [550, 115]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line3",
+            "sid": 3,
+            "srcblock": "ZOH 10Hz",
+            "srcport": 0,
+            "dstblock": "Continuous vs Sampled",
+            "dstport": 1,
+            "points": [[270, 125], [290, 125], [290, 130], [550, 130]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line4",
+            "sid": 4,
+            "srcblock": "Rate 10Hz→100Hz",
+            "srcport": 0,
+            "dstblock": "Continuous vs Sampled",
+            "dstport": 2,
+            "points": [[440, 125], [500, 125], [500, 145], [550, 145]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line5",
+            "sid": 5,
+            "srcblock": "Sine 2Hz",
+            "srcport": 0,
+            "dstblock": "FOH 10Hz",
+            "dstport": 0,
+            "points": [[130, 125], [150, 125], [150, 275], [200, 275]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line6",
+            "sid": 6,
+            "srcblock": "ZOH 10Hz",
+            "srcport": 0,
+            "dstblock": "ZOH vs FOH",
+            "dstport": 0,
+            "points": [[270, 125], [290, 125], [290, 265], [550, 265]],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "line7",
+            "sid": 7,
+            "srcblock": "FOH 10Hz",
+            "srcport": 0,
+            "dstblock": "ZOH vs FOH",
+            "dstport": 1,
+            "points": [[270, 275], [550, 290]],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
+}

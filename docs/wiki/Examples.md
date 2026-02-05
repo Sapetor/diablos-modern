@@ -275,6 +275,27 @@ Visualizes why Newton converges in fewer iterations despite higher cost per step
 
 ---
 
+## Multi-Rate Simulation Examples
+
+### multirate_demo.diablos
+**Multi-Rate Signal Comparison**
+
+Demonstrates different rate transition methods for multi-rate simulation.
+
+- **Source**: 2 Hz sine wave (continuous)
+- **ZOH 10Hz**: Zero-Order Hold sampling at 10 Hz (staircase output)
+- **RateTransition Linear**: Smooth interpolation between ZOH steps (ramps)
+- **FOH 10Hz**: First-Order Hold with linear extrapolation (sawtooth)
+
+Key concepts:
+- Continuous vs discrete signals
+- Upsampling with interpolation
+- Comparison of ZOH, Linear, and FOH behaviors
+
+See the [Multi-Rate Simulation](Multi-Rate) page for detailed documentation.
+
+---
+
 ## Other Demo Examples
 
 ### pde_comparison_demo.diablos
