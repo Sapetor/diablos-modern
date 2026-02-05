@@ -269,6 +269,7 @@ class DSim:
         """Remove a block and its associated lines. Delegates to model."""
         self.model.remove_block(block)
         self.line_list = self.model.line_list  # Sync line_list after removal
+        self.connections_list = self.line_list  # Keep alias in sync
         self.dirty = self.model.dirty
 
     def create_subsystem_from_selection(self, selected_blocks):
@@ -369,6 +370,7 @@ class DSim:
         # Update references
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list
+        self.connections_list = self.line_list  # Keep alias in sync
         self.dirty = self.model.dirty
 
         # Reset UI state
@@ -521,6 +523,7 @@ class DSim:
             # refresh references
             self.blocks_list = self.model.blocks_list
             self.line_list = self.model.line_list
+            self.connections_list = self.line_list  # Keep alias in sync
         except Exception as e:
             logger.warning(f"Goto/From linking failed: {e}")
 

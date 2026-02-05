@@ -73,21 +73,41 @@ class ClipboardManager:
             # Map names to objects for lookup
             name_to_block = {b.name: b for b in self.dsim.blocks_list}
 
+            # Debug: Log state for diagnosing connection copy issues
+            logger.info(f"Copy: {len(self.dsim.connections_list)} connections in dsim, {len(selected_blocks)} selected blocks")
+            logger.info(f"Copy: Selected block names: {[b.name for b in selected_blocks]}")
+
             for line in self.dsim.connections_list:
                 # Resolve block objects from names
                 src_obj = name_to_block.get(line.srcblock)
                 dst_obj = name_to_block.get(line.dstblock)
 
+                # Debug logging for each connection
+                if not src_obj:
+                    logger.debug(f"Copy: Connection {line.name} srcblock '{line.srcblock}' not found in blocks")
+                if not dst_obj:
+                    logger.debug(f"Copy: Connection {line.name} dstblock '{line.dstblock}' not found in blocks")
+                if src_obj and src_obj not in selected_indices:
+                    logger.debug(f"Copy: Connection {line.name} srcblock '{line.srcblock}' not selected")
+                if dst_obj and dst_obj not in selected_indices:
+                    logger.debug(f"Copy: Connection {line.name} dstblock '{line.dstblock}' not selected")
+
                 if src_obj and dst_obj and src_obj in selected_indices and dst_obj in selected_indices:
+                    start_idx = selected_indices[src_obj]
+                    end_idx = selected_indices[dst_obj]
                     conn_data = {
-                        'start_index': selected_indices[src_obj],
+                        'start_index': start_idx,
                         'start_port': line.srcport,
-                        'end_index': selected_indices[dst_obj],
+                        'end_index': end_idx,
                         'end_port': line.dstport
                     }
                     self.clipboard_connections.append(conn_data)
+                    logger.info(f"Copy: Connection {line.srcblock}:{line.srcport} -> {line.dstblock}:{line.dstport} stored with indices ({start_idx}, {end_idx})")
 
             logger.info(f"Copied {len(self.clipboard_blocks)} blocks and {len(self.clipboard_connections)} connections")
+            # Log connection indices for debugging
+            for i, conn in enumerate(self.clipboard_connections):
+                logger.info(f"  Connection {i}: start_index={conn['start_index']}, end_index={conn['end_index']}")
         except Exception as e:
             logger.error(f"Error copying blocks: {str(e)}")
 
@@ -186,13 +206,35 @@ class ClipboardManager:
 
             # Recreate Connections
             from lib.simulation.connection import DLine
+            logger.info(f"Paste: {len(pasted_blocks)} pasted blocks, {len(self.clipboard_connections)} connections to recreate")
+            logger.info(f"Paste: clipboard_blocks has {len(self.clipboard_blocks)} entries")
             for conn_data in self.clipboard_connections:
                 try:
-                    start_block = pasted_blocks[conn_data['start_index']]
-                    end_block = pasted_blocks[conn_data['end_index']]
-
+                    start_idx = conn_data['start_index']
+                    end_idx = conn_data['end_index']
                     start_port = conn_data['start_port']
                     end_port = conn_data['end_port']
+
+                    logger.info(f"Paste: Connection start_idx={start_idx}, end_idx={end_idx}, ports=({start_port},{end_port}), pasted_blocks len={len(pasted_blocks)}")
+
+                    # Get blocks with explicit error checking
+                    if start_idx >= len(pasted_blocks):
+                        logger.warning(f"Skipping connection: start_index {start_idx} >= pasted_blocks length {len(pasted_blocks)}")
+                        continue
+                    if end_idx >= len(pasted_blocks):
+                        logger.warning(f"Skipping connection: end_index {end_idx} >= pasted_blocks length {len(pasted_blocks)}")
+                        continue
+
+                    start_block = pasted_blocks[start_idx]
+                    end_block = pasted_blocks[end_idx]
+
+                    # Check port indices
+                    if start_port >= len(start_block.out_coords):
+                        logger.warning(f"Skipping connection: start_port {start_port} >= out_coords length {len(start_block.out_coords)} for {start_block.name}")
+                        continue
+                    if end_port >= len(end_block.in_coords):
+                        logger.warning(f"Skipping connection: end_port {end_port} >= in_coords length {len(end_block.in_coords)} for {end_block.name}")
+                        continue
 
                     # Create new line
                     # Need new SID

@@ -238,3 +238,34 @@ if block.name not in self.memory_blocks:
 
 Never clear `input_queue` for memory blocks between time steps, and don't re-execute them in Loop 2.
 
+---
+
+### Copy/Paste Connections Lost Due to Stale Alias (February 2026)
+
+**Problem**: When copying multiple connected blocks and pasting, the pasted blocks appeared but connections between them were missing. Error log showed "Skipping connection: Block index out of range".
+
+**Root Cause**: In `lib/lib.py`, `connections_list` was set as an alias to `line_list` once at initialization (line 90):
+```python
+self.connections_list = self.line_list  # Alias
+```
+
+However, `line_list` was reassigned in multiple places WITHOUT updating the alias:
+- `remove_block_and_lines()` - line 271
+- `clear_all()` - line 371
+- After `link_goto_from()` during simulation - line 523
+
+After any of these operations, `connections_list` still pointed to the OLD (empty) list while `line_list` had the actual connections. The `ClipboardManager.copy_selected_blocks()` iterated `dsim.connections_list` which was empty, so no connections were copied.
+
+**Fix**: Add `self.connections_list = self.line_list` after every reassignment of `line_list`:
+```python
+self.line_list = self.model.line_list
+self.connections_list = self.line_list  # Keep alias in sync
+```
+
+**Lesson**: When using Python aliases (where two names point to the same object), reassigning one name breaks the alias. Either:
+1. Update both names together after every reassignment
+2. Use a property that always returns the current value
+3. Avoid aliases entirely - just use one consistent name
+
+For DSim, option 1 was chosen since `connections_list` is used by clipboard operations while `line_list` is the canonical name used elsewhere.
+
