@@ -102,12 +102,14 @@ class ErrorItemWidget(QFrame):
 
     def _copy_to_clipboard(self):
         """Copy the error message to clipboard."""
+        logger.debug("Copying single error message to clipboard")
         clipboard = QApplication.clipboard()
         severity_text = self.error.severity.name if hasattr(self.error.severity, 'name') else str(self.error.severity)
         text = f"[{severity_text}] {self.error.message}"
         if hasattr(self.error, 'block_name') and self.error.block_name:
             text += f" (Block: {self.error.block_name})"
         clipboard.setText(text)
+        logger.debug(f"Copied to clipboard: {text[:50]}...")
 
 
 class ErrorPanel(QWidget):
@@ -286,7 +288,9 @@ class ErrorPanel(QWidget):
 
     def _copy_all_to_clipboard(self):
         """Copy all error/warning messages to clipboard."""
+        logger.debug("Copy button clicked")
         if not self.errors:
+            logger.debug("No errors to copy")
             return
 
         lines = []
@@ -298,4 +302,12 @@ class ErrorPanel(QWidget):
             lines.append(text)
 
         clipboard = QApplication.clipboard()
-        clipboard.setText("\n".join(lines))
+        content = "\n".join(lines)
+        clipboard.setText(content)
+        logger.debug(f"Copied {len(lines)} messages to clipboard")
+
+        # Visual feedback - briefly change button text
+        original_text = self.copy_btn.text()
+        self.copy_btn.setText("✓")
+        from PyQt5.QtCore import QTimer
+        QTimer.singleShot(1000, lambda: self.copy_btn.setText(original_text))
