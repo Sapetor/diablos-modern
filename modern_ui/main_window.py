@@ -1184,6 +1184,12 @@ class ModernDiaBloSWindow(QMainWindow):
         try:
             for block in self.canvas.dsim.blocks_list:
                 if block.name == block_name:
+                    # Handle username change (special case - not in params)
+                    if prop_name == '_username_':
+                        self.canvas.dsim.dirty = True
+                        self.canvas.update()
+                        return
+
                     param_type = type(block.params.get(prop_name))
 
                     # If the value is already a list or numpy array, preserve it

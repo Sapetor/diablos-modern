@@ -3,8 +3,107 @@ import json
 import logging
 import os
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtCore import QSize
 
 logger = logging.getLogger(__name__)
+
+
+def _create_styled_file_dialog(parent, title, directory, filters, save=False):
+    """Create a styled QFileDialog that works well on all platforms."""
+    dialog = QFileDialog(parent, title, directory, filters)
+
+    # Use Qt dialog instead of native (fixes macOS click issues)
+    dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+
+    # Set dialog mode
+    if save:
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setFileMode(QFileDialog.AnyFile)
+    else:
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        dialog.setFileMode(QFileDialog.ExistingFile)
+
+    # Make dialog larger for better usability
+    dialog.resize(900, 600)
+
+    # Apply styling to fix visual issues
+    dialog.setStyleSheet("""
+        QFileDialog {
+            background-color: #f5f5f5;
+        }
+        QFileDialog QListView, QFileDialog QTreeView {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        QFileDialog QListView::item, QFileDialog QTreeView::item {
+            padding: 4px;
+            border-radius: 2px;
+        }
+        QFileDialog QListView::item:selected, QFileDialog QTreeView::item:selected {
+            background-color: #0078d4;
+            color: white;
+        }
+        QFileDialog QLineEdit {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+        }
+        QFileDialog QComboBox {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: white;
+            min-width: 200px;
+        }
+        QFileDialog QComboBox::drop-down {
+            border: none;
+            width: 20px;
+        }
+        QFileDialog QComboBox QAbstractItemView {
+            background-color: white;
+            border: 1px solid #ccc;
+            selection-background-color: #0078d4;
+        }
+        QFileDialog QPushButton {
+            padding: 8px 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+            min-width: 80px;
+        }
+        QFileDialog QPushButton:hover {
+            background-color: #e0e0e0;
+        }
+        QFileDialog QPushButton:pressed {
+            background-color: #d0d0d0;
+        }
+        QFileDialog QToolButton {
+            padding: 4px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        QFileDialog QToolButton:hover {
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+        }
+        QFileDialog QLabel {
+            padding: 2px;
+        }
+        QFileDialog QSplitter::handle {
+            background-color: #ddd;
+        }
+        QFileDialog QHeaderView::section {
+            background-color: #f0f0f0;
+            padding: 6px;
+            border: none;
+            border-bottom: 1px solid #ccc;
+        }
+    """)
+
+    return dialog
 
 class DiagramService:
     """
@@ -44,12 +143,19 @@ class DiagramService:
             bool: True if successful, False otherwise.
         """
         if not filename:
-            filename, _ = QFileDialog.getSaveFileName(
+            # Use styled Qt dialog (fixes macOS native dialog click issues)
+            dialog = _create_styled_file_dialog(
                 self.main_window,
                 "Save Diagram",
                 self.last_directory,
-                "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)"
+                "DiaBloS Files (*.diablos);;All Files (*)",
+                save=True
             )
+            if dialog.exec_() == QFileDialog.Accepted:
+                files = dialog.selectedFiles()
+                filename = files[0] if files else ""
+            else:
+                filename = ""
 
         if not filename:
             return False
@@ -95,12 +201,19 @@ class DiagramService:
         logger.info(f"load_diagram called, filename={filename}, last_directory={self.last_directory}")
         if not filename:
             logger.info("Opening file dialog...")
-            filename, _ = QFileDialog.getOpenFileName(
+            # Use styled Qt dialog (fixes macOS native dialog click issues)
+            dialog = _create_styled_file_dialog(
                 self.main_window,
                 "Open Diagram",
                 self.last_directory,
-                "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)"
+                "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
+                save=False
             )
+            if dialog.exec_() == QFileDialog.Accepted:
+                files = dialog.selectedFiles()
+                filename = files[0] if files else ""
+            else:
+                filename = ""
             logger.info(f"File dialog returned: {filename}")
 
         if not filename:
