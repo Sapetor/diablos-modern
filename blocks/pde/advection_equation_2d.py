@@ -44,7 +44,7 @@ class AdvectionEquation2DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):

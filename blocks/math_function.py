@@ -58,9 +58,11 @@ Select the function via the block parameters."""
     def execute(self, time, inputs, params, **kwargs):
         # inputs are keyed by port index (0), but fallback to "u" just in case
         u = inputs.get(0, inputs.get("u", 0.0))
-        
+
+        # Check both "function" and "expression" keys for backward compatibility
+        func = params.get("function", params.get("expression", "sin"))
         # Ensure function name is lowercase for comparison
-        func = str(params.get("function", "sin")).lower()
+        func = str(func).lower()
         
         try:
             if func == "sin":
@@ -111,12 +113,8 @@ Select the function via the block parameters."""
                 "pi": np.pi, "e": np.e,
                 "np": np
             }
-            # Use the raw function string (process original case) to allow correct python syntax if needed
-            # but we already lowered it? 
-            # Ideally we should use params.get('function') raw. 
-            # But the 'func' variable above is lowered.
-            # Let's use the raw param for eval to respect variable cases if user types 'np.sin(u)' (though we inject np).
-            raw_func = str(params.get("function", "sin"))
+            # Use the raw function string for eval to respect variable cases
+            raw_func = str(params.get("function", params.get("expression", "sin")))
             return {0: float(eval(raw_func, {"__builtins__": None}, context))}
 
         except Exception:

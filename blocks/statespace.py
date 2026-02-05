@@ -17,6 +17,10 @@ class StateSpaceBlock(StateSpaceBaseBlock):
         return "StateSpace"
 
     @property
+    def category(self):
+        return "Control"
+
+    @property
     def fn_name(self):
         return "statespace"
 
@@ -29,6 +33,8 @@ class StateSpaceBlock(StateSpaceBaseBlock):
             "D": {"default": [[0.0]], "type": "list"},
             "init_conds": {"default": [0.0], "type": "list"},
             "_init_start_": {"default": True, "type": "bool"},
+            "sampling_time": {"default": -1.0, "type": "float",
+                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
         }
 
     @property

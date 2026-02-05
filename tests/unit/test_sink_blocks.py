@@ -81,6 +81,27 @@ class TestScopeBlock:
         assert params['_skip_'] == False, "Skip flag should be cleared"
         assert 'vector' not in params, "Should not store data when skip flag is set"
 
+    def test_scope_has_verify_mode_param(self):
+        """Test scope has verify_mode parameter for explicit verification control."""
+        from blocks.scope import ScopeBlock
+        block = ScopeBlock()
+
+        assert 'verify_mode' in block.params, "Scope should have verify_mode parameter"
+        assert block.params['verify_mode']['default'] == 'auto', "Default should be 'auto'"
+        assert 'choices' in block.params['verify_mode'], "Should have choices"
+        expected_choices = ['auto', 'objective', 'comparison', 'trajectory', 'none']
+        assert block.params['verify_mode']['choices'] == expected_choices, "Should have all verification modes"
+
+    def test_scope_verify_mode_passed_through(self):
+        """Test verify_mode is preserved in params during execution."""
+        from blocks.scope import ScopeBlock
+        block = ScopeBlock()
+        params = {'labels': 'error', 'verify_mode': 'comparison', '_init_start_': True}
+
+        block.execute(time=0.0, inputs={0: 1.0}, params=params)
+
+        assert params.get('verify_mode') == 'comparison', "verify_mode should be preserved"
+
 
 @pytest.mark.unit
 class TestXYGraphBlock:

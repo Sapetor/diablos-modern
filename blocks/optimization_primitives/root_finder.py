@@ -38,6 +38,11 @@ class RootFinderBlock(BaseBlock):
         return "red"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Computes one Newton step for solving F(x) = 0."

@@ -16,6 +16,10 @@ class DiscreteStateSpaceBlock(StateSpaceBaseBlock):
         return "DiscreteStateSpace"
 
     @property
+    def category(self):
+        return "Control"
+
+    @property
     def fn_name(self):
         return "discrete_statespace"
 

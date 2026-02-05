@@ -29,7 +29,7 @@ class FieldProbeBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -155,7 +155,7 @@ class FieldIntegralBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -250,7 +250,7 @@ class FieldMaxBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -360,7 +360,7 @@ class FieldScopeBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -528,7 +528,7 @@ class FieldGradientBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):
@@ -614,7 +614,7 @@ class FieldLaplacianBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Field Processing"
+        return "PDE"
 
     @property
     def color(self):

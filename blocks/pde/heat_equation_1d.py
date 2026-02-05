@@ -16,6 +16,10 @@ This converts the PDE into N coupled ODEs that the solver handles.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import (
+    diffusivity_param, domain_params_1d, init_flag_param, robin_bc_params
+)
+from lib.engine.pde_helpers import bc_params_1d
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +43,7 @@ class HeatEquation1DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):
@@ -69,56 +73,16 @@ class HeatEquation1DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "alpha": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Thermal diffusivity [m²/s]"
-            },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
-            "N": {
-                "type": "int",
-                "default": 20,
-                "doc": "Number of spatial nodes"
-            },
-            "bc_type_left": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Left BC type: Dirichlet, Neumann, or Robin"
-            },
-            "bc_type_right": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Right BC type: Dirichlet, Neumann, or Robin"
-            },
-            "h_left": {
-                "type": "float",
-                "default": 10.0,
-                "doc": "Left Robin coefficient (heat transfer coeff)"
-            },
-            "h_right": {
-                "type": "float",
-                "default": 10.0,
-                "doc": "Right Robin coefficient (heat transfer coeff)"
-            },
-            "k_thermal": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Thermal conductivity for Robin BC [W/(m·K)]"
-            },
+            **diffusivity_param(default=1.0),
+            **domain_params_1d(default_length=1.0, default_nodes=20),
+            **bc_params_1d(include_robin=True),
+            **robin_bc_params(),
             "init_conds": {
                 "type": "list",
                 "default": [0.0],
                 "doc": "Initial conditions (scalar or list of N values)"
             },
-            "_init_start_": {
-                "type": "bool",
-                "default": True,
-                "doc": "Internal: initialization flag"
-            },
+            **init_flag_param(),
         }
 
     @property

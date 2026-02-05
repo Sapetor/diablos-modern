@@ -21,8 +21,8 @@ class MenuManager:
             self.show_block_context_menu(clicked_block, pos)
             return
 
-        # Check if clicked on a line
-        clicked_line = self.canvas._get_clicked_line(pos)
+        # Check if clicked on a line (returns tuple: line, collision_type)
+        clicked_line, _ = self.canvas._get_clicked_line(pos)
         if clicked_line:
             self.show_connection_context_menu(clicked_line, pos)
             return
@@ -146,7 +146,7 @@ class MenuManager:
         elif block.block_fn == "RootLocus":
             menu.addSeparator()
             rlocus_action = menu.addAction("Generate Root Locus Plot")
-            rlocus_action.triggered.connect(lambda: self.canvas.generate_root_locus_plot(block))
+            rlocus_action.triggered.connect(lambda: self.canvas.generate_root_locus(block))
 
         # Show menu at cursor position
         screen_pos = self.canvas.mapToGlobal(pos)

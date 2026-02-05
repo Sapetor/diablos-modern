@@ -312,3 +312,222 @@ def ensure_field_array(
     else:
         # Size mismatch - use first value or default
         return np.full(N, arr[0] if len(arr) > 0 else default)
+
+
+# =============================================================================
+# Parameter Template Factories for PDE Blocks
+# =============================================================================
+
+# Type alias for parameter dictionary
+ParamDict = Dict[str, Dict[str, Any]]
+
+
+def bc_params_1d(
+    left_default: str = "Dirichlet",
+    right_default: str = "Dirichlet",
+    include_robin: bool = True
+) -> ParamDict:
+    """
+    Create 1D boundary condition parameters.
+
+    Args:
+        left_default: Default BC type for left boundary
+        right_default: Default BC type for right boundary
+        include_robin: Include Robin BC coefficients (h_left, h_right, k_thermal)
+
+    Returns:
+        Parameter dict with BC type definitions and optionally Robin coefficients
+    """
+    params = {
+        "bc_type_left": {
+            "type": "string",
+            "default": left_default,
+            "doc": "Left BC type: Dirichlet, Neumann, or Robin"
+        },
+        "bc_type_right": {
+            "type": "string",
+            "default": right_default,
+            "doc": "Right BC type: Dirichlet, Neumann, or Robin"
+        }
+    }
+
+    if include_robin:
+        params.update({
+            "h_left": {
+                "type": "float",
+                "default": 10.0,
+                "doc": "Left Robin coefficient (heat transfer coeff)"
+            },
+            "h_right": {
+                "type": "float",
+                "default": 10.0,
+                "doc": "Right Robin coefficient (heat transfer coeff)"
+            },
+            "k_thermal": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "Thermal conductivity for Robin BC [W/(m·K)]"
+            }
+        })
+
+    return params
+
+
+def bc_params_2d(
+    default_type: str = "Dirichlet"
+) -> ParamDict:
+    """
+    Create 2D boundary condition parameters.
+
+    Args:
+        default_type: Default BC type for all boundaries
+
+    Returns:
+        Parameter dict with BC type definitions for all four edges
+    """
+    return {
+        "bc_type_left": {
+            "type": "string",
+            "default": default_type,
+            "doc": "Left BC: Dirichlet or Neumann"
+        },
+        "bc_type_right": {
+            "type": "string",
+            "default": default_type,
+            "doc": "Right BC: Dirichlet or Neumann"
+        },
+        "bc_type_bottom": {
+            "type": "string",
+            "default": default_type,
+            "doc": "Bottom BC: Dirichlet or Neumann"
+        },
+        "bc_type_top": {
+            "type": "string",
+            "default": default_type,
+            "doc": "Top BC: Dirichlet or Neumann"
+        }
+    }
+
+
+def bc_inputs_1d() -> List[Dict[str, str]]:
+    """
+    Create standard 1D BC input port definitions.
+
+    Returns:
+        List of input port definitions for left and right BCs
+    """
+    return [
+        {"name": "bc_left", "type": "float", "doc": "Left boundary value"},
+        {"name": "bc_right", "type": "float", "doc": "Right boundary value"},
+    ]
+
+
+def bc_inputs_2d() -> List[Dict[str, str]]:
+    """
+    Create standard 2D BC input port definitions.
+
+    Returns:
+        List of input port definitions for all four boundary values
+    """
+    return [
+        {"name": "bc_left", "type": "float", "doc": "Left boundary value"},
+        {"name": "bc_right", "type": "float", "doc": "Right boundary value"},
+        {"name": "bc_bottom", "type": "float", "doc": "Bottom boundary value"},
+        {"name": "bc_top", "type": "float", "doc": "Top boundary value"},
+    ]
+
+
+def get_bc_values_1d(
+    inputs: Dict[int, Any],
+    port_offset: int = 1
+) -> Tuple[float, float]:
+    """
+    Extract 1D boundary condition values from inputs.
+
+    Args:
+        inputs: Input dictionary from execute()
+        port_offset: Starting port index for BC inputs (default 1, after source)
+
+    Returns:
+        Tuple of (bc_left, bc_right) values
+    """
+    bc_left = inputs.get(port_offset, 0.0)
+    bc_right = inputs.get(port_offset + 1, 0.0)
+
+    # Handle None values
+    if bc_left is None:
+        bc_left = 0.0
+    if bc_right is None:
+        bc_right = 0.0
+
+    return float(bc_left), float(bc_right)
+
+
+def get_bc_values_2d(
+    inputs: Dict[int, Any],
+    port_offset: int = 1
+) -> Tuple[float, float, float, float]:
+    """
+    Extract 2D boundary condition values from inputs.
+
+    Args:
+        inputs: Input dictionary from execute()
+        port_offset: Starting port index for BC inputs (default 1, after source)
+
+    Returns:
+        Tuple of (bc_left, bc_right, bc_bottom, bc_top) values
+    """
+    bc_left = inputs.get(port_offset, 0.0)
+    bc_right = inputs.get(port_offset + 1, 0.0)
+    bc_bottom = inputs.get(port_offset + 2, 0.0)
+    bc_top = inputs.get(port_offset + 3, 0.0)
+
+    # Handle None values
+    if bc_left is None:
+        bc_left = 0.0
+    if bc_right is None:
+        bc_right = 0.0
+    if bc_bottom is None:
+        bc_bottom = 0.0
+    if bc_top is None:
+        bc_top = 0.0
+
+    return float(bc_left), float(bc_right), float(bc_bottom), float(bc_top)
+
+
+def get_bc_types_1d(
+    params: Dict[str, Any]
+) -> Tuple[str, str]:
+    """
+    Extract 1D boundary condition types from params.
+
+    Args:
+        params: Block parameters
+
+    Returns:
+        Tuple of (bc_type_left, bc_type_right)
+    """
+    return (
+        params.get('bc_type_left', 'Dirichlet'),
+        params.get('bc_type_right', 'Dirichlet')
+    )
+
+
+def get_bc_types_2d(
+    params: Dict[str, Any]
+) -> Tuple[str, str, str, str]:
+    """
+    Extract 2D boundary condition types from params.
+
+    Args:
+        params: Block parameters
+
+    Returns:
+        Tuple of (bc_type_left, bc_type_right, bc_type_bottom, bc_type_top)
+    """
+    return (
+        params.get('bc_type_left', 'Dirichlet'),
+        params.get('bc_type_right', 'Dirichlet'),
+        params.get('bc_type_bottom', 'Dirichlet'),
+        params.get('bc_type_top', 'Dirichlet')
+    )

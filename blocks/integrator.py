@@ -1,9 +1,14 @@
 from blocks.base_block import BaseBlock
+from blocks.param_templates import init_conds_param, method_param, init_flag_param
+from blocks.input_helpers import InitStateManager
 import numpy as np
 from scipy.integrate import solve_ivp
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Integration method choices
+INTEGRATOR_METHODS = ["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"]
 
 
 class IntegratorBlock(BaseBlock):
@@ -25,9 +30,11 @@ class IntegratorBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "init_conds": {"default": 0.0, "type": "float"},
-            "method": {"default": "SOLVE_IVP", "type": "string"},
-            "_init_start_": {"default": True, "type": "bool"},
+            **init_conds_param(default=0.0, doc="Initial condition value"),
+            **method_param(INTEGRATOR_METHODS, default="SOLVE_IVP", doc="Integration method"),
+            **init_flag_param(),
+            "sampling_time": {"default": -1.0, "type": "float",
+                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
         }
 
     @property
@@ -87,15 +94,16 @@ class IntegratorBlock(BaseBlock):
         output_only = kwargs.get('output_only', False)
         next_add_in_memory = kwargs.get('next_add_in_memory', True)
         dtime = kwargs.get('dtime', params.get('dtime', 0.01))
-        
+
         # Initialization
-        if params.get('_init_start_', True):
+        init_mgr = InitStateManager(params)
+        if init_mgr.needs_init():
             params['dtime'] = dtime
             params['mem'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
             params['output'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
             params['mem_list'] = [np.zeros_like(params['mem'])]
             params['mem_len'] = 5.0
-            params['_init_start_'] = False
+            init_mgr.mark_initialized()
             params['aux'] = np.zeros_like(params['mem'])
 
             if params['method'] == 'RK45':
@@ -118,7 +126,7 @@ class IntegratorBlock(BaseBlock):
                 params['mem'] = np.full(inputs[0].shape, params['mem'].item())
             else:
                 logger.error(f"Dimension Error in initial conditions in {params['_name_']}")
-                params['_init_start_'] = True
+                init_mgr.reset()
                 return {'E': True, 'error': f"Dimension mismatch in {params['_name_']}"}
 
         # Integration by method

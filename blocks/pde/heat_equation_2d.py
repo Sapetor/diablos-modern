@@ -18,6 +18,10 @@ State indexing: T[i,j] -> state[k] where k = i + j*Nx
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import (
+    diffusivity_param, domain_params_2d, init_flag_param, pde_2d_init_temp_param
+)
+from lib.engine.pde_helpers import bc_params_2d
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +44,7 @@ class HeatEquation2DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):
@@ -70,66 +74,11 @@ class HeatEquation2DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "alpha": {
-                "type": "float",
-                "default": 0.01,
-                "doc": "Thermal diffusivity [m²/s]"
-            },
-            "Lx": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in x [m]"
-            },
-            "Ly": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in y [m]"
-            },
-            "Nx": {
-                "type": "int",
-                "default": 20,
-                "doc": "Number of nodes in x direction"
-            },
-            "Ny": {
-                "type": "int",
-                "default": 20,
-                "doc": "Number of nodes in y direction"
-            },
-            "bc_type_left": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Left BC: Dirichlet or Neumann"
-            },
-            "bc_type_right": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Right BC: Dirichlet or Neumann"
-            },
-            "bc_type_bottom": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Bottom BC: Dirichlet or Neumann"
-            },
-            "bc_type_top": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Top BC: Dirichlet or Neumann"
-            },
-            "init_temp": {
-                "type": "string",
-                "default": "0.0",
-                "doc": "Initial temperature: number, 'sinusoidal', 'gaussian', or 'hot_spot'"
-            },
-            "init_amplitude": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Amplitude for non-uniform initial conditions"
-            },
-            "_init_start_": {
-                "type": "bool",
-                "default": True,
-                "doc": "Internal: initialization flag"
-            },
+            **diffusivity_param(default=0.01),
+            **domain_params_2d(),
+            **bc_params_2d(),
+            **pde_2d_init_temp_param(),
+            **init_flag_param(),
         }
 
     @property

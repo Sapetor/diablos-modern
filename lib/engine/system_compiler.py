@@ -68,6 +68,9 @@ class SystemCompiler:
             'FieldProbe2D',
             'FieldScope2D',
             'FieldSlice',
+            # Optimization Primitives
+            'StateVariable',
+            'Product',
         }
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
@@ -457,6 +460,50 @@ class SystemCompiler:
                  signals[b_name] = res
              return exec_sgprod
 
+        elif fn in ('Product', 'product'):
+             # Product block with configurable * and / operations
+             baked_srcs = [s for s in input_sources]
+             ops = block.params.get('ops', '**')
+             def exec_product(t, y, dy_vec, signals, _ops=ops, _srcs=baked_srcs):
+                 res = 1.0
+                 for i, src in enumerate(_srcs):
+                     op = _ops[i] if i < len(_ops) else '*'
+                     val = signals.get(src, 0.0) if src else 0.0
+                     if op == '*':
+                         res *= val
+                     elif op == '/':
+                         res = res / val if val != 0 else 1e308
+                 signals[b_name] = res
+             return exec_product
+
+        elif fn in ('StateVariable', 'Statevariable'):
+             # State variable for discrete optimization iterations
+             # Uses closure-based state storage instead of ODE integration
+             src = input_sources[0] if input_sources else None
+             initial = block.params.get('initial_value', [1.0])
+             if isinstance(initial, str):
+                 try:
+                     initial = eval(initial)
+                 except:
+                     initial = [1.0]
+             # Preserve full vector state, not just first element
+             initial = np.atleast_1d(initial).copy()
+
+             # Closure state - mutable dict to allow updates
+             state = {'current': initial, 'prev_t': -1.0}
+
+             def exec_statevariable(t, y, dy_vec, signals, _src=src, _state=state):
+                 # Output current state (vector or scalar)
+                 current = _state['current']
+                 signals[b_name] = current if current.size > 1 else float(current[0])
+                 # Check if we've moved to a new time step (discrete update)
+                 if t > _state['prev_t'] + 0.5:  # Allow for floating point
+                     if _src and _src in signals:
+                         # Update state for next iteration - preserve full vector
+                         _state['current'] = np.atleast_1d(signals[_src]).copy()
+                     _state['prev_t'] = t
+             return exec_statevariable
+
         elif fn in ('Abs', 'Absblock'):
              src = input_sources[0] if input_sources else None
              def exec_abs(t, y, dy_vec, signals):
@@ -515,9 +562,13 @@ class SystemCompiler:
 
         elif fn == 'Mathfunction':
             src = input_sources[0] if input_sources else None
-            func = str(block.params.get('function', 'sin')).lower()
+            # Check both 'function' and 'expression' keys for backward compatibility
+            func_raw = block.params.get('function', block.params.get('expression', 'sin'))
+            func = str(func_raw).lower()
 
             # Pre-select the function to avoid string comparison at runtime
+            np_func = None
+            use_expr = False
             if func == 'sin':
                 np_func = np.sin
             elif func == 'cos':
@@ -553,15 +604,39 @@ class SystemCompiler:
             elif func == 'cube':
                 np_func = lambda x: x * x * x
             else:
-                np_func = np.sin  # Default fallback
+                # Python expression fallback
+                use_expr = True
+                expr_str = str(func_raw)  # Use raw string for eval
 
-            def exec_mathfunc(t, y, dy_vec, signals, _func=np_func):
-                val = signals.get(src, 0.0) if src else 0.0
-                try:
-                    signals[b_name] = _func(val)
-                except (ValueError, ZeroDivisionError):
-                    signals[b_name] = 0.0
-            return exec_mathfunc
+            if use_expr:
+                # Build context for eval
+                eval_context = {
+                    "sin": np.sin, "cos": np.cos, "tan": np.tan,
+                    "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
+                    "exp": np.exp, "log": np.log, "log10": np.log10,
+                    "sqrt": np.sqrt, "abs": np.abs, "sign": np.sign,
+                    "ceil": np.ceil, "floor": np.floor,
+                    "pi": np.pi, "e": np.e, "np": np
+                }
+
+                def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _expr=expr_str, _ctx=eval_context):
+                    val = signals.get(_src, 0.0) if _src else 0.0
+                    try:
+                        local_ctx = dict(_ctx)
+                        local_ctx['u'] = val
+                        local_ctx['t'] = t
+                        signals[b_name] = float(eval(_expr, {"__builtins__": None}, local_ctx))
+                    except Exception:
+                        signals[b_name] = 0.0
+                return exec_mathfunc_expr
+            else:
+                def exec_mathfunc(t, y, dy_vec, signals, _func=np_func, _src=src):
+                    val = signals.get(_src, 0.0) if _src else 0.0
+                    try:
+                        signals[b_name] = _func(val)
+                    except (ValueError, ZeroDivisionError):
+                        signals[b_name] = 0.0
+                return exec_mathfunc
 
         elif fn == 'Selector':
             src = input_sources[0] if input_sources else None
@@ -1288,7 +1363,12 @@ class SystemCompiler:
                 state_map[b_name] = (current_state_idx, size)
                 y0_list.extend(ic_flat)
                 current_state_idx += size
-                
+
+            elif fn in ('StateVariable', 'Statevariable'):
+                # StateVariable uses closure-based state, not ODE state
+                # State is managed directly in the executor closure
+                pass
+
             elif fn == 'StateSpace':
                 try:
                     A = np.array(block.params['A'], dtype=float)

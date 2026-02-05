@@ -935,6 +935,17 @@ class ScopePlotter:
                 arr = np.array(vec).astype(float)
                 step_flag = step_modes[idx] if idx < len(step_modes) else False
 
+                # Check if this is an interleaved multi-signal vector that needs reshaping
+                # The Scope block stores vec_dim for multi-dimensional inputs
+                scope_block = [b for b in source_blocks if b.block_fn == 'Scope'][idx] if idx < len([b for b in source_blocks if b.block_fn == 'Scope']) else None
+                if scope_block and arr.ndim == 1:
+                    vec_dim = scope_block.exec_params.get('vec_dim', scope_block.params.get('vec_dim', 1))
+                    if vec_dim > 1 and len(arr) >= vec_dim:
+                        # Reshape interleaved flat array to 2D: (num_samples, vec_dim)
+                        num_samples = len(arr) // vec_dim
+                        arr = arr[:num_samples * vec_dim].reshape(num_samples, vec_dim)
+                        logger.debug(f"Reshaped interleaved vector to {arr.shape}")
+
                 if arr.ndim == 2 and arr.shape[1] > 1:
                     # Multi-signal scope: split into individual signals
                     if isinstance(labels, list):

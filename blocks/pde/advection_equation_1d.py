@@ -16,6 +16,9 @@ Uses upwind scheme for stability.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import (
+    advection_velocity_param, domain_params_1d, init_flag_param
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,7 @@ class AdvectionEquation1DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):
@@ -63,21 +66,9 @@ class AdvectionEquation1DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "velocity": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Advection velocity [m/s] (positive = rightward)"
-            },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
-            "N": {
-                "type": "int",
-                "default": 50,
-                "doc": "Number of spatial nodes"
-            },
+            **advection_velocity_param(default=1.0, param_name="velocity",
+                                       doc="Advection velocity [m/s] (positive = rightward)"),
+            **domain_params_1d(default_length=1.0, default_nodes=50),
             "bc_type": {
                 "type": "string",
                 "default": "Dirichlet",
@@ -88,11 +79,7 @@ class AdvectionEquation1DBlock(BaseBlock):
                 "default": [0.0],
                 "doc": "Initial concentration (scalar, list, or 'gaussian', 'step')"
             },
-            "_init_start_": {
-                "type": "bool",
-                "default": True,
-                "doc": "Internal: initialization flag"
-            },
+            **init_flag_param(),
         }
 
     @property

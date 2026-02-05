@@ -19,6 +19,10 @@ Common applications:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import (
+    diffusivity_param, domain_params_1d, init_flag_param
+)
+from lib.engine.pde_helpers import bc_params_1d
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +41,7 @@ class DiffusionReaction1DBlock(BaseBlock):
 
     @property
     def category(self):
-        return "PDE Equations"
+        return "PDE"
 
     @property
     def color(self):
@@ -69,11 +73,7 @@ class DiffusionReaction1DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "D": {
-                "type": "float",
-                "default": 0.01,
-                "doc": "Diffusion coefficient [m²/s]"
-            },
+            **diffusivity_param(default=0.01, param_name="D", doc="Diffusion coefficient [m²/s]"),
             "k": {
                 "type": "float",
                 "default": 0.1,
@@ -84,26 +84,8 @@ class DiffusionReaction1DBlock(BaseBlock):
                 "default": 1,
                 "doc": "Reaction order (1 or 2)"
             },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
-            "N": {
-                "type": "int",
-                "default": 30,
-                "doc": "Number of spatial nodes"
-            },
-            "bc_type_left": {
-                "type": "string",
-                "default": "Dirichlet",
-                "doc": "Left BC: Dirichlet, Neumann, or Robin"
-            },
-            "bc_type_right": {
-                "type": "string",
-                "default": "Neumann",
-                "doc": "Right BC: Dirichlet, Neumann, or Robin"
-            },
+            **domain_params_1d(default_length=1.0, default_nodes=30),
+            **bc_params_1d(left_default="Dirichlet", right_default="Neumann", include_robin=False),
             "h_mass_transfer": {
                 "type": "float",
                 "default": 1.0,
@@ -114,11 +96,7 @@ class DiffusionReaction1DBlock(BaseBlock):
                 "default": [1.0],
                 "doc": "Initial concentration"
             },
-            "_init_start_": {
-                "type": "bool",
-                "default": True,
-                "doc": "Internal: initialization flag"
-            },
+            **init_flag_param(),
         }
 
     @property
