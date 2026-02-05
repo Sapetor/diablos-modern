@@ -71,11 +71,22 @@ class PropertyEditor(QFrame):
         """Create the form widgets for the block's properties."""
         if not hasattr(self.block, 'params'):
             return
-            
-        # Sort keys to put 'Name' first (if it existed in params, usually it's separate)
-        # For now, just generic loop but skip internal keys
+
+        # Add Name field first (edits block.username)
+        name_label = QLabel("Name:")
+        text_color = theme_manager.get_color('text_primary').name()
+        name_label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+
+        name_edit = QLineEdit(self.block.username)
+        self._apply_widget_sizing(name_edit)
+        name_edit.setPlaceholderText("Custom display name")
+        name_edit.setToolTip("Set a custom display name (leave empty or use '--' to reset)")
+        name_edit.editingFinished.connect(lambda: self._on_name_changed(name_edit))
+        self.layout.addRow(name_label, name_edit)
+
+        # Skip internal keys (those surrounded by underscores)
         keys = [k for k in self.block.params.keys() if not k.startswith('_')]
-        
+
         for key in keys:
             value = self.block.params[key]
             label = QLabel(f"{key.replace('_', ' ').title()}:")
@@ -345,6 +356,22 @@ class PropertyEditor(QFrame):
         block_name = getattr(self.block, 'name', 'Unknown')
         self.logger.info(f"Property changed: {block_name}.{prop_name} = {new_value}")
         self.property_changed.emit(block_name, prop_name, new_value)
+
+    def _on_name_changed(self, widget):
+        """Handle username change."""
+        if self.block is None:
+            return
+
+        new_name = widget.text().strip()
+        if new_name == '--' or new_name == '':
+            # Reset to default name
+            self.block.username = self.block.name
+            widget.setText(self.block.name)
+        else:
+            self.block.username = new_name
+
+        # Emit signal to trigger canvas repaint
+        self.property_changed.emit(self.block.name, '_username_', self.block.username)
 
     def _update_theme(self):
         """Update styling when theme changes."""

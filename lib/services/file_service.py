@@ -271,6 +271,17 @@ class FileService:
             # Load params - use class method if available, otherwise pass directly
             params = block_data.get('params', {})
 
+            # Get b_type from block class (preferred) or fall back to saved value
+            # This ensures block behavior matches current class definition
+            if menu_block.block_class:
+                try:
+                    block_instance = menu_block.block_class()
+                    b_type = getattr(block_instance, 'b_type', block_data.get('b_type', 2))
+                except Exception:
+                    b_type = block_data.get('b_type', 2)
+            else:
+                b_type = block_data.get('b_type', 2)
+
             # Use fn_name from menu_block to ensure we have the correct function name,
             # not the potentially outdated one from saved file
             block = DBlock(
@@ -280,7 +291,7 @@ class FileService:
                 QColor(block_data['b_color']),
                 block_data['in_ports'],
                 block_data['out_ports'],
-                block_data.get('b_type', 2),
+                b_type,
                 block_data.get('io_edit', 'none'),
                 menu_block.fn_name,  # Use correct fn_name from menu_block
                 params,

@@ -41,6 +41,11 @@ class NumericalGradientBlock(BaseBlock):
         return "orange"
 
     @property
+    def b_type(self):
+        """Feedthrough block - direct input to output."""
+        return 2
+
+    @property
     def doc(self):
         return (
             "Computes gradient from finite difference inputs."
@@ -114,23 +119,31 @@ class NumericalGradientBlock(BaseBlock):
     def outputs(self):
         return [{"name": "grad", "type": "vector"}]
 
+    def _to_scalar(self, val, default=0.0):
+        """Convert input value to scalar, handling arrays and numpy types."""
+        if val is None:
+            return default
+        # Handle numpy arrays (including 0-d arrays)
+        arr = np.atleast_1d(val).ravel()
+        return float(arr[0]) if len(arr) > 0 else default
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             dimension = int(params.get('dimension', 2))
             epsilon = float(params.get('epsilon', 1e-6))
             method = params.get('method', 'forward')
 
-            f_center = float(inputs.get(0, 0.0))
+            f_center = self._to_scalar(inputs.get(0), 0.0)
             grad = np.zeros(dimension)
 
             if method == "forward":
                 for i in range(dimension):
-                    f_plus = float(inputs.get(i + 1, f_center))
+                    f_plus = self._to_scalar(inputs.get(i + 1), f_center)
                     grad[i] = (f_plus - f_center) / epsilon
             else:  # central
                 for i in range(dimension):
-                    f_plus = float(inputs.get(i + 1, f_center))
-                    f_minus = float(inputs.get(dimension + 1 + i, f_center))
+                    f_plus = self._to_scalar(inputs.get(i + 1), f_center)
+                    f_minus = self._to_scalar(inputs.get(dimension + 1 + i), f_center)
                     grad[i] = (f_plus - f_minus) / (2 * epsilon)
 
             return {0: grad, 'E': False}

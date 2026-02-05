@@ -37,6 +37,11 @@ class StateVariableBlock(BaseBlock):
         return "blue"
 
     @property
+    def b_type(self):
+        """Memory block - outputs initial state before needing input."""
+        return 1
+
+    @property
     def doc(self):
         return (
             "Holds state x(k) for iterative optimization."
