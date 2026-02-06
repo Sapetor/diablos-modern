@@ -33,7 +33,10 @@ class DraggableBlockWidget(QFrame):
         # Setup widget
         self._setup_widget()
         self._apply_styling()
-    
+
+        # Repaint block preview when theme changes
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
     def _setup_widget(self):
         """Setup the widget layout and content."""
         # Get platform configuration for consistent sizing
@@ -81,11 +84,10 @@ class DraggableBlockWidget(QFrame):
         painter.setRenderHint(QPainter.Antialiasing)
 
         from lib.simulation.block import DBlock
-        from modern_ui.themes.theme_manager import ThemeType
         menu_block = self.menu_block
 
         # Adjust block rect to leave more margin for ports (10px on sides for port circles)
-        block_rect = self.rect().adjusted(12, 12, -12, -30)
+        block_rect = self.rect().adjusted(8, 8, -8, -22)
 
         temp_dblock = DBlock(
             block_fn=menu_block.block_fn,
@@ -105,36 +107,18 @@ class DraggableBlockWidget(QFrame):
 
         temp_dblock.update_Block()
 
-        # In dark mode, temporarily override text_primary to use dark color for block icons
-        original_theme = None
-        if theme_manager.current_theme == ThemeType.DARK:
-            original_theme = theme_manager.themes[ThemeType.DARK]['text_primary']
-            theme_manager.themes[ThemeType.DARK]['text_primary'] = '#1F2937'
-
         # Draw block with ports for better visualization
         from modern_ui.renderers.block_renderer import BlockRenderer
         renderer = BlockRenderer()
         renderer.draw_block(temp_dblock, painter, draw_name=False, draw_ports=True)
 
-        # Restore original theme color if we changed it
-        if original_theme:
-            theme_manager.themes[ThemeType.DARK]['text_primary'] = original_theme
-
         # Draw block name with background for visibility
-        name_rect = QRect(4, self.height() - 22, self.width() - 8, 20)
+        name_rect = QRect(2, self.height() - 18, self.width() - 4, 16)
         
         # Draw semi-transparent background behind text for contrast
-        from modern_ui.themes.theme_manager import ThemeType
-        if theme_manager.current_theme == ThemeType.DARK:
-            # Dark mode: dark background, white text
-            bg_color = QColor('#1A1F26')
-            bg_color.setAlpha(220)
-            text_color = QColor('#FFFFFF')
-        else:
-            # Light mode: light background, dark text  
-            bg_color = QColor('#F3F4F6')
-            bg_color.setAlpha(220)
-            text_color = QColor('#1F2937')
+        bg_color = theme_manager.get_color('surface_secondary')
+        bg_color.setAlpha(220)
+        text_color = theme_manager.get_color('palette_text')
         
         painter.setBrush(bg_color)
         painter.setPen(Qt.NoPen)
@@ -142,10 +126,15 @@ class DraggableBlockWidget(QFrame):
         
         # Draw text
         painter.setPen(text_color)
-        font = QFont("Segoe UI", 8)
+        font = QFont("Segoe UI", 7)
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(name_rect, Qt.AlignCenter, menu_block.fn_name)
+
+    def _on_theme_changed(self):
+        """Handle theme change — update styling and repaint block preview."""
+        self._apply_styling()
+        self.update()  # Trigger repaint so icon colors refresh
 
     def _apply_styling(self):
         """Apply theme-aware styling with elevated surfaces."""
@@ -232,7 +221,7 @@ class DraggableBlockWidget(QFrame):
             
         except Exception as e:
             logger.error(f"Error creating drag pixmap: {str(e)}")
-            pixmap = QPixmap(100, 30)
+            pixmap = QPixmap(68, 24)
             pixmap.fill(theme_manager.get_color('accent_primary'))
             return pixmap
 
@@ -258,12 +247,12 @@ class BlockCategoryWidget(QFrame):
 
         layout = QVBoxLayout(self)
         padding = config.palette_container_padding
-        layout.setContentsMargins(padding, padding, padding, padding)
+        layout.setContentsMargins(1, padding, padding, padding)
         layout.setSpacing(config.palette_grid_spacing)
 
         # Category header
         header = QLabel(self.category_name)
-        header.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        header.setFont(QFont("Segoe UI", 8, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
 
@@ -294,14 +283,14 @@ class BlockCategoryWidget(QFrame):
                 background-color: transparent;
                 border: none;
                 border-radius: 6px;
-                margin: 4px;
+                margin: 4px 4px 4px 1px;
             }}
             QLabel {{
                 color: {text_color.name()};
                 padding: 4px;
                 border-bottom: 1px solid {border_color.name()};
                 margin-bottom: 4px;
-                font-size: 9pt;
+                font-size: 8pt;
                 font-weight: bold;
             }}
         """)
@@ -352,7 +341,7 @@ class ModernBlockPalette(QWidget):
         self.blocks_container = QWidget()
         self.blocks_layout = QVBoxLayout(self.blocks_container)
         padding = config.palette_container_padding
-        self.blocks_layout.setContentsMargins(padding, padding, padding, padding)
+        self.blocks_layout.setContentsMargins(1, padding, padding, padding)
         self.blocks_layout.setSpacing(config.palette_grid_spacing * 2)  # Double spacing between categories
         
         scroll_area.setWidget(self.blocks_container)
@@ -493,21 +482,13 @@ class ModernBlockPalette(QWidget):
     
     def _apply_styling(self):
         """Apply theme-aware styling."""
-        from modern_ui.themes.theme_manager import ThemeType
-
         bg_color = theme_manager.get_color('surface_primary')
         text_color = theme_manager.get_color('text_primary')
         border_color = theme_manager.get_color('border_primary')
         search_bg_color = theme_manager.get_color('surface_secondary')
 
-        # Use theme-appropriate colors for search box
-        if theme_manager.current_theme == ThemeType.DARK:
-            search_input_bg = search_bg_color.name()
-            search_input_text = text_color.name()
-        else:
-            # Light gray background with dark text for light mode
-            search_input_bg = '#E0E0E0'
-            search_input_text = '#111827'
+        search_input_bg = search_bg_color.name()
+        search_input_text = text_color.name()
 
         self.setStyleSheet(f"""
             ModernBlockPalette {{
