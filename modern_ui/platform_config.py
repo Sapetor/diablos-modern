@@ -126,19 +126,19 @@ class PlatformConfig:
     def property_panel_min_width(self) -> int:
         """Minimum width for property panel."""
         if self.is_retina_small:
-            return 340
+            return 260
         elif self.is_high_dpi:
-            return int(340 * 1.3)
-        return 340
+            return int(260 * 1.3)
+        return 260
 
     @property
     def property_panel_max_width(self) -> int:
         """Maximum width for property panel."""
         if self.is_retina_small:
-            return 480
+            return 380
         elif self.is_high_dpi:
-            return int(560 * 1.3)
-        return 560
+            return int(440 * 1.3)
+        return 440
 
     # Splitter sizing
 
@@ -152,8 +152,8 @@ class PlatformConfig:
     def splitter_property_percent(self) -> float:
         """Percentage of center width for property panel."""
         if self.is_retina_small:
-            return 0.23
-        return 0.25
+            return 0.20
+        return 0.22
 
     @property
     def splitter_property_min_width(self) -> int:
@@ -170,9 +170,9 @@ class PlatformConfig:
         the Windows display scale setting. We use logical pixels here and let
         Qt handle the physical pixel scaling.
 
-        Increased to 100px for better symbol visibility.
+        Reduced to 68px for a narrower palette while keeping 2-column grid.
         """
-        return 100
+        return 68
 
     @property
     def palette_grid_columns(self) -> int:
@@ -247,7 +247,7 @@ class PlatformConfig:
         # 5. Scrollbar and borders
         extra_width = scrollbar + borders
         # 6. Right-side safety margin to prevent scrollbar crowding
-        right_margin = 12
+        right_margin = 6
 
         required_width = (
             blocks_width +

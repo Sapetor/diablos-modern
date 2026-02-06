@@ -63,9 +63,9 @@ class CollapsibleSection(QWidget):
 
         self.content = QWidget()
         self.content_layout = QFormLayout(self.content)
-        self.content_layout.setContentsMargins(8, 4, 4, 4)
-        self.content_layout.setSpacing(6)
-        self.content_layout.setVerticalSpacing(10)
+        self.content_layout.setContentsMargins(4, 2, 2, 2)
+        self.content_layout.setSpacing(4)
+        self.content_layout.setVerticalSpacing(6)
         self.content_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.content_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
         self.content_layout.setLabelAlignment(Qt.AlignLeft)
@@ -122,7 +122,7 @@ class SliderSpinBox(QWidget):
         self.spinbox.setRange(-1e15, 1e15)
         self.spinbox.setDecimals(decimals)
         self.spinbox.setValue(value)
-        self.spinbox.setFixedWidth(80)
+        self.spinbox.setFixedWidth(65)
         layout.addWidget(self.spinbox, stretch=0)
 
         self.slider.valueChanged.connect(self._on_slider_moved)
@@ -215,7 +215,7 @@ class PropertyEditor(QFrame):
         self.setAutoFillBackground(True)
 
         self._main_layout = QVBoxLayout(self)
-        self._main_layout.setContentsMargins(4, 6, 4, 6)
+        self._main_layout.setContentsMargins(4, 4, 4, 4)
         self._main_layout.setSpacing(6)
         self._main_layout.setAlignment(Qt.AlignTop)
 
@@ -533,28 +533,18 @@ class PropertyEditor(QFrame):
     def _create_doc_section(self):
         if not (hasattr(self.block, 'doc') and self.block.doc):
             return
-        border_color = theme_manager.get_color('border_primary').name()
-        accent_color = theme_manager.get_color('accent').name()
+        accent_color = theme_manager.get_color('accent_primary').name()
         sec_color = theme_manager.get_color('text_secondary').name()
 
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-        line.setStyleSheet(f"background-color: {border_color};")
-        self._main_layout.addWidget(line)
-
-        doc_header = QLabel("Documentation")
-        doc_header.setStyleSheet(
-            f"color: {accent_color}; font-weight: bold; font-size: 13px; margin-top: 8px;"
-        )
-        self._main_layout.addWidget(doc_header)
+        section = CollapsibleSection("Documentation", expanded=False)
+        self._sections.append(section)
 
         doc_label = QLabel(str(self.block.doc).strip())
         doc_label.setWordWrap(True)
         doc_label.setStyleSheet(
-            f"color: {sec_color}; font-style: italic; margin-bottom: 8px;"
+            f"color: {sec_color}; font-style: italic; margin-bottom: 4px;"
         )
-        self._main_layout.addWidget(doc_label)
+        section.content_layout.addRow("", doc_label)
 
         base_url = "https://github.com/Sapetor/diablos-modern/blob/main/docs/wiki"
         cat_file = f"{getattr(self.block, 'category', 'Home')}.md".replace(' ', '-')
@@ -563,7 +553,9 @@ class PropertyEditor(QFrame):
         link_label = QLabel(f'<a href="{full_url}">View Full Reference</a>')
         link_label.setOpenExternalLinks(True)
         link_label.setStyleSheet(f"color: {accent_color};")
-        self._main_layout.addWidget(link_label)
+        section.content_layout.addRow("", link_label)
+
+        self._main_layout.addWidget(section)
 
     # ── Metadata helpers ───────────────────────────────────────
 
@@ -582,7 +574,7 @@ class PropertyEditor(QFrame):
     def _apply_widget_sizing(self, widget):
         """Set flexible sizing: widgets expand to fill available space but can shrink."""
         widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        widget.setMinimumWidth(60)
+        widget.setMinimumWidth(50)
 
     def _color_name_to_hex(self, name, alpha=None):
         c = QColor(name)
@@ -776,7 +768,7 @@ class PropertyEditor(QFrame):
         txt = theme_manager.get_color('text_primary').name()
         border = theme_manager.get_color('border_primary').name()
         input_bg = theme_manager.get_color('surface_variant').name()
-        accent = theme_manager.get_color('accent').name()
+        accent = theme_manager.get_color('accent_primary').name()
         error = theme_manager.get_color('error').name()
 
         self.setStyleSheet(f"""
