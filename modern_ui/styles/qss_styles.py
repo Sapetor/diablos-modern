@@ -117,12 +117,12 @@ class ModernStyles:
         }
         
         QSplitter::handle:horizontal {
-            width: 2px;
+            width: 5px;
             margin: 2px 0px;
         }
-        
+
         QSplitter::handle:vertical {
-            height: 2px;
+            height: 5px;
             margin: 0px 2px;
         }
         

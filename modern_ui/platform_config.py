@@ -106,10 +106,10 @@ class PlatformConfig:
     def canvas_min_width(self) -> int:
         """Minimum width for canvas area."""
         if self.is_retina_small:
-            return 650
+            return 400
         elif self.is_high_dpi:
-            return 800
-        return 700
+            return 450
+        return 400
 
     @property
     def canvas_min_height(self) -> int:
@@ -126,19 +126,19 @@ class PlatformConfig:
     def property_panel_min_width(self) -> int:
         """Minimum width for property panel."""
         if self.is_retina_small:
-            return 280
+            return 340
         elif self.is_high_dpi:
-            return int(280 * 1.3)
-        return 280
+            return int(340 * 1.3)
+        return 340
 
     @property
     def property_panel_max_width(self) -> int:
         """Maximum width for property panel."""
         if self.is_retina_small:
-            return 420
+            return 480
         elif self.is_high_dpi:
-            return int(500 * 1.3)
-        return 500
+            return int(560 * 1.3)
+        return 560
 
     # Splitter sizing
 
@@ -157,12 +157,8 @@ class PlatformConfig:
 
     @property
     def splitter_property_min_width(self) -> int:
-        """Minimum width for property panel in splitter."""
-        if self.is_retina_small:
-            return 300
-        elif self.is_high_dpi:
-            return 350
-        return 300
+        """Minimum width for property panel in splitter (must match property_panel_min_width)."""
+        return self.property_panel_min_width
 
     # Block palette blocks
 

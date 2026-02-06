@@ -329,7 +329,8 @@ class ModernDiaBloSWindow(QMainWindow):
         # Create main splitter
         main_splitter = QSplitter(Qt.Horizontal)
         main_splitter.setObjectName("MainSplitter")
-        main_splitter.setChildrenCollapsible(False)  # Prevent panels from collapsing completely
+        main_splitter.setChildrenCollapsible(False)
+        main_splitter.setHandleWidth(5)
         main_layout.addWidget(main_splitter)
 
         # Left panel (Block Palette)
@@ -339,7 +340,8 @@ class ModernDiaBloSWindow(QMainWindow):
         # Center area (Canvas + Property Panel on right)
         center_splitter = QSplitter(Qt.Horizontal)
         center_splitter.setObjectName("CenterSplitter")
-        center_splitter.setChildrenCollapsible(False)  # Prevent panels from collapsing completely
+        center_splitter.setChildrenCollapsible(False)
+        center_splitter.setHandleWidth(5)
 
         # Canvas area (will contain the drawing canvas)
         self.canvas_area = self._create_canvas_area()
@@ -406,17 +408,17 @@ class ModernDiaBloSWindow(QMainWindow):
         config = get_platform_config()
 
         panel.setMinimumWidth(config.left_panel_min_width)
-        panel.setMaximumWidth(config.left_panel_max_width)
         
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
+
         # Panel title
         title = QLabel("Block Palette")
         title.setObjectName("PanelTitle")
         title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
         layout.addWidget(title)
-        
+
         # Modern block palette widget (Phase 2)
         self.block_palette = ModernBlockPalette(self.dsim)
         layout.addWidget(self.block_palette)
@@ -476,10 +478,10 @@ class ModernDiaBloSWindow(QMainWindow):
         config = get_platform_config()
 
         panel.setMinimumWidth(config.property_panel_min_width)
-        # Remove restrictive max width - let it use 20-30% of screen naturally
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
 
         # Panel title
         title = QLabel("Properties")
@@ -491,6 +493,7 @@ class ModernDiaBloSWindow(QMainWindow):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameStyle(QFrame.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         layout.addWidget(scroll_area)
 
         # Property editor
