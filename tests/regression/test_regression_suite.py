@@ -369,29 +369,38 @@ class TestOptimizationPrimitivesRegression:
         assert np.isclose(result[0], 25.0), f"Expected 25.0, got {result[0]}"
 
     def test_numerical_gradient_quadratic(self):
-        """NumericalGradient should compute gradient of x^2 correctly."""
+        """NumericalGradient should compute gradient from finite difference inputs.
+
+        For f(x) = x1^2 + x2^2 at x = [3, 4]:
+        - f_center = 3^2 + 4^2 = 25
+        - f_plus_0 = (3+eps)^2 + 4^2 = 9 + 6*eps + eps^2 + 16 ≈ 25 + 6*eps
+        - f_plus_1 = 3^2 + (4+eps)^2 = 9 + 16 + 8*eps + eps^2 ≈ 25 + 8*eps
+        - gradient ≈ [6, 8]
+        """
         from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
 
         block = NumericalGradientBlock()
-        # NumericalGradient uses same params as ObjectiveFunction
+        eps = 1e-6
         params = {
-            'expression': 'x1**2 + x2**2',
-            'n_variables': 2,
-            'epsilon': 1e-6,
+            'dimension': 2,
+            'epsilon': eps,
+            'method': 'forward',
             '_init_start_': True
         }
 
-        # Input is the point x at which to compute gradient
+        # Compute function values externally (as block expects)
         x = np.array([3.0, 4.0])
-        result = block.execute(0.0, {0: x}, params)
+        f_center = x[0]**2 + x[1]**2  # 25.0
+        f_plus_0 = (x[0] + eps)**2 + x[1]**2  # 25 + 6*eps + eps^2
+        f_plus_1 = x[0]**2 + (x[1] + eps)**2  # 25 + 8*eps + eps^2
 
-        # If gradient returns zeros, it might need different input format
-        # Check if it returns error
-        if result.get('E', False):
-            pytest.skip(f"NumericalGradient has known issue: {result.get('error')}")
+        # Block expects: input 0 = f_center, input 1 = f_plus_0, input 2 = f_plus_1
+        result = block.execute(0.0, {0: f_center, 1: f_plus_0, 2: f_plus_1}, params)
+
+        assert not result.get('E', False), f"Block returned error: {result.get('error')}"
 
         expected = np.array([6.0, 8.0])  # gradient is [2*x1, 2*x2]
-        assert np.allclose(result[0], expected, atol=0.1), f"Expected {expected}, got {result[0]}"
+        assert np.allclose(result[0], expected, atol=0.01), f"Expected {expected}, got {result[0]}"
 
     def test_vector_gain_scaling(self):
         """VectorGain should scale entire vector."""
