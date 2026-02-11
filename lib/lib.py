@@ -610,6 +610,180 @@ class DSim:
         while self.execution_initialized:
             self.execution_loop()
 
+    def run_tuning_simulation(self, sim_time, sim_dt):
+        """
+        Headless re-simulation for live parameter tuning.
+
+        Runs a full simulation without UI dialogs, progress bars, or plot calls.
+        The caller reads scope data directly from blocks after this returns.
+
+        Args:
+            sim_time: Total simulation time in seconds
+            sim_dt: Simulation time step in seconds
+
+        Returns:
+            (success: bool, error_msg: str)
+        """
+        try:
+            # Reset execution state
+            self.execution_stop = False
+            self.error_msg = ""
+            self.time_step = 0
+            self.timeline = np.array([self.time_step])
+            self.sim_time = sim_time
+            self.sim_dt = sim_dt
+
+            # Resolve parameters for all blocks
+            workspace_manager = WorkspaceManager()
+            root_blocks, root_lines = self.get_root_context()
+
+            for block in root_blocks:
+                block.exec_params = workspace_manager.resolve_params(block.params)
+                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+                self.engine.set_block_type(block)
+                block.exec_params['dtime'] = sim_dt
+
+            # Initialize engine
+            if not self.engine.initialize_execution(root_blocks, root_lines):
+                return (False, self.engine.error_msg or "Engine init failed")
+
+            self.reset_execution_data()
+            self.engine.identify_memory_blocks()
+            self.rk45_len = self.count_rk45_ints()
+            self.rk_counter = 0
+
+            # Auto-connect Goto/From tags
+            try:
+                self.model.link_goto_from()
+                self.blocks_list = self.model.blocks_list
+                self.line_list = self.model.line_list
+                self.connections_list = self.line_list
+            except Exception:
+                pass
+
+            self.max_hier = self.engine.max_hier
+            self.execution_initialized = True
+            self.rk_counter += 1
+
+            # Run batch (compiled or interpreter)
+            use_fast = getattr(self, 'use_fast_solver', True)
+            compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
+
+            if use_fast and compilable:
+                t_span = (0.0, sim_time)
+                success = self.engine.run_compiled_simulation(
+                    self.blocks_list, self.line_list, t_span, sim_dt
+                )
+                if success:
+                    self.timeline = self.engine.timeline
+                    self.execution_initialized = False
+                    return (True, "")
+                # Fall through to interpreter if compiled fails
+
+            # Interpreter mode
+            while self.execution_initialized:
+                self.execution_loop_headless()
+
+            if self.error_msg:
+                return (False, self.error_msg)
+            return (True, "")
+
+        except Exception as e:
+            logger.error(f"Tuning simulation error: {e}")
+            self.execution_initialized = False
+            return (False, str(e))
+
+    def execution_loop_headless(self):
+        """Stripped-down execution loop for tuning (no progress bar, no plots)."""
+        try:
+            if self.execution_pause:
+                return
+
+            self.reset_execution_data()
+
+            if self.rk45_len:
+                self.rk_counter %= 4
+                if self.rk_counter in [1, 3]:
+                    self.time_step += self.sim_dt / 2
+                elif self.rk_counter == 0:
+                    self.time_step += self.sim_dt
+                    self.timeline = np.append(self.timeline, self.time_step)
+            else:
+                self.time_step += self.sim_dt
+                self.timeline = np.append(self.timeline, self.time_step)
+
+            current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
+
+            for block in current_blocks:
+                if block.name in self.memory_blocks:
+                    if not block.should_execute(self.time_step):
+                        if block.b_type not in [1, 3]:
+                            held = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                            self.engine.propagate_outputs(block, held)
+                        continue
+                    out_value = self.engine.execute_block(block, output_only=True)
+                    if out_value is None or ('E' in out_value and out_value['E']):
+                        self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                        return
+                    if block.effective_sample_time > 0:
+                        for port, value in out_value.items():
+                            if isinstance(port, int):
+                                block.set_held_output(port, value)
+                        block.schedule_next_execution(self.time_step)
+                    self.engine.propagate_outputs(block, out_value)
+
+                if self.rk45_len and self.rk_counter != 0:
+                    block.params['_skip_'] = True
+
+            for hier in range(self.max_hier + 1):
+                for block in current_blocks:
+                    optional_inputs = set()
+                    if hasattr(block, 'block_instance') and block.block_instance:
+                        if hasattr(block.block_instance, 'optional_inputs'):
+                            optional_inputs = set(block.block_instance.optional_inputs)
+                    required_ports = block.in_ports - len(optional_inputs)
+                    has_enough = block.data_recieved >= required_ports or block.in_ports == 0
+
+                    if block.hierarchy == hier and has_enough and not block.computed_data:
+                        if not block.should_execute(self.time_step):
+                            self.engine.update_global_list(block.name, h_value=0)
+                            block.computed_data = True
+                            if block.b_type not in [1, 3]:
+                                held = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                self.engine.propagate_outputs(block, held)
+                            continue
+
+                        out_value = self.engine.execute_block(block)
+                        if block.name in self.memory_blocks:
+                            if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                                block.exec_params['output'] = block.exec_params['mem']
+
+                        if out_value is None or ('E' in out_value and out_value['E']):
+                            self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                            return
+
+                        if block.effective_sample_time > 0:
+                            for port, value in out_value.items():
+                                if isinstance(port, int):
+                                    block.set_held_output(port, value)
+                            block.schedule_next_execution(self.time_step)
+
+                        self.engine.update_global_list(block.name, h_value=0)
+                        block.computed_data = True
+                        if block.b_type not in [1, 3]:
+                            self.engine.propagate_outputs(block, out_value)
+                hier += 1
+
+            if self.time_step > self.sim_time + self.sim_dt:
+                self.execution_initialized = False
+                self.reset_memblocks()
+
+            self.rk_counter += 1
+
+        except Exception as e:
+            logger.error(f"Headless loop error: {e}")
+            self.execution_failed(str(e))
+
     def single_step(self) -> bool:
         """
         Execute exactly one timestep of the simulation.

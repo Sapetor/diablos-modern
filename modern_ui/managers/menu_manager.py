@@ -138,6 +138,32 @@ class MenuManager:
         properties_action = menu.addAction("Properties...")
         properties_action.triggered.connect(lambda: self.canvas._show_block_properties(block))
 
+        # "Add to Tuning" submenu for tunable parameters
+        tunable_params = []
+        for k, v in block.params.items():
+            if k.startswith('_'):
+                continue
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                tunable_params.append((k, v))
+            elif isinstance(v, (list, tuple)):
+                # Expand list params into individual element sliders
+                for i, elem in enumerate(v):
+                    if isinstance(elem, (int, float)) and not isinstance(elem, bool):
+                        tunable_params.append((f"{k}[{i}]", elem))
+        if tunable_params:
+            menu.addSeparator()
+            tuning_menu = menu.addMenu("Add to Tuning")
+            main_window = self.canvas.parent()
+            # Walk up to find the main window with _add_to_tuning
+            while main_window and not hasattr(main_window, '_add_to_tuning'):
+                main_window = main_window.parent()
+            if main_window:
+                for param_name, param_val in tunable_params:
+                    action = tuning_menu.addAction(f"{param_name} = {param_val}")
+                    action.triggered.connect(
+                        lambda checked, b=block, p=param_name: main_window._add_to_tuning(b, p)
+                    )
+
         # Add special actions for analysis blocks
         if block.block_fn == "BodeMag":
             menu.addSeparator()

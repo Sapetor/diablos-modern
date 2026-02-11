@@ -79,7 +79,7 @@ class SignalPlot(QWidget):
         self.export_button.clicked.connect(self.export_to_csv)
         main_layout.addWidget(self.export_button)
 
-        self.resize(800, 600)
+        self.resize(500, 400)
 
     def _configure_plot_axes(self, plot_widget):
         """Configure plot widget axes for better visibility."""

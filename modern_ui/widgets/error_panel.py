@@ -61,13 +61,13 @@ class ErrorItemWidget(QFrame):
         text_color = theme_manager.get_color('text_primary')
         border_color = theme_manager.get_color('border_primary')
 
-        # Different background for different severities
+        # Different background for different severities (theme-aware)
         if self.error.severity == ErrorSeverity.ERROR:
-            accent = "rgba(220, 53, 69, 0.1)"
+            accent = theme_manager.get_color('error_bg').name()
         elif self.error.severity == ErrorSeverity.WARNING:
-            accent = "rgba(255, 193, 7, 0.1)"
+            accent = theme_manager.get_color('warning_bg').name()
         else:
-            accent = "rgba(23, 162, 184, 0.1)"
+            accent = theme_manager.get_color('info_bg').name()
 
         self.setStyleSheet(f"""
             ErrorItemWidget {{

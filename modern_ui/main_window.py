@@ -40,6 +40,8 @@ from modern_ui.widgets.workspace_editor import WorkspaceEditor
 from modern_ui.widgets.minimap_widget import MinimapWidget
 from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.breadcrumb_bar import BreadcrumbBar
+from modern_ui.widgets.tuning_panel import TuningPanel
+from modern_ui.controllers.tuning_controller import TuningController
 from modern_ui.platform_config import get_platform_config
 
 # Setup logging
@@ -89,8 +91,9 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_layout()
         self._setup_statusbar()
         
-        # Connect property editor signal
+        # Connect property editor signals
         self.property_editor.property_changed.connect(self._on_property_changed)
+        self.property_editor.pin_to_tuning.connect(self._add_to_tuning)
         
         # Initialize Variable Editor (Dockable)
         from PyQt5.QtWidgets import QDockWidget
@@ -119,6 +122,22 @@ class ModernDiaBloSWindow(QMainWindow):
         self.minimap_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, self.minimap_dock)
         self.minimap_dock.hide()  # Hidden by default
+
+        # Create tuning panel and controller
+        self.tuning_panel = TuningPanel()
+        self.tuning_panel.hide()  # Hidden until first parameter is pinned
+        # Insert into canvas area layout (after error panel)
+        canvas_layout = self.canvas_area.layout()
+        canvas_layout.addWidget(self.tuning_panel, 0)
+
+        self.tuning_controller = TuningController(
+            self.dsim, self.dsim.scope_plotter, parent=self
+        )
+        self.tuning_controller.set_status_callback(
+            lambda msg: self.status_message.setText(msg)
+        )
+        self.tuning_panel.param_changed.connect(self.tuning_controller.on_param_changed)
+        self.tuning_panel.panel_cleared.connect(self.tuning_controller.deactivate)
 
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
@@ -1224,6 +1243,17 @@ class ModernDiaBloSWindow(QMainWindow):
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
+    def _add_to_tuning(self, block, param_name):
+        """Add a block parameter to the tuning panel."""
+        self.tuning_panel.add_parameter(block, param_name)
+
+    def toggle_tuning_panel(self):
+        """Toggle the tuning panel visibility."""
+        if self.tuning_panel.isVisible():
+            self.tuning_panel.hide()
+        else:
+            self.tuning_panel.show()
+
     def _on_error_clicked(self, error):
         """Handle error item click - navigate to error location."""
         try:
@@ -1334,6 +1364,10 @@ class ModernDiaBloSWindow(QMainWindow):
                 if was_running and not is_running:
                     self.toolbar.set_simulation_state(False, False)
                     self.status_message.setText("Simulation finished")
+                    # Arm tuning controller with sim params from completed run
+                    self.tuning_controller.store_sim_params(
+                        self.dsim.sim_time, self.dsim.sim_dt
+                    )
             
             self.perf_helper.end_timer("ui_update")
             
@@ -1405,7 +1439,15 @@ class ModernDiaBloSWindow(QMainWindow):
              self.dsim.use_fast_solver = self.use_fast_solver
              
         self.canvas.start_simulation()
-    
+
+        # Arm tuning controller after batch simulation completes
+        # (safe_update timer can't detect batch completion since it runs synchronously)
+        if not self.canvas.is_simulation_running():
+            sim_time = getattr(self.dsim, 'sim_time', None)
+            sim_dt = getattr(self.dsim, 'sim_dt', None)
+            if sim_time and sim_dt:
+                self.tuning_controller.store_sim_params(sim_time, sim_dt)
+
     def stop_simulation(self):
         """Stop simulation."""
         if hasattr(self, 'canvas'):

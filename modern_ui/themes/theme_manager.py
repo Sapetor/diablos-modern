@@ -136,6 +136,9 @@ class ThemeManager(QObject):
             'palette_category_bg': '#1E242C',      # Category header background
             'palette_category_text': '#9CA3AF',    # Category header text (muted)
             
+            # Block icon/text drawing color (must contrast against block fill)
+            'block_icon_color': '#1F2937',         # Dark icons (palette blocks have light fills)
+
             # Status bar - ensure good contrast
             'statusbar_bg': '#151A20',             # Status bar background
             'statusbar_text': '#E5E7EB',           # Status bar text (brighter white)
@@ -250,6 +253,9 @@ class ThemeManager(QObject):
             'palette_category_bg': '#E5E7EB',      # Category header background
             'palette_category_text': '#6B7280',    # Category header text
             
+            # Block icon/text drawing color (must contrast against block fill)
+            'block_icon_color': '#1F2937',         # Dark icons on light block backgrounds
+
             # Status bar
             'statusbar_bg': '#F3F4F6',             # Status bar background
             'statusbar_text': '#374151',           # Status bar text

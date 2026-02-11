@@ -116,7 +116,7 @@ class BlockRenderer:
             painter.drawRoundedRect(QRect(block.left, block.top, block.width, block.height), radius, radius)
 
         # Draw block-specific icon
-        icon_pen = QPen(QColor('#1F2937'), 2)
+        icon_pen = QPen(theme_manager.get_color('block_icon_color'), 2)
         painter.setPen(icon_pen)
         
         path = QPainterPath()
@@ -505,7 +505,7 @@ class BlockRenderer:
              font = painter.font()
              orig = font.pointSize()
              font.setPointSize(orig + 3); font.setItalic(True); painter.setFont(font)
-             painter.setPen(QColor('#1F2937'))
+             painter.setPen(theme_manager.get_color('block_icon_color'))
              cx, cy = block.left + block.width // 2, block.top + block.height // 2
              painter.drawText(cx - 12, cy + 4, "e")
              font.setPointSize(orig); painter.setFont(font)
@@ -517,7 +517,7 @@ class BlockRenderer:
              path.moveTo(0.12, 0.18); path.lineTo(0.15, 0.15); path.lineTo(0.18, 0.18)
              path.moveTo(0.25, 0.75); path.quadTo(0.35, 0.35, 0.55, 0.45); path.quadTo(0.75, 0.55, 0.70, 0.30)
         elif block.block_fn == "Assert":
-             self._draw_centered_text(block, painter, "⚠", bold=True, size_delta=6, color='#DC2626')
+             self._draw_centered_text(block, painter, "⚠", bold=True, size_delta=6, color=theme_manager.get_current_theme()['error'])
         elif block.block_fn == "Selector":
              path.moveTo(0.15, 0.3); path.lineTo(0.15, 0.7); path.lineTo(0.35, 0.7); path.lineTo(0.35, 0.3); path.lineTo(0.15, 0.3)
              path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4); path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5); path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
@@ -552,8 +552,8 @@ class BlockRenderer:
         font.setPointSize(orig + size_delta)
         font.setItalic(italic)
         painter.setFont(font)
-        painter.setPen(QColor('#1F2937'))
-        
+        painter.setPen(theme_manager.get_color('block_icon_color'))
+
         rect_top = QRect(block.left, block.top, block.width, block.height // 2)
         painter.drawText(rect_top, Qt.AlignCenter, lines[0])
         
@@ -567,14 +567,14 @@ class BlockRenderer:
         font.setPointSize(orig)
         painter.setFont(font)
 
-    def _draw_centered_text(self, block, painter, text, bold=False, italic=False, size_delta=0, color='#1F2937'):
+    def _draw_centered_text(self, block, painter, text, bold=False, italic=False, size_delta=0, color=None):
         font = painter.font()
         orig = font.pointSize()
         font.setPointSize(orig + size_delta)
         font.setBold(bold)
         font.setItalic(italic)
         painter.setFont(font)
-        painter.setPen(QColor(color))
+        painter.setPen(QColor(color) if color else theme_manager.get_color('block_icon_color'))
         rect = QRect(block.left, block.top, block.width, block.height)
         painter.drawText(rect, Qt.AlignCenter, text)
         font.setBold(False); font.setItalic(False); font.setPointSize(orig)
@@ -585,7 +585,7 @@ class BlockRenderer:
         orig = font.pointSize()
         font.setPointSize(orig - 1)
         painter.setFont(font)
-        painter.setPen(QColor('#1F2937'))
+        painter.setPen(theme_manager.get_color('block_icon_color'))
         painter.drawText(QRect(block.left + int(block.width*0.4), block.top + int(block.height*0.4), int(block.width*0.6), int(block.height*0.6)), Qt.AlignCenter, text)
         font.setPointSize(orig)
         painter.setFont(font)

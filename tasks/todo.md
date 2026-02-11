@@ -69,6 +69,25 @@
 
 ---
 
+## Feature Ideas
+
+### Teaching & Interaction
+- [x] **Live parameter tuning** — Manipulate-style interactive tuning: pin block parameters to a tuning panel, drag sliders and watch scope plots update in real-time via headless re-simulation. Supports float params and individual list elements (e.g., transfer function coefficients). Scope window stays on top during tuning. Right-click slider rows to set custom range.
+- [ ] **Custom Python Function block** — A block where users type a Python expression (e.g., `lambda u: np.sin(u[0]**2) + u[1]`). Like Simulink's MATLAB Function block. Enables unlimited modeling without writing new block classes.
+- [ ] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications.
+
+### Research & Data
+- [ ] **Data Import block** — Read time-series from CSV/MAT files as a source signal. Essential for comparing simulation against experimental data (e.g., QCar2) or model fitting.
+- [ ] **Linearization tool** — Select input/output points in a diagram, compute the linearized transfer function, and generate Bode plot + pole-zero map. Ties together existing BodeMagnitude/BodePhase blocks.
+- [ ] **Code generation** — "Export as standalone Python script" so a diagram becomes a self-contained `.py` file. Useful for sharing with collaborators who don't have DiaBloS installed.
+
+### UI Polish
+- [x] **Dark mode fixes** — Fixed invalid theme key lookups (`accent`, `block_fill`, `connection_line` → proper keys). Property editor "Documentation" title, command palette, minimap all now use correct theme colors. Error panel severity backgrounds are theme-aware. Canvas selection rect, connection preview, and error indicators use theme colors. Block renderer icons use `block_icon_color` theme key.
+- [x] **Compact toolbar** — Switched to `ToolButtonIconOnly` with `setIconSize(20,20)`, 14px emoji font, 70px zoom slider. Removed redundant status label (main status bar already exists). Theme button always visible at default window size on macOS. Theme also accessible via View > Toggle Theme (Ctrl+T).
+- [ ] **Minimap** — Small overview panel showing the full diagram with a viewport rectangle, helpful for navigating large diagrams.
+
+---
+
 ## Future / Roadmap
 
 ### PDE Phase 2: Mesh Abstraction
@@ -130,6 +149,9 @@
 
 | Date | Change |
 |------|--------|
+| 2026-02-06 | Dark mode fixes: invalid theme keys, block icon colors, error panel, canvas renderer. Compact toolbar (icon-only, 20px icons) |
+| 2026-02-05 | Added Feature Ideas section (live tuning, Python function block, TikZ export, data import, linearization, code gen, dark mode, minimap) |
+| 2026-02-05 | Marked completed items in REFACTORING_TODO.md (SubsystemManager, block error returns) |
 | 2026-02-03 | Completed 7-phase improvement plan (bugs, refactoring, code quality) |
 | 2026-02-03 | Fixed advection equation numerical diffusion (second-order upwind) |
 | 2026-02-02 | Created consolidated TODO from REFACTORING_TODO.md, PDE_ROADMAP.md, CLAUDE.md |

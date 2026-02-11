@@ -88,7 +88,7 @@ class CommandPalette(QDialog):
         """Apply current theme styling - minimalist with transparency."""
         bg_color = theme_manager.get_color('surface')
         text_color = theme_manager.get_color('text_primary').name()
-        accent_color = theme_manager.get_color('accent').name()
+        accent_color = theme_manager.get_color('accent_primary').name()
 
         # Create semi-transparent background
         bg_rgba = f"rgba({bg_color.red()}, {bg_color.green()}, {bg_color.blue()}, 0.95)"

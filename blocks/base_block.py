@@ -5,12 +5,17 @@ Base block module providing the abstract base class for all simulation blocks.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Union
 import numpy as np
-from numpy.typing import NDArray
+
+try:
+    from numpy.typing import NDArray
+except ImportError:
+    # numpy < 1.20 compatibility
+    NDArray = np.ndarray
 
 # Type aliases for block interfaces
 BlockParams = Dict[str, Any]
-BlockInputs = Dict[int, Union[float, int, NDArray[np.floating]]]
-BlockOutput = Dict[int, Union[float, int, NDArray[np.floating]]]
+BlockInputs = Dict[int, Union[float, int, NDArray]]
+BlockOutput = Dict[int, Union[float, int, NDArray]]
 BlockResult = Union[BlockOutput, Dict[str, Union[bool, str]]]
 PortDefinition = Dict[str, str]
 

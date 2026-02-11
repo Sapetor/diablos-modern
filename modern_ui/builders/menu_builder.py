@@ -172,6 +172,14 @@ class MenuBuilder:
              action.setShortcut("Ctrl+Shift+M")
              self.window.minimap_action = action
 
+        # Parameter Tuning Panel toggle
+        if hasattr(self.window, 'toggle_tuning_panel'):
+             action = view_menu.addAction("Parameter &Tuning Panel\tCtrl+Shift+T", self.window.toggle_tuning_panel)
+             action.setCheckable(True)
+             action.setChecked(False)
+             action.setShortcut("Ctrl+Shift+T")
+             self.window.tuning_panel_action = action
+
         view_menu.addSeparator()
         
         # UI Scale
