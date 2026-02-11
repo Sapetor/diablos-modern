@@ -207,6 +207,7 @@ class PropertyEditor(QFrame):
     """A widget that dynamically creates a form to edit block properties."""
 
     property_changed = pyqtSignal(str, str, object)
+    pin_to_tuning = pyqtSignal(object, str)  # (block, param_name)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -423,6 +424,15 @@ class PropertyEditor(QFrame):
         val_label.setStyleSheet(f"color: {error_color}; font-size: 11px; padding-left: 2px;")
         val_label.hide()
 
+        # Pin-to-tuning button for float params with sliders
+        pin_btn = None
+        if isinstance(editor, SliderSpinBox):
+            pin_btn = QPushButton("\u25C9")  # ◉ pin icon
+            pin_btn.setFixedSize(24, 24)
+            pin_btn.setToolTip("Pin to Tuning Panel")
+            pin_btn.setCursor(Qt.PointingHandCursor)
+            pin_btn.clicked.connect(lambda checked, k=key: self._on_pin_to_tuning(k))
+
         self._widgets[key] = (editor, reset_btn, val_label)
 
         container = QWidget()
@@ -432,6 +442,8 @@ class PropertyEditor(QFrame):
         row = QHBoxLayout()
         row.setSpacing(4)
         row.addWidget(editor, stretch=1)
+        if pin_btn:
+            row.addWidget(pin_btn, stretch=0)
         row.addWidget(reset_btn, stretch=0)
         c_layout.addLayout(row)
         c_layout.addWidget(val_label)
@@ -698,6 +710,13 @@ class PropertyEditor(QFrame):
                     border-radius: 4px; padding: 2px 4px;
                 }}
             """)
+
+    # ── Pin to tuning ─────────────────────────────────────────
+
+    def _on_pin_to_tuning(self, key):
+        """Emit signal to pin this parameter to the tuning panel."""
+        if self.block is not None:
+            self.pin_to_tuning.emit(self.block, key)
 
     # ── Property changes ───────────────────────────────────────
 

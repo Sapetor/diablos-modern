@@ -5,7 +5,7 @@ Features enhanced styling, modern icons, and improved usability.
 
 from PyQt5.QtWidgets import (QToolBar, QAction, QWidget, 
                              QHBoxLayout, QLabel, QSlider)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor
 from modern_ui.themes.theme_manager import theme_manager
 
@@ -31,28 +31,35 @@ class ModernToolBar(QToolBar):
         self.setObjectName("ModernToolBar")
         self.setMovable(False)
         self.setFloatable(False)
-        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.setIconSize(QSize(20, 20))
         
         self._setup_actions()
         self._setup_toolbar()
         
-        # Connect to theme changes
+        # Connect to theme changes and apply initial state
         theme_manager.theme_changed.connect(self._update_theme)
+        self._update_theme()
     
     def _create_icon(self, symbol: str, color: str = None) -> QIcon:
         """Create a simple text-based icon."""
+        from PyQt5.QtGui import QFont
         if color is None:
             color = theme_manager.get_color('text_primary').name()
-        
-        pixmap = QPixmap(24, 24)
+
+        size = 20
+        pixmap = QPixmap(size, size)
         pixmap.fill(Qt.transparent)
-        
+
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(QColor(color))
+        font = painter.font()
+        font.setPixelSize(14)
+        painter.setFont(font)
         painter.drawText(pixmap.rect(), Qt.AlignCenter, symbol)
         painter.end()
-        
+
         return QIcon(pixmap)
     
     def _setup_actions(self):
@@ -135,16 +142,6 @@ class ModernToolBar(QToolBar):
         
         # Theme toggle
         self.addAction(self.theme_action)
-        
-        # Add spacer to push remaining items to the right
-        spacer = QWidget()
-        spacer.setSizePolicy(spacer.sizePolicy().Expanding, spacer.sizePolicy().Preferred)
-        self.addWidget(spacer)
-        
-        # Status indicators
-        self.status_label = QLabel("Ready")
-        self.status_label.setObjectName("StatusLabel")
-        self.addWidget(self.status_label)
     
     def _create_zoom_widget(self) -> QWidget:
         """Create zoom control widget."""
@@ -162,7 +159,7 @@ class ModernToolBar(QToolBar):
         self.zoom_slider.setMinimum(25)  # 25%
         self.zoom_slider.setMaximum(200)  # 200%
         self.zoom_slider.setValue(100)   # 100%
-        self.zoom_slider.setFixedWidth(100)
+        self.zoom_slider.setFixedWidth(70)
         self.zoom_slider.setToolTip("Zoom level")
         self.zoom_slider.valueChanged.connect(self._on_zoom_changed)
         zoom_layout.addWidget(self.zoom_slider)
@@ -218,16 +215,14 @@ class ModernToolBar(QToolBar):
         label_style = f"QLabel {{ color: {text_color}; }}"
 
         # Only update labels that have been created
-        if hasattr(self, 'status_label'):
-            self.status_label.setStyleSheet(label_style)
         if hasattr(self, 'zoom_label'):
             self.zoom_label.setStyleSheet(label_style)
         if hasattr(self, 'zoom_text_label'):
             self.zoom_text_label.setStyleSheet(label_style)
     
     def set_status(self, message: str):
-        """Update status message."""
-        self.status_label.setText(message)
+        """Update status message (no-op, status shown in main status bar)."""
+        pass
     
     def set_simulation_state(self, running: bool, paused: bool = False):
         """Update toolbar based on simulation state."""

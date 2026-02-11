@@ -77,7 +77,7 @@ This file tracks remaining refactoring opportunities for the DiaBloS codebase.
 | Task | Status | Result |
 |------|--------|--------|
 | Clean up `modern_canvas.py` | ✅ | 2,323 → 2,267 lines, fixed duplicate keyPressEvent |
-| Extract `SubsystemManager` from lib.py | 🔄 Pending | Complex extraction, needs careful testing |
+| Extract `SubsystemManager` from lib.py | ✅ | Extracted to `lib/managers/subsystem_manager.py` (Phase 3) |
 | Clean up `main_window.py` | ✅ | 1,609 → 1,518 lines, removed duplicate methods |
 
 ### Priority 3: Consolidate Patterns (Higher Effort) - MOSTLY COMPLETED
@@ -85,11 +85,11 @@ This file tracks remaining refactoring opportunities for the DiaBloS codebase.
 | Task | Status | Result |
 |------|--------|--------|
 | Create `StateSpaceBaseBlock` | ✅ | New base class, 4 blocks refactored, ~70 lines saved |
-| Standardize block error returns | 🔄 Pending | Consistency improvement |
+| Standardize block error returns | ✅ | All blocks return `{0: value, 'E': False}` or `{'E': True, 'error': msg}` (Phase 2) |
 | Fix circular imports (theme_manager) | ✅ | Lazy import in menu_block.py |
 
 ### Remaining Tasks
 
-- [ ] Extract `SubsystemManager` from lib.py (complex, needs testing)
-- [ ] Standardize block error returns across all blocks
+- [x] Extract `SubsystemManager` from lib.py — Done (Phase 3)
+- [x] Standardize block error returns across all blocks — Done (Phase 2)
 - [ ] Further split modern_canvas.py into multiple files (optional)

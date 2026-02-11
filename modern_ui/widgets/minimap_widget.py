@@ -129,7 +129,7 @@ class MinimapWidget(QWidget):
             if block.selected:
                 fill_color = theme_manager.get_color('accent_primary')
             else:
-                fill_color = QColor(block.b_color) if hasattr(block, 'b_color') else theme_manager.get_color('block_fill')
+                fill_color = QColor(block.b_color) if hasattr(block, 'b_color') else theme_manager.get_color('block_default')
 
             # Draw block rectangle
             painter.setBrush(QBrush(fill_color))
@@ -138,7 +138,7 @@ class MinimapWidget(QWidget):
 
     def _draw_connections(self, painter):
         """Draw simplified connection lines."""
-        line_color = theme_manager.get_color('connection_line')
+        line_color = theme_manager.get_color('connection_default')
         painter.setPen(QPen(line_color, 1 / self._scale))
         painter.setBrush(Qt.NoBrush)
 

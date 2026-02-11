@@ -66,6 +66,17 @@ Key concept: Each simulation step = one optimization iteration. Build gradient d
 - `optimizer_comparison.diablos` - GD vs Momentum vs Adam on Rosenbrock
 - `convergence_rates.diablos` - Linear vs quadratic convergence visualization
 
+### Live Parameter Tuning (Manipulate-style)
+Interactive parameter tuning for teaching and exploration. After running a simulation, pin block parameters to a tuning panel and drag sliders to see scope plots update in real-time.
+
+- **New files**: `modern_ui/widgets/tuning_panel.py`, `modern_ui/controllers/tuning_controller.py`
+- **Tuning panel**: Collapsible panel at bottom of canvas area with slider rows
+- **Re-simulation**: Each slider change triggers headless re-simulation (50ms debounce), plots update in-place via `SignalPlot.loop()`
+- **List params**: Supports individual list elements (e.g., `denominator[0]`, `denominator[1]` for transfer functions)
+- **Custom ranges**: Right-click slider rows → "Set Range..." to set min/max bounds
+- **Scope stays on top**: Scope window gets `WindowStaysOnTopHint` during tuning, reverts on clear
+- **Activation**: Right-click block → "Add to Tuning" submenu, or pin button in property editor
+
 ### UI Improvements
 - **Display block**: Dynamic width rendering for wider strings
 - **Terminal output**: Simulation results summary printed after completion

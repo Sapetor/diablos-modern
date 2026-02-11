@@ -31,6 +31,7 @@ from modern_ui.managers.clipboard_manager import ClipboardManager
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 from modern_ui.managers.connection_manager import ConnectionManager
 from modern_ui.managers.rendering_manager import RenderingManager
+from modern_ui.widgets.canvas_state import CanvasState
 
 logger = logging.getLogger(__name__)
 
@@ -60,67 +61,21 @@ class ModernCanvas(QWidget):
         # Simulation configuration
         self.sim_config = SimulationConfig()
         
-        # State management
+        # State management - Unified state object
+        self.canvas_state = CanvasState()
         self.state = State.IDLE
         self.interaction_manager = InteractionManager(self)
-        
-        # Interactions (Migrating to InteractionManager)
-        # self.dragging_block = None -> interaction_manager.dragging_block
-        self.drag_offset = None
-        self.drag_offsets = {}  # For multi-block dragging
-        self.drag_start_positions = {}  # Track starting positions for undo
-        
-        # Connection management
-        self.line_creation_state = None
-        self.line_start_block = None
-        self.line_start_port = None
-        self.temp_line = None
-        self.source_block_for_connection = None
-        self.default_routing_mode = "bezier"  # Default routing mode for new connections
 
-        # Zoom and Pan
-        self.zoom_factor = 1.0
-        self.pan_offset = QPoint(0, 0)
-        self.panning = False
-        self.last_pan_pos = QPoint(0, 0)
+        # Connection routing default
+        self.default_routing_mode = "bezier"
 
-        # Grid visibility
-        self.grid_visible = True
-
-        # Clipboard for copy-paste
+        # Clipboard for copy-paste (not part of canvas_state - persists across operations)
         self.clipboard_blocks = []
 
-        # Rectangle selection
-        self.selection_rect_start = None
-        self.selection_rect_end = None
-        self.is_rect_selecting = False
-
-        # Hover tracking for visual feedback
-        self.hovered_block = None
-        self.hovered_port = None  # Tuple: (block, port_index, is_output)
-        self.hovered_line = None
-
-        # Grid snapping
-        self.grid_size = 20  # Snap to 20px grid
-        self.snap_enabled = True
-
-        # Undo/Redo system
+        # Undo/Redo system (managed by history_manager, kept here for compatibility)
         self.undo_stack = []
         self.redo_stack = []
         self.max_undo_steps = 50
-
-        # Block resizing
-        self.resizing_block = None
-        self.resize_handle = None  # Which handle is being dragged
-        self.resize_start_rect = None  # Original block rect before resize
-        self.resize_start_pos = None  # Mouse position at start of resize
-        self.resize_at_limit = False  # True when resize hits minimum size
-
-        # Validation system
-        self.validation_errors = []
-        self.blocks_with_errors = set()
-        self.blocks_with_warnings = set()
-        self.show_validation_errors = False
 
         # Initialize helpers
         self.performance = PerformanceHelper()
@@ -150,14 +105,10 @@ class ModernCanvas(QWidget):
 
         # Setup UI
         self._setup_canvas()
-        
-        # Initialize state
-        self.zoom_level = 1.0
-        self.offset = QPoint(0, 0)
-        
+
         # Enable drag and drop
         self.setAcceptDrops(True)
-        
+
         logger.info("Modern canvas initialized successfully")
     
     def _setup_canvas(self):
@@ -1845,3 +1796,272 @@ class ModernCanvas(QWidget):
         AlignmentTools.distribute_vertical(blocks)
         self._update_line_positions()
         self.update()
+
+    # =========================================================================
+    # Backward-compatible properties delegating to canvas_state
+    # These allow existing code to work while migrating to the new state object
+    # =========================================================================
+
+    # Zoom/Pan properties
+    @property
+    def zoom_factor(self):
+        return self.canvas_state.zoom_pan.zoom_factor
+
+    @zoom_factor.setter
+    def zoom_factor(self, value):
+        self.canvas_state.zoom_pan.zoom_factor = value
+
+    @property
+    def zoom_level(self):
+        return self.canvas_state.zoom_pan.zoom_factor
+
+    @zoom_level.setter
+    def zoom_level(self, value):
+        self.canvas_state.zoom_pan.zoom_factor = value
+
+    @property
+    def pan_offset(self):
+        return self.canvas_state.zoom_pan.pan_offset
+
+    @pan_offset.setter
+    def pan_offset(self, value):
+        self.canvas_state.zoom_pan.pan_offset = value
+
+    @property
+    def offset(self):
+        return self.canvas_state.zoom_pan.pan_offset
+
+    @offset.setter
+    def offset(self, value):
+        self.canvas_state.zoom_pan.pan_offset = value
+
+    @property
+    def panning(self):
+        return self.canvas_state.zoom_pan.is_panning
+
+    @panning.setter
+    def panning(self, value):
+        self.canvas_state.zoom_pan.is_panning = value
+
+    @property
+    def last_pan_pos(self):
+        return self.canvas_state.zoom_pan.last_pan_pos
+
+    @last_pan_pos.setter
+    def last_pan_pos(self, value):
+        self.canvas_state.zoom_pan.last_pan_pos = value
+
+    # Grid properties
+    @property
+    def grid_visible(self):
+        return self.canvas_state.grid.visible
+
+    @grid_visible.setter
+    def grid_visible(self, value):
+        self.canvas_state.grid.visible = value
+
+    @property
+    def grid_size(self):
+        return self.canvas_state.grid.size
+
+    @grid_size.setter
+    def grid_size(self, value):
+        self.canvas_state.grid.size = value
+
+    @property
+    def snap_enabled(self):
+        return self.canvas_state.grid.snap_enabled
+
+    @snap_enabled.setter
+    def snap_enabled(self, value):
+        self.canvas_state.grid.snap_enabled = value
+
+    # Selection properties
+    @property
+    def selection_rect_start(self):
+        return self.canvas_state.selection.rect_start
+
+    @selection_rect_start.setter
+    def selection_rect_start(self, value):
+        self.canvas_state.selection.rect_start = value
+
+    @property
+    def selection_rect_end(self):
+        return self.canvas_state.selection.rect_end
+
+    @selection_rect_end.setter
+    def selection_rect_end(self, value):
+        self.canvas_state.selection.rect_end = value
+
+    @property
+    def is_rect_selecting(self):
+        return self.canvas_state.selection.is_selecting
+
+    @is_rect_selecting.setter
+    def is_rect_selecting(self, value):
+        self.canvas_state.selection.is_selecting = value
+
+    # Hover properties
+    @property
+    def hovered_block(self):
+        return self.canvas_state.hover.block
+
+    @hovered_block.setter
+    def hovered_block(self, value):
+        self.canvas_state.hover.block = value
+
+    @property
+    def hovered_port(self):
+        return self.canvas_state.hover.port
+
+    @hovered_port.setter
+    def hovered_port(self, value):
+        self.canvas_state.hover.port = value
+
+    @property
+    def hovered_line(self):
+        return self.canvas_state.hover.line
+
+    @hovered_line.setter
+    def hovered_line(self, value):
+        self.canvas_state.hover.line = value
+
+    # Drag properties
+    @property
+    def drag_offset(self):
+        return self.canvas_state.drag.offset
+
+    @drag_offset.setter
+    def drag_offset(self, value):
+        self.canvas_state.drag.offset = value
+
+    @property
+    def drag_offsets(self):
+        return self.canvas_state.drag.offsets
+
+    @drag_offsets.setter
+    def drag_offsets(self, value):
+        self.canvas_state.drag.offsets = value
+
+    @property
+    def drag_start_positions(self):
+        return self.canvas_state.drag.start_positions
+
+    @drag_start_positions.setter
+    def drag_start_positions(self, value):
+        self.canvas_state.drag.start_positions = value
+
+    # Resize properties
+    @property
+    def resizing_block(self):
+        return self.canvas_state.resize.block
+
+    @resizing_block.setter
+    def resizing_block(self, value):
+        self.canvas_state.resize.block = value
+
+    @property
+    def resize_handle(self):
+        return self.canvas_state.resize.handle
+
+    @resize_handle.setter
+    def resize_handle(self, value):
+        self.canvas_state.resize.handle = value
+
+    @property
+    def resize_start_rect(self):
+        return self.canvas_state.resize.start_rect
+
+    @resize_start_rect.setter
+    def resize_start_rect(self, value):
+        self.canvas_state.resize.start_rect = value
+
+    @property
+    def resize_start_pos(self):
+        return self.canvas_state.resize.start_pos
+
+    @resize_start_pos.setter
+    def resize_start_pos(self, value):
+        self.canvas_state.resize.start_pos = value
+
+    @property
+    def resize_at_limit(self):
+        return self.canvas_state.resize.at_limit
+
+    @resize_at_limit.setter
+    def resize_at_limit(self, value):
+        self.canvas_state.resize.at_limit = value
+
+    # Connection properties
+    @property
+    def line_creation_state(self):
+        return self.canvas_state.connection.creation_state
+
+    @line_creation_state.setter
+    def line_creation_state(self, value):
+        self.canvas_state.connection.creation_state = value
+
+    @property
+    def line_start_block(self):
+        return self.canvas_state.connection.start_block
+
+    @line_start_block.setter
+    def line_start_block(self, value):
+        self.canvas_state.connection.start_block = value
+
+    @property
+    def line_start_port(self):
+        return self.canvas_state.connection.start_port
+
+    @line_start_port.setter
+    def line_start_port(self, value):
+        self.canvas_state.connection.start_port = value
+
+    @property
+    def temp_line(self):
+        return self.canvas_state.connection.temp_line
+
+    @temp_line.setter
+    def temp_line(self, value):
+        self.canvas_state.connection.temp_line = value
+
+    @property
+    def source_block_for_connection(self):
+        return self.canvas_state.connection.source_block
+
+    @source_block_for_connection.setter
+    def source_block_for_connection(self, value):
+        self.canvas_state.connection.source_block = value
+
+    # Validation properties
+    @property
+    def validation_errors(self):
+        return self.canvas_state.validation.errors
+
+    @validation_errors.setter
+    def validation_errors(self, value):
+        self.canvas_state.validation.errors = value
+
+    @property
+    def blocks_with_errors(self):
+        return self.canvas_state.validation.blocks_with_errors
+
+    @blocks_with_errors.setter
+    def blocks_with_errors(self, value):
+        self.canvas_state.validation.blocks_with_errors = value
+
+    @property
+    def blocks_with_warnings(self):
+        return self.canvas_state.validation.blocks_with_warnings
+
+    @blocks_with_warnings.setter
+    def blocks_with_warnings(self, value):
+        self.canvas_state.validation.blocks_with_warnings = value
+
+    @property
+    def show_validation_errors(self):
+        return self.canvas_state.validation.show_errors
+
+    @show_validation_errors.setter
+    def show_validation_errors(self, value):
+        self.canvas_state.validation.show_errors = value

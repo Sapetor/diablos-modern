@@ -62,12 +62,13 @@ class CanvasRenderer:
 
             selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
 
-            # Draw semi-transparent blue fill
-            fill_color = QColor(100, 149, 237, 50)  # Cornflower blue with alpha
+            # Draw semi-transparent fill
+            fill_color = theme_manager.get_color('selection_rectangle')
+            fill_color.setAlpha(50)
             painter.fillRect(selection_rect, fill_color)
 
-            # Draw blue border
-            border_pen = QPen(QColor(100, 149, 237), 2, Qt.DashLine)
+            # Draw border
+            border_pen = QPen(theme_manager.get_color('selection_rectangle'), 2, Qt.DashLine)
             painter.setPen(border_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(selection_rect)
@@ -78,7 +79,7 @@ class CanvasRenderer:
         """Draw the temporary connection line during drag-and-drop."""
         # Choose color based on validity
         if is_valid_target:
-            line_color = QColor(76, 175, 80)  # Green for valid
+            line_color = theme_manager.get_color('success')  # Green for valid
         else:
             line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
 
@@ -285,7 +286,7 @@ class CanvasRenderer:
         
         rect = QRectF(x, y, indicator_size, indicator_size)
         
-        color = QColor("#EF4444") if is_error else QColor("#F59E0B") # Red or Orange
+        color = theme_manager.get_color('error') if is_error else theme_manager.get_color('warning')
         
         painter.setBrush(color)
         painter.setPen(Qt.NoPen)

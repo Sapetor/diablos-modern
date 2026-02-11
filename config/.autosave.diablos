@@ -9,337 +9,82 @@
     },
     "blocks_data": [
         {
-            "block_fn": "StateVariable",
-            "sid": 1,
-            "username": "X_State",
-            "coords_left": 100,
-            "coords_top": 200,
+            "block_fn": "Step",
+            "sid": 0,
+            "username": "step0",
+            "coords_left": 120,
+            "coords_top": 160,
             "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#6495ed",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "statevariable",
-            "params": {
-                "initial_value": [
-                    0.8,
-                    0.2
-                ],
-                "dimension": 2
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "RootFinder",
-            "sid": 2,
-            "username": "NewtonStep",
-            "coords_left": 280,
-            "coords_top": 200,
-            "coords_width": 120,
             "coords_height": 60,
             "coords_height_base": 60,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#dc143c",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "rootfinder",
-            "params": {
-                "expressions": "x1**2 + x2 - 1, x1 + x2**2 - 1",
-                "variables": "x1,x2",
-                "epsilon": 1e-08,
-                "damping": 1.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ObjectiveFunction",
-            "sid": 3,
-            "username": "F1_eval",
-            "coords_left": 280,
-            "coords_top": 100,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#9370db",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "objectivefunction",
-            "params": {
-                "expression": "x1**2 + x2 - 1",
-                "variables": "x1,x2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ObjectiveFunction",
-            "sid": 4,
-            "username": "F2_eval",
-            "coords_left": 280,
-            "coords_top": 300,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#9370db",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "objectivefunction",
-            "params": {
-                "expression": "x1 + x2**2 - 1",
-                "variables": "x1,x2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Scope",
-            "sid": 5,
-            "username": "ResidualScope",
-            "coords_left": 480,
-            "coords_top": 100,
-            "coords_width": 80,
-            "coords_height": 64,
-            "coords_height_base": 60,
-            "in_ports": 2,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ff6347",
-            "b_type": 1,
-            "io_edit": true,
-            "fn_name": "scope",
-            "params": {
-                "labels": "F1(x), F2(x)"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Constant",
-            "sid": 6,
-            "username": "X_Analytical",
-            "coords_left": 100,
-            "coords_top": 400,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90ee90",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "constant",
+            "b_color": "#d1fae5",
+            "b_type": 2,
+            "io_edit": "output",
+            "fn_name": "step",
             "params": {
-                "value": [
-                    1.0,
-                    0.0
-                ]
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "VectorSum",
-            "sid": 7,
-            "username": "X_Error",
-            "coords_left": 280,
-            "coords_top": 400,
-            "coords_width": 60,
-            "coords_height": 64,
-            "coords_height_base": 50,
-            "in_ports": 2,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#32cd32",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "vectorsum",
-            "params": {
-                "signs": "+-"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "ResidualNorm",
-            "sid": 8,
-            "username": "ErrorNorm",
-            "coords_left": 380,
-            "coords_top": 400,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#808080",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "residualnorm",
-            "params": {
-                "norm_type": "2"
+                "value": 1.0,
+                "delay": 0.0,
+                "type": "up",
+                "pulse_start_up": true
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "Scope",
-            "sid": 9,
-            "username": "ErrorScope",
-            "coords_left": 500,
-            "coords_top": 390,
-            "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
+            "sid": 0,
+            "username": "scope0",
+            "coords_left": 515,
+            "coords_top": 191,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#ff6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#fee2e2",
+            "b_type": 2,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
-                "labels": "||x - x*||"
+                "labels": "default",
+                "verify_mode": "auto"
             },
             "external": false,
             "flipped": false
         },
         {
-            "block_fn": "ResidualNorm",
-            "sid": 10,
-            "username": "FNorm",
-            "coords_left": 480,
-            "coords_top": 200,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "block_fn": "TranFn",
+            "sid": 0,
+            "username": "tranfn0",
+            "coords_left": 300,
+            "coords_top": 160,
+            "coords_width": 110,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
-            "selected": false,
-            "b_color": "#808080",
+            "selected": true,
+            "b_color": "#e9d5ff",
             "b_type": 1,
-            "io_edit": false,
-            "fn_name": "residualnorm",
+            "io_edit": "both",
+            "fn_name": "transfer_function",
             "params": {
-                "norm_type": "2"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Scope",
-            "sid": 11,
-            "username": "FNormScope",
-            "coords_left": 600,
-            "coords_top": 190,
-            "coords_width": 80,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ff6347",
-            "b_type": 1,
-            "io_edit": true,
-            "fn_name": "scope",
-            "params": {
-                "labels": "||F(x)||"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Display",
-            "sid": 12,
-            "username": "FinalSolution",
-            "coords_left": 600,
-            "coords_top": 260,
-            "coords_width": 140,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ff6347",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "display",
-            "params": {
-                "format": "%.4f",
-                "label": "x*"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Display",
-            "sid": 13,
-            "username": "FinalError",
-            "coords_left": 500,
-            "coords_top": 460,
-            "coords_width": 140,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 1,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ff6347",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "display",
-            "params": {
-                "format": "%.2e",
-                "label": "||x-x*||"
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Mux",
-            "sid": 14,
-            "username": "F_Vector",
-            "coords_left": 420,
-            "coords_top": 200,
-            "coords_width": 40,
-            "coords_height": 64,
-            "coords_height_base": 50,
-            "in_ports": 2,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ffa07a",
-            "b_type": 1,
-            "io_edit": false,
-            "fn_name": "mux",
-            "params": {
-                "num_inputs": 2
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.1400000000000001,
+                    16.82,
+                    1.0
+                ],
+                "sampling_time": -1.0
             },
             "external": false,
             "flipped": false
@@ -347,432 +92,56 @@
     ],
     "lines_data": [
         {
-            "name": "Line101",
-            "sid": 101,
-            "srcblock": "statevariable1",
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
             "srcport": 0,
-            "dstblock": "rootfinder2",
+            "dstblock": "tranfn0",
             "dstport": 0,
             "points": [
                 [
-                    180,
-                    220
+                    200,
+                    190
                 ],
                 [
-                    230,
-                    220
+                    250,
+                    190
                 ],
                 [
-                    230,
+                    250,
+                    200
+                ],
+                [
+                    300,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "tranfn0",
+            "srcport": 0,
+            "dstblock": "scope0",
+            "dstport": 0,
+            "points": [
+                [
+                    410,
+                    200
+                ],
+                [
+                    462,
+                    200
+                ],
+                [
+                    462,
                     230
                 ],
                 [
-                    280,
+                    515,
                     230
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line102",
-            "sid": 102,
-            "srcblock": "rootfinder2",
-            "srcport": 0,
-            "dstblock": "statevariable1",
-            "dstport": 0,
-            "points": [
-                [
-                    400,
-                    230
-                ],
-                [
-                    420,
-                    230
-                ],
-                [
-                    420,
-                    289
-                ],
-                [
-                    80,
-                    289
-                ],
-                [
-                    80,
-                    220
-                ],
-                [
-                    100,
-                    220
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line103",
-            "sid": 103,
-            "srcblock": "statevariable1",
-            "srcport": 0,
-            "dstblock": "objectivefunction3",
-            "dstport": 0,
-            "points": [
-                [
-                    180,
-                    220
-                ],
-                [
-                    230,
-                    220
-                ],
-                [
-                    230,
-                    120
-                ],
-                [
-                    280,
-                    120
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line104",
-            "sid": 104,
-            "srcblock": "statevariable1",
-            "srcport": 0,
-            "dstblock": "objectivefunction4",
-            "dstport": 0,
-            "points": [
-                [
-                    180,
-                    220
-                ],
-                [
-                    230,
-                    220
-                ],
-                [
-                    230,
-                    320
-                ],
-                [
-                    280,
-                    320
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line105",
-            "sid": 105,
-            "srcblock": "objectivefunction3",
-            "srcport": 0,
-            "dstblock": "scope5",
-            "dstport": 0,
-            "points": [
-                [
-                    380,
-                    120
-                ],
-                [
-                    480,
-                    120
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line106",
-            "sid": 106,
-            "srcblock": "objectivefunction4",
-            "srcport": 0,
-            "dstblock": "scope5",
-            "dstport": 1,
-            "points": [
-                [
-                    380,
-                    320
-                ],
-                [
-                    430,
-                    320
-                ],
-                [
-                    430,
-                    140
-                ],
-                [
-                    480,
-                    140
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line107",
-            "sid": 107,
-            "srcblock": "statevariable1",
-            "srcport": 0,
-            "dstblock": "vectorsum7",
-            "dstport": 0,
-            "points": [
-                [
-                    180,
-                    220
-                ],
-                [
-                    230,
-                    220
-                ],
-                [
-                    230,
-                    420
-                ],
-                [
-                    280,
-                    420
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line108",
-            "sid": 108,
-            "srcblock": "constant6",
-            "srcport": 0,
-            "dstblock": "vectorsum7",
-            "dstport": 1,
-            "points": [
-                [
-                    180,
-                    420
-                ],
-                [
-                    230,
-                    420
-                ],
-                [
-                    230,
-                    440
-                ],
-                [
-                    280,
-                    440
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line109",
-            "sid": 109,
-            "srcblock": "vectorsum7",
-            "srcport": 0,
-            "dstblock": "residualnorm8",
-            "dstport": 0,
-            "points": [
-                [
-                    340,
-                    430
-                ],
-                [
-                    360,
-                    430
-                ],
-                [
-                    360,
-                    420
-                ],
-                [
-                    380,
-                    420
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line110",
-            "sid": 110,
-            "srcblock": "residualnorm8",
-            "srcport": 0,
-            "dstblock": "scope9",
-            "dstport": 0,
-            "points": [
-                [
-                    460,
-                    420
-                ],
-                [
-                    500,
-                    420
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line111",
-            "sid": 111,
-            "srcblock": "residualnorm8",
-            "srcport": 0,
-            "dstblock": "display13",
-            "dstport": 0,
-            "points": [
-                [
-                    460,
-                    420
-                ],
-                [
-                    480,
-                    420
-                ],
-                [
-                    480,
-                    480
-                ],
-                [
-                    500,
-                    480
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line112",
-            "sid": 112,
-            "srcblock": "objectivefunction3",
-            "srcport": 0,
-            "dstblock": "mux14",
-            "dstport": 0,
-            "points": [
-                [
-                    380,
-                    120
-                ],
-                [
-                    400,
-                    120
-                ],
-                [
-                    400,
-                    220
-                ],
-                [
-                    420,
-                    220
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line113",
-            "sid": 113,
-            "srcblock": "objectivefunction4",
-            "srcport": 0,
-            "dstblock": "mux14",
-            "dstport": 1,
-            "points": [
-                [
-                    380,
-                    320
-                ],
-                [
-                    400,
-                    320
-                ],
-                [
-                    400,
-                    240
-                ],
-                [
-                    420,
-                    240
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line114",
-            "sid": 114,
-            "srcblock": "mux14",
-            "srcport": 0,
-            "dstblock": "residualnorm10",
-            "dstport": 0,
-            "points": [
-                [
-                    460,
-                    230
-                ],
-                [
-                    470,
-                    230
-                ],
-                [
-                    470,
-                    220
-                ],
-                [
-                    480,
-                    220
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line115",
-            "sid": 115,
-            "srcblock": "residualnorm10",
-            "srcport": 0,
-            "dstblock": "scope11",
-            "dstport": 0,
-            "points": [
-                [
-                    560,
-                    220
-                ],
-                [
-                    600,
-                    220
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line116",
-            "sid": 116,
-            "srcblock": "statevariable1",
-            "srcport": 0,
-            "dstblock": "display12",
-            "dstport": 0,
-            "points": [
-                [
-                    180,
-                    220
-                ],
-                [
-                    390,
-                    220
-                ],
-                [
-                    390,
-                    280
-                ],
-                [
-                    600,
-                    280
                 ]
             ],
             "cptr": 0,

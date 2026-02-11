@@ -269,3 +269,25 @@ self.connections_list = self.line_list  # Keep alias in sync
 
 For DSim, option 1 was chosen since `connections_list` is used by clipboard operations while `line_list` is the canonical name used elsewhere.
 
+---
+
+### Batch Simulation Doesn't Trigger Timer-Based State Detection (February 2026)
+
+**Problem**: Live parameter tuning panel appeared but sliders had no effect — plots never updated when dragging sliders.
+
+**Root Cause**: The `TuningController.store_sim_params()` was only called inside `safe_update()`, a QTimer-based method that detects `was_running → not is_running` transitions. Batch simulation runs **synchronously** (blocking the main thread), so the timer can never fire during the simulation. The timer never sees the running→stopped transition, so `store_sim_params()` is never called, leaving the controller in an inactive state (`_active = False`). All slider changes are silently ignored.
+
+**Fix**: Call `store_sim_params()` directly after `canvas.start_simulation()` returns in `main_window.start_simulation()`:
+```python
+self.canvas.start_simulation()
+
+# Arm tuning controller after batch simulation completes
+if not self.canvas.is_simulation_running():
+    sim_time = getattr(self.dsim, 'sim_time', None)
+    sim_dt = getattr(self.dsim, 'sim_dt', None)
+    if sim_time and sim_dt:
+        self.tuning_controller.store_sim_params(sim_time, sim_dt)
+```
+
+**Lesson**: When using QTimer-based state detection, synchronous operations that block the main thread will prevent the timer from firing. Always provide an explicit notification path for synchronous operations alongside any timer-based detection.
+
