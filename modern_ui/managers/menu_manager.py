@@ -175,8 +175,8 @@ class MenuManager:
             rlocus_action.triggered.connect(lambda: self.canvas.generate_root_locus(block))
 
         # Show menu at cursor position
-        screen_pos = self.canvas.mapToGlobal(pos)
-        menu.exec_(screen_pos)
+        from PyQt5.QtGui import QCursor
+        menu.exec_(QCursor.pos())
 
     def show_connection_context_menu(self, line, pos):
         """Show context menu for a connection line."""
@@ -218,8 +218,8 @@ class MenuManager:
         highlight_action.triggered.connect(lambda: self.canvas._highlight_connection_path(line))
 
         # Show menu at cursor position
-        screen_pos = self.canvas.mapToGlobal(pos)
-        menu.exec_(screen_pos)
+        from PyQt5.QtGui import QCursor
+        menu.exec_(QCursor.pos())
 
     def show_canvas_context_menu(self, pos):
         """Show context menu for empty canvas area."""
@@ -262,5 +262,5 @@ class MenuManager:
         zoom_fit_action.triggered.connect(self.canvas.zoom_to_fit)
 
         # Show menu at cursor position
-        screen_pos = self.canvas.mapToGlobal(pos)
-        menu.exec_(screen_pos)
+        from PyQt5.QtGui import QCursor
+        menu.exec_(QCursor.pos())
