@@ -1017,6 +1017,9 @@ class SimulationEngine:
             
             logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
             t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
+            # Clip to avoid floating-point overshoot past t_span[1]
+            t_eval = t_eval[t_eval <= t_span[1] + 1e-12]
+            t_eval[-1] = min(t_eval[-1], t_span[1])
             
             if len(y0) == 0:
                 # Purely algebraic system
