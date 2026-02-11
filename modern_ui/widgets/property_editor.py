@@ -776,7 +776,11 @@ class PropertyEditor(QFrame):
                 if math.isinf(value) and math.isinf(default):
                     return (value > 0) != (default > 0)
                 return abs(value - default) > 1e-10
-            return value != default
+            result = value != default
+            # numpy arrays return array from !=; coerce to scalar bool
+            if hasattr(result, '__len__'):
+                return bool(any(result))
+            return bool(result)
         except (TypeError, ValueError):
             return str(value) != str(default)
 
