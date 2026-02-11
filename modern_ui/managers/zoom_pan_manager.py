@@ -44,12 +44,29 @@ class ZoomPanManager:
         return pos * self.zoom_factor + self.pan_offset
 
     def zoom_in(self):
-        """Zoom in by 10%."""
-        self.set_zoom(self.zoom_factor * 1.1)
+        """Zoom in by 10%, centered on canvas."""
+        self._zoom_around_center(self.zoom_factor * 1.1)
 
     def zoom_out(self):
-        """Zoom out by 10%."""
-        self.set_zoom(self.zoom_factor / 1.1)
+        """Zoom out by 10%, centered on canvas."""
+        self._zoom_around_center(self.zoom_factor / 1.1)
+
+    def _zoom_around_center(self, new_factor):
+        """Zoom while keeping the canvas center fixed."""
+        center = QPoint(self.canvas.width() // 2, self.canvas.height() // 2)
+        # World point under center before zoom
+        world_center = self.screen_to_world(center)
+        # Apply new zoom
+        old_factor = self.zoom_factor
+        self.zoom_factor = new_factor
+        self.canvas.zoom_factor = new_factor
+        # Adjust pan so the same world point stays under center
+        self.pan_offset = QPoint(
+            int(center.x() - world_center.x() * new_factor),
+            int(center.y() - world_center.y() * new_factor)
+        )
+        self.canvas.pan_offset = self.pan_offset
+        self.canvas.update()
 
     def set_zoom(self, factor):
         """Set zoom factor and update canvas.
@@ -62,7 +79,7 @@ class ZoomPanManager:
         self.canvas.update()
 
     def zoom_to_fit(self):
-        """Zoom to fit all blocks in the view."""
+        """Zoom and pan to fit all blocks centered in the view."""
         if not self.dsim.blocks_list:
             return
 
@@ -81,6 +98,18 @@ class ZoomPanManager:
         width_ratio = self.canvas.width() / bbox_width if bbox_width > 0 else 1.0
         height_ratio = self.canvas.height() / bbox_height if bbox_height > 0 else 1.0
         target_zoom = min(width_ratio, height_ratio, 1.0)  # Don't zoom in beyond 100%
+
+        # Calculate pan offset to center the bounding box
+        bbox_center_x = (min_x + max_x) / 2
+        bbox_center_y = (min_y + max_y) / 2
+        canvas_center_x = self.canvas.width() / 2
+        canvas_center_y = self.canvas.height() / 2
+
+        self.pan_offset = QPoint(
+            int(canvas_center_x - bbox_center_x * target_zoom),
+            int(canvas_center_y - bbox_center_y * target_zoom)
+        )
+        self.canvas.pan_offset = self.pan_offset
 
         self.set_zoom(target_zoom)
         logger.info(f"Zoomed to fit: {len(self.dsim.blocks_list)} blocks")
@@ -107,11 +136,23 @@ class ZoomPanManager:
 
         # Check if Ctrl (or Cmd on macOS) is pressed
         if modifiers & (Qt.ControlModifier | Qt.MetaModifier):
-            # Zoom mode
+            # Zoom mode — zoom toward mouse cursor
+            mouse_pos = event.pos()
+            world_under_cursor = self.screen_to_world(mouse_pos)
             if event.angleDelta().y() > 0:
-                self.zoom_in()
+                new_factor = self.zoom_factor * 1.1
             else:
-                self.zoom_out()
+                new_factor = self.zoom_factor / 1.1
+            self.zoom_factor = new_factor
+            self.canvas.zoom_factor = new_factor
+            # Adjust pan so world point under cursor stays fixed
+            self.pan_offset = QPoint(
+                int(mouse_pos.x() - world_under_cursor.x() * new_factor),
+                int(mouse_pos.y() - world_under_cursor.y() * new_factor)
+            )
+            self.canvas.pan_offset = self.pan_offset
+            self.canvas.update()
+            return
         else:
             # Pan/scroll mode - pan the canvas with touchpad scrolling
             delta_x = event.angleDelta().x()
