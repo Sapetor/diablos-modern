@@ -1541,15 +1541,40 @@ class SystemCompiler:
              executor = self._create_block_executor(block, input_map, state_map, block_matrices)
              execution_sequence.append(executor)
              
-        # 4. Create optimized closure
+        # 4. Build pre-population list for state-based block outputs.
+        # In feedback loops, algebraic blocks (Sum, Gain) may depend on
+        # state-based block outputs (TranFn, StateSpace, Integrator) that
+        # execute later in the topological order. Pre-populating y = C*x
+        # (or y = x for Integrators) breaks these implicit algebraic loops.
+        state_output_preloads = []
+        for b_name, (start, size) in state_map.items():
+            if b_name in block_matrices:
+                A, B, C, D = block_matrices[b_name]
+                state_output_preloads.append((b_name, start, size, C))
+            else:
+                # Integrator: output = state
+                state_output_preloads.append((b_name, start, size, None))
+
+        # 5. Create optimized closure
         def model_func(t, y):
-            signals = {} # block_name -> output_value
+            signals = {}
             dy_vec = np.zeros_like(y)
-            
-            # Execute all blocks
+
+            # Pre-populate state-based outputs so feedback loops resolve
+            for b_name, start, size, C_mat in state_output_preloads:
+                if C_mat is not None:
+                    # StateSpace/TranFn: y_out = C * x  (D*u added later in exec_ss)
+                    x = y[start:start + size].reshape(-1, 1)
+                    out = C_mat @ x
+                    signals[b_name] = out.item() if out.size == 1 else out.flatten()
+                else:
+                    # Integrator: output = state
+                    signals[b_name] = y[start] if size == 1 else y[start:start + size]
+
+            # Execute all blocks (computes derivatives and refines outputs)
             for exec_fn in execution_sequence:
                 exec_fn(t, y, dy_vec, signals)
-                
+
             return dy_vec
 
         return model_func, y0, state_map, block_matrices
