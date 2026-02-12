@@ -251,7 +251,7 @@ class SymbolicEngine:
             return {0: K * u}
 
         elif block_type == 'Sum':
-            signs = params.get('inputs', '++')
+            signs = params.get('sign', params.get('inputs', '++'))
             result = sympy.Integer(0)
             for i, sign in enumerate(signs):
                 u = input_exprs.get(i, sympy.Integer(0))

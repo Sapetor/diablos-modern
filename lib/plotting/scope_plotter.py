@@ -983,18 +983,33 @@ class ScopePlotter:
                     flat_vectors.append(arr)
                     flat_step_modes.append(step_flag)
 
+            # Log data summary for diagnostics
+            t_arr = self.dsim.timeline.astype(float)
+            for si, (lbl, vec) in enumerate(zip(flat_labels, flat_vectors)):
+                v = np.array(vec)
+                logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={v.min():.4f}, max={v.max():.4f}, "
+                           f"first={v[0]:.4f}, last={v[-1]:.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
+
+            # Close previous plot window if it exists (prevents stale windows lingering)
+            if self.plotty is not None:
+                try:
+                    self.plotty.close()
+                    self.plotty.deleteLater()
+                except Exception:
+                    pass
+
             # Use step mode for discrete/ZOH signals to keep values constant between samples
             self.plotty = SignalPlot(self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes)
             # Sync to dsim for backward compatibility
             self.dsim.plotty = self.plotty
             try:
-                self.plotty.loop(new_t=self.dsim.timeline.astype(float), new_y=flat_vectors)
-                
+                self.plotty.loop(new_t=t_arr, new_y=flat_vectors)
+
                 # Force visibility
                 self.plotty.show()
                 self.plotty.raise_()
                 self.plotty.activateWindow()
-                
+
                 logger.debug("SignalPlot should be visible now.")
             except Exception as e:
                 logger.error(f"Error in plotting: {e}")
@@ -1016,6 +1031,14 @@ class ScopePlotter:
                     labels_list.append(b_labels)
 
             if labels_list != []:
+                # Close previous plot window if it exists
+                if self.plotty is not None:
+                    try:
+                        self.plotty.close()
+                        self.plotty.deleteLater()
+                    except Exception:
+                        pass
+
                 step_modes = self._scope_step_modes()
                 self.plotty = SignalPlot(self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes)
                 # Sync to dsim for backward compatibility

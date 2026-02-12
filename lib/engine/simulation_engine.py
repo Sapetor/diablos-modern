@@ -1362,7 +1362,7 @@ class SimulationEngine:
                         out_val = inputs.get(0, 0.0) * float(block.params.get('gain', 1.0))
                         
                     elif fn == 'Sum':
-                         signs = block.params.get('inputs', '++')
+                         signs = block.params.get('sign', block.params.get('inputs', '++'))
                          res = 0.0
                          for idx, char in enumerate(signs):
                              val = inputs.get(idx, 0.0)
@@ -1708,14 +1708,27 @@ class SimulationEngine:
                         else:
                             row = vals  # List of values for this time step
 
-                        # Initialize vector list
+                        # Initialize vector list and labels on first timestep
                         if i == 0:
                             block.exec_params['vector'] = []
+                            # Set vec_labels from 'labels' param (Scope uses 'labels', plotter reads 'vec_labels')
+                            labels_raw = block.params.get('labels', block.exec_params.get('labels', ''))
+                            if labels_raw and labels_raw != 'default':
+                                labels_list = [l.strip() for l in labels_raw.replace(' ', '').split(',') if l.strip()]
+                                # Pad or trim to match number of inputs
+                                while len(labels_list) < n_inputs:
+                                    labels_list.append(f"{b_name}-{len(labels_list)}")
+                                labels_list = labels_list[:n_inputs]
+                            else:
+                                labels_list = [f"{b_name}-{j}" for j in range(n_inputs)]
+                            block.exec_params['vec_labels'] = labels_list
+                            block.exec_params['vec_dim'] = n_inputs
 
                         block.exec_params['vector'].append(row)
 
                         if i == num_steps - 1:
-                            logger.info(f"DEBUG Replay Scope {b_name}: inputs={n_inputs}, vec_len={len(block.exec_params['vector'])}")
+                            vec = block.exec_params['vector']
+                            logger.info(f"Replay Scope {b_name}: inputs={n_inputs}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}")
 
                     if fn == 'Fieldscope':
                         # FieldScope: Store field history for 2D heatmap

@@ -185,7 +185,7 @@ class SystemCompiler:
             return exec_gain
 
         elif fn == 'Sum':
-            signs = block.params.get('inputs', '++')
+            signs = block.params.get('sign', block.params.get('inputs', '++'))
             # Bake signs and sources
             ops = []
             for i, char in enumerate(signs):
