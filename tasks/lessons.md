@@ -271,6 +271,37 @@ For DSim, option 1 was chosen since `connections_list` is used by clipboard oper
 
 ---
 
+### Compiled Solver Execution Order Bug (February 2026)
+
+**Problem**: Loading `c01_tank_feedback.diablos` (Step→Sum→Gain→TranFn→Scope feedback loop) and simulating produced all-zero output for the TranFn block. The "tank level" signal stayed at 0 the entire simulation.
+
+**Root Cause**: `initialize_execution()` assigns `hierarchy=0` to memory blocks (TranFn, Integrator) because they can output without inputs. When `compile_system()` sorts blocks by hierarchy, the TranFn (hierarchy=0) ends up **before** its input chain (Sum at hierarchy=1, Gain at hierarchy=1). The execution sequence was:
+
+```
+0: step0    (source, hier=0)
+1: tranfn3  (state block, hier=0)  ← reads gain2 which hasn't run yet!
+2: sum1     (hier=1)
+3: gain2    (hier=1)
+4: scope4   (hier=1)
+```
+
+The pre-population step correctly sets `signals['tranfn3'] = C*x` for feedback, but the TranFn's **derivative** computation `dx = Ax + Bu` reads `signals['gain2']` which is 0 (not yet computed). With zero input and zero initial state, `dx = 0` forever.
+
+**Fix**: In `compile_system()`, split blocks into three groups instead of two:
+1. **Sources** (Step, Sine, etc.) — run first
+2. **Algebraic** (Sum, Gain, Scope, etc.) — run second, using pre-populated state outputs
+3. **State blocks** (TranFn, StateSpace, Integrator, PDE, etc.) — run last, computing derivatives with correct inputs
+
+```python
+sorted_order = sources + algebraic + state_blocks
+```
+
+This mirrors the mathematical structure: sources provide inputs, algebraic blocks compute the combined signal (using pre-populated state outputs for feedback), then state blocks compute correct derivatives.
+
+**Lesson**: In compiled solvers with feedback loops, execution order must respect the dependency chain even when hierarchy values are set for the interpreter mode. State blocks need their outputs pre-populated (for feedback) but their derivative computation must happen AFTER all algebraic inputs are resolved.
+
+---
+
 ### Batch Simulation Doesn't Trigger Timer-Based State Detection (February 2026)
 
 **Problem**: Live parameter tuning panel appeared but sliders had no effect — plots never updated when dragging sliders.

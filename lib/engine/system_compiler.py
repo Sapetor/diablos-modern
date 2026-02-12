@@ -288,46 +288,46 @@ class SystemCompiler:
             if b_name in block_matrices:
                 A, B, C, D = block_matrices[b_name]
                 start, size = state_map[b_name]
-                src = input_sources[0] if input_sources else None
-                
-                # Pre-calculate dimensions for optimization?
-                # B.shape[1] is input dim.
-                
-                def exec_ss(t, y, dy_vec, signals):
-                    x = y[start : start + size].reshape(-1, 1)
-                    
-                    # Input
-                    u_val = signals.get(src, 0.0) if src else 0.0
-                    
-                    # Handle shapes (simplified for 1D/Scalar)
-                    # If strictly scalar system:
-                    # y = C*x + D*u
-                    # dx = A*x + B*u
-                    # Flatten results
-                    
-                    # Faster scalar path?
-                    if size == 1 and B.shape[1] == 1:
-                        # Scalar op
-                        u = u_val
-                        x_s = x[0,0]
-                        # A is (1,1), B is (1,1) etc
+                n_inputs = B.shape[1]
+                # Capture all input sources for multi-input blocks
+                all_srcs = list(input_sources) if input_sources else []
+                src = all_srcs[0] if all_srcs else None
+
+                if size == 1 and n_inputs == 1:
+                    # Fast scalar path (SISO, 1st-order)
+                    def exec_ss(t, y, dy_vec, signals):
+                        u = signals.get(src, 0.0) if src else 0.0
+                        x_s = y[start]
                         dx = A[0,0]*x_s + B[0,0]*u
                         y_out = C[0,0]*x_s + D[0,0]*u
-                        
                         signals[b_name] = y_out
                         dy_vec[start] = dx
-                    else:
-                        # Vector op
+                    return exec_ss
+                elif n_inputs == 1:
+                    # Multi-state, single input
+                    def exec_ss(t, y, dy_vec, signals):
+                        x = y[start : start + size].reshape(-1, 1)
+                        u_val = signals.get(src, 0.0) if src else 0.0
                         u = np.atleast_1d(u_val).reshape(-1, 1)
-                        if B.shape[1] > 1: # Broadcast
-                             u = np.full((B.shape[1], 1), float(u_val))
-                             
                         dx = A @ x + B @ u
                         y_out = C @ x + D @ u
-                        
-                        signals[b_name] = y_out if y_out.size > 1 else y_out.item()
+                        signals[b_name] = y_out.item() if y_out.size == 1 else y_out.flatten()
                         dy_vec[start : start + size] = dx.flatten()
-                return exec_ss
+                    return exec_ss
+                else:
+                    # Multi-input: assemble u vector from all input ports
+                    def exec_ss(t, y, dy_vec, signals):
+                        x = y[start : start + size].reshape(-1, 1)
+                        u = np.zeros((n_inputs, 1))
+                        for i, s in enumerate(all_srcs):
+                            if s:
+                                val = signals.get(s, 0.0)
+                                u[i, 0] = float(val) if np.isscalar(val) else float(np.atleast_1d(val)[0])
+                        dx = A @ x + B @ u
+                        y_out = C @ x + D @ u
+                        signals[b_name] = y_out.item() if y_out.size == 1 else y_out.flatten()
+                        dy_vec[start : start + size] = dx.flatten()
+                    return exec_ss
         
         elif fn == 'PID':
              start, size = state_map[b_name]
@@ -1311,17 +1311,30 @@ class SystemCompiler:
         """
         Generate a fast derivative function f(t, y) using closure-based optimization.
         """
-        # 0. Re-order blocks to ensure Sources run first (because Engine hierarchy might put Memory blocks first)
+        # 0. Re-order blocks: Sources first, then algebraic blocks, then state blocks last.
+        # State blocks (TranFn, StateSpace, Integrator, PID, etc.) must execute AFTER
+        # their algebraic input chain so derivatives read correct signal values.
+        # Their outputs are pre-populated (y=Cx or y=state) before the sequence runs,
+        # so feedback through algebraic blocks resolves correctly.
+        source_fns = ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator')
+        state_fns = ('Tranfn', 'Transferfcn', 'TransferFcn', 'Statespace', 'StateSpace',
+                     'Integrator', 'Pid', 'PID', 'Ratelimiter', 'RateLimiter',
+                     'Heatequation1D', 'Waveequation1D', 'Advectionequation1D',
+                     'Diffusionreaction1D', 'Heatequation2D', 'Waveequation2D',
+                     'Advectionequation2D')
         sources = []
-        others = []
+        algebraic = []
+        state_blocks = []
         for b in sorted_order:
             fn = b.block_fn.title() if b.block_fn else ''
-            if fn in ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator'):
+            if fn in source_fns:
                 sources.append(b)
+            elif fn in state_fns:
+                state_blocks.append(b)
             else:
-                others.append(b)
-        
-        sorted_order = sources + others
+                algebraic.append(b)
+
+        sorted_order = sources + algebraic + state_blocks
 
         # 1. Build Dependency Graph (Static Pull-based connections)
         # map: dest_block_name -> port_idx -> (source_block_name, source_port_idx)

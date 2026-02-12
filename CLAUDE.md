@@ -12,6 +12,20 @@ DiaBloS is a Simulink-like block diagram simulation tool built with Python and P
 
 ## Recent Work (February 2026)
 
+### Compiled Solver Execution Order Fix
+Fixed critical bug where feedback loops with Transfer Function blocks produced all-zero output in compiled (fast) solver mode.
+
+- **Root cause**: `initialize_execution()` assigns hierarchy=0 to memory blocks (TranFn, Integrator). When `compile_system()` sorted by hierarchy, state blocks executed before their algebraic input chain (Sum, Gain), reading uncomputed signals as 0.
+- **Fix**: Three-way block ordering in `system_compiler.py`: sources → algebraic → state blocks. State blocks run last so derivatives use correct inputs.
+- **File**: `lib/engine/system_compiler.py` line 1314
+
+### Property Editor Cursor Visibility Fix
+Fixed invisible cursor and text selection in property editor input fields.
+
+- **Root cause**: QLineEdit/QSpinBox/QDoubleSpinBox/QComboBox stylesheets lacked selection and focus styling
+- **Fix**: Added `selection-background-color`, `selection-color`, and `:focus` border styling
+- **Files**: `modern_ui/widgets/property_editor.py` (both `_update_theme()` and `SliderSpinBox.update_theme()`)
+
 ### First-Simulation Performance Fix
 Fixed 3-second delay on first simulation caused by `scipy.signal.cont2discrete()` lazy initialization.
 
