@@ -1046,11 +1046,8 @@ class SimulationEngine:
             self.outs = sol.y
             self.timeline = sol.t
             
-            # Debug: Check if states evolved
             if sol.y.size > 0:
-                logger.info(f"Solver output range: min={np.min(sol.y)}, max={np.max(sol.y)}")
-            else:
-                logger.warning("Solver returned no states?")
+                logger.info(f"Solver output range: min={np.min(sol.y):.6f}, max={np.max(sol.y):.6f}")
 
             # For Scope visualization, we need to populate block outputs.
             # We "replay" the simulation using the solution to capture all signals.

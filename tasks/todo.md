@@ -149,6 +149,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-02-11 | Fixed compiled solver execution order bug: state blocks (TranFn, Integrator) now run after algebraic blocks. Fixed cursor visibility in property editor. |
 | 2026-02-06 | Dark mode fixes: invalid theme keys, block icon colors, error panel, canvas renderer. Compact toolbar (icon-only, 20px icons) |
 | 2026-02-05 | Added Feature Ideas section (live tuning, Python function block, TikZ export, data import, linearization, code gen, dark mode, minimap) |
 | 2026-02-05 | Marked completed items in REFACTORING_TODO.md (SubsystemManager, block error returns) |

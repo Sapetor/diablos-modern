@@ -181,6 +181,11 @@ class SliderSpinBox(QWidget):
                 border: 1px solid {colors['border']};
                 border-radius: 4px;
                 padding: 2px 4px;
+                selection-background-color: {colors['accent']};
+                selection-color: {colors['input_bg']};
+            }}
+            QDoubleSpinBox:focus {{
+                border-color: {colors['accent']};
             }}
         """)
         self.slider.setStyleSheet(f"""
@@ -831,11 +836,16 @@ class PropertyEditor(QFrame):
             if isinstance(editor, SliderSpinBox):
                 editor.update_theme(colors)
             elif isinstance(editor, (QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox)):
+                widget_name = type(editor).__name__
                 editor.setStyleSheet(
-                    f"{type(editor).__name__} {{ "
+                    f"{widget_name} {{ "
                     f"background-color: {input_bg}; color: {txt}; "
                     f"border: 1px solid {border}; border-radius: 4px; "
-                    f"padding: 2px 4px; }}"
+                    f"padding: 2px 4px; "
+                    f"selection-background-color: {accent}; "
+                    f"selection-color: {input_bg}; }}"
+                    f"{widget_name}:focus {{ "
+                    f"border-color: {accent}; }}"
                 )
 
     def sizeHint(self):
