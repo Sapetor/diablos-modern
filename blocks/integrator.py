@@ -20,6 +20,11 @@ class IntegratorBlock(BaseBlock):
         return "Integrator"
 
     @property
+    def b_type(self):
+        """Memory block - Integrator (accumulates state)."""
+        return 1
+
+    @property
     def category(self):
         return "Control"
 

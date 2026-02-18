@@ -1,4 +1,5 @@
 from blocks.base_block import BaseBlock
+import numpy as np
 
 class MuxBlock(BaseBlock):
     def __init__(self):
@@ -15,6 +16,10 @@ class MuxBlock(BaseBlock):
     @property
     def color(self):
         return "orange"
+
+    @property
+    def io_editable(self):
+        return 'input'
 
     @property
     def params(self):
@@ -57,5 +62,8 @@ class MuxBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        return {0: list(inputs.values())}
+        combined = []
+        for val in inputs.values():
+            combined.extend(np.atleast_1d(val).flatten())
+        return {0: np.array(combined)}
 

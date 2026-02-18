@@ -25,6 +25,11 @@ class StateSpaceBlock(StateSpaceBaseBlock):
         return "statespace"
 
     @property
+    def b_type(self):
+        """Memory block - Continuous State-Space Model."""
+        return 1
+
+    @property
     def params(self):
         return {
             "A": {"default": [[0.0]], "type": "list"},

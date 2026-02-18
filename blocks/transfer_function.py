@@ -25,6 +25,13 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
         return "transfer_function"
 
     @property
+    def b_type(self):
+        """Memory block - proper transfer function (denominator order > numerator order)."""
+        # For the default parameters: num=[1.0], den=[1.0, 1.0]
+        # This is a proper transfer function, so it's a memory block (b_type=1)
+        return 1
+
+    @property
     def params(self):
         return {
             "numerator": {"default": [1.0], "type": "list"},

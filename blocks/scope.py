@@ -18,8 +18,17 @@ class ScopeBlock(BaseBlock):
         return "Sinks"
 
     @property
+    def b_type(self):
+        """Sink block - consumes output without producing further output."""
+        return 3
+
+    @property
     def color(self):
         return "red"
+
+    @property
+    def io_editable(self):
+        return 'input'
 
     @property
     def params(self):
