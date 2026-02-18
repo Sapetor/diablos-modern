@@ -153,7 +153,7 @@ class WaveEquation1DBlock(BaseBlock):
             if init_u.lower() == 'gaussian':
                 # Gaussian pulse centered at L/2
                 u0 = np.exp(-100 * (x - L/2)**2)
-            elif init_u.lower() == 'sine':
+            elif init_u.lower() in ('sin', 'sine'):
                 # Single sine mode
                 u0 = np.sin(np.pi * x / L)
             else:

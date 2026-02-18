@@ -1,7 +1,7 @@
 {
     "sim_data": {
-        "wind_width": 1400,
-        "wind_height": 900,
+        "wind_width": 1280,
+        "wind_height": 770,
         "fps": 60,
         "sim_time": 5.0,
         "sim_dt": 0.005,
@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -67,9 +67,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -90,9 +90,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "heatequation1d",
             "params": {
                 "alpha": 0.1,
@@ -118,9 +118,9 @@
             "out_ports": 3,
             "dragging": false,
             "selected": false,
-            "b_color": "#4169E1",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "waveequation1d",
             "params": {
                 "c": 1.0,
@@ -130,7 +130,9 @@
                 "bc_type_left": "Dirichlet",
                 "bc_type_right": "Dirichlet",
                 "init_displacement": "sin",
-                "init_velocity": [0.0]
+                "init_velocity": [
+                    0.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -148,9 +150,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#32CD32",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "advectionequation1d",
             "params": {
                 "velocity": 0.5,
@@ -175,14 +177,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "hot",
-                "title": "Heat Equation: Diffusion"
+                "title": "Heat Equation: Diffusion",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -200,14 +203,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "RdBu",
-                "title": "Wave Equation: Oscillation"
+                "title": "Wave Equation: Oscillation",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -225,14 +229,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "viridis",
-                "title": "Advection Equation: Transport"
+                "title": "Advection Equation: Transport",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -244,15 +249,15 @@
             "coords_left": 420,
             "coords_top": 150,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -269,15 +274,15 @@
             "coords_left": 420,
             "coords_top": 300,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -294,15 +299,15 @@
             "coords_left": 420,
             "coords_top": 450,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -319,15 +324,15 @@
             "coords_left": 600,
             "coords_top": 220,
             "coords_width": 100,
-            "coords_height": 80,
+            "coords_height": 84,
             "coords_height_base": 80,
             "in_ports": 3,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Heat(x=0.5), Wave(x=0.5), Advection(x=0.5)"
@@ -338,140 +343,456 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "ZeroSource",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "HeatEqn",
+            "dstblock": "heatequation1d4",
             "dstport": 0,
-            "points": [[140, 100], [180, 100], [180, 105], [220, 105]]
+            "points": [
+                [
+                    140,
+                    100
+                ],
+                [
+                    220,
+                    100
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "LeftBC",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "HeatEqn",
+            "dstblock": "heatequation1d4",
             "dstport": 1,
-            "points": [[140, 170], [180, 170], [180, 130], [220, 130]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    180,
+                    170
+                ],
+                [
+                    180,
+                    130
+                ],
+                [
+                    220,
+                    130
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "RightBC",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "HeatEqn",
+            "dstblock": "heatequation1d4",
             "dstport": 2,
-            "points": [[140, 240], [180, 240], [180, 155], [220, 155]]
+            "points": [
+                [
+                    140,
+                    240
+                ],
+                [
+                    180,
+                    240
+                ],
+                [
+                    180,
+                    160
+                ],
+                [
+                    220,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "ZeroSource",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "WaveEqn",
+            "dstblock": "waveequation1d5",
             "dstport": 0,
-            "points": [[140, 100], [160, 100], [160, 247], [220, 247]]
+            "points": [
+                [
+                    140,
+                    100
+                ],
+                [
+                    180,
+                    100
+                ],
+                [
+                    180,
+                    250
+                ],
+                [
+                    220,
+                    250
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "LeftBC",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "WaveEqn",
+            "dstblock": "waveequation1d5",
             "dstport": 1,
-            "points": [[140, 170], [170, 170], [170, 275], [220, 275]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    180,
+                    170
+                ],
+                [
+                    180,
+                    280
+                ],
+                [
+                    220,
+                    280
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "RightBC",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "WaveEqn",
+            "dstblock": "waveequation1d5",
             "dstport": 2,
-            "points": [[140, 240], [175, 240], [175, 303], [220, 303]]
+            "points": [
+                [
+                    140,
+                    240
+                ],
+                [
+                    180,
+                    240
+                ],
+                [
+                    180,
+                    300
+                ],
+                [
+                    220,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "ZeroSource",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "AdvectionEqn",
+            "dstblock": "advectionequation1d6",
             "dstport": 0,
-            "points": [[140, 100], [155, 100], [155, 395], [220, 395]]
+            "points": [
+                [
+                    140,
+                    100
+                ],
+                [
+                    180,
+                    100
+                ],
+                [
+                    180,
+                    400
+                ],
+                [
+                    220,
+                    400
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "LeftBC",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "AdvectionEqn",
+            "dstblock": "advectionequation1d6",
             "dstport": 1,
-            "points": [[140, 170], [165, 170], [165, 425], [220, 425]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    180,
+                    170
+                ],
+                [
+                    180,
+                    420
+                ],
+                [
+                    220,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "HeatEqn",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "HeatScope",
+            "dstblock": "fieldscope7",
             "dstport": 0,
-            "points": [[340, 117], [380, 117], [380, 102], [420, 102]]
+            "points": [
+                [
+                    340,
+                    110
+                ],
+                [
+                    420,
+                    110
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "HeatEqn",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "HeatProbe",
+            "dstblock": "fieldprobe10",
             "dstport": 0,
-            "points": [[340, 117], [380, 117], [380, 167], [420, 167]]
+            "points": [
+                [
+                    340,
+                    110
+                ],
+                [
+                    380,
+                    110
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    420,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "WaveEqn",
+            "srcblock": "waveequation1d5",
             "srcport": 0,
-            "dstblock": "WaveScope",
+            "dstblock": "fieldscope8",
             "dstport": 0,
-            "points": [[350, 257], [385, 257], [385, 242], [420, 242]]
+            "points": [
+                [
+                    350,
+                    250
+                ],
+                [
+                    420,
+                    250
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "WaveEqn",
+            "srcblock": "waveequation1d5",
             "srcport": 0,
-            "dstblock": "WaveProbe",
+            "dstblock": "fieldprobe11",
             "dstport": 0,
-            "points": [[350, 257], [385, 257], [385, 317], [420, 317]]
+            "points": [
+                [
+                    350,
+                    250
+                ],
+                [
+                    385,
+                    250
+                ],
+                [
+                    385,
+                    320
+                ],
+                [
+                    420,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line113",
             "sid": 113,
-            "srcblock": "AdvectionEqn",
+            "srcblock": "advectionequation1d6",
             "srcport": 0,
-            "dstblock": "AdvectionScope",
+            "dstblock": "fieldscope9",
             "dstport": 0,
-            "points": [[350, 410], [385, 410], [385, 392], [420, 392]]
+            "points": [
+                [
+                    350,
+                    410
+                ],
+                [
+                    385,
+                    410
+                ],
+                [
+                    385,
+                    400
+                ],
+                [
+                    420,
+                    400
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line114",
             "sid": 114,
-            "srcblock": "AdvectionEqn",
+            "srcblock": "advectionequation1d6",
             "srcport": 0,
-            "dstblock": "AdvectionProbe",
+            "dstblock": "fieldprobe12",
             "dstport": 0,
-            "points": [[350, 410], [385, 410], [385, 467], [420, 467]]
+            "points": [
+                [
+                    350,
+                    410
+                ],
+                [
+                    385,
+                    410
+                ],
+                [
+                    385,
+                    470
+                ],
+                [
+                    420,
+                    470
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line115",
             "sid": 115,
-            "srcblock": "HeatProbe",
+            "srcblock": "fieldprobe10",
             "srcport": 0,
-            "dstblock": "CompareScope",
+            "dstblock": "scope13",
             "dstport": 0,
-            "points": [[520, 175], [560, 175], [560, 247], [600, 247]]
+            "points": [
+                [
+                    520,
+                    180
+                ],
+                [
+                    560,
+                    180
+                ],
+                [
+                    560,
+                    240
+                ],
+                [
+                    600,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line116",
             "sid": 116,
-            "srcblock": "WaveProbe",
+            "srcblock": "fieldprobe11",
             "srcport": 0,
-            "dstblock": "CompareScope",
+            "dstblock": "scope13",
             "dstport": 1,
-            "points": [[520, 325], [560, 325], [560, 260], [600, 260]]
+            "points": [
+                [
+                    520,
+                    330
+                ],
+                [
+                    560,
+                    330
+                ],
+                [
+                    560,
+                    260
+                ],
+                [
+                    600,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line117",
             "sid": 117,
-            "srcblock": "AdvectionProbe",
+            "srcblock": "fieldprobe12",
             "srcport": 0,
-            "dstblock": "CompareScope",
+            "dstblock": "scope13",
             "dstport": 2,
-            "points": [[520, 475], [560, 475], [560, 273], [600, 273]]
+            "points": [
+                [
+                    520,
+                    480
+                ],
+                [
+                    560,
+                    480
+                ],
+                [
+                    560,
+                    280
+                ],
+                [
+                    600,
+                    280
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",
