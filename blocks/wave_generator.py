@@ -16,6 +16,11 @@ class WaveGeneratorBlock(BaseBlock):
         return "Sources"
 
     @property
+    def b_type(self):
+        """Source block - generates output without requiring input."""
+        return 0
+
+    @property
     def color(self):
         return "darkcyan"
 

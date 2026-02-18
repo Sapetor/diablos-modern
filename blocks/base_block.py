@@ -118,6 +118,21 @@ class BaseBlock(ABC):
         # Default: blocks require outputs unless they're Sinks or Other
         return getattr(self, 'category', 'Other') not in ['Sinks', 'Other']
 
+    @property
+    def io_editable(self) -> Optional[str]:
+        """
+        Whether the block supports user-editable port counts.
+
+        Override in subclasses that allow variable port numbers.
+
+        Returns:
+            'input' - user can change input port count
+            'output' - user can change output port count
+            'both' - user can change both
+            None - port count is fixed (default)
+        """
+        return None
+
     def draw_icon(self, block_rect: Any) -> Optional[Any]:
         """
         Return a QPainterPath for the block's icon in normalized coordinates.

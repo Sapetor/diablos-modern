@@ -107,16 +107,10 @@ class SimulationModel:
         for block_class in block_classes:
             block = block_class()
 
-            # Determine I/O editability
-            io_edit = 'none'
-            if hasattr(block, 'io_editable'):
-                io_edit = block.io_editable
-            elif len(block.inputs) > 0 and len(block.outputs) > 0:
-                io_edit = 'both'
-            elif len(block.inputs) > 0:
-                io_edit = 'input'
-            elif len(block.outputs) > 0:
-                io_edit = 'output'
+            # Determine I/O editability - only blocks that explicitly declare
+            # io_editable get port editing; all others default to 'none'
+            io_editable = block.io_editable
+            io_edit = io_editable if io_editable is not None else 'none'
 
             # Get block type
             b_type = getattr(block, 'b_type', 2)

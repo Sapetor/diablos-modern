@@ -33,6 +33,10 @@ class DemuxBlock(BaseBlock):
         )
 
     @property
+    def io_editable(self):
+        return 'output'
+
+    @property
     def params(self):
         return {
             "output_shape": {"type": "int", "default": 1, "doc": "The size of each output vector."}
