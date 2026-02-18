@@ -52,7 +52,7 @@ def parse_pde_initial_condition(
             else:  # heat
                 return np.exp(-50 * (x - L/2)**2)
 
-        elif ic_lower == 'sine':
+        elif ic_lower in ('sin', 'sine'):
             return np.sin(np.pi * x / L)
 
         elif ic_lower == 'uniform':

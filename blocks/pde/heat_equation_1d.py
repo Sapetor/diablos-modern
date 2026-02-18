@@ -132,7 +132,17 @@ class HeatEquation1DBlock(BaseBlock):
     def get_initial_conditions(self, params):
         """Return initial condition vector for the temperature field."""
         N = int(params.get('N', 20))
+        L = float(params.get('L', 1.0))
         ic = params.get('init_conds', [0.0])
+
+        if isinstance(ic, str):
+            x = np.linspace(0, L, N)
+            if ic.lower() in ('sin', 'sine'):
+                return np.sin(np.pi * x / L)
+            elif ic.lower() == 'gaussian':
+                return np.exp(-100 * (x - L/2)**2)
+            else:
+                return np.zeros(N)
 
         if isinstance(ic, (int, float)):
             return np.full(N, float(ic))

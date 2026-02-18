@@ -141,7 +141,7 @@ class AdvectionEquation1DBlock(BaseBlock):
             elif ic.lower() == 'step':
                 # Step function at L/4
                 c0 = np.where(x < L/4, 1.0, 0.0)
-            elif ic.lower() == 'sine':
+            elif ic.lower() in ('sin', 'sine'):
                 c0 = 0.5 * (1 + np.sin(2 * np.pi * x / L))
             else:
                 c0 = np.zeros(N)
