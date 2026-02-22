@@ -1,1150 +1,1102 @@
 {
-  "sim_data": {
-    "wind_width": 1200,
-    "wind_height": 700,
-    "fps": 60,
-    "sim_time": 20.0,
-    "sim_dt": 1.0,
-    "sim_trange": 20
-  },
-  "blocks_data": [
-    {
-      "block_fn": "StateVariable",
-      "sid": 1,
-      "username": "X_GD",
-      "coords_left": 80,
-      "coords_top": 120,
-      "coords_width": 70,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#6495ED",
-      "b_type": 1,
-      "io_edit": false,
-      "fn_name": "statevariable",
-      "params": {
-        "initial_value": [
-          3.0
-        ],
-        "dimension": 1
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 20.0,
+        "sim_dt": 1.0,
+        "sim_trange": 20
     },
-    {
-      "block_fn": "MathFunction",
-      "sid": 2,
-      "username": "Grad_GD",
-      "coords_left": 180,
-      "coords_top": 120,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFA500",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "4*u**3"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Gain",
-      "sid": 3,
-      "username": "\u03b1_GD",
-      "coords_left": 290,
-      "coords_top": 120,
-      "coords_width": 60,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFD700",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "gain",
-      "params": {
-        "gain": -0.01
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Sum",
-      "sid": 4,
-      "username": "Upd_GD",
-      "coords_left": 380,
-      "coords_top": 120,
-      "coords_width": 40,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#32CD32",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "sum",
-      "params": {
-        "signs": "++"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "StateVariable",
-      "sid": 5,
-      "username": "X_Newton",
-      "coords_left": 80,
-      "coords_top": 280,
-      "coords_width": 70,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#6495ED",
-      "b_type": 1,
-      "io_edit": false,
-      "fn_name": "statevariable",
-      "params": {
-        "initial_value": [
-          3.0
-        ],
-        "dimension": 1
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 6,
-      "username": "f_Newton",
-      "coords_left": 180,
-      "coords_top": 260,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "4*u**3"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 7,
-      "username": "df_Newton",
-      "coords_left": 180,
-      "coords_top": 310,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFA500",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "12*u**2"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Product",
-      "sid": 8,
-      "username": "Newton_Step",
-      "coords_left": 290,
-      "coords_top": 280,
-      "coords_width": 60,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "product",
-      "params": {
-        "ops": "*/"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Sum",
-      "sid": 9,
-      "username": "Upd_Newton",
-      "coords_left": 380,
-      "coords_top": 280,
-      "coords_width": 40,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#32CD32",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "sum",
-      "params": {
-        "signs": "+-"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 10,
-      "username": "Error_GD",
-      "coords_left": 500,
-      "coords_top": 100,
-      "coords_width": 70,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "abs(u)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 11,
-      "username": "Error_Newton",
-      "coords_left": 500,
-      "coords_top": 280,
-      "coords_width": 70,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "abs(u)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 12,
-      "username": "LogErr_GD",
-      "coords_left": 600,
-      "coords_top": 100,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "log(u+1e-16)/log(10)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 13,
-      "username": "LogErr_Newton",
-      "coords_left": 600,
-      "coords_top": 280,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "log(u+1e-16)/log(10)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 14,
-      "username": "X_Comparison",
-      "coords_left": 750,
-      "coords_top": 80,
-      "coords_width": 130,
-      "coords_height": 90,
-      "coords_height_base": 90,
-      "in_ports": 2,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": true,
-      "fn_name": "scope",
-      "params": {
-        "labels": "x (GD), x (Newton)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 15,
-      "username": "Error_Comparison",
-      "coords_left": 750,
-      "coords_top": 200,
-      "coords_width": 130,
-      "coords_height": 90,
-      "coords_height_base": 90,
-      "in_ports": 2,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": true,
-      "fn_name": "scope",
-      "params": {
-        "labels": "|x| GD, |x| Newton"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 16,
-      "username": "LogError_Comparison",
-      "coords_left": 750,
-      "coords_top": 320,
-      "coords_width": 130,
-      "coords_height": 90,
-      "coords_height_base": 90,
-      "in_ports": 2,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": true,
-      "fn_name": "scope",
-      "params": {
-        "labels": "log\u2081\u2080|x| GD (linear), log\u2081\u2080|x| Newton (quadratic)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Display",
-      "sid": 17,
-      "username": "Final_GD",
-      "coords_left": 500,
-      "coords_top": 150,
-      "coords_width": 140,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": false,
-      "fn_name": "display",
-      "params": {
-        "format": "%.6f",
-        "label": "GD x"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Display",
-      "sid": 18,
-      "username": "Final_Newton",
-      "coords_left": 500,
-      "coords_top": 330,
-      "coords_width": 140,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": false,
-      "fn_name": "display",
-      "params": {
-        "format": "%.2e",
-        "label": "Newton x"
-      },
-      "external": false,
-      "flipped": false
-    }
-  ],
-  "lines_data": [
-    {
-      "sid": 101,
-      "srcblock": "X_GD",
-      "srcport": 0,
-      "dstblock": "Grad_GD",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          180,
-          140
-        ]
-      ]
-    },
-    {
-      "sid": 102,
-      "srcblock": "Grad_GD",
-      "srcport": 0,
-      "dstblock": "\u03b1_GD",
-      "dstport": 0,
-      "points": [
-        [
-          260,
-          140
-        ],
-        [
-          275,
-          140
-        ],
-        [
-          275,
-          140
-        ],
-        [
-          290,
-          140
-        ]
-      ]
-    },
-    {
-      "sid": 103,
-      "srcblock": "\u03b1_GD",
-      "srcport": 0,
-      "dstblock": "Upd_GD",
-      "dstport": 1,
-      "points": [
-        [
-          350,
-          140
-        ],
-        [
-          365,
-          140
-        ],
-        [
-          365,
-          150
-        ],
-        [
-          380,
-          150
-        ]
-      ]
-    },
-    {
-      "sid": 104,
-      "srcblock": "X_GD",
-      "srcport": 0,
-      "dstblock": "Upd_GD",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          165,
-          80
-        ],
-        [
-          365,
-          80
-        ],
-        [
-          365,
-          130
-        ],
-        [
-          380,
-          130
-        ]
-      ]
-    },
-    {
-      "sid": 105,
-      "srcblock": "Upd_GD",
-      "srcport": 0,
-      "dstblock": "X_GD",
-      "dstport": 0,
-      "points": [
-        [
-          420,
-          140
-        ],
-        [
-          450,
-          140
-        ],
-        [
-          450,
-          60
-        ],
-        [
-          50,
-          60
-        ],
-        [
-          50,
-          140
-        ],
-        [
-          80,
-          140
-        ]
-      ]
-    },
-    {
-      "sid": 201,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "f_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          280
-        ],
-        [
-          180,
-          280
-        ]
-      ]
-    },
-    {
-      "sid": 202,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "df_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          330
-        ],
-        [
-          180,
-          330
-        ]
-      ]
-    },
-    {
-      "sid": 203,
-      "srcblock": "f_Newton",
-      "srcport": 0,
-      "dstblock": "Newton_Step",
-      "dstport": 0,
-      "points": [
-        [
-          260,
-          280
-        ],
-        [
-          275,
-          280
-        ],
-        [
-          275,
-          295
-        ],
-        [
-          290,
-          295
-        ]
-      ]
-    },
-    {
-      "sid": 204,
-      "srcblock": "df_Newton",
-      "srcport": 0,
-      "dstblock": "Newton_Step",
-      "dstport": 1,
-      "points": [
-        [
-          260,
-          330
-        ],
-        [
-          275,
-          330
-        ],
-        [
-          275,
-          315
-        ],
-        [
-          290,
-          315
-        ]
-      ]
-    },
-    {
-      "sid": 205,
-      "srcblock": "Newton_Step",
-      "srcport": 0,
-      "dstblock": "Upd_Newton",
-      "dstport": 1,
-      "points": [
-        [
-          350,
-          305
-        ],
-        [
-          365,
-          305
-        ],
-        [
-          365,
-          310
-        ],
-        [
-          380,
-          310
-        ]
-      ]
-    },
-    {
-      "sid": 206,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "Upd_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          240
-        ],
-        [
-          365,
-          240
-        ],
-        [
-          365,
-          290
-        ],
-        [
-          380,
-          290
-        ]
-      ]
-    },
-    {
-      "sid": 207,
-      "srcblock": "Upd_Newton",
-      "srcport": 0,
-      "dstblock": "X_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          420,
-          300
-        ],
-        [
-          450,
-          300
-        ],
-        [
-          450,
-          380
-        ],
-        [
-          50,
-          380
-        ],
-        [
-          50,
-          300
-        ],
-        [
-          80,
-          300
-        ]
-      ]
-    },
-    {
-      "sid": 301,
-      "srcblock": "X_GD",
-      "srcport": 0,
-      "dstblock": "Error_GD",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          165,
-          80
-        ],
-        [
-          480,
-          80
-        ],
-        [
-          480,
-          120
-        ],
-        [
-          500,
-          120
-        ]
-      ]
-    },
-    {
-      "sid": 302,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "Error_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          240
-        ],
-        [
-          480,
-          240
-        ],
-        [
-          480,
-          300
-        ],
-        [
-          500,
-          300
-        ]
-      ]
-    },
-    {
-      "sid": 303,
-      "srcblock": "Error_GD",
-      "srcport": 0,
-      "dstblock": "LogErr_GD",
-      "dstport": 0,
-      "points": [
-        [
-          570,
-          120
-        ],
-        [
-          585,
-          120
-        ],
-        [
-          585,
-          120
-        ],
-        [
-          600,
-          120
-        ]
-      ]
-    },
-    {
-      "sid": 304,
-      "srcblock": "Error_Newton",
-      "srcport": 0,
-      "dstblock": "LogErr_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          570,
-          300
-        ],
-        [
-          585,
-          300
-        ],
-        [
-          585,
-          300
-        ],
-        [
-          600,
-          300
-        ]
-      ]
-    },
-    {
-      "sid": 401,
-      "srcblock": "X_GD",
-      "srcport": 0,
-      "dstblock": "X_Comparison",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          165,
-          80
-        ],
-        [
-          720,
-          80
-        ],
-        [
-          720,
-          115
-        ],
-        [
-          750,
-          115
-        ]
-      ]
-    },
-    {
-      "sid": 402,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "X_Comparison",
-      "dstport": 1,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          240
-        ],
-        [
-          720,
-          240
-        ],
-        [
-          720,
-          135
-        ],
-        [
-          750,
-          135
-        ]
-      ]
-    },
-    {
-      "sid": 501,
-      "srcblock": "Error_GD",
-      "srcport": 0,
-      "dstblock": "Error_Comparison",
-      "dstport": 0,
-      "points": [
-        [
-          570,
-          120
-        ],
-        [
-          580,
-          120
-        ],
-        [
-          580,
-          70
-        ],
-        [
-          720,
-          70
-        ],
-        [
-          720,
-          235
-        ],
-        [
-          750,
-          235
-        ]
-      ]
-    },
-    {
-      "sid": 502,
-      "srcblock": "Error_Newton",
-      "srcport": 0,
-      "dstblock": "Error_Comparison",
-      "dstport": 1,
-      "points": [
-        [
-          570,
-          300
-        ],
-        [
-          585,
-          300
-        ],
-        [
-          585,
-          260
-        ],
-        [
-          720,
-          260
-        ],
-        [
-          720,
-          255
-        ],
-        [
-          750,
-          255
-        ]
-      ]
-    },
-    {
-      "sid": 601,
-      "srcblock": "LogErr_GD",
-      "srcport": 0,
-      "dstblock": "LogError_Comparison",
-      "dstport": 0,
-      "points": [
-        [
-          680,
-          120
-        ],
-        [
-          710,
-          120
-        ],
-        [
-          710,
-          355
-        ],
-        [
-          750,
-          355
-        ]
-      ]
-    },
-    {
-      "sid": 602,
-      "srcblock": "LogErr_Newton",
-      "srcport": 0,
-      "dstblock": "LogError_Comparison",
-      "dstport": 1,
-      "points": [
-        [
-          680,
-          300
-        ],
-        [
-          710,
-          300
-        ],
-        [
-          710,
-          375
-        ],
-        [
-          750,
-          375
-        ]
-      ]
-    },
-    {
-      "sid": 701,
-      "srcblock": "X_GD",
-      "srcport": 0,
-      "dstblock": "Final_GD",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          140
-        ],
-        [
-          165,
-          140
-        ],
-        [
-          165,
-          180
-        ],
-        [
-          500,
-          180
-        ]
-      ]
-    },
-    {
-      "sid": 702,
-      "srcblock": "X_Newton",
-      "srcport": 0,
-      "dstblock": "Final_Newton",
-      "dstport": 0,
-      "points": [
-        [
-          150,
-          300
-        ],
-        [
-          165,
-          300
-        ],
-        [
-          165,
-          370
-        ],
-        [
-          500,
-          370
-        ]
-      ]
-    }
-  ],
-  "version": "2.0",
-  "modern_ui_data": {
-    "theme": "light",
-    "zoom_factor": 1.0
-  },
-  "_teaching_notes": {
-    "topic": "Linear vs Quadratic Convergence Rates",
-    "problem": "Find root of f(x) = 4x\u00b3 (solution: x* = 0)",
-    "initial_condition": "x\u2080 = 3",
-    "methods": {
-      "gradient_descent": {
-        "update": "x_{k+1} = x_k - \u03b1\u00b7f(x_k) = x_k - 0.01\u00b74x_k\u00b3",
-        "convergence": "Linear: |x_{k+1}| \u2248 c\u00b7|x_k| for some c < 1",
-        "log_plot": "log|x_k| vs k is approximately linear"
-      },
-      "newton": {
-        "update": "x_{k+1} = x_k - f(x_k)/f'(x_k) = x_k - 4x\u00b3/(12x\u00b2) = x_k - x/3 = (2/3)x_k",
-        "convergence": "For this problem, actually linear with factor 2/3",
-        "note": "True quadratic convergence appears for roots of f(x)=0 with f'(x*)\u22600"
-      }
-    },
-    "key_insights": [
-      "Linear convergence: error decreases by constant factor each step",
-      "On log plot, linear convergence shows as straight line",
-      "Quadratic convergence: error squares each step (log error doubles)",
-      "On log plot, quadratic shows rapid drop to machine precision",
-      "Newton converges in fewer iterations but costs more per iteration"
+    "blocks_data": [
+        {
+            "block_fn": "StateVariable",
+            "sid": 1,
+            "username": "X_GD",
+            "coords_left": 80,
+            "coords_top": 120,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "statevariable",
+            "params": {
+                "initial_value": [
+                    3.0
+                ],
+                "dimension": 1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 2,
+            "username": "Grad_GD",
+            "coords_left": 180,
+            "coords_top": 120,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "4*u**3"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 3,
+            "username": "\u03b1_GD",
+            "coords_left": 290,
+            "coords_top": 120,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "gain",
+            "params": {
+                "gain": -0.01
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 4,
+            "username": "Upd_GD",
+            "coords_left": 380,
+            "coords_top": 120,
+            "coords_width": 40,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "signs": "++"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "StateVariable",
+            "sid": 5,
+            "username": "X_Newton",
+            "coords_left": 80,
+            "coords_top": 280,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "statevariable",
+            "params": {
+                "initial_value": [
+                    3.0
+                ],
+                "dimension": 1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 6,
+            "username": "f_Newton",
+            "coords_left": 180,
+            "coords_top": 260,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "4*u**3"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 7,
+            "username": "df_Newton",
+            "coords_left": 180,
+            "coords_top": 310,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "12*u**2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Product",
+            "sid": 8,
+            "username": "Newton_Step",
+            "coords_left": 290,
+            "coords_top": 280,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "product",
+            "params": {
+                "ops": "*/"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 9,
+            "username": "Upd_Newton",
+            "coords_left": 380,
+            "coords_top": 280,
+            "coords_width": 40,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 10,
+            "username": "Error_GD",
+            "coords_left": 500,
+            "coords_top": 100,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "abs(u)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 11,
+            "username": "Error_Newton",
+            "coords_left": 500,
+            "coords_top": 280,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "abs(u)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 12,
+            "username": "LogErr_GD",
+            "coords_left": 600,
+            "coords_top": 100,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "log(u+1e-16)/log(10)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 13,
+            "username": "LogErr_Newton",
+            "coords_left": 600,
+            "coords_top": 280,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "log(u+1e-16)/log(10)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 14,
+            "username": "X_Comparison",
+            "coords_left": 750,
+            "coords_top": 80,
+            "coords_width": 130,
+            "coords_height": 90,
+            "coords_height_base": 90,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "x (GD), x (Newton)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 15,
+            "username": "Error_Comparison",
+            "coords_left": 750,
+            "coords_top": 200,
+            "coords_width": 130,
+            "coords_height": 90,
+            "coords_height_base": 90,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "|x| GD, |x| Newton"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 16,
+            "username": "LogError_Comparison",
+            "coords_left": 750,
+            "coords_top": 320,
+            "coords_width": 130,
+            "coords_height": 90,
+            "coords_height_base": 90,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "log\u2081\u2080|x| GD (linear), log\u2081\u2080|x| Newton (quadratic)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Display",
+            "sid": 17,
+            "username": "Final_GD",
+            "coords_left": 500,
+            "coords_top": 150,
+            "coords_width": 140,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "display",
+            "params": {
+                "format": "%.6f",
+                "label": "GD x"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Display",
+            "sid": 18,
+            "username": "Final_Newton",
+            "coords_left": 500,
+            "coords_top": 330,
+            "coords_width": 140,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "display",
+            "params": {
+                "format": "%.2e",
+                "label": "Newton x"
+            },
+            "external": false,
+            "flipped": false
+        }
     ],
-    "visualization": {
-      "top_scope": "Raw x values showing convergence to 0",
-      "middle_scope": "Absolute error |x - 0| = |x|",
-      "bottom_scope": "log\u2081\u2080|x| - linear slope = linear convergence"
+    "lines_data": [
+        {
+            "name": "Line101",
+            "sid": 101,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "mathfunction2",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    140
+                ],
+                [
+                    180,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line102",
+            "sid": 102,
+            "srcblock": "mathfunction2",
+            "srcport": 0,
+            "dstblock": "gain3",
+            "dstport": 0,
+            "points": [
+                [
+                    260,
+                    140
+                ],
+                [
+                    290,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line103",
+            "sid": 103,
+            "srcblock": "gain3",
+            "srcport": 0,
+            "dstblock": "sum4",
+            "dstport": 1,
+            "points": [
+                [
+                    350,
+                    140
+                ],
+                [
+                    365,
+                    140
+                ],
+                [
+                    365,
+                    160
+                ],
+                [
+                    380,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line104",
+            "sid": 104,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "sum4",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    140
+                ],
+                [
+                    380,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line105",
+            "sid": 105,
+            "srcblock": "sum4",
+            "srcport": 0,
+            "dstblock": "statevariable1",
+            "dstport": 0,
+            "points": [
+                [
+                    420,
+                    150
+                ],
+                [
+                    440,
+                    150
+                ],
+                [
+                    440,
+                    213
+                ],
+                [
+                    60,
+                    213
+                ],
+                [
+                    60,
+                    140
+                ],
+                [
+                    80,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line201",
+            "sid": 201,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "mathfunction6",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    165,
+                    300
+                ],
+                [
+                    165,
+                    280
+                ],
+                [
+                    180,
+                    280
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line202",
+            "sid": 202,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "mathfunction7",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    165,
+                    300
+                ],
+                [
+                    165,
+                    330
+                ],
+                [
+                    180,
+                    330
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line203",
+            "sid": 203,
+            "srcblock": "mathfunction6",
+            "srcport": 0,
+            "dstblock": "product8",
+            "dstport": 0,
+            "points": [
+                [
+                    260,
+                    280
+                ],
+                [
+                    275,
+                    280
+                ],
+                [
+                    275,
+                    300
+                ],
+                [
+                    290,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line204",
+            "sid": 204,
+            "srcblock": "mathfunction7",
+            "srcport": 0,
+            "dstblock": "product8",
+            "dstport": 1,
+            "points": [
+                [
+                    260,
+                    330
+                ],
+                [
+                    275,
+                    330
+                ],
+                [
+                    275,
+                    320
+                ],
+                [
+                    290,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line205",
+            "sid": 205,
+            "srcblock": "product8",
+            "srcport": 0,
+            "dstblock": "sum9",
+            "dstport": 1,
+            "points": [
+                [
+                    350,
+                    310
+                ],
+                [
+                    365,
+                    310
+                ],
+                [
+                    365,
+                    320
+                ],
+                [
+                    380,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line206",
+            "sid": 206,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "sum9",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    380,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line207",
+            "sid": 207,
+            "srcblock": "sum9",
+            "srcport": 0,
+            "dstblock": "statevariable5",
+            "dstport": 0,
+            "points": [
+                [
+                    420,
+                    310
+                ],
+                [
+                    440,
+                    310
+                ],
+                [
+                    440,
+                    373
+                ],
+                [
+                    60,
+                    373
+                ],
+                [
+                    60,
+                    300
+                ],
+                [
+                    80,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line301",
+            "sid": 301,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "mathfunction10",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    140
+                ],
+                [
+                    325,
+                    140
+                ],
+                [
+                    325,
+                    120
+                ],
+                [
+                    500,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line302",
+            "sid": 302,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "mathfunction11",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    500,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line303",
+            "sid": 303,
+            "srcblock": "mathfunction10",
+            "srcport": 0,
+            "dstblock": "mathfunction12",
+            "dstport": 0,
+            "points": [
+                [
+                    570,
+                    120
+                ],
+                [
+                    600,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line304",
+            "sid": 304,
+            "srcblock": "mathfunction11",
+            "srcport": 0,
+            "dstblock": "mathfunction13",
+            "dstport": 0,
+            "points": [
+                [
+                    570,
+                    300
+                ],
+                [
+                    600,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line401",
+            "sid": 401,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "scope14",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    140
+                ],
+                [
+                    450,
+                    140
+                ],
+                [
+                    450,
+                    110
+                ],
+                [
+                    750,
+                    110
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line402",
+            "sid": 402,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "scope14",
+            "dstport": 1,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    450,
+                    300
+                ],
+                [
+                    450,
+                    140
+                ],
+                [
+                    750,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line501",
+            "sid": 501,
+            "srcblock": "mathfunction10",
+            "srcport": 0,
+            "dstblock": "scope15",
+            "dstport": 0,
+            "points": [
+                [
+                    570,
+                    120
+                ],
+                [
+                    660,
+                    120
+                ],
+                [
+                    660,
+                    230
+                ],
+                [
+                    750,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line502",
+            "sid": 502,
+            "srcblock": "mathfunction11",
+            "srcport": 0,
+            "dstblock": "scope15",
+            "dstport": 1,
+            "points": [
+                [
+                    570,
+                    300
+                ],
+                [
+                    660,
+                    300
+                ],
+                [
+                    660,
+                    260
+                ],
+                [
+                    750,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line601",
+            "sid": 601,
+            "srcblock": "mathfunction12",
+            "srcport": 0,
+            "dstblock": "scope16",
+            "dstport": 0,
+            "points": [
+                [
+                    680,
+                    120
+                ],
+                [
+                    715,
+                    120
+                ],
+                [
+                    715,
+                    350
+                ],
+                [
+                    750,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line602",
+            "sid": 602,
+            "srcblock": "mathfunction13",
+            "srcport": 0,
+            "dstblock": "scope16",
+            "dstport": 1,
+            "points": [
+                [
+                    680,
+                    300
+                ],
+                [
+                    715,
+                    300
+                ],
+                [
+                    715,
+                    380
+                ],
+                [
+                    750,
+                    380
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line701",
+            "sid": 701,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "display17",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    140
+                ],
+                [
+                    325,
+                    140
+                ],
+                [
+                    325,
+                    170
+                ],
+                [
+                    500,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line702",
+            "sid": 702,
+            "srcblock": "statevariable5",
+            "srcport": 0,
+            "dstblock": "display18",
+            "dstport": 0,
+            "points": [
+                [
+                    150,
+                    300
+                ],
+                [
+                    325,
+                    300
+                ],
+                [
+                    325,
+                    350
+                ],
+                [
+                    500,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
+    },
+    "_teaching_notes": {
+        "topic": "Linear vs Quadratic Convergence Rates",
+        "problem": "Find root of f(x) = 4x\u00b3 (solution: x* = 0)",
+        "initial_condition": "x\u2080 = 3",
+        "methods": {
+            "gradient_descent": {
+                "update": "x_{k+1} = x_k - \u03b1\u00b7f(x_k) = x_k - 0.01\u00b74x_k\u00b3",
+                "convergence": "Linear: |x_{k+1}| \u2248 c\u00b7|x_k| for some c < 1",
+                "log_plot": "log|x_k| vs k is approximately linear"
+            },
+            "newton": {
+                "update": "x_{k+1} = x_k - f(x_k)/f'(x_k) = x_k - 4x\u00b3/(12x\u00b2) = x_k - x/3 = (2/3)x_k",
+                "convergence": "For this problem, actually linear with factor 2/3",
+                "note": "True quadratic convergence appears for roots of f(x)=0 with f'(x*)\u22600"
+            }
+        },
+        "key_insights": [
+            "Linear convergence: error decreases by constant factor each step",
+            "On log plot, linear convergence shows as straight line",
+            "Quadratic convergence: error squares each step (log error doubles)",
+            "On log plot, quadratic shows rapid drop to machine precision",
+            "Newton converges in fewer iterations but costs more per iteration"
+        ],
+        "visualization": {
+            "top_scope": "Raw x values showing convergence to 0",
+            "middle_scope": "Absolute error |x - 0| = |x|",
+            "bottom_scope": "log\u2081\u2080|x| - linear slope = linear convergence"
+        }
     }
-  }
 }

@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 100.0
@@ -67,9 +67,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -90,9 +90,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "heatequation1d",
             "params": {
                 "alpha": 0.05,
@@ -100,7 +100,9 @@
                 "N": 20,
                 "bc_type_left": "Dirichlet",
                 "bc_type_right": "Dirichlet",
-                "init_conds": [20.0]
+                "init_conds": [
+                    20.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -112,15 +114,15 @@
             "coords_left": 450,
             "coords_top": 120,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -137,15 +139,15 @@
             "coords_left": 450,
             "coords_top": 200,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.25,
@@ -162,15 +164,15 @@
             "coords_left": 620,
             "coords_top": 150,
             "coords_width": 80,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "T(x=0.5), T(x=0.25)"
@@ -191,14 +193,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "hot",
-                "title": "Temperature Field"
+                "title": "Temperature Field",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -206,68 +209,228 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "HeatSource_0",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "HeatEquation",
+            "dstblock": "heatequation1d4",
             "dstport": 0,
-            "points": [[160, 120], [250, 165]]
+            "points": [
+                [
+                    160,
+                    120
+                ],
+                [
+                    205,
+                    120
+                ],
+                [
+                    205,
+                    160
+                ],
+                [
+                    250,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "LeftBC_100",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "HeatEquation",
+            "dstblock": "heatequation1d4",
             "dstport": 1,
-            "points": [[160, 200], [250, 190]]
+            "points": [
+                [
+                    160,
+                    200
+                ],
+                [
+                    205,
+                    200
+                ],
+                [
+                    205,
+                    190
+                ],
+                [
+                    250,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "RightBC_0",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "HeatEquation",
+            "dstblock": "heatequation1d4",
             "dstport": 2,
-            "points": [[160, 280], [200, 280], [200, 215], [250, 215]]
+            "points": [
+                [
+                    160,
+                    280
+                ],
+                [
+                    205,
+                    280
+                ],
+                [
+                    205,
+                    220
+                ],
+                [
+                    250,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "HeatEquation",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "Probe_x05",
+            "dstblock": "fieldprobe5",
             "dstport": 0,
-            "points": [[370, 175], [410, 175], [410, 137], [450, 137]]
+            "points": [
+                [
+                    370,
+                    170
+                ],
+                [
+                    410,
+                    170
+                ],
+                [
+                    410,
+                    140
+                ],
+                [
+                    450,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "HeatEquation",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "Probe_x025",
+            "dstblock": "fieldprobe6",
             "dstport": 0,
-            "points": [[370, 175], [410, 175], [410, 217], [450, 217]]
+            "points": [
+                [
+                    370,
+                    170
+                ],
+                [
+                    410,
+                    170
+                ],
+                [
+                    410,
+                    220
+                ],
+                [
+                    450,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "HeatEquation",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "FieldHeatmap",
+            "dstblock": "fieldscope8",
             "dstport": 0,
-            "points": [[370, 175], [410, 175], [410, 312], [450, 312]]
+            "points": [
+                [
+                    370,
+                    170
+                ],
+                [
+                    410,
+                    170
+                ],
+                [
+                    410,
+                    320
+                ],
+                [
+                    450,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Probe_x05",
+            "srcblock": "fieldprobe5",
             "srcport": 0,
-            "dstblock": "TempScope",
+            "dstblock": "scope7",
             "dstport": 0,
-            "points": [[550, 145], [585, 145], [585, 170], [620, 170]]
+            "points": [
+                [
+                    550,
+                    150
+                ],
+                [
+                    585,
+                    150
+                ],
+                [
+                    585,
+                    170
+                ],
+                [
+                    620,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Probe_x025",
+            "srcblock": "fieldprobe6",
             "srcport": 0,
-            "dstblock": "TempScope",
+            "dstblock": "scope7",
             "dstport": 1,
-            "points": [[550, 225], [585, 225], [585, 190], [620, 190]]
+            "points": [
+                [
+                    550,
+                    230
+                ],
+                [
+                    585,
+                    230
+                ],
+                [
+                    585,
+                    190
+                ],
+                [
+                    620,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

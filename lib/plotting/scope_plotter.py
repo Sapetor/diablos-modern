@@ -804,15 +804,23 @@ class ScopePlotter:
 
     def _print_verification_summary(self, source_blocks):
         """
-        Print verification metrics for scopes that appear to be comparisons.
+        Print verification metrics for scopes with verify_mode set explicitly.
 
-        Detects scopes with 2 signals and computes error metrics between them.
+        Only prints when the scope's verify_mode parameter is set to
+        "comparison" or "objective". Skips "auto" and "none" (the default)
+        so regular user diagrams don't get unsolicited terminal output.
         """
         for block in source_blocks:
             if block.block_fn != 'Scope':
                 continue
 
             params = getattr(block, 'exec_params', block.params)
+
+            # Only print verification when explicitly requested
+            verify_mode = params.get('verify_mode', 'none')
+            if verify_mode in ('none', 'auto'):
+                continue
+
             labels = params.get('vec_labels', params.get('labels', ''))
             vector = params.get('vector', [])
 
@@ -986,9 +994,9 @@ class ScopePlotter:
             # Log data summary for diagnostics
             t_arr = self.dsim.timeline.astype(float)
             for si, (lbl, vec) in enumerate(zip(flat_labels, flat_vectors)):
-                v = np.array(vec)
-                logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={v.min():.4f}, max={v.max():.4f}, "
-                           f"first={v[0]:.4f}, last={v[-1]:.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
+                v = np.asarray(vec).flatten()
+                logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={float(v.min()):.4f}, max={float(v.max()):.4f}, "
+                           f"first={float(v[0]):.4f}, last={float(v[-1]):.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
 
             # Close previous plot window if it exists (prevents stale windows lingering)
             if self.plotty is not None:

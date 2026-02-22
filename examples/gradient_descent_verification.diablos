@@ -1,1128 +1,1152 @@
 {
-  "sim_data": {
-    "wind_width": 1280,
-    "wind_height": 770,
-    "fps": 60,
-    "sim_time": 50.0,
-    "sim_dt": 1.0,
-    "sim_trange": 50
-  },
-  "blocks_data": [
-    {
-      "block_fn": "StateVariable",
-      "sid": 1,
-      "username": "X_Numerical",
-      "coords_left": 100,
-      "coords_top": 150,
-      "coords_width": 90,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#6495ED",
-      "b_type": 1,
-      "io_edit": false,
-      "fn_name": "statevariable",
-      "params": {
-        "initial_value": [
-          5.0,
-          5.0
-        ],
-        "dimension": 2
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 50.0,
+        "sim_dt": 1.0,
+        "sim_trange": 50
     },
-    {
-      "block_fn": "ObjectiveFunction",
-      "sid": 2,
-      "username": "f_center",
-      "coords_left": 250,
-      "coords_top": 80,
-      "coords_width": 100,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "objectivefunction",
-      "params": {
-        "expression": "x1**2 + x2**2",
-        "variables": "x1,x2"
-      },
-      "external": false,
-      "flipped": false
+    "blocks_data": [
+        {
+            "block_fn": "StateVariable",
+            "sid": 1,
+            "username": "X_Numerical",
+            "coords_left": 100,
+            "coords_top": 150,
+            "coords_width": 90,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "statevariable",
+            "params": {
+                "initial_value": [
+                    5.0,
+                    5.0
+                ],
+                "dimension": 2
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 2,
+            "username": "f_center",
+            "coords_left": 250,
+            "coords_top": 80,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2**2",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "VectorPerturb",
+            "sid": 3,
+            "username": "Perturb_x1",
+            "coords_left": 250,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "vectorperturb",
+            "params": {
+                "index": 0,
+                "epsilon": 1e-06
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "VectorPerturb",
+            "sid": 4,
+            "username": "Perturb_x2",
+            "coords_left": 250,
+            "coords_top": 210,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "vectorperturb",
+            "params": {
+                "index": 1,
+                "epsilon": 1e-06
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 5,
+            "username": "f_plus_0",
+            "coords_left": 380,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2**2",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 6,
+            "username": "f_plus_1",
+            "coords_left": 380,
+            "coords_top": 210,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2**2",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "NumericalGradient",
+            "sid": 7,
+            "username": "Gradient",
+            "coords_left": 500,
+            "coords_top": 150,
+            "coords_width": 100,
+            "coords_height": 84,
+            "coords_height_base": 60,
+            "in_ports": 3,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "numericalgradient",
+            "params": {
+                "dimension": 2,
+                "epsilon": 1e-06,
+                "method": "forward"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "VectorGain",
+            "sid": 8,
+            "username": "LearningRate",
+            "coords_left": 640,
+            "coords_top": 160,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "vectorgain",
+            "params": {
+                "gain": -0.1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "VectorSum",
+            "sid": 9,
+            "username": "X_Next",
+            "coords_left": 760,
+            "coords_top": 150,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "vectorsum",
+            "params": {
+                "signs": "++"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 10,
+            "username": "X0",
+            "coords_left": 100,
+            "coords_top": 380,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": [
+                    5.0,
+                    5.0
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 11,
+            "username": "DecayFactor",
+            "coords_left": 200,
+            "coords_top": 380,
+            "coords_width": 100,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "0.8**u"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Ramp",
+            "sid": 12,
+            "username": "Iteration_k",
+            "coords_left": 100,
+            "coords_top": 450,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "ramp",
+            "params": {
+                "slope": 1.0,
+                "delay": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "SgProd",
+            "sid": 13,
+            "username": "X_Analytical",
+            "coords_left": 350,
+            "coords_top": 380,
+            "coords_width": 80,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 14,
+            "username": "f_Numerical",
+            "coords_left": 250,
+            "coords_top": 280,
+            "coords_width": 90,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2**2",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "ObjectiveFunction",
+            "sid": 15,
+            "username": "f_Analytical",
+            "coords_left": 500,
+            "coords_top": 380,
+            "coords_width": 90,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "objectivefunction",
+            "params": {
+                "expression": "x1**2 + x2**2",
+                "variables": "x1,x2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 16,
+            "username": "f_Comparison",
+            "coords_left": 700,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 64,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "f(x) Numerical, f(x) Analytical"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 17,
+            "username": "Error",
+            "coords_left": 700,
+            "coords_top": 400,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "signs": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 18,
+            "username": "AbsError",
+            "coords_left": 800,
+            "coords_top": 400,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "expression": "abs(u)"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 19,
+            "username": "ErrorScope",
+            "coords_left": 910,
+            "coords_top": 390,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "|f_num - f_ana|"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Display",
+            "sid": 20,
+            "username": "FinalError",
+            "coords_left": 910,
+            "coords_top": 460,
+            "coords_width": 140,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "display",
+            "params": {
+                "format": "%.2e",
+                "label": "Error"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line101",
+            "sid": 101,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "objectivefunction2",
+            "dstport": 0,
+            "points": [
+                [
+                    190,
+                    180
+                ],
+                [
+                    220,
+                    180
+                ],
+                [
+                    220,
+                    100
+                ],
+                [
+                    250,
+                    100
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line102",
+            "sid": 102,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "vectorperturb3",
+            "dstport": 0,
+            "points": [
+                [
+                    190,
+                    180
+                ],
+                [
+                    220,
+                    180
+                ],
+                [
+                    220,
+                    170
+                ],
+                [
+                    250,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line103",
+            "sid": 103,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "vectorperturb4",
+            "dstport": 0,
+            "points": [
+                [
+                    190,
+                    180
+                ],
+                [
+                    220,
+                    180
+                ],
+                [
+                    220,
+                    230
+                ],
+                [
+                    250,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line104",
+            "sid": 104,
+            "srcblock": "vectorperturb3",
+            "srcport": 0,
+            "dstblock": "objectivefunction5",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line105",
+            "sid": 105,
+            "srcblock": "vectorperturb4",
+            "srcport": 0,
+            "dstblock": "objectivefunction6",
+            "dstport": 0,
+            "points": [
+                [
+                    330,
+                    230
+                ],
+                [
+                    380,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line106",
+            "sid": 106,
+            "srcblock": "objectivefunction2",
+            "srcport": 0,
+            "dstblock": "numericalgradient7",
+            "dstport": 0,
+            "points": [
+                [
+                    350,
+                    100
+                ],
+                [
+                    425,
+                    100
+                ],
+                [
+                    425,
+                    170
+                ],
+                [
+                    500,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line107",
+            "sid": 107,
+            "srcblock": "objectivefunction5",
+            "srcport": 0,
+            "dstblock": "numericalgradient7",
+            "dstport": 1,
+            "points": [
+                [
+                    460,
+                    170
+                ],
+                [
+                    480,
+                    170
+                ],
+                [
+                    480,
+                    190
+                ],
+                [
+                    500,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line108",
+            "sid": 108,
+            "srcblock": "objectivefunction6",
+            "srcport": 0,
+            "dstblock": "numericalgradient7",
+            "dstport": 2,
+            "points": [
+                [
+                    460,
+                    230
+                ],
+                [
+                    480,
+                    230
+                ],
+                [
+                    480,
+                    210
+                ],
+                [
+                    500,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line109",
+            "sid": 109,
+            "srcblock": "numericalgradient7",
+            "srcport": 0,
+            "dstblock": "vectorgain8",
+            "dstport": 0,
+            "points": [
+                [
+                    600,
+                    190
+                ],
+                [
+                    620,
+                    190
+                ],
+                [
+                    620,
+                    180
+                ],
+                [
+                    640,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line110",
+            "sid": 110,
+            "srcblock": "vectorgain8",
+            "srcport": 0,
+            "dstblock": "vectorsum9",
+            "dstport": 1,
+            "points": [
+                [
+                    720,
+                    180
+                ],
+                [
+                    740,
+                    180
+                ],
+                [
+                    740,
+                    190
+                ],
+                [
+                    760,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line111",
+            "sid": 111,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "vectorsum9",
+            "dstport": 0,
+            "points": [
+                [
+                    190,
+                    180
+                ],
+                [
+                    475,
+                    180
+                ],
+                [
+                    475,
+                    170
+                ],
+                [
+                    760,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line112",
+            "sid": 112,
+            "srcblock": "vectorsum9",
+            "srcport": 0,
+            "dstblock": "statevariable1",
+            "dstport": 0,
+            "points": [
+                [
+                    820,
+                    180
+                ],
+                [
+                    840,
+                    180
+                ],
+                [
+                    840,
+                    243
+                ],
+                [
+                    80,
+                    243
+                ],
+                [
+                    80,
+                    180
+                ],
+                [
+                    100,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line113",
+            "sid": 113,
+            "srcblock": "ramp12",
+            "srcport": 0,
+            "dstblock": "mathfunction11",
+            "dstport": 0,
+            "points": [
+                [
+                    160,
+                    470
+                ],
+                [
+                    180,
+                    470
+                ],
+                [
+                    180,
+                    400
+                ],
+                [
+                    200,
+                    400
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line114",
+            "sid": 114,
+            "srcblock": "constant10",
+            "srcport": 0,
+            "dstblock": "sgprod13",
+            "dstport": 0,
+            "points": [
+                [
+                    160,
+                    400
+                ],
+                [
+                    350,
+                    400
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line115",
+            "sid": 115,
+            "srcblock": "mathfunction11",
+            "srcport": 0,
+            "dstblock": "sgprod13",
+            "dstport": 1,
+            "points": [
+                [
+                    300,
+                    400
+                ],
+                [
+                    325,
+                    400
+                ],
+                [
+                    325,
+                    420
+                ],
+                [
+                    350,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line116",
+            "sid": 116,
+            "srcblock": "sgprod13",
+            "srcport": 0,
+            "dstblock": "objectivefunction15",
+            "dstport": 0,
+            "points": [
+                [
+                    430,
+                    410
+                ],
+                [
+                    465,
+                    410
+                ],
+                [
+                    465,
+                    400
+                ],
+                [
+                    500,
+                    400
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line117",
+            "sid": 117,
+            "srcblock": "statevariable1",
+            "srcport": 0,
+            "dstblock": "objectivefunction14",
+            "dstport": 0,
+            "points": [
+                [
+                    190,
+                    180
+                ],
+                [
+                    220,
+                    180
+                ],
+                [
+                    220,
+                    300
+                ],
+                [
+                    250,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line118",
+            "sid": 118,
+            "srcblock": "objectivefunction14",
+            "srcport": 0,
+            "dstblock": "scope16",
+            "dstport": 0,
+            "points": [
+                [
+                    340,
+                    300
+                ],
+                [
+                    520,
+                    300
+                ],
+                [
+                    520,
+                    320
+                ],
+                [
+                    700,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line119",
+            "sid": 119,
+            "srcblock": "objectivefunction15",
+            "srcport": 0,
+            "dstblock": "scope16",
+            "dstport": 1,
+            "points": [
+                [
+                    590,
+                    400
+                ],
+                [
+                    645,
+                    400
+                ],
+                [
+                    645,
+                    340
+                ],
+                [
+                    700,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line120",
+            "sid": 120,
+            "srcblock": "objectivefunction14",
+            "srcport": 0,
+            "dstblock": "sum17",
+            "dstport": 0,
+            "points": [
+                [
+                    340,
+                    300
+                ],
+                [
+                    520,
+                    300
+                ],
+                [
+                    520,
+                    420
+                ],
+                [
+                    700,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line121",
+            "sid": 121,
+            "srcblock": "objectivefunction15",
+            "srcport": 0,
+            "dstblock": "sum17",
+            "dstport": 1,
+            "points": [
+                [
+                    590,
+                    400
+                ],
+                [
+                    645,
+                    400
+                ],
+                [
+                    645,
+                    440
+                ],
+                [
+                    700,
+                    440
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line122",
+            "sid": 122,
+            "srcblock": "sum17",
+            "srcport": 0,
+            "dstblock": "mathfunction18",
+            "dstport": 0,
+            "points": [
+                [
+                    760,
+                    430
+                ],
+                [
+                    780,
+                    430
+                ],
+                [
+                    780,
+                    420
+                ],
+                [
+                    800,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line123",
+            "sid": 123,
+            "srcblock": "mathfunction18",
+            "srcport": 0,
+            "dstblock": "scope19",
+            "dstport": 0,
+            "points": [
+                [
+                    870,
+                    420
+                ],
+                [
+                    910,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line124",
+            "sid": 124,
+            "srcblock": "mathfunction18",
+            "srcport": 0,
+            "dstblock": "display20",
+            "dstport": 0,
+            "points": [
+                [
+                    870,
+                    420
+                ],
+                [
+                    890,
+                    420
+                ],
+                [
+                    890,
+                    480
+                ],
+                [
+                    910,
+                    480
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
     },
-    {
-      "block_fn": "VectorPerturb",
-      "sid": 3,
-      "username": "Perturb_x1",
-      "coords_left": 250,
-      "coords_top": 150,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#00CED1",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "vectorperturb",
-      "params": {
-        "index": 0,
-        "epsilon": 1e-06
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "VectorPerturb",
-      "sid": 4,
-      "username": "Perturb_x2",
-      "coords_left": 250,
-      "coords_top": 210,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#00CED1",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "vectorperturb",
-      "params": {
-        "index": 1,
-        "epsilon": 1e-06
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "ObjectiveFunction",
-      "sid": 5,
-      "username": "f_plus_0",
-      "coords_left": 380,
-      "coords_top": 150,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "objectivefunction",
-      "params": {
-        "expression": "x1**2 + x2**2",
-        "variables": "x1,x2"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "ObjectiveFunction",
-      "sid": 6,
-      "username": "f_plus_1",
-      "coords_left": 380,
-      "coords_top": 210,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "objectivefunction",
-      "params": {
-        "expression": "x1**2 + x2**2",
-        "variables": "x1,x2"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "NumericalGradient",
-      "sid": 7,
-      "username": "Gradient",
-      "coords_left": 500,
-      "coords_top": 150,
-      "coords_width": 100,
-      "coords_height": 60,
-      "coords_height_base": 60,
-      "in_ports": 3,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFA500",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "numericalgradient",
-      "params": {
-        "dimension": 2,
-        "epsilon": 1e-06,
-        "method": "forward"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "VectorGain",
-      "sid": 8,
-      "username": "LearningRate",
-      "coords_left": 640,
-      "coords_top": 160,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFD700",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "vectorgain",
-      "params": {
-        "gain": -0.1
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "VectorSum",
-      "sid": 9,
-      "username": "X_Next",
-      "coords_left": 760,
-      "coords_top": 150,
-      "coords_width": 60,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#32CD32",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "vectorsum",
-      "params": {
-        "signs": "++"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Constant",
-      "sid": 10,
-      "username": "X0",
-      "coords_left": 100,
-      "coords_top": 380,
-      "coords_width": 60,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": false,
-      "fn_name": "constant",
-      "params": {
-        "value": [
-          5.0,
-          5.0
-        ]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 11,
-      "username": "DecayFactor",
-      "coords_left": 200,
-      "coords_top": 380,
-      "coords_width": 100,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "0.8**u"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Ramp",
-      "sid": 12,
-      "username": "Iteration_k",
-      "coords_left": 100,
-      "coords_top": 450,
-      "coords_width": 60,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#F0E68C",
-      "b_type": 0,
-      "io_edit": false,
-      "fn_name": "ramp",
-      "params": {
-        "slope": 1.0,
-        "delay": 0.0
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "SgProd",
-      "sid": 13,
-      "username": "X_Analytical",
-      "coords_left": 350,
-      "coords_top": 380,
-      "coords_width": 80,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "sgprod",
-      "params": {},
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "ObjectiveFunction",
-      "sid": 14,
-      "username": "f_Numerical",
-      "coords_left": 250,
-      "coords_top": 280,
-      "coords_width": 90,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "objectivefunction",
-      "params": {
-        "expression": "x1**2 + x2**2",
-        "variables": "x1,x2"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "ObjectiveFunction",
-      "sid": 15,
-      "username": "f_Analytical",
-      "coords_left": 500,
-      "coords_top": 380,
-      "coords_width": 90,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#9370DB",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "objectivefunction",
-      "params": {
-        "expression": "x1**2 + x2**2",
-        "variables": "x1,x2"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 16,
-      "username": "f_Comparison",
-      "coords_left": 700,
-      "coords_top": 300,
-      "coords_width": 100,
-      "coords_height": 60,
-      "coords_height_base": 60,
-      "in_ports": 2,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": true,
-      "fn_name": "scope",
-      "params": {
-        "labels": "f(x) Numerical, f(x) Analytical"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Sum",
-      "sid": 17,
-      "username": "Error",
-      "coords_left": 700,
-      "coords_top": 400,
-      "coords_width": 60,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "sum",
-      "params": {
-        "signs": "+-"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "MathFunction",
-      "sid": 18,
-      "username": "AbsError",
-      "coords_left": 800,
-      "coords_top": 400,
-      "coords_width": 70,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "mathfunction",
-      "params": {
-        "expression": "abs(u)"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 19,
-      "username": "ErrorScope",
-      "coords_left": 910,
-      "coords_top": 390,
-      "coords_width": 80,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": true,
-      "fn_name": "scope",
-      "params": {
-        "labels": "|f_num - f_ana|"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Display",
-      "sid": 20,
-      "username": "FinalError",
-      "coords_left": 910,
-      "coords_top": 460,
-      "coords_width": 140,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": false,
-      "fn_name": "display",
-      "params": {
-        "format": "%.2e",
-        "label": "Error"
-      },
-      "external": false,
-      "flipped": false
+    "_verification_notes": {
+        "problem": "Gradient descent on f(x) = x1\u00b2 + x2\u00b2",
+        "initial_condition": "x0 = [5, 5]",
+        "learning_rate": "\u03b1 = 0.1",
+        "analytical_solution": "x(k) = (1-2\u03b1)^k * x0 = 0.8^k * [5, 5]",
+        "analytical_objective": "f(x(k)) = ||x(k)||\u00b2 = 0.64^k * 50",
+        "expected_convergence": "x \u2192 [0, 0], f(x) \u2192 0",
+        "error_metric": "|f_numerical - f_analytical| should be < 1e-10"
     }
-  ],
-  "lines_data": [
-    {
-      "sid": 101,
-      "srcblock": "X_Numerical",
-      "srcport": 0,
-      "dstblock": "f_center",
-      "dstport": 0,
-      "points": [
-        [
-          190,
-          175
-        ],
-        [
-          210,
-          175
-        ],
-        [
-          210,
-          105
-        ],
-        [
-          250,
-          105
-        ]
-      ]
-    },
-    {
-      "sid": 102,
-      "srcblock": "X_Numerical",
-      "srcport": 0,
-      "dstblock": "Perturb_x1",
-      "dstport": 0,
-      "points": [
-        [
-          190,
-          175
-        ],
-        [
-          210,
-          175
-        ],
-        [
-          210,
-          170
-        ],
-        [
-          250,
-          170
-        ]
-      ]
-    },
-    {
-      "sid": 103,
-      "srcblock": "X_Numerical",
-      "srcport": 0,
-      "dstblock": "Perturb_x2",
-      "dstport": 0,
-      "points": [
-        [
-          190,
-          175
-        ],
-        [
-          210,
-          175
-        ],
-        [
-          210,
-          230
-        ],
-        [
-          250,
-          230
-        ]
-      ]
-    },
-    {
-      "sid": 104,
-      "srcblock": "Perturb_x1",
-      "srcport": 0,
-      "dstblock": "f_plus_0",
-      "dstport": 0,
-      "points": [
-        [
-          330,
-          170
-        ],
-        [
-          360,
-          170
-        ],
-        [
-          360,
-          170
-        ],
-        [
-          380,
-          170
-        ]
-      ]
-    },
-    {
-      "sid": 105,
-      "srcblock": "Perturb_x2",
-      "srcport": 0,
-      "dstblock": "f_plus_1",
-      "dstport": 0,
-      "points": [
-        [
-          330,
-          230
-        ],
-        [
-          360,
-          230
-        ],
-        [
-          360,
-          230
-        ],
-        [
-          380,
-          230
-        ]
-      ]
-    },
-    {
-      "sid": 106,
-      "srcblock": "f_center",
-      "srcport": 0,
-      "dstblock": "Gradient",
-      "dstport": 0,
-      "points": [
-        [
-          350,
-          105
-        ],
-        [
-          480,
-          105
-        ],
-        [
-          480,
-          160
-        ],
-        [
-          500,
-          160
-        ]
-      ]
-    },
-    {
-      "sid": 107,
-      "srcblock": "f_plus_0",
-      "srcport": 0,
-      "dstblock": "Gradient",
-      "dstport": 1,
-      "points": [
-        [
-          460,
-          170
-        ],
-        [
-          480,
-          170
-        ],
-        [
-          480,
-          180
-        ],
-        [
-          500,
-          180
-        ]
-      ]
-    },
-    {
-      "sid": 108,
-      "srcblock": "f_plus_1",
-      "srcport": 0,
-      "dstblock": "Gradient",
-      "dstport": 2,
-      "points": [
-        [
-          460,
-          230
-        ],
-        [
-          480,
-          230
-        ],
-        [
-          480,
-          200
-        ],
-        [
-          500,
-          200
-        ]
-      ]
-    },
-    {
-      "sid": 109,
-      "srcblock": "Gradient",
-      "srcport": 0,
-      "dstblock": "LearningRate",
-      "dstport": 0,
-      "points": [
-        [
-          600,
-          180
-        ],
-        [
-          620,
-          180
-        ],
-        [
-          620,
-          180
-        ],
-        [
-          640,
-          180
-        ]
-      ]
-    },
-    {
-      "sid": 110,
-      "srcblock": "LearningRate",
-      "srcport": 0,
-      "dstblock": "X_Next",
-      "dstport": 1,
-      "points": [
-        [
-          720,
-          180
-        ],
-        [
-          740,
-          180
-        ],
-        [
-          740,
-          185
-        ],
-        [
-          760,
-          185
-        ]
-      ]
-    },
-    {
-      "sid": 111,
-      "srcblock": "X_Numerical",
-      "srcport": 0,
-      "dstblock": "X_Next",
-      "dstport": 0,
-      "points": [
-        [
-          190,
-          175
-        ],
-        [
-          210,
-          175
-        ],
-        [
-          210,
-          60
-        ],
-        [
-          850,
-          60
-        ],
-        [
-          850,
-          165
-        ],
-        [
-          760,
-          165
-        ]
-      ]
-    },
-    {
-      "sid": 112,
-      "srcblock": "X_Next",
-      "srcport": 0,
-      "dstblock": "X_Numerical",
-      "dstport": 0,
-      "points": [
-        [
-          820,
-          175
-        ],
-        [
-          860,
-          175
-        ],
-        [
-          860,
-          30
-        ],
-        [
-          60,
-          30
-        ],
-        [
-          60,
-          175
-        ],
-        [
-          100,
-          175
-        ]
-      ]
-    },
-    {
-      "sid": 113,
-      "srcblock": "Iteration_k",
-      "srcport": 0,
-      "dstblock": "DecayFactor",
-      "dstport": 0,
-      "points": [
-        [
-          160,
-          470
-        ],
-        [
-          180,
-          470
-        ],
-        [
-          180,
-          405
-        ],
-        [
-          200,
-          405
-        ]
-      ]
-    },
-    {
-      "sid": 114,
-      "srcblock": "X0",
-      "srcport": 0,
-      "dstblock": "X_Analytical",
-      "dstport": 0,
-      "points": [
-        [
-          160,
-          400
-        ],
-        [
-          180,
-          400
-        ],
-        [
-          180,
-          350
-        ],
-        [
-          330,
-          350
-        ],
-        [
-          330,
-          395
-        ],
-        [
-          350,
-          395
-        ]
-      ]
-    },
-    {
-      "sid": 115,
-      "srcblock": "DecayFactor",
-      "srcport": 0,
-      "dstblock": "X_Analytical",
-      "dstport": 1,
-      "points": [
-        [
-          300,
-          405
-        ],
-        [
-          330,
-          405
-        ],
-        [
-          330,
-          415
-        ],
-        [
-          350,
-          415
-        ]
-      ]
-    },
-    {
-      "sid": 116,
-      "srcblock": "X_Analytical",
-      "srcport": 0,
-      "dstblock": "f_Analytical",
-      "dstport": 0,
-      "points": [
-        [
-          430,
-          405
-        ],
-        [
-          470,
-          405
-        ],
-        [
-          470,
-          400
-        ],
-        [
-          500,
-          400
-        ]
-      ]
-    },
-    {
-      "sid": 117,
-      "srcblock": "X_Numerical",
-      "srcport": 0,
-      "dstblock": "f_Numerical",
-      "dstport": 0,
-      "points": [
-        [
-          190,
-          175
-        ],
-        [
-          210,
-          175
-        ],
-        [
-          210,
-          300
-        ],
-        [
-          250,
-          300
-        ]
-      ]
-    },
-    {
-      "sid": 118,
-      "srcblock": "f_Numerical",
-      "srcport": 0,
-      "dstblock": "f_Comparison",
-      "dstport": 0,
-      "points": [
-        [
-          340,
-          300
-        ],
-        [
-          660,
-          300
-        ],
-        [
-          660,
-          320
-        ],
-        [
-          700,
-          320
-        ]
-      ]
-    },
-    {
-      "sid": 119,
-      "srcblock": "f_Analytical",
-      "srcport": 0,
-      "dstblock": "f_Comparison",
-      "dstport": 1,
-      "points": [
-        [
-          590,
-          400
-        ],
-        [
-          660,
-          400
-        ],
-        [
-          660,
-          340
-        ],
-        [
-          700,
-          340
-        ]
-      ]
-    },
-    {
-      "sid": 120,
-      "srcblock": "f_Numerical",
-      "srcport": 0,
-      "dstblock": "Error",
-      "dstport": 0,
-      "points": [
-        [
-          340,
-          300
-        ],
-        [
-          660,
-          300
-        ],
-        [
-          660,
-          410
-        ],
-        [
-          700,
-          410
-        ]
-      ]
-    },
-    {
-      "sid": 121,
-      "srcblock": "f_Analytical",
-      "srcport": 0,
-      "dstblock": "Error",
-      "dstport": 1,
-      "points": [
-        [
-          590,
-          400
-        ],
-        [
-          660,
-          400
-        ],
-        [
-          660,
-          430
-        ],
-        [
-          700,
-          430
-        ]
-      ]
-    },
-    {
-      "sid": 122,
-      "srcblock": "Error",
-      "srcport": 0,
-      "dstblock": "AbsError",
-      "dstport": 0,
-      "points": [
-        [
-          760,
-          420
-        ],
-        [
-          780,
-          420
-        ],
-        [
-          780,
-          420
-        ],
-        [
-          800,
-          420
-        ]
-      ]
-    },
-    {
-      "sid": 123,
-      "srcblock": "AbsError",
-      "srcport": 0,
-      "dstblock": "ErrorScope",
-      "dstport": 0,
-      "points": [
-        [
-          870,
-          420
-        ],
-        [
-          890,
-          420
-        ],
-        [
-          890,
-          415
-        ],
-        [
-          910,
-          415
-        ]
-      ]
-    },
-    {
-      "sid": 124,
-      "srcblock": "AbsError",
-      "srcport": 0,
-      "dstblock": "FinalError",
-      "dstport": 0,
-      "points": [
-        [
-          870,
-          420
-        ],
-        [
-          890,
-          420
-        ],
-        [
-          890,
-          485
-        ],
-        [
-          910,
-          485
-        ]
-      ]
-    }
-  ],
-  "version": "2.0",
-  "modern_ui_data": {
-    "theme": "light",
-    "zoom_factor": 1.0
-  },
-  "_verification_notes": {
-    "problem": "Gradient descent on f(x) = x1\u00b2 + x2\u00b2",
-    "initial_condition": "x0 = [5, 5]",
-    "learning_rate": "\u03b1 = 0.1",
-    "analytical_solution": "x(k) = (1-2\u03b1)^k * x0 = 0.8^k * [5, 5]",
-    "analytical_objective": "f(x(k)) = ||x(k)||\u00b2 = 0.64^k * 50",
-    "expected_convergence": "x \u2192 [0, 0], f(x) \u2192 0",
-    "error_metric": "|f_numerical - f_analytical| should be < 1e-10"
-  }
 }

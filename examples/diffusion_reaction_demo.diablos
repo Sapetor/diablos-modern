@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 1.0
@@ -67,9 +67,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -90,9 +90,9 @@
             "out_ports": 3,
             "dragging": false,
             "selected": false,
-            "b_color": "#32CD32",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "diffusionreaction1d",
             "params": {
                 "D": 0.02,
@@ -102,7 +102,9 @@
                 "N": 30,
                 "bc_type_left": "Dirichlet",
                 "bc_type_right": "Dirichlet",
-                "init_conds": [0.0]
+                "init_conds": [
+                    0.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -114,15 +116,15 @@
             "coords_left": 460,
             "coords_top": 80,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.25,
@@ -139,15 +141,15 @@
             "coords_left": 460,
             "coords_top": 160,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -164,15 +166,15 @@
             "coords_left": 460,
             "coords_top": 240,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.75,
@@ -189,15 +191,15 @@
             "coords_left": 630,
             "coords_top": 100,
             "coords_width": 80,
-            "coords_height": 80,
+            "coords_height": 84,
             "coords_height_base": 80,
             "in_ports": 3,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "c(0.25), c(0.50), c(0.75)"
@@ -218,14 +220,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "viridis",
-                "title": "Concentration Profile"
+                "title": "Concentration Profile",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -237,15 +240,15 @@
             "coords_left": 630,
             "coords_top": 220,
             "coords_width": 80,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Total Mass, Reaction Rate"
@@ -256,100 +259,340 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "NoSource",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "ChemicalReactor",
+            "dstblock": "diffusionreaction1d4",
             "dstport": 0,
-            "points": [[160, 120], [250, 157]]
+            "points": [
+                [
+                    160,
+                    120
+                ],
+                [
+                    205,
+                    120
+                ],
+                [
+                    205,
+                    160
+                ],
+                [
+                    250,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "LeftBC_High",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "ChemicalReactor",
+            "dstblock": "diffusionreaction1d4",
             "dstport": 1,
-            "points": [[160, 200], [250, 185]]
+            "points": [
+                [
+                    160,
+                    200
+                ],
+                [
+                    205,
+                    200
+                ],
+                [
+                    205,
+                    180
+                ],
+                [
+                    250,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "RightBC_Zero",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "ChemicalReactor",
+            "dstblock": "diffusionreaction1d4",
             "dstport": 2,
-            "points": [[160, 280], [200, 280], [200, 213], [250, 213]]
+            "points": [
+                [
+                    160,
+                    280
+                ],
+                [
+                    205,
+                    280
+                ],
+                [
+                    205,
+                    210
+                ],
+                [
+                    250,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 0,
-            "dstblock": "Probe_x025",
+            "dstblock": "fieldprobe5",
             "dstport": 0,
-            "points": [[390, 163], [425, 163], [425, 97], [460, 97]]
+            "points": [
+                [
+                    390,
+                    160
+                ],
+                [
+                    425,
+                    160
+                ],
+                [
+                    425,
+                    100
+                ],
+                [
+                    460,
+                    100
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 0,
-            "dstblock": "Probe_x050",
+            "dstblock": "fieldprobe6",
             "dstport": 0,
-            "points": [[390, 163], [425, 163], [425, 177], [460, 177]]
+            "points": [
+                [
+                    390,
+                    160
+                ],
+                [
+                    425,
+                    160
+                ],
+                [
+                    425,
+                    180
+                ],
+                [
+                    460,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 0,
-            "dstblock": "Probe_x075",
+            "dstblock": "fieldprobe7",
             "dstport": 0,
-            "points": [[390, 163], [425, 163], [425, 257], [460, 257]]
+            "points": [
+                [
+                    390,
+                    160
+                ],
+                [
+                    425,
+                    160
+                ],
+                [
+                    425,
+                    260
+                ],
+                [
+                    460,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 0,
-            "dstblock": "ReactionHeatmap",
+            "dstblock": "fieldscope9",
             "dstport": 0,
-            "points": [[390, 163], [425, 163], [425, 342], [460, 342]]
+            "points": [
+                [
+                    390,
+                    160
+                ],
+                [
+                    425,
+                    160
+                ],
+                [
+                    425,
+                    350
+                ],
+                [
+                    460,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Probe_x025",
+            "srcblock": "fieldprobe5",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope8",
             "dstport": 0,
-            "points": [[560, 105], [595, 105], [595, 120], [630, 120]]
+            "points": [
+                [
+                    560,
+                    110
+                ],
+                [
+                    595,
+                    110
+                ],
+                [
+                    595,
+                    120
+                ],
+                [
+                    630,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Probe_x050",
+            "srcblock": "fieldprobe6",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope8",
             "dstport": 1,
-            "points": [[560, 185], [595, 185], [595, 140], [630, 140]]
+            "points": [
+                [
+                    560,
+                    190
+                ],
+                [
+                    595,
+                    190
+                ],
+                [
+                    595,
+                    140
+                ],
+                [
+                    630,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Probe_x075",
+            "srcblock": "fieldprobe7",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope8",
             "dstport": 2,
-            "points": [[560, 265], [595, 265], [595, 160], [630, 160]]
+            "points": [
+                [
+                    560,
+                    270
+                ],
+                [
+                    595,
+                    270
+                ],
+                [
+                    595,
+                    160
+                ],
+                [
+                    630,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 1,
-            "dstblock": "MassScope",
+            "dstblock": "scope10",
             "dstport": 0,
-            "points": [[390, 191], [420, 191], [420, 60], [585, 60], [585, 240], [630, 240]]
+            "points": [
+                [
+                    390,
+                    180
+                ],
+                [
+                    510,
+                    180
+                ],
+                [
+                    510,
+                    240
+                ],
+                [
+                    630,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "ChemicalReactor",
+            "srcblock": "diffusionreaction1d4",
             "srcport": 2,
-            "dstblock": "MassScope",
+            "dstblock": "scope10",
             "dstport": 1,
-            "points": [[390, 218], [420, 218], [420, 305], [585, 305], [585, 260], [630, 260]]
+            "points": [
+                [
+                    390,
+                    210
+                ],
+                [
+                    510,
+                    210
+                ],
+                [
+                    510,
+                    260
+                ],
+                [
+                    630,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

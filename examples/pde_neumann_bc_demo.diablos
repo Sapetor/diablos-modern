@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -67,9 +67,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -90,9 +90,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "heatequation1d",
             "params": {
                 "alpha": 0.05,
@@ -118,14 +118,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "hot",
-                "title": "Insulated Rod Temperature (Neumann BC)"
+                "title": "Insulated Rod Temperature (Neumann BC)",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -143,9 +144,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldintegral",
             "params": {
                 "L": 1.0,
@@ -167,9 +168,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Total Heat Energy"
@@ -184,15 +185,15 @@
             "coords_left": 420,
             "coords_top": 280,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.0,
@@ -209,15 +210,15 @@
             "coords_left": 420,
             "coords_top": 350,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -234,15 +235,15 @@
             "coords_left": 420,
             "coords_top": 420,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 1.0,
@@ -259,15 +260,15 @@
             "coords_left": 600,
             "coords_top": 320,
             "coords_width": 100,
-            "coords_height": 80,
+            "coords_height": 84,
             "coords_height_base": 80,
             "in_ports": 3,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "T(x=0), T(x=0.5), T(x=1)"
@@ -282,15 +283,15 @@
             "coords_left": 420,
             "coords_top": 490,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 84,
             "coords_height_base": 50,
             "in_ports": 1,
             "out_ports": 3,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldmax",
             "params": {
                 "mode": "max",
@@ -312,9 +313,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Max Temperature"
@@ -325,116 +326,388 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "NoHeatSource",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "InsulatedRod",
+            "dstblock": "heatequation1d4",
             "dstport": 0,
-            "points": [[140, 120], [180, 120], [180, 165], [220, 165]]
+            "points": [
+                [
+                    140,
+                    120
+                ],
+                [
+                    180,
+                    120
+                ],
+                [
+                    180,
+                    160
+                ],
+                [
+                    220,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "LeftFlux_Zero",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "InsulatedRod",
+            "dstblock": "heatequation1d4",
             "dstport": 1,
-            "points": [[140, 200], [180, 200], [180, 190], [220, 190]]
+            "points": [
+                [
+                    140,
+                    200
+                ],
+                [
+                    180,
+                    200
+                ],
+                [
+                    180,
+                    190
+                ],
+                [
+                    220,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "RightFlux_Zero",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "InsulatedRod",
+            "dstblock": "heatequation1d4",
             "dstport": 2,
-            "points": [[140, 280], [180, 280], [180, 215], [220, 215]]
+            "points": [
+                [
+                    140,
+                    280
+                ],
+                [
+                    180,
+                    280
+                ],
+                [
+                    180,
+                    220
+                ],
+                [
+                    220,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "TempFieldScope",
+            "dstblock": "fieldscope5",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 142], [420, 142]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    150
+                ],
+                [
+                    420,
+                    150
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "TotalHeat",
+            "dstblock": "fieldintegral6",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 217], [420, 217]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    220
+                ],
+                [
+                    420,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "TotalHeat",
+            "srcblock": "fieldintegral6",
             "srcport": 0,
-            "dstblock": "EnergyScope",
+            "dstblock": "scope7",
             "dstport": 0,
-            "points": [[520, 225], [560, 225], [560, 217], [600, 217]]
+            "points": [
+                [
+                    520,
+                    220
+                ],
+                [
+                    600,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "ProbeLeft",
+            "dstblock": "fieldprobe8",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 297], [420, 297]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    300
+                ],
+                [
+                    420,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "ProbeCenter",
+            "dstblock": "fieldprobe9",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 367], [420, 367]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    370
+                ],
+                [
+                    420,
+                    370
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "ProbeRight",
+            "dstblock": "fieldprobe10",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 437], [420, 437]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    440
+                ],
+                [
+                    420,
+                    440
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "ProbeLeft",
+            "srcblock": "fieldprobe8",
             "srcport": 0,
-            "dstblock": "TempProbesScope",
+            "dstblock": "scope11",
             "dstport": 0,
-            "points": [[520, 305], [560, 305], [560, 347], [600, 347]]
+            "points": [
+                [
+                    520,
+                    310
+                ],
+                [
+                    560,
+                    310
+                ],
+                [
+                    560,
+                    340
+                ],
+                [
+                    600,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "ProbeCenter",
+            "srcblock": "fieldprobe9",
             "srcport": 0,
-            "dstblock": "TempProbesScope",
+            "dstblock": "scope11",
             "dstport": 1,
-            "points": [[520, 375], [560, 375], [560, 360], [600, 360]]
+            "points": [
+                [
+                    520,
+                    380
+                ],
+                [
+                    560,
+                    380
+                ],
+                [
+                    560,
+                    360
+                ],
+                [
+                    600,
+                    360
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "ProbeRight",
+            "srcblock": "fieldprobe10",
             "srcport": 0,
-            "dstblock": "TempProbesScope",
+            "dstblock": "scope11",
             "dstport": 2,
-            "points": [[520, 445], [560, 445], [560, 373], [600, 373]]
+            "points": [
+                [
+                    520,
+                    450
+                ],
+                [
+                    560,
+                    450
+                ],
+                [
+                    560,
+                    380
+                ],
+                [
+                    600,
+                    380
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line113",
             "sid": 113,
-            "srcblock": "InsulatedRod",
+            "srcblock": "heatequation1d4",
             "srcport": 0,
-            "dstblock": "MaxTemp",
+            "dstblock": "fieldmax12",
             "dstport": 0,
-            "points": [[340, 177], [380, 177], [380, 507], [420, 507]]
+            "points": [
+                [
+                    340,
+                    170
+                ],
+                [
+                    380,
+                    170
+                ],
+                [
+                    380,
+                    530
+                ],
+                [
+                    420,
+                    530
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line114",
             "sid": 114,
-            "srcblock": "MaxTemp",
+            "srcblock": "fieldmax12",
             "srcport": 0,
-            "dstblock": "MaxTempScope",
+            "dstblock": "scope13",
             "dstport": 0,
-            "points": [[520, 502], [560, 502], [560, 487], [600, 487]]
+            "points": [
+                [
+                    520,
+                    510
+                ],
+                [
+                    560,
+                    510
+                ],
+                [
+                    560,
+                    500
+                ],
+                [
+                    600,
+                    500
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

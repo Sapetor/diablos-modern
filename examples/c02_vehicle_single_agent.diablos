@@ -1,155 +1,204 @@
 {
-  "sim_data": {
-    "wind_width": 1280,
-    "wind_height": 770,
-    "fps": 60,
-    "sim_time": 10.0,
-    "sim_dt": 0.01,
-    "sim_trange": 100
-  },
-  "blocks_data": [
-    {
-      "block_fn": "Step",
-      "sid": 0,
-      "username": "command",
-      "coords_left": 50,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": "none",
-      "fn_name": "step",
-      "params": {
-        "value": 1.0,
-        "delay": 0.5,
-        "type": "up"
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 10.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
     },
-    {
-      "block_fn": "TranFn",
-      "sid": 1,
-      "username": "vehicle",
-      "coords_left": 200,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "transfer_function",
-      "params": {
-        "numerator": [1.0],
-        "denominator": [1.0, 1.0]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Integrator",
-      "sid": 2,
-      "username": "position",
-      "coords_left": 380,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "integrator",
-      "params": {
-        "init_conds": 0.0,
-        "method": "SOLVE_IVP"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 3,
-      "username": "scope",
-      "coords_left": 560,
-      "coords_top": 180,
-      "coords_width": 50,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 2,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFB6C1",
-      "b_type": 3,
-      "io_edit": "in",
-      "fn_name": "scope",
-      "params": {
-        "labels": "velocity,position"
-      },
-      "external": false,
-      "flipped": false
-    }
-  ],
-  "lines_data": [
-    {
-      "name": "line0",
-      "sid": 0,
-      "srcblock": "command",
-      "srcport": 0,
-      "dstblock": "vehicle",
-      "dstport": 0,
-      "points": [[100, 220], [200, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line1",
-      "sid": 1,
-      "srcblock": "vehicle",
-      "srcport": 0,
-      "dstblock": "position",
-      "dstport": 0,
-      "points": [[250, 220], [380, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line2",
-      "sid": 2,
-      "srcblock": "vehicle",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 0,
-      "points": [[250, 220], [300, 220], [300, 160], [540, 160], [540, 197], [560, 197]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line3",
-      "sid": 3,
-      "srcblock": "position",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 1,
-      "points": [[430, 220], [560, 213]],
-      "cptr": 0,
-      "selected": false
-    }
-  ],
-  "version": "2.0"
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 0,
+            "username": "command",
+            "coords_left": 50,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "step",
+            "params": {
+                "value": 1.0,
+                "delay": 0.5,
+                "type": "up"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 1,
+            "username": "vehicle",
+            "coords_left": 200,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.0,
+                    1.0
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Integrator",
+            "sid": 2,
+            "username": "position",
+            "coords_left": 380,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": 0.0,
+                "method": "SOLVE_IVP"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 3,
+            "username": "scope",
+            "coords_left": 560,
+            "coords_top": 180,
+            "coords_width": 50,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "velocity,position"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "tranfn1",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    200,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "tranfn1",
+            "srcport": 0,
+            "dstblock": "integrator2",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    220
+                ],
+                [
+                    380,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "tranfn1",
+            "srcport": 0,
+            "dstblock": "scope3",
+            "dstport": 0,
+            "points": [
+                [
+                    250,
+                    220
+                ],
+                [
+                    405,
+                    220
+                ],
+                [
+                    405,
+                    200
+                ],
+                [
+                    560,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "integrator2",
+            "srcport": 0,
+            "dstblock": "scope3",
+            "dstport": 1,
+            "points": [
+                [
+                    430,
+                    220
+                ],
+                [
+                    560,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
 }

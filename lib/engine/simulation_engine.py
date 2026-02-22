@@ -255,10 +255,10 @@ class SimulationEngine:
                         
                         self.update_global_list(block.name, h_value=h_count, h_assign=True)
                         block.computed_data = True
-                        
-                        if block.b_type not in [1, 3]:
+
+                        if block.name not in self.memory_blocks and block.b_type != 3:
                             self.propagate_outputs(block, out_value)
-                        
+
                         logger.info(f"EXECUTED in LOOP {h_count}: {block.name}")
                             
                 # Algebraic Loop Detection
@@ -925,8 +925,8 @@ class SimulationEngine:
         if 'E' in out_value and out_value['E']:
             return out_value
             
-        # Propagate outputs to children (for non-sink blocks)
-        if block.b_type not in [1, 3]:  # Not memory-only or sink
+        # Propagate outputs to children (skip memory blocks and sinks)
+        if block.name not in self.memory_blocks and block.b_type != 3:
             self.propagate_outputs(block, out_value)
         
         return out_value
@@ -1689,43 +1689,37 @@ class SimulationEngine:
                         # Get number of input ports
                         n_inputs = block.in_ports if hasattr(block, 'in_ports') else 1
 
-                        # Collect all input values
-                        vals = []
+                        # Collect and flatten all input values (matching Scope.execute() behavior)
+                        # Each port value is flattened to 1D so vector signals (e.g. StateSpace
+                        # with 4 outputs) are properly expanded into individual components.
+                        combined = []
                         for port in range(n_inputs):
                             val = inputs.get(port, 0.0)
-                            # Flatten single-element arrays to scalars
-                            if isinstance(val, (np.ndarray, list)):
-                                if np.size(val) == 1:
-                                    val = float(val[0]) if isinstance(val, np.ndarray) else val[0]
-                            vals.append(val)
-
-                        # Store as single value or row depending on number of inputs
-                        if n_inputs == 1:
-                            row = vals[0]
-                        else:
-                            row = vals  # List of values for this time step
+                            combined.append(np.atleast_1d(val).flatten())
+                        new_sample = np.concatenate(combined) if combined else np.array([0.0])
+                        vec_dim = len(new_sample)
 
                         # Initialize vector list and labels on first timestep
                         if i == 0:
                             block.exec_params['vector'] = []
+                            block.exec_params['vec_dim'] = vec_dim
                             # Set vec_labels from 'labels' param (Scope uses 'labels', plotter reads 'vec_labels')
                             labels_raw = block.params.get('labels', block.exec_params.get('labels', ''))
                             if labels_raw and labels_raw != 'default':
                                 labels_list = [l.strip() for l in labels_raw.replace(' ', '').split(',') if l.strip()]
-                                # Pad or trim to match number of inputs
-                                while len(labels_list) < n_inputs:
+                                # Pad or trim to match actual signal dimension
+                                while len(labels_list) < vec_dim:
                                     labels_list.append(f"{b_name}-{len(labels_list)}")
-                                labels_list = labels_list[:n_inputs]
+                                labels_list = labels_list[:vec_dim]
                             else:
-                                labels_list = [f"{b_name}-{j}" for j in range(n_inputs)]
+                                labels_list = [f"{b_name}-{j}" for j in range(vec_dim)]
                             block.exec_params['vec_labels'] = labels_list
-                            block.exec_params['vec_dim'] = n_inputs
 
-                        block.exec_params['vector'].append(row)
+                        block.exec_params['vector'].append(new_sample)
 
                         if i == num_steps - 1:
                             vec = block.exec_params['vector']
-                            logger.info(f"Replay Scope {b_name}: inputs={n_inputs}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}")
+                            logger.info(f"Replay Scope {b_name}: vec_dim={vec_dim}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}")
 
                     if fn == 'Fieldscope':
                         # FieldScope: Store field history for 2D heatmap

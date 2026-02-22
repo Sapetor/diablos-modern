@@ -748,7 +748,7 @@ class DSim:
                         if not block.should_execute(self.time_step):
                             self.engine.update_global_list(block.name, h_value=0)
                             block.computed_data = True
-                            if block.b_type not in [1, 3]:
+                            if block.name not in self.memory_blocks and block.b_type != 3:
                                 held = {p: block.get_held_output(p) for p in range(block.out_ports)}
                                 self.engine.propagate_outputs(block, held)
                             continue
@@ -770,7 +770,7 @@ class DSim:
 
                         self.engine.update_global_list(block.name, h_value=0)
                         block.computed_data = True
-                        if block.b_type not in [1, 3]:
+                        if block.name not in self.memory_blocks and block.b_type != 3:
                             self.engine.propagate_outputs(block, out_value)
                 hier += 1
 
@@ -906,7 +906,7 @@ class DSim:
                             # Mark as computed and propagate held outputs
                             self.engine.update_global_list(block.name, h_value=0)
                             block.computed_data = True
-                            if block.b_type not in [1, 3]:
+                            if block.name not in self.memory_blocks and block.b_type != 3:
                                 held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
                                 self.engine.propagate_outputs(block, held_outputs)
                             continue
@@ -935,8 +935,8 @@ class DSim:
                         self.engine.update_global_list(block.name, h_value=0)
                         block.computed_data = True
 
-                        # Propagate outputs to children (engine handles b_type check)
-                        if block.b_type not in [1, 3]:
+                        # Propagate outputs to children (skip memory blocks and sinks)
+                        if block.name not in self.memory_blocks and block.b_type != 3:
                             self.engine.propagate_outputs(block, out_value)
                 hier += 1
 

@@ -1,7 +1,7 @@
 {
     "sim_data": {
         "wind_width": 1280,
-        "wind_height": 800,
+        "wind_height": 770,
         "fps": 60,
         "sim_time": 5.0,
         "sim_dt": 0.005,
@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -67,9 +67,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF8C00",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "diffusionreaction1d",
             "params": {
                 "D": 0.1,
@@ -97,9 +97,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -122,9 +122,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "ramp",
             "params": {
                 "slope": 1.0,
@@ -146,9 +146,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "gain",
             "params": {
                 "gain": -1.4869604401089358
@@ -169,9 +169,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#DDA0DD",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "mathfunction",
             "params": {
                 "function": "exp"
@@ -192,9 +192,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Numerical, Analytical"
@@ -209,15 +209,15 @@
             "coords_left": 560,
             "coords_top": 220,
             "coords_width": 60,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "sum",
             "params": {
                 "signs": "+-"
@@ -238,9 +238,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Error"
@@ -261,9 +261,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
@@ -277,10 +277,11 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Source_Zero",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "DiffReact_Numerical",
+            "dstblock": "diffusionreaction1d3",
             "dstport": 0,
             "points": [
                 [
@@ -299,13 +300,16 @@
                     200,
                     150
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "BC_Zero",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "DiffReact_Numerical",
+            "dstblock": "diffusionreaction1d3",
             "dstport": 1,
             "points": [
                 [
@@ -324,13 +328,16 @@
                     200,
                     180
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "BC_Zero",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "DiffReact_Numerical",
+            "dstblock": "diffusionreaction1d3",
             "dstport": 2,
             "points": [
                 [
@@ -343,19 +350,22 @@
                 ],
                 [
                     170,
-                    210
+                    200
                 ],
                 [
                     200,
-                    210
+                    200
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "DiffReact_Numerical",
+            "srcblock": "diffusionreaction1d3",
             "srcport": 0,
-            "dstblock": "Probe_Center",
+            "dstblock": "fieldprobe4",
             "dstport": 0,
             "points": [
                 [
@@ -368,19 +378,22 @@
                 ],
                 [
                     365,
-                    125
+                    120
                 ],
                 [
                     400,
-                    125
+                    120
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "DiffReact_Numerical",
+            "srcblock": "diffusionreaction1d3",
             "srcport": 0,
-            "dstblock": "Field_View",
+            "dstblock": "fieldscope11",
             "dstport": 0,
             "points": [
                 [
@@ -393,44 +406,50 @@
                 ],
                 [
                     365,
-                    207
+                    220
                 ],
                 [
                     400,
-                    207
+                    220
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "Probe_Center",
+            "srcblock": "fieldprobe4",
             "srcport": 0,
-            "dstblock": "Comparison",
+            "dstblock": "scope8",
             "dstport": 0,
             "points": [
                 [
                     500,
-                    125
-                ],
-                [
-                    570,
-                    125
+                    120
                 ],
                 [
                     570,
                     120
+                ],
+                [
+                    570,
+                    130
                 ],
                 [
                     640,
-                    120
+                    130
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Time",
+            "srcblock": "ramp5",
             "srcport": 0,
-            "dstblock": "TotalDecayRate",
+            "dstblock": "gain6",
             "dstport": 0,
             "points": [
                 [
@@ -441,13 +460,16 @@
                     520,
                     340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "TotalDecayRate",
+            "srcblock": "gain6",
             "srcport": 0,
-            "dstblock": "Exp_Decay",
+            "dstblock": "mathfunction7",
             "dstport": 0,
             "points": [
                 [
@@ -458,13 +480,16 @@
                     640,
                     340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Exp_Decay",
+            "srcblock": "mathfunction7",
             "srcport": 0,
-            "dstblock": "Comparison",
+            "dstblock": "scope8",
             "dstport": 1,
             "points": [
                 [
@@ -472,57 +497,63 @@
                     340
                 ],
                 [
-                    780,
+                    740,
                     340
                 ],
                 [
-                    780,
-                    60
+                    740,
+                    389
                 ],
                 [
-                    610,
-                    60
+                    620,
+                    389
                 ],
                 [
-                    610,
-                    160
+                    620,
+                    150
                 ],
                 [
                     640,
-                    160
+                    150
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Probe_Center",
+            "srcblock": "fieldprobe4",
             "srcport": 0,
-            "dstblock": "Error_Calc",
+            "dstblock": "sum9",
             "dstport": 0,
             "points": [
                 [
                     500,
-                    125
+                    120
                 ],
                 [
                     530,
-                    125
+                    120
                 ],
                 [
                     530,
-                    235
+                    240
                 ],
                 [
                     560,
-                    235
+                    240
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "Exp_Decay",
+            "srcblock": "mathfunction7",
             "srcport": 0,
-            "dstblock": "Error_Calc",
+            "dstblock": "sum9",
             "dstport": 1,
             "points": [
                 [
@@ -530,43 +561,56 @@
                     340
                 ],
                 [
-                    780,
+                    740,
                     340
                 ],
                 [
-                    780,
-                    200
+                    740,
+                    389
                 ],
                 [
                     540,
-                    200
+                    389
                 ],
                 [
                     540,
-                    255
+                    260
                 ],
                 [
                     560,
-                    255
+                    260
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "Error_Calc",
+            "srcblock": "sum9",
             "srcport": 0,
-            "dstblock": "Error_Scope",
+            "dstblock": "scope10",
             "dstport": 0,
             "points": [
                 [
                     620,
-                    245
+                    250
+                ],
+                [
+                    650,
+                    250
+                ],
+                [
+                    650,
+                    240
                 ],
                 [
                     680,
-                    245
+                    240
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

@@ -12,6 +12,16 @@ DiaBloS is a Simulink-like block diagram simulation tool built with Python and P
 
 ## Recent Work (February 2026)
 
+### Diagram-to-TikZ Export
+Added File > Export > Export as TikZ... for generating publication-ready TikZ diagrams from block diagrams.
+
+- **New files**: `lib/export/tikz_exporter.py`, `modern_ui/widgets/tikz_export_dialog.py`
+- **Modified**: `modern_ui/builders/menu_builder.py` (Export submenu), `modern_ui/main_window.py` (handler)
+- **Formats**: Standalone .tex (compilable with pdflatex) or snippet only (tikzset + tikzpicture)
+- **Control conventions**: Sum=circle with +/- labels, Gain=isosceles triangle, TF=rectangle with `\dfrac{num(s)}{den(s)}`
+- **Features**: Live preview, Copy to Clipboard, configurable options (include sinks, show labels/values, fill colors, page width)
+- **Routing**: Multi-waypoint connections for feedback loops, proper port anchors for multi-port blocks
+
 ### Compiled Solver Execution Order Fix
 Fixed critical bug where feedback loops with Transfer Function blocks produced all-zero output in compiled (fast) solver mode.
 
@@ -144,6 +154,8 @@ Interactive parameter tuning for teaching and exploration. After running a simul
 - `blocks/pde/` - All PDE block implementations
 - `blocks/optimization_primitives/` - Visual optimization algorithm building blocks
 - `modern_ui/widgets/animation_export_dialog.py` - Export settings dialog
+- `lib/export/tikz_exporter.py` - TikZ diagram export engine
+- `modern_ui/widgets/tikz_export_dialog.py` - TikZ export dialog with live preview
 - `tasks/todo.md` - Consolidated TODO and roadmap
 
 ### Optimization Primitives Examples

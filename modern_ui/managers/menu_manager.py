@@ -133,6 +133,12 @@ class MenuManager:
                 dist_v = align_menu.addAction("Distribute Vertically")
                 dist_v.triggered.connect(self.canvas.distribute_vertical)
 
+        # Port editing (only for blocks that declare io_editable)
+        if getattr(block, 'io_edit', 'none') not in ('none', False, None):
+            menu.addSeparator()
+            edit_ports_action = menu.addAction("Edit Ports...")
+            edit_ports_action.triggered.connect(lambda: self._edit_block_ports(block))
+
         menu.addSeparator()
 
         properties_action = menu.addAction("Properties...")
@@ -177,6 +183,13 @@ class MenuManager:
         # Show menu at cursor position
         from PyQt5.QtGui import QCursor
         menu.exec_(QCursor.pos())
+
+    def _edit_block_ports(self, block):
+        """Open port-editing dialog for a block and refresh the canvas."""
+        self.canvas._push_undo("Edit Ports")
+        block.change_port_numbers()
+        self.canvas.update()
+        self.canvas.dsim.dirty = True
 
     def show_connection_context_menu(self, line, pos):
         """Show context menu for a connection line."""

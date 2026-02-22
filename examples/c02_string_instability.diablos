@@ -1,212 +1,323 @@
 {
-  "sim_data": {
-    "wind_width": 1280,
-    "wind_height": 770,
-    "fps": 60,
-    "sim_time": 30.0,
-    "sim_dt": 0.01,
-    "sim_trange": 100
-  },
-  "blocks_data": [
-    {
-      "block_fn": "Step",
-      "sid": 0,
-      "username": "leader",
-      "coords_left": 50,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": "none",
-      "fn_name": "step",
-      "params": {
-        "value": 1.0,
-        "delay": 1.0,
-        "type": "up"
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 30.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
     },
-    {
-      "block_fn": "TranFn",
-      "sid": 1,
-      "username": "T1",
-      "coords_left": 180,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "transfer_function",
-      "params": {
-        "numerator": [0.9, 0.2],
-        "denominator": [1.0, 1.0, 0.9, 0.2]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "TranFn",
-      "sid": 2,
-      "username": "T2",
-      "coords_left": 320,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "transfer_function",
-      "params": {
-        "numerator": [0.9, 0.2],
-        "denominator": [1.0, 1.0, 0.9, 0.2]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "TranFn",
-      "sid": 3,
-      "username": "T3",
-      "coords_left": 460,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "transfer_function",
-      "params": {
-        "numerator": [0.9, 0.2],
-        "denominator": [1.0, 1.0, 0.9, 0.2]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 4,
-      "username": "scope",
-      "coords_left": 630,
-      "coords_top": 160,
-      "coords_width": 50,
-      "coords_height": 80,
-      "coords_height_base": 80,
-      "in_ports": 4,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFB6C1",
-      "b_type": 3,
-      "io_edit": "in",
-      "fn_name": "scope",
-      "params": {
-        "labels": "leader,vehicle 1,vehicle 2,vehicle 3"
-      },
-      "external": false,
-      "flipped": false
-    }
-  ],
-  "lines_data": [
-    {
-      "name": "line0",
-      "sid": 0,
-      "srcblock": "leader",
-      "srcport": 0,
-      "dstblock": "T1",
-      "dstport": 0,
-      "points": [[100, 220], [180, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line1",
-      "sid": 1,
-      "srcblock": "T1",
-      "srcport": 0,
-      "dstblock": "T2",
-      "dstport": 0,
-      "points": [[230, 220], [320, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line2",
-      "sid": 2,
-      "srcblock": "T2",
-      "srcport": 0,
-      "dstblock": "T3",
-      "dstport": 0,
-      "points": [[370, 220], [460, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line3",
-      "sid": 3,
-      "srcblock": "leader",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 0,
-      "points": [[100, 220], [100, 150], [610, 150], [610, 176], [630, 176]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line4",
-      "sid": 4,
-      "srcblock": "T1",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 1,
-      "points": [[230, 220], [270, 220], [270, 150], [610, 150], [610, 192], [630, 192]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line5",
-      "sid": 5,
-      "srcblock": "T2",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 2,
-      "points": [[370, 220], [370, 140], [610, 140], [610, 208], [630, 208]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line6",
-      "sid": 6,
-      "srcblock": "T3",
-      "srcport": 0,
-      "dstblock": "scope",
-      "dstport": 3,
-      "points": [[510, 220], [630, 224]],
-      "cptr": 0,
-      "selected": false
-    }
-  ],
-  "version": "2.0"
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 0,
+            "username": "leader",
+            "coords_left": 50,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "step",
+            "params": {
+                "value": 1.0,
+                "delay": 1.0,
+                "type": "up"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 1,
+            "username": "T1",
+            "coords_left": 180,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    0.9,
+                    0.2
+                ],
+                "denominator": [
+                    1.0,
+                    1.0,
+                    0.9,
+                    0.2
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 2,
+            "username": "T2",
+            "coords_left": 320,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    0.9,
+                    0.2
+                ],
+                "denominator": [
+                    1.0,
+                    1.0,
+                    0.9,
+                    0.2
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 3,
+            "username": "T3",
+            "coords_left": 460,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    0.9,
+                    0.2
+                ],
+                "denominator": [
+                    1.0,
+                    1.0,
+                    0.9,
+                    0.2
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 4,
+            "username": "scope",
+            "coords_left": 630,
+            "coords_top": 160,
+            "coords_width": 50,
+            "coords_height": 104,
+            "coords_height_base": 80,
+            "in_ports": 4,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "leader,vehicle 1,vehicle 2,vehicle 3"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "tranfn1",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    180,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "tranfn1",
+            "srcport": 0,
+            "dstblock": "tranfn2",
+            "dstport": 0,
+            "points": [
+                [
+                    230,
+                    220
+                ],
+                [
+                    320,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "tranfn2",
+            "srcport": 0,
+            "dstblock": "tranfn3",
+            "dstport": 0,
+            "points": [
+                [
+                    370,
+                    220
+                ],
+                [
+                    460,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "scope4",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    365,
+                    220
+                ],
+                [
+                    365,
+                    180
+                ],
+                [
+                    630,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "tranfn1",
+            "srcport": 0,
+            "dstblock": "scope4",
+            "dstport": 1,
+            "points": [
+                [
+                    230,
+                    220
+                ],
+                [
+                    430,
+                    220
+                ],
+                [
+                    430,
+                    200
+                ],
+                [
+                    630,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "tranfn2",
+            "srcport": 0,
+            "dstblock": "scope4",
+            "dstport": 2,
+            "points": [
+                [
+                    370,
+                    220
+                ],
+                [
+                    630,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "tranfn3",
+            "srcport": 0,
+            "dstblock": "scope4",
+            "dstport": 3,
+            "points": [
+                [
+                    510,
+                    220
+                ],
+                [
+                    570,
+                    220
+                ],
+                [
+                    570,
+                    240
+                ],
+                [
+                    630,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
 }

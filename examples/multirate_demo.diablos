@@ -21,7 +21,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
+            "b_color": "#064e3b",
             "b_type": 0,
             "io_edit": "none",
             "fn_name": "sine",
@@ -46,10 +46,10 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF00FF",
+            "b_color": "#5b21b6",
             "b_type": 2,
             "io_edit": "none",
-            "fn_name": "zeroorderhold",
+            "fn_name": "zero_order_hold",
             "params": {
                 "sampling_time": 0.1
             },
@@ -59,7 +59,7 @@
         {
             "block_fn": "RateTransition",
             "sid": 2,
-            "username": "Rate 10Hz→100Hz",
+            "username": "Rate 10Hz\u2192100Hz",
             "coords_left": 350,
             "coords_top": 100,
             "coords_width": 90,
@@ -69,7 +69,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF00FF",
+            "b_color": "#5b21b6",
             "b_type": 2,
             "io_edit": "none",
             "fn_name": "rate_transition",
@@ -94,7 +94,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF00FF",
+            "b_color": "#5b21b6",
             "b_type": 2,
             "io_edit": "none",
             "fn_name": "first_order_hold",
@@ -112,13 +112,13 @@
             "coords_left": 550,
             "coords_top": 100,
             "coords_width": 100,
-            "coords_height": 60,
+            "coords_height": 84,
             "coords_height_base": 60,
             "in_ports": 3,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFB6C1",
+            "b_color": "#7f1d1d",
             "b_type": 3,
             "io_edit": "input",
             "fn_name": "scope",
@@ -136,13 +136,13 @@
             "coords_left": 550,
             "coords_top": 250,
             "coords_width": 100,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFB6C1",
+            "b_color": "#7f1d1d",
             "b_type": 3,
             "io_edit": "input",
             "fn_name": "scope",
@@ -156,90 +156,202 @@
     ],
     "lines_data": [
         {
-            "name": "line0",
+            "name": "Line0",
             "sid": 0,
-            "srcblock": "Sine 2Hz",
+            "srcblock": "sine0",
             "srcport": 0,
-            "dstblock": "ZOH 10Hz",
+            "dstblock": "zeroorderhold1",
             "dstport": 0,
-            "points": [[130, 125], [200, 125]],
+            "points": [
+                [
+                    130,
+                    120
+                ],
+                [
+                    200,
+                    120
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line1",
+            "name": "Line1",
             "sid": 1,
-            "srcblock": "ZOH 10Hz",
+            "srcblock": "zeroorderhold1",
             "srcport": 0,
-            "dstblock": "Rate 10Hz→100Hz",
+            "dstblock": "ratetransition2",
             "dstport": 0,
-            "points": [[270, 125], [350, 125]],
+            "points": [
+                [
+                    270,
+                    120
+                ],
+                [
+                    350,
+                    120
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line2",
+            "name": "Line2",
             "sid": 2,
-            "srcblock": "Sine 2Hz",
+            "srcblock": "sine0",
             "srcport": 0,
-            "dstblock": "Continuous vs Sampled",
+            "dstblock": "scope4",
             "dstport": 0,
-            "points": [[130, 125], [150, 125], [150, 50], [500, 50], [500, 115], [550, 115]],
+            "points": [
+                [
+                    130,
+                    120
+                ],
+                [
+                    550,
+                    120
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line3",
+            "name": "Line3",
             "sid": 3,
-            "srcblock": "ZOH 10Hz",
+            "srcblock": "zeroorderhold1",
             "srcport": 0,
-            "dstblock": "Continuous vs Sampled",
+            "dstblock": "scope4",
             "dstport": 1,
-            "points": [[270, 125], [290, 125], [290, 130], [550, 130]],
+            "points": [
+                [
+                    270,
+                    120
+                ],
+                [
+                    410,
+                    120
+                ],
+                [
+                    410,
+                    140
+                ],
+                [
+                    550,
+                    140
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line4",
+            "name": "Line4",
             "sid": 4,
-            "srcblock": "Rate 10Hz→100Hz",
+            "srcblock": "ratetransition2",
             "srcport": 0,
-            "dstblock": "Continuous vs Sampled",
+            "dstblock": "scope4",
             "dstport": 2,
-            "points": [[440, 125], [500, 125], [500, 145], [550, 145]],
+            "points": [
+                [
+                    440,
+                    120
+                ],
+                [
+                    495,
+                    120
+                ],
+                [
+                    495,
+                    160
+                ],
+                [
+                    550,
+                    160
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line5",
+            "name": "Line5",
             "sid": 5,
-            "srcblock": "Sine 2Hz",
+            "srcblock": "sine0",
             "srcport": 0,
-            "dstblock": "FOH 10Hz",
+            "dstblock": "firstorderhold3",
             "dstport": 0,
-            "points": [[130, 125], [150, 125], [150, 275], [200, 275]],
+            "points": [
+                [
+                    130,
+                    120
+                ],
+                [
+                    165,
+                    120
+                ],
+                [
+                    165,
+                    280
+                ],
+                [
+                    200,
+                    280
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line6",
+            "name": "Line6",
             "sid": 6,
-            "srcblock": "ZOH 10Hz",
+            "srcblock": "zeroorderhold1",
             "srcport": 0,
-            "dstblock": "ZOH vs FOH",
+            "dstblock": "scope5",
             "dstport": 0,
-            "points": [[270, 125], [290, 125], [290, 265], [550, 265]],
+            "points": [
+                [
+                    270,
+                    120
+                ],
+                [
+                    410,
+                    120
+                ],
+                [
+                    410,
+                    270
+                ],
+                [
+                    550,
+                    270
+                ]
+            ],
             "cptr": 0,
             "selected": false
         },
         {
-            "name": "line7",
+            "name": "Line7",
             "sid": 7,
-            "srcblock": "FOH 10Hz",
+            "srcblock": "firstorderhold3",
             "srcport": 0,
-            "dstblock": "ZOH vs FOH",
+            "dstblock": "scope5",
             "dstport": 1,
-            "points": [[270, 275], [550, 290]],
+            "points": [
+                [
+                    270,
+                    280
+                ],
+                [
+                    410,
+                    280
+                ],
+                [
+                    410,
+                    290
+                ],
+                [
+                    550,
+                    290
+                ]
+            ],
             "cptr": 0,
             "selected": false
         }

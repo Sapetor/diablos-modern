@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "step",
             "params": {
                 "step_time": 1.0,
@@ -40,15 +40,15 @@
             "coords_left": 180,
             "coords_top": 200,
             "coords_width": 50,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "sum",
             "params": {
                 "signs": "+-"
@@ -69,9 +69,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "parameter",
             "params": {
                 "name": "Kp",
@@ -97,9 +97,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "parameter",
             "params": {
                 "name": "Ki",
@@ -119,15 +119,15 @@
             "coords_left": 280,
             "coords_top": 180,
             "coords_width": 100,
-            "coords_height": 60,
+            "coords_height": 104,
             "coords_height_base": 60,
             "in_ports": 4,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
+            "b_color": "#5b21b6",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "pid",
             "params": {
                 "Kp": 5.0,
@@ -152,13 +152,19 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
+            "b_color": "#5b21b6",
             "b_type": 1,
-            "io_edit": false,
-            "fn_name": "transferfunction",
+            "io_edit": "none",
+            "fn_name": "transfer_function",
             "params": {
-                "numerator": [1.0],
-                "denominator": [1.0, 0.8, 1.0]
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.0,
+                    0.8,
+                    1.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -170,15 +176,15 @@
             "coords_left": 700,
             "coords_top": 160,
             "coords_width": 80,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Reference, Output"
@@ -193,15 +199,15 @@
             "coords_left": 420,
             "coords_top": 300,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF0000",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "costfunction",
             "params": {
                 "type": "ISE",
@@ -225,15 +231,15 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "constraint",
             "params": {
                 "type": "<=",
                 "bound": 1.15,
                 "mode": "max",
-                "tolerance": 1e-6,
+                "tolerance": 1e-06,
                 "penalty_weight": 1000.0
             },
             "external": false,
@@ -252,14 +258,14 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "optimizer",
             "params": {
                 "method": "SLSQP",
                 "max_iter": 100,
-                "tol": 1e-5,
+                "tol": 1e-05,
                 "use_constraints": true,
                 "verbose": true
             },
@@ -279,9 +285,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "ISE Cost"
@@ -292,92 +298,328 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Reference",
+            "srcblock": "step1",
             "srcport": 0,
-            "dstblock": "Error",
+            "dstblock": "sum2",
             "dstport": 0,
-            "points": [[140, 220], [160, 220], [160, 217], [180, 217]]
+            "points": [
+                [
+                    140,
+                    220
+                ],
+                [
+                    180,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "Error",
+            "srcblock": "sum2",
             "srcport": 0,
-            "dstblock": "PID_Controller",
+            "dstblock": "pid5",
             "dstport": 0,
-            "points": [[230, 225], [255, 225], [255, 195], [280, 195]]
+            "points": [
+                [
+                    230,
+                    230
+                ],
+                [
+                    255,
+                    230
+                ],
+                [
+                    255,
+                    200
+                ],
+                [
+                    280,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "Kp_param",
+            "srcblock": "parameter3",
             "srcport": 0,
-            "dstblock": "PID_Controller",
+            "dstblock": "pid5",
             "dstport": 1,
-            "points": [[340, 100], [345, 100], [345, 140], [265, 140], [265, 210], [280, 210]]
+            "points": [
+                [
+                    340,
+                    100
+                ],
+                [
+                    360,
+                    100
+                ],
+                [
+                    360,
+                    149
+                ],
+                [
+                    260,
+                    149
+                ],
+                [
+                    260,
+                    220
+                ],
+                [
+                    280,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Ki_param",
+            "srcblock": "parameter4",
             "srcport": 0,
-            "dstblock": "PID_Controller",
+            "dstblock": "pid5",
             "dstport": 2,
-            "points": [[440, 100], [450, 100], [450, 135], [270, 135], [270, 225], [280, 225]]
+            "points": [
+                [
+                    440,
+                    100
+                ],
+                [
+                    460,
+                    100
+                ],
+                [
+                    460,
+                    149
+                ],
+                [
+                    260,
+                    149
+                ],
+                [
+                    260,
+                    240
+                ],
+                [
+                    280,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "PID_Controller",
+            "srcblock": "pid5",
             "srcport": 0,
-            "dstblock": "Plant",
+            "dstblock": "tranfn6",
             "dstport": 0,
-            "points": [[380, 210], [400, 210], [400, 215], [420, 215]]
+            "points": [
+                [
+                    380,
+                    230
+                ],
+                [
+                    400,
+                    230
+                ],
+                [
+                    400,
+                    220
+                ],
+                [
+                    420,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "Plant",
+            "srcblock": "tranfn6",
             "srcport": 0,
-            "dstblock": "ResponseScope",
+            "dstblock": "scope7",
             "dstport": 1,
-            "points": [[520, 215], [660, 215], [660, 200], [700, 200]]
+            "points": [
+                [
+                    520,
+                    220
+                ],
+                [
+                    610,
+                    220
+                ],
+                [
+                    610,
+                    200
+                ],
+                [
+                    700,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Plant",
+            "srcblock": "tranfn6",
             "srcport": 0,
-            "dstblock": "Error",
+            "dstblock": "sum2",
             "dstport": 1,
-            "points": [[520, 215], [540, 215], [540, 270], [160, 270], [160, 233], [180, 233]]
+            "points": [
+                [
+                    520,
+                    220
+                ],
+                [
+                    540,
+                    220
+                ],
+                [
+                    540,
+                    269
+                ],
+                [
+                    160,
+                    269
+                ],
+                [
+                    160,
+                    240
+                ],
+                [
+                    180,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Reference",
+            "srcblock": "step1",
             "srcport": 0,
-            "dstblock": "ResponseScope",
+            "dstblock": "scope7",
             "dstport": 0,
-            "points": [[140, 220], [150, 220], [150, 150], [670, 150], [670, 180], [700, 180]]
+            "points": [
+                [
+                    140,
+                    220
+                ],
+                [
+                    420,
+                    220
+                ],
+                [
+                    420,
+                    180
+                ],
+                [
+                    700,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Error",
+            "srcblock": "sum2",
             "srcport": 0,
-            "dstblock": "ISE_Cost",
+            "dstblock": "costfunction8",
             "dstport": 0,
-            "points": [[230, 225], [245, 225], [245, 317], [420, 317]]
+            "points": [
+                [
+                    230,
+                    230
+                ],
+                [
+                    325,
+                    230
+                ],
+                [
+                    325,
+                    320
+                ],
+                [
+                    420,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Plant",
+            "srcblock": "tranfn6",
             "srcport": 0,
-            "dstblock": "MaxOvershoot",
+            "dstblock": "constraint9",
             "dstport": 0,
-            "points": [[520, 215], [540, 215], [540, 325], [560, 325]]
+            "points": [
+                [
+                    520,
+                    220
+                ],
+                [
+                    540,
+                    220
+                ],
+                [
+                    540,
+                    320
+                ],
+                [
+                    560,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "ISE_Cost",
+            "srcblock": "costfunction8",
             "srcport": 0,
-            "dstblock": "CostScope",
+            "dstblock": "scope11",
             "dstport": 0,
-            "points": [[520, 325], [540, 325], [540, 280], [660, 280], [660, 270], [700, 270]]
+            "points": [
+                [
+                    520,
+                    330
+                ],
+                [
+                    610,
+                    330
+                ],
+                [
+                    610,
+                    270
+                ],
+                [
+                    700,
+                    270
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

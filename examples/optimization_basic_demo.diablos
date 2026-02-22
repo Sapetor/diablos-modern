@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "step",
             "params": {
                 "delay": 1.0,
@@ -40,15 +40,15 @@
             "coords_left": 180,
             "coords_top": 150,
             "coords_width": 50,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 2,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "sum",
             "params": {
                 "signs": "+-"
@@ -69,9 +69,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "parameter",
             "params": {
                 "name": "Kp",
@@ -91,16 +91,16 @@
             "coords_left": 260,
             "coords_top": 150,
             "coords_width": 60,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 40,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 2,
-            "io_edit": false,
-            "fn_name": "sigproduct",
+            "io_edit": "none",
+            "fn_name": "sgprod",
             "params": {},
             "external": false,
             "flipped": false
@@ -118,10 +118,10 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
+            "b_color": "#5b21b6",
             "b_type": 1,
-            "io_edit": false,
-            "fn_name": "transferfunction",
+            "io_edit": "none",
+            "fn_name": "transfer_function",
             "params": {
                 "numerator": [
                     1.0
@@ -142,15 +142,15 @@
             "coords_left": 620,
             "coords_top": 130,
             "coords_width": 80,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#7f1d1d",
             "b_type": 3,
-            "io_edit": true,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Reference, Output"
@@ -165,15 +165,15 @@
             "coords_left": 380,
             "coords_top": 250,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF0000",
+            "b_color": "#78350f",
             "b_type": 2,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "costfunction",
             "params": {
                 "type": "ISE",
@@ -197,9 +197,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 2,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "optimizer",
             "params": {
                 "method": "L-BFGS-B",
@@ -223,9 +223,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#7f1d1d",
             "b_type": 3,
-            "io_edit": true,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "ISE Cost"
@@ -236,10 +236,11 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Reference",
+            "srcblock": "step1",
             "srcport": 0,
-            "dstblock": "Error",
+            "dstblock": "sum2",
             "dstport": 0,
             "points": [
                 [
@@ -247,33 +248,28 @@
                     170
                 ],
                 [
-                    160,
-                    170
-                ],
-                [
-                    160,
-                    167
-                ],
-                [
                     180,
-                    167
+                    170
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "Error",
+            "srcblock": "sum2",
             "srcport": 0,
-            "dstblock": "Controller",
+            "dstblock": "sgprod4",
             "dstport": 0,
             "points": [
                 [
                     230,
-                    175
+                    180
                 ],
                 [
                     245,
-                    175
+                    180
                 ],
                 [
                     245,
@@ -283,47 +279,45 @@
                     260,
                     170
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Controller",
+            "srcblock": "sgprod4",
             "srcport": 0,
-            "dstblock": "Plant",
+            "dstblock": "tranfn5",
             "dstport": 0,
             "points": [
                 [
-                    340,
-                    170
-                ],
-                [
-                    360,
-                    170
-                ],
-                [
-                    360,
-                    175
+                    320,
+                    180
                 ],
                 [
                     380,
-                    175
+                    180
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "Plant",
+            "srcblock": "tranfn5",
             "srcport": 0,
-            "dstblock": "ResponseScope",
+            "dstblock": "scope6",
             "dstport": 1,
             "points": [
                 [
                     480,
-                    175
+                    180
                 ],
                 [
                     550,
-                    175
+                    180
                 ],
                 [
                     550,
@@ -333,46 +327,52 @@
                     620,
                     170
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "Plant",
+            "srcblock": "tranfn5",
             "srcport": 0,
-            "dstblock": "Error",
+            "dstblock": "sum2",
             "dstport": 1,
             "points": [
                 [
                     480,
-                    175
+                    180
                 ],
                 [
                     500,
-                    175
+                    180
                 ],
                 [
                     500,
-                    220
+                    229
                 ],
                 [
                     160,
-                    220
+                    229
                 ],
                 [
                     160,
-                    183
+                    190
                 ],
                 [
                     180,
-                    183
+                    190
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Reference",
+            "srcblock": "step1",
             "srcport": 0,
-            "dstblock": "ResponseScope",
+            "dstblock": "scope6",
             "dstport": 0,
             "points": [
                 [
@@ -380,101 +380,112 @@
                     170
                 ],
                 [
-                    150,
+                    380,
                     170
                 ],
                 [
-                    150,
-                    60
-                ],
-                [
-                    590,
-                    60
-                ],
-                [
-                    590,
+                    380,
                     150
                 ],
                 [
                     620,
                     150
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Error",
+            "srcblock": "sum2",
             "srcport": 0,
-            "dstblock": "ISE_Cost",
+            "dstblock": "costfunction7",
             "dstport": 0,
             "points": [
                 [
                     230,
-                    175
+                    180
                 ],
                 [
-                    245,
-                    175
+                    305,
+                    180
                 ],
                 [
-                    245,
-                    267
+                    305,
+                    270
                 ],
                 [
                     380,
-                    267
+                    270
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "ISE_Cost",
+            "srcblock": "costfunction7",
             "srcport": 0,
-            "dstblock": "CostScope",
+            "dstblock": "scope9",
             "dstport": 0,
             "points": [
                 [
                     480,
-                    275
+                    280
                 ],
                 [
-                    500,
-                    275
+                    550,
+                    280
                 ],
                 [
-                    500,
-                    230
-                ],
-                [
-                    710,
-                    230
-                ],
-                [
-                    710,
+                    550,
                     270
                 ],
                 [
-                    700,
+                    620,
                     270
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Kp",
+            "srcblock": "parameter3",
             "srcport": 0,
-            "dstblock": "Controller",
+            "dstblock": "sgprod4",
             "dstport": 1,
             "points": [
                 [
-                    0,
-                    0
+                    340,
+                    100
                 ],
                 [
-                    0,
-                    0
+                    360,
+                    100
+                ],
+                [
+                    360,
+                    149
+                ],
+                [
+                    240,
+                    149
+                ],
+                [
+                    240,
+                    190
+                ],
+                [
+                    260,
+                    190
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

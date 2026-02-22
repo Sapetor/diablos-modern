@@ -1,305 +1,304 @@
 {
-  "sim_data": {
-    "wind_width": 1280,
-    "wind_height": 770,
-    "fps": 60,
-    "sim_time": 1.0,
-    "sim_dt": 1.0,
-    "sim_trange": 1
-  },
-  "blocks_data": [
-    {
-      "block_fn": "Constant",
-      "sid": 1,
-      "username": "Matrix_A",
-      "coords_left": 100,
-      "coords_top": 150,
-      "coords_width": 80,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": false,
-      "fn_name": "constant",
-      "params": {
-        "value": [
-          [
-            2.0,
-            1.0
-          ],
-          [
-            1.0,
-            3.0
-          ]
-        ]
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 1.0,
+        "sim_dt": 1.0,
+        "sim_trange": 1
     },
-    {
-      "block_fn": "Constant",
-      "sid": 2,
-      "username": "Vector_b",
-      "coords_left": 100,
-      "coords_top": 250,
-      "coords_width": 80,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": false,
-      "fn_name": "constant",
-      "params": {
-        "value": [
-          5.0,
-          7.0
-        ]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "LinearSystemSolver",
-      "sid": 3,
-      "username": "Solver",
-      "coords_left": 280,
-      "coords_top": 180,
-      "coords_width": 120,
-      "coords_height": 60,
-      "coords_height_base": 60,
-      "in_ports": 2,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF00FF",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "linearsystemsolver",
-      "params": {
-        "method": "direct",
-        "dimension": 2,
-        "regularization": 0.0
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Display",
-      "sid": 4,
-      "username": "Solution_x",
-      "coords_left": 480,
-      "coords_top": 180,
-      "coords_width": 80,
-      "coords_height": 60,
-      "coords_height_base": 60,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": false,
-      "fn_name": "display",
-      "params": {
-        "format": "%.4f"
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Gain",
-      "sid": 5,
-      "username": "Verify_Ax",
-      "coords_left": 480,
-      "coords_top": 280,
-      "coords_width": 80,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#ADD8E6",
-      "b_type": 2,
-      "io_edit": false,
-      "fn_name": "gain",
-      "params": {
-        "gain": [
-          [
-            2.0,
-            1.0
-          ],
-          [
-            1.0,
-            3.0
-          ]
-        ]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Display",
-      "sid": 6,
-      "username": "Check_b",
-      "coords_left": 620,
-      "coords_top": 280,
-      "coords_width": 80,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FF6347",
-      "b_type": 3,
-      "io_edit": false,
-      "fn_name": "display",
-      "params": {
-        "format": "%.4f"
-      },
-      "external": false,
-      "flipped": false
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 1,
+            "username": "Matrix_A",
+            "coords_left": 100,
+            "coords_top": 150,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": [
+                    [
+                        2.0,
+                        1.0
+                    ],
+                    [
+                        1.0,
+                        3.0
+                    ]
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 2,
+            "username": "Vector_b",
+            "coords_left": 100,
+            "coords_top": 250,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": [
+                    5.0,
+                    7.0
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "LinearSystemSolver",
+            "sid": 3,
+            "username": "Solver",
+            "coords_left": 280,
+            "coords_top": 180,
+            "coords_width": 120,
+            "coords_height": 64,
+            "coords_height_base": 60,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "linearsystemsolver",
+            "params": {
+                "method": "direct",
+                "dimension": 2,
+                "regularization": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Display",
+            "sid": 4,
+            "username": "Solution_x",
+            "coords_left": 480,
+            "coords_top": 180,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "display",
+            "params": {
+                "format": "%.4f"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 5,
+            "username": "Verify_Ax",
+            "coords_left": 480,
+            "coords_top": 280,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e3a8a",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "gain",
+            "params": {
+                "gain": [
+                    [
+                        2.0,
+                        1.0
+                    ],
+                    [
+                        1.0,
+                        3.0
+                    ]
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Display",
+            "sid": 6,
+            "username": "Check_b",
+            "coords_left": 620,
+            "coords_top": 280,
+            "coords_width": 80,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "display",
+            "params": {
+                "format": "%.4f"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line101",
+            "sid": 101,
+            "srcblock": "constant1",
+            "srcport": 0,
+            "dstblock": "linearsystemsolver3",
+            "dstport": 0,
+            "points": [
+                [
+                    180,
+                    180
+                ],
+                [
+                    230,
+                    180
+                ],
+                [
+                    230,
+                    200
+                ],
+                [
+                    280,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line102",
+            "sid": 102,
+            "srcblock": "constant2",
+            "srcport": 0,
+            "dstblock": "linearsystemsolver3",
+            "dstport": 1,
+            "points": [
+                [
+                    180,
+                    280
+                ],
+                [
+                    230,
+                    280
+                ],
+                [
+                    230,
+                    220
+                ],
+                [
+                    280,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line103",
+            "sid": 103,
+            "srcblock": "linearsystemsolver3",
+            "srcport": 0,
+            "dstblock": "display4",
+            "dstport": 0,
+            "points": [
+                [
+                    400,
+                    210
+                ],
+                [
+                    480,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line104",
+            "sid": 104,
+            "srcblock": "linearsystemsolver3",
+            "srcport": 0,
+            "dstblock": "gain5",
+            "dstport": 0,
+            "points": [
+                [
+                    400,
+                    210
+                ],
+                [
+                    440,
+                    210
+                ],
+                [
+                    440,
+                    300
+                ],
+                [
+                    480,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line105",
+            "sid": 105,
+            "srcblock": "gain5",
+            "srcport": 0,
+            "dstblock": "display6",
+            "dstport": 0,
+            "points": [
+                [
+                    560,
+                    300
+                ],
+                [
+                    620,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0",
+    "modern_ui_data": {
+        "theme": "light",
+        "zoom_factor": 1.0
     }
-  ],
-  "lines_data": [
-    {
-      "sid": 101,
-      "srcblock": "Matrix_A",
-      "srcport": 0,
-      "dstblock": "Solver",
-      "dstport": 0,
-      "points": [
-        [
-          180,
-          175
-        ],
-        [
-          230,
-          175
-        ],
-        [
-          230,
-          200
-        ],
-        [
-          280,
-          200
-        ]
-      ]
-    },
-    {
-      "sid": 102,
-      "srcblock": "Vector_b",
-      "srcport": 0,
-      "dstblock": "Solver",
-      "dstport": 1,
-      "points": [
-        [
-          180,
-          275
-        ],
-        [
-          230,
-          275
-        ],
-        [
-          230,
-          220
-        ],
-        [
-          280,
-          220
-        ]
-      ]
-    },
-    {
-      "sid": 103,
-      "srcblock": "Solver",
-      "srcport": 0,
-      "dstblock": "Solution_x",
-      "dstport": 0,
-      "points": [
-        [
-          400,
-          210
-        ],
-        [
-          440,
-          210
-        ],
-        [
-          440,
-          210
-        ],
-        [
-          480,
-          210
-        ]
-      ]
-    },
-    {
-      "sid": 104,
-      "srcblock": "Solver",
-      "srcport": 0,
-      "dstblock": "Verify_Ax",
-      "dstport": 0,
-      "points": [
-        [
-          400,
-          210
-        ],
-        [
-          440,
-          210
-        ],
-        [
-          440,
-          300
-        ],
-        [
-          480,
-          300
-        ]
-      ]
-    },
-    {
-      "sid": 105,
-      "srcblock": "Verify_Ax",
-      "srcport": 0,
-      "dstblock": "Check_b",
-      "dstport": 0,
-      "points": [
-        [
-          560,
-          300
-        ],
-        [
-          590,
-          300
-        ],
-        [
-          590,
-          305
-        ],
-        [
-          620,
-          305
-        ]
-      ]
-    }
-  ],
-  "version": "2.0",
-  "modern_ui_data": {
-    "theme": "light",
-    "zoom_factor": 1.0
-  }
 }

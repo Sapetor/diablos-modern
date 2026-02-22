@@ -282,23 +282,27 @@ class FileService:
             else:
                 b_type = block_data.get('b_type', 2)
 
-            # Use fn_name from menu_block to ensure we have the correct function name,
-            # not the potentially outdated one from saved file
+            # Use current theme color and io_edit from menu_block instead of stale
+            # saved values, so loaded blocks match freshly-placed palette blocks
+            category = getattr(menu_block, 'category', 'Other')
+            block_color = self.model._get_category_color(category)
+
             block = DBlock(
                 block_data['block_fn'],
                 block_data['sid'],
                 block_rect,
-                QColor(block_data['b_color']),
+                block_color,
                 block_data['in_ports'],
                 block_data['out_ports'],
                 b_type,
-                block_data.get('io_edit', 'none'),
-                menu_block.fn_name,  # Use correct fn_name from menu_block
+                menu_block.io_edit,
+                menu_block.fn_name,
                 params,
                 block_data.get('external', False),
                 username=block_data.get('username', ''),
                 block_class=menu_block.block_class,
-                colors=self.model.colors
+                colors=self.model.colors,
+                category=category
             )
 
             block.flipped = block_data.get('flipped', False)

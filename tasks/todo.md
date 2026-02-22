@@ -74,7 +74,7 @@
 ### Teaching & Interaction
 - [x] **Live parameter tuning** — Manipulate-style interactive tuning: pin block parameters to a tuning panel, drag sliders and watch scope plots update in real-time via headless re-simulation. Supports float params and individual list elements (e.g., transfer function coefficients). Scope window stays on top during tuning. Right-click slider rows to set custom range.
 - [ ] **Custom Python Function block** — A block where users type a Python expression (e.g., `lambda u: np.sin(u[0]**2) + u[1]`). Like Simulink's MATLAB Function block. Enables unlimited modeling without writing new block classes.
-- [ ] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications.
+- [x] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications. File > Export > Export as TikZ... with live preview, clipboard copy, and configurable options.
 
 ### Research & Data
 - [ ] **Data Import block** — Read time-series from CSV/MAT files as a source signal. Essential for comparing simulation against experimental data (e.g., QCar2) or model fitting.
@@ -149,6 +149,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-02-12 | Added TikZ export feature: File > Export > Export as TikZ... with live preview, standalone/snippet modes, configurable options. New files: `lib/export/tikz_exporter.py`, `modern_ui/widgets/tikz_export_dialog.py`. |
 | 2026-02-11 | Fixed compiled solver execution order bug: state blocks (TranFn, Integrator) now run after algebraic blocks. Fixed cursor visibility in property editor. |
 | 2026-02-06 | Dark mode fixes: invalid theme keys, block icon colors, error panel, canvas renderer. Compact toolbar (icon-only, 20px icons) |
 | 2026-02-05 | Added Feature Ideas section (live tuning, Python function block, TikZ export, data import, linearization, code gen, dark mode, minimap) |

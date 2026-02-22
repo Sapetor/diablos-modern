@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -67,9 +67,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -90,9 +90,9 @@
             "out_ports": 3,
             "dragging": false,
             "selected": false,
-            "b_color": "#4169E1",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "waveequation1d",
             "params": {
                 "c": 2.0,
@@ -102,7 +102,9 @@
                 "bc_type_left": "Dirichlet",
                 "bc_type_right": "Dirichlet",
                 "init_displacement": "sin",
-                "init_velocity": [0.0]
+                "init_velocity": [
+                    0.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -114,15 +116,15 @@
             "coords_left": 450,
             "coords_top": 100,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -139,15 +141,15 @@
             "coords_left": 450,
             "coords_top": 180,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.25,
@@ -164,15 +166,15 @@
             "coords_left": 620,
             "coords_top": 120,
             "coords_width": 80,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "u(x=0.5), u(x=0.25)"
@@ -193,14 +195,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
                 "colormap": "RdBu",
-                "title": "Wave Displacement"
+                "title": "Wave Displacement",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -218,9 +221,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Total Energy"
@@ -231,76 +234,256 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "NoForce",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "VibratingString",
+            "dstblock": "waveequation1d4",
             "dstport": 0,
-            "points": [[160, 120], [250, 157]]
+            "points": [
+                [
+                    160,
+                    120
+                ],
+                [
+                    205,
+                    120
+                ],
+                [
+                    205,
+                    160
+                ],
+                [
+                    250,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "LeftBC_Fixed",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "VibratingString",
+            "dstblock": "waveequation1d4",
             "dstport": 1,
-            "points": [[160, 200], [250, 185]]
+            "points": [
+                [
+                    160,
+                    200
+                ],
+                [
+                    205,
+                    200
+                ],
+                [
+                    205,
+                    180
+                ],
+                [
+                    250,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "RightBC_Fixed",
+            "srcblock": "constant3",
             "srcport": 0,
-            "dstblock": "VibratingString",
+            "dstblock": "waveequation1d4",
             "dstport": 2,
-            "points": [[160, 280], [200, 280], [200, 213], [250, 213]]
+            "points": [
+                [
+                    160,
+                    280
+                ],
+                [
+                    205,
+                    280
+                ],
+                [
+                    205,
+                    210
+                ],
+                [
+                    250,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "VibratingString",
+            "srcblock": "waveequation1d4",
             "srcport": 0,
-            "dstblock": "Probe_Center",
+            "dstblock": "fieldprobe5",
             "dstport": 0,
-            "points": [[380, 163], [415, 163], [415, 117], [450, 117]]
+            "points": [
+                [
+                    380,
+                    160
+                ],
+                [
+                    415,
+                    160
+                ],
+                [
+                    415,
+                    120
+                ],
+                [
+                    450,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "VibratingString",
+            "srcblock": "waveequation1d4",
             "srcport": 0,
-            "dstblock": "Probe_Quarter",
+            "dstblock": "fieldprobe6",
             "dstport": 0,
-            "points": [[380, 163], [415, 163], [415, 197], [450, 197]]
+            "points": [
+                [
+                    380,
+                    160
+                ],
+                [
+                    415,
+                    160
+                ],
+                [
+                    415,
+                    200
+                ],
+                [
+                    450,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "VibratingString",
+            "srcblock": "waveequation1d4",
             "srcport": 0,
-            "dstblock": "WaveHeatmap",
+            "dstblock": "fieldscope8",
             "dstport": 0,
-            "points": [[380, 163], [415, 163], [415, 292], [450, 292]]
+            "points": [
+                [
+                    380,
+                    160
+                ],
+                [
+                    415,
+                    160
+                ],
+                [
+                    415,
+                    300
+                ],
+                [
+                    450,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Probe_Center",
+            "srcblock": "fieldprobe5",
             "srcport": 0,
-            "dstblock": "DisplacementScope",
+            "dstblock": "scope7",
             "dstport": 0,
-            "points": [[550, 125], [585, 125], [585, 140], [620, 140]]
+            "points": [
+                [
+                    550,
+                    130
+                ],
+                [
+                    585,
+                    130
+                ],
+                [
+                    585,
+                    140
+                ],
+                [
+                    620,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Probe_Quarter",
+            "srcblock": "fieldprobe6",
             "srcport": 0,
-            "dstblock": "DisplacementScope",
+            "dstblock": "scope7",
             "dstport": 1,
-            "points": [[550, 205], [585, 205], [585, 160], [620, 160]]
+            "points": [
+                [
+                    550,
+                    210
+                ],
+                [
+                    585,
+                    210
+                ],
+                [
+                    585,
+                    160
+                ],
+                [
+                    620,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "VibratingString",
+            "srcblock": "waveequation1d4",
             "srcport": 2,
-            "dstblock": "EnergyScope",
+            "dstblock": "scope9",
             "dstport": 0,
-            "points": [[380, 218], [400, 218], [400, 250], [600, 250], [600, 240], [620, 240]]
+            "points": [
+                [
+                    380,
+                    210
+                ],
+                [
+                    500,
+                    210
+                ],
+                [
+                    500,
+                    240
+                ],
+                [
+                    620,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

@@ -283,6 +283,7 @@ class PropertyEditor(QFrame):
 
         self._create_block_header()
         self._create_name_field()
+        self._create_port_count_field()
 
         keys = [k for k in self.block.params.keys() if not k.startswith('_')]
         groups = self._categorize_params(keys)
@@ -370,6 +371,55 @@ class PropertyEditor(QFrame):
         row.addWidget(name_edit, stretch=1)
 
         self._main_layout.addLayout(row)
+
+    def _create_port_count_field(self):
+        """Add an Inputs / Outputs spinner for blocks that support variable port counts."""
+        io_edit = getattr(self.block, 'io_edit', 'none')
+        if io_edit in ('none', False, None):
+            return
+
+        text_color = theme_manager.get_color('text_primary').name()
+
+        if io_edit in ('input', 'both'):
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            label = QLabel("Inputs:")
+            label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+            row.addWidget(label)
+
+            sb = QSpinBox()
+            sb.setRange(1, 20)
+            sb.setValue(self.block.in_ports)
+            self._apply_widget_sizing(sb)
+            sb.editingFinished.connect(
+                lambda: self._on_port_count_changed('_inputs_', sb.value())
+            )
+            row.addWidget(sb, stretch=1)
+            self._main_layout.addLayout(row)
+
+        if io_edit in ('output', 'both'):
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            label = QLabel("Outputs:")
+            label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+            row.addWidget(label)
+
+            sb = QSpinBox()
+            sb.setRange(1, 20)
+            sb.setValue(self.block.out_ports)
+            self._apply_widget_sizing(sb)
+            sb.editingFinished.connect(
+                lambda: self._on_port_count_changed('_outputs_', sb.value())
+            )
+            row.addWidget(sb, stretch=1)
+            self._main_layout.addLayout(row)
+
+    def _on_port_count_changed(self, prop_name, new_value):
+        """Handle port count changes from the property editor."""
+        if self.block is None:
+            return
+        block_name = getattr(self.block, 'name', 'Unknown')
+        self.property_changed.emit(block_name, prop_name, new_value)
 
     # ── Parameter categorization (#4) ───────────────────────────
 
