@@ -316,13 +316,22 @@ class SystemCompiler:
                     return exec_ss
                 else:
                     # Multi-input: assemble u vector from all input ports
+                    # Sources may provide vectors (e.g. Mux output), so unpack
+                    # them into consecutive u slots.
                     def exec_ss(t, y, dy_vec, signals):
                         x = y[start : start + size].reshape(-1, 1)
                         u = np.zeros((n_inputs, 1))
-                        for i, s in enumerate(all_srcs):
+                        idx = 0
+                        for s in all_srcs:
                             if s:
                                 val = signals.get(s, 0.0)
-                                u[i, 0] = float(val) if np.isscalar(val) else float(np.atleast_1d(val)[0])
+                                v = np.atleast_1d(val).flatten()
+                                for j in range(len(v)):
+                                    if idx < n_inputs:
+                                        u[idx, 0] = v[j]
+                                        idx += 1
+                            else:
+                                idx += 1
                         dx = A @ x + B @ u
                         y_out = C @ x + D @ u
                         signals[b_name] = y_out.item() if y_out.size == 1 else y_out.flatten()

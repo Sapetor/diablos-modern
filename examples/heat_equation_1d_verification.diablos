@@ -1,7 +1,7 @@
 {
     "sim_data": {
         "wind_width": 1280,
-        "wind_height": 800,
+        "wind_height": 770,
         "fps": 60,
         "sim_time": 5.0,
         "sim_dt": 0.005,
@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "heatequation1d",
             "params": {
                 "alpha": 0.1,
@@ -72,9 +72,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -97,9 +97,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "ramp",
             "params": {
                 "slope": 1.0,
@@ -121,9 +121,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "gain",
             "params": {
                 "gain": -0.9869604401089358
@@ -144,9 +144,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#DDA0DD",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "mathfunction",
             "params": {
                 "function": "exp"
@@ -167,9 +167,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Numerical, Analytical"
@@ -184,15 +184,15 @@
             "coords_left": 560,
             "coords_top": 200,
             "coords_width": 60,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "sum",
             "params": {
                 "signs": "+-"
@@ -213,9 +213,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Error"
@@ -236,9 +236,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 1.0,
@@ -252,10 +252,11 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "BC_Zero",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "Heat1D_Numerical",
+            "dstblock": "heatequation1d2",
             "dstport": 1,
             "points": [
                 [
@@ -268,19 +269,22 @@
                 ],
                 [
                     170,
-                    155
+                    170
                 ],
                 [
                     200,
-                    155
+                    170
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "BC_Zero",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "Heat1D_Numerical",
+            "dstblock": "heatequation1d2",
             "dstport": 2,
             "points": [
                 [
@@ -288,99 +292,103 @@
                     200
                 ],
                 [
-                    170,
-                    200
-                ],
-                [
-                    170,
-                    185
-                ],
-                [
                     200,
-                    185
+                    200
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "Heat1D_Numerical",
+            "srcblock": "heatequation1d2",
             "srcport": 0,
-            "dstblock": "Probe_Center",
+            "dstblock": "fieldprobe3",
             "dstport": 0,
             "points": [
                 [
                     330,
-                    155
+                    150
                 ],
                 [
                     365,
-                    155
+                    150
                 ],
                 [
                     365,
-                    125
+                    120
                 ],
                 [
                     400,
-                    125
+                    120
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Heat1D_Numerical",
+            "srcblock": "heatequation1d2",
             "srcport": 0,
-            "dstblock": "Field_View",
+            "dstblock": "fieldscope10",
             "dstport": 0,
             "points": [
                 [
                     330,
-                    155
+                    150
                 ],
                 [
                     365,
-                    155
+                    150
                 ],
                 [
                     365,
-                    207
+                    220
                 ],
                 [
                     400,
-                    207
+                    220
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "Probe_Center",
+            "srcblock": "fieldprobe3",
             "srcport": 0,
-            "dstblock": "Comparison",
+            "dstblock": "scope7",
             "dstport": 0,
             "points": [
                 [
                     500,
-                    125
-                ],
-                [
-                    570,
-                    125
+                    120
                 ],
                 [
                     570,
                     120
+                ],
+                [
+                    570,
+                    130
                 ],
                 [
                     640,
-                    120
+                    130
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "Time",
+            "srcblock": "ramp4",
             "srcport": 0,
-            "dstblock": "DecayRate",
+            "dstblock": "gain5",
             "dstport": 0,
             "points": [
                 [
@@ -391,13 +399,16 @@
                     520,
                     320
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "DecayRate",
+            "srcblock": "gain5",
             "srcport": 0,
-            "dstblock": "Exp_Decay",
+            "dstblock": "mathfunction6",
             "dstport": 0,
             "points": [
                 [
@@ -408,13 +419,16 @@
                     640,
                     320
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Exp_Decay",
+            "srcblock": "mathfunction6",
             "srcport": 0,
-            "dstblock": "Comparison",
+            "dstblock": "scope7",
             "dstport": 1,
             "points": [
                 [
@@ -422,57 +436,63 @@
                     320
                 ],
                 [
-                    780,
+                    740,
                     320
                 ],
                 [
-                    780,
-                    60
+                    740,
+                    369
                 ],
                 [
-                    610,
-                    60
+                    620,
+                    369
                 ],
                 [
-                    610,
-                    160
+                    620,
+                    150
                 ],
                 [
                     640,
-                    160
+                    150
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Probe_Center",
+            "srcblock": "fieldprobe3",
             "srcport": 0,
-            "dstblock": "Error_Calc",
+            "dstblock": "sum8",
             "dstport": 0,
             "points": [
                 [
                     500,
-                    125
+                    120
                 ],
                 [
                     530,
-                    125
+                    120
                 ],
                 [
                     530,
-                    215
+                    220
                 ],
                 [
                     560,
-                    215
+                    220
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Exp_Decay",
+            "srcblock": "mathfunction6",
             "srcport": 0,
-            "dstblock": "Error_Calc",
+            "dstblock": "sum8",
             "dstport": 1,
             "points": [
                 [
@@ -480,43 +500,56 @@
                     320
                 ],
                 [
-                    800,
+                    740,
                     320
                 ],
                 [
-                    800,
-                    60
+                    740,
+                    369
                 ],
                 [
                     540,
-                    60
+                    369
                 ],
                 [
                     540,
-                    235
+                    240
                 ],
                 [
                     560,
-                    235
+                    240
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "Error_Calc",
+            "srcblock": "sum8",
             "srcport": 0,
-            "dstblock": "Error_Scope",
+            "dstblock": "scope9",
             "dstport": 0,
             "points": [
                 [
                     620,
-                    225
+                    230
+                ],
+                [
+                    650,
+                    230
+                ],
+                [
+                    650,
+                    220
                 ],
                 [
                     680,
-                    225
+                    220
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

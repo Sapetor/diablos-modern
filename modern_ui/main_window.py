@@ -576,6 +576,15 @@ class ModernDiaBloSWindow(QMainWindow):
     def save_diagram(self):
         self.project_manager.save_diagram()
 
+    def export_tikz(self):
+        """Open the TikZ export dialog."""
+        from PyQt5.QtWidgets import QMessageBox
+        if not self.dsim.blocks_list:
+            QMessageBox.information(self, "Export TikZ", "No blocks to export.")
+            return
+        from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
+        TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
+
     def pause_simulation(self):
         """Pause simulation."""
         if hasattr(self.dsim, 'execution_pause'):
@@ -1120,13 +1129,17 @@ class ModernDiaBloSWindow(QMainWindow):
     def _on_block_selected(self, block):
         """Handle block selection from canvas."""
         try:
+            if block is None:
+                self.status_message.setText("")
+                self.property_editor.set_block(None)
+                return
             block_name = getattr(block, 'fn_name', 'Unknown')
             logger.info(f"Block selected: {block_name}")
             self.status_message.setText(f"Selected: {block_name}")
-            
+
             # Update property panel with block properties
             self.property_editor.set_block(block)
-            
+
         except Exception as e:
             logger.error(f"Error handling block selection: {str(e)}")
     
@@ -1208,6 +1221,20 @@ class ModernDiaBloSWindow(QMainWindow):
                 if block.name == block_name:
                     # Handle username change (special case - not in params)
                     if prop_name == '_username_':
+                        self.canvas.dsim.dirty = True
+                        self.canvas.update()
+                        return
+
+                    # Handle port count change from property editor
+                    if prop_name in ('_inputs_', '_outputs_'):
+                        self.canvas._push_undo("Edit Ports")
+                        if prop_name == '_inputs_':
+                            block.in_ports = int(new_value)
+                        else:
+                            block.out_ports = int(new_value)
+                        block.update_Block()
+                        block.params['_inputs_'] = block.in_ports
+                        block.params['_outputs_'] = block.out_ports
                         self.canvas.dsim.dirty = True
                         self.canvas.update()
                         return

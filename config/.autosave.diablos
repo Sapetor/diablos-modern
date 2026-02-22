@@ -12,8 +12,8 @@
             "block_fn": "Step",
             "sid": 0,
             "username": "step0",
-            "coords_left": 120,
-            "coords_top": 160,
+            "coords_left": 56,
+            "coords_top": 167,
             "coords_width": 80,
             "coords_height": 60,
             "coords_height_base": 60,
@@ -35,11 +35,64 @@
             "flipped": false
         },
         {
+            "block_fn": "Sum",
+            "sid": 0,
+            "username": "sum0",
+            "coords_left": 243,
+            "coords_top": 175,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#dbeafe",
+            "b_type": 2,
+            "io_edit": "both",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 0,
+            "username": "tranfn0",
+            "coords_left": 440,
+            "coords_top": 180,
+            "coords_width": 110,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": true,
+            "b_color": "#e9d5ff",
+            "b_type": 2,
+            "io_edit": "both",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.0,
+                    1.0
+                ],
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
             "block_fn": "Scope",
             "sid": 0,
             "username": "scope0",
-            "coords_left": 515,
-            "coords_top": 191,
+            "coords_left": 620,
+            "coords_top": 180,
             "coords_width": 100,
             "coords_height": 80,
             "coords_height_base": 80,
@@ -57,37 +110,6 @@
             },
             "external": false,
             "flipped": false
-        },
-        {
-            "block_fn": "TranFn",
-            "sid": 0,
-            "username": "tranfn0",
-            "coords_left": 300,
-            "coords_top": 160,
-            "coords_width": 110,
-            "coords_height": 80,
-            "coords_height_base": 80,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": true,
-            "b_color": "#e9d5ff",
-            "b_type": 1,
-            "io_edit": "both",
-            "fn_name": "transfer_function",
-            "params": {
-                "numerator": [
-                    1.0
-                ],
-                "denominator": [
-                    1.1400000000000001,
-                    16.82,
-                    1.0
-                ],
-                "sampling_time": -1.0
-            },
-            "external": false,
-            "flipped": false
         }
     ],
     "lines_data": [
@@ -96,23 +118,15 @@
             "sid": 0,
             "srcblock": "step0",
             "srcport": 0,
-            "dstblock": "tranfn0",
+            "dstblock": "sum0",
             "dstport": 0,
             "points": [
                 [
-                    200,
-                    190
-                ],
-                [
-                    250,
-                    190
-                ],
-                [
-                    250,
+                    136,
                     200
                 ],
                 [
-                    300,
+                    243,
                     200
                 ]
             ],
@@ -122,26 +136,82 @@
         {
             "name": "Line1",
             "sid": 1,
+            "srcblock": "sum0",
+            "srcport": 0,
+            "dstblock": "tranfn0",
+            "dstport": 0,
+            "points": [
+                [
+                    303,
+                    210
+                ],
+                [
+                    371,
+                    210
+                ],
+                [
+                    371,
+                    220
+                ],
+                [
+                    440,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "tranfn0",
+            "srcport": 0,
+            "dstblock": "sum0",
+            "dstport": 1,
+            "points": [
+                [
+                    550,
+                    220
+                ],
+                [
+                    570,
+                    220
+                ],
+                [
+                    570,
+                    289
+                ],
+                [
+                    223,
+                    289
+                ],
+                [
+                    223,
+                    220
+                ],
+                [
+                    243,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
             "srcblock": "tranfn0",
             "srcport": 0,
             "dstblock": "scope0",
             "dstport": 0,
             "points": [
                 [
-                    410,
-                    200
+                    550,
+                    220
                 ],
                 [
-                    462,
-                    200
-                ],
-                [
-                    462,
-                    230
-                ],
-                [
-                    515,
-                    230
+                    620,
+                    220
                 ]
             ],
             "cptr": 0,

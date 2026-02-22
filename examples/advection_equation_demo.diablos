@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": 0.0
@@ -44,9 +44,9 @@
             "out_ports": 2,
             "dragging": false,
             "selected": false,
-            "b_color": "#00CED1",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "advectionequation1d",
             "params": {
                 "velocity": 1.0,
@@ -65,15 +65,15 @@
             "coords_left": 450,
             "coords_top": 80,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.1,
@@ -90,15 +90,15 @@
             "coords_left": 450,
             "coords_top": 160,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.5,
@@ -115,15 +115,15 @@
             "coords_left": 450,
             "coords_top": 240,
             "coords_width": 100,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldprobe",
             "params": {
                 "position": 0.9,
@@ -140,15 +140,15 @@
             "coords_left": 620,
             "coords_top": 100,
             "coords_width": 80,
-            "coords_height": 80,
+            "coords_height": 84,
             "coords_height_base": 80,
             "in_ports": 3,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "c(inlet), c(middle), c(outlet)"
@@ -169,14 +169,15 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "fieldscope",
             "params": {
                 "L": 2.0,
                 "colormap": "plasma",
-                "title": "Concentration Transport"
+                "title": "Concentration Transport",
+                "display_mode": "slider"
             },
             "external": false,
             "flipped": false
@@ -194,9 +195,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "Total Mass"
@@ -207,76 +208,256 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Inlet_Zero",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "Transport",
+            "dstblock": "advectionequation1d2",
             "dstport": 0,
-            "points": [[160, 170], [250, 157]]
+            "points": [
+                [
+                    160,
+                    170
+                ],
+                [
+                    205,
+                    170
+                ],
+                [
+                    205,
+                    160
+                ],
+                [
+                    250,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "Transport",
+            "srcblock": "advectionequation1d2",
             "srcport": 0,
-            "dstblock": "Probe_Inlet",
+            "dstblock": "fieldprobe3",
             "dstport": 0,
-            "points": [[380, 151], [415, 151], [415, 97], [450, 97]]
+            "points": [
+                [
+                    380,
+                    150
+                ],
+                [
+                    415,
+                    150
+                ],
+                [
+                    415,
+                    100
+                ],
+                [
+                    450,
+                    100
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "Transport",
+            "srcblock": "advectionequation1d2",
             "srcport": 0,
-            "dstblock": "Probe_Middle",
+            "dstblock": "fieldprobe4",
             "dstport": 0,
-            "points": [[380, 151], [415, 151], [415, 177], [450, 177]]
+            "points": [
+                [
+                    380,
+                    150
+                ],
+                [
+                    415,
+                    150
+                ],
+                [
+                    415,
+                    180
+                ],
+                [
+                    450,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Transport",
+            "srcblock": "advectionequation1d2",
             "srcport": 0,
-            "dstblock": "Probe_Outlet",
+            "dstblock": "fieldprobe5",
             "dstport": 0,
-            "points": [[380, 151], [415, 151], [415, 257], [450, 257]]
+            "points": [
+                [
+                    380,
+                    150
+                ],
+                [
+                    415,
+                    150
+                ],
+                [
+                    415,
+                    260
+                ],
+                [
+                    450,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "Transport",
+            "srcblock": "advectionequation1d2",
             "srcport": 0,
-            "dstblock": "TransportHeatmap",
+            "dstblock": "fieldscope7",
             "dstport": 0,
-            "points": [[380, 151], [415, 151], [415, 342], [450, 342]]
+            "points": [
+                [
+                    380,
+                    150
+                ],
+                [
+                    415,
+                    150
+                ],
+                [
+                    415,
+                    350
+                ],
+                [
+                    450,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "Probe_Inlet",
+            "srcblock": "fieldprobe3",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope6",
             "dstport": 0,
-            "points": [[550, 105], [585, 105], [585, 120], [620, 120]]
+            "points": [
+                [
+                    550,
+                    110
+                ],
+                [
+                    585,
+                    110
+                ],
+                [
+                    585,
+                    120
+                ],
+                [
+                    620,
+                    120
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "Probe_Middle",
+            "srcblock": "fieldprobe4",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope6",
             "dstport": 1,
-            "points": [[550, 185], [585, 185], [585, 140], [620, 140]]
+            "points": [
+                [
+                    550,
+                    190
+                ],
+                [
+                    585,
+                    190
+                ],
+                [
+                    585,
+                    140
+                ],
+                [
+                    620,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Probe_Outlet",
+            "srcblock": "fieldprobe5",
             "srcport": 0,
-            "dstblock": "ConcentrationScope",
+            "dstblock": "scope6",
             "dstport": 2,
-            "points": [[550, 265], [585, 265], [585, 160], [620, 160]]
+            "points": [
+                [
+                    550,
+                    270
+                ],
+                [
+                    585,
+                    270
+                ],
+                [
+                    585,
+                    160
+                ],
+                [
+                    620,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Transport",
+            "srcblock": "advectionequation1d2",
             "srcport": 1,
-            "dstblock": "MassScope",
+            "dstblock": "scope8",
             "dstport": 0,
-            "points": [[380, 177], [410, 177], [410, 60], [590, 60], [590, 240], [620, 240]]
+            "points": [
+                [
+                    380,
+                    180
+                ],
+                [
+                    500,
+                    180
+                ],
+                [
+                    500,
+                    240
+                ],
+                [
+                    620,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

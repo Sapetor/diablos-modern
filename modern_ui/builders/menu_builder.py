@@ -31,6 +31,12 @@ class MenuBuilder:
         file_menu.addAction("&Save\tCtrl+S", self.window.save_diagram)
         file_menu.addSeparator()
 
+        # Export submenu
+        export_menu = file_menu.addMenu("E&xport")
+        export_menu.addAction("Export as Ti&kZ...", self.window.export_tikz)
+
+        file_menu.addSeparator()
+
         # Recent Files
         self.window.recent_files_menu = file_menu.addMenu("Recent Files")
         if hasattr(self.window, '_update_recent_files_menu'):

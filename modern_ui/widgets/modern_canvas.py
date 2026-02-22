@@ -712,6 +712,9 @@ class ModernCanvas(QWidget):
         return self.connection_manager.get_clicked_line(pos)
 
     def _clear_selections(self):
+        had_selection = any(
+            b.selected for b in getattr(self.dsim, 'blocks_list', [])
+        )
         for block in getattr(self.dsim, 'blocks_list', []):
             block.selected = False
         for line in getattr(self.dsim, 'line_list', []):
@@ -719,6 +722,8 @@ class ModernCanvas(QWidget):
             if hasattr(line, 'selected_segment'):
                 line.selected_segment = -1
         self.source_block_for_connection = None
+        if had_selection:
+            self.block_selected.emit(None)
         self.update()
 
     def _finalize_rect_selection(self):

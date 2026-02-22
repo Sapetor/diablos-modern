@@ -1,120 +1,279 @@
 {
-  "sim_data": {
-    "wind_width": 1280,
-    "wind_height": 770,
-    "fps": 60,
-    "sim_time": 10.0,
-    "sim_dt": 0.01,
-    "sim_trange": 100
-  },
-  "blocks_data": [
-    {
-      "block_fn": "Constant",
-      "sid": 0,
-      "username": "zero",
-      "coords_left": 50,
-      "coords_top": 200,
-      "coords_width": 50,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 0,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#90EE90",
-      "b_type": 0,
-      "io_edit": "none",
-      "fn_name": "constant",
-      "params": {
-        "value": 0.0
-      },
-      "external": false,
-      "flipped": false
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 10.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
     },
-    {
-      "block_fn": "StateSpace",
-      "sid": 1,
-      "username": "social_network",
-      "coords_left": 250,
-      "coords_top": 200,
-      "coords_width": 60,
-      "coords_height": 40,
-      "coords_height_base": 40,
-      "in_ports": 1,
-      "out_ports": 1,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#DDA0DD",
-      "b_type": 1,
-      "io_edit": "none",
-      "fn_name": "statespace",
-      "params": {
-        "A": [[-2.0, 1.0, 1.0, 0.0, 0.0, 0.0],
-              [1.0, -3.0, 1.0, 1.0, 0.0, 0.0],
-              [1.0, 1.0, -3.0, 0.0, 1.0, 0.0],
-              [0.0, 1.0, 0.0, -3.0, 1.0, 1.0],
-              [0.0, 0.0, 1.0, 1.0, -3.0, 1.0],
-              [0.0, 0.0, 0.0, 1.0, 1.0, -2.0]],
-        "B": [[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]],
-        "C": [[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-              [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-              [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-              [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-              [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
-              [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]],
-        "D": [[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]],
-        "init_conds": [0.1, 0.9, 0.3, 0.7, 0.5, 0.2]
-      },
-      "external": false,
-      "flipped": false
-    },
-    {
-      "block_fn": "Scope",
-      "sid": 2,
-      "username": "opinions",
-      "coords_left": 480,
-      "coords_top": 170,
-      "coords_width": 50,
-      "coords_height": 50,
-      "coords_height_base": 50,
-      "in_ports": 1,
-      "out_ports": 0,
-      "dragging": false,
-      "selected": false,
-      "b_color": "#FFB6C1",
-      "b_type": 3,
-      "io_edit": "in",
-      "fn_name": "scope",
-      "params": {
-        "labels": "person 1,person 2,person 3,person 4,person 5,person 6"
-      },
-      "external": false,
-      "flipped": false
-    }
-  ],
-  "lines_data": [
-    {
-      "name": "line0",
-      "sid": 0,
-      "srcblock": "zero",
-      "srcport": 0,
-      "dstblock": "social_network",
-      "dstport": 0,
-      "points": [[100, 220], [250, 220]],
-      "cptr": 0,
-      "selected": false
-    },
-    {
-      "name": "line1",
-      "sid": 1,
-      "srcblock": "social_network",
-      "srcport": 0,
-      "dstblock": "opinions",
-      "dstport": 0,
-      "points": [[310, 220], [480, 195]],
-      "cptr": 0,
-      "selected": false
-    }
-  ],
-  "version": "2.0"
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 0,
+            "username": "zero",
+            "coords_left": 50,
+            "coords_top": 200,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "StateSpace",
+            "sid": 1,
+            "username": "social_network",
+            "coords_left": 250,
+            "coords_top": 200,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "statespace",
+            "params": {
+                "A": [
+                    [
+                        -2.0,
+                        1.0,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        -3.0,
+                        1.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        1.0,
+                        -3.0,
+                        0.0,
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        -3.0,
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        1.0,
+                        -3.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0,
+                        1.0,
+                        -2.0
+                    ]
+                ],
+                "B": [
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ]
+                ],
+                "C": [
+                    [
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "D": [
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ]
+                ],
+                "init_conds": [
+                    0.1,
+                    0.9,
+                    0.3,
+                    0.7,
+                    0.5,
+                    0.2
+                ]
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 2,
+            "username": "opinions",
+            "coords_left": 480,
+            "coords_top": 170,
+            "coords_width": 50,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "person 1,person 2,person 3,person 4,person 5,person 6"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "constant0",
+            "srcport": 0,
+            "dstblock": "statespace1",
+            "dstport": 0,
+            "points": [
+                [
+                    100,
+                    220
+                ],
+                [
+                    250,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "statespace1",
+            "srcport": 0,
+            "dstblock": "scope2",
+            "dstport": 0,
+            "points": [
+                [
+                    310,
+                    220
+                ],
+                [
+                    395,
+                    220
+                ],
+                [
+                    395,
+                    200
+                ],
+                [
+                    480,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
 }

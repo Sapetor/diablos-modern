@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "step",
             "params": {
                 "delay": 0.0,
@@ -47,9 +47,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "gain",
             "params": {
                 "gain": 0.5
@@ -70,13 +70,18 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#87CEEB",
+            "b_color": "#5b21b6",
             "b_type": 1,
-            "io_edit": false,
-            "fn_name": "transferfunction",
+            "io_edit": "none",
+            "fn_name": "transfer_function",
             "params": {
-                "numerator": [1.0],
-                "denominator": [1.0, 1.0]
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    1.0,
+                    1.0
+                ]
             },
             "external": false,
             "flipped": false
@@ -94,9 +99,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "System Output"
@@ -107,28 +112,80 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Input",
+            "srcblock": "step1",
             "srcport": 0,
-            "dstblock": "Gain_K",
+            "dstblock": "gain4",
             "dstport": 0,
-            "points": [[140, 170], [160, 170], [160, 170], [180, 170]]
+            "points": [
+                [
+                    140,
+                    170
+                ],
+                [
+                    180,
+                    170
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "Gain_K",
+            "srcblock": "gain4",
             "srcport": 0,
-            "dstblock": "FirstOrder_tau",
+            "dstblock": "tranfn5",
             "dstport": 0,
-            "points": [[260, 170], [280, 170], [280, 175], [300, 175]]
+            "points": [
+                [
+                    260,
+                    170
+                ],
+                [
+                    280,
+                    170
+                ],
+                [
+                    280,
+                    180
+                ],
+                [
+                    300,
+                    180
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "FirstOrder_tau",
+            "srcblock": "tranfn5",
             "srcport": 0,
-            "dstblock": "OutputScope",
+            "dstblock": "scope6",
             "dstport": 0,
-            "points": [[400, 175], [440, 175], [440, 150], [500, 150]]
+            "points": [
+                [
+                    400,
+                    180
+                ],
+                [
+                    450,
+                    180
+                ],
+                [
+                    450,
+                    160
+                ],
+                [
+                    500,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

@@ -21,12 +21,15 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#6495ED",
+            "b_color": "#78350f",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "statevariable",
             "params": {
-                "initial_value": [5.0, 5.0],
+                "initial_value": [
+                    5.0,
+                    5.0
+                ],
                 "dimension": 2
             },
             "external": false,
@@ -45,9 +48,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "objectivefunction",
             "params": {
                 "expression": "x1**2 + x2**2",
@@ -69,13 +72,13 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#00CED1",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorperturb",
             "params": {
                 "index": 0,
-                "epsilon": 1e-6
+                "epsilon": 1e-06
             },
             "external": false,
             "flipped": false
@@ -93,13 +96,13 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#00CED1",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorperturb",
             "params": {
                 "index": 1,
-                "epsilon": 1e-6
+                "epsilon": 1e-06
             },
             "external": false,
             "flipped": false
@@ -117,9 +120,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "objectivefunction",
             "params": {
                 "expression": "x1**2 + x2**2",
@@ -141,9 +144,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#9370DB",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "objectivefunction",
             "params": {
                 "expression": "x1**2 + x2**2",
@@ -159,19 +162,19 @@
             "coords_left": 530,
             "coords_top": 200,
             "coords_width": 100,
-            "coords_height": 60,
+            "coords_height": 84,
             "coords_height_base": 60,
             "in_ports": 3,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFA500",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "numericalgradient",
             "params": {
                 "dimension": 2,
-                "epsilon": 1e-6,
+                "epsilon": 1e-06,
                 "method": "forward"
             },
             "external": false,
@@ -190,9 +193,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FFD700",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorgain",
             "params": {
                 "gain": -0.1
@@ -207,15 +210,15 @@
             "coords_left": 800,
             "coords_top": 200,
             "coords_width": 60,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#32CD32",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorsum",
             "params": {
                 "signs": "++"
@@ -236,9 +239,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "f(x)"
@@ -259,9 +262,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#808080",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "residualnorm",
             "params": {
                 "norm_type": "2"
@@ -282,9 +285,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": true,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "scope",
             "params": {
                 "labels": "||grad||"
@@ -295,124 +298,392 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "X_State",
+            "srcblock": "statevariable1",
             "srcport": 0,
-            "dstblock": "f_center",
+            "dstblock": "objectivefunction2",
             "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 145], [250, 145]]
+            "points": [
+                [
+                    180,
+                    220
+                ],
+                [
+                    215,
+                    220
+                ],
+                [
+                    215,
+                    140
+                ],
+                [
+                    250,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "X_State",
+            "srcblock": "statevariable1",
             "srcport": 0,
-            "dstblock": "Perturb_x1",
+            "dstblock": "vectorperturb3",
             "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 220], [250, 220]]
+            "points": [
+                [
+                    180,
+                    220
+                ],
+                [
+                    250,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "X_State",
+            "srcblock": "statevariable1",
             "srcport": 0,
-            "dstblock": "Perturb_x2",
+            "dstblock": "vectorperturb4",
             "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 300], [250, 300]]
+            "points": [
+                [
+                    180,
+                    220
+                ],
+                [
+                    215,
+                    220
+                ],
+                [
+                    215,
+                    300
+                ],
+                [
+                    250,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Perturb_x1",
+            "srcblock": "vectorperturb3",
             "srcport": 0,
-            "dstblock": "f_plus_0",
+            "dstblock": "objectivefunction5",
             "dstport": 0,
-            "points": [[330, 220], [360, 220], [360, 225], [380, 225]]
+            "points": [
+                [
+                    330,
+                    220
+                ],
+                [
+                    380,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "Perturb_x2",
+            "srcblock": "vectorperturb4",
             "srcport": 0,
-            "dstblock": "f_plus_1",
+            "dstblock": "objectivefunction6",
             "dstport": 0,
-            "points": [[330, 300], [360, 300], [360, 305], [380, 305]]
+            "points": [
+                [
+                    330,
+                    300
+                ],
+                [
+                    380,
+                    300
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "f_center",
+            "srcblock": "objectivefunction2",
             "srcport": 0,
-            "dstblock": "Gradient",
+            "dstblock": "numericalgradient7",
             "dstport": 0,
-            "points": [[350, 145], [500, 145], [500, 210], [530, 210]]
+            "points": [
+                [
+                    350,
+                    140
+                ],
+                [
+                    440,
+                    140
+                ],
+                [
+                    440,
+                    220
+                ],
+                [
+                    530,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "f_plus_0",
+            "srcblock": "objectivefunction5",
             "srcport": 0,
-            "dstblock": "Gradient",
+            "dstblock": "numericalgradient7",
             "dstport": 1,
-            "points": [[480, 225], [510, 225], [510, 230], [530, 230]]
+            "points": [
+                [
+                    480,
+                    220
+                ],
+                [
+                    505,
+                    220
+                ],
+                [
+                    505,
+                    240
+                ],
+                [
+                    530,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "f_plus_1",
+            "srcblock": "objectivefunction6",
             "srcport": 0,
-            "dstblock": "Gradient",
+            "dstblock": "numericalgradient7",
             "dstport": 2,
-            "points": [[480, 305], [510, 305], [510, 250], [530, 250]]
+            "points": [
+                [
+                    480,
+                    300
+                ],
+                [
+                    505,
+                    300
+                ],
+                [
+                    505,
+                    260
+                ],
+                [
+                    530,
+                    260
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Gradient",
+            "srcblock": "numericalgradient7",
             "srcport": 0,
-            "dstblock": "LearningRate",
+            "dstblock": "vectorgain8",
             "dstport": 0,
-            "points": [[630, 230], [660, 230], [660, 230], [680, 230]]
+            "points": [
+                [
+                    630,
+                    240
+                ],
+                [
+                    655,
+                    240
+                ],
+                [
+                    655,
+                    230
+                ],
+                [
+                    680,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "LearningRate",
+            "srcblock": "vectorgain8",
             "srcport": 0,
-            "dstblock": "X_Next",
+            "dstblock": "vectorsum9",
             "dstport": 1,
-            "points": [[760, 230], [780, 230], [780, 235], [800, 235]]
+            "points": [
+                [
+                    760,
+                    230
+                ],
+                [
+                    780,
+                    230
+                ],
+                [
+                    780,
+                    240
+                ],
+                [
+                    800,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "X_State",
+            "srcblock": "statevariable1",
             "srcport": 0,
-            "dstblock": "X_Next",
+            "dstblock": "vectorsum9",
             "dstport": 0,
-            "points": [[180, 225], [200, 225], [200, 380], [920, 380], [920, 215], [800, 215]]
+            "points": [
+                [
+                    180,
+                    220
+                ],
+                [
+                    800,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "X_Next",
+            "srcblock": "vectorsum9",
             "srcport": 0,
-            "dstblock": "X_State",
+            "dstblock": "statevariable1",
             "dstport": 0,
-            "points": [[860, 225], [900, 225], [900, 400], [60, 400], [60, 225], [100, 225]]
+            "points": [
+                [
+                    860,
+                    230
+                ],
+                [
+                    880,
+                    230
+                ],
+                [
+                    880,
+                    293
+                ],
+                [
+                    80,
+                    293
+                ],
+                [
+                    80,
+                    220
+                ],
+                [
+                    100,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line113",
             "sid": 113,
-            "srcblock": "f_center",
+            "srcblock": "objectivefunction2",
             "srcport": 0,
-            "dstblock": "CostMonitor",
+            "dstblock": "scope10",
             "dstport": 0,
-            "points": [[350, 145], [390, 145], [390, 75], [420, 75]]
+            "points": [
+                [
+                    350,
+                    140
+                ],
+                [
+                    385,
+                    140
+                ],
+                [
+                    385,
+                    80
+                ],
+                [
+                    420,
+                    80
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line114",
             "sid": 114,
-            "srcblock": "Gradient",
+            "srcblock": "numericalgradient7",
             "srcport": 0,
-            "dstblock": "GradNorm",
+            "dstblock": "residualnorm11",
             "dstport": 0,
-            "points": [[630, 230], [650, 230], [650, 320], [680, 320]]
+            "points": [
+                [
+                    630,
+                    240
+                ],
+                [
+                    655,
+                    240
+                ],
+                [
+                    655,
+                    320
+                ],
+                [
+                    680,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line115",
             "sid": 115,
-            "srcblock": "GradNorm",
+            "srcblock": "residualnorm11",
             "srcport": 0,
-            "dstblock": "ConvergenceMonitor",
+            "dstblock": "scope12",
             "dstport": 0,
-            "points": [[760, 320], [780, 320], [780, 325], [800, 325]]
+            "points": [
+                [
+                    760,
+                    320
+                ],
+                [
+                    800,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",

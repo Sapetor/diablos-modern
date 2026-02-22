@@ -1,0 +1,319 @@
+================================================================================
+                    DiaBloS BLOCKS SYSTEM STRUCTURE
+================================================================================
+
+INVENTORY SUMMARY
+─────────────────────────────────────────────────────────────────────────────
+Total Active Blocks: 76
+Organization: 9 categories + 3 subdirectory packages
+Test Coverage: 675 passing tests (57% of blocks)
+
+BLOCK DISTRIBUTION
+─────────────────────────────────────────────────────────────────────────────
+
+ Sources (6)               Constant, Step, Ramp, Sine, Noise, PRBS, WaveGenerator
+ 
+ Sinks (7)                Scope, XYGraph, Display, FFT, Assert, Export, Terminator
+ 
+ Math (7)                 Gain, Sum, Product, Derivative, Abs, MathFunction, SigProduct
+ 
+ Control (17) ▼▼▼         Integrator, PID, TransferFunction, StateSpace, 
+                          DiscreteTransferFn, DiscreteStateSpace, RateLimiter,
+                          Saturation, Delay, FirstOrderHold, ZeroOrderHold,
+                          RateTransition, Hysteresis, Deadband, TransportDelay,
+                          Exponential
+ 
+ Routing (7)              Mux, Demux, From, Goto, Selector, Switch
+ 
+ PDE (11)                 HeatEquation1D/2D, WaveEquation1D/2D, 
+                          AdvectionEquation1D/2D, DiffusionReaction1D,
+                          FieldProbe, FieldScope, FieldProbe2D, FieldScope2D
+ 
+ Optimization Prims (11)  ObjectiveFunction, NumericalGradient, VectorPerturb,
+                          StateVariable, VectorGain, VectorSum,
+                          LinearSystemSolver, RootFinder, ResidualNorm,
+                          Momentum, Adam
+ 
+ Optimization (5)         Parameter, CostFunction, Constraint, Optimizer, DataFit
+ 
+ Other (6)                BodemAg, BodePase, Nyquist, RootLocus, External,
+                          Subsystem, Inport, Outport
+
+
+DIRECTORY STRUCTURE
+─────────────────────────────────────────────────────────────────────────────
+
+blocks/
+├── base_block.py ...................... Abstract base class (all blocks inherit)
+├── param_templates.py ................. Reusable parameter factories
+├── input_helpers.py ................... Input extraction & type handling
+├── statespace_base.py ................. Base for control/dynamics blocks
+│
+├── [TOP-LEVEL] (47 blocks)
+│   ├── constant.py, step.py, ramp.py, sine.py, noise.py, prbs.py, ...
+│   └── gain.py, sum.py, product.py, integrator.py, pid.py, ...
+│
+├── pde/ ............................... PDE solving & field processing
+│   ├── __init__.py
+│   ├── heat_equation_1d.py, wave_equation_1d.py, ...
+│   ├── heat_equation_2d.py, wave_equation_2d.py, ...
+│   ├── field_processing.py ........... FieldProbe, FieldScope, etc.
+│   └── field_processing_2d.py ........ FieldProbe2D, FieldScope2D, etc.
+│
+├── optimization_primitives/ ........... Visual algorithm building blocks
+│   ├── __init__.py
+│   ├── objective_function.py
+│   ├── numerical_gradient.py
+│   ├── vector_gain.py, vector_sum.py, vector_perturb.py
+│   ├── state_variable.py
+│   ├── linear_system_solver.py, root_finder.py
+│   ├── residual_norm.py
+│   ├── momentum.py, adam.py
+│   └── (11 total blocks)
+│
+└── optimization/ ..................... Parameter optimization
+    ├── __init__.py
+    ├── parameter.py
+    ├── cost_function.py
+    ├── constraint.py
+    ├── optimizer.py
+    └── data_fit.py
+
+
+BASE BLOCK INTERFACE (BaseBlock)
+─────────────────────────────────────────────────────────────────────────────
+
+REQUIRED PROPERTIES:
+  • block_name: str ..................... User-facing name ("Gain", "PID", etc.)
+  • category: str ...................... Category for palette ("Math", "Control", ...)
+  • color: str ......................... UI color ("yellow", "magenta", etc.)
+  • doc: str ........................... Documentation string
+  • params: Dict ...................... Parameter definitions
+  • inputs: List[Dict] ................ Input port definitions
+  • outputs: List[Dict] ............... Output port definitions
+  • execute(time, inputs, params) ... Core simulation function
+
+OPTIONAL PROPERTIES:
+  • b_type: int ....................... Block type (2=feedthrough)
+  • use_port_grid_snap: bool ......... Port grid alignment
+  • requires_inputs: bool ............ Relax input requirement
+  • requires_outputs: bool .......... Relax output requirement
+  • draw_icon(block_rect) ........... Custom icon rendering
+  • symbolic_execute(inputs, params) . Equation extraction
+  • optional_inputs: set ............ Ports not requiring connection
+  • optional_outputs: set .......... Ports not requiring connection
+
+
+PARAMETER TEMPLATES (reduce duplication)
+─────────────────────────────────────────────────────────────────────────────
+
+init_flag_param()                    Initialize state flag
+init_conds_param(default, doc)       Initial conditions
+limit_params(min, max)               Min/max saturation
+slew_rate_params()                   Rate limiter rates
+method_param(choices, default)       Enum selection
+domain_params_1d(L, N)               1D spatial domain
+domain_params_2d(Lx, Ly, Nx, Ny)   2D spatial domain
+diffusivity_param(default)           Thermal/diffusion coeff
+wave_speed_param(default)            Wave speed
+advection_velocity_param(default)   Advection velocity
+robin_bc_params()                    Robin boundary conditions
+pde_init_conds_param()               PDE initial conditions
+pde_2d_init_temp_param()             2D PDE temperatures
+verification_mode_param()            Scope verification mode
+
+
+REGISTRATION MECHANISM
+─────────────────────────────────────────────────────────────────────────────
+
+Discovery: Reflection-based (no manual registration)
+  • lib/block_loader.py: load_blocks()
+  • Scans blocks/ and subdirectories
+  • Imports all modules, filters instantiable classes
+  • Handles package subdirectories via __init__.py convention
+  
+Loading Flow:
+  1. Scan blocks/*.py files
+  2. Scan blocks/<subdir>/*.py (if __init__.py exists)
+  3. Import modules via importlib
+  4. Collect BaseBlock subclasses (not abstract, not BaseBlock itself)
+  5. Return block_classes list
+
+Result: ~76 blocks auto-discovered, no maintenance of registry
+
+
+DESIGN PATTERNS
+─────────────────────────────────────────────────────────────────────────────
+
+1. Parameter Template Reuse
+   ├─ Combine templates with dict unpacking (**)
+   └─ Reduces duplication, promotes consistency
+   
+2. Input Helpers
+   ├─ get_scalar(inputs, port): safely extract float
+   ├─ get_vector(inputs, port, dim): safely extract array
+   └─ InitStateManager: manage state initialization flags
+   
+3. Inheritance for Shared Behavior
+   ├─ StateSpaceBaseBlock: base for control/dynamics
+   ├─ PDE blocks: share discretization methods
+   └─ Field processing: share array handling
+   
+4. Feedthrough Block Specification
+   ├─ b_type = 2 (output depends on input at same timestep)
+   ├─ b_type = 0 (output depends on state only)
+   └─ Affects simulation engine ordering
+   
+5. Optional Ports
+   ├─ optional_inputs = {0, 2}: ports not requiring connection
+   ├─ optional_outputs = {1}: ports not requiring connection
+   └─ Relaxes connection requirements
+
+
+CONSISTENCY ANALYSIS
+─────────────────────────────────────────────────────────────────────────────
+
+STRENGTHS ✓
+ • Consistent property interface across all blocks
+ • Parameter templates reduce code duplication
+ • Input helpers enforce safe extraction
+ • Clear 9-category system
+ • Python package conventions followed
+ • Comprehensive documentation
+ • Extensible symbolic execution
+
+MINOR INCONSISTENCIES ⚠ (low impact)
+ • Category naming: "Control" vs "PDE" vs "Optimization Primitives"
+ • Block names: "TranFn" (abbreviated) vs "Constant" (full)
+ • Color assignment: ad-hoc vs centralized
+ • Field processing: split across 1D/2D files
+ • Missing top-level blocks/__init__.py
+ • StateSpaceBaseBlock not documented
+
+NEGLIGIBLE ISSUES
+ • Some params lack doc fields (rare)
+ • No runtime parameter validation (UI handles it)
+
+
+KEY DESIGN DECISIONS
+─────────────────────────────────────────────────────────────────────────────
+
+Dict-Based Ports          Simple, flexible → less type safety
+  │                       Mitigated by UI validation
+  └─ Alternative: class-based port definitions
+
+Reflection Registration   No manual reg, plugin support → slower startup
+  │                       (negligible impact)
+  └─ Alternative: explicit block registry
+
+Templates over Inherit    Avoid deep hierarchies → more dict unpacking
+  │                       Simple, documented templates
+  └─ Alternative: complex inheritance trees
+
+Optional Ports as Sets    Efficient lookup → fragile indices
+  │                       Tests, consistent ordering
+  └─ Alternative: port name lookup
+
+Optional Symbolic Exec    Not all blocks need it → must check for None
+  │                       Clear docs, examples provided
+  └─ Alternative: always require symbolic_execute
+
+
+ADDING NEW BLOCKS
+─────────────────────────────────────────────────────────────────────────────
+
+1. Choose location:
+   • blocks/*.py ...................... Simple math/control blocks
+   • blocks/pde/*.py ................. PDE-related blocks
+   • blocks/optimization_primitives/* .. Visual algorithm blocks
+   • blocks/optimization/*.py ........ Parameter optimization blocks
+
+2. Create class (inherits BaseBlock):
+   from blocks.base_block import BaseBlock
+   
+   class MyBlock(BaseBlock):
+       @property
+       def block_name(self): return "MyBlock"
+       @property
+       def category(self): return "Math"
+       @property
+       def color(self): return "yellow"
+       @property
+       def doc(self): return "Documentation"
+       @property
+       def params(self): return {...}
+       @property
+       def inputs(self): return [...]
+       @property
+       def outputs(self): return [...]
+       def execute(self, time, inputs, params, **kwargs): return {...}
+
+3. For subdirectory packages:
+   • Ensure blocks/<subdir>/__init__.py exists
+   • Add explicit imports for new blocks
+   • Update __all__ list
+
+4. Registration:
+   • No code needed! load_blocks() auto-discovers
+   • Restart application to load
+
+
+TESTING
+─────────────────────────────────────────────────────────────────────────────
+
+Test Organization:
+  tests/unit/ ...................... Block unit tests
+  tests/integration/ ............... Full diagram simulations
+  tests/regression/ ............... Bug fix verification
+  tests/profiling/ ................ Performance analysis
+
+Current Coverage:
+  • 675 passing tests
+  • 57% of blocks have unit tests
+  • All major categories tested
+  • End-to-end diagram tests
+
+Example Test:
+  def test_gain_block():
+      block = GainBlock()
+      params = {"gain": 2.0}
+      inputs = {0: 3.0}
+      result = block.execute(0, inputs, params)
+      assert result[0] == 6.0
+
+
+HEALTH SUMMARY
+─────────────────────────────────────────────────────────────────────────────
+
+Architecture ........... EXCELLENT  Clean, consistent interface
+Extensibility .......... EXCELLENT  Easy to add new blocks
+Code Reuse ............ EXCELLENT  Parameter templates effective
+Documentation ......... GOOD       Every block documented
+Consistency ........... GOOD       Minor naming issues only
+Test Coverage ......... GOOD       675 tests, 57% blocks
+Performance ........... GOOD       No reflection bottleneck
+
+
+RECOMMENDATIONS
+─────────────────────────────────────────────────────────────────────────────
+
+HIGH PRIORITY:
+  ✓ Keep current design - it works well
+
+MEDIUM PRIORITY:
+  • Document StateSpaceBaseBlock pattern
+  • Add centralized color constants
+  • Create block development guide
+
+LOW PRIORITY:
+  • Standardize category abbreviations
+  • Unify 1D/2D field processing if complexity grows
+  • Add blocks/__init__.py for Python convention
+
+
+FUTURE CONSIDERATIONS:
+  • Formal parameter schema validation
+  • Extend symbolic execution to more blocks
+  • Add block versioning metadata
+
+================================================================================

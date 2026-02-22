@@ -21,9 +21,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": [
@@ -53,9 +53,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": [
@@ -73,15 +73,15 @@
             "coords_left": 280,
             "coords_top": 150,
             "coords_width": 120,
-            "coords_height": 60,
+            "coords_height": 64,
             "coords_height_base": 60,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF00FF",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "linearsystemsolver",
             "params": {
                 "method": "direct",
@@ -104,9 +104,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "display",
             "params": {
                 "format": "%.4f",
@@ -128,9 +128,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#90EE90",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#064e3b",
+            "b_type": 0,
+            "io_edit": "none",
             "fn_name": "constant",
             "params": {
                 "value": [
@@ -148,15 +148,15 @@
             "coords_left": 280,
             "coords_top": 320,
             "coords_width": 60,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#32CD32",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorsum",
             "params": {
                 "signs": "+-"
@@ -177,9 +177,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#808080",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "residualnorm",
             "params": {
                 "norm_type": "2"
@@ -200,9 +200,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "display",
             "params": {
                 "format": "%.2e",
@@ -224,9 +224,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#ADD8E6",
+            "b_color": "#1e3a8a",
             "b_type": 1,
-            "io_edit": false,
+            "io_edit": "none",
             "fn_name": "gain",
             "params": {
                 "gain": [
@@ -256,9 +256,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "display",
             "params": {
                 "format": "%.4f",
@@ -274,15 +274,15 @@
             "coords_left": 620,
             "coords_top": 300,
             "coords_width": 60,
-            "coords_height": 50,
+            "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#32CD32",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "vectorsum",
             "params": {
                 "signs": "+-"
@@ -303,9 +303,9 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#808080",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#78350f",
+            "b_type": 2,
+            "io_edit": "none",
             "fn_name": "residualnorm",
             "params": {
                 "norm_type": "2"
@@ -326,9 +326,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "display",
             "params": {
                 "format": "%.2e",
@@ -350,9 +350,9 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#FF6347",
-            "b_type": 1,
-            "io_edit": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
             "fn_name": "display",
             "params": {
                 "format": "%.4f",
@@ -364,19 +364,20 @@
     ],
     "lines_data": [
         {
+            "name": "Line101",
             "sid": 101,
-            "srcblock": "Matrix_A",
+            "srcblock": "constant1",
             "srcport": 0,
-            "dstblock": "Solver",
+            "dstblock": "linearsystemsolver3",
             "dstport": 0,
             "points": [
                 [
                     180,
-                    145
+                    140
                 ],
                 [
                     230,
-                    145
+                    140
                 ],
                 [
                     230,
@@ -386,22 +387,25 @@
                     280,
                     170
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line102",
             "sid": 102,
-            "srcblock": "Vector_b",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "Solver",
+            "dstblock": "linearsystemsolver3",
             "dstport": 1,
             "points": [
                 [
                     180,
-                    225
+                    220
                 ],
                 [
                     230,
-                    225
+                    220
                 ],
                 [
                     230,
@@ -411,38 +415,36 @@
                     280,
                     190
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line103",
             "sid": 103,
-            "srcblock": "Solver",
+            "srcblock": "linearsystemsolver3",
             "srcport": 0,
-            "dstblock": "Solution_x",
+            "dstblock": "display4",
             "dstport": 0,
             "points": [
                 [
                     400,
-                    180
-                ],
-                [
-                    440,
-                    180
-                ],
-                [
-                    440,
                     180
                 ],
                 [
                     480,
                     180
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line104",
             "sid": 104,
-            "srcblock": "Solver",
+            "srcblock": "linearsystemsolver3",
             "srcport": 0,
-            "dstblock": "X_Error",
+            "dstblock": "vectorsum6",
             "dstport": 0,
             "points": [
                 [
@@ -450,66 +452,72 @@
                     180
                 ],
                 [
-                    440,
+                    420,
                     180
                 ],
                 [
-                    440,
-                    280
+                    420,
+                    243
                 ],
                 [
                     260,
-                    280
+                    243
                 ],
                 [
                     260,
-                    335
+                    340
                 ],
                 [
                     280,
-                    335
+                    340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line105",
             "sid": 105,
-            "srcblock": "X_Analytical",
+            "srcblock": "constant5",
             "srcport": 0,
-            "dstblock": "X_Error",
+            "dstblock": "vectorsum6",
             "dstport": 1,
             "points": [
                 [
                     180,
-                    345
+                    340
                 ],
                 [
-                    240,
-                    345
+                    230,
+                    340
                 ],
                 [
-                    240,
-                    355
+                    230,
+                    360
                 ],
                 [
                     280,
-                    355
+                    360
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line106",
             "sid": 106,
-            "srcblock": "X_Error",
+            "srcblock": "vectorsum6",
             "srcport": 0,
-            "dstblock": "SolutionErrorNorm",
+            "dstblock": "residualnorm7",
             "dstport": 0,
             "points": [
                 [
                     340,
-                    345
+                    350
                 ],
                 [
                     360,
-                    345
+                    350
                 ],
                 [
                     360,
@@ -519,13 +527,16 @@
                     380,
                     340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line107",
             "sid": 107,
-            "srcblock": "SolutionErrorNorm",
+            "srcblock": "residualnorm7",
             "srcport": 0,
-            "dstblock": "SolutionError",
+            "dstblock": "display8",
             "dstport": 0,
             "points": [
                 [
@@ -533,24 +544,19 @@
                     340
                 ],
                 [
-                    490,
-                    340
-                ],
-                [
-                    490,
-                    335
-                ],
-                [
                     510,
-                    335
+                    340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line108",
             "sid": 108,
-            "srcblock": "Solver",
+            "srcblock": "linearsystemsolver3",
             "srcport": 0,
-            "dstblock": "Verify_Ax",
+            "dstblock": "gain9",
             "dstport": 0,
             "points": [
                 [
@@ -569,38 +575,36 @@
                     480,
                     260
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line109",
             "sid": 109,
-            "srcblock": "Verify_Ax",
+            "srcblock": "gain9",
             "srcport": 0,
-            "dstblock": "Check_Ax",
+            "dstblock": "display10",
             "dstport": 0,
             "points": [
                 [
                     560,
                     260
-                ],
-                [
-                    590,
-                    260
-                ],
-                [
-                    590,
-                    255
                 ],
                 [
                     620,
-                    255
+                    260
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line110",
             "sid": 110,
-            "srcblock": "Verify_Ax",
+            "srcblock": "gain9",
             "srcport": 0,
-            "dstblock": "Residual",
+            "dstblock": "vectorsum11",
             "dstport": 0,
             "points": [
                 [
@@ -608,86 +612,64 @@
                     260
                 ],
                 [
-                    460,
+                    590,
                     260
                 ],
                 [
-                    460,
-                    130
+                    590,
+                    320
                 ],
                 [
-                    830,
-                    130
-                ],
-                [
-                    830,
-                    360
-                ],
-                [
-                    680,
-                    360
-                ],
-                [
-                    680,
-                    325
+                    620,
+                    320
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line111",
             "sid": 111,
-            "srcblock": "Vector_b",
+            "srcblock": "constant2",
             "srcport": 0,
-            "dstblock": "Residual",
+            "dstblock": "vectorsum11",
             "dstport": 1,
             "points": [
                 [
                     180,
-                    225
+                    220
                 ],
                 [
-                    200,
-                    225
+                    400,
+                    220
                 ],
                 [
-                    200,
-                    420
+                    400,
+                    340
                 ],
                 [
-                    1030,
-                    420
-                ],
-                [
-                    1030,
-                    370
-                ],
-                [
-                    700,
-                    370
-                ],
-                [
-                    700,
-                    335
-                ],
-                [
-                    680,
-                    335
+                    620,
+                    340
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line112",
             "sid": 112,
-            "srcblock": "Residual",
+            "srcblock": "vectorsum11",
             "srcport": 0,
-            "dstblock": "ResidualNorm",
+            "dstblock": "residualnorm12",
             "dstport": 0,
             "points": [
                 [
                     680,
-                    325
+                    330
                 ],
                 [
                     700,
-                    325
+                    330
                 ],
                 [
                     700,
@@ -697,13 +679,16 @@
                     720,
                     320
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line113",
             "sid": 113,
-            "srcblock": "ResidualNorm",
+            "srcblock": "residualnorm12",
             "srcport": 0,
-            "dstblock": "ResidualError",
+            "dstblock": "display13",
             "dstport": 0,
             "points": [
                 [
@@ -711,43 +696,48 @@
                     320
                 ],
                 [
-                    830,
-                    320
-                ],
-                [
-                    830,
-                    315
-                ],
-                [
                     850,
-                    315
+                    320
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         },
         {
+            "name": "Line114",
             "sid": 114,
-            "srcblock": "X_Analytical",
+            "srcblock": "constant5",
             "srcport": 0,
-            "dstblock": "Expected_x",
+            "dstblock": "display14",
             "dstport": 0,
             "points": [
                 [
                     180,
-                    345
+                    340
                 ],
                 [
                     200,
-                    345
+                    340
                 ],
                 [
                     200,
-                    485
+                    399
+                ],
+                [
+                    80,
+                    399
+                ],
+                [
+                    80,
+                    480
                 ],
                 [
                     100,
-                    485
+                    480
                 ]
-            ]
+            ],
+            "cptr": 0,
+            "selected": false
         }
     ],
     "version": "2.0",
