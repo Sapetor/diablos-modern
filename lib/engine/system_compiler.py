@@ -1620,7 +1620,7 @@ class SystemCompiler:
         # their algebraic input chain so derivatives read correct signal values.
         # Their outputs are pre-populated (y=Cx or y=state) before the sequence runs,
         # so feedback through algebraic blocks resolves correctly.
-        source_fns = ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator')
+        source_fns = ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator', 'Prbs')
         state_fns = ('Tranfn', 'Transferfcn', 'TransferFcn', 'Statespace', 'StateSpace',
                      'Integrator', 'Pid', 'PID', 'Ratelimiter', 'RateLimiter',
                      'Heatequation1D', 'Waveequation1D', 'Advectionequation1D',

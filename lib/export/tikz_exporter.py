@@ -14,7 +14,7 @@ from typing import Dict, List, Any, Optional
 logger = logging.getLogger(__name__)
 
 
-def _poly_to_latex(coeffs):
+def _poly_to_latex(coeffs, var='s'):
     """Convert polynomial coefficients to LaTeX string (highest power first)."""
     terms = []
     n = len(coeffs) - 1
@@ -31,16 +31,16 @@ def _poly_to_latex(coeffs):
         if power == 0:
             term = coef_str if coef_str else "1"
         elif power == 1:
-            term = f"{coef_str}s"
+            term = f"{coef_str}{var}"
         else:
-            term = f"{coef_str}s^{{{power}}}"
+            term = f"{coef_str}{var}^{{{power}}}"
         terms.append(term)
     if not terms:
         return "0"
     result = terms[0]
     for term in terms[1:]:
         if term.startswith("-"):
-            result += f" {term}"
+            result += f" - {term[1:]}"
         else:
             result += f" + {term}"
     return result
@@ -610,10 +610,8 @@ class TikZExporter:
                 num = block.params.get('numerator', [1.0])
                 den = block.params.get('denominator', [1.0, 1.0])
                 if isinstance(num, (list, tuple)) and isinstance(den, (list, tuple)):
-                    num_tex = _poly_to_latex(num)
-                    den_tex = _poly_to_latex(den)
-                    num_tex = num_tex.replace('s', 'z')
-                    den_tex = den_tex.replace('s', 'z')
+                    num_tex = _poly_to_latex(num, var='z')
+                    den_tex = _poly_to_latex(den, var='z')
                     return f'$\\dfrac{{{num_tex}}}{{{den_tex}}}$'
             sym = self._tf_symbols.get(block.name, 'G')
             return f'${sym}(z)$'

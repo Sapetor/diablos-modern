@@ -132,6 +132,10 @@ class ProductBlock(BaseBlock):
                     # Handle division by zero gracefully
                     with np.errstate(divide='ignore', invalid='ignore'):
                         result = result / input_value
+                        has_inf = np.any(np.isinf(result))
+                        has_nan = np.any(np.isnan(result))
+                        if has_inf or has_nan:
+                            logger.warning(f"Product block '{params.get('_name_', '?')}': division by zero (inf={has_inf}, nan={has_nan})")
                         # Replace inf/-inf with large finite numbers
                         result = np.where(np.isinf(result), np.sign(result) * 1e308, result)
                         # Replace NaN with 0

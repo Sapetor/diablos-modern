@@ -1,4 +1,6 @@
+import bisect
 import numpy as np
+from collections import deque
 from blocks.base_block import BaseBlock
 
 
@@ -59,8 +61,8 @@ class TransportDelayBlock(BaseBlock):
         
         # Initialize buffers on first call
         if params.get("_init_start_", True):
-            params["_time_buffer_"] = []
-            params["_value_buffer_"] = []
+            params["_time_buffer_"] = deque()
+            params["_value_buffer_"] = deque()
             params["_init_start_"] = False
         
         time_buffer = params["_time_buffer_"]
@@ -87,8 +89,8 @@ class TransportDelayBlock(BaseBlock):
         # Keep a margin of 2x delay time for safety
         prune_time = float(time) - 2.0 * delay_time
         while len(time_buffer) > 2 and time_buffer[0] < prune_time:
-            time_buffer.pop(0)
-            value_buffer.pop(0)
+            time_buffer.popleft()
+            value_buffer.popleft()
         
         params["_time_buffer_"] = time_buffer
         params["_value_buffer_"] = value_buffer
@@ -105,20 +107,17 @@ class TransportDelayBlock(BaseBlock):
         if target_time >= time_buffer[-1]:
             return value_buffer[-1].copy()
         
-        # Find bracketing indices
-        for i in range(len(time_buffer) - 1):
-            t0 = time_buffer[i]
-            t1 = time_buffer[i + 1]
-            
-            if t0 <= target_time <= t1:
-                # Linear interpolation
-                if t1 - t0 == 0:
-                    return value_buffer[i].copy()
-                
-                alpha = (target_time - t0) / (t1 - t0)
-                v0 = value_buffer[i]
-                v1 = value_buffer[i + 1]
-                return (1.0 - alpha) * v0 + alpha * v1
-        
-        # Fallback (shouldn't reach here)
-        return value_buffer[-1].copy()
+        # Find bracketing indices using binary search (O(log n))
+        i = bisect.bisect_right(time_buffer, target_time) - 1
+        i = max(0, min(i, len(time_buffer) - 2))
+
+        t0 = time_buffer[i]
+        t1 = time_buffer[i + 1]
+
+        if t1 - t0 == 0:
+            return value_buffer[i].copy()
+
+        alpha = (target_time - t0) / (t1 - t0)
+        v0 = value_buffer[i]
+        v1 = value_buffer[i + 1]
+        return (1.0 - alpha) * v0 + alpha * v1

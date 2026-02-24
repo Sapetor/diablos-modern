@@ -83,12 +83,15 @@ class TikZExportDialog(QDialog):
         self.format_btn_group = QButtonGroup(self)
         self.standalone_radio = QRadioButton("Standalone .tex")
         self.snippet_radio = QRadioButton("Snippet only")
+        self.blox_radio = QRadioButton("blox macros")
         self.standalone_radio.setChecked(True)
         self.format_btn_group.addButton(self.standalone_radio, 0)
         self.format_btn_group.addButton(self.snippet_radio, 1)
+        self.format_btn_group.addButton(self.blox_radio, 2)
 
         fmt_layout.addWidget(self.standalone_radio)
         fmt_layout.addWidget(self.snippet_radio)
+        fmt_layout.addWidget(self.blox_radio)
         fmt_layout.addStretch()
         left.addWidget(fmt_group)
 
@@ -216,7 +219,7 @@ class TikZExportDialog(QDialog):
         root.addLayout(btn_bar)
 
         # --- Wire option changes to preview ---
-        self.format_btn_group.buttonClicked.connect(self._update_preview)
+        self.format_btn_group.buttonClicked.connect(self._on_format_changed)
         for cb in (self.include_sinks_cb, self.sink_as_arrow_cb,
                    self.source_as_arrow_cb, self.show_usernames_cb,
                    self.show_values_cb, self.show_signal_labels_cb,
@@ -241,10 +244,34 @@ class TikZExportDialog(QDialog):
             'page_width_cm': self.page_width_spin.value(),
         }
 
+    def _on_format_changed(self, *_args):
+        """Enable/disable options that don't apply to blox mode."""
+        is_blox = self.blox_radio.isChecked()
+        for cb in (self.source_as_arrow_cb, self.sink_as_arrow_cb,
+                   self.fill_blocks_cb, self.include_sinks_cb):
+            cb.setEnabled(not is_blox)
+        self._update_preview()
+
     def _generate_tikz(self):
+        options = self._get_options()
+
+        if self.blox_radio.isChecked():
+            from lib.export.blox_exporter import BloxExporter
+            exporter = BloxExporter(self.blocks_list, self.line_list)
+            result = exporter.export(options)
+            if result is not None:
+                return result
+            # Fallback to raw TikZ with a note
+            from lib.export.tikz_exporter import TikZExporter
+            tikz = TikZExporter(self.blocks_list, self.line_list)
+            return (
+                '% Diagram topology too complex for blox macros.\n'
+                '% Falling back to raw TikZ.\n\n'
+                + tikz.export_document(options)
+            )
+
         from lib.export.tikz_exporter import TikZExporter
         exporter = TikZExporter(self.blocks_list, self.line_list)
-        options = self._get_options()
         if self.standalone_radio.isChecked():
             return exporter.export_document(options)
         return exporter.export_snippet(options)
@@ -268,10 +295,13 @@ class TikZExportDialog(QDialog):
             self.path_edit.setText(filepath)
 
     def _copy_to_clipboard(self):
-        tikz_code = self._generate_tikz()
-        clipboard = QApplication.clipboard()
-        clipboard.setText(tikz_code)
-        QMessageBox.information(self, "Copied", "TikZ code copied to clipboard.")
+        try:
+            tikz_code = self._generate_tikz()
+            clipboard = QApplication.clipboard()
+            clipboard.setText(tikz_code)
+            QMessageBox.information(self, "Copied", "TikZ code copied to clipboard.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to generate TikZ code:\n{e}")
 
     def _export(self):
         filepath = self.path_edit.text().strip()

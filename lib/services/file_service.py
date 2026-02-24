@@ -129,7 +129,7 @@ class FileService:
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
             
-            with open(filename, 'w') as fp:
+            with open(filename, 'w', encoding='utf-8') as fp:
                 json.dump(data, fp, indent=4)
                 
             self.filename = os.path.basename(filename)
@@ -209,7 +209,7 @@ class FileService:
                 return None
 
         try:
-            with open(filepath, 'r') as fp:
+            with open(filepath, 'r', encoding='utf-8') as fp:
                 data = json.load(fp)
 
             self.filename = os.path.basename(filepath)
