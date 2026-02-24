@@ -99,13 +99,11 @@ class ScopeBlock(BaseBlock):
             if labels == 'default':
                 labels = params.get('_name_', 'scope') + '-0'
             labels = labels.replace(' ', '').split(',')
-            if len(labels) - params['vec_dim'] >= 0:
+            if len(labels) >= params['vec_dim']:
                 labels = labels[:params['vec_dim']]
-            elif len(labels) - params['vec_dim'] < 0:
+            else:
                 for i in range(len(labels), params['vec_dim']):
                     labels.append(params['_name_'] + '-' + str(i))
-            elif len(labels) == params['vec_dim'] == 1:
-                labels = labels[0]
             params['vec_labels'] = labels
             params['_init_start_'] = False
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initialized, vec_labels: {params['vec_labels']}")

@@ -31,11 +31,18 @@ class ExportWorker(QThread):
         self.format = format
         self.fps = fps
         self.dpi = dpi
+        self._cancelled = False
+
+    def cancel(self):
+        """Request cancellation of the export."""
+        self._cancelled = True
 
     def run(self):
         """Run the export in a separate thread."""
         try:
             def progress_callback(frame, total):
+                if self._cancelled:
+                    raise InterruptedError("Export cancelled")
                 self.progress.emit(frame, total)
 
             success = self.exporter.export(
@@ -309,6 +316,7 @@ class AnimationExportDialog(QDialog):
     def closeEvent(self, event):
         """Handle dialog close - stop any running export."""
         if self.worker and self.worker.isRunning():
-            self.worker.terminate()
-            self.worker.wait()
+            self.worker.cancel()
+            self.worker.quit()
+            self.worker.wait(3000)
         super().closeEvent(event)

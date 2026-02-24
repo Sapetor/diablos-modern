@@ -142,9 +142,9 @@ class GainBlock(BaseBlock):
             # Parse gain - handle string representation of matrices
             if isinstance(K_raw, str):
                 try:
-                    # Try to evaluate as numpy expression (e.g., "[[1,0],[0,1]]")
-                    K = np.array(eval(K_raw), dtype=float)
-                except Exception:
+                    import ast
+                    K = np.array(ast.literal_eval(K_raw), dtype=float)
+                except (ValueError, SyntaxError):
                     K = np.array([float(K_raw)], dtype=float)
             else:
                 K = np.atleast_1d(K_raw).astype(float)

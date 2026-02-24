@@ -272,12 +272,6 @@ class DSim:
         self.connections_list = self.line_list  # Keep alias in sync
         self.dirty = self.model.dirty
 
-    def create_subsystem_from_selection(self, selected_blocks):
-        """
-        Create a subsystem containing the selected blocks.
-        """
-        return self.subsystem_manager.create_subsystem_from_selection(selected_blocks)
-
     # NOTE: display_lines, display_blocks, display_ports, update_lines moved to ModernCanvas
     # NOTE: Block loading moved to SimulationModel.load_all_blocks()
 
@@ -420,7 +414,8 @@ class DSim:
             self.execution_stop = False                         # Prevent execution from stopping before executing in error
             self.error_msg = ""                                 # Clear any previous error message
             self.time_step = 0                                  # First iteration of the time which will be incrementing self.sim_dt seconds
-            self.timeline = np.array([self.time_step])          # List containing the value of all past iterations
+            self._timeline_list = [self.time_step]              # Accumulate as list, convert to np.array when done
+            self.timeline = np.array([self.time_step])          # Also keep np version for compatibility
 
             # Some parameters are initialized including the maximum simulation time.
             self.execution_time = self.execution_init_time()
@@ -632,6 +627,7 @@ class DSim:
             self.execution_stop = False
             self.error_msg = ""
             self.time_step = 0
+            self._timeline_list = [self.time_step]
             self.timeline = np.array([self.time_step])
             self.sim_time = sim_time
             self.sim_dt = sim_dt
@@ -710,10 +706,10 @@ class DSim:
                     self.time_step += self.sim_dt / 2
                 elif self.rk_counter == 0:
                     self.time_step += self.sim_dt
-                    self.timeline = np.append(self.timeline, self.time_step)
+                    self._timeline_list.append(self.time_step)
             else:
                 self.time_step += self.sim_dt
-                self.timeline = np.append(self.timeline, self.time_step)
+                self._timeline_list.append(self.time_step)
 
             current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
 
@@ -775,9 +771,9 @@ class DSim:
                         block.computed_data = True
                         if block.name not in self.memory_blocks and block.b_type != 3:
                             self.engine.propagate_outputs(block, out_value)
-                hier += 1
 
             if self.time_step > self.sim_time + self.sim_dt:
+                self.timeline = np.array(self._timeline_list)
                 self.execution_initialized = False
                 self.reset_memblocks()
 
@@ -846,11 +842,11 @@ class DSim:
                 elif self.rk_counter == 0:
                     self.time_step += self.sim_dt
                     self.pbar.update(1)
-                    self.timeline = np.append(self.timeline, self.time_step)
+                    self._timeline_list.append(self.time_step)
             else:
                 self.time_step += self.sim_dt
                 self.pbar.update(1)
-                self.timeline = np.append(self.timeline, self.time_step)
+                self._timeline_list.append(self.time_step)
 
             # Use the active list from engine (flattened if needed)
             # Fallback to local list if engine not ready (though it should be)
@@ -941,13 +937,13 @@ class DSim:
                         # Propagate outputs to children (skip memory blocks and sinks)
                         if block.name not in self.memory_blocks and block.b_type != 3:
                             self.engine.propagate_outputs(block, out_value)
-                hier += 1
 
             # The dynamic plot function is called to save the new data, if active
             self.dynamic_pyqtPlotScope(step=1)
 
             # It is checked if the total simulation (execution) time has been exceeded to end the loop
             if self.time_step > self.execution_time + self.sim_dt:  # seconds
+                self.timeline = np.array(self._timeline_list)       # Convert list to numpy array
                 self.execution_initialized = False                  # The execution loop is terminated
                 self.pbar.close()                                   # The progress bar ends
 
@@ -1054,12 +1050,13 @@ class DSim:
         """Check if any integrators use RK45 method. Delegates to engine."""
         return self.engine.count_rk45_integrators()
 
-    def create_subsystem_from_selection(self):
+    def create_subsystem_from_selection(self, selected_blocks=None):
         """
-        Create a subsystem from currently selected blocks.
+        Create a subsystem from selected blocks.
         Moves selected blocks into a new Subsystem block and maintains connections.
         """
-        selected_blocks = [b for b in self.blocks_list if b.selected]
+        if selected_blocks is None:
+            selected_blocks = [b for b in self.blocks_list if b.selected]
         return self.subsystem_manager.create_subsystem_from_selection(selected_blocks)
         
     def update_global_list(self, block_name, h_value, h_assign=False):
@@ -1105,12 +1102,6 @@ class DSim:
     def reset_memblocks(self):
         """Reset memory blocks. Delegates to engine."""
         self.engine.reset_memblocks()
-
-    def plot_again(self):
-        """
-        :purpose: Plots the data saved in Scope and XYGraph blocks without needing to execute the simulation again.
-        """
-        self.scope_plotter.plot_again()
 
     def _plot_xygraph(self, block):
         """Plot XY graph data for a single XYGraph block. Delegates to ScopePlotter."""

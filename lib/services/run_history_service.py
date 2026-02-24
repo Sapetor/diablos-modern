@@ -69,7 +69,7 @@ class RunHistoryService:
                     "traces": [
                         {
                             "name": tr.get("name", ""),
-                            "y": tr.get("y").tolist() if hasattr(tr.get("y"), 'tolist') else tr.get("y"),
+                            "y": tr["y"].tolist() if hasattr(tr.get("y"), 'tolist') else (tr.get("y") or []),
                             "step": bool(tr.get("step", False))
                         }
                         for tr in run.get("traces", [])

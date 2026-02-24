@@ -176,7 +176,7 @@ class DiagramService:
             }
             diagram_data["ui_state"] = ui_state
 
-            with open(filename, 'w') as f:
+            with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(diagram_data, f, indent=4)
             
             logger.info(f"Diagram saved to {filename}")
@@ -222,7 +222,7 @@ class DiagramService:
         self.last_directory = os.path.dirname(filename)
 
         try:
-            with open(filename, 'r') as f:
+            with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
             # Clear current diagram

@@ -84,7 +84,7 @@ class TestPolyToLatex:
     def test_negative_coefficients(self):
         # [1, -3, 2] = s^2 - 3s + 2
         result = _poly_to_latex([1.0, -3.0, 2.0])
-        assert '-3s' in result
+        assert '- 3s' in result
         assert '+ 2' in result
 
     def test_negative_unit_coefficient(self):
