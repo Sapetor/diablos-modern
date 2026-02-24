@@ -116,7 +116,7 @@ class PIDBlock(BaseBlock):
             return {}
 
     def execute(self, time, inputs, params, **kwargs):
-        dt = float(params.get("dtime", 0.01))
+        dt = max(float(params.get("dtime", 0.01)), 1e-12)
         sp = float(np.atleast_1d(inputs[0])[0])
         meas = float(np.atleast_1d(inputs[1])[0])
         e = sp - meas

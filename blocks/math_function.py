@@ -1,6 +1,9 @@
 
+import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
 
 class MathFunctionBlock(BaseBlock):
     def __init__(self):
@@ -118,8 +121,8 @@ Select the function via the block parameters."""
             raw_func = str(params.get("function", params.get("expression", "sin")))
             return {0: float(eval(raw_func, {"__builtins__": None}, context))}
 
-        except Exception:
-            # Fallback for domain errors or invalid syntax
+        except Exception as e:
+            logger.warning(f"MathFunction '{params.get('_name_', '?')}': {e}")
             return {0: 0.0}
 
     def draw_icon(self, block_rect):

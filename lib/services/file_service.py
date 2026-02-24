@@ -125,7 +125,9 @@ class FileService:
         """
         try:
             # Ensure the directory exists
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            dirname = os.path.dirname(filename)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
             
             with open(filename, 'w') as fp:
                 json.dump(data, fp, indent=4)
@@ -148,14 +150,14 @@ class FileService:
                 file = filepath
             else:
                 options = QFileDialog.Options()
-            initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
-            file, _ = QFileDialog.getSaveFileName(
-                None,
-                "Save File",
-                os.path.join(initial_dir, self.filename),
-                "Data Files (*.dat);;All Files (*)",
-                options=options
-            )
+                initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
+                file, _ = QFileDialog.getSaveFileName(
+                    None,
+                    "Save File",
+                    os.path.join(initial_dir, self.filename),
+                    "Data Files (*.dat);;All Files (*)",
+                    options=options
+                )
 
             if not file:
                 return 1

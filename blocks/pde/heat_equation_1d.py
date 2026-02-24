@@ -174,7 +174,8 @@ class HeatEquation1DBlock(BaseBlock):
 
         # Initialization
         if params.get('_init_start_', True):
-            N = int(params.get('N', 20))
+            N = max(2, int(params.get('N', 20)))
+            params['N'] = N
             params['T'] = self.get_initial_conditions(params)
             params['_init_start_'] = False
             params['dx'] = float(params.get('L', 1.0)) / (N - 1)
