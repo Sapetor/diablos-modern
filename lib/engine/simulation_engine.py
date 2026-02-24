@@ -225,17 +225,9 @@ class SimulationEngine:
                             optional_inputs = set(block.block_instance.optional_inputs)
 
                     required_ports = block.in_ports - len(optional_inputs)
-                    # Count how many required ports have data
-                    required_received = 0
-                    for port_idx in range(block.in_ports):
-                        if port_idx not in optional_inputs and port_idx in block.input_queue:
-                            required_received += 1
+                    can_execute = block.data_recieved >= required_ports or block.in_ports == 0
 
-                    can_execute = required_received >= required_ports
-                    if block.block_fn == 'From':
-                        can_execute = 0 in block.input_queue and block.input_queue[0] is not None
-
-                    logger.info(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_received}/{required_ports})")
+                    logger.info(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_ports})")
 
                     if can_execute and not block.computed_data:
                         # OUT_VALUE execute_block...
@@ -898,38 +890,9 @@ class SimulationEngine:
             is_child, tuple_list = self._children_recognition(mblock.name, children)
             if is_child:
                 for tuple_child in tuple_list:
-                    if tuple_child['dstport'] not in mblock.input_queue:
-                        mblock.data_recieved += 1
+                    mblock.data_recieved += 1
                     mblock.input_queue[tuple_child['dstport']] = out_value[tuple_child['srcport']]
                     block.data_sent += 1
-
-    def execute_and_propagate(self, block: DBlock, output_only: bool = False) -> Dict[int, Any]:
-        """
-        Execute a block and propagate its outputs to children.
-        
-        This is the core execution helper used by execution_init and execution_loop.
-        IMPORTANT: Does not create new exec_params dicts - only reads/updates existing ones.
-        
-        Args:
-            block: Block to execute
-            output_only: If True, only compute output without updating state
-            
-        Returns:
-            dict: Output values, or {'E': True, 'error': msg} on failure
-        """
-        out_value = self.execute_block(block, output_only)
-        
-        if out_value is None:
-            return {'E': True, 'error': f'Block {block.name} returned None'}
-        
-        if 'E' in out_value and out_value['E']:
-            return out_value
-            
-        # Propagate outputs to children (skip memory blocks and sinks)
-        if block.name not in self.memory_blocks and block.b_type != 3:
-            self.propagate_outputs(block, out_value)
-        
-        return out_value
 
     def _children_recognition(self, block_name: str, children_list: List[Dict]) -> Tuple[bool, List[Dict]]:
         """

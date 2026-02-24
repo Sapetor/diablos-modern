@@ -47,6 +47,7 @@ class SystemCompiler:
             'RateLimiter',
             'WaveGenerator',
             'Noise',
+            'PRBS',
             'MathFunction',
             'Selector',
             'Hysteresis',
@@ -57,6 +58,8 @@ class SystemCompiler:
             'DiffusionReaction1D',
             # PDE Blocks (Method of Lines) - 2D
             'HeatEquation2D',
+            'WaveEquation2D',
+            'AdvectionEquation2D',
             # Field Processing Blocks - 1D
             'FieldProbe',
             'FieldIntegral',
@@ -260,10 +263,48 @@ class SystemCompiler:
         elif fn == 'Step':
             step_t = float(block.params.get('delay', 0.0))
             val = float(block.params.get('value', 1.0))
-            
+
             def exec_step(t, y, dy_vec, signals):
                 signals[b_name] = val if t >= step_t else 0.0
             return exec_step
+
+        elif fn == 'Prbs':
+            high = float(block.params.get('high', 1.0))
+            low = float(block.params.get('low', 0.0))
+            bit_time = float(block.params.get('bit_time', 0.1))
+            order = int(block.params.get('order', 7))
+            seed = int(block.params.get('seed', 1)) & ((1 << order) - 1)
+            if seed == 0:
+                seed = 1
+
+            # Primitive polynomial taps for left-shift Fibonacci LFSR
+            # (verified with Mathematica)
+            _primitive_taps = {
+                2: [1, 0], 3: [2, 0], 4: [3, 0], 5: [4, 2],
+                6: [5, 0], 7: [6, 5], 8: [7, 5, 4, 3], 9: [8, 4],
+                10: [9, 6], 11: [10, 8], 12: [11, 10, 9, 3], 13: [12, 11, 8, 6],
+                14: [13, 12, 10, 8], 15: [14, 13], 16: [15, 13, 12, 10], 17: [16, 13],
+                18: [17, 10], 19: [18, 17, 16, 13], 20: [19, 16], 21: [20, 18],
+                22: [21, 20], 23: [22, 17], 24: [23, 22, 21, 16],
+            }
+            taps = _primitive_taps.get(order, [1, 0])
+            mask = (1 << order) - 1
+            period = (1 << order) - 1
+
+            # Precompute full LFSR sequence (period = 2^order - 1)
+            lfsr = seed
+            sequence = np.empty(period, dtype=np.float64)
+            for i in range(period):
+                sequence[i] = high if (lfsr & 1) else low
+                feedback = 0
+                for p in taps:
+                    feedback ^= (lfsr >> p) & 1
+                lfsr = ((lfsr << 1) & mask) | feedback
+
+            def exec_prbs(t, y, dy_vec, signals):
+                bit_index = int(t / bit_time) % period
+                signals[b_name] = sequence[bit_index]
+            return exec_prbs
 
         elif fn == 'Integrator':
             start, size = state_map[b_name]
@@ -1076,6 +1117,260 @@ class SystemCompiler:
                 dy_vec[_start:_start + n_states] = dT_dt.flatten()
             return exec_heat2d
 
+        elif fn == 'Waveequation2D':
+            start, size = state_map[b_name]
+            c_wave = float(params.get('c', 1.0))
+            damping = float(params.get('damping', 0.0))
+            Lx = float(params.get('Lx', 1.0))
+            Ly = float(params.get('Ly', 1.0))
+            Nx = int(params.get('Nx', 20))
+            Ny = int(params.get('Ny', 20))
+            dx = Lx / (Nx - 1)
+            dy = Ly / (Ny - 1)
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Dirichlet')
+            bc_type_bottom = params.get('bc_type_bottom', 'Dirichlet')
+            bc_type_top = params.get('bc_type_top', 'Dirichlet')
+
+            f_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_l_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_r_key = input_sources[2] if len(input_sources) > 2 else None
+            bc_b_key = input_sources[3] if len(input_sources) > 3 else None
+            bc_t_key = input_sources[4] if len(input_sources) > 4 else None
+
+            def exec_wave2d(t, y, dy_vec, signals,
+                            _start=start, _Nx=Nx, _Ny=Ny, _c_sq=c_wave*c_wave,
+                            _damping=damping, _dx=dx, _dy=dy,
+                            _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                            _bc_type_bottom=bc_type_bottom, _bc_type_top=bc_type_top,
+                            _f_key=f_key, _bc_l_key=bc_l_key, _bc_r_key=bc_r_key,
+                            _bc_b_key=bc_b_key, _bc_t_key=bc_t_key):
+                N = _Nx * _Ny
+                u_flat = y[_start:_start + N]
+                v_flat = y[_start + N:_start + 2*N]
+                u = u_flat.reshape((_Ny, _Nx))
+                v = v_flat.reshape((_Ny, _Nx))
+
+                force = signals.get(_f_key, 0.0) if _f_key else 0.0
+                bc_left = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+                bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
+                bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
+
+                if isinstance(force, np.ndarray) and force.size == 1:
+                    force = float(force.flat[0])
+
+                du_dt = v.copy()
+                dv_dt = np.zeros((_Ny, _Nx))
+                dx_sq = _dx * _dx
+                dy_sq = _dy * _dy
+                penalty = 1000.0
+
+                # Interior: 5-point stencil
+                for j in range(1, _Ny - 1):
+                    for i in range(1, _Nx - 1):
+                        d2udx2 = (u[j, i+1] - 2*u[j, i] + u[j, i-1]) / dx_sq
+                        d2udy2 = (u[j+1, i] - 2*u[j, i] + u[j-1, i]) / dy_sq
+                        f = force[j, i] if isinstance(force, np.ndarray) else force
+                        dv_dt[j, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, i] + f
+
+                # Left boundary (i=0)
+                if _bc_type_left == 'Dirichlet':
+                    for j in range(_Ny):
+                        du_dt[j, 0] = penalty * (bc_left - u[j, 0])
+                        dv_dt[j, 0] = 0.0
+                else:
+                    for j in range(1, _Ny - 1):
+                        d2udx2 = (2*u[j, 1] - 2*u[j, 0] - 2*_dx*bc_left) / dx_sq
+                        d2udy2 = (u[j+1, 0] - 2*u[j, 0] + u[j-1, 0]) / dy_sq
+                        f = force[j, 0] if isinstance(force, np.ndarray) else force
+                        dv_dt[j, 0] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, 0] + f
+
+                # Right boundary (i=Nx-1)
+                if _bc_type_right == 'Dirichlet':
+                    for j in range(_Ny):
+                        du_dt[j, _Nx-1] = penalty * (bc_right - u[j, _Nx-1])
+                        dv_dt[j, _Nx-1] = 0.0
+                else:
+                    for j in range(1, _Ny - 1):
+                        d2udx2 = (2*u[j, _Nx-2] - 2*u[j, _Nx-1] + 2*_dx*bc_right) / dx_sq
+                        d2udy2 = (u[j+1, _Nx-1] - 2*u[j, _Nx-1] + u[j-1, _Nx-1]) / dy_sq
+                        f = force[j, _Nx-1] if isinstance(force, np.ndarray) else force
+                        dv_dt[j, _Nx-1] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, _Nx-1] + f
+
+                # Bottom boundary (j=0)
+                if _bc_type_bottom == 'Dirichlet':
+                    for i in range(_Nx):
+                        du_dt[0, i] = penalty * (bc_bottom - u[0, i])
+                        dv_dt[0, i] = 0.0
+                else:
+                    for i in range(1, _Nx - 1):
+                        d2udx2 = (u[0, i+1] - 2*u[0, i] + u[0, i-1]) / dx_sq
+                        d2udy2 = (2*u[1, i] - 2*u[0, i] - 2*_dy*bc_bottom) / dy_sq
+                        f = force[0, i] if isinstance(force, np.ndarray) else force
+                        dv_dt[0, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[0, i] + f
+
+                # Top boundary (j=Ny-1)
+                if _bc_type_top == 'Dirichlet':
+                    for i in range(_Nx):
+                        du_dt[_Ny-1, i] = penalty * (bc_top - u[_Ny-1, i])
+                        dv_dt[_Ny-1, i] = 0.0
+                else:
+                    for i in range(1, _Nx - 1):
+                        d2udx2 = (u[_Ny-1, i+1] - 2*u[_Ny-1, i] + u[_Ny-1, i-1]) / dx_sq
+                        d2udy2 = (2*u[_Ny-2, i] - 2*u[_Ny-1, i] + 2*_dy*bc_top) / dy_sq
+                        f = force[_Ny-1, i] if isinstance(force, np.ndarray) else force
+                        dv_dt[_Ny-1, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[_Ny-1, i] + f
+
+                signals[b_name] = u
+                signals[b_name + '_v'] = v
+                # Energy: 0.5 * sum(v^2) * dA + 0.5 * c^2 * sum(|grad u|^2) * dA
+                dA = _dx * _dy
+                du_dx_arr = np.gradient(u, _dx, axis=1)
+                du_dy_arr = np.gradient(u, _dy, axis=0)
+                energy = 0.5 * np.sum(v**2) * dA + 0.5 * _c_sq * np.sum(du_dx_arr**2 + du_dy_arr**2) * dA
+                signals[b_name + '_energy'] = float(energy)
+
+                dy_vec[_start:_start + N] = du_dt.flatten()
+                dy_vec[_start + N:_start + 2*N] = dv_dt.flatten()
+            return exec_wave2d
+
+        elif fn == 'Advectionequation2D':
+            start, size = state_map[b_name]
+            vx = float(params.get('vx', 1.0))
+            vy = float(params.get('vy', 0.0))
+            D_coeff = float(params.get('D', 0.0))
+            Lx = float(params.get('Lx', 1.0))
+            Ly = float(params.get('Ly', 1.0))
+            Nx = int(params.get('Nx', 30))
+            Ny = int(params.get('Ny', 30))
+            dx = Lx / (Nx - 1)
+            dy = Ly / (Ny - 1)
+            bc_type_left = params.get('bc_type_left', 'Dirichlet')
+            bc_type_right = params.get('bc_type_right', 'Outflow')
+            bc_type_bottom = params.get('bc_type_bottom', 'Dirichlet')
+            bc_type_top = params.get('bc_type_top', 'Dirichlet')
+
+            s_key = input_sources[0] if len(input_sources) > 0 else None
+            bc_l_key = input_sources[1] if len(input_sources) > 1 else None
+            bc_r_key = input_sources[2] if len(input_sources) > 2 else None
+            bc_b_key = input_sources[3] if len(input_sources) > 3 else None
+            bc_t_key = input_sources[4] if len(input_sources) > 4 else None
+
+            def exec_advection2d(t, y, dy_vec, signals,
+                                 _start=start, _Nx=Nx, _Ny=Ny, _vx=vx, _vy=vy,
+                                 _D=D_coeff, _dx=dx, _dy=dy,
+                                 _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
+                                 _bc_type_bottom=bc_type_bottom, _bc_type_top=bc_type_top,
+                                 _s_key=s_key, _bc_l_key=bc_l_key, _bc_r_key=bc_r_key,
+                                 _bc_b_key=bc_b_key, _bc_t_key=bc_t_key):
+                n_states = _Nx * _Ny
+                c_flat = y[_start:_start + n_states]
+                c = c_flat.reshape((_Ny, _Nx))
+
+                source = signals.get(_s_key, 0.0) if _s_key else 0.0
+                bc_left = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
+                bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+                bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
+                bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
+
+                if isinstance(source, np.ndarray) and source.size == 1:
+                    source = float(source.flat[0])
+
+                dc_dt = np.zeros((_Ny, _Nx))
+                dx_sq = _dx * _dx
+                dy_sq = _dy * _dy
+                penalty = 1000.0
+
+                # Interior: upwind advection + central diffusion
+                for j in range(1, _Ny - 1):
+                    for i in range(1, _Nx - 1):
+                        if _vx >= 0:
+                            dc_dx = (c[j, i] - c[j, i-1]) / _dx
+                        else:
+                            dc_dx = (c[j, i+1] - c[j, i]) / _dx
+                        if _vy >= 0:
+                            dc_dy = (c[j, i] - c[j-1, i]) / _dy
+                        else:
+                            dc_dy = (c[j+1, i] - c[j, i]) / _dy
+
+                        d2c_dx2 = (c[j, i+1] - 2*c[j, i] + c[j, i-1]) / dx_sq
+                        d2c_dy2 = (c[j+1, i] - 2*c[j, i] + c[j-1, i]) / dy_sq
+
+                        S = source[j, i] if isinstance(source, np.ndarray) else source
+                        dc_dt[j, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+
+                # Left boundary (i=0)
+                if _bc_type_left == 'Dirichlet':
+                    for j in range(_Ny):
+                        dc_dt[j, 0] = penalty * (bc_left - c[j, 0])
+                elif _bc_type_left == 'Neumann':
+                    for j in range(1, _Ny - 1):
+                        dc_dx = bc_left if _vx >= 0 else (c[j, 1] - c[j, 0]) / _dx
+                        dc_dy = (c[j, 0] - c[j-1, 0]) / _dy if _vy >= 0 else (c[j+1, 0] - c[j, 0]) / _dy
+                        d2c_dx2 = (c[j, 1] - c[j, 0]) / dx_sq * 2
+                        d2c_dy2 = (c[j+1, 0] - 2*c[j, 0] + c[j-1, 0]) / dy_sq
+                        S = source[j, 0] if isinstance(source, np.ndarray) else source
+                        dc_dt[j, 0] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+                else:  # Outflow
+                    for j in range(_Ny):
+                        dc_dt[j, 0] = dc_dt[j, 1] if _Nx > 1 else 0.0
+
+                # Right boundary (i=Nx-1)
+                if _bc_type_right == 'Dirichlet':
+                    for j in range(_Ny):
+                        dc_dt[j, _Nx-1] = penalty * (bc_right - c[j, _Nx-1])
+                elif _bc_type_right == 'Neumann':
+                    for j in range(1, _Ny - 1):
+                        dc_dx = (c[j, _Nx-1] - c[j, _Nx-2]) / _dx if _vx >= 0 else bc_right
+                        dc_dy = (c[j, _Nx-1] - c[j-1, _Nx-1]) / _dy if _vy >= 0 else (c[j+1, _Nx-1] - c[j, _Nx-1]) / _dy
+                        d2c_dx2 = (c[j, _Nx-2] - c[j, _Nx-1]) / dx_sq * 2
+                        d2c_dy2 = (c[j+1, _Nx-1] - 2*c[j, _Nx-1] + c[j-1, _Nx-1]) / dy_sq
+                        S = source[j, _Nx-1] if isinstance(source, np.ndarray) else source
+                        dc_dt[j, _Nx-1] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+                else:  # Outflow
+                    for j in range(_Ny):
+                        dc_dt[j, _Nx-1] = dc_dt[j, _Nx-2] if _Nx > 1 else 0.0
+
+                # Bottom boundary (j=0)
+                if _bc_type_bottom == 'Dirichlet':
+                    for i in range(_Nx):
+                        dc_dt[0, i] = penalty * (bc_bottom - c[0, i])
+                elif _bc_type_bottom == 'Neumann':
+                    for i in range(1, _Nx - 1):
+                        dc_dx = (c[0, i] - c[0, i-1]) / _dx if _vx >= 0 else (c[0, i+1] - c[0, i]) / _dx
+                        dc_dy = bc_bottom if _vy >= 0 else (c[1, i] - c[0, i]) / _dy
+                        d2c_dx2 = (c[0, i+1] - 2*c[0, i] + c[0, i-1]) / dx_sq
+                        d2c_dy2 = (c[1, i] - c[0, i]) / dy_sq * 2
+                        S = source[0, i] if isinstance(source, np.ndarray) else source
+                        dc_dt[0, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+                else:  # Outflow
+                    for i in range(_Nx):
+                        dc_dt[0, i] = dc_dt[1, i] if _Ny > 1 else 0.0
+
+                # Top boundary (j=Ny-1)
+                if _bc_type_top == 'Dirichlet':
+                    for i in range(_Nx):
+                        dc_dt[_Ny-1, i] = penalty * (bc_top - c[_Ny-1, i])
+                elif _bc_type_top == 'Neumann':
+                    for i in range(1, _Nx - 1):
+                        dc_dx = (c[_Ny-1, i] - c[_Ny-1, i-1]) / _dx if _vx >= 0 else (c[_Ny-1, i+1] - c[_Ny-1, i]) / _dx
+                        dc_dy = (c[_Ny-1, i] - c[_Ny-2, i]) / _dy if _vy >= 0 else bc_top
+                        d2c_dx2 = (c[_Ny-1, i+1] - 2*c[_Ny-1, i] + c[_Ny-1, i-1]) / dx_sq
+                        d2c_dy2 = (c[_Ny-2, i] - c[_Ny-1, i]) / dy_sq * 2
+                        S = source[_Ny-1, i] if isinstance(source, np.ndarray) else source
+                        dc_dt[_Ny-1, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+                else:  # Outflow
+                    for i in range(_Nx):
+                        dc_dt[_Ny-1, i] = dc_dt[_Ny-2, i] if _Ny > 1 else 0.0
+
+                signals[b_name] = c
+                signals[b_name + '_avg'] = np.mean(c)
+                signals[b_name + '_max'] = np.max(c)
+
+                dy_vec[_start:_start + n_states] = dc_dt.flatten()
+            return exec_advection2d
+
         # ==================== FIELD PROCESSING BLOCKS ====================
 
         elif fn == 'Fieldprobe':
@@ -1553,6 +1848,34 @@ class SystemCompiler:
 
                 ic_flat = T0.flatten()
                 y0_list.extend(ic_flat)
+                current_state_idx += n_states
+
+            elif fn == 'Waveequation2D':
+                # WaveEquation2D has 2*Nx*Ny states (displacement u + velocity v)
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                Nx = int(pde_params.get('Nx', 20))
+                Ny = int(pde_params.get('Ny', 20))
+                n_states = 2 * Nx * Ny
+                state_map[b_name] = (current_state_idx, n_states)
+
+                # Use block's own initial state method
+                from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+                ic = WaveEquation2DBlock().get_initial_state(pde_params)
+                y0_list.extend(ic)
+                current_state_idx += n_states
+
+            elif fn == 'Advectionequation2D':
+                # AdvectionEquation2D has Nx*Ny states (concentration field)
+                pde_params = getattr(block, 'exec_params', None) or block.params
+                Nx = int(pde_params.get('Nx', 30))
+                Ny = int(pde_params.get('Ny', 30))
+                n_states = Nx * Ny
+                state_map[b_name] = (current_state_idx, n_states)
+
+                # Use block's own initial state method
+                from blocks.pde.advection_equation_2d import AdvectionEquation2DBlock
+                ic = AdvectionEquation2DBlock().get_initial_state(pde_params)
+                y0_list.extend(ic)
                 current_state_idx += n_states
 
         y0 = np.array(y0_list, dtype=float)

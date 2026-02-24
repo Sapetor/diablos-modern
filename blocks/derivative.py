@@ -9,9 +9,6 @@ class DerivativeBlock(BaseBlock):
 
     def __init__(self):
         super().__init__()
-        self.t_old = 0
-        self.i_old = 0
-        self.didt_old = 0
 
     @property
     def block_name(self):
@@ -83,22 +80,22 @@ class DerivativeBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
-            self.t_old = time
-            self.i_old = np.array(inputs[0], dtype=float)
-            self.didt_old = np.zeros_like(self.i_old)
+            params['_t_old_'] = time
+            params['_i_old_'] = np.array(inputs[0], dtype=float)
+            params['_didt_old_'] = np.zeros_like(params['_i_old_'])
             params['_init_start_'] = False
-            return {0: self.didt_old}
-        
-        if time == self.t_old:
-            return {0: np.array(self.didt_old)}
-        
-        dt = time - self.t_old
-        di = np.array(inputs[0], dtype=float) - self.i_old
-        didt = di/dt
-        
-        self.t_old = time
-        self.i_old = np.array(inputs[0], dtype=float)
-        self.didt_old = didt
-        
+            return {0: params['_didt_old_'].copy()}
+
+        if time == params['_t_old_']:
+            return {0: np.array(params['_didt_old_'])}
+
+        dt = time - params['_t_old_']
+        di = np.array(inputs[0], dtype=float) - params['_i_old_']
+        didt = di / dt
+
+        params['_t_old_'] = time
+        params['_i_old_'] = np.array(inputs[0], dtype=float)
+        params['_didt_old_'] = didt
+
         return {0: np.array(didt)}
 
