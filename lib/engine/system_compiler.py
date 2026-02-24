@@ -32,7 +32,7 @@ class SystemCompiler:
             'TranFn',
             'StateSpace',
             'Mux',
-            'Demux',
+            # 'Demux',  # No compiled executor yet — falls back to interpreter
             'Scope',
             'SgProd', 'SigProduct',
             'Saturation',

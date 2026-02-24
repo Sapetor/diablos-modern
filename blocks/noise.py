@@ -70,5 +70,5 @@ class NoiseBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         sigma = float(params['sigma'])
         mu = float(params['mu'])
-        return {0: np.array(sigma ** 2 * np.random.randn() + mu, dtype=float)}
+        return {0: np.array(sigma * np.random.randn() + mu, dtype=float)}
 

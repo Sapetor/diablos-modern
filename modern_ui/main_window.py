@@ -558,7 +558,6 @@ class ModernDiaBloSWindow(QMainWindow):
         """Setup signal connections."""
         # Theme change updates
         theme_manager.theme_changed.connect(self.on_theme_changed)
-        self.property_editor.property_changed.connect(self._on_property_changed)
     def paintEvent(self, event):
         """Paint event - delegated to canvas widget."""
         pass
