@@ -1366,7 +1366,7 @@ class SimulationEngine:
                              if isinstance(initial, str):
                                  try:
                                      initial = eval(initial)
-                                 except:
+                                 except Exception:
                                      initial = [1.0]
                              # Preserve full vector state, not just first element
                              block.params['_replay_state_'] = np.atleast_1d(initial).copy()

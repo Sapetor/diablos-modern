@@ -179,7 +179,8 @@ class DiffusionReaction1DBlock(BaseBlock):
 
         # Initialization
         if params.get('_init_start_', True):
-            N = int(params.get('N', 30))
+            N = max(2, int(params.get('N', 30)))
+            params['N'] = N
             L = float(params.get('L', 1.0))
             params['c'] = self.get_initial_conditions(params)
             params['_init_start_'] = False

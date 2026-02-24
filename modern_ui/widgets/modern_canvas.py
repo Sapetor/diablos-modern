@@ -63,8 +63,6 @@ class ModernCanvas(QWidget):
         
         # State management - Unified state object
         self.canvas_state = CanvasState()
-        self.state = State.IDLE
-        self.interaction_manager = InteractionManager(self)
 
         # Connection routing default
         self.default_routing_mode = "bezier"
@@ -81,10 +79,10 @@ class ModernCanvas(QWidget):
         self.performance = PerformanceHelper()
         self.validator = ValidationHelper()
         self.safety = SafetyChecks()
-        
+
         # State
         self.state = State.IDLE
-        
+
         # Managers
         self.interaction_manager = InteractionManager(self)
         self.history_manager = HistoryManager(self)

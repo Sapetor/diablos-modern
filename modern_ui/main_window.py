@@ -271,17 +271,6 @@ class ModernDiaBloSWindow(QMainWindow):
             if hasattr(self, 'minimap_action'):
                 self.minimap_action.setChecked(visible)
 
-    def show_command_palette(self):
-        # Placeholder or existing?
-        pass
-
-
-        # Help menu
-        help_menu = menubar.addMenu("&Help")
-        help_menu.addAction("&Keyboard Shortcuts", self.show_keyboard_shortcuts)
-        help_menu.addSeparator()
-        help_menu.addAction("&About DiaBloS", self.show_about)
-
     def _set_scaling(self, factor):
         import json
         config_path = 'config/default_config.json'

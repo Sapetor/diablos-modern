@@ -482,6 +482,9 @@ class DSim:
 
             logger.debug("Initializing execution...")
 
+            # Sync simulation parameters to engine before initialization
+            self.engine.update_sim_params(self.sim_time, self.sim_dt)
+
             # Initialize engine with ROOT context (will trigger flattening)
             # Pass lines explicitly!
             _t2 = time.time()

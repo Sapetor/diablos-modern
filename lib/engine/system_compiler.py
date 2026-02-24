@@ -178,7 +178,7 @@ class SystemCompiler:
         # --- Block Specific Closures ---
         
         if fn == 'Gain':
-            gain = float(block.params.get('gain', 1.0))
+            gain = float(params.get('gain', 1.0))
             # Optimization: If only 1 input
             src = input_sources[0] if input_sources else None
             
@@ -188,7 +188,7 @@ class SystemCompiler:
             return exec_gain
 
         elif fn == 'Sum':
-            signs = block.params.get('sign', block.params.get('inputs', '++'))
+            signs = params.get('sign', params.get('inputs', '++'))
             # Bake signs and sources
             ops = []
             for i, char in enumerate(signs):
@@ -204,7 +204,7 @@ class SystemCompiler:
             return exec_sum
             
         elif fn == 'Constant':
-            raw_val = block.params.get('value', 0.0)
+            raw_val = params.get('value', 0.0)
             # Handle both scalar and array values
             if isinstance(raw_val, (list, tuple)):
                 val = np.atleast_1d(raw_val)
@@ -217,21 +217,21 @@ class SystemCompiler:
             return exec_constant
             
         elif fn == 'Sine':
-            amp = float(block.params.get('amplitude', 1.0))
-            freq = float(block.params.get('frequency', block.params.get('omega', 1.0)))
-            phase = float(block.params.get('phase', block.params.get('init_angle', 0.0)))
-            bias = float(block.params.get('bias', 0.0))
+            amp = float(params.get('amplitude', 1.0))
+            freq = float(params.get('frequency', params.get('omega', 1.0)))
+            phase = float(params.get('phase', params.get('init_angle', 0.0)))
+            bias = float(params.get('bias', 0.0))
 
             def exec_sine(t, y, dy_vec, signals):
                 signals[b_name] = amp * np.sin(freq * t + phase) + bias
             return exec_sine
 
         elif fn == 'Wavegenerator':
-            waveform = block.params.get('waveform', 'Sine')
-            amp = float(block.params.get('amplitude', 1.0))
-            freq = float(block.params.get('frequency', 1.0))
-            phase = float(block.params.get('phase', 0.0))
-            bias = float(block.params.get('bias', 0.0))
+            waveform = params.get('waveform', 'Sine')
+            amp = float(params.get('amplitude', 1.0))
+            freq = float(params.get('frequency', 1.0))
+            phase = float(params.get('phase', 0.0))
+            bias = float(params.get('bias', 0.0))
 
             if waveform == 'Sine':
                 def exec_wavegen_sine(t, y, dy_vec, signals):
@@ -261,19 +261,19 @@ class SystemCompiler:
                 return exec_wavegen_default
 
         elif fn == 'Step':
-            step_t = float(block.params.get('delay', 0.0))
-            val = float(block.params.get('value', 1.0))
+            step_t = float(params.get('delay', 0.0))
+            val = float(params.get('value', 1.0))
 
             def exec_step(t, y, dy_vec, signals):
                 signals[b_name] = val if t >= step_t else 0.0
             return exec_step
 
         elif fn == 'Prbs':
-            high = float(block.params.get('high', 1.0))
-            low = float(block.params.get('low', 0.0))
-            bit_time = float(block.params.get('bit_time', 0.1))
-            order = int(block.params.get('order', 7))
-            seed = int(block.params.get('seed', 1)) & ((1 << order) - 1)
+            high = float(params.get('high', 1.0))
+            low = float(params.get('low', 0.0))
+            bit_time = float(params.get('bit_time', 0.1))
+            order = int(params.get('order', 7))
+            seed = int(params.get('seed', 1)) & ((1 << order) - 1)
             if seed == 0:
                 seed = 1
 
@@ -384,12 +384,12 @@ class SystemCompiler:
              sp_src = input_sources[0] if len(input_sources)>0 else None
              meas_src = input_sources[1] if len(input_sources)>1 else None
              
-             Kp = float(block.params.get('Kp', 1.0))
-             Ki = float(block.params.get('Ki', 0.0))
-             Kd = float(block.params.get('Kd', 0.0))
-             N = float(block.params.get('N', 20.0))
-             u_min = float(block.params.get('u_min', -np.inf))
-             u_max = float(block.params.get('u_max', np.inf))
+             Kp = float(params.get('Kp', 1.0))
+             Ki = float(params.get('Ki', 0.0))
+             Kd = float(params.get('Kd', 0.0))
+             N = float(params.get('N', 20.0))
+             u_min = float(params.get('u_min', -np.inf))
+             u_max = float(params.get('u_max', np.inf))
 
              def exec_pid(t, y, dy_vec, signals):
                  sp = signals.get(sp_src, 0.0) if sp_src else 0.0
@@ -420,8 +420,8 @@ class SystemCompiler:
 
         elif fn == 'Saturation':
             src = input_sources[0] if input_sources else None
-            lower = float(block.params.get('min', -np.inf))
-            upper = float(block.params.get('max', np.inf))
+            lower = float(params.get('min', -np.inf))
+            upper = float(params.get('max', np.inf))
             def exec_sat(t, y, dy_vec, signals):
                 val = signals.get(src, 0.0) if src else 0.0
                 signals[b_name] = np.clip(val, lower, upper)
@@ -429,8 +429,8 @@ class SystemCompiler:
 
         elif fn == 'Deadband':
             src = input_sources[0] if input_sources else None
-            start_db = float(block.params.get('start', -0.5))
-            end_db = float(block.params.get('end', 0.5))
+            start_db = float(params.get('start', -0.5))
+            end_db = float(params.get('end', 0.5))
             def exec_db(t, y, dy_vec, signals):
                 val = signals.get(src, 0.0) if src else 0.0
                 if val < start_db: out = val - start_db
@@ -441,8 +441,8 @@ class SystemCompiler:
             
         elif fn == 'Exponential':
             src = input_sources[0] if input_sources else None
-            a = float(block.params.get('a', 1.0))
-            b_coef = float(block.params.get('b', 1.0)) # avoid local var 'b'
+            a = float(params.get('a', 1.0))
+            b_coef = float(params.get('b', 1.0)) # avoid local var 'b'
             def exec_exp(t, y, dy_vec, signals):
                 x_in = signals.get(src, 0.0) if src else 0.0
                 signals[b_name] = a * np.exp(b_coef * x_in)
@@ -470,9 +470,9 @@ class SystemCompiler:
         
         elif fn == 'Switch':
             ctrl_src = input_sources[0] if input_sources else None
-            mode = block.params.get('mode', 'threshold')
-            n_inputs = int(block.params.get('n_inputs', 2))
-            threshold = float(block.params.get('threshold', 0.0))
+            mode = params.get('mode', 'threshold')
+            n_inputs = int(params.get('n_inputs', 2))
+            threshold = float(params.get('threshold', 0.0))
             
             def exec_switch(t, y, dy_vec, signals):
                 ctrl = signals.get(ctrl_src, 0.0) if ctrl_src else 0.0
@@ -513,7 +513,7 @@ class SystemCompiler:
         elif fn in ('Product', 'product'):
              # Product block with configurable * and / operations
              baked_srcs = [s for s in input_sources]
-             ops = block.params.get('ops', '**')
+             ops = params.get('ops', '**')
              def exec_product(t, y, dy_vec, signals, _ops=ops, _srcs=baked_srcs):
                  res = 1.0
                  for i, src in enumerate(_srcs):
@@ -530,11 +530,11 @@ class SystemCompiler:
              # State variable for discrete optimization iterations
              # Uses closure-based state storage instead of ODE integration
              src = input_sources[0] if input_sources else None
-             initial = block.params.get('initial_value', [1.0])
+             initial = params.get('initial_value', [1.0])
              if isinstance(initial, str):
                  try:
                      initial = eval(initial)
-                 except:
+                 except Exception:
                      initial = [1.0]
              # Preserve full vector state, not just first element
              initial = np.atleast_1d(initial).copy()
@@ -562,8 +562,8 @@ class SystemCompiler:
              return exec_abs
 
         elif fn == 'Ramp':
-            slope = float(block.params.get('slope', 1.0))
-            delay = float(block.params.get('delay', 0.0))
+            slope = float(params.get('slope', 1.0))
+            delay = float(params.get('delay', 0.0))
             def exec_ramp(t, y, dy_vec, signals):
                 if slope > 0:
                    val = max(0.0, slope * (t - delay))
@@ -583,8 +583,8 @@ class SystemCompiler:
         elif fn == 'RateLimiter':
              start, size = state_map[b_name]
              src = input_sources[0] if input_sources else None
-             rising = float(block.params.get('rising', 1.0))
-             falling = float(block.params.get('falling', -1.0))
+             rising = float(params.get('rising', 1.0))
+             falling = float(params.get('falling', -1.0))
              # Stiffness gain
              K = 1000.0
              
@@ -603,8 +603,8 @@ class SystemCompiler:
              return exec_ratelimiter
 
         elif fn == 'Noise':
-            mu = float(block.params.get('mu', 0.0))
-            sigma = float(block.params.get('sigma', 1.0))
+            mu = float(params.get('mu', 0.0))
+            sigma = float(params.get('sigma', 1.0))
 
             def exec_noise(t, y, dy_vec, signals):
                 signals[b_name] = mu + sigma * np.random.randn()
@@ -613,7 +613,7 @@ class SystemCompiler:
         elif fn == 'Mathfunction':
             src = input_sources[0] if input_sources else None
             # Check both 'function' and 'expression' keys for backward compatibility
-            func_raw = block.params.get('function', block.params.get('expression', 'sin'))
+            func_raw = params.get('function', params.get('expression', 'sin'))
             func = str(func_raw).lower()
 
             # Pre-select the function to avoid string comparison at runtime
@@ -650,7 +650,7 @@ class SystemCompiler:
             elif func == 'floor':
                 np_func = np.floor
             elif func == 'reciprocal':
-                np_func = lambda x: 1.0 / x if x != 0 else 0.0
+                np_func = lambda x: np.where(x != 0, 1.0 / np.where(x != 0, x, 1.0), 0.0) if isinstance(x, np.ndarray) else (1.0 / x if x != 0 else 0.0)
             elif func == 'cube':
                 np_func = lambda x: x * x * x
             else:
