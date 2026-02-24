@@ -86,7 +86,10 @@ class PRBSBlock(BaseBlock):
         if order < 2 or order > 24:
             return {"E": True, "error": "order must be between 2 and 24"}
 
-        # Primitive tap sets for maximal-length LFSR (Galois form)
+        # Primitive polynomial taps for maximal-length LFSR (left-shift Fibonacci).
+        # Taps [t0, t1, ...] with max(t) = n-1 produce characteristic polynomial:
+        #   p(x) = x^n + sum_j x^{n-1-t_j}
+        # All entries verified with Mathematica's PrimitivePolynomialQ[].
         primitive_taps = {
             2: [1, 0],
             3: [2, 0],
@@ -100,7 +103,7 @@ class PRBSBlock(BaseBlock):
             11: [10, 8],
             12: [11, 10, 9, 3],
             13: [12, 11, 8, 6],
-            14: [13, 11, 9, 8],
+            14: [13, 12, 10, 8],
             15: [14, 13],
             16: [15, 13, 12, 10],
             17: [16, 13],

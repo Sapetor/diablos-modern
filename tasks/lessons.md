@@ -302,6 +302,45 @@ This mirrors the mathematical structure: sources provide inputs, algebraic block
 
 ---
 
+### LaTeX Character Escaping: Single-Pass Required (February 2026)
+
+**Problem**: `_escape_latex()` in `tikz_exporter.py` replaced characters sequentially. Backslash was replaced first → `\textbackslash{}`. Then `{` and `}` replacements corrupted the braces from step 1, producing `\textbackslash\{\}`.
+
+**Fix**: Single-pass `re.sub` with a mapping dict:
+```python
+_ESCAPE_MAP = { '\\': r'\textbackslash{}', '{': r'\{', '}': r'\}', ... }
+_ESCAPE_RE = re.compile(r'[\\{}_&%#~^]')
+
+def _escape_latex(text):
+    return _ESCAPE_RE.sub(lambda m: _ESCAPE_MAP[m.group()], text)
+```
+
+**Lesson**: When replacing characters in text where replacements contain characters that are also being replaced, ALWAYS use a single-pass approach (regex with mapping dict, or `str.translate()`). Sequential replacement is inherently broken for this pattern.
+
+---
+
+### TikZ Anchors Rotate With Shapes (February 2026)
+
+**Problem**: Gain block port anchors were reversed when the block was flipped (`shape border rotate=180`). Code had a special branch swapping `left side` ↔ `apex` for flipped blocks.
+
+**Root Cause**: In TikZ, when `shape border rotate=180` is applied, the anchors rotate WITH the shape. So `left side` is still the input side and `apex` is still the output side — no swap needed.
+
+**Fix**: Removed the flipped branch entirely.
+
+**Lesson**: TikZ shape anchors are shape-relative, not page-relative. When using `shape border rotate`, anchor names stay consistent with the shape orientation.
+
+---
+
+### MCP Server pip Dependencies vs System Tools (February 2026)
+
+**Problem**: TexMCP's `requirements.txt` included `uv>=0.20.0`. `pip install` failed because `uv` is a Rust-based standalone tool, not a Python package.
+
+**Fix**: Installed only runtime dependencies (`fastmcp`, `jinja2`, `python-dotenv`), skipping `uv` and optional deps (`openai`, `pytest`).
+
+**Lesson**: When installing MCP servers, review `requirements.txt` before blindly running `pip install -r`. Some packages list build/dev tools (uv, meson, cmake) that are system-level tools, not pip packages. Install only runtime dependencies.
+
+---
+
 ### Batch Simulation Doesn't Trigger Timer-Based State Detection (February 2026)
 
 **Problem**: Live parameter tuning panel appeared but sliders had no effect — plots never updated when dragging sliders.
@@ -321,4 +360,48 @@ if not self.canvas.is_simulation_running():
 ```
 
 **Lesson**: When using QTimer-based state detection, synchronous operations that block the main thread will prevent the timer from firing. Always provide an explicit notification path for synchronous operations alongside any timer-based detection.
+
+---
+
+### Interpreter data_recieved Guard Blocks Memory Block Updates (February 2026)
+
+**Problem**: PRBS → TranFn → Scope produced constant 0 output.
+
+**Root Cause**: `propagate_outputs()` in `simulation_engine.py` had a guard:
+```python
+if tuple_child['dstport'] not in mblock.input_queue:
+    mblock.data_recieved += 1
+```
+Memory blocks preserve their `input_queue` across time steps (for feedback), so the port was always present after step 1. `data_recieved` was never incremented, causing memory blocks to fail the `has_enough_inputs` check in `execution_loop`. They never executed with full state update — outputting zeros forever.
+
+A compounding issue: the initialization path (`initialize_execution` Loop 2) used a **different** readiness mechanism (`input_queue` presence) that always worked, masking the bug on step 1.
+
+**Fixes**:
+1. Removed the guard — always increment `data_recieved` in `propagate_outputs()`
+2. Unified readiness checks: changed init Loop 2 to use `data_recieved >= required_ports` like the runtime loop
+3. Removed dead `execute_and_propagate()` helper that had an inconsistent propagation guard
+
+**Lesson**: Never use two different mechanisms for the same semantic check (readiness). The init path used `input_queue` presence while runtime used `data_recieved` counter — this divergence hid the bug for months. When state is preserved across cycles (`input_queue` for memory blocks), any guard that checks "is this new?" will break on the second cycle.
+
+---
+
+### Block State Stored on self Instead of params (February 2026)
+
+**Problem**: Derivative block stored `t_old`, `i_old`, `didt_old` on `self` (the instance), unlike every other stateful block which uses `params['_xyz_']`.
+
+**Root Cause**: Historical pattern from early development. The `_init_start_` flag was correctly in `params`, but the actual state was on the instance.
+
+**Fix**: Moved state to `params['_t_old_']`, `params['_i_old_']`, `params['_didt_old_']`.
+
+**Lesson**: All block state that persists across time steps must be stored in `params` (or `exec_params`), never on `self`. The simulation engine's `reset_memblocks()` only resets `_init_start_` in params/exec_params — instance attributes survive resets invisibly.
+
+---
+
+### LFSR Tap Convention: Left-Shift Fibonacci (February 2026)
+
+**Problem**: Initial investigation of the PRBS block's tap table incorrectly assumed taps mapped directly to polynomial coefficients. 19 of 23 entries appeared broken.
+
+**Root Cause**: The code uses a **left-shifting** Fibonacci LFSR where `feedback = XOR(bits at tap positions)` and the new bit is injected at the LSB. For this convention, taps `[t0, t1, ...]` with `max(t) = n-1` produce characteristic polynomial `p(x) = x^n + sum x^{n-1-t_j}`, NOT `p(x) = x^n + sum x^{t_j}`.
+
+**Lesson**: Always verify LFSR conventions empirically (simulate a few steps, check period) before rewriting a tap table. The mapping from taps to polynomial depends on shift direction (left vs right) and feedback injection point (LSB vs MSB). The tap must include position `n-1` for the polynomial to have degree `n`.
 
