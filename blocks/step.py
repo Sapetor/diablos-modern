@@ -9,8 +9,6 @@ class StepBlock(BaseBlock):
 
     def __init__(self):
         super().__init__()
-        self.step_old = 0
-        self.change_old = False
 
     @property
     def block_name(self):
@@ -71,8 +69,8 @@ class StepBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
-            self.step_old = time
-            self.change_old = not params.get('pulse_start_up', True)
+            params['_step_old'] = time
+            params['_change_old'] = not params.get('pulse_start_up', True)
             params['_init_start_'] = False
 
         delay = float(params.get('delay', 0.0))
@@ -83,11 +81,11 @@ class StepBlock(BaseBlock):
         elif step_type == 'down':
             change = True if time > delay else False
         elif step_type == 'pulse':
-            if time - self.step_old >= delay:
-                self.step_old += delay
-                change = not self.change_old
+            if time - params['_step_old'] >= delay:
+                params['_step_old'] += delay
+                change = not params['_change_old']
             else:
-                change = self.change_old
+                change = params['_change_old']
         elif step_type == 'constant':
             change = False
         else:
@@ -96,8 +94,8 @@ class StepBlock(BaseBlock):
 
         value = params.get('value', 1.0)
         if change:
-            self.change_old = True
+            params['_change_old'] = True
             return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), 'E': False}
         else:
-            self.change_old = False
+            params['_change_old'] = False
             return {0: np.atleast_1d(np.array(value, dtype=float)), 'E': False}

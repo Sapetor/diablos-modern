@@ -65,6 +65,7 @@ Select the function via the block parameters."""
         func = str(func).lower()
         
         try:
+            u = np.asarray(u, dtype=float)
             if func == "sin":
                 return {0: np.sin(u)}
             elif func == "cos":
@@ -72,19 +73,19 @@ Select the function via the block parameters."""
             elif func == "tan":
                 return {0: np.tan(u)}
             elif func == "asin":
-                return {0: np.arcsin(u) if -1 <= u <= 1 else 0.0} # Safety or let it warn?
+                return {0: np.where(np.abs(u) <= 1, np.arcsin(np.clip(u, -1, 1)), 0.0)}
             elif func == "acos":
-                return {0: np.arccos(u) if -1 <= u <= 1 else 0.0}
+                return {0: np.where(np.abs(u) <= 1, np.arccos(np.clip(u, -1, 1)), 0.0)}
             elif func == "atan":
                 return {0: np.arctan(u)}
             elif func == "exp":
                 return {0: np.exp(u)}
             elif func == "log":
-                return {0: np.log(u) if u > 0 else 0.0}
+                return {0: np.where(u > 0, np.log(np.maximum(u, 1e-300)), 0.0)}
             elif func == "log10":
-                return {0: np.log10(u) if u > 0 else 0.0}
+                return {0: np.where(u > 0, np.log10(np.maximum(u, 1e-300)), 0.0)}
             elif func == "sqrt":
-                return {0: np.sqrt(u) if u >= 0 else 0.0}
+                return {0: np.where(u >= 0, np.sqrt(np.maximum(u, 0.0)), 0.0)}
             elif func == "square":
                 return {0: u * u}
             elif func == "sign":
@@ -96,7 +97,7 @@ Select the function via the block parameters."""
             elif func == "floor":
                 return {0: np.floor(u)}
             elif func == "reciprocal":
-                return {0: 1.0/u if u != 0 else 0.0}
+                return {0: np.where(u != 0, 1.0 / np.where(u != 0, u, 1.0), 0.0)}
             elif func == "cube":
                 return {0: u * u * u}
             
