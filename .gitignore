@@ -26,6 +26,7 @@ wheels/
 # PyInstaller
 *.manifest
 *.spec
+!diablos.spec
 
 # Installer logs
 pip-log.txt
@@ -86,3 +87,4 @@ saves/
 
 # Autosave files
 *_AUTOSAVE.dat
+config/.autosave.diablos

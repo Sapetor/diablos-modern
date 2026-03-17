@@ -20,10 +20,8 @@ def setup_logging(config_path: Optional[str] = None) -> None:
                     Defaults to 'config/logging.json' relative to project root.
     """
     if config_path is None:
-        # Find config relative to this file's location
-        lib_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(lib_dir)
-        config_path = os.path.join(project_root, 'config', 'logging.json')
+        from lib.app_paths import resource_path
+        config_path = resource_path('config/logging.json')
 
     if os.path.exists(config_path):
         try:

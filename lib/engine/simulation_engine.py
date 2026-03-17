@@ -984,20 +984,50 @@ class SimulationEngine:
             t_eval = t_eval[t_eval <= t_span[1] + 1e-12]
             t_eval[-1] = min(t_eval[-1], t_span[1])
             
+            # Lightweight container matching scipy solve_ivp result interface
+            class _SolverResult:
+                __slots__ = ('t', 'y', 'success', 'message')
+
             if len(y0) == 0:
                 # Purely algebraic system
-                # Create a dummy solution object for compatibility
-                class MockSol:
-                    pass
-                sol = MockSol()
+                sol = _SolverResult()
                 sol.t = t_eval
                 sol.y = np.zeros((0, len(t_eval)))
                 sol.success = True
                 sol.message = "Algebraic system computed successfully"
                 logger.info("System is algebraic (0 states). Skipping solver.")
             else:
-                # Using RK45 by default with strict tolerances for long-duration stability
-                sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
+                # Check for stochastic blocks — adaptive solvers evaluate the
+                # RHS multiple times per step, seeing different random values
+                # each time, which makes error estimates explode and causes
+                # the solver to hang.  Use fixed-step Euler instead.
+                # Note: PRBS is deterministic (seeded LFSR) and safe with RK45.
+                stochastic_fns = {'Noise'}
+                has_stochastic = any(
+                    (b.block_fn.title() if b.block_fn else '') in stochastic_fns
+                    for b in current_blocks
+                )
+
+                if has_stochastic:
+                    logger.info("Stochastic source detected — using fixed-step Euler solver")
+                    n_states = len(y0)
+                    n_steps = len(t_eval)
+                    y_history = np.zeros((n_states, n_steps))
+                    y = y0.copy()
+                    y_history[:, 0] = y
+                    for idx in range(1, n_steps):
+                        dy = model_func(t_eval[idx - 1], y)
+                        y = y + dt * np.asarray(dy)
+                        y_history[:, idx] = y
+
+                    sol = _SolverResult()
+                    sol.t = t_eval
+                    sol.y = y_history
+                    sol.success = True
+                    sol.message = "Fixed-step Euler (stochastic system)"
+                else:
+                    # Using RK45 by default with strict tolerances for long-duration stability
+                    sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
             
             if not sol.success:
                 logger.error(f"Solver failed: {sol.message}")

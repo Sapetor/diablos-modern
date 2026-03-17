@@ -182,10 +182,11 @@ class SliderSpinBox(QWidget):
                 border-radius: 4px;
                 padding: 2px 4px;
                 selection-background-color: {colors['accent']};
-                selection-color: {colors['input_bg']};
+                selection-color: white;
             }}
             QDoubleSpinBox:focus {{
-                border-color: {colors['accent']};
+                border: 2px solid {colors['accent']};
+                padding: 1px 3px;
             }}
         """)
         self.slider.setStyleSheet(f"""
@@ -849,14 +850,42 @@ class PropertyEditor(QFrame):
         accent = theme_manager.get_color('accent_primary').name()
         error = theme_manager.get_color('error').name()
 
+        # Apply all input styling via the container stylesheet so it
+        # cascades with (rather than replaces) the global QSS.
+        # Per-widget setStyleSheet() kills the global :focus/:hover rules.
         self.setStyleSheet(f"""
             PropertyEditor {{
                 background-color: {bg};
                 border: 1px solid {border};
                 border-radius: 4px;
             }}
-            QCheckBox {{ color: {txt}; spacing: 8px; }}
-            QLabel {{ color: {txt}; }}
+            PropertyEditor QCheckBox {{ color: {txt}; spacing: 8px; }}
+            PropertyEditor QLabel {{ color: {txt}; }}
+            PropertyEditor QLineEdit,
+            PropertyEditor QSpinBox,
+            PropertyEditor QDoubleSpinBox,
+            PropertyEditor QComboBox {{
+                background-color: {input_bg};
+                color: {txt};
+                border: 1px solid {border};
+                border-radius: 4px;
+                padding: 2px 4px;
+                selection-background-color: {accent};
+                selection-color: white;
+            }}
+            PropertyEditor QLineEdit:focus,
+            PropertyEditor QSpinBox:focus,
+            PropertyEditor QDoubleSpinBox:focus,
+            PropertyEditor QComboBox:focus {{
+                border: 2px solid {accent};
+                padding: 1px 3px;
+            }}
+            PropertyEditor QLineEdit:hover,
+            PropertyEditor QSpinBox:hover,
+            PropertyEditor QDoubleSpinBox:hover,
+            PropertyEditor QComboBox:hover {{
+                border-color: {accent};
+            }}
         """)
 
         colors = {
@@ -874,6 +903,7 @@ class PropertyEditor(QFrame):
                     background-color: transparent;
                     color: {txt}; border: 1px solid {border};
                     border-radius: 4px; font-size: 14px;
+                    min-width: 0px; min-height: 0px;
                 }}
                 QPushButton:hover {{
                     background-color: {input_bg};
@@ -885,18 +915,6 @@ class PropertyEditor(QFrame):
             )
             if isinstance(editor, SliderSpinBox):
                 editor.update_theme(colors)
-            elif isinstance(editor, (QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox)):
-                widget_name = type(editor).__name__
-                editor.setStyleSheet(
-                    f"{widget_name} {{ "
-                    f"background-color: {input_bg}; color: {txt}; "
-                    f"border: 1px solid {border}; border-radius: 4px; "
-                    f"padding: 2px 4px; "
-                    f"selection-background-color: {accent}; "
-                    f"selection-color: {input_bg}; }}"
-                    f"{widget_name}:focus {{ "
-                    f"border-color: {accent}; }}"
-                )
 
     def sizeHint(self):
         if self.block and hasattr(self.block, 'params'):

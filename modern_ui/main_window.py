@@ -160,7 +160,8 @@ class ModernDiaBloSWindow(QMainWindow):
         self.autosave_timer = QTimer(self)
         self.autosave_timer.timeout.connect(self._auto_save)
         self.autosave_timer.start(2 * 60 * 1000)  # 2 minutes in milliseconds
-        self.autosave_path = 'config/.autosave.diablos'
+        from lib.app_paths import user_data_path
+        self.autosave_path = user_data_path('config/.autosave.diablos')
 
         # Check for auto-save file on startup
         QTimer.singleShot(500, self._check_autosave_recovery)
@@ -273,7 +274,8 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _set_scaling(self, factor):
         import json
-        config_path = 'config/default_config.json'
+        from lib.app_paths import user_data_path
+        config_path = user_data_path('config/default_config.json')
         try:
             with open(config_path, 'r') as f:
                 config = json.load(f)
@@ -1481,7 +1483,8 @@ class ModernDiaBloSWindow(QMainWindow):
     def _load_recent_files(self):
         """Load recent files list from config."""
         import json
-        config_path = 'config/recent_files.json'
+        from lib.app_paths import user_data_path
+        config_path = user_data_path('config/recent_files.json')
         try:
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
@@ -1494,9 +1497,10 @@ class ModernDiaBloSWindow(QMainWindow):
     def _save_recent_files(self, recent_files):
         """Save recent files list to config."""
         import json
-        config_path = 'config/recent_files.json'
+        from lib.app_paths import user_data_path
+        config_path = user_data_path('config/recent_files.json')
         try:
-            os.makedirs('config', exist_ok=True)
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, 'w') as f:
                 json.dump({'recent_files': recent_files}, f, indent=2)
         except Exception as e:

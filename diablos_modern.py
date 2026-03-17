@@ -79,7 +79,8 @@ def setup_application():
     
     # Load config and set font
     try:
-        with open('config/default_config.json', 'r') as f:
+        from lib.app_paths import resource_path
+        with open(resource_path('config/default_config.json'), 'r') as f:
             config = json.load(f)
         scaling_factor = config.get('display', {}).get('scaling_factor', 1.0)
     except (FileNotFoundError, json.JSONDecodeError):

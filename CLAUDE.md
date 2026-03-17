@@ -213,9 +213,50 @@ python tests/profiling/profile_simulation.py  # Performance profiling
 
 ## Running the Application
 ```bash
-python main.py
+python diablos_modern.py
 ```
 
+## Packaging as Standalone App (PyInstaller)
+
+DiaBloS can be packaged as a standalone executable so users don't need Python installed and can't access the source code.
+
+### Build
+```bash
+pip install pyinstaller
+pyinstaller diablos.spec
+```
+
+### Output
+- **macOS**: `dist/DiaBloS.app` — distribute as `.app` or zip it
+- **Windows**: `dist/DiaBloS/DiaBloS.exe` — distribute the entire `DiaBloS/` folder
+- **Linux**: `dist/DiaBloS/DiaBloS` — distribute the folder
+
+### Key Files
+- `diablos.spec` — PyInstaller build configuration (hidden imports, data files, platform-specific packaging)
+- `lib/app_paths.py` — Resource path resolver (`resource_path()`) for both dev and bundled modes
+- `lib/block_loader.py` — Contains `_BLOCK_MODULES` static registry for frozen mode
+
+### How It Works
+- **Block discovery**: In dev mode, `block_loader.py` scans the `blocks/` directory. In frozen mode, it uses a hardcoded `_BLOCK_MODULES` list since filesystem scanning doesn't work inside PyInstaller bundles.
+- **Resource paths**: All config/data file access goes through `lib.app_paths.resource_path()`, which resolves to `sys._MEIPASS` (PyInstaller temp dir) when frozen, or the project root in dev mode.
+- **Data files bundled**: `config/`, `examples/`, and `modern_ui/icons/` are included as data files in the bundle.
+
+### Adding New Blocks
+When adding a new block file, you **must also** add it to:
+1. `_BLOCK_MODULES` in `lib/block_loader.py`
+2. `hidden_imports_blocks` in `diablos.spec`
+
+Otherwise the block will work in development but be missing from the packaged app.
+
+### macOS Distribution Notes
+- Unsigned apps are blocked by Gatekeeper — users must right-click → Open the first time
+- For seamless distribution, sign and notarize with an Apple Developer account ($99/yr)
+- Set `icon='path/to/icon.icns'` in `diablos.spec` BUNDLE section for a custom app icon
+
+### Windows Distribution Notes
+- Unsigned `.exe` may trigger Windows Defender SmartScreen warnings
+- Distributing as a folder (not `--onefile`) reduces false positives
+- Code signing certificate eliminates warnings but costs money
 
 ## Workflow Orchestration
 

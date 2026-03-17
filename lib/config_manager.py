@@ -17,7 +17,17 @@ class ConfigManager:
     """Simple configuration manager for DiaBloS settings."""
     
     def __init__(self, config_file: Optional[str] = None):
-        self.config_file = config_file or "config/default_config.json"
+        if config_file is None:
+            from lib.app_paths import user_data_path, resource_path
+            config_file = user_data_path("config/default_config.json")
+            # On first launch (frozen), copy bundled defaults to writable location
+            if not os.path.exists(config_file):
+                import shutil
+                bundled = resource_path("config/default_config.json")
+                if os.path.exists(bundled):
+                    os.makedirs(os.path.dirname(config_file), exist_ok=True)
+                    shutil.copy2(bundled, config_file)
+        self.config_file = config_file
         self._config: Dict[str, Any] = {}
         self._load_config()
     
