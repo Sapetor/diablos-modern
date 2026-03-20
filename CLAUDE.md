@@ -218,40 +218,80 @@ python diablos_modern.py
 
 ## Packaging as Standalone App (PyInstaller)
 
-DiaBloS can be packaged as a standalone executable so users don't need Python installed and can't access the source code.
+DiaBloS can be packaged as a standalone macOS `.app` bundle + DMG installer. Users don't need Python installed.
 
-### Build
+### Quick Build
+
 ```bash
-pip install pyinstaller
-pyinstaller diablos.spec
+# arm64 (Apple Silicon) — recommended for M1/M2/M3/M4 Macs
+source ~/.venvs/diablos-arm64/bin/activate
+./tools/build.sh
+# Output: dist/DiaBloS-arm64.dmg (72MB)
+
+# x86_64 (Intel / Rosetta) — for Intel Macs or universal compatibility
+source ~/.venvs/evaluate-diablos/bin/activate
+./tools/build.sh
+# Output: dist/DiaBloS-x86_64.dmg (113MB)
 ```
 
+`tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation.
+
+### Build Venvs
+
+Two separate venvs are used because PyInstaller bundles the Python interpreter from the active venv:
+
+| Venv | Python | Arch | Purpose |
+|------|--------|------|---------|
+| `~/.venvs/diablos-arm64/` | 3.14 (Homebrew) | arm64 | Native Apple Silicon build |
+| `~/.venvs/evaluate-diablos/` | 3.9 (Anaconda) | x86_64 | Intel/Rosetta build |
+
+Both venvs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`
+
 ### Output
-- **macOS**: `dist/DiaBloS.app` — distribute as `.app` or zip it
-- **Windows**: `dist/DiaBloS/DiaBloS.exe` — distribute the entire `DiaBloS/` folder
-- **Linux**: `dist/DiaBloS/DiaBloS` — distribute the folder
+
+| Build | DMG | App Size | Sim Speed | Startup |
+|-------|-----|----------|-----------|---------|
+| arm64 | 72MB | 160MB | ~80K itr/s | ~2s |
+| x86_64 | 113MB | 319MB | ~44K itr/s | ~25s (Rosetta) |
 
 ### Key Files
-- `diablos.spec` — PyInstaller build configuration (hidden imports, data files, platform-specific packaging)
-- `lib/app_paths.py` — Resource path resolver (`resource_path()`) for both dev and bundled modes
-- `lib/block_loader.py` — Contains `_BLOCK_MODULES` static registry for frozen mode
+
+| File | Purpose |
+|------|---------|
+| `diablos.spec` | PyInstaller config — hidden imports, data files, excludes, platform packaging |
+| `tools/build.sh` | One-command build: sync registry, PyInstaller, DMG |
+| `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py` |
+| `lib/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
+| `lib/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
 
 ### How It Works
-- **Block discovery**: In dev mode, `block_loader.py` scans the `blocks/` directory. In frozen mode, it uses a hardcoded `_BLOCK_MODULES` list since filesystem scanning doesn't work inside PyInstaller bundles.
-- **Resource paths**: All config/data file access goes through `lib.app_paths.resource_path()`, which resolves to `sys._MEIPASS` (PyInstaller temp dir) when frozen, or the project root in dev mode.
-- **Data files bundled**: `config/`, `examples/`, and `modern_ui/icons/` are included as data files in the bundle.
+
+- **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date — run automatically by `tools/build.sh`.
+- **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` which resolves to `~/Library/Application Support/DiaBloS/` on macOS.
+- **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included.
+- **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
+- **Multiprocessing**: `multiprocessing.freeze_support()` is called at entry point to prevent duplicate process spawning.
 
 ### Adding New Blocks
-When adding a new block file, you **must also** add it to:
-1. `_BLOCK_MODULES` in `lib/block_loader.py`
-2. `hidden_imports_blocks` in `diablos.spec`
 
-Otherwise the block will work in development but be missing from the packaged app.
+Just add the block `.py` file to `blocks/` (or a subdirectory with `__init__.py`). The build script automatically syncs the registry. No manual edits needed.
+
+### Frozen-Mode Path Handling
+
+In frozen mode, the working directory is `/` (read-only). All file I/O must use writable paths:
+
+| Data | Dev Mode Path | Frozen Mode Path |
+|------|--------------|-----------------|
+| Configs | `config/` | `~/Library/Application Support/DiaBloS/config/` |
+| Autosave | `saves/` | `~/Library/Application Support/DiaBloS/saves/` |
+| Logs | `diablos_modern.log` | `~/Library/Logs/DiaBloS/diablos_modern.log` |
+| Examples | `examples/` | `(bundled in app)/examples/` |
 
 ### macOS Distribution Notes
-- Unsigned apps are blocked by Gatekeeper — users must right-click → Open the first time
-- For seamless distribution, sign and notarize with an Apple Developer account ($99/yr)
-- Set `icon='path/to/icon.icns'` in `diablos.spec` BUNDLE section for a custom app icon
+
+- **Unsigned apps**: Blocked by Gatekeeper. Users must run `xattr -rd com.apple.quarantine /Applications/DiaBloS.app` after copying from DMG.
+- **Code signing**: `codesign --force --deep --sign - DiaBloS.app` for ad-hoc signing. For proper distribution, use an Apple Developer account ($99/yr) for signing + notarization.
+- **App icon**: Set `icon='path/to/icon.icns'` in `diablos.spec` BUNDLE section.
 
 ### Windows Distribution Notes
 - Unsigned `.exe` may trigger Windows Defender SmartScreen warnings

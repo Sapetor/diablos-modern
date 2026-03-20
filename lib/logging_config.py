@@ -27,6 +27,11 @@ def setup_logging(config_path: Optional[str] = None) -> None:
         try:
             with open(config_path, 'r') as f:
                 config = json.load(f)
+            # Fix relative log file paths for frozen (PyInstaller) mode
+            for handler in config.get('handlers', {}).values():
+                fn = handler.get('filename')
+                if fn:
+                    handler['filename'] = _get_log_file_path(fn)
             logging.config.dictConfig(config)
             return
         except (json.JSONDecodeError, ValueError, KeyError) as e:
@@ -37,13 +42,25 @@ def setup_logging(config_path: Optional[str] = None) -> None:
     _setup_default_logging()
 
 
+def _get_log_file_path(filename: str) -> str:
+    """Resolve log file path, using a writable location in frozen mode."""
+    if getattr(sys, 'frozen', False) and not os.path.isabs(filename):
+        if sys.platform == 'darwin':
+            log_dir = os.path.expanduser('~/Library/Logs/DiaBloS')
+        else:
+            log_dir = os.path.dirname(sys.executable)
+        os.makedirs(log_dir, exist_ok=True)
+        return os.path.join(log_dir, filename)
+    return filename
+
+
 def _setup_default_logging() -> None:
     """Setup default logging configuration if config file is unavailable."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('diablos_modern.log'),
+            logging.FileHandler(_get_log_file_path('diablos_modern.log')),
             logging.StreamHandler(sys.stdout)
         ]
     )

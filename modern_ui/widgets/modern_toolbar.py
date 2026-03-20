@@ -54,7 +54,7 @@ class ModernToolBar(QToolBar):
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(QColor(color))
-        font = painter.font()
+        font = QFont("Apple Color Emoji", 14)
         font.setPixelSize(14)
         painter.setFont(font)
         painter.drawText(pixmap.rect(), Qt.AlignCenter, symbol)

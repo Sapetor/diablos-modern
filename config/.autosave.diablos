@@ -22,7 +22,7 @@
             "dragging": false,
             "selected": false,
             "b_color": "#d1fae5",
-            "b_type": 2,
+            "b_type": 0,
             "io_edit": "output",
             "fn_name": "step",
             "params": {

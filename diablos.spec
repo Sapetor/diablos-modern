@@ -11,6 +11,7 @@ Output:
 """
 
 import sys
+import os
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
@@ -18,91 +19,16 @@ block_cipher = None
 # --- Hidden imports ---
 # Blocks are loaded dynamically via importlib (lib/block_loader.py),
 # so PyInstaller can't discover them through static analysis.
-hidden_imports_blocks = [
-    'blocks.abs_block',
-    'blocks.assert_block',
-    'blocks.bodemag',
-    'blocks.bodephase',
-    'blocks.constant',
-    'blocks.deadband',
-    'blocks.delay',
-    'blocks.demux',
-    'blocks.derivative',
-    'blocks.discrete_statespace',
-    'blocks.discrete_transfer_function',
-    'blocks.display',
-    'blocks.exponential',
-    'blocks.export',
-    'blocks.external',
-    'blocks.fft',
-    'blocks.first_order_hold',
-    'blocks.from_block',
-    'blocks.gain',
-    'blocks.goto',
-    'blocks.hysteresis',
-    'blocks.inport',
-    'blocks.input_helpers',
-    'blocks.integrator',
-    'blocks.math_function',
-    'blocks.mux',
-    'blocks.noise',
-    'blocks.nyquist',
-    'blocks.optimization.constraint',
-    'blocks.optimization.cost_function',
-    'blocks.optimization.data_fit',
-    'blocks.optimization.optimizer',
-    'blocks.optimization.parameter',
-    'blocks.optimization_primitives.adam',
-    'blocks.optimization_primitives.linear_system_solver',
-    'blocks.optimization_primitives.momentum',
-    'blocks.optimization_primitives.numerical_gradient',
-    'blocks.optimization_primitives.objective_function',
-    'blocks.optimization_primitives.residual_norm',
-    'blocks.optimization_primitives.root_finder',
-    'blocks.optimization_primitives.state_variable',
-    'blocks.optimization_primitives.vector_gain',
-    'blocks.optimization_primitives.vector_perturb',
-    'blocks.optimization_primitives.vector_sum',
-    'blocks.outport',
-    'blocks.param_templates',
-    'blocks.pde.advection_equation_1d',
-    'blocks.pde.advection_equation_2d',
-    'blocks.pde.diffusion_reaction_1d',
-    'blocks.pde.field_processing',
-    'blocks.pde.field_processing_2d',
-    'blocks.pde.heat_equation_1d',
-    'blocks.pde.heat_equation_2d',
-    'blocks.pde.wave_equation_1d',
-    'blocks.pde.wave_equation_2d',
-    'blocks.pid',
-    'blocks.prbs',
-    'blocks.product',
-    'blocks.ramp',
-    'blocks.rate_limiter',
-    'blocks.rate_transition',
-    'blocks.rootlocus',
-    'blocks.saturation',
-    'blocks.scope',
-    'blocks.selector',
-    'blocks.sigproduct',
-    'blocks.sine',
-    'blocks.statespace',
-    'blocks.statespace_base',
-    'blocks.step',
-    'blocks.subsystem',
-    'blocks.sum',
-    'blocks.switch',
-    'blocks.terminator',
-    'blocks.transfer_function',
-    'blocks.transport_delay',
-    'blocks.wave_generator',
-    'blocks.xygraph',
-    'blocks.zero_order_hold',
-]
+# Auto-scanned from blocks/ directory at build time.
+sys.path.insert(0, os.path.dirname(os.path.abspath(SPEC)))
+from tools.sync_block_registry import scan_block_modules
+hidden_imports_blocks = scan_block_modules()
 
-# Collect all scipy/numpy submodules (they have complex lazy-loading)
-hidden_imports_scipy = collect_submodules('scipy')
-hidden_imports_numpy = collect_submodules('numpy')
+# Collect scipy/numpy submodules, filtering out tests to save space
+hidden_imports_scipy = [m for m in collect_submodules('scipy')
+                        if '.tests' not in m and '.testing' not in m]
+hidden_imports_numpy = [m for m in collect_submodules('numpy')
+                        if '.tests' not in m and '.testing' not in m]
 
 hidden_imports = (
     hidden_imports_blocks
@@ -136,10 +62,43 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'tests',
-        'tools',
-        'docs',
-        'tasks',
+        # Project dirs
+        'tests', 'tools', 'docs', 'tasks',
+        # Heavy packages not used by DiaBloS
+        'torch', 'torchvision', 'torchaudio',
+        'pandas', 'pyarrow',
+        'bokeh', 'selenium', 'playwright',
+        'notebook', 'nbformat', 'nbconvert', 'nbclient',
+        'sphinx', 'docutils', 'alabaster',
+        'IPython', 'ipykernel', 'ipywidgets', 'jupyter',
+        'jedi', 'parso',
+        'distributed', 'dask',
+        'h5py', 'tables',
+        'numba', 'llvmlite',
+        'sqlalchemy',
+        'openpyxl',
+        'lxml',
+        'cryptography',
+        'zmq', 'pyzmq',
+        'pytest', 'py', '_pytest',
+        'black', 'blib2to3',
+        'astroid', 'pylint', 'isort',
+        'cloudpickle', 'fsspec',
+        'gevent',
+        'babel',
+        'pygments',
+        'boto', 'botocore', 's3transfer',
+        'sympy',
+        'sklearn', 'scikit-learn',
+        'cv2', 'opencv',
+        'tkinter', '_tkinter',
+        'curses',
+        'pygame',
+        'tornado',
+        'yaml', 'pyyaml',
+        'debugpy',
+        'setuptools', 'pkg_resources',
+        'xmlrpc',
     ],
     noarchive=False,
     optimize=0,

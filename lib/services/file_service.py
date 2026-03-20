@@ -5,6 +5,7 @@ Handles saving and loading diagram files.
 
 import json
 import os
+import sys
 import logging
 from typing import Dict, Optional, Any
 from PyQt5.QtWidgets import QFileDialog
@@ -171,6 +172,10 @@ class FileService:
                 file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
             else:
                 file = f'saves/{self.filename}'
+            # In frozen mode, redirect saves/ to a writable location
+            if getattr(sys, 'frozen', False) and not os.path.isabs(file):
+                from lib.app_paths import get_user_data_dir
+                file = os.path.join(get_user_data_dir(), file)
         
         # Use new methods
         data = self.serialize(modern_ui_data, sim_params)

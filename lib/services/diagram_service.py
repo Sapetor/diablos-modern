@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import sys
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QSize
 
@@ -122,13 +123,19 @@ class DiagramService:
         self.dsim = main_window.dsim
         
         # Set default directory to 'examples' relative to current working directory
-        project_root = os.getcwd()
-        self.last_directory = os.path.join(project_root, 'examples')
-
-        # Fall back to 'saves' if examples doesn't exist
-        if not os.path.exists(self.last_directory):
-            self.last_directory = os.path.join(project_root, 'saves')
-            os.makedirs(self.last_directory, exist_ok=True)
+        # In frozen mode, use bundled examples or ~/Documents/DiaBloS
+        if getattr(sys, 'frozen', False):
+            from lib.app_paths import resource_path
+            self.last_directory = resource_path('examples')
+            if not os.path.exists(self.last_directory):
+                self.last_directory = os.path.expanduser('~/Documents/DiaBloS')
+                os.makedirs(self.last_directory, exist_ok=True)
+        else:
+            project_root = os.getcwd()
+            self.last_directory = os.path.join(project_root, 'examples')
+            if not os.path.exists(self.last_directory):
+                self.last_directory = os.path.join(project_root, 'saves')
+                os.makedirs(self.last_directory, exist_ok=True)
              
         self.current_file = None
 

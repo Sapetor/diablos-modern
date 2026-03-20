@@ -1,3 +1,6 @@
+import multiprocessing
+multiprocessing.freeze_support()  # Required for PyInstaller on macOS
+
 print("Running diablos_modern.py")
 """
 Modern DiaBloS Application - Phase 1
@@ -70,13 +73,13 @@ def setup_application():
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
+
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("DiaBloS Modern")
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("DiaBloS Project")
-    
+
     # Load config and set font
     try:
         from lib.app_paths import resource_path
@@ -86,13 +89,17 @@ def setup_application():
     except (FileNotFoundError, json.JSONDecodeError):
         scaling_factor = 1.0
 
-    font = QFont("Segoe UI", int(10 * scaling_factor))
+    # Use platform-appropriate font
+    if sys.platform == 'darwin':
+        font = QFont(".AppleSystemUIFont", int(10 * scaling_factor))
+    else:
+        font = QFont("Segoe UI", int(10 * scaling_factor))
     font.setHintingPreference(QFont.PreferDefaultHinting)
     app.setFont(font)
-    
+
     # Apply modern theme
     apply_modern_theme(app)
-    
+
     return app
 
 
@@ -113,9 +120,37 @@ def main():
         # Get available screen geometry (excludes taskbar)
         screen_geometry = app.primaryScreen().availableGeometry()
 
+        # When running as a .app bundle (Finder / open), macOS may not
+        # register the process as a foreground GUI app.  Force it via the
+        # Objective-C runtime before creating any windows.
+        if getattr(sys, 'frozen', False) and sys.platform == 'darwin':
+            try:
+                import ctypes, ctypes.util
+                objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('objc'))
+                objc.objc_getClass.restype = ctypes.c_void_p
+                objc.sel_registerName.restype = ctypes.c_void_p
+                objc.objc_msgSend.restype = ctypes.c_void_p
+                objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+                NSApp = objc.objc_msgSend(
+                    objc.objc_getClass(b'NSApplication'),
+                    objc.sel_registerName(b'sharedApplication'),
+                )
+                # setActivationPolicy: 0 = Regular (appears in Dock)
+                sel = objc.sel_registerName(b'setActivationPolicy:')
+                objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64]
+                objc.objc_msgSend(NSApp, sel, 0)
+                # activateIgnoringOtherApps: YES
+                sel = objc.sel_registerName(b'activateIgnoringOtherApps:')
+                objc.objc_msgSend(NSApp, sel, 1)
+                objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            except Exception:
+                pass
+
         # Create main window with screen-aware sizing
         window = ModernDiaBloSWindow(screen_geometry)
         window.show()
+        window.raise_()
+        window.activateWindow()
 
         # Check for file argument (open diagram on startup)
         if len(sys.argv) > 1:
@@ -147,7 +182,7 @@ def main():
         x = screen_geometry.x() + (screen_geometry.width() - window_size.width()) // 2
         y = screen_geometry.y() + (screen_geometry.height() - window_size.height()) // 2
         window.move(x, y)
-        
+
         logger.info("Modern DiaBloS started successfully")
         logger.info(f"Theme: {theme_manager.current_theme.value}")
         logger.info("Phase 1 Features:")
@@ -155,13 +190,13 @@ def main():
         logger.info("- Enhanced toolbar with zoom controls")
         logger.info("- Improved layout with splitter panels")
         logger.info("- Modern styling and typography")
-        
+
         # Start application event loop
         exit_code = app.exec_()
-        
+
         logger.info(f"Modern DiaBloS exiting with code: {exit_code}")
         return exit_code
-        
+
     except Exception as e:
         logger.critical(f"Critical error in main: {str(e)}", exc_info=True)
         return 1

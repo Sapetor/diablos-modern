@@ -8,6 +8,8 @@ gradually integrated with the existing codebase without breaking changes.
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import logging
+import os
+import sys
 import time
 from PyQt5.QtGui import QColor
 
@@ -331,6 +333,15 @@ class LoggingHelper:
         # File handler if specified
         handlers = [console_handler]
         if log_file:
+            # In frozen (PyInstaller) mode, cwd may be / (read-only).
+            # Write logs to ~/Library/Logs/ on macOS, or beside the exe otherwise.
+            if getattr(sys, 'frozen', False) and not os.path.isabs(log_file):
+                if sys.platform == 'darwin':
+                    log_dir = os.path.expanduser('~/Library/Logs/DiaBloS')
+                else:
+                    log_dir = os.path.dirname(sys.executable)
+                os.makedirs(log_dir, exist_ok=True)
+                log_file = os.path.join(log_dir, log_file)
             file_handler = logging.FileHandler(log_file)
             file_handler.setFormatter(formatter)
             file_handler.setLevel(numeric_level)
