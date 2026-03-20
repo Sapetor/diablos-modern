@@ -88,3 +88,6 @@ saves/
 # Autosave files
 *_AUTOSAVE.dat
 config/.autosave.diablos
+ghkey
+ghkey.pub
+.claude/
