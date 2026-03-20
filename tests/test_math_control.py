@@ -147,7 +147,7 @@ def test_saturation_block():
 
 
 def test_deadband_block():
-    """Test DeadbandBlock matches Simulink Dead Zone behavior."""
+    """Test DeadbandBlock Dead Zone behavior."""
     from blocks.deadband import DeadbandBlock
     
     block = DeadbandBlock()
@@ -171,7 +171,7 @@ def test_deadband_block():
     result = block.execute(0, {0: np.array([0.5])}, params)
     assert np.isclose(result[0], 0.0), f"Deadband at end: expected 0, got {result[0]}"
     
-    print("[PASS] DeadbandBlock (Simulink behavior)")
+    print("[PASS] DeadbandBlock (Dead Zone behavior)")
 
 
 def test_rate_limiter_block():

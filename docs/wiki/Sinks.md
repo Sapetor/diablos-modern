@@ -65,7 +65,7 @@ Parameters:
 - Variable Name: Name of variable in saved file.
 
 Usage:
-Save results for post-processing in Python or MATLAB.
+Save results for post-processing in Python or other tools.
 
 #### Parameters
 | Name | Type | Default | Description |

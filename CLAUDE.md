@@ -1,7 +1,7 @@
 # DiaBloS Modern - Project Notes
 
 ## Overview
-DiaBloS is a Simulink-like block diagram simulation tool built with Python and PyQt5. It allows users to create, connect, and simulate dynamic systems using a visual block diagram interface.
+DiaBloS is a block diagram simulation tool built with Python and PyQt5. It allows users to create, connect, and simulate dynamic systems using a visual block diagram interface.
 
 ## Architecture
 - **modern_ui/**: PyQt5-based GUI (main_window.py, modern_canvas.py, widgets/)

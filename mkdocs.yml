@@ -1,5 +1,5 @@
 site_name: DiaBloS Modern Documentation
-site_description: Documentation for DiaBloS Modern - A Simulink-like block diagram simulation tool
+site_description: Documentation for DiaBloS Modern - A block diagram simulation tool for dynamic systems
 site_author: DiaBloS Project
 
 repo_name: diablos-modern

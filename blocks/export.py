@@ -39,7 +39,7 @@ class ExportBlock(BaseBlock):
             "\n- Filename: Destination file path."
             "\n- Variable Name: Name of variable in saved file."
             "\n\nUsage:"
-            "\nSave results for post-processing in Python or MATLAB."
+            "\nSave results for post-processing in Python or other tools."
         )
 
     @property

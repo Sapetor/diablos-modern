@@ -2,7 +2,7 @@
 
 ## Overview
 
-The CSV export feature allows users to export simulation plot data from Scope blocks to CSV files for post-processing in external tools like Excel, MATLAB, Python (pandas), R, etc.
+The CSV export feature allows users to export simulation plot data from Scope blocks to CSV files for post-processing in external tools like Excel, Python (pandas), R, etc.
 
 ## How to Use
 
@@ -71,7 +71,7 @@ time,sine,cosine,tangent,square
 
 ### Data Analysis
 - Import into pandas for statistical analysis
-- Plot in MATLAB or GNU Octave
+- Plot in GNU Octave or other tools
 - Analyze in R or Julia
 
 ### Reporting

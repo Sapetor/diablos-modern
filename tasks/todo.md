@@ -73,7 +73,7 @@
 
 ### Teaching & Interaction
 - [x] **Live parameter tuning** — Manipulate-style interactive tuning: pin block parameters to a tuning panel, drag sliders and watch scope plots update in real-time via headless re-simulation. Supports float params and individual list elements (e.g., transfer function coefficients). Scope window stays on top during tuning. Right-click slider rows to set custom range.
-- [ ] **Custom Python Function block** — A block where users type a Python expression (e.g., `lambda u: np.sin(u[0]**2) + u[1]`). Like Simulink's MATLAB Function block. Enables unlimited modeling without writing new block classes.
+- [ ] **Custom Python Function block** — A block where users type a Python expression (e.g., `lambda u: np.sin(u[0]**2) + u[1]`). Enables unlimited modeling without writing new block classes.
 - [x] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications. File > Export > Export as TikZ... with live preview, clipboard copy, and configurable options.
 
 ### Research & Data

@@ -1,6 +1,6 @@
 # DiaBloS Modern Documentation
 
-Welcome to the documentation for **DiaBloS Modern** - a Simulink-like block diagram simulation tool built with Python and PyQt5.
+Welcome to the documentation for **DiaBloS Modern** - a block diagram simulation tool for dynamic systems, built with Python and PyQt5.
 
 ## Overview
 

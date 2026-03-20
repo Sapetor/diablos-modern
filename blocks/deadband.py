@@ -4,7 +4,7 @@ from blocks.base_block import BaseBlock
 
 class DeadbandBlock(BaseBlock):
     """
-    Dead Zone block matching Simulink behavior.
+    Dead Zone block.
     
     Output is zero inside [start, end] deadzone.
     Outside the deadzone, the offset is subtracted:
@@ -76,7 +76,7 @@ class DeadbandBlock(BaseBlock):
         start = float(params.get("start", -0.5))
         end = float(params.get("end", 0.5))
         
-        # Simulink Dead Zone behavior
+        # Dead Zone behavior
         out = np.zeros_like(u)
         
         # Below dead zone: subtract start threshold
