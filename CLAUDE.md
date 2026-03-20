@@ -293,10 +293,54 @@ In frozen mode, the working directory is `/` (read-only). All file I/O must use 
 - **Code signing**: `codesign --force --deep --sign - DiaBloS.app` for ad-hoc signing. For proper distribution, use an Apple Developer account ($99/yr) for signing + notarization.
 - **App icon**: Set `icon='path/to/icon.icns'` in `diablos.spec` BUNDLE section.
 
+### Windows Build (Windows 10/11)
+
+PyInstaller can only build for the platform it runs on. To build the Windows installer:
+
+```powershell
+# 1. Install Python 3.9+ from python.org (check "Add to PATH")
+# 2. Clone the repo
+git clone git@github.com:Sapetor/diablos-modern.git
+cd diablos-modern
+
+# 3. Create venv and install dependencies
+python -m venv .venv
+.venv\Scripts\activate
+pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
+
+# 4. Sync block registry and build
+python tools/sync_block_registry.py
+pyinstaller --noconfirm diablos.spec
+
+# 5. Output: dist\DiaBloS\DiaBloS.exe (distribute the entire dist\DiaBloS folder)
+```
+
+Also works from WSL with a Windows Python, or from a GitHub Actions CI workflow.
+
 ### Windows Distribution Notes
-- Unsigned `.exe` may trigger Windows Defender SmartScreen warnings
+- Unsigned `.exe` may trigger Windows Defender SmartScreen warnings — users click "More info" then "Run anyway"
 - Distributing as a folder (not `--onefile`) reduces false positives
-- Code signing certificate eliminates warnings but costs money
+- Code signing certificate ($200-400/yr) eliminates warnings
+
+### Ubuntu/Linux Build
+
+```bash
+# 1. Install dependencies
+sudo apt install python3 python3-venv python3-pip
+
+# 2. Clone and setup
+git clone git@github.com:Sapetor/diablos-modern.git
+cd diablos-modern
+python3 -m venv .venv
+source .venv/bin/activate
+pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
+
+# 3. Build
+python tools/sync_block_registry.py
+pyinstaller --noconfirm diablos.spec
+
+# 4. Output: dist/DiaBloS/DiaBloS (distribute the entire dist/DiaBloS folder)
+```
 
 ## Workflow Orchestration
 
