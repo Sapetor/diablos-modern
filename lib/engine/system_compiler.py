@@ -23,7 +23,7 @@ class SystemCompiler:
         # Allowlist of blocks that can be compiled
         self.COMPILABLE_BLOCKS = {
             'Integrator',
-            'Gain',
+            'Gain', 'MatrixGain', 'Matrixgain',
             'Sum',
             'Constant',
             'Sine',
@@ -187,6 +187,37 @@ class SystemCompiler:
                 val = signals.get(src, 0.0) if src else 0.0
                 signals[b_name] = val * gain
             return exec_gain
+
+        elif fn in ('Matrixgain', 'MatrixGain'):
+            import ast as _ast
+            K_raw = params.get('gain', '1.0')
+            if isinstance(K_raw, str):
+                try:
+                    K = np.array(_ast.literal_eval(K_raw), dtype=float)
+                except (ValueError, SyntaxError):
+                    K = np.array([float(K_raw)], dtype=float)
+            else:
+                K = np.atleast_1d(np.array(K_raw, dtype=float))
+            src = input_sources[0] if input_sources else None
+
+            if K.ndim == 2:
+                def exec_mgain(t, y, dy_vec, signals):
+                    u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float).flatten()
+                    if len(u) < K.shape[1]:
+                        u = np.pad(u, (0, K.shape[1] - len(u)))
+                    elif len(u) > K.shape[1]:
+                        u = u[:K.shape[1]]
+                    signals[b_name] = K @ u
+            elif K.ndim == 1 and K.size > 1:
+                def exec_mgain(t, y, dy_vec, signals):
+                    u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float)
+                    signals[b_name] = K * u if len(K) == len(u) else K[:min(len(K),len(u))] * u[:min(len(K),len(u))]
+            else:
+                k_scalar = float(K.flatten()[0])
+                def exec_mgain(t, y, dy_vec, signals):
+                    val = signals.get(src, 0.0) if src else 0.0
+                    signals[b_name] = np.atleast_1d(val).astype(float) * k_scalar
+            return exec_mgain
 
         elif fn == 'Sum':
             signs = params.get('sign', params.get('inputs', '++'))
