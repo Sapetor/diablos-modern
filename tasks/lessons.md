@@ -405,3 +405,15 @@ A compounding issue: the initialization path (`initialize_execution` Loop 2) use
 
 **Lesson**: Always verify LFSR conventions empirically (simulate a few steps, check period) before rewriting a tap table. The mapping from taps to polynomial depends on shift direction (left vs right) and feedback injection point (LSB vs MSB). The tap must include position `n-1` for the polynomial to have degree `n`.
 
+---
+
+### Compiled Solver Pre-Population Only Works for D=0 Blocks (March 2026)
+
+**Problem**: Closed-loop simulation with non-strictly-proper TFs (D≠0, e.g. PI controllers `(2s+1)/s`, lead compensators) produced wrong output or diverged. Open-loop and single-TF simulations worked correctly.
+
+**Root Cause**: The compiled solver pre-populates state-block outputs with `C*x` before the execution loop. For D=0 blocks this is exact. For D≠0 blocks the output is `C*x + D*u` — the `D*u` feedthrough term was silently dropped. When an algebraic block (Gain, Saturation, etc.) downstream of a D≠0 block read the wrong pre-populated value, the ODE received incorrect derivatives. In the Lead+Gain+Plant case, the buggy system had a positive eigenvalue (+0.76) and diverged, while the correct system was stable.
+
+**Fix**: Three-group block sort instead of three-way: sources → middle (algebraic + D≠0 state blocks in topological order) → D=0 state blocks. Only D=0 blocks get pre-populated. D≠0 blocks execute alongside algebraic blocks so their input is available when they run.
+
+**Lesson**: When adding any new block type with state to the compiled solver, always check whether its output depends on the current input (feedthrough, D≠0). If yes, it must NOT be pre-populated and must execute with the algebraic group. Test with a topology where an algebraic block sits between the D≠0 block and a downstream state block.
+

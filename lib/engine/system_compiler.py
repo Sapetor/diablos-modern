@@ -28,6 +28,7 @@ class SystemCompiler:
             'Constant',
             'Sine',
             'Step',
+            'Impulse',
             'TransferFcn',
             'TranFn',
             'StateSpace',
@@ -263,10 +264,35 @@ class SystemCompiler:
         elif fn == 'Step':
             step_t = float(params.get('delay', 0.0))
             val = float(params.get('value', 1.0))
+            step_type = params.get('type', 'up')
 
-            def exec_step(t, y, dy_vec, signals):
-                signals[b_name] = val if t >= step_t else 0.0
-            return exec_step
+            if step_type == 'impulse':
+                dt = float(params.get('dtime', 0.01))
+                eps = dt * 1e-3
+                impulse_end = step_t + eps
+                impulse_height = val / eps
+
+                def exec_step(t, y, dy_vec, signals):
+                    signals[b_name] = impulse_height if step_t <= t < impulse_end else 0.0
+                return exec_step
+            else:
+                def exec_step(t, y, dy_vec, signals):
+                    signals[b_name] = val if t >= step_t else 0.0
+                return exec_step
+
+        elif fn == 'Impulse':
+            imp_t = float(params.get('delay', 0.0))
+            imp_val = float(params.get('value', 1.0))
+            imp_dt = float(params.get('dtime', 0.01))
+            # Use a very narrow pulse so the response is not visibly delayed.
+            # Width = dt/1000 keeps the shift negligible while RK45 handles it.
+            eps = imp_dt * 1e-3
+            imp_end = imp_t + eps
+            imp_height = imp_val / eps
+
+            def exec_impulse(t, y, dy_vec, signals):
+                signals[b_name] = imp_height if imp_t <= t < imp_end else 0.0
+            return exec_impulse
 
         elif fn == 'Prbs':
             high = float(params.get('high', 1.0))
@@ -1615,30 +1641,8 @@ class SystemCompiler:
         """
         Generate a fast derivative function f(t, y) using closure-based optimization.
         """
-        # 0. Re-order blocks: Sources first, then algebraic blocks, then state blocks last.
-        # State blocks (TranFn, StateSpace, Integrator, PID, etc.) must execute AFTER
-        # their algebraic input chain so derivatives read correct signal values.
-        # Their outputs are pre-populated (y=Cx or y=state) before the sequence runs,
-        # so feedback through algebraic blocks resolves correctly.
-        source_fns = ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential', 'Noise', 'Wavegenerator', 'Prbs')
-        state_fns = ('Tranfn', 'Transferfcn', 'TransferFcn', 'Statespace', 'StateSpace',
-                     'Integrator', 'Pid', 'PID', 'Ratelimiter', 'RateLimiter',
-                     'Heatequation1D', 'Waveequation1D', 'Advectionequation1D',
-                     'Diffusionreaction1D', 'Heatequation2D', 'Waveequation2D',
-                     'Advectionequation2D')
-        sources = []
-        algebraic = []
-        state_blocks = []
-        for b in sorted_order:
-            fn = b.block_fn.title() if b.block_fn else ''
-            if fn in source_fns:
-                sources.append(b)
-            elif fn in state_fns:
-                state_blocks.append(b)
-            else:
-                algebraic.append(b)
-
-        sorted_order = sources + algebraic + state_blocks
+        # 0. Block ordering is deferred to after state identification (section 2)
+        # so we can inspect D matrices to classify D=0 vs D≠0 state blocks.
 
         # 1. Build Dependency Graph (Static Pull-based connections)
         # map: dest_block_name -> port_idx -> (source_block_name, source_port_idx)
@@ -1879,20 +1883,66 @@ class SystemCompiler:
                 current_state_idx += n_states
 
         y0 = np.array(y0_list, dtype=float)
-        
-        # 3. Compile Execution Sequence
+
+        # 3. Re-order blocks into three groups:
+        #   (a) Sources — no inputs, always execute first
+        #   (b) Middle  — algebraic blocks AND D≠0 state blocks, in original
+        #                 topological order.  D≠0 state blocks have direct
+        #                 feedthrough (output = C*x + D*u depends on current
+        #                 input), so they CANNOT be pre-populated with just C*x.
+        #                 They must execute alongside algebraic blocks so their
+        #                 input is available when they run.
+        #   (c) D=0 state blocks — strictly proper TFs, integrators, PDE blocks.
+        #                 Pre-populated with C*x (exact since D*u = 0), execute last.
+        #
+        # block_matrices is now populated, so we can inspect D to classify.
+        source_fns = ('Step', 'Sine', 'Constant', 'From', 'Ramp', 'Exponential',
+                      'Noise', 'Wavegenerator', 'Prbs', 'Impulse')
+        state_fns = ('Tranfn', 'Transferfcn', 'TransferFcn', 'Statespace', 'StateSpace',
+                     'Integrator', 'Pid', 'PID', 'Ratelimiter', 'RateLimiter',
+                     'Heatequation1D', 'Waveequation1D', 'Advectionequation1D',
+                     'Diffusionreaction1D', 'Heatequation2D', 'Waveequation2D',
+                     'Advectionequation2D')
+
+        def _is_d0_state_block(b):
+            """True if b is a state block with D=0 (safe to pre-populate)."""
+            fn = b.block_fn.title() if b.block_fn else ''
+            if fn not in state_fns:
+                return False
+            if b.name in block_matrices:
+                _, _, _, D = block_matrices[b.name]
+                return not np.any(D != 0)
+            if fn in ('Pid', 'PID'):
+                return False  # PID output depends on current error (feedthrough)
+            return True  # Integrator, RateLimiter, PDE blocks: D=0
+
+        source_set = set()
+        d0_state_set = set()
+        for b in sorted_order:
+            fn = b.block_fn.title() if b.block_fn else ''
+            if fn in source_fns:
+                source_set.add(b.name)
+            elif _is_d0_state_block(b):
+                d0_state_set.add(b.name)
+
+        sources = [b for b in sorted_order if b.name in source_set]
+        middle = [b for b in sorted_order if b.name not in source_set and b.name not in d0_state_set]
+        state_blocks_d0 = [b for b in sorted_order if b.name in d0_state_set]
+
+        sorted_order = sources + middle + state_blocks_d0
+
+        # 4. Compile Execution Sequence
         execution_sequence = []
         for block in sorted_order:
              executor = self._create_block_executor(block, input_map, state_map, block_matrices)
              execution_sequence.append(executor)
-             
-        # 4. Build pre-population list for state-based block outputs.
-        # In feedback loops, algebraic blocks (Sum, Gain) may depend on
-        # state-based block outputs (TranFn, StateSpace, Integrator) that
-        # execute later in the topological order. Pre-populating y = C*x
-        # (or y = x for Integrators) breaks these implicit algebraic loops.
+
+        # 5. Build pre-population list for D=0 state-block outputs ONLY.
+        # D≠0 blocks execute in the middle group and are NOT pre-populated.
         state_output_preloads = []
         for b_name, (start, size) in state_map.items():
+            if b_name not in d0_state_set:
+                continue  # D≠0 or PID: skip pre-population
             if b_name in block_matrices:
                 A, B, C, D = block_matrices[b_name]
                 state_output_preloads.append((b_name, start, size, C))
@@ -1900,15 +1950,16 @@ class SystemCompiler:
                 # Integrator: output = state
                 state_output_preloads.append((b_name, start, size, None))
 
-        # 5. Create optimized closure
+        # 6. Create optimized closure
         def model_func(t, y):
             signals = {}
             dy_vec = np.zeros_like(y)
 
-            # Pre-populate state-based outputs so feedback loops resolve
+            # Pre-populate D=0 state-block outputs so feedback loops resolve.
+            # Only D=0 blocks are here — their output C*x is exact (D*u = 0).
             for b_name, start, size, C_mat in state_output_preloads:
                 if C_mat is not None:
-                    # StateSpace/TranFn: y_out = C * x  (D*u added later in exec_ss)
+                    # StateSpace/TranFn (D=0): y_out = C * x
                     x = y[start:start + size].reshape(-1, 1)
                     out = C_mat @ x
                     signals[b_name] = out.item() if out.size == 1 else out.flatten()
