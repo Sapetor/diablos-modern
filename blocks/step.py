@@ -86,6 +86,13 @@ class StepBlock(BaseBlock):
                 change = not params['_change_old']
             else:
                 change = params['_change_old']
+        elif step_type == 'impulse':
+            dt = kwargs.get('dtime', params.get('dtime', 0.01))
+            if not params.get('_impulse_fired', False) and time >= delay:
+                params['_impulse_fired'] = True
+                value = params.get('value', 1.0)
+                return {0: np.atleast_1d(np.array(value / dt, dtype=float)), 'E': False}
+            return {0: np.atleast_1d(np.zeros_like(np.array(params.get('value', 1.0), dtype=float))), 'E': False}
         elif step_type == 'constant':
             change = False
         else:

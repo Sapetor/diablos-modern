@@ -62,6 +62,224 @@ class TestStepBlock:
             assert result[0][0] == 7.0, f"Constant should always output value at t={t}"
 
 
+    def test_impulse_zero_before_delay(self):
+        """Impulse outputs 0 before delay time."""
+        from blocks.step import StepBlock
+        block = StepBlock()
+        dt = 0.01
+        params = {'value': 1.0, 'delay': 1.0, 'type': 'impulse',
+                  'pulse_start_up': True, '_init_start_': True}
+
+        result = block.execute(time=0.5, inputs={}, params=params, dtime=dt)
+        assert result[0][0] == 0.0, "Impulse should be 0 before delay"
+
+    def test_impulse_fires_at_delay(self):
+        """Impulse outputs value/dt for one step at t=delay."""
+        from blocks.step import StepBlock
+        block = StepBlock()
+        dt = 0.01
+        params = {'value': 1.0, 'delay': 1.0, 'type': 'impulse',
+                  'pulse_start_up': True, '_init_start_': True}
+
+        # Initialize
+        block.execute(time=0.0, inputs={}, params=params, dtime=dt)
+        result = block.execute(time=1.0, inputs={}, params=params, dtime=dt)
+        expected = 1.0 / dt  # 100.0
+        assert result[0][0] == pytest.approx(expected), \
+            f"Impulse should be value/dt={expected} at t=delay"
+
+    def test_impulse_zero_after_delay(self):
+        """Impulse outputs 0 after the impulse step."""
+        from blocks.step import StepBlock
+        block = StepBlock()
+        dt = 0.01
+        params = {'value': 1.0, 'delay': 1.0, 'type': 'impulse',
+                  'pulse_start_up': True, '_init_start_': True}
+
+        # Initialize and fire
+        block.execute(time=0.0, inputs={}, params=params, dtime=dt)
+        block.execute(time=1.0, inputs={}, params=params, dtime=dt)
+        # Next step should be 0
+        result = block.execute(time=1.0 + dt, inputs={}, params=params, dtime=dt)
+        assert result[0][0] == 0.0, "Impulse should be 0 after firing"
+
+    def test_impulse_integral_equals_value(self):
+        """Discrete integral of impulse over all time equals value."""
+        from blocks.step import StepBlock
+        block = StepBlock()
+        dt = 0.01
+        value = 3.0
+        delay = 0.5
+        params = {'value': value, 'delay': delay, 'type': 'impulse',
+                  'pulse_start_up': True, '_init_start_': True}
+
+        total = 0.0
+        for i in range(200):
+            t = i * dt
+            result = block.execute(time=t, inputs={}, params=params, dtime=dt)
+            total += result[0][0] * dt
+
+        assert total == pytest.approx(value, abs=0.01), \
+            f"Integral of impulse should equal value={value}, got {total}"
+
+    def test_impulse_zero_delay(self):
+        """Impulse with delay=0 fires at t=0."""
+        from blocks.step import StepBlock
+        block = StepBlock()
+        dt = 0.01
+        params = {'value': 2.0, 'delay': 0.0, 'type': 'impulse',
+                  'pulse_start_up': True, '_init_start_': True}
+
+        result = block.execute(time=0.0, inputs={}, params=params, dtime=dt)
+        assert result[0][0] == pytest.approx(2.0 / dt), \
+            "Impulse at delay=0 should fire at t=0"
+
+        result = block.execute(time=dt, inputs={}, params=params, dtime=dt)
+        assert result[0][0] == 0.0, "Impulse should be 0 after firing"
+
+    def test_impulse_compiled_solver(self, qapp):
+        """Impulse through 1/(s+1) in compiled solver gives decaying exponential.
+
+        Analytical impulse response of 1/(s+1): y(t) = e^(-t).
+        At t=1: y ≈ 0.368, at t=3: y ≈ 0.050.
+        """
+        from PyQt5.QtCore import QRect, QPoint
+        from PyQt5.QtGui import QColor
+        from lib.simulation.block import DBlock
+        from lib.simulation.connection import DLine
+        from lib.engine.system_compiler import SystemCompiler
+        from scipy.integrate import solve_ivp
+
+        dt = 0.001
+        blocks = [
+            DBlock(block_fn='Step', sid=0, coords=QRect(0, 0, 50, 40),
+                   color=QColor(150, 150, 150), in_ports=0, out_ports=1,
+                   params={'value': 1.0, 'delay': 0.0, 'type': 'impulse',
+                           'dtime': dt},
+                   username='', b_type=0),
+            DBlock(block_fn='TranFn', sid=0, coords=QRect(0, 0, 50, 40),
+                   color=QColor(150, 150, 150), in_ports=1, out_ports=1,
+                   params={'numerator': [1.0], 'denominator': [1.0, 1.0]},
+                   username='', b_type=1),
+        ]
+        lines = [
+            DLine(sid=0, srcblock='step0', srcport=0,
+                  dstblock='tranfn0', dstport=0,
+                  points=[QPoint(0, 0), QPoint(100, 0)]),
+        ]
+
+        compiler = SystemCompiler()
+        model_func, y0, state_map, _ = compiler.compile_system(
+            blocks, blocks, lines
+        )
+        sol = solve_ivp(model_func, (0, 5), y0, method='RK45',
+                        t_eval=np.linspace(0, 5, 5000), rtol=1e-10, atol=1e-12)
+        assert sol.success
+
+        start, _ = state_map['tranfn0']
+        # Impulse response of 1/(s+1) is e^(-t)
+        # Check at t=1 and t=3
+        idx_1 = np.argmin(np.abs(sol.t - 1.0))
+        idx_3 = np.argmin(np.abs(sol.t - 3.0))
+        assert sol.y[start, idx_1] == pytest.approx(np.exp(-1.0), abs=0.02), \
+            f"Impulse response at t=1 should be ~{np.exp(-1.0):.4f}"
+        assert sol.y[start, idx_3] == pytest.approx(np.exp(-3.0), abs=0.01), \
+            f"Impulse response at t=3 should be ~{np.exp(-3.0):.4f}"
+
+
+@pytest.mark.unit
+class TestImpulseBlock:
+    """Tests for standalone Impulse block."""
+
+    def test_block_properties(self):
+        """Impulse block is a source with correct metadata."""
+        from blocks.impulse import ImpulseBlock
+        block = ImpulseBlock()
+        assert block.block_name == "Impulse"
+        assert block.category == "Sources"
+        assert block.b_type == 0
+        assert block.inputs == []
+        assert len(block.outputs) == 1
+
+    def test_impulse_fires_at_delay(self):
+        """Outputs value/dt for one step at t=delay."""
+        from blocks.impulse import ImpulseBlock
+        block = ImpulseBlock()
+        dt = 0.01
+        params = {'value': 1.0, 'delay': 1.0, '_init_start_': True}
+
+        block.execute(time=0.0, inputs={}, params=params, dtime=dt)
+        result = block.execute(time=1.0, inputs={}, params=params, dtime=dt)
+        assert result[0][0] == pytest.approx(100.0)
+
+    def test_impulse_zero_elsewhere(self):
+        """Outputs 0 before and after the impulse."""
+        from blocks.impulse import ImpulseBlock
+        block = ImpulseBlock()
+        dt = 0.01
+        params = {'value': 1.0, 'delay': 0.5, '_init_start_': True}
+
+        r_before = block.execute(time=0.0, inputs={}, params=params, dtime=dt)
+        assert r_before[0][0] == 0.0
+        # Fire it
+        block.execute(time=0.5, inputs={}, params=params, dtime=dt)
+        r_after = block.execute(time=0.51, inputs={}, params=params, dtime=dt)
+        assert r_after[0][0] == 0.0
+
+    def test_impulse_integral(self):
+        """Discrete integral over all time equals value."""
+        from blocks.impulse import ImpulseBlock
+        block = ImpulseBlock()
+        dt = 0.01
+        params = {'value': 5.0, 'delay': 0.0, '_init_start_': True}
+
+        total = 0.0
+        for i in range(100):
+            result = block.execute(time=i * dt, inputs={}, params=params, dtime=dt)
+            total += result[0][0] * dt
+        assert total == pytest.approx(5.0, abs=0.01)
+
+    def test_compiled_solver_impulse_response(self, qapp):
+        """Impulse -> 1/(s+1) gives e^(-t) in compiled solver."""
+        from PyQt5.QtCore import QRect, QPoint
+        from PyQt5.QtGui import QColor
+        from lib.simulation.block import DBlock
+        from lib.simulation.connection import DLine
+        from lib.engine.system_compiler import SystemCompiler
+        from scipy.integrate import solve_ivp
+
+        dt = 0.001
+        blocks = [
+            DBlock(block_fn='Impulse', sid=0, coords=QRect(0, 0, 50, 40),
+                   color=QColor(150, 150, 150), in_ports=0, out_ports=1,
+                   params={'value': 1.0, 'delay': 0.0, 'dtime': dt},
+                   username='', b_type=0),
+            DBlock(block_fn='TranFn', sid=0, coords=QRect(0, 0, 50, 40),
+                   color=QColor(150, 150, 150), in_ports=1, out_ports=1,
+                   params={'numerator': [1.0], 'denominator': [1.0, 1.0]},
+                   username='', b_type=1),
+        ]
+        lines = [
+            DLine(sid=0, srcblock='impulse0', srcport=0,
+                  dstblock='tranfn0', dstport=0,
+                  points=[QPoint(0, 0), QPoint(100, 0)]),
+        ]
+
+        compiler = SystemCompiler()
+        model_func, y0, state_map, _ = compiler.compile_system(
+            blocks, blocks, lines
+        )
+        sol = solve_ivp(model_func, (0, 5), y0, method='RK45',
+                        t_eval=np.linspace(0, 5, 5000), rtol=1e-10, atol=1e-12)
+        assert sol.success
+
+        start, _ = state_map['tranfn0']
+        idx_1 = np.argmin(np.abs(sol.t - 1.0))
+        idx_3 = np.argmin(np.abs(sol.t - 3.0))
+        assert sol.y[start, idx_1] == pytest.approx(np.exp(-1.0), abs=0.02)
+        assert sol.y[start, idx_3] == pytest.approx(np.exp(-3.0), abs=0.01)
+
+
 @pytest.mark.unit
 class TestConstantBlock:
     """Tests for Constant block."""
