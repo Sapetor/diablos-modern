@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QLabel, QFrame,
                              QMessageBox, QScrollArea, QFileDialog)
 from lib.workspace import WorkspaceManager
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QEvent
 from PyQt5.QtGui import QFont, QColor
 
 # Import existing DSim functionality
@@ -504,14 +504,32 @@ class ModernDiaBloSWindow(QMainWindow):
         scroll_area.setWidgetResizable(True)
         scroll_area.setFrameStyle(QFrame.NoFrame)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(scroll_area)
 
         # Property editor
         self.property_editor = PropertyEditor()
         scroll_area.setWidget(self.property_editor)
 
+        # PyQt5 5.15: QScrollArea viewport absorbs mouse clicks and doesn't
+        # transfer focus to child widgets. Install event filter to fix this.
+        self._prop_scroll_viewport = scroll_area.viewport()
+        self._prop_scroll_viewport.installEventFilter(self)
+
         return panel
     
+    def eventFilter(self, obj, event):
+        """Forward focus to child input widgets inside the property scroll area.
+        PyQt5 5.15: QScrollArea viewport absorbs clicks without focusing children."""
+        if obj is self._prop_scroll_viewport and event.type() == QEvent.MouseButtonPress:
+            child = obj.childAt(event.pos())
+            # Walk up to find the first focusable widget
+            while child and child.focusPolicy() == Qt.NoFocus:
+                child = child.parentWidget()
+            if child and child is not obj:
+                child.setFocus(Qt.MouseFocusReason)
+        return super().eventFilter(obj, event)
+
     def _setup_statusbar(self):
         """Setup modern status bar."""
         statusbar = self.statusBar()
@@ -1249,8 +1267,8 @@ class ModernDiaBloSWindow(QMainWindow):
                             self.canvas.dsim.model.link_goto_from()
                         except Exception as e:
                             logger.warning(f"Could not relink Goto/From after property change: {e}")
-                        # Update canvas visuals
-                        self.canvas.update()
+                    # Refresh canvas to show updated block visuals (Sum signs, labels, etc.)
+                    self.canvas.update()
                     break
         except (ValueError, TypeError, SyntaxError) as e:
             logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")

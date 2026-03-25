@@ -12,9 +12,11 @@ Output:
 
 import sys
 import os
+import platform
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
+ARCH = platform.machine()  # 'arm64' or 'x86_64'
 
 # --- Hidden imports ---
 # Blocks are loaded dynamically via importlib (lib/block_loader.py),
@@ -131,11 +133,11 @@ if sys.platform == 'darwin':
     )
     app = BUNDLE(
         coll,
-        name='DiaBloS.app',
+        name=f'DiaBloS-{ARCH}.app',
         icon=None,               # Add .icns file here if you have one
-        bundle_identifier='com.diablos.modern',
+        bundle_identifier=f'com.diablos.modern.{ARCH}',
         info_plist={
-            'CFBundleDisplayName': 'DiaBloS',
+            'CFBundleDisplayName': f'DiaBloS ({ARCH})',
             'CFBundleShortVersionString': '2.0.0',
             'NSHighResolutionCapable': True,
             'CFBundleDocumentTypes': [

@@ -22,18 +22,20 @@ echo "==> Architecture: ${ARCH}"
 echo "==> Syncing block registry..."
 python tools/sync_block_registry.py
 
+APP_NAME="DiaBloS-${ARCH}.app"
+
 echo "==> Building with PyInstaller..."
-rm -rf dist/DiaBloS dist/DiaBloS.app build/diablos
+rm -rf dist/DiaBloS dist/"${APP_NAME}" build/diablos
 pyinstaller --noconfirm diablos.spec
 
 echo "==> Creating DMG installer..."
 STAGING=$(mktemp -d)
-cp -R dist/DiaBloS.app "$STAGING/"
+cp -R dist/"${APP_NAME}" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 rm -f "dist/${DMG_NAME}"
-hdiutil create -volname "DiaBloS" -srcfolder "$STAGING" -ov -format UDZO "dist/${DMG_NAME}"
+hdiutil create -volname "DiaBloS (${ARCH})" -srcfolder "$STAGING" -ov -format UDZO "dist/${DMG_NAME}"
 rm -rf "$STAGING"
 
 echo "==> Done."
-echo "    App:       dist/DiaBloS.app"
+echo "    App:       dist/${APP_NAME}"
 echo "    Installer: dist/${DMG_NAME}"

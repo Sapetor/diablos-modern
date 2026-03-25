@@ -277,12 +277,14 @@ class ModernStyles:
         }
 
         QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+            color: @text_primary;
             border-color: @border_focus;
             border-width: 2px;
             padding: 5px 9px;
         }
 
         QSpinBox:focus, QDoubleSpinBox:focus {
+            color: @text_primary;
             border-color: @border_focus;
             border-width: 2px;
              padding: 3px 1px 3px 5px;

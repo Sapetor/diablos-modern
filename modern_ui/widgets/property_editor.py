@@ -21,8 +21,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QToolButton, QWidget,
     QSlider, QPushButton, QSizePolicy, QApplication
 )
-from PyQt5.QtCore import pyqtSignal, Qt, QSize
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import pyqtSignal, Qt, QSize, QEvent
+from PyQt5.QtGui import QColor, QPalette
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
 
@@ -231,14 +231,39 @@ class PropertyEditor(QFrame):
         self._widgets = {}   # key -> (editor, reset_btn, val_label)
         self._defaults = {}  # key -> default value
         self._sections = []  # CollapsibleSection references
+        self._focus_out_submit = {}  # widget -> callable (PyQt5 5.15 workaround)
 
         theme_manager.theme_changed.connect(self._update_theme)
         self._update_theme()
+
+    def eventFilter(self, obj, event):
+        """PyQt5 5.15 workaround: QLineEdit inside QScrollArea doesn't get
+        Qt focus on click, so cursor is invisible and editingFinished never
+        fires. Force focus on mouse press; catch FocusOut to trigger submit."""
+        if event.type() == QEvent.MouseButtonPress and obj in self._focus_out_submit:
+            obj.setFocus(Qt.MouseFocusReason)
+        elif event.type() == QEvent.FocusOut and obj in self._focus_out_submit:
+            self._focus_out_submit[obj]()
+        return super().eventFilter(obj, event)
+
+    def _flush_pending_edits(self):
+        """Submit any in-progress edits before the form is rebuilt.
+        PyQt5 5.15 doesn't always fire editingFinished on focus loss,
+        so we trigger pending submit callbacks when switching blocks."""
+        for widget, submit_fn in list(self._focus_out_submit.items()):
+            try:
+                if isinstance(widget, QLineEdit) and widget.isModified():
+                    submit_fn()
+                elif not isinstance(widget, QLineEdit) and widget and not widget.isHidden():
+                    submit_fn()
+            except RuntimeError:
+                pass  # Widget already deleted
 
     # ── Public API ──────────────────────────────────────────────
 
     def set_block(self, block):
         """Set the block to be edited and create the property form."""
+        self._flush_pending_edits()
         self.block = block
         self._clear_form()
         if self.block is None:
@@ -259,6 +284,7 @@ class PropertyEditor(QFrame):
         self._widgets.clear()
         self._defaults.clear()
         self._sections.clear()
+        self._focus_out_submit.clear()
 
     def _clear_sub_layout(self, layout):
         while layout.count():
@@ -535,7 +561,10 @@ class PropertyEditor(QFrame):
             sb = QSpinBox()
             sb.setRange(-999999, 999999)
             sb.setValue(value)
-            sb.editingFinished.connect(lambda: self._on_property_changed(key, sb.value()))
+            submit = lambda: self._on_property_changed(key, sb.value())
+            sb.editingFinished.connect(submit)
+            sb.installEventFilter(self)
+            self._focus_out_submit[sb] = submit
             self._apply_widget_sizing(sb)
             return sb
 
@@ -545,18 +574,20 @@ class PropertyEditor(QFrame):
                 le = QLineEdit(str(value))
                 self._apply_widget_sizing(le)
                 le.setPlaceholderText("e.g. 1.0 or [1, 2, 3]")
-                le.editingFinished.connect(
-                    lambda: self._validate_and_submit_numeric(key, le)
-                )
+                submit = lambda: self._validate_and_submit_numeric(key, le)
+                le.editingFinished.connect(submit)
+                le.installEventFilter(self)
+                self._focus_out_submit[le] = submit
                 return le
 
             # Slider + spinbox (#5)
             if self._should_show_slider(key, value, meta, group):
                 sr = self._get_slider_range(value, meta)
                 ssb = SliderSpinBox(value, sr[0], sr[1])
-                ssb.editingFinished.connect(
-                    lambda: self._on_property_changed(key, ssb.value())
-                )
+                submit = lambda: self._on_property_changed(key, ssb.value())
+                ssb.editingFinished.connect(submit)
+                ssb.spinbox.installEventFilter(self)
+                self._focus_out_submit[ssb.spinbox] = submit
                 return ssb
 
             # Standard spinbox
@@ -564,16 +595,20 @@ class PropertyEditor(QFrame):
             dsb.setRange(-float('inf'), float('inf'))
             dsb.setDecimals(4)
             dsb.setValue(value)
-            dsb.editingFinished.connect(lambda: self._on_property_changed(key, dsb.value()))
+            submit = lambda: self._on_property_changed(key, dsb.value())
+            dsb.editingFinished.connect(submit)
+            dsb.installEventFilter(self)
+            self._focus_out_submit[dsb] = submit
             self._apply_widget_sizing(dsb)
             return dsb
 
         # Lists, strings, other → QLineEdit
         le = QLineEdit(str(value))
         self._apply_widget_sizing(le)
-        le.editingFinished.connect(
-            lambda: self._validate_and_submit_string(key, le, type(value))
-        )
+        submit = lambda: self._validate_and_submit_string(key, le, type(value))
+        le.editingFinished.connect(submit)
+        le.installEventFilter(self)
+        self._focus_out_submit[le] = submit
         if isinstance(value, list):
             le.setPlaceholderText("e.g. [1, 2, 3]")
         return le
@@ -877,6 +912,7 @@ class PropertyEditor(QFrame):
             PropertyEditor QSpinBox:focus,
             PropertyEditor QDoubleSpinBox:focus,
             PropertyEditor QComboBox:focus {{
+                color: {txt};
                 border: 2px solid {accent};
                 padding: 1px 3px;
             }}

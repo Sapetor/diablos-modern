@@ -417,3 +417,36 @@ A compounding issue: the initialization path (`initialize_execution` Loop 2) use
 
 **Lesson**: When adding any new block type with state to the compiled solver, always check whether its output depends on the current input (feedthrough, D≠0). If yes, it must NOT be pre-populated and must execute with the algebraic group. Test with a topology where an algebraic block sits between the D≠0 block and a downstream state block.
 
+---
+
+### canvas.update() Must Follow ALL Property Changes (March 2026)
+
+**Problem**: Sum block symbol didn't update on canvas after editing the `sign` parameter. Initially appeared arm64-only but affected both builds.
+
+**Root Cause (two layers)**:
+1. `self.canvas.update()` in `_on_property_changed()` was inside a `if block.block_fn in ("Goto", "From")` conditional — only Goto/From blocks triggered a canvas refresh.
+2. PyQt5 5.15 (arm64) doesn't fire `QLineEdit.editingFinished` on focus loss — only on Enter. PyQt5 5.9 (x86_64) fires it on both. This meant parameter changes were never submitted when clicking away.
+
+**Fix (three parts)**:
+1. Moved `canvas.update()` outside the Goto/From conditional (main_window.py)
+2. Added `eventFilter` on QLineEdits to catch FocusOut and trigger submit (property_editor.py)
+3. Added `_flush_pending_edits()` in `set_block()` to submit unsaved changes before rebuilding the form — covers the case where clicking a block destroys the old QLineEdit before FocusOut fires
+
+**Red herring**: Stripping QSS, disabling `_update_theme()`, and switching to `repaint()` were all unnecessary.
+
+**Lesson**: `editingFinished` behavior differs across PyQt5 versions. Never rely solely on `editingFinished` for "click away to confirm" — use an event filter for FocusOut as a fallback, and flush pending edits before rebuilding forms. When debugging cross-version Qt issues, add targeted diagnostic prints (textChanged, returnPressed, editingFinished) to isolate exactly which signal fails.
+
+---
+
+### PyQt5 5.15 Cursor Invisible — Unfixable (March 2026)
+
+**Problem**: QLineEdit cursor (blinking caret) not drawn in PyQt5 5.15 on macOS when QSS sets `background-color`. QTBUG-109450.
+
+**Root Cause**: QLineEdit inside QScrollArea doesn't receive Qt focus on click (`hasFocus()` returns False even while typing works via event forwarding). Without focus, cursor is never drawn. Additionally, even after fixing focus via viewport event filter, the cursor still isn't rendered — Qt 5.15's macOS platform plugin doesn't draw the cursor when QSS `background-color` is set.
+
+**Tried and failed**: QSS `color` in `:focus`, QPalette override (Text/WindowText/Base), `setCursorWidth(2)`, per-widget QSS, `AA_UseStyleSheetPropagationInWidgetStyles`, `app.setStyle("Fusion")`, Python 3.12 vs 3.14. None work.
+
+**Decision**: Use x86_64 Rosetta build (PyQt5 5.9.7) for releases. Future fix: migrate to PyQt6.
+
+**Lesson**: Some Qt platform bugs have no in-app workaround. When you've exhausted QSS, QPalette, style, and attribute options, check `hasFocus()` to verify the widget actually has Qt focus. If the cursor still doesn't render after confirming focus, it's a platform-level rendering bug. Don't waste time on more QSS variations — change the Qt version.
+

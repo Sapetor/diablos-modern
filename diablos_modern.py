@@ -73,7 +73,6 @@ def setup_application():
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("DiaBloS Modern")

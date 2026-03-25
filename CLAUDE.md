@@ -1,441 +1,100 @@
-# DiaBloS Modern - Project Notes
+# DiaBloS Modern
 
-## Overview
-DiaBloS is a block diagram simulation tool built with Python and PyQt5. It allows users to create, connect, and simulate dynamic systems using a visual block diagram interface.
+Block diagram simulation tool (Simulink-style) built with Python/PyQt5. Entry point: `python diablos_modern.py`.
 
 ## Architecture
-- **modern_ui/**: PyQt5-based GUI (main_window.py, modern_canvas.py, widgets/)
-- **lib/**: Core simulation engine (lib.py, engine/, plotting/, services/)
-- **blocks/**: Block implementations organized by category (sources/, sinks/, math/, pde/, etc.)
-- **examples/**: Example diagram files (.diablos)
-- **tests/**: Unit and integration tests
 
-## Recent Work (February 2026)
+```
+modern_ui/          PyQt5 GUI (main_window, modern_canvas, widgets/, controllers/)
+lib/                Core engine (engine/, plotting/, services/, export/)
+blocks/             Block implementations by category (sources/, sinks/, math/, pde/, etc.)
+examples/           Example diagrams (.diablos files)
+tests/              Unit, integration, regression tests
+tools/              Build scripts (build.sh, sync_block_registry.py)
+tasks/              TODO list (todo.md) and lessons learned (lessons.md)
+```
 
-### Diagram-to-TikZ Export
-Added File > Export > Export as TikZ... for generating publication-ready TikZ diagrams from block diagrams.
+### Simulation Data Flow
 
-- **New files**: `lib/export/tikz_exporter.py`, `modern_ui/widgets/tikz_export_dialog.py`
-- **Modified**: `modern_ui/builders/menu_builder.py` (Export submenu), `modern_ui/main_window.py` (handler)
-- **Formats**: Standalone .tex (compilable with pdflatex) or snippet only (tikzset + tikzpicture)
-- **Control conventions**: Sum=circle with +/- labels, Gain=isosceles triangle, TF=rectangle with `\dfrac{num(s)}{den(s)}`
-- **Features**: Live preview, Copy to Clipboard, configurable options (include sinks, show labels/values, fill colors, page width)
-- **Routing**: Multi-waypoint connections for feedback loops, proper port anchors for multi-port blocks
+1. **Canvas** -- user builds diagram (blocks + connections)
+2. **Save/Load** -- `.diablos` JSON format via `FileService` (`lib/services/file_service.py`)
+3. **Flattening** -- `Flattener` expands nested subsystems into flat block list
+4. **Init** -- `SimulationEngine.initialize_execution()` resolves hierarchy, detects algebraic loops
+5. **Compilation** (fast path) -- `SystemCompiler.compile_system()` converts diagram to ODE for `scipy.integrate.solve_ivp`
+6. **Execution** -- time-step loop calling `block.execute()` in hierarchy order, propagating outputs
+7. **Plotting** -- `ScopePlotter` renders results in Scope/FieldScope windows
 
-### Compiled Solver Execution Order Fix
-Fixed critical bug where feedback loops with Transfer Function blocks produced all-zero output in compiled (fast) solver mode.
+### Compiled Solver Execution Order
 
-- **Root cause**: `initialize_execution()` assigns hierarchy=0 to memory blocks (TranFn, Integrator). When `compile_system()` sorted by hierarchy, state blocks executed before their algebraic input chain (Sum, Gain), reading uncomputed signals as 0.
-- **Fix**: Three-way block ordering in `system_compiler.py`: sources → algebraic → state blocks. State blocks run last so derivatives use correct inputs.
-- **File**: `lib/engine/system_compiler.py` line 1314
+Blocks execute in three groups: **sources -> algebraic -> state blocks**. State blocks (TranFn, Integrator, StateSpace, PDE) run last so their derivative computations use correct inputs. D!=0 state blocks (feedthrough) execute with the algebraic group instead. See `system_compiler.py` and `tasks/lessons.md` for the full rationale.
 
-### Property Editor Cursor Visibility Fix
-Fixed invisible cursor and text selection in property editor input fields.
+## Block Contract
 
-- **Root cause**: QLineEdit/QSpinBox/QDoubleSpinBox/QComboBox stylesheets lacked selection and focus styling
-- **Fix**: Added `selection-background-color`, `selection-color`, and `:focus` border styling
-- **Files**: `modern_ui/widgets/property_editor.py` (both `_update_theme()` and `SliderSpinBox.update_theme()`)
+All blocks inherit from `BaseBlock` (`blocks/base_block.py`). Required:
 
-### First-Simulation Performance Fix
-Fixed 3-second delay on first simulation caused by `scipy.signal.cont2discrete()` lazy initialization.
+```python
+class MyBlock(BaseBlock):
+    block_name = "MyBlock"                    # User-facing name
+    params = {"gain": 1.0}                    # Default parameters
+    inputs = [PortDefinition(...)]            # Input port specs
+    outputs = [PortDefinition(...)]           # Output port specs
 
-- **Root cause**: Transfer Function blocks call `cont2discrete()` which has ~3s lazy init on first use
-- **Solution**: Background preload thread in `diablos_modern.py` calls `cont2discrete()` with dummy system at startup
-- **Result**: First simulation now runs instantly (preload happens in background during app startup)
+    def execute(self, time, inputs, params, **kwargs) -> dict:
+        # inputs: {port_idx: value}, params: {name: value}
+        # Return {port_idx: output_value} or {'E': True, 'error': 'msg'}
+        return {0: inputs[0] * params['gain']}
+```
 
-### Animation Export for FieldScope Visualizations
-Added ability to export FieldScope (1D) and FieldScope2D (2D) time-series visualizations as animated GIF or MP4 files.
+Optional overrides: `optional_inputs`, `optional_outputs`, `requires_inputs` (False for sources), `requires_outputs` (False for sinks), `draw_icon()`, `symbolic_execute()`.
 
-- **New files**: `lib/plotting/animation_exporter.py`, `modern_ui/widgets/animation_export_dialog.py`
-- **Export button** on slider figure windows (next to time slider)
-- **Format options**: GIF (via Pillow) or MP4 (via ffmpeg)
-- **Configurable**: FPS, quality (72/100/150 dpi), output path
-- **Threaded export** keeps UI responsive with progress bar
+**Critical rule**: All block state that persists across time steps must be stored in `params` (e.g., `params['_t_old_']`), never on `self`. The engine's `reset_memblocks()` only resets params -- instance attributes survive resets invisibly.
 
-### Expanded Unit Test Coverage
-Added 160 new unit tests for previously untested blocks:
+## Adding New Blocks
 
-| Test File | Tests | Block(s) |
-|-----------|-------|----------|
-| `test_transport_delay.py` | 14 | TransportDelay |
-| `test_discrete_transfer_fn.py` | 16 | DiscreteTranFn |
-| `test_external_block.py` | 10 | External (stub) |
-| `test_assert_block.py` | 32 | Assert |
-| `test_fft_block.py` | 19 | FFT |
-| `test_subsystem_blocks.py` | 53 | Subsystem, Inport, Outport |
-| `test_abs_block.py` | 8 | Abs |
-| `test_terminator.py` | 8 | Terminator |
+1. Create `.py` file in `blocks/` (or a subdirectory with `__init__.py`)
+2. Inherit from `BaseBlock`, implement required properties and `execute()`
+3. Run `python tools/sync_block_registry.py` to update `_BLOCK_MODULES` in `block_loader.py`
 
-**Test coverage improved**: 44% → 57% of blocks now have dedicated unit tests.
+The build script (`tools/build.sh`) runs the sync automatically. In dev mode, blocks are also discovered dynamically.
 
-### Optimization Primitives Implementation
-New category of 11 blocks for building optimization algorithms visually using feedback loops:
+## Testing
 
-- **Core Blocks**: ObjectiveFunction, VectorPerturb, NumericalGradient, StateVariable, VectorGain, VectorSum
-- **Linear Algebra**: LinearSystemSolver (Ax=b), RootFinder (Newton step), ResidualNorm
-- **Adaptive Methods**: Momentum, Adam
-
-Key concept: Each simulation step = one optimization iteration. Build gradient descent as `X_{k+1} = X_k - α * ∇f(X_k)` using connected blocks.
-
-**Files**: `blocks/optimization_primitives/` (11 blocks), 78 unit tests, 5 example diagrams
-**Wiki**: `docs/wiki/Optimization_Primitives.md` with full block documentation
-
-### Verification Examples (with Analytical Solutions)
-- `gradient_descent_verification.diablos` - Compares numerical GD to x(k) = 0.8^k · [5,5]
-- `newton_method_verification.diablos` - Newton converging to [1,0] with quadratic rate
-- `linear_system_verification.diablos` - Solves Ax=b with ||x-x*|| and ||Ax-b|| metrics
-
-### Teaching Examples
-- `learning_rate_comparison.diablos` - Effect of α on convergence (0.1, 0.4, 0.6, 1.2)
-- `optimizer_comparison.diablos` - GD vs Momentum vs Adam on Rosenbrock
-- `convergence_rates.diablos` - Linear vs quadratic convergence visualization
-
-### Live Parameter Tuning (Manipulate-style)
-Interactive parameter tuning for teaching and exploration. After running a simulation, pin block parameters to a tuning panel and drag sliders to see scope plots update in real-time.
-
-- **New files**: `modern_ui/widgets/tuning_panel.py`, `modern_ui/controllers/tuning_controller.py`
-- **Tuning panel**: Collapsible panel at bottom of canvas area with slider rows
-- **Re-simulation**: Each slider change triggers headless re-simulation (50ms debounce), plots update in-place via `SignalPlot.loop()`
-- **List params**: Supports individual list elements (e.g., `denominator[0]`, `denominator[1]` for transfer functions)
-- **Custom ranges**: Right-click slider rows → "Set Range..." to set min/max bounds
-- **Scope stays on top**: Scope window gets `WindowStaysOnTopHint` during tuning, reverts on clear
-- **Activation**: Right-click block → "Add to Tuning" submenu, or pin button in property editor
-
-### UI Improvements
-- **Display block**: Dynamic width rendering for wider strings
-- **Terminal output**: Simulation results summary printed after completion
-- **Reduced logging**: Less verbose terminal output during simulation
-
-### Test Suite Expansion
-- **675 tests passing** across unit, integration, and regression tests
-- Added tests for Integrator block (all 5 methods), Sink blocks (Scope, XYGraph, Display)
-- Added tests for Noise and WaveGenerator source blocks
-- End-to-end simulation tests: Constant→Scope, Step→Integrator→Scope, feedback loops
-- FieldScope2D verification tests: snapshots, time slider, shape preservation
-- Subsystem nesting tests: multi-level chains, split/merge, feedback patterns
-- AnimationExporter tests: GIF/MP4 export, 1D/2D fields, writer availability
-- **Regression test suite** (`tests/regression/`): Numerical accuracy, bug fix verification
-- **Profiling tools** (`tests/profiling/`): Performance analysis for simulation engine
-
-## Recent Work (January 2026)
-
-### PDE Blocks Implementation
-- **1D PDE Blocks**: HeatEquation1D, WaveEquation1D, AdvectionEquation1D, DiffusionReaction1D
-- **2D PDE Blocks**: HeatEquation2D, WaveEquation2D, AdvectionEquation2D (Method of Lines with 5-point stencil Laplacian)
-- **Field Processing**: FieldProbe, FieldScope (1D), FieldProbe2D, FieldScope2D, FieldSlice
-- Blocks organized in palette categories: "PDE Equations" and "Field Processing"
-
-### Key Features Added
-- 2D heat equation solver with Dirichlet/Neumann boundary conditions
-- Sinusoidal, Gaussian, and hot_spot initial conditions for 2D
-- Interactive time slider for FieldScope2D visualization
-- Verification summary with error metrics for comparison scopes
-- Multi-input scope support in replay phase
-
-### Verification Example
-`examples/heat_equation_2d_verification.diablos` - Compares numerical solution against analytical solution for decaying sinusoidal mode: T(x,y,t) = A*sin(πx)*sin(πy)*exp(-2απ²t)
-
-### Optimization Examples (January 2026)
-- `examples/optimization_basic_demo.diablos` - Basic gain parameter optimization with ISE cost
-- `examples/optimization_pid_tuning_demo.diablos` - PID auto-tuning with Kp, Ki, Kd parameters using ITAE cost
-- `examples/optimization_constrained_demo.diablos` - Constrained optimization with overshoot limit using SLSQP
-- `examples/optimization_data_fit_demo.diablos` - Model calibration against experimental data (with sample CSV)
-
-### Additional PDE Examples
-- `examples/pde_comparison_demo.diablos` - Side-by-side comparison of Heat, Wave, and Advection equations
-- `examples/pde_neumann_bc_demo.diablos` - Insulated rod with Neumann BCs demonstrating energy conservation
-
-## Key Files
-- `lib/engine/simulation_engine.py` - Core simulation engine with replay phase
-- `lib/engine/system_compiler.py` - Compiles diagrams to ODE systems for fast solving
-- `lib/plotting/scope_plotter.py` - Plotting logic for Scope, FieldScope, FieldScope2D
-- `lib/plotting/animation_exporter.py` - GIF/MP4 export for field animations
-- `lib/diagram_validator.py` - Pre-simulation validation
-- `blocks/pde/` - All PDE block implementations
-- `blocks/optimization_primitives/` - Visual optimization algorithm building blocks
-- `modern_ui/widgets/animation_export_dialog.py` - Export settings dialog
-- `lib/export/tikz_exporter.py` - TikZ diagram export engine
-- `modern_ui/widgets/tikz_export_dialog.py` - TikZ export dialog with live preview
-- `tasks/todo.md` - Consolidated TODO and roadmap
-
-### Optimization Primitives Examples
-- `examples/gradient_descent_demo.diablos` - Basic GD on f(x) = x₁² + x₂²
-- `examples/momentum_demo.diablos` - Momentum optimizer on Rosenbrock
-- `examples/adam_demo.diablos` - Adam optimizer on Rosenbrock
-- `examples/newton_method_demo.diablos` - Newton's method for nonlinear system
-- `examples/linear_system_demo.diablos` - Solving Ax = b with verification
-
-## Pending Tasks
-
-> **See [`tasks/todo.md`](tasks/todo.md) for the consolidated TODO list.**
-
-### High Priority - Testing
-- [x] **Comprehensive block testing**: 421 unit tests passing
-  - Source blocks: Step, Ramp, Sine, Constant, Noise, WaveGenerator ✓
-  - Math blocks: Gain, Sum, Product, MathFunction, Derivative, Abs ✓
-  - Control blocks: Saturation, RateLimiter, PID, Hysteresis, Deadband, Switch, TransportDelay, DiscreteTranFn ✓
-  - Sink blocks: Scope, XYGraph, Display, FFT, Assert, Terminator ✓
-  - PDE blocks: Heat1D/2D, Wave1D/2D, Advection1D/2D, DiffusionReaction1D ✓
-  - Integrator: All 5 methods (FWD_EULER, BWD_EULER, TUSTIN, RK45, SOLVE_IVP) ✓
-  - Subsystem blocks: Subsystem, Inport, Outport ✓
-  - Animation export: AnimationExporter ✓
-- [x] **Integration tests**: Complete diagram simulations end-to-end ✓
-- [x] **Subsystem nesting tests**: Signal flow patterns, nested processing ✓
-
-### Medium Priority - Features
-- [x] **FieldScope2D verification**: Tests for snapshots, time slider, shapes ✓
-- [x] **2D PDE blocks**: WaveEquation2D, AdvectionEquation2D implemented ✓
-- [ ] **3D PDE support**: Future consideration
-- [x] **Regression tests**: `tests/regression/test_regression_suite.py` with 26 tests ✓
-
-### Low Priority - Polish
-- [x] **Documentation**: Added wiki pages (Optimization, PDE, Examples, Optimization_Primitives)
-- [x] **Example diagrams**: Added optimization examples (4), PDE examples (2), and optimization primitives examples (5)
-- [x] **Optimization Primitives**: 11 blocks for visual algorithm building (ObjectiveFunction, NumericalGradient, StateVariable, VectorGain, VectorSum, VectorPerturb, LinearSystemSolver, RootFinder, ResidualNorm, Momentum, Adam)
-- [x] **Performance profiling**: `tests/profiling/profile_simulation.py` ✓
-
-## Known Issues
-- ~~Old test file (tests/test_blocks.py) crashes due to Qt initialization~~ → Marked as skipped
-- External block (`blocks/external.py`) is a stub - returns error dict (not implemented)
-
-## Dependencies
-- `Pillow>=8.0.0` required for GIF animation export (added to requirements.txt)
-- `ffmpeg` (external) required for MP4 export: `brew install ffmpeg` (macOS) or `apt install ffmpeg` (Ubuntu)
-
-## Running Tests
 ```bash
 pytest tests/ -v                    # All tests
 pytest tests/unit/ -v               # Unit tests only
 pytest tests/integration/ -v        # Integration tests only
 pytest tests/regression/ -v         # Regression tests only
-python tests/profiling/profile_simulation.py  # Performance profiling
 ```
 
-## Running the Application
-```bash
-python diablos_modern.py
+### Test Pattern
+
+```python
+@pytest.mark.unit
+class TestMyBlock:
+    def test_basic_output(self):
+        from blocks.myblock import MyBlockBlock
+        block = MyBlockBlock()
+        params = {'gain': 2.0, '_init_start_': True}
+        result = block.execute(time=0.5, inputs={0: np.array([3.0])}, params=params, dtime=0.01)
+        assert np.isclose(result[0][0], 6.0)
 ```
 
-## Packaging as Standalone App (PyInstaller)
+Instantiate block, call `execute()` with `time`, `inputs` dict (keyed by port index), `params`, and optional `dtime`. Use `np.isclose()` for floating-point assertions. The `_init_start_: True` flag triggers first-call initialization.
 
-DiaBloS can be packaged as a standalone macOS `.app` bundle + DMG installer. Users don't need Python installed.
+## Build & Packaging
 
-### Quick Build
+See [`docs/building.md`](docs/building.md) for PyInstaller packaging (macOS, Windows, Linux).
 
-```bash
-# arm64 (Apple Silicon) — recommended for M1/M2/M3/M4 Macs
-source ~/.venvs/diablos-arm64/bin/activate
-./tools/build.sh
-# Output: dist/DiaBloS-arm64.dmg (72MB)
+Quick reference: `source ~/.venvs/diablos-arm64/bin/activate && ./tools/build.sh`
 
-# x86_64 (Intel / Rosetta) — for Intel Macs or universal compatibility
-source ~/.venvs/evaluate-diablos/bin/activate
-./tools/build.sh
-# Output: dist/DiaBloS-x86_64.dmg (113MB)
-```
+Key files: `diablos.spec` (PyInstaller config), `lib/app_paths.py` (frozen vs dev path resolution), `lib/block_loader.py` (`_BLOCK_MODULES` static registry for frozen mode).
 
-`tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation.
+## Known Issues
 
-### Build Venvs
+- `blocks/external.py` is a stub -- returns error dict (not implemented)
 
-Two separate venvs are used because PyInstaller bundles the Python interpreter from the active venv:
+## Key Dependencies
 
-| Venv | Python | Arch | Purpose |
-|------|--------|------|---------|
-| `~/.venvs/diablos-arm64/` | 3.14 (Homebrew) | arm64 | Native Apple Silicon build |
-| `~/.venvs/evaluate-diablos/` | 3.9 (Anaconda) | x86_64 | Intel/Rosetta build |
-
-Both venvs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`
-
-### Output
-
-| Build | DMG | App Size | Sim Speed | Startup |
-|-------|-----|----------|-----------|---------|
-| arm64 | 72MB | 160MB | ~80K itr/s | ~2s |
-| x86_64 | 113MB | 319MB | ~44K itr/s | ~25s (Rosetta) |
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `diablos.spec` | PyInstaller config — hidden imports, data files, excludes, platform packaging |
-| `tools/build.sh` | One-command build: sync registry, PyInstaller, DMG |
-| `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py` |
-| `lib/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
-| `lib/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
-
-### How It Works
-
-- **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date — run automatically by `tools/build.sh`.
-- **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` which resolves to `~/Library/Application Support/DiaBloS/` on macOS.
-- **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included.
-- **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
-- **Multiprocessing**: `multiprocessing.freeze_support()` is called at entry point to prevent duplicate process spawning.
-
-### Adding New Blocks
-
-Just add the block `.py` file to `blocks/` (or a subdirectory with `__init__.py`). The build script automatically syncs the registry. No manual edits needed.
-
-### Frozen-Mode Path Handling
-
-In frozen mode, the working directory is `/` (read-only). All file I/O must use writable paths:
-
-| Data | Dev Mode Path | Frozen Mode Path |
-|------|--------------|-----------------|
-| Configs | `config/` | `~/Library/Application Support/DiaBloS/config/` |
-| Autosave | `saves/` | `~/Library/Application Support/DiaBloS/saves/` |
-| Logs | `diablos_modern.log` | `~/Library/Logs/DiaBloS/diablos_modern.log` |
-| Examples | `examples/` | `(bundled in app)/examples/` |
-
-### macOS Distribution Notes
-
-- **Unsigned apps**: Blocked by Gatekeeper. Users must run `xattr -rd com.apple.quarantine /Applications/DiaBloS.app` after copying from DMG.
-- **Code signing**: `codesign --force --deep --sign - DiaBloS.app` for ad-hoc signing. For proper distribution, use an Apple Developer account ($99/yr) for signing + notarization.
-- **App icon**: Set `icon='path/to/icon.icns'` in `diablos.spec` BUNDLE section.
-
-### Windows Build (Windows 10/11)
-
-PyInstaller can only build for the platform it runs on. To build the Windows installer:
-
-```powershell
-# 1. Install Python 3.9+ from python.org (check "Add to PATH")
-# 2. Clone the repo
-git clone git@github.com:Sapetor/diablos-modern.git
-cd diablos-modern
-
-# 3. Create venv and install dependencies
-python -m venv .venv
-.venv\Scripts\activate
-pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
-
-# 4. Sync block registry and build
-python tools/sync_block_registry.py
-pyinstaller --noconfirm diablos.spec
-
-# 5. Output: dist\DiaBloS\DiaBloS.exe (distribute the entire dist\DiaBloS folder)
-```
-
-Also works from WSL with a Windows Python, or from a GitHub Actions CI workflow.
-
-### Windows Distribution Notes
-- Unsigned `.exe` may trigger Windows Defender SmartScreen warnings — users click "More info" then "Run anyway"
-- Distributing as a folder (not `--onefile`) reduces false positives
-- Code signing certificate ($200-400/yr) eliminates warnings
-
-### Ubuntu/Linux Build
-
-```bash
-# 1. Install dependencies
-sudo apt install python3 python3-venv python3-pip
-
-# 2. Clone and setup
-git clone git@github.com:Sapetor/diablos-modern.git
-cd diablos-modern
-python3 -m venv .venv
-source .venv/bin/activate
-pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
-
-# 3. Build
-python tools/sync_block_registry.py
-pyinstaller --noconfirm diablos.spec
-
-# 4. Output: dist/DiaBloS/DiaBloS (distribute the entire dist/DiaBloS folder)
-```
-
-## Workflow Orchestration
-
-  
-
-### 1. Plan Mode Default
-
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-
-- If something goes sideways, STOP and re-plan immediately - don't keep pushing
-
-- Use plan mode for verification steps, not just building
-
-- Write detailed specs upfront to reduce ambiguity
-
-  
-
-### 2. Subagent Strategy to keep main context window clean
-
-- Offload research, exploration, and parallel analysis to subagents
-
-- For complex problems, throw more compute at it via subagents
-
-- One task per subagent for focused execution
-
-  
-
-### 3. Self-Improvement Loop
-
-- After ANY correction from the user: update 'tasks/lessons.md' with the pattern
-
-- Write rules for yourself that prevent the same mistake
-
-- Ruthlessly iterate on these lessons until mistake rate drops
-
-- Review lessons at session start for relevant project
-
-  
-
-### 4. Verification Before Done
-
-- Never mark a task complete without proving it works
-
-- Diff behavior between main and your changes when relevant
-
-- Ask yourself: "Would a staff engineer approve this?"
-
-- Run tests, check logs, demonstrate correctness
-
-  
-
-### 5. Demand Elegance (Balanced)
-
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-
-- Skip this for simple, obvious fixes - don't over-engineer
-
-- Challenge your own work before presenting it
-
-  
-
-### 6. Autonomous Bug Fixing
-
-- When given a bug report: just fix it. Don't ask for hand-holding
-
-- Point at logs, errors, failing tests -> then resolve them
-
-- Zero context switching required from the user
-
-- Go fix failing CI tests without being told how
-
-  
-
-## Task Management
-
-1. **Plan First**: Write plan to 'tasks/todo.md' with checkable items
-
-2. **Verify Plan**: Check in before starting implementation
-
-3. **Track Progress**: Mark items complete as you go
-
-4. **Explain Changes**: High-level summary at each step
-
-5. **Document Results**: Add review to 'tasks/todo.md'
-
-6. **Capture Lessons**: Update 'tasks/lessons.md' after corrections
-
-  
-
-## Core Principles
-
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Runtime**: PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, tqdm
+- **GIF export**: Pillow >= 8.0.0
+- **MP4 export**: ffmpeg (external, `brew install ffmpeg`)
