@@ -1695,6 +1695,13 @@ class ModernCanvas(QWidget):
         else:
             logger.error("Analyzer not initialized")
 
+    def compute_lqr(self, block):
+        """Delegate LQR computation to analyzer."""
+        if hasattr(self, 'analyzer'):
+            self.analyzer.compute_lqr(block)
+        else:
+            logger.error("Analyzer not initialized")
+
     def generate_bode_phase_plot(self, block):
         """Delegate Bode Phase plot generation to analyzer."""
         if hasattr(self, 'analyzer'):

@@ -791,7 +791,7 @@ class SimulationEngine:
                 den = block.params.get('denominator', [])
                 if len(den) > len(num):
                     self.memory_blocks.add(block.name)
-            elif block.block_fn == 'DiscreteStateSpace':
+            elif block.block_fn in ('StateSpace', 'DiscreteStateSpace'):
                 D = np.array(block.params.get('D', [[0.0]]))
                 if np.all(D == 0):
                     self.memory_blocks.add(block.name)

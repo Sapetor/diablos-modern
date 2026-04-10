@@ -4,6 +4,7 @@ import logging
 from lib.analysis.analyzers.bode import BodeAnalyzer
 from lib.analysis.analyzers.nyquist import NyquistAnalyzer
 from lib.analysis.analyzers.root_locus import RootLocusAnalyzer
+from lib.analysis.analyzers.lqr import LQRAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class ControlSystemAnalyzer:
         self.bode_analyzer = BodeAnalyzer(parent)
         self.nyquist_analyzer = NyquistAnalyzer(parent)
         self.root_locus_analyzer = RootLocusAnalyzer(parent)
+        self.lqr_analyzer = LQRAnalyzer(parent)
 
     def generate_bode_plot(self, block_name_or_obj=None):
         """Generate Bode Magnitude plot."""
@@ -54,6 +56,14 @@ class ControlSystemAnalyzer:
         if not block: return
         
         win = self.root_locus_analyzer.analyze(block, self.canvas)
+        if win: self.plot_windows.append(win)
+
+    def compute_lqr(self, block_name_or_obj=None):
+        """Compute LQR gain from block parameters."""
+        block = self._resolve_block(block_name_or_obj)
+        if not block: return
+
+        win = self.lqr_analyzer.analyze(block, self.canvas)
         if win: self.plot_windows.append(win)
 
     def _resolve_block(self, block_name_or_obj):

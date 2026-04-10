@@ -422,6 +422,8 @@ class BlockRenderer:
             path.moveTo(0.4, 0.3); path.quadTo(0.3, 0.3, 0.2, 0.5)
             path.moveTo(0.4, 0.7); path.quadTo(0.3, 0.7, 0.2, 0.5)
             path.moveTo(0.2, 0.5); path.lineTo(0.1, 0.5)
+        elif block.block_fn == "LQR":
+            self._draw_centered_text(block, painter, "LQR", bold=True, size_delta=2)
         elif block.block_fn == "Deriv":
             self._draw_text_icon(block, painter, ["dy", "dt"], italic=True)
         elif block.block_fn == "DiscreteTranFn":

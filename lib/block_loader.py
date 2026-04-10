@@ -33,6 +33,7 @@ _BLOCK_MODULES = [
     'blocks.inport',
     'blocks.input_helpers',
     'blocks.integrator',
+    'blocks.lqr',
     'blocks.math_function',
     'blocks.matrix_gain',
     'blocks.mux',

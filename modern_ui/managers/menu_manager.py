@@ -179,6 +179,10 @@ class MenuManager:
             menu.addSeparator()
             rlocus_action = menu.addAction("Generate Root Locus Plot")
             rlocus_action.triggered.connect(lambda: self.canvas.generate_root_locus(block))
+        elif block.block_fn == "LQR":
+            menu.addSeparator()
+            lqr_action = menu.addAction("Compute LQR Gain")
+            lqr_action.triggered.connect(lambda: self.canvas.compute_lqr(block))
 
         # Show menu at cursor position
         from PyQt5.QtGui import QCursor
