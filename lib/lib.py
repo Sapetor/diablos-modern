@@ -716,7 +716,7 @@ class DSim:
             for block in current_blocks:
                 if block.name in self.memory_blocks:
                     if not block.should_execute(self.time_step):
-                        if block.b_type not in [1, 3]:
+                        if block.b_type != 3:
                             held = {p: block.get_held_output(p) for p in range(block.out_ports)}
                             self.engine.propagate_outputs(block, held)
                         continue
@@ -724,11 +724,8 @@ class DSim:
                     if out_value is None or ('E' in out_value and out_value['E']):
                         self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
                         return
-                    if block.effective_sample_time > 0:
-                        for port, value in out_value.items():
-                            if isinstance(port, int):
-                                block.set_held_output(port, value)
-                        block.schedule_next_execution(self.time_step)
+                    # set_held_output / schedule_next_execution are handled
+                    # by the hierarchy loop's state-updating execute below.
                     self.engine.propagate_outputs(block, out_value)
 
                 if self.rk45_len and self.rk_counter != 0:
@@ -858,7 +855,7 @@ class DSim:
                         # Multi-rate: Check if discrete block should execute at this time
                         if not block.should_execute(self.time_step):
                             # Propagate held outputs instead of executing
-                            if block.b_type not in [1, 3]:
+                            if block.b_type != 3:
                                 held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
                                 self.engine.propagate_outputs(block, held_outputs)
                             continue
@@ -870,14 +867,12 @@ class DSim:
                             self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
                             return
 
-                        # Multi-rate: Store outputs and schedule next execution for discrete blocks
-                        if block.effective_sample_time > 0:
-                            for port, value in out_value.items():
-                                if isinstance(port, int):
-                                    block.set_held_output(port, value)
-                            block.schedule_next_execution(self.time_step)
-
-                        # Propagate outputs to children
+                        # Propagate outputs to children. set_held_output and
+                        # schedule_next_execution are NOT called here — the
+                        # hierarchy loop runs the state-updating execute and
+                        # handles them. Calling them here would advance the
+                        # next-sample time before the state ever updates,
+                        # leaving downstream consumers stuck on the initial state.
                         self.engine.propagate_outputs(block, out_value)
 
                     if self.rk45_len and self.rk_counter != 0:
