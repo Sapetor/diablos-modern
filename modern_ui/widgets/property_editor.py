@@ -16,7 +16,7 @@ import ast
 import math
 from collections import OrderedDict
 from PyQt5.QtWidgets import (
-    QLabel, QLineEdit, QComboBox, QCheckBox,
+    QAbstractSpinBox, QLabel, QLineEdit, QComboBox, QCheckBox,
     QFrame, QFormLayout, QSpinBox, QDoubleSpinBox,
     QVBoxLayout, QHBoxLayout, QToolButton, QWidget,
     QSlider, QPushButton, QSizePolicy, QApplication
@@ -47,7 +47,7 @@ class CollapsibleSection(QWidget):
     def __init__(self, title, parent=None, expanded=True):
         super().__init__(parent)
         main = QVBoxLayout(self)
-        main.setContentsMargins(0, 2, 0, 2)
+        main.setContentsMargins(0, 2, 2, 2)
         main.setSpacing(0)
 
         self.toggle_btn = QToolButton()
@@ -57,13 +57,13 @@ class CollapsibleSection(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setChecked(expanded)
         self.toggle_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.toggle_btn.setFixedHeight(28)
+        self.toggle_btn.setMinimumHeight(34)
         self.toggle_btn.clicked.connect(self._toggle)
         main.addWidget(self.toggle_btn)
 
         self.content = QWidget()
         self.content_layout = QFormLayout(self.content)
-        self.content_layout.setContentsMargins(4, 2, 2, 2)
+        self.content_layout.setContentsMargins(2, 2, 2, 2)
         self.content_layout.setSpacing(4)
         self.content_layout.setVerticalSpacing(6)
         self.content_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
@@ -89,7 +89,7 @@ class CollapsibleSection(QWidget):
                 font-weight: bold;
                 font-size: 12px;
                 text-align: left;
-                padding-left: 4px;
+                padding: 6px 4px 6px 4px;
             }}
             QToolButton:hover {{
                 background-color: {colors['border']};
@@ -108,21 +108,25 @@ class SliderSpinBox(QWidget):
         self._max = max_val
         self._steps = 1000
 
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(4)
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, self._steps)
         self.slider.setValue(self._float_to_slider(value))
         self.slider.setMinimumWidth(40)
-        layout.addWidget(self.slider, stretch=3)
+        self.slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addWidget(self.slider, stretch=1)
 
         self.spinbox = QDoubleSpinBox()
         self.spinbox.setRange(-1e15, 1e15)
         self.spinbox.setDecimals(decimals)
         self.spinbox.setValue(value)
-        self.spinbox.setFixedWidth(65)
+        self.spinbox.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+        self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.spinbox.setFixedWidth(78)
         layout.addWidget(self.spinbox, stretch=0)
 
         self.slider.valueChanged.connect(self._on_slider_moved)
@@ -222,13 +226,14 @@ class PropertyEditor(QFrame):
         self.setAutoFillBackground(True)
 
         self._main_layout = QVBoxLayout(self)
-        self._main_layout.setContentsMargins(4, 4, 4, 4)
+        self._main_layout.setContentsMargins(2, 4, 2, 4)
         self._main_layout.setSpacing(6)
         self._main_layout.setAlignment(Qt.AlignTop)
 
         self.logger = logging.getLogger(__name__)
         self.block = None
         self._widgets = {}   # key -> (editor, reset_btn, val_label)
+        self._pin_btns = {}  # key -> QPushButton (only for params with sliders)
         self._defaults = {}  # key -> default value
         self._sections = []  # CollapsibleSection references
         self._focus_out_submit = {}  # widget -> callable (PyQt5 5.15 workaround)
@@ -282,6 +287,7 @@ class PropertyEditor(QFrame):
             elif child.layout():
                 self._clear_sub_layout(child.layout())
         self._widgets.clear()
+        self._pin_btns.clear()
         self._defaults.clear()
         self._sections.clear()
         self._focus_out_submit.clear()
@@ -493,7 +499,7 @@ class PropertyEditor(QFrame):
         self._defaults[key] = default
 
         reset_btn = QPushButton("\u21ba")
-        reset_btn.setFixedSize(24, 24)
+        reset_btn.setFixedSize(20, 22)
         reset_btn.setToolTip(f"Reset to default: {default}")
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(lambda checked, k=key: self._reset_param(k))
@@ -506,14 +512,16 @@ class PropertyEditor(QFrame):
         val_label.setStyleSheet(f"color: {error_color}; font-size: 11px; padding-left: 2px;")
         val_label.hide()
 
-        # Pin-to-tuning button for float params with sliders
         pin_btn = None
         if isinstance(editor, SliderSpinBox):
-            pin_btn = QPushButton("\u25C9")  # ◉ pin icon
-            pin_btn.setFixedSize(24, 24)
-            pin_btn.setToolTip("Pin to Tuning Panel")
+            accent = theme_manager.get_color('accent_primary').name()
+            pin_btn = QPushButton("\u25C9  Pin to tuning")
+            pin_btn.setFlat(True)
             pin_btn.setCursor(Qt.PointingHandCursor)
+            pin_btn.setToolTip("Pin this parameter to the Tuning Panel")
+            pin_btn.setStyleSheet(self._pin_button_stylesheet(accent))
             pin_btn.clicked.connect(lambda checked, k=key: self._on_pin_to_tuning(k))
+            self._pin_btns[key] = pin_btn
 
         self._widgets[key] = (editor, reset_btn, val_label)
 
@@ -522,12 +530,12 @@ class PropertyEditor(QFrame):
         c_layout.setContentsMargins(0, 0, 0, 0)
         c_layout.setSpacing(2)
         row = QHBoxLayout()
-        row.setSpacing(4)
+        row.setSpacing(2)
         row.addWidget(editor, stretch=1)
-        if pin_btn:
-            row.addWidget(pin_btn, stretch=0)
         row.addWidget(reset_btn, stretch=0)
         c_layout.addLayout(row)
+        if pin_btn:
+            c_layout.addWidget(pin_btn, alignment=Qt.AlignRight)
         c_layout.addWidget(val_label)
 
         section.addRow(label, container)
@@ -622,14 +630,15 @@ class PropertyEditor(QFrame):
             return False
         if group == 'Advanced':
             return False
-        if not math.isfinite(value) or value <= 0:
+        if not math.isfinite(value) or value == 0:
             return False
         return True
 
     def _get_slider_range(self, value, meta):
         if 'range' in meta:
             return list(meta['range'])
-        return [0.0, value * 10] if value > 0 else [0.0, 10.0]
+        span = abs(value) * 10
+        return [-span, span]
 
     # ── Documentation section ──────────────────────────────────
 
@@ -877,6 +886,14 @@ class PropertyEditor(QFrame):
 
     # ── Theming ────────────────────────────────────────────────
 
+    @staticmethod
+    def _pin_button_stylesheet(accent):
+        return (
+            f"QPushButton {{ color: {accent}; font-size: 10px; "
+            f"border: none; padding: 0px; text-align: right; }}"
+            f"QPushButton:hover {{ text-decoration: underline; }}"
+        )
+
     def _update_theme(self):
         bg = theme_manager.get_color('surface').name()
         txt = theme_manager.get_color('text_primary').name()
@@ -951,6 +968,10 @@ class PropertyEditor(QFrame):
             )
             if isinstance(editor, SliderSpinBox):
                 editor.update_theme(colors)
+
+        pin_qss = self._pin_button_stylesheet(accent)
+        for pin_btn in self._pin_btns.values():
+            pin_btn.setStyleSheet(pin_qss)
 
     def sizeHint(self):
         if self.block and hasattr(self.block, 'params'):

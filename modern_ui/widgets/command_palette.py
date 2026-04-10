@@ -5,10 +5,10 @@ Command Palette - Quick search for blocks, commands, and files.
 import logging
 from typing import List, Dict, Any
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem
+    QApplication, QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QKeyEvent, QFont
+from PyQt5.QtGui import QCursor, QKeyEvent, QFont
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
@@ -261,22 +261,15 @@ class CommandPalette(QDialog):
         """When shown, position near cursor and focus search."""
         super().showEvent(event)
 
-        # Position near cursor with offset
-        from PyQt5.QtGui import QCursor
-        from PyQt5.QtWidgets import QApplication
-
         cursor_pos = QCursor.pos()
-        screen_geometry = QApplication.desktop().availableGeometry()
+        screen_geometry = QApplication.desktop().availableGeometry(cursor_pos)
 
-        # Calculate desired position with offset
         desired_x = cursor_pos.x() + CURSOR_OFFSET_X
         desired_y = cursor_pos.y() + CURSOR_OFFSET_Y
 
-        # Ensure palette stays within screen bounds
         palette_width = self.width()
         palette_height = self.height()
 
-        # Clamp to screen bounds
         if desired_x + palette_width > screen_geometry.right():
             desired_x = screen_geometry.right() - palette_width
         if desired_y + palette_height > screen_geometry.bottom():
@@ -286,15 +279,8 @@ class CommandPalette(QDialog):
         if desired_y < screen_geometry.top():
             desired_y = screen_geometry.top()
 
-        # Position the palette
-        if self.parent():
-            local_pos = self.parent().mapFromGlobal(QCursor.pos())
-            # Apply the same offset but use global coordinates for bounds checking
-            self.move(desired_x, desired_y)
-        else:
-            self.move(desired_x, desired_y)
+        self.move(desired_x, desired_y)
 
-        # Clear previous search and focus
         self.search_input.clear()
         self.search_input.setFocus()
 
