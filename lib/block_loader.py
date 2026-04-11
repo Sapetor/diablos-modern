@@ -1,9 +1,12 @@
 
 import os
 import sys
+import logging
 import importlib
 import inspect
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
 
 # Static registry of all block modules — used when running as a frozen
 # PyInstaller bundle (where filesystem scanning doesn't work).
@@ -120,7 +123,9 @@ def load_blocks():
 
     # Development mode: scan the filesystem
     block_modules = []
-    blocks_dir = os.path.join(os.path.dirname(__file__), '..', 'blocks')
+    blocks_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'blocks'))
+
+    logger.info(f"Scanning blocks from: {blocks_dir} (cwd={os.getcwd()})")
 
     # Load from top-level blocks directory
     for filename in os.listdir(blocks_dir):
@@ -137,4 +142,6 @@ def load_blocks():
                     if filename.endswith('.py') and not filename.startswith('__'):
                         block_modules.append(f"blocks.{subdir}.{filename[:-3]}")
 
-    return _collect_block_classes(block_modules)
+    classes = _collect_block_classes(block_modules)
+    logger.info(f"Loaded {len(classes)} block classes from {len(block_modules)} modules")
+    return classes
