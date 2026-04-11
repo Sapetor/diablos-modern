@@ -248,6 +248,17 @@ class SimulationEngine:
                         self.update_global_list(block.name, h_value=h_count, h_assign=True)
                         block.computed_data = True
 
+                        # Sync the DBlock-level sample schedule for discrete
+                        # blocks that just performed their t=0 sample.  Without
+                        # this, the simulation loop's first should_execute()
+                        # would still see _next_execution_time=0 and run the
+                        # block at t=dt instead of waiting for t=Ts.
+                        if block.effective_sample_time > 0 and isinstance(out_value, dict):
+                            for port, value in out_value.items():
+                                if isinstance(port, int):
+                                    block.set_held_output(port, value)
+                            block.schedule_next_execution(self.time_step)
+
                         if block.name not in self.memory_blocks and block.b_type != 3:
                             self.propagate_outputs(block, out_value)
 
@@ -272,6 +283,38 @@ class SimulationEngine:
                 
                 h_count += 1
             logger.debug(f"[ENGINE TIMING] Loop 2 (hierarchy): {_time.time() - _te3:.3f}s")
+
+            # Loop 3: Advance memory block state by one step using the inputs
+            # resolved by Loop 2.  Loop 1 ran memory blocks with output_only=True
+            # so y[0] = C @ x[0] could feed downstream consumers, but the state
+            # was never updated.  Without this pass, the simulation loop's first
+            # iteration would re-read x[0] and produce a duplicate sample at
+            # t=dt — a one-step lag visible on every memory-block trace.  Proper
+            # blocks (b_type=2) already get their state advanced in Loop 2's
+            # full execute; this loop brings memory blocks in line with that.
+            # Output is NOT propagated: scope already has y[0] from Loop 1.
+            for block in blocks_to_exec:
+                if block.name in self.memory_blocks:
+                    out_value = self.execute_block(block)
+                    if out_value is False:
+                        return False
+                    if isinstance(out_value, dict) and out_value.get('E'):
+                        self.error_msg = out_value.get('error', 'State advance failed')
+                        logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
+                        return False
+                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                        block.exec_params['output'] = block.exec_params['mem']
+                    # For discrete blocks, sync the DBlock-level sample schedule
+                    # with the block-internal sample state so the simulation
+                    # loop's should_execute() agrees with the block's own
+                    # bookkeeping.  Without this, the loop would think the
+                    # block's "next sample" is still at t=0 and would call
+                    # execute every dt instead of every Ts.
+                    if block.effective_sample_time > 0 and isinstance(out_value, dict):
+                        for port, value in out_value.items():
+                            if isinstance(port, int):
+                                block.set_held_output(port, value)
+                        block.schedule_next_execution(self.time_step)
 
             # Sync hierarchies back to blocks
             self.reset_execution_data()

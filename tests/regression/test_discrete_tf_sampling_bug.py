@@ -94,10 +94,22 @@ class TestDiscreteTfSamplingBug:
         )
 
     def test_strictly_proper_continuous_rate_still_works(self, qapp):
-        """Regression guard: the no-sampling path must remain correct."""
+        """Regression guard: the no-sampling path must remain correct.
+
+        Also pins the off-by-one fix added alongside the sampling fix:
+        ``vec[1]`` used to be ``0`` (a duplicate of the initial sample) because
+        memory blocks never had their state advanced during init.  After the
+        fix, ``vec[0]=0`` (initial output) and ``vec[1]=1`` (state after one
+        update with u=1).
+        """
         _, vec = _build_step_dtf_scope(
             num=[1.0], den=[1.0, -0.5], sampling_time=-1.0,
         )
+        # Initial output is zero (zero state, D=0).
+        assert vec[0] == pytest.approx(0.0, abs=1e-9)
+        # First sample after init must be y[1] = C @ x[1] = B = 1 — not the
+        # buggy duplicate zero.
+        assert vec[1] == pytest.approx(1.0, abs=1e-9)
         # Step response asymptotes to 2.
         assert vec[-1] == pytest.approx(2.0, abs=0.05)
 
