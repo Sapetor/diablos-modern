@@ -1,6 +1,15 @@
 import multiprocessing
 multiprocessing.freeze_support()  # Required for PyInstaller on macOS
 
+import sys
+import io
+# In frozen windowed mode (PyInstaller --noconsole), sys.stdout/stderr are None.
+# Redirect to devnull to prevent crashes from print() and tqdm.
+if sys.stdout is None:
+    sys.stdout = io.StringIO()
+if sys.stderr is None:
+    sys.stderr = io.StringIO()
+
 print("Running diablos_modern.py")
 """
 Modern DiaBloS Application - Phase 1
