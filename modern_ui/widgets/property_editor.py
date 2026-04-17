@@ -61,7 +61,10 @@ class CollapsibleSection(QWidget):
         self.toggle_btn.clicked.connect(self._toggle)
         main.addWidget(self.toggle_btn)
 
-        self.content = QWidget()
+        # Parent to self so content is never a top-level window; calling
+        # setVisible() on a parentless QWidget flashes default 640x480 native
+        # chrome on Windows 11.
+        self.content = QWidget(self)
         self.content_layout = QFormLayout(self.content)
         self.content_layout.setContentsMargins(2, 2, 2, 2)
         self.content_layout.setSpacing(4)
@@ -69,8 +72,8 @@ class CollapsibleSection(QWidget):
         self.content_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
         self.content_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
         self.content_layout.setLabelAlignment(Qt.AlignLeft)
-        self.content.setVisible(expanded)
         main.addWidget(self.content)
+        self.content.setVisible(expanded)
 
     def _toggle(self, checked):
         self.toggle_btn.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)

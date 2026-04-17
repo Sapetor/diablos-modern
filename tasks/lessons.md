@@ -1,7 +1,23 @@
 # DiaBloS Development Lessons Learned
 
 > Patterns and anti-patterns discovered during development.
-> Last updated: February 2026
+> Last updated: April 2026
+
+---
+
+## PyQt5 / Platform
+
+### Parentless QWidget Flashes Title Bar on Windows 11 (April 2026)
+
+**Problem**: Clicking a block on the canvas caused a small floating widget with minimize/maximize/close buttons to flash briefly in the canvas area. Happened on Windows 11 only; macOS was unaffected.
+
+**Root Cause**: `CollapsibleSection.__init__` in `modern_ui/widgets/property_editor.py` created `self.content = QWidget()` with no parent, then called `self.content.setVisible(expanded)` *before* `main.addWidget(self.content)` reparented it. On each block selection, the property editor rebuilds and creates one CollapsibleSection per param group — so on every click, `setVisible(True)` was called on a parentless QWidget, briefly showing it as a 640x480 top-level window with Windows 11 native chrome before the subsequent `addWidget` reparented it into the section.
+
+**Fix**: Pass `self` as parent at construction (`QWidget(self)`) and call `setVisible()` *after* `addWidget` — the widget is then never a top-level parentless window.
+
+**Detection**: A `QApplication` event filter logged top-level widget events (`Show`, `WinIdChange`); a `QWidget.__init__` monkey-patch logged the creation location of every parentless bare `QWidget`. Correlating the two identified `CollapsibleSection.__init__` line 64 as the flasher — the widget was created at default 640x480, `setVisible(True)` was called on it, and only then was it reparented.
+
+**General rule**: In PyQt5, any `QWidget()` / `QFrame()` / `QLabel()` etc. constructed without a parent is a top-level window until reparented; on Windows it gets a native HWND with default 640x480 geometry and chrome. Never call `show()` / `setVisible(True)` on a widget before it has a parent — give it a parent at construction and sequence `addWidget` before any visibility call.
 
 ---
 
