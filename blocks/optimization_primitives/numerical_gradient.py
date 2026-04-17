@@ -26,7 +26,6 @@ class NumericalGradientBlock(BaseBlock):
 
     def __init__(self):
         super().__init__()
-        self._cached_dimension = None
 
     @property
     def block_name(self):

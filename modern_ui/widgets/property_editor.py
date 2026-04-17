@@ -252,14 +252,19 @@ class PropertyEditor(QFrame):
         return super().eventFilter(obj, event)
 
     def _flush_pending_edits(self):
-        """Submit any in-progress edits before the form is rebuilt.
-        PyQt5 5.15 doesn't always fire editingFinished on focus loss,
-        so we trigger pending submit callbacks when switching blocks."""
+        """Submit any in-progress QLineEdit edits before the form is rebuilt.
+
+        PyQt5 5.15 doesn't always fire QLineEdit.editingFinished on focus
+        loss, so we trigger its submit callback when switching blocks.
+        Only QLineEdit needs this — QSpinBox/QDoubleSpinBox/QComboBox/
+        QCheckBox all commit reliably via their own signals. Flushing
+        those here would emit spurious property_changed events for the
+        previously-selected block every time the user clicks another
+        block, because submit_fn would fire for every visible widget
+        regardless of whether the user edited it."""
         for widget, submit_fn in list(self._focus_out_submit.items()):
             try:
                 if isinstance(widget, QLineEdit) and widget.isModified():
-                    submit_fn()
-                elif not isinstance(widget, QLineEdit) and widget and not widget.isHidden():
                     submit_fn()
             except RuntimeError:
                 pass  # Widget already deleted

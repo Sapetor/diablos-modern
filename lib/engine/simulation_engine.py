@@ -428,6 +428,20 @@ class SimulationEngine:
                     if not block.block_instance.requires_outputs:
                         optional_outputs = set(range(block.out_ports))
 
+            # Reject multiple wires landing on the same input port: propagate_outputs
+            # overwrites input_queue[dstport] per connection, so extra wires would
+            # silently last-write-win with no error surfaced to the user.
+            dst_counts = {}
+            for tupla in inputs:
+                dst_counts[tupla['dstport']] = dst_counts.get(tupla['dstport'], 0) + 1
+            duplicated = sorted(p for p, c in dst_counts.items() if c > 1)
+            if duplicated:
+                logger.error(
+                    f"ERROR. MULTIPLE CONNECTIONS INTO SAME INPUT PORT: "
+                    f"{block.name} PORT(S): {duplicated}"
+                )
+                error_trigger = True
+
             # Check input ports
             required_in_ports = block.in_ports - len(optional_inputs)
             connected_required_inputs = sum(1 for t in inputs if t['dstport'] not in optional_inputs)

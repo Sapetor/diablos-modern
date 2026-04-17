@@ -268,6 +268,47 @@ def test_goto_from_multiple_targets_and_hidden_lines(monkeypatch, qapp):
 
 @pytest.mark.unit
 @pytest.mark.qt
+def test_duplicate_destination_port_rejected(qapp):
+    """
+    Two wires landing on the same input port must be flagged. propagate_outputs
+    overwrites input_queue[dstport] per connection, so without this check the
+    simulation would silently use only the last-propagated source.
+    """
+    sim = DSim()
+
+    src_a = DBlock(
+        block_fn="Step", sid=0, coords=QRect(0, 0, 100, 80), color="blue",
+        in_ports=0, out_ports=1, b_type=0, io_edit="none", fn_name="step",
+        params={"value": 1.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
+        external=False, colors=sim.colors, block_class=StepBlock,
+    )
+    src_b = DBlock(
+        block_fn="Step", sid=1, coords=QRect(0, 120, 100, 80), color="blue",
+        in_ports=0, out_ports=1, b_type=0, io_edit="none", fn_name="step",
+        params={"value": 2.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
+        external=False, colors=sim.colors, block_class=StepBlock,
+    )
+    summation = DBlock(
+        block_fn="Sum", sid=2, coords=QRect(250, 60, 100, 80), color="lime_green",
+        in_ports=2, out_ports=1, b_type=2, io_edit="none", fn_name="sum",
+        params={"sign": "++"}, external=False, colors=sim.colors, block_class=SumBlock,
+    )
+
+    sim.blocks_list.extend([src_a, src_b, summation])
+
+    # Both sources target dstport=0 of the Sum — the silent-last-wins case.
+    sim.line_list.append(
+        DLine(0, src_a.name, 0, summation.name, 0, [src_a.out_coords[0], summation.in_coords[0]])
+    )
+    sim.line_list.append(
+        DLine(1, src_b.name, 0, summation.name, 0, [src_b.out_coords[0], summation.in_coords[0]])
+    )
+
+    assert sim.check_diagram_integrity() is False
+
+
+@pytest.mark.unit
+@pytest.mark.qt
 def test_hidden_lines_not_clickable(qapp):
     """Hidden lines should be ignored by canvas hit testing."""
     sim = DSim()

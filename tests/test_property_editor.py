@@ -374,5 +374,46 @@ class TestValueDiffers(unittest.TestCase):
         self.assertFalse(self.editor._value_differs(float('nan'), float('nan')))
 
 
+class TestSetBlockDoesNotEmitSpuriousChanges(unittest.TestCase):
+    """
+    Switching the edited block must not emit property_changed for the
+    previously-displayed block's widgets. Before the fix, _flush_pending_edits
+    called submit_fn for every visible non-QLineEdit widget, causing each
+    block switch to emit stale property_changed signals for the old block —
+    mutating its params and flashing visual feedback at its canvas position.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        if not QApplication.instance():
+            cls.app = QApplication(sys.argv)
+        else:
+            cls.app = QApplication.instance()
+
+    def setUp(self):
+        self.editor = PropertyEditor()
+
+    def test_switching_blocks_does_not_emit_for_old_block(self):
+        block_a = MockBlock("prbs0", {
+            "high": 1.0, "low": 0.0, "bit_time": 0.1, "order": 7, "seed": 1,
+        })
+        block_b = MockBlock("tranfn0", {"sampling_time": -1.0})
+
+        self.editor.set_block(block_a)
+
+        emissions = []
+        self.editor.property_changed.connect(
+            lambda block_name, key, value: emissions.append((block_name, key, value))
+        )
+
+        self.editor.set_block(block_b)
+
+        stale = [e for e in emissions if e[0] == "prbs0"]
+        self.assertEqual(
+            stale, [],
+            f"Expected no emissions for previously-selected block, got: {stale}",
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

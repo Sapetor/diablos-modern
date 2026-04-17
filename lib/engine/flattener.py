@@ -162,8 +162,17 @@ class Flattener:
                         curr = (parent_path, found_idx)
                         continue
                     else:
-                         logger.warning(f"Could not map Inport {src_name} to parent port.")
-                         return None
+                         # All resolution paths failed. Fail loudly instead of silently
+                         # dropping the connection (which would cause downstream blocks
+                         # to read zeros with no user-visible error).
+                         msg = (
+                             f"Flattener: Could not map Inport '{src_name}' to a "
+                             f"parent Subsystem input port. Expected 'ports_map' "
+                             f"entry or a conventional name ending with a number "
+                             f"(e.g. 'In1', 'inport1')."
+                         )
+                         logger.error(msg)
+                         raise RuntimeError(msg)
 
                 else:
                      # Top level Inport - Valid Source
@@ -206,9 +215,22 @@ class Flattener:
                      if found_child:
                          curr = (found_child, 0)
                          continue
-                         
-                     logger.warning(f"Could not find Outport {full_outport_name}. Available: {list(self.block_map.keys())}")
-                     return None
+
+                     # All resolution paths failed. Fail loudly instead of silently
+                     # dropping the connection (which would cause downstream blocks
+                     # to read zeros with no user-visible error).
+                     available_children = [
+                         k[len(prefix):] for k in self.block_map if k.startswith(prefix)
+                     ]
+                     msg = (
+                         f"Flattener: Could not resolve Subsystem '{src_name}' "
+                         f"output port {src_port} to an internal Outport block. "
+                         f"Tried 'ports_map', conventional name '{outport_name}', "
+                         f"and case-insensitive scan. Available children: "
+                         f"{available_children}."
+                     )
+                     logger.error(msg)
+                     raise RuntimeError(msg)
                      
             elif b_type == 'Outport':
                  # Outport consuming signal. Should not be a driver.

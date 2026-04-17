@@ -1708,8 +1708,18 @@ class SystemCompiler:
             if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
             if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
             
+            # Use resolved params if available (exec_params), otherwise fall
+            # back to raw params. exec_params is populated by
+            # SimulationEngine.run_compiled_simulation before compile_system is
+            # called, and contains workspace variables resolved to numeric
+            # values. Reading raw params here would misbuild block_matrices
+            # (and therefore the D!=0 vs D=0 classification for execution
+            # ordering) whenever a state block is parameterised by a workspace
+            # variable. Same convention used by the PDE branches below.
+            sparams = getattr(block, 'exec_params', None) or block.params
+
             if fn == 'Integrator':
-                ic = np.array(block.params.get('init_conds', 0.0), dtype=float)
+                ic = np.array(sparams.get('init_conds', 0.0), dtype=float)
                 ic_flat = np.atleast_1d(ic).flatten()
                 size = ic_flat.size
                 state_map[b_name] = (current_state_idx, size)
@@ -1723,22 +1733,22 @@ class SystemCompiler:
 
             elif fn == 'StateSpace':
                 try:
-                    A = np.array(block.params['A'], dtype=float)
-                    B = np.array(block.params['B'], dtype=float)
-                    C = np.array(block.params['C'], dtype=float)
-                    D = np.array(block.params['D'], dtype=float)
-                    
+                    A = np.array(sparams['A'], dtype=float)
+                    B = np.array(sparams['B'], dtype=float)
+                    C = np.array(sparams['C'], dtype=float)
+                    D = np.array(sparams['D'], dtype=float)
+
                     # Fix dimensions
                     n = A.shape[0] if len(A.shape) > 1 else 1 # Basic check
                     A = A.reshape(n, n)
-                    
+
                     # Store matrices
                     block_matrices[b_name] = (A, B, C, D)
-                    
+
                     # Init conditions
-                    ic = np.array(block.params.get('init_conds', [0.0]*n), dtype=float)
+                    ic = np.array(sparams.get('init_conds', [0.0]*n), dtype=float)
                     ic_flat = np.atleast_1d(ic).flatten()
-                    
+
                     # Resize/Pad ICs to match n
                     if len(ic_flat) < n:
                         padded = np.zeros(n)
@@ -1746,7 +1756,7 @@ class SystemCompiler:
                         ic_flat = padded
                     elif len(ic_flat) > n:
                         ic_flat = ic_flat[:n]
-                        
+
                     state_map[b_name] = (current_state_idx, n)
                     y0_list.extend(ic_flat)
                     current_state_idx += n
@@ -1756,18 +1766,18 @@ class SystemCompiler:
 
             elif fn == 'TransferFcn':
                 try:
-                    num = block.params.get('numerator', [1.0])
-                    den = block.params.get('denominator', [1.0, 1.0])
-                    
+                    num = sparams.get('numerator', [1.0])
+                    den = sparams.get('denominator', [1.0, 1.0])
+
                     # Convert to State Space
                     A, B, C, D = signal.tf2ss(num, den)
-                    
+
                     block_matrices[b_name] = (A, B, C, D)
-                    
+
                     n = A.shape[0]
-                    
+
                      # Init conditions
-                    ic = np.array(block.params.get('init_conds', [0.0]*n), dtype=float)
+                    ic = np.array(sparams.get('init_conds', [0.0]*n), dtype=float)
                     ic_flat = np.atleast_1d(ic).flatten()
                     
                     if len(ic_flat) < n:
@@ -1795,7 +1805,7 @@ class SystemCompiler:
             elif fn == 'RateLimiter':
                 # State is the output y.
                 state_map[b_name] = (current_state_idx, 1)
-                ic = float(block.params.get('init_cond', 0.0))
+                ic = float(sparams.get('init_cond', 0.0))
                 y0_list.append(ic)
                 current_state_idx += 1
 
