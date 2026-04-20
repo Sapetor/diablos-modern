@@ -150,25 +150,23 @@ class HistoryManager:
             if hasattr(self.canvas, 'clear_validation'):
                 self.canvas.clear_validation()
 
-            # Restore blocks by directly creating DBlock instances
+            # block_fn -> block_class via the menu_blocks registry. Naive
+            # module/class-name guessing from block_fn fails when the two
+            # diverge (e.g. "TranFn" -> TransferFunctionBlock), leaving the
+            # restored DBlock without a block_instance.
+            class_by_fn = {mb.block_fn: mb.block_class for mb in self.dsim.menu_blocks}
+
             for block_data in state['blocks']:
                 try:
                     coords = QRect(*block_data['coords'])
 
-                    # Find the block class if it's a known block type
-                    block_class = None
                     block_fn = block_data['block_fn']
-
-                    # Try to import the block class
-                    # Note: This dynamic import is consistent with legacy code
-                    try:
-                        module_name = f"blocks.{block_fn.lower()}"
-                        class_name = f"{block_fn.capitalize()}Block"
-                        module = __import__(module_name, fromlist=[class_name])
-                        block_class = getattr(module, class_name, None)
-                    except (ImportError, AttributeError):
-                        # logger.debug(f"Could not import block class for {block_fn}")
-                        block_class = None
+                    block_class = class_by_fn.get(block_fn)
+                    if block_class is None:
+                        logger.warning(
+                            f"Restore: block_class not found for '{block_fn}' in menu_blocks; "
+                            f"restored block will have no block_instance."
+                        )
 
                     # Extract sid from name (e.g., "step0" -> 0)
                     name = block_data['name']
@@ -202,15 +200,10 @@ class HistoryManager:
                     continue
 
             # Restore connections
+            block_by_name = {b.name: b for b in self.dsim.blocks_list}
             for line_data in state['lines']:
-                # Find blocks by name
-                src_block = None
-                dst_block = None
-                for block in self.dsim.blocks_list:
-                    if block.name == line_data['srcblock']:
-                        src_block = block
-                    if block.name == line_data['dstblock']:
-                        dst_block = block
+                src_block = block_by_name.get(line_data['srcblock'])
+                dst_block = block_by_name.get(line_data['dstblock'])
 
                 if src_block and dst_block:
                     src_port_pos = src_block.out_coords[line_data['srcport']]
