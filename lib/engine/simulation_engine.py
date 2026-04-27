@@ -162,7 +162,22 @@ class SimulationEngine:
                 children = {}
                 out_value = {}
 
-                if block.b_type == 0:
+                # Determine whether this block can run with no upstream data.
+                # b_type==0 by itself does NOT mean "source": Sum, MatrixGain,
+                # Demux, etc. are all b_type==0 instantaneous blocks but they
+                # do require inputs. Force-executing them here pins them to
+                # hierarchy=0 with stale input values, which freezes feedback
+                # loops in the interpreter path. Mirror the readiness check
+                # used in Loop 2 below: a block is a source only if every
+                # input port is optional (or there are none).
+                optional_inputs = set()
+                if hasattr(block, 'block_instance') and block.block_instance:
+                    if hasattr(block.block_instance, 'optional_inputs'):
+                        optional_inputs = set(block.block_instance.optional_inputs)
+                required_ports = block.in_ports - len(optional_inputs)
+                is_source = required_ports == 0
+
+                if block.b_type == 0 and is_source:
                     # Execute source block
                     _tblk = _time.time()
                     out_value = self.execute_block(block)
