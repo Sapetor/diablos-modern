@@ -61,47 +61,11 @@ class FileService:
             "sim_trange": sim_params.get('plot_trange', 100)
         }
 
-        # Serialize blocks
-        blocks_dict = []
-        for block in self.model.blocks_list:
-            block_dict = {
-                "block_fn": block.block_fn,
-                "sid": block.sid,
-                "username": block.username,
-                "coords_left": block.left,
-                "coords_top": block.top,
-                "coords_width": block.width,
-                "coords_height": block.height,
-                "coords_height_base": block.height_base,
-                "in_ports": block.in_ports,
-                "out_ports": block.out_ports,
-                "dragging": block.dragging,
-                "selected": block.selected,
-                "b_color": block.b_color.name(),
-                "b_type": block.b_type,
-                "io_edit": block.io_edit,
-                "fn_name": block.fn_name,
-                "params": block.saving_params(),
-                "external": block.external,
-                "flipped": block.flipped
-            }
-            blocks_dict.append(block_dict)
+        # Serialize blocks (recurses into Subsystems via _serialize_block)
+        blocks_dict = [self._serialize_block(block) for block in self.model.blocks_list]
 
         # Serialize lines
-        lines_dict = []
-        for line in self.model.line_list:
-            line_dict = {
-                "name": line.name,
-                "sid": line.sid,
-                "srcblock": line.srcblock,
-                "srcport": line.srcport,
-                "dstblock": line.dstblock,
-                "dstport": line.dstport,
-                "points": [(p.x(), p.y()) for p in line.points],
-                "cptr": getattr(line, 'cptr', 0),
-                "selected": line.selected
-            }
-            lines_dict.append(line_dict)
+        lines_dict = [self._serialize_line(line) for line in self.model.line_list]
 
         # Assemble final data structure
         main_dict = {
@@ -115,6 +79,69 @@ class FileService:
             main_dict["modern_ui_data"] = modern_ui_data
             
         return main_dict
+
+    def _serialize_block(self, block: Any) -> Dict[str, Any]:
+        """
+        Serialize a single block to a dict. Recurses into Subsystems
+        so their internal blocks, lines, ports, and ports_map are preserved.
+        """
+        block_dict = {
+            "block_fn": block.block_fn,
+            "sid": block.sid,
+            "name": block.name,
+            "username": block.username,
+            "coords_left": block.left,
+            "coords_top": block.top,
+            "coords_width": block.width,
+            "coords_height": block.height,
+            "coords_height_base": block.height_base,
+            "in_ports": block.in_ports,
+            "out_ports": block.out_ports,
+            "dragging": block.dragging,
+            "selected": block.selected,
+            "b_color": block.b_color.name(),
+            "b_type": block.b_type,
+            "io_edit": block.io_edit,
+            "fn_name": block.fn_name,
+            "params": block.saving_params(),
+            "external": block.external,
+            "flipped": block.flipped,
+        }
+
+        # Subsystem-specific: persist nested structure so reload can rebuild it.
+        # Without this, reopened diagrams would have empty subsystems and the
+        # flattener would silently produce no primitives from them.
+        if block.block_fn == 'Subsystem' or hasattr(block, 'sub_blocks'):
+            block_dict['sub_blocks'] = [
+                self._serialize_block(child) for child in getattr(block, 'sub_blocks', [])
+            ]
+            block_dict['sub_lines'] = [
+                self._serialize_line(child_line) for child_line in getattr(block, 'sub_lines', [])
+            ]
+            block_dict['ports'] = getattr(block, 'ports', {}) or {}
+            # JSON only allows string keys; ports_map uses int port indices,
+            # so coerce here and convert back on load.
+            ports_map = getattr(block, 'ports_map', {}) or {}
+            block_dict['ports_map'] = {
+                kind: {str(idx): name for idx, name in mapping.items()}
+                for kind, mapping in ports_map.items()
+            }
+
+        return block_dict
+
+    def _serialize_line(self, line: Any) -> Dict[str, Any]:
+        """Serialize a single connection line to a dict."""
+        return {
+            "name": line.name,
+            "sid": line.sid,
+            "srcblock": line.srcblock,
+            "srcport": line.srcport,
+            "dstblock": line.dstblock,
+            "dstport": line.dstport,
+            "points": [(p.x(), p.y()) for p in line.points],
+            "cptr": getattr(line, 'cptr', 0),
+            "selected": line.selected,
+        }
 
     def save_to_file(self, data: Dict[str, Any], filename: str) -> bool:
         """
@@ -249,37 +276,75 @@ class FileService:
             'plot_trange': sim_data.get('sim_trange', 100)
         }
 
-        # Recreate blocks
+        # Recreate top-level blocks (recurses into Subsystems via _construct_block)
         blocks_data = data.get('blocks_data', [])
         for block_data in blocks_data:
-            # Find matching menu block
-            menu_block = None
-            for mb in self.model.menu_blocks:
-                if mb.block_fn == block_data['block_fn']:
-                    menu_block = mb
-                    break
+            block = self._construct_block(block_data)
+            if block is not None:
+                self.model.blocks_list.append(block)
 
-            if menu_block is None:
-                logger.warning(f"Block type {block_data['block_fn']} not found in menu_blocks")
-                continue
+        # Build username→name and name→name maps for flexible line references
+        block_name_map = self._build_name_map(self.model.blocks_list)
 
-            # Create block rect
-            block_rect = QRect(
-                block_data['coords_left'],
-                block_data['coords_top'],
-                block_data['coords_width'],
-                block_data['coords_height']
+        # Recreate top-level lines
+        lines_data = data.get('lines_data', [])
+        for line_data in lines_data:
+            line = self._construct_line(line_data, block_name_map)
+            if line is not None:
+                self.model.line_list.append(line)
+
+        # Update line positions
+        self.model.update_lines()
+        self.model.dirty = False
+
+        return sim_params
+
+    @staticmethod
+    def _build_name_map(blocks: list) -> Dict[str, str]:
+        """Build {block.name: block.name, block.username: block.name} for line resolution."""
+        name_map: Dict[str, str] = {}
+        for block in blocks:
+            name_map[block.name] = block.name
+            if block.username:
+                name_map[block.username] = block.name
+        return name_map
+
+    def _construct_block(self, block_data: Dict[str, Any]) -> Optional[Any]:
+        """
+        Reconstruct a single block from its serialized dict. Subsystem, Inport,
+        and Outport are special — they inherit from DBlock (not BaseBlock) and
+        therefore are not registered in menu_blocks, so they must be
+        instantiated directly. For Subsystems, sub_blocks, sub_lines, ports,
+        and ports_map are rebuilt recursively so the reloaded diagram matches
+        what was saved.
+        """
+        from lib.simulation.block import DBlock
+
+        block_fn = block_data['block_fn']
+        block_rect = QRect(
+            block_data['coords_left'],
+            block_data['coords_top'],
+            block_data['coords_width'],
+            block_data['coords_height']
+        )
+        params = block_data.get('params', {})
+
+        if block_fn == 'Subsystem':
+            block = self._construct_subsystem(block_data, block_rect, params)
+        elif block_fn in ('Inport', 'Outport'):
+            block = self._construct_port_block(block_fn, block_data, block_rect, params)
+        else:
+            menu_block = next(
+                (mb for mb in self.model.menu_blocks if mb.block_fn == block_fn),
+                None
             )
+            if menu_block is None:
+                logger.warning(f"Block type {block_fn} not found in menu_blocks")
+                return None
 
-            # Import DBlock here to avoid circular import
-            from lib.simulation.block import DBlock
+            category = getattr(menu_block, 'category', 'Other')
+            block_color = self.model._get_category_color(category)
 
-            # Create block instance
-            # Load params - use class method if available, otherwise pass directly
-            params = block_data.get('params', {})
-
-            # Get b_type from block class (preferred) or fall back to saved value
-            # This ensures block behavior matches current class definition
             if menu_block.block_class:
                 try:
                     block_instance = menu_block.block_class()
@@ -289,13 +354,8 @@ class FileService:
             else:
                 b_type = block_data.get('b_type', 2)
 
-            # Use current theme color and io_edit from menu_block instead of stale
-            # saved values, so loaded blocks match freshly-placed palette blocks
-            category = getattr(menu_block, 'category', 'Other')
-            block_color = self.model._get_category_color(category)
-
             block = DBlock(
-                block_data['block_fn'],
+                block_fn,
                 block_data['sid'],
                 block_rect,
                 block_color,
@@ -309,47 +369,106 @@ class FileService:
                 username=block_data.get('username', ''),
                 block_class=menu_block.block_class,
                 colors=self.model.colors,
-                category=category
+                category=category,
             )
 
-            block.flipped = block_data.get('flipped', False)
-            block.height_base = block_data.get('coords_height_base', block.height)
+        # Restore the exact saved name. Subsystem boundary blocks (Inport/Outport)
+        # are renamed by subsystem_manager based on port index rather than sid,
+        # so re-deriving from block_fn+sid would produce the wrong key for
+        # internal lines. Older save files without a "name" field keep the
+        # constructor-generated default.
+        saved_name = block_data.get('name')
+        if saved_name:
+            block.name = saved_name
+            if block.params is not None:
+                block.params['_name_'] = saved_name
 
-            self.model.blocks_list.append(block)
+        block.flipped = block_data.get('flipped', False)
+        block.height_base = block_data.get('coords_height_base', block.height)
+        return block
 
-        # Build username→name and name→name maps for flexible line references
-        block_name_map = {}
-        for block in self.model.blocks_list:
-            # Map block.name to itself
-            block_name_map[block.name] = block.name
-            # Map username to block.name (if username exists)
-            if block.username:
-                block_name_map[block.username] = block.name
+    def _construct_subsystem(self, block_data, block_rect, params):
+        """Build a real Subsystem instance and recursively restore its contents."""
+        from blocks.subsystem import Subsystem
 
-        # Recreate lines
+        sid = block_data['sid']
+        username = block_data.get('username', '') or f"Subsystem{sid}"
+        block = Subsystem(
+            block_name=username,
+            sid=sid,
+            coords=block_rect,
+            color=block_data.get('b_color') or 'lightgray',
+        )
+        block.username = username
+        if params:
+            block.params.update(params)
+        block.params['_name_'] = block.name
+        block.external = block_data.get('external', False)
+
+        # Restore external port layout and the index→port-name map.
+        block.ports = block_data.get('ports', {}) or {}
+        ports_map_raw = block_data.get('ports_map', {}) or {}
+        block.ports_map = {
+            kind: {int(idx): name for idx, name in mapping.items()}
+            for kind, mapping in ports_map_raw.items()
+        }
+
+        # Recursively rebuild internal blocks and lines.
+        for child_data in block_data.get('sub_blocks', []) or []:
+            child = self._construct_block(child_data)
+            if child is not None:
+                block.sub_blocks.append(child)
+
+        sub_name_map = self._build_name_map(block.sub_blocks)
+        for child_line_data in block_data.get('sub_lines', []) or []:
+            child_line = self._construct_line(child_line_data, sub_name_map)
+            if child_line is not None:
+                block.sub_lines.append(child_line)
+
+        # Recompute external port positions now that ports dict is populated.
+        try:
+            block.update_Block()
+        except Exception as e:
+            logger.warning(f"Subsystem update_Block failed after load: {e}")
+        return block
+
+    def _construct_port_block(self, block_fn, block_data, block_rect, params):
+        """Build an Inport or Outport block (subsystem boundary markers)."""
+        if block_fn == 'Inport':
+            from blocks.inport import Inport
+            cls = Inport
+        else:
+            from blocks.outport import Outport
+            cls = Outport
+
+        sid = block_data['sid']
+        username = block_data.get('username', '') or f"{block_fn[:2]}{sid}"
+        block = cls(
+            block_name=username,
+            sid=sid,
+            coords=block_rect,
+            color=block_data.get('b_color') or ('green' if block_fn == 'Inport' else 'red'),
+        )
+        if params:
+            block.params.update(params)
+        block.external = block_data.get('external', False)
+        return block
+
+    def _construct_line(self, line_data: Dict[str, Any],
+                        block_name_map: Dict[str, str]) -> Optional[Any]:
+        """Reconstruct a single connection line from its serialized dict."""
         from lib.simulation.connection import DLine
-        lines_data = data.get('lines_data', [])
-        for line_data in lines_data:
-            points = [tuple(p) if isinstance(p, list) else p for p in line_data['points']]
 
-            # Resolve srcblock and dstblock - allow username OR block.name
-            srcblock = line_data['srcblock']
-            dstblock = line_data['dstblock']
-            srcblock = block_name_map.get(srcblock, srcblock)
-            dstblock = block_name_map.get(dstblock, dstblock)
+        points = [tuple(p) if isinstance(p, list) else p for p in line_data['points']]
 
-            line = DLine(
-                line_data['sid'],
-                srcblock,
-                line_data['srcport'],
-                dstblock,
-                line_data['dstport'],
-                points
-            )
-            self.model.line_list.append(line)
+        srcblock = block_name_map.get(line_data['srcblock'], line_data['srcblock'])
+        dstblock = block_name_map.get(line_data['dstblock'], line_data['dstblock'])
 
-        # Update line positions
-        self.model.update_lines()
-        self.model.dirty = False
-
-        return sim_params
+        return DLine(
+            line_data['sid'],
+            srcblock,
+            line_data['srcport'],
+            dstblock,
+            line_data['dstport'],
+            points,
+        )
