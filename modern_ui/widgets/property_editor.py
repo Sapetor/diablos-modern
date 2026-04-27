@@ -511,7 +511,9 @@ class PropertyEditor(QFrame):
         reset_btn.setToolTip(f"Reset to default: {default}")
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(lambda checked, k=key: self._reset_param(k))
-        reset_btn.setVisible(self._value_differs(value, default))
+        # setVisible() deferred until after addWidget below \u2014 calling it on a
+        # parentless QPushButton flashes default native chrome on Windows 11.
+        reset_btn_visible = self._value_differs(value, default)
 
         # Validation label (#7)
         error_color = theme_manager.get_color('error').name()
@@ -547,6 +549,10 @@ class PropertyEditor(QFrame):
         c_layout.addWidget(val_label)
 
         section.addRow(label, container)
+        # Apply reset-button visibility only after the widget has been
+        # parented through section.addRow — calling setVisible() on a
+        # parentless QPushButton flashes a top-level window on Windows 11.
+        reset_btn.setVisible(reset_btn_visible)
 
     # ── Widget factory ──────────────────────────────────────────
 
