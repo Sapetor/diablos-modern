@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import re
 import sys
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5.QtCore import QSize
@@ -11,15 +12,29 @@ logger = logging.getLogger(__name__)
 
 def _create_styled_file_dialog(parent, title, directory, filters, save=False):
     """Create a styled QFileDialog that works well on all platforms."""
-    dialog = QFileDialog(parent, title, directory, filters)
+    dialog = QFileDialog(parent, title, directory)
 
     # Use Qt dialog instead of native (fixes macOS click issues)
     dialog.setOption(QFileDialog.DontUseNativeDialog, True)
 
-    # Set dialog mode
+    # Apply name filters explicitly. Passing the filter via the constructor
+    # is unreliable when DontUseNativeDialog is toggled afterward — on some
+    # Qt5/macOS builds the first filter group is dropped or not selected,
+    # which makes saved diagrams (*.diablos) look invisible in the dialog.
+    name_filters = [f.strip() for f in filters.split(';;') if f.strip()]
+    if name_filters:
+        dialog.setNameFilters(name_filters)
+        dialog.selectNameFilter(name_filters[0])
+
     if save:
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setFileMode(QFileDialog.AnyFile)
+        # Default-suffix the first wildcard in the first filter so users
+        # who type "myfile" still get the right extension.
+        first = name_filters[0] if name_filters else ''
+        m = re.search(r'\*\.([A-Za-z0-9]+)', first)
+        if m:
+            dialog.setDefaultSuffix(m.group(1))
     else:
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
