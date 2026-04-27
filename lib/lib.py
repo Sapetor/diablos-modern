@@ -731,43 +731,57 @@ class DSim:
                 if self.rk45_len and self.rk_counter != 0:
                     block.params['_skip_'] = True
 
-            for hier in range(self.max_hier + 1):
-                for block in current_blocks:
-                    optional_inputs = set()
-                    if hasattr(block, 'block_instance') and block.block_instance:
-                        if hasattr(block.block_instance, 'optional_inputs'):
-                            optional_inputs = set(block.block_instance.optional_inputs)
-                    required_ports = block.in_ports - len(optional_inputs)
-                    has_enough = block.data_recieved >= required_ports or block.in_ports == 0
+            # See execution_loop() for the rationale behind both inner (within-level)
+            # and outer (cross-level) re-iteration. Same logic applies here.
+            while True:
+                outer_progressed = False
+                for hier in range(self.max_hier + 1):
+                    while True:
+                        progressed = False
+                        for block in current_blocks:
+                            optional_inputs = set()
+                            if hasattr(block, 'block_instance') and block.block_instance:
+                                if hasattr(block.block_instance, 'optional_inputs'):
+                                    optional_inputs = set(block.block_instance.optional_inputs)
+                            required_ports = block.in_ports - len(optional_inputs)
+                            has_enough = block.data_recieved >= required_ports or block.in_ports == 0
 
-                    if block.hierarchy == hier and has_enough and not block.computed_data:
-                        if not block.should_execute(self.time_step):
-                            self.engine.update_global_list(block.name, h_value=0)
-                            block.computed_data = True
-                            if block.name not in self.memory_blocks and block.b_type != 3:
-                                held = {p: block.get_held_output(p) for p in range(block.out_ports)}
-                                self.engine.propagate_outputs(block, held)
-                            continue
+                            if block.hierarchy == hier and has_enough and not block.computed_data:
+                                progressed = True
+                                outer_progressed = True
+                                if not block.should_execute(self.time_step):
+                                    self.engine.update_global_list(block.name, h_value=0)
+                                    block.computed_data = True
+                                    if block.name not in self.memory_blocks and block.b_type != 3:
+                                        held = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                        self.engine.propagate_outputs(block, held)
+                                    continue
 
-                        out_value = self.engine.execute_block(block)
-                        if block.name in self.memory_blocks:
-                            if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                                block.exec_params['output'] = block.exec_params['mem']
+                                out_value = self.engine.execute_block(block)
+                                if block.name in self.memory_blocks:
+                                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                                        block.exec_params['output'] = block.exec_params['mem']
 
-                        if out_value is None or ('E' in out_value and out_value['E']):
-                            self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
-                            return
+                                if out_value is None or ('E' in out_value and out_value['E']):
+                                    self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                                    return
 
-                        if block.effective_sample_time > 0:
-                            for port, value in out_value.items():
-                                if isinstance(port, int):
-                                    block.set_held_output(port, value)
-                            block.schedule_next_execution(self.time_step)
+                                if block.effective_sample_time > 0:
+                                    for port, value in out_value.items():
+                                        if isinstance(port, int):
+                                            block.set_held_output(port, value)
+                                    block.schedule_next_execution(self.time_step)
 
-                        self.engine.update_global_list(block.name, h_value=0)
-                        block.computed_data = True
-                        if block.name not in self.memory_blocks and block.b_type != 3:
-                            self.engine.propagate_outputs(block, out_value)
+                                self.engine.update_global_list(block.name, h_value=0)
+                                block.computed_data = True
+                                if block.name not in self.memory_blocks and block.b_type != 3:
+                                    self.engine.propagate_outputs(block, out_value)
+
+                        if not progressed:
+                            break
+
+                if not outer_progressed:
+                    break
 
             if self.time_step > self.sim_time + self.sim_dt:
                 self.timeline = np.array(self._timeline_list)
@@ -882,56 +896,80 @@ class DSim:
                     self.execution_failed()
                     return
 
-            # All blocks are executed according to the hierarchy order defined in the first iteration
-            for hier in range(self.max_hier + 1):
-                for block in current_blocks:
-                    # Check if block has enough required inputs (accounting for optional inputs)
-                    optional_inputs = set()
-                    if hasattr(block, 'block_instance') and block.block_instance:
-                        if hasattr(block.block_instance, 'optional_inputs'):
-                            optional_inputs = set(block.block_instance.optional_inputs)
-                    required_ports = block.in_ports - len(optional_inputs)
-                    has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
+            # All blocks are executed according to the hierarchy order defined in the first iteration.
+            # Two layers of re-iteration are required:
+            #
+            #  - Inner (within-level): two blocks at the same hierarchy can be ordered such that
+            #    A's output is B's input but B precedes A in current_blocks. A single pass would
+            #    skip B (no inputs yet) then never revisit it within this level.
+            #  - Outer (cross-level): memory blocks (Integrator, StateSpace, strictly proper TF…)
+            #    are force-pinned to hierarchy=0 by init Loop 1's memory branch, but their state-
+            #    update execute consumes inputs produced at hierarchy>0. Without an outer re-pass,
+            #    the for-hier loop completes hier=0 with the memory block still uncomputed, fires
+            #    its producer at hier=N, then never returns to hier=0 — so the state-update never
+            #    runs and the state freezes. Mirroring init Loop 2's `while not check_global_list`
+            #    pattern keeps the loop bounded (each block fires at most once per timestep).
+            while True:
+                outer_progressed = False
+                for hier in range(self.max_hier + 1):
+                    while True:
+                        progressed = False
+                        for block in current_blocks:
+                            # Check if block has enough required inputs (accounting for optional inputs)
+                            optional_inputs = set()
+                            if hasattr(block, 'block_instance') and block.block_instance:
+                                if hasattr(block.block_instance, 'optional_inputs'):
+                                    optional_inputs = set(block.block_instance.optional_inputs)
+                            required_ports = block.in_ports - len(optional_inputs)
+                            has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
 
-                    # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
-                    if block.hierarchy == hier and has_enough_inputs and not block.computed_data:
-                        # Multi-rate: Check if discrete block should execute at this time
-                        if not block.should_execute(self.time_step):
-                            # Mark as computed and propagate held outputs
-                            self.engine.update_global_list(block.name, h_value=0)
-                            block.computed_data = True
-                            if block.name not in self.memory_blocks and block.b_type != 3:
-                                held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
-                                self.engine.propagate_outputs(block, held_outputs)
-                            continue
+                            # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
+                            if block.hierarchy == hier and has_enough_inputs and not block.computed_data:
+                                progressed = True
+                                outer_progressed = True
+                                # Multi-rate: Check if discrete block should execute at this time
+                                if not block.should_execute(self.time_step):
+                                    # Mark as computed and propagate held outputs
+                                    self.engine.update_global_list(block.name, h_value=0)
+                                    block.computed_data = True
+                                    if block.name not in self.memory_blocks and block.b_type != 3:
+                                        held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                        self.engine.propagate_outputs(block, held_outputs)
+                                    continue
 
-                        # Execute using engine (handles external vs internal, kwargs building)
-                        out_value = self.engine.execute_block(block)
+                                # Execute using engine (handles external vs internal, kwargs building)
+                                out_value = self.engine.execute_block(block)
 
-                        # After execution, for memory blocks, update the 'output' state for the next step
-                        if block.name in self.memory_blocks:
-                            if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                                block.exec_params['output'] = block.exec_params['mem']
+                                # After execution, for memory blocks, update the 'output' state for the next step
+                                if block.name in self.memory_blocks:
+                                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                                        block.exec_params['output'] = block.exec_params['mem']
 
-                        # It is checked that the function has not delivered an error
-                        if out_value is None or ('E' in out_value and out_value['E']):
-                            self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
-                            return
+                                # It is checked that the function has not delivered an error
+                                if out_value is None or ('E' in out_value and out_value['E']):
+                                    self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
+                                    return
 
-                        # Multi-rate: Store outputs and schedule next execution for discrete blocks
-                        if block.effective_sample_time > 0:
-                            for port, value in out_value.items():
-                                if isinstance(port, int):
-                                    block.set_held_output(port, value)
-                            block.schedule_next_execution(self.time_step)
+                                # Multi-rate: Store outputs and schedule next execution for discrete blocks
+                                if block.effective_sample_time > 0:
+                                    for port, value in out_value.items():
+                                        if isinstance(port, int):
+                                            block.set_held_output(port, value)
+                                    block.schedule_next_execution(self.time_step)
 
-                        # The computed_data booleans are updated in the global list as well as in the block itself
-                        self.engine.update_global_list(block.name, h_value=0)
-                        block.computed_data = True
+                                # The computed_data booleans are updated in the global list as well as in the block itself
+                                self.engine.update_global_list(block.name, h_value=0)
+                                block.computed_data = True
 
-                        # Propagate outputs to children (skip memory blocks and sinks)
-                        if block.name not in self.memory_blocks and block.b_type != 3:
-                            self.engine.propagate_outputs(block, out_value)
+                                # Propagate outputs to children (skip memory blocks and sinks)
+                                if block.name not in self.memory_blocks and block.b_type != 3:
+                                    self.engine.propagate_outputs(block, out_value)
+
+                        if not progressed:
+                            break
+
+                if not outer_progressed:
+                    break
 
             # The dynamic plot function is called to save the new data, if active
             self.dynamic_pyqtPlotScope(step=1)
