@@ -322,6 +322,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.step_simulation.connect(self.step_simulation)
         self.toolbar.plot_results.connect(self.show_plots)
         self.toolbar.capture_screen.connect(self.capture_screen)
+        self.toolbar.auto_route_wires.connect(self.canvas.auto_route_lines)
         self.toolbar.zoom_changed.connect(self.set_zoom)
         self.toolbar.theme_toggled.connect(self.on_theme_changed)
     

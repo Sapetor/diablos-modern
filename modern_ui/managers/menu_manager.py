@@ -264,6 +264,12 @@ class MenuManager:
 
         menu.addSeparator()
 
+        auto_route_action = menu.addAction("Auto-route Wires")
+        auto_route_action.setEnabled(bool(getattr(self.canvas.dsim, 'line_list', [])))
+        auto_route_action.triggered.connect(self.canvas.auto_route_lines)
+
+        menu.addSeparator()
+
         # Zoom submenu
         zoom_menu = menu.addMenu("Zoom")
         zoom_in_action = zoom_menu.addAction("Zoom In")

@@ -23,6 +23,7 @@ class ModernToolBar(QToolBar):
     step_simulation = pyqtSignal()
     plot_results = pyqtSignal()
     capture_screen = pyqtSignal()
+    auto_route_wires = pyqtSignal()
     zoom_changed = pyqtSignal(float)
     theme_toggled = pyqtSignal()
     
@@ -109,7 +110,11 @@ class ModernToolBar(QToolBar):
         self.capture_action = QAction(self._create_icon("📷"), "Capture", self)
         self.capture_action.setToolTip("Take screenshot")
         self.capture_action.triggered.connect(self.capture_screen.emit)
-        
+
+        self.auto_route_action = QAction(self._create_icon("🧹"), "Auto-route", self)
+        self.auto_route_action.setToolTip("Auto-route wires around blocks")
+        self.auto_route_action.triggered.connect(self.auto_route_wires.emit)
+
         # Theme toggle action
         self.theme_action = QAction(self._create_icon("🌙"), "Theme", self)
         self.theme_action.setToolTip("Toggle dark/light theme")
@@ -133,6 +138,7 @@ class ModernToolBar(QToolBar):
         # View group
         self.addAction(self.plot_action)
         self.addAction(self.capture_action)
+        self.addAction(self.auto_route_action)
         self.addSeparator()
         
         # Zoom control

@@ -1480,6 +1480,23 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error clearing canvas: {str(e)}")
 
+    def auto_route_lines(self):
+        """Recompute every connection's path with the orthogonal A* router."""
+        try:
+            from lib.simulation.wire_router import route_all_lines
+            blocks = self.dsim.blocks_list
+            lines = self.dsim.line_list
+            if not lines:
+                logger.info("Auto-route: no connections to route")
+                return
+            self._push_undo("Auto-route wires")
+            n = route_all_lines(lines, blocks)
+            self.dsim.dirty = True
+            self.update()
+            logger.info(f"Auto-route: rerouted {n} of {len(lines)} connections")
+        except Exception as e:
+            logger.error(f"Auto-route failed: {e}")
+
     def get_blocks(self):
         """Get all blocks on the canvas."""
         return getattr(self.dsim, 'blocks_list', [])
