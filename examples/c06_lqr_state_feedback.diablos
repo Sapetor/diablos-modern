@@ -195,7 +195,7 @@
             "io_edit": "output",
             "fn_name": "demux",
             "params": {
-                "num_outputs": 2
+                "output_shape": 1
             },
             "external": false,
             "flipped": false

@@ -214,7 +214,7 @@ class ModernCanvas(QWidget):
                         self.run_batch_simulation()
                         return True
                 else:
-                    error_msg = self.dsim.error_msg if hasattr(self.dsim, 'error_msg') and self.dsim.error_msg else "Algebraic loop detected or invalid diagram."
+                    error_msg = self.dsim.error_msg if hasattr(self.dsim, 'error_msg') and self.dsim.error_msg else "Initialization failed (see logs)."
                     logger.error(f"Simulation initialization failed. {error_msg}")
                     self.simulation_status_changed.emit(f"Simulation failed to start. {error_msg}")
                     # Also pop up a message box

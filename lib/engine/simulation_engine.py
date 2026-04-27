@@ -393,6 +393,7 @@ class SimulationEngine:
             
         except Exception as e:
             logger.error(f"Error executing block {block.name}: {e}")
+            self.error_msg = f"Block '{block.name}' failed: {e}"
             return False
 
     def check_diagram_integrity(self):
