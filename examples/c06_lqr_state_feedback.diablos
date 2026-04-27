@@ -3,7 +3,7 @@
         "wind_width": 1280,
         "wind_height": 770,
         "fps": 60,
-        "sim_time": 10.0,
+        "sim_time": 12.0,
         "sim_dt": 0.01,
         "sim_trange": 100
     },
@@ -29,7 +29,7 @@
                 "A": "[[0, 1], [0, 0]]",
                 "B": "[[0], [1]]",
                 "Q": "[[1, 0], [0, 1]]",
-                "R": "[[1]]"
+                "R": "[[10]]"
             },
             "external": false,
             "flipped": false
@@ -52,8 +52,31 @@
             "io_edit": "none",
             "fn_name": "step",
             "params": {
-                "value": 1.0,
+                "value": 0.0,
                 "start": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 4,
+            "username": "K",
+            "coords_left": 310,
+            "coords_top": 400,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ca8a04",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[0.31623, 0.85578]]"
             },
             "external": false,
             "flipped": false
@@ -103,30 +126,7 @@
                 "B": [[0.0], [1.0]],
                 "C": [[1.0, 0.0], [0.0, 1.0]],
                 "D": [[0.0], [0.0]],
-                "init_conds": [0.0, 0.0]
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "MatrixGain",
-            "sid": 4,
-            "username": "K",
-            "coords_left": 310,
-            "coords_top": 400,
-            "coords_width": 60,
-            "coords_height": 40,
-            "coords_height_base": 40,
-            "in_ports": 1,
-            "out_ports": 1,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#ca8a04",
-            "b_type": 0,
-            "io_edit": "none",
-            "fn_name": "matrixgain",
-            "params": {
-                "gain": "[[1.0, 1.73205]]"
+                "init_conds": [2.0, 1.0]
             },
             "external": false,
             "flipped": false
