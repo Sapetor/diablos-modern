@@ -72,19 +72,20 @@ class DemuxBlock(BaseBlock):
             input_array = np.atleast_1d(np.array(inputs[0], dtype=float)).flatten()
             output_shape = int(params['output_shape'])
             n_elements = len(input_array)
+            n_outputs = int(params.get('_outputs_', len(self.outputs)))
         except (ValueError, TypeError):
             return {'E': True, 'error': 'Invalid input type in demux block. Expected numeric.'}
 
         # Check input dimensions
-        if n_elements / output_shape < len(self.outputs):
+        if n_elements / output_shape < n_outputs:
             return {'E': True, 'error': f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}"}
 
-        elif n_elements / output_shape > len(self.outputs):
+        elif n_elements / output_shape > n_outputs:
             logger.warning(f"More elements in vector than expected outputs. Truncating. Block: {params.get('_name_', 'Demux')}")
 
         try:
             outputs = {}
-            for i in range(len(self.outputs)):
+            for i in range(n_outputs):
                 start = i * output_shape
                 end = start + output_shape
                 outputs[i] = input_array[start:end]
