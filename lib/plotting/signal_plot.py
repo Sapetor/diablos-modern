@@ -14,8 +14,8 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (
-    QCheckBox, QDialog, QFileDialog, QHBoxLayout, QLabel,
-    QMessageBox, QPushButton, QVBoxLayout, QWidget
+    QCheckBox, QDialog, QFileDialog, QGridLayout, QHBoxLayout, QLabel,
+    QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget
 )
 
 logger = logging.getLogger(__name__)
@@ -48,32 +48,62 @@ class SignalPlot(QWidget):
         self.timeline = None
         self.data_vectors = None
 
+        import math
+        self._min_plot_height = 200
+        n = len(labels)
+        self._columns = max(1, math.ceil(math.sqrt(n))) if n > 0 else 1
+
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Create plot area
-        plot_layout = QVBoxLayout()
-        plot_layout.setSpacing(10)  # Add spacing between plots
-        plot_layout.setContentsMargins(0, 0, 0, 10)  # Add bottom margin to plot area
+        # Toolbar
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.addWidget(QLabel("Columns:"))
+        self.columns_spin = QSpinBox()
+        self.columns_spin.setRange(1, max(1, n))
+        self.columns_spin.setValue(self._columns)
+        toolbar_layout.addWidget(self.columns_spin)
+        self.auto_btn = QPushButton("Auto")
+        toolbar_layout.addWidget(self.auto_btn)
+        toolbar_layout.addStretch()
+        toolbar_layout.addWidget(QLabel("Min height:"))
+        self.min_height_spin = QSpinBox()
+        self.min_height_spin.setRange(80, 500)
+        self.min_height_spin.setSingleStep(20)
+        self.min_height_spin.setSuffix(" px")
+        self.min_height_spin.setValue(200)
+        toolbar_layout.addWidget(self.min_height_spin)
+        toolbar_layout.addStretch()
+
+        self.toolbar_widget = QWidget()
+        self.toolbar_widget.setLayout(toolbar_layout)
+        self.toolbar_widget.setVisible(n > 1)
+        main_layout.addWidget(self.toolbar_widget)
+
+        # Plot grid container
+        grid_container = QWidget()
+        self.plot_grid = QGridLayout()
+        self.plot_grid.setSpacing(10)
+        self.plot_grid.setContentsMargins(0, 0, 0, 10)
+        grid_container.setLayout(self.plot_grid)
+        main_layout.addWidget(grid_container)
+
         for idx, label in enumerate(labels):
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
-
-            # Configure axes for better visibility
             self._configure_plot_axes(plot_widget)
-
-            # Use stepMode=True for Zero-Order Hold visualization (staircase plot)
             curve = plot_widget.plot(pen='y', stepMode=self.curve_step_modes[idx])
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
-            plot_layout.addWidget(plot_widget)
 
-        main_layout.addLayout(plot_layout)
+        self._reflow_grid()
 
-        # Add spacing before the export button
+        self.columns_spin.valueChanged.connect(self._on_columns_changed)
+        self.auto_btn.clicked.connect(self._on_auto_columns)
+        self.min_height_spin.valueChanged.connect(self._on_min_height_changed)
+
         main_layout.addSpacing(20)
 
-        # Add export button at bottom
         self.export_button = QPushButton("Export to CSV...")
         self.export_button.setToolTip("Export plot data to CSV file")
         self.export_button.clicked.connect(self.export_to_csv)
@@ -87,7 +117,30 @@ class SignalPlot(QWidget):
         plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
         plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
         plot_widget.getAxis('bottom').enableAutoSIPrefix(False)
-        plot_widget.setMinimumHeight(200)
+        plot_widget.setMinimumHeight(self._min_plot_height)
+
+    def _reflow_grid(self):
+        for plot in self.plot_items:
+            self.plot_grid.removeWidget(plot)
+        cols = max(1, self._columns)
+        for idx, plot in enumerate(self.plot_items):
+            row, col = divmod(idx, cols)
+            self.plot_grid.addWidget(plot, row, col)
+
+    def _on_columns_changed(self, value):
+        self._columns = int(value)
+        self._reflow_grid()
+
+    def _on_auto_columns(self):
+        import math
+        n = len(self.plot_items)
+        target = max(1, math.ceil(math.sqrt(n))) if n > 0 else 1
+        self.columns_spin.setValue(target)
+
+    def _on_min_height_changed(self, value):
+        self._min_plot_height = int(value)
+        for plot in self.plot_items:
+            plot.setMinimumHeight(self._min_plot_height)
 
     def _expand_step_modes(self, step_mode, count):
         """Normalize step_mode (bool or list) into a list matching the plot count."""

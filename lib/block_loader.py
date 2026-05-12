@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # PyInstaller bundle (where filesystem scanning doesn't work).
 _BLOCK_MODULES = [
     'blocks.abs_block',
+    'blocks.agent_scope',
     'blocks.assert_block',
     'blocks.bodemag',
     'blocks.bodephase',

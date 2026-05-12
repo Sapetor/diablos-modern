@@ -48,6 +48,8 @@ class AnimationExporter:
             raise ValueError(f"2D field data must be 3D array, got {self.field_data.ndim}D")
         if self.dimension == '1d' and self.field_data.ndim != 2:
             raise ValueError(f"1D field data must be 2D array, got {self.field_data.ndim}D")
+        if self.dimension == 'agents' and self.field_data.ndim != 3:
+            raise ValueError(f"Agents data must be 3D array (T, N, 2), got {self.field_data.ndim}D")
 
     @property
     def n_frames(self):
@@ -114,8 +116,69 @@ class AnimationExporter:
 
         if self.dimension == '2d':
             return self._create_2d_animation(fps, figsize, dpi)
+        elif self.dimension == 'agents':
+            return self._create_agents_animation(fps, figsize, dpi)
         else:
             return self._create_1d_animation(fps, figsize, dpi)
+
+    def _create_agents_animation(self, fps, figsize, dpi):
+        """Animated 2D scatter for N agents with optional trails."""
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FuncAnimation
+
+        positions = self.field_data
+        n_times, n_agents, _ = positions.shape
+
+        title = self.params.get('title', 'Agent trajectories')
+        show_trails = bool(self.params.get('show_trails', True))
+        trail_length = int(self.params.get('trail_length', 0) or 0)
+
+        x_min, x_max = float(np.min(positions[..., 0])), float(np.max(positions[..., 0]))
+        y_min, y_max = float(np.min(positions[..., 1])), float(np.max(positions[..., 1]))
+        pad_x = 0.1 * (x_max - x_min) if x_max > x_min else 1.0
+        pad_y = 0.1 * (y_max - y_min) if y_max > y_min else 1.0
+
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+        ax.set_xlim(x_min - pad_x, x_max + pad_x)
+        ax.set_ylim(y_min - pad_y, y_max + pad_y)
+        ax.set_aspect('equal', adjustable='box')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.grid(True, alpha=0.3)
+        title_text = ax.set_title(f"{title}  t={self.time_data[0]:.3f}s")
+
+        cmap = plt.get_cmap('tab10')
+        colors = [cmap(i % 10) for i in range(n_agents)]
+
+        trail_lines = []
+        if show_trails:
+            for i in range(n_agents):
+                line, = ax.plot([], [], '-', color=colors[i], linewidth=1.5, alpha=0.6)
+                trail_lines.append(line)
+
+        scatter = ax.scatter(positions[0, :, 0], positions[0, :, 1],
+                             c=colors, s=80, edgecolors='black', zorder=3)
+        labels = [ax.annotate(str(i + 1),
+                              (positions[0, i, 0], positions[0, i, 1]),
+                              fontsize=9, ha='center', va='center', zorder=4)
+                  for i in range(n_agents)]
+        plt.tight_layout()
+
+        def update(frame):
+            scatter.set_offsets(positions[frame])
+            for i in range(n_agents):
+                labels[i].set_position((positions[frame, i, 0], positions[frame, i, 1]))
+            if show_trails:
+                start = 0 if trail_length <= 0 else max(0, frame - trail_length)
+                for i in range(n_agents):
+                    trail_lines[i].set_data(positions[start:frame + 1, i, 0],
+                                            positions[start:frame + 1, i, 1])
+            title_text.set_text(f"{title}  t={self.time_data[frame]:.3f}s")
+            return [scatter, title_text, *trail_lines, *labels]
+
+        anim = FuncAnimation(fig, update, frames=n_times,
+                             interval=1000 / fps, blit=False, repeat=True)
+        return fig, anim
 
     def _create_2d_animation(self, fps, figsize, dpi):
         """Create 2D heatmap animation."""
