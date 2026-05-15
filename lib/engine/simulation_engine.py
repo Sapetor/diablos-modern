@@ -131,13 +131,23 @@ class SimulationEngine:
             # Resolve workspace-variable params BEFORE identify_memory_blocks so
             # TranFn/StateSpace classification reads resolved arrays (not raw
             # workspace-variable strings).
+            #
+            # Skip blocks whose exec_params are already populated with the
+            # current sim_dt (DSim.execution_init resolves root blocks before
+            # calling this method).  Avoids a redundant pass over every block
+            # in the normal execution path while keeping the resolve as a
+            # fallback for direct callers (tests, alternate init paths).
             from lib.workspace import WorkspaceManager
             workspace_manager = WorkspaceManager()
+            current_dt = self.sim_dt if hasattr(self, 'sim_dt') else 0.01
             for block in self.active_blocks_list:
+                cached = getattr(block, 'exec_params', None)
+                if cached and cached.get('dtime') == current_dt:
+                    continue
                 block.exec_params = workspace_manager.resolve_params(block.params)
                 # Copy internal parameters (those starting with '_')
                 block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
-                block.exec_params['dtime'] = self.sim_dt if hasattr(self, 'sim_dt') else 0.01
+                block.exec_params['dtime'] = current_dt
 
             # Identify memory blocks (on ACTIVE list, after param resolution)
             self.identify_memory_blocks()
@@ -1052,13 +1062,16 @@ class SimulationEngine:
             current_blocks = self.active_blocks_list
             current_lines = self.active_line_list if self.active_line_list else lines
 
-            # CRITICAL: Resolve parameters before compilation
-            # This populates exec_params with resolved values (workspace variables, etc.)
-            # Without this, PDE blocks get default/zero initial conditions
+            # Resolve parameters before compilation when exec_params is stale
+            # or missing.  initialize_execution above (or DSim.execution_init)
+            # already resolves with the same sim_dt, so we skip the per-block
+            # pass when exec_params['dtime'] is already current.
             workspace_manager = WorkspaceManager()
             for block in current_blocks:
+                cached = getattr(block, 'exec_params', None)
+                if cached and cached.get('dtime') == dt:
+                    continue
                 block.exec_params = workspace_manager.resolve_params(block.params)
-                # Copy internal parameters (those starting with '_')
                 block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
                 block.exec_params['dtime'] = dt
 
