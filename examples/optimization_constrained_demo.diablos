@@ -294,6 +294,34 @@
             },
             "external": false,
             "flipped": false
+        },
+        {
+            "block_fn": "Parameter",
+            "sid": 12,
+            "username": "Kd_param",
+            "coords_left": 460,
+            "coords_top": 80,
+            "coords_width": 80,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#78350f",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "parameter",
+            "params": {
+                "name": "Kd",
+                "value": 0.0,
+                "lower": 0.0,
+                "upper": 5.0,
+                "scale": "linear",
+                "fixed": true
+            },
+            "external": false,
+            "flipped": false
         }
     ],
     "lines_data": [
@@ -616,6 +644,42 @@
                 [
                     700,
                     270
+                ]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line112",
+            "sid": 112,
+            "srcblock": "parameter12",
+            "srcport": 0,
+            "dstblock": "pid5",
+            "dstport": 3,
+            "points": [
+                [
+                    540,
+                    100
+                ],
+                [
+                    560,
+                    100
+                ],
+                [
+                    560,
+                    169
+                ],
+                [
+                    260,
+                    169
+                ],
+                [
+                    260,
+                    240
+                ],
+                [
+                    280,
+                    240
                 ]
             ],
             "cptr": 0,

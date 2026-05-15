@@ -17,13 +17,7 @@ import pytest
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXAMPLE_FILES = sorted(EXAMPLES_DIR.glob("*.diablos"))
 
-# Pre-existing diagram integrity failures unrelated to the safe_expr regression.
-# optimization_constrained_demo: pid5 port 3 unlinked (diagram authoring gap).
-# test4: untracked scratch file with an incomplete subsystem wiring.
-_KNOWN_BROKEN = {
-    "optimization_constrained_demo.diablos",
-    "test4.diablos",
-}
+_KNOWN_BROKEN: set[str] = set()
 
 
 @pytest.mark.integration
