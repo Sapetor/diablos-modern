@@ -250,7 +250,7 @@ class SimulationEngine:
                         if out_value is False:
                             return False
                         # Check for error dict from block
-                        if isinstance(out_value, dict) and out_value.get('E') or out_value.get('error'):
+                        if isinstance(out_value, dict) and (out_value.get('E') or out_value.get('error')):
                             self.error_msg = out_value.get('error', 'Block returned error')
                             logger.error(f"Block {block.name} error: {self.error_msg}")
                             return False
@@ -976,7 +976,7 @@ class SimulationEngine:
         """
         child_ports = []
         for child in children_list:
-            if block_name in child.values():
+            if child.get('dstblock') == block_name:
                 child_ports.append(child)
         if not child_ports:
             return False, []

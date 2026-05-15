@@ -46,31 +46,38 @@ class TestHistoryManager(unittest.TestCase):
         self.assertEqual(len(self.manager.undo_stack[0]['state']['blocks']), 1)
 
     def test_undo_restores_state(self):
-        # Setup initial state (empty)
+        """Verify that undo() moves the top undo entry onto the redo stack and
+        calls _restore_state with the captured snapshot."""
+        # Capture initial (empty) state
         self.manager.push_undo("Initial")
-        
-        # Change state (add block)
-        mock_block = MagicMock()
-        mock_block.selected = True # Check if this property is captured
-        self.mock_dsim.blocks_list = [mock_block]
-        
-        # Undo
-        # Need to mock _restore_state to not crash on import or real DBlock creation locally
-        # OR we let it run but mock DBlock import?
-        # Simpler: mock _restore_state for this conceptual test? 
-        # But we want to test _restore_state logic too.
-        
-        pass 
-        # _restore_state uses real DBlock. That's hard to test without full environment.
-        # We will unit test the HistoryManager logic (stacks) mainly.
-        # Deep integration test for _restore_state is harder.
+        self.assertEqual(len(self.manager.undo_stack), 1)
+
+        # Mock _restore_state so we can inspect the snapshot it receives
+        # without requiring a full DBlock/canvas environment.
+        restored = []
+        self.manager._restore_state = lambda state: restored.append(state) or True
+
+        self.manager.undo()
+
+        # Undo stack should now be empty
+        self.assertEqual(len(self.manager.undo_stack), 0)
+        # The pre-undo state should have been pushed to redo
+        self.assertEqual(len(self.manager.redo_stack), 1)
+        # _restore_state was called once with the initial snapshot
+        self.assertEqual(len(restored), 1)
+        self.assertIn('blocks', restored[0])
+        self.assertIn('lines', restored[0])
         
     def test_stack_limit(self):
+        import collections
+        # Recreate the deque with the smaller maxlen after updating the limit,
+        # since deque.maxlen is fixed at construction time.
         self.manager.max_undo_steps = 2
+        self.manager.undo_stack = collections.deque(maxlen=2)
         self.manager.push_undo("1")
         self.manager.push_undo("2")
         self.manager.push_undo("3")
-        
+
         self.assertEqual(len(self.manager.undo_stack), 2)
         self.assertEqual(self.manager.undo_stack[0]['description'], "2")
         self.assertEqual(self.manager.undo_stack[1]['description'], "3")

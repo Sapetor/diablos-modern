@@ -275,7 +275,7 @@ def test_bodemag_block():
     
     # BodeMag just returns empty dict during simulation
     result = block.execute(0, {0: np.array([1.0])}, params)
-    assert result == {}, f"BodeMag: expected empty dict, got {result}"
+    assert result == {'E': False}, f"BodeMag: expected {{'E': False}}, got {result}"
     print("[PASS] BodeMagBlock")
 
 

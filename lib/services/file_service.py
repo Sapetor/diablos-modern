@@ -385,6 +385,14 @@ class FileService:
 
         block.flipped = block_data.get('flipped', False)
         block.height_base = block_data.get('coords_height_base', block.height)
+
+        # Restore manually-set block color; skip for Subsystem/Inport/Outport
+        # which already handle b_color in their own constructors.
+        if block_fn not in ('Subsystem', 'Inport', 'Outport'):
+            saved_color = block_data.get('b_color')
+            if saved_color:
+                block.b_color = QColor(saved_color)
+
         return block
 
     def _construct_subsystem(self, block_data, block_rect, params):

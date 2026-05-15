@@ -98,7 +98,7 @@ class SwitchBlock(BaseBlock):
             sel = 0 if ctrl >= float(params.get("threshold", 0.0)) else 1
         sel = max(0, min(n - 1, sel))
 
-        out = inputs.get(sel + 1)  # data inputs start at index 1
+        out = inputs.get(sel + 1, 0.0)  # data inputs start at index 1
         if isinstance(out, (float, int)):
             out = np.atleast_1d(out)
         return {0: np.array(out, dtype=float)}

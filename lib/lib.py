@@ -975,7 +975,7 @@ class DSim:
             self.dynamic_pyqtPlotScope(step=1)
 
             # It is checked if the total simulation (execution) time has been exceeded to end the loop
-            if self.time_step > self.execution_time + self.sim_dt:  # seconds
+            if self.time_step > self.execution_time:  # seconds
                 self.timeline = np.array(self._timeline_list)       # Convert list to numpy array
                 self.execution_initialized = False                  # The execution loop is terminated
                 self.pbar.close()                                   # The progress bar ends

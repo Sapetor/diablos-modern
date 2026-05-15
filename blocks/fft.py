@@ -86,7 +86,7 @@ class FFTBlock(BaseBlock):
         params['_fft_buffer_'].append(u[0] if len(u) == 1 else u)
         params['_fft_time_'].append(time)
         
-        return {}
+        return {'E': False}
 
     def plot_spectrum(self, params):
         """Called after simulation to display the FFT spectrum."""

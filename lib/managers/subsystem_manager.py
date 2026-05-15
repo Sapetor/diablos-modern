@@ -115,8 +115,8 @@ class SubsystemManager:
             logger.info(f"Syncing ports for subsystem {current_subsystem_name}")
 
             # Find all internal ports
-            inports = [b for b in internal_blocks if getattr(b, 'block_type', '') == 'Inport']
-            outports = [b for b in internal_blocks if getattr(b, 'block_type', '') == 'Outport']
+            inports = [b for b in internal_blocks if getattr(b, 'block_fn', '') == 'Inport']
+            outports = [b for b in internal_blocks if getattr(b, 'block_fn', '') == 'Outport']
 
             # Sort by Y position to allow user to reorder ports by moving blocks
             inports.sort(key=lambda b: b.top)

@@ -1134,6 +1134,9 @@ class ScopePlotter:
 
             # Use step mode for discrete/ZOH signals to keep values constant between samples
             self.plotty = SignalPlot(self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes)
+            # Null out both references when the C++ QWidget is destroyed to avoid
+            # RuntimeError on the next simulation run.
+            self.plotty.destroyed.connect(lambda: self._on_plotty_destroyed())
             # Sync to dsim for backward compatibility
             self.dsim.plotty = self.plotty
             try:
@@ -1149,6 +1152,12 @@ class ScopePlotter:
                 logger.error(f"Error in plotting: {e}")
         else:
             logger.debug("No data to plot.")
+
+    def _on_plotty_destroyed(self):
+        """Called when the SignalPlot QWidget is destroyed by the user closing it.
+        Clears both references so subsequent simulation runs don't hit a deleted C++ object."""
+        self.plotty = None
+        self.dsim.plotty = None
 
     def dynamic_pyqtPlotScope(self, step):
         """
@@ -1175,6 +1184,8 @@ class ScopePlotter:
 
                 step_modes = self._scope_step_modes()
                 self.plotty = SignalPlot(self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes)
+                # Null out both references when the C++ QWidget is destroyed.
+                self.plotty.destroyed.connect(lambda: self._on_plotty_destroyed())
                 # Sync to dsim for backward compatibility
                 self.dsim.plotty = self.plotty
 
@@ -1184,7 +1195,7 @@ class ScopePlotter:
                 if block.block_fn == 'Scope':
                     b_vectors = block.params['vector']
                     vector_list.append(b_vectors)
-            if len(vector_list) > 0:
+            if len(vector_list) > 0 and self.plotty is not None:
                 self.plotty.loop(new_t=self.dsim.timeline, new_y=vector_list)
             else:
                 self.dsim.dynamic_plot = False

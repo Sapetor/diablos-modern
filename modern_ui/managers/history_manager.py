@@ -1,3 +1,4 @@
+import collections
 import logging
 from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QColor
@@ -16,10 +17,10 @@ class HistoryManager:
         self.canvas = canvas
         self.dsim = canvas.dsim
         
-        # Undo/Redo stacks
-        self.undo_stack = []
-        self.redo_stack = []
+        # Undo/Redo stacks — deque(maxlen) gives O(1) eviction at front
         self.max_undo_steps = 50
+        self.undo_stack = collections.deque(maxlen=self.max_undo_steps)
+        self.redo_stack = collections.deque()
 
     def push_undo(self, description="Action"):
         """Push current state to undo stack."""
@@ -28,9 +29,7 @@ class HistoryManager:
             if state:
                 self.undo_stack.append({'state': state, 'description': description})
 
-                # Limit stack size
-                if len(self.undo_stack) > self.max_undo_steps:
-                    self.undo_stack.pop(0)
+                # Limit stack size: deque(maxlen) auto-evicts oldest entry — no manual pop(0) needed
 
                 # Clear redo stack when new action is performed
                 self.redo_stack.clear()

@@ -38,4 +38,4 @@ class BodeMagBlock(BaseBlock):
         # BodeMag doesn't process data during simulation
         # It's used to generate static Bode plots via right-click menu
         # Return empty output dict to avoid breaking simulation
-        return {}
+        return {'E': False}

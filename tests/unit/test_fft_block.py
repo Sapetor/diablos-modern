@@ -63,7 +63,7 @@ class TestFFTBlock:
         block = FFTBlock()
         params = {}
         result = block.execute(0.0, {0: np.array([1.0])}, params)
-        assert result == {}
+        assert result == {'E': False}
 
     def test_buffer_initialization(self):
         """Test that first execute initializes buffers."""
