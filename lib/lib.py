@@ -783,7 +783,7 @@ class DSim:
                 if not outer_progressed:
                     break
 
-            if self.time_step > self.sim_time + self.sim_dt:
+            if self.time_step > self.sim_time:
                 self.timeline = np.array(self._timeline_list)
                 self.execution_initialized = False
                 self.reset_memblocks()
