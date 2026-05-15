@@ -77,7 +77,7 @@ class WorkspaceManager:
                     try:
                         # Use safe_expr with the variables dictionary as locals
                         # This allows expressions like "[K, K]" or "2*K" to be resolved
-                        val = safe_expr(value, variables=self.variables)
+                        val = safe_expr(value, variables=self.variables, allow_numpy=False)
                         resolved[key] = val
                     except (ValueError, SyntaxError, NameError, TypeError):
                         # Keep as string if evaluation fails
