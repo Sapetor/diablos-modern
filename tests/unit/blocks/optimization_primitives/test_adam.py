@@ -26,7 +26,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([1.0, 1.0])
 
@@ -50,7 +50,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([5.0, -3.0])
 
@@ -67,7 +67,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         # Large gradient - should get scaled down
@@ -75,7 +75,7 @@ class TestAdamBlock:
         result1 = self.block.execute(0.0, {0: large_grad}, params)
 
         # Reset
-        params['_initialized_'] = False
+        params['_init_start_'] = True
 
         # Small gradient - relative update should be similar
         small_grad = np.array([1.0, 1.0])
@@ -93,7 +93,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([1.0])
 
@@ -120,7 +120,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([0.0, 0.0])
 
@@ -135,7 +135,7 @@ class TestAdamBlock:
             'beta1': 0.9,
             'beta2': 0.999,
             'epsilon': 1e-8,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         # Constant gradient - simulate optimization

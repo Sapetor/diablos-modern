@@ -1656,16 +1656,18 @@ class SimulationEngine:
                         high_val = float(block.params.get('high', 1.0))
                         low_val = float(block.params.get('low', 0.0))
 
-                        # Get or initialize persistent state for replay
-                        if not hasattr(block, '_replay_hyst_state'):
-                            block._replay_hyst_state = low_val
+                        # Get or initialize persistent state for replay (in exec_params, not on self).
+                        # Re-initialize whenever _init_start_ is True so reset_memblocks takes effect.
+                        if block.exec_params.get('_init_start_', True) or '_replay_hyst_state_' not in block.exec_params:
+                            block.exec_params['_replay_hyst_state_'] = low_val
+                            block.exec_params['_init_start_'] = False
 
                         if val >= upper:
-                            block._replay_hyst_state = high_val
+                            block.exec_params['_replay_hyst_state_'] = high_val
                         elif val <= lower:
-                            block._replay_hyst_state = low_val
+                            block.exec_params['_replay_hyst_state_'] = low_val
 
-                        out_val = block._replay_hyst_state
+                        out_val = block.exec_params['_replay_hyst_state_']
 
                     elif fn == 'Mux':
                         # Collect all inputs into array

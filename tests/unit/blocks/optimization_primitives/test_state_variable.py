@@ -25,7 +25,7 @@ class TestStateVariableBlock:
         params = {
             'initial_value': [5.0, 3.0],
             'dimension': 2,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         result = self.block.execute(0.0, {}, params)
@@ -38,7 +38,7 @@ class TestStateVariableBlock:
         params = {
             'initial_value': [1.0, 1.0],
             'dimension': 2,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         # First call - returns initial
@@ -58,7 +58,7 @@ class TestStateVariableBlock:
         params = {
             'initial_value': [10.0, 10.0],
             'dimension': 2,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         # Iteration 0: x = [10, 10]
@@ -78,7 +78,7 @@ class TestStateVariableBlock:
         params = {
             'initial_value': '[1.0, 2.0, 3.0]',
             'dimension': 3,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         result = self.block.execute(0.0, {}, params)
@@ -90,7 +90,7 @@ class TestStateVariableBlock:
         params = {
             'initial_value': [5.0],
             'dimension': 1,
-            '_initialized_': False
+            '_init_start_': True
         }
 
         result = self.block.execute(0.0, {}, params)

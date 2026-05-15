@@ -24,7 +24,7 @@ class TestMomentumBlock:
         params = {
             'alpha': 0.1,
             'beta': 0.9,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([2.0, 4.0])
 
@@ -39,7 +39,7 @@ class TestMomentumBlock:
         params = {
             'alpha': 0.1,
             'beta': 0.9,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([2.0, 2.0])
 
@@ -60,7 +60,7 @@ class TestMomentumBlock:
         params = {
             'alpha': 0.1,
             'beta': 0.0,  # No momentum
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([5.0, 10.0])
 
@@ -78,7 +78,7 @@ class TestMomentumBlock:
         params = {
             'alpha': 0.01,
             'beta': 0.99,  # High momentum
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([1.0, 1.0])
 
@@ -101,7 +101,7 @@ class TestMomentumBlock:
         params = {
             'alpha': 0.1,
             'beta': 0.9,
-            '_initialized_': False
+            '_init_start_': True
         }
         grad = np.array([0.0, 0.0])
 

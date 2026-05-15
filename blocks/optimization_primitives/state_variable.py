@@ -90,7 +90,7 @@ class StateVariableBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             # Initialize state on first call
-            if not params.get('_initialized_', False):
+            if params.get('_init_start_', True):
                 initial = params.get('initial_value', [1.0, 1.0])
                 if isinstance(initial, str):
                     try:
@@ -98,7 +98,7 @@ class StateVariableBlock(BaseBlock):
                     except Exception:
                         initial = [1.0, 1.0]
                 params['_state_'] = np.array(initial, dtype=float)
-                params['_initialized_'] = True
+                params['_init_start_'] = False
 
             # Output current state
             x_current = params['_state_'].copy()

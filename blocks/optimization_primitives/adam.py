@@ -100,11 +100,11 @@ class AdamBlock(BaseBlock):
             epsilon = float(params.get('epsilon', 1e-8))
 
             # Initialize moments on first call
-            if not params.get('_initialized_', False):
+            if params.get('_init_start_', True):
                 params['_m_'] = np.zeros_like(grad)  # First moment
                 params['_v_'] = np.zeros_like(grad)  # Second moment
                 params['_t_'] = 0  # Time step
-                params['_initialized_'] = True
+                params['_init_start_'] = False
 
             # Handle dimension change
             m = params['_m_']

@@ -84,9 +84,9 @@ class MomentumBlock(BaseBlock):
             beta = float(params.get('beta', 0.9))
 
             # Initialize velocity on first call
-            if not params.get('_initialized_', False):
+            if params.get('_init_start_', True):
                 params['_velocity_'] = np.zeros_like(grad)
-                params['_initialized_'] = True
+                params['_init_start_'] = False
 
             # Handle dimension change
             v = params['_velocity_']
