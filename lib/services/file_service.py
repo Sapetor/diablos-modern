@@ -386,12 +386,8 @@ class FileService:
         block.flipped = block_data.get('flipped', False)
         block.height_base = block_data.get('coords_height_base', block.height)
 
-        # Restore manually-set block color; skip for Subsystem/Inport/Outport
-        # which already handle b_color in their own constructors.
-        if block_fn not in ('Subsystem', 'Inport', 'Outport'):
-            saved_color = block_data.get('b_color')
-            if saved_color:
-                block.b_color = QColor(saved_color)
+        # b_color is re-derived from the current palette via category, not
+        # restored from the file — old files have stale palette hex baked in.
 
         return block
 
