@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Callable, Dict, Any, Tuple
 from lib.simulation.block import DBlock
 from scipy import signal
+from lib.safe_eval import safe_literal, compile_expr, SafeEvalError
 from lib.engine.pde_helpers import (
     parse_pde_initial_condition,
     parse_pde_2d_initial_condition,
@@ -590,8 +591,8 @@ class SystemCompiler:
              initial = params.get('initial_value', [1.0])
              if isinstance(initial, str):
                  try:
-                     initial = eval(initial)
-                 except Exception:
+                     initial = safe_literal(initial)
+                 except (SafeEvalError, ValueError, SyntaxError):
                      initial = [1.0]
              # Preserve full vector state, not just first element
              initial = np.atleast_1d(initial).copy()
@@ -716,23 +717,13 @@ class SystemCompiler:
                 expr_str = str(func_raw)  # Use raw string for eval
 
             if use_expr:
-                # Build context for eval
-                eval_context = {
-                    "sin": np.sin, "cos": np.cos, "tan": np.tan,
-                    "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
-                    "exp": np.exp, "log": np.log, "log10": np.log10,
-                    "sqrt": np.sqrt, "abs": np.abs, "sign": np.sign,
-                    "ceil": np.ceil, "floor": np.floor,
-                    "pi": np.pi, "e": np.e, "np": np
-                }
+                # Compile expression once at compile time for hot-loop performance
+                _compiled_expr = compile_expr(expr_str)
 
-                def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _expr=expr_str, _ctx=eval_context):
+                def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _compiled=_compiled_expr):
                     val = signals.get(_src, 0.0) if _src else 0.0
                     try:
-                        local_ctx = dict(_ctx)
-                        local_ctx['u'] = val
-                        local_ctx['t'] = t
-                        signals[b_name] = float(eval(_expr, {"__builtins__": None}, local_ctx))
+                        signals[b_name] = float(_compiled({"u": val, "t": t}))
                     except Exception:
                         signals[b_name] = 0.0
                 return exec_mathfunc_expr

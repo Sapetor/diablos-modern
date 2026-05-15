@@ -3,6 +3,7 @@ import numpy as np
 import scipy.signal as signal
 from PyQt5.QtWidgets import QVBoxLayout
 import pyqtgraph as pg
+from lib.safe_eval import safe_literal, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class BaseAnalyzer:
                         # Try to parse "[1, 2]" string params if they exist
                         val = val.strip()
                         if val.startswith('[') and val.endswith(']'):
-                            return eval(val) # Basic fallback if AST not available or simple list
+                            return safe_literal(val)
                     return val
 
                 n_val = clean_param(params['numerator'])

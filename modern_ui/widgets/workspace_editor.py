@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 import logging
 from lib.workspace import WorkspaceManager
+from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
@@ -174,7 +175,11 @@ class WorkspaceEditor(QWidget):
                 try:
                     # Evaluate the string to get the actual python object
                     # We accept basic literals: numbers, strings, lists, bools
-                    val = eval(val_str, {"__builtins__": {}}, {})
+                    # and simple math expressions like "2*pi" or "sqrt(2)"
+                    try:
+                        val = safe_literal(val_str)
+                    except SafeEvalError:
+                        val = safe_expr(val_str, variables={})
                     self.workspace_manager.set_variable(name, val)
                     self.refresh_variables()
                     logger.info(f"Added variable {name} = {val}")
@@ -200,19 +205,10 @@ class WorkspaceEditor(QWidget):
             new_val_str = self.table.item(row, 1).text()
             
             try:
-                # Basic safety: allow math literals but not arbitrary code execution if possible.
-                # using eval on user input is risky but this is a workspace editor for engineers.
-                # Assuming trusted user.
-                import math
-                safe_env = {"__builtins__": {}, "math": math, "list": list, "int": int, "float": float, "True": True, "False": False}
-                
-                # We also want to support referencing other variables? 
-                # WorkspaceManager.resolve_params does that. 
-                # But here we want to define the *base* value.
-                # If I type 'K + 1' here, and K is a variable, do I want to store the result or the expression?
-                # Usually a workspace stores VALUES. So we evaluate it now.
-                
-                new_val = eval(new_val_str, safe_env, self.workspace_manager.variables)
+                # Use safe_expr to evaluate the expression with workspace variables.
+                # Supports math literals and expressions referencing other variables (e.g. "K + 1").
+                # Values are evaluated immediately and stored.
+                new_val = safe_expr(new_val_str, variables=self.workspace_manager.variables)
                 
                 # Update backend
                 self.workspace_manager.set_variable(name, new_val)

@@ -1,6 +1,7 @@
 import logging
 import ast
 import os
+from lib.safe_eval import safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +75,9 @@ class WorkspaceManager:
                 else:
                     # Try to evaluate expression using workspace variables
                     try:
-                        # Use eval with the variables dictionary as locals
+                        # Use safe_expr with the variables dictionary as locals
                         # This allows expressions like "[K, K]" or "2*K" to be resolved
-                        # We use a restricted globals dict for basic safety, but allow math
-                        import math
-                        safe_globals = {"__builtins__": {}, "math": math, "list": list, "int": int, "float": float}
-                        val = eval(value, safe_globals, self.variables)
+                        val = safe_expr(value, variables=self.variables)
                         resolved[key] = val
                     except (ValueError, SyntaxError, NameError, TypeError):
                         # Keep as string if evaluation fails

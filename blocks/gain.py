@@ -2,6 +2,7 @@
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.safe_eval import safe_literal, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class GainBlock(BaseBlock):
         elif isinstance(K_raw, str):
             try:
                 import numpy as np
-                K_arr = np.array(eval(K_raw), dtype=float)
+                K_arr = np.array(safe_literal(K_raw), dtype=float)
                 if K_arr.ndim == 0 or K_arr.size == 1:
                     return {0: Float(float(K_arr.flatten()[0])) * u}
                 elif K_arr.ndim == 2:

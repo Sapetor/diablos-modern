@@ -8,6 +8,7 @@ Each simulation step corresponds to one optimization iteration.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.safe_eval import safe_literal, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class StateVariableBlock(BaseBlock):
                 initial = params.get('initial_value', [1.0, 1.0])
                 if isinstance(initial, str):
                     try:
-                        initial = eval(initial)
+                        initial = safe_literal(initial)
                     except Exception:
                         initial = [1.0, 1.0]
                 params['_state_'] = np.array(initial, dtype=float)

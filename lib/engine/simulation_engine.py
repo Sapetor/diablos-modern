@@ -13,6 +13,7 @@ from lib.simulation.connection import DLine
 from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
+from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -1468,8 +1469,8 @@ class SimulationEngine:
                              initial = block.params.get('initial_value', [1.0])
                              if isinstance(initial, str):
                                  try:
-                                     initial = eval(initial)
-                                 except Exception:
+                                     initial = safe_literal(initial)
+                                 except (SafeEvalError, ValueError, SyntaxError):
                                      initial = [1.0]
                              # Preserve full vector state, not just first element
                              block.params['_replay_state_'] = np.atleast_1d(initial).copy()
@@ -1615,16 +1616,7 @@ class SimulationEngine:
                                 out_val = val * val * val
                             else:
                                 # Python expression fallback
-                                context = {
-                                    "u": val, "t": t,
-                                    "sin": np.sin, "cos": np.cos, "tan": np.tan,
-                                    "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
-                                    "exp": np.exp, "log": np.log, "log10": np.log10,
-                                    "sqrt": np.sqrt, "abs": np.abs, "sign": np.sign,
-                                    "ceil": np.ceil, "floor": np.floor,
-                                    "pi": np.pi, "e": np.e, "np": np
-                                }
-                                out_val = float(eval(str(func_raw), {"__builtins__": None}, context))
+                                out_val = float(safe_expr(str(func_raw), variables={"u": val, "t": t}))
                         except (ValueError, ZeroDivisionError):
                             out_val = 0.0
 

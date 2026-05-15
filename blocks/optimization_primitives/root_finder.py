@@ -10,6 +10,7 @@ Can also be used with expressions for automatic Jacobian approximation.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.safe_eval import safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -90,19 +91,11 @@ class RootFinderBlock(BaseBlock):
 
     def _eval_F(self, x, expressions, variables):
         """Evaluate F(x) from expressions."""
-        context = {
-            "np": np,
-            "sin": np.sin, "cos": np.cos, "tan": np.tan,
-            "exp": np.exp, "log": np.log, "sqrt": np.sqrt,
-            "abs": np.abs, "pi": np.pi, "e": np.e,
-        }
-
-        for i, var in enumerate(variables):
-            context[var] = x[i] if i < len(x) else 0.0
+        ctx_vars = {var: (x[i] if i < len(x) else 0.0) for i, var in enumerate(variables)}
 
         F = np.zeros(len(expressions))
         for i, expr in enumerate(expressions):
-            F[i] = eval(expr.strip(), {"__builtins__": None}, context)
+            F[i] = safe_expr(expr.strip(), variables=ctx_vars)
 
         return F
 

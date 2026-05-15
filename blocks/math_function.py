@@ -2,6 +2,7 @@
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.safe_eval import safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
@@ -107,19 +108,8 @@ Select the function via the block parameters."""
             # Python Syntax Fallback
             # Try to evaluate as a Python expression
             # Context: u (input), t (time), np (numpy), and standard math functions
-            context = {
-                "u": u, "t": time,
-                "sin": np.sin, "cos": np.cos, "tan": np.tan,
-                "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
-                "exp": np.exp, "log": np.log, "log10": np.log10,
-                "sqrt": np.sqrt, "abs": np.abs, "sign": np.sign,
-                "ceil": np.ceil, "floor": np.floor,
-                "pi": np.pi, "e": np.e,
-                "np": np
-            }
-            # Use the raw function string for eval to respect variable cases
             raw_func = str(params.get("function", params.get("expression", "sin")))
-            return {0: float(eval(raw_func, {"__builtins__": None}, context))}
+            return {0: float(safe_expr(raw_func, variables={"u": u, "t": time}))}
 
         except Exception as e:
             logger.warning(f"MathFunction '{params.get('_name_', '?')}': {e}")
