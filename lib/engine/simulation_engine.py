@@ -128,7 +128,18 @@ class SimulationEngine:
             # Check for algebraic loops (part 1)
             check_loop = self.count_computed_global_list()
 
-            # Identify memory blocks (on ACTIVE list)
+            # Resolve workspace-variable params BEFORE identify_memory_blocks so
+            # TranFn/StateSpace classification reads resolved arrays (not raw
+            # workspace-variable strings).
+            from lib.workspace import WorkspaceManager
+            workspace_manager = WorkspaceManager()
+            for block in self.active_blocks_list:
+                block.exec_params = workspace_manager.resolve_params(block.params)
+                # Copy internal parameters (those starting with '_')
+                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+                block.exec_params['dtime'] = self.sim_dt if hasattr(self, 'sim_dt') else 0.01
+
+            # Identify memory blocks (on ACTIVE list, after param resolution)
             self.identify_memory_blocks()
 
             # Propagate sample times for multi-rate simulation
@@ -138,19 +149,6 @@ class SimulationEngine:
             self.rk45_len = self.count_rk45_integrators()
             self.rk_counter = 0
             logger.debug(f"[ENGINE TIMING] pre-loop setup: {_time.time() - _te0:.3f}s")
-
-            # Initial validation of signal dimensions happens in DSim or can remain there for now
-            # as it relies on line_list which is in DSim/Model.
-            # For this refactor, we assume DSim handles the pre-checks on lines.
-
-            # Initialize exec_params for all blocks before execution
-            from lib.workspace import WorkspaceManager
-            workspace_manager = WorkspaceManager()
-            for block in self.active_blocks_list:
-                block.exec_params = workspace_manager.resolve_params(block.params)
-                # Copy internal parameters (those starting with '_')
-                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
-                block.exec_params['dtime'] = self.sim_dt if hasattr(self, 'sim_dt') else 0.01
 
             # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
             # Iterate active_blocks_list instead of blocks_list input
@@ -871,20 +869,25 @@ class SimulationEngine:
             ):
                 self.memory_blocks.add(block.name)
             elif block.block_fn == 'TranFn':
-                num = block.params.get('numerator', [])
-                den = block.params.get('denominator', [])
+                # Prefer exec_params (resolved arrays); fall back to params for
+                # callers that ran identify_memory_blocks before resolve_params.
+                src = getattr(block, 'exec_params', None) or block.params
+                num = src.get('numerator', [])
+                den = src.get('denominator', [])
                 if len(den) > len(num):
                     self.memory_blocks.add(block.name)
             elif block.block_fn == 'DiscreteTranFn':
                 # Only strictly-proper discrete TFs are safe to run output_only=True
                 # (D=0 means output doesn't depend on current input).
                 # Proper TFs (D!=0) need their input at t=0 for correct initialisation.
-                num = block.params.get('numerator', [])
-                den = block.params.get('denominator', [])
+                src = getattr(block, 'exec_params', None) or block.params
+                num = src.get('numerator', [])
+                den = src.get('denominator', [])
                 if len(den) > len(num):
                     self.memory_blocks.add(block.name)
             elif block.block_fn in ('StateSpace', 'DiscreteStateSpace'):
-                D = np.array(block.params.get('D', [[0.0]]))
+                src = getattr(block, 'exec_params', None) or block.params
+                D = np.array(src.get('D', [[0.0]]))
                 if np.all(D == 0):
                     self.memory_blocks.add(block.name)
         logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
