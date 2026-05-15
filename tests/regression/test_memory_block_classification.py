@@ -13,14 +13,11 @@ value when the engine calls them with an empty inputs dict during Loop 1.
 When they appeared in a feedback loop the algebraic-loop detector therefore
 raised a spurious "algebraic loop detected" error.
 
-OUT-OF-SCOPE (follow-up task)
-------------------------------
-PID, Hysteresis, and Deriv also hold cross-step state and break algebraic
-loops, but their execute() accesses inputs[key] directly and would raise
-KeyError if called with output_only=True.  They must not be added to
-memory_blocks until execute() is hardened.  They are covered by the
-separate MEMORY_BLOCK_TYPES set in lib/improvements.py (topological-sort
-loop detector) which does not call execute().
+FOLLOW-UP FIX (audit priority #7)
+----------------------------------
+PID, Hysteresis, and Deriv were hardened to use inputs.get() so they no
+longer raise KeyError when called with an empty inputs dict.  They are now
+also registered in identify_memory_blocks().
 
 NOTE on block_fn strings
 ------------------------
@@ -71,6 +68,10 @@ UNCONDITIONAL_STATEFUL_BLOCK_FNS = [
     "RateLimiter",
     "Adam",
     "Momentum",
+    # Audit priority #7: Control blocks hardened to use inputs.get()
+    "Deriv",
+    "Hysteresis",
+    "PID",
 ]
 
 
@@ -203,4 +204,218 @@ class TestMemoryBlockClassification:
         assert not missed, (
             f"The following stateful blocks were NOT classified as memory: "
             f"{missed}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Audit priority #7: empty-inputs safety for hardened Control blocks
+# ---------------------------------------------------------------------------
+
+@pytest.mark.regression
+class TestHardenedBlockEmptyInputs:
+    """
+    Verify PID, Hysteresis, and Deriv do not raise when called with an empty
+    inputs dict (simulating the output_only=True path used by Loop 1).
+    """
+
+    def test_pid_safe_on_empty_inputs(self):
+        """PID with empty inputs returns current integral (should be ~0 on first call)."""
+        import numpy as np
+        from blocks.pid import PIDBlock
+        block = PIDBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        result = block.execute(time=0.1, inputs={}, params=params, dtime=0.01)
+        assert isinstance(result, dict), "PID must return a dict"
+        assert 0 in result, "PID must return output port 0"
+        assert float(result[0]) == pytest.approx(0.0, abs=1e-9), (
+            "PID with no accumulated error should output ~0 on first call"
+        )
+
+    def test_pid_output_only_returns_held_integral(self):
+        """PID output_only after one normal step returns the held integral, not a crash."""
+        import numpy as np
+        from blocks.pid import PIDBlock
+        block = PIDBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        params["Ki"] = 1.0
+        # Normal step: setpoint=1, measurement=0 → error=1, integral accumulates
+        block.execute(time=0.0, inputs={0: np.array([1.0]), 1: np.array([0.0])},
+                      params=params, dtime=0.01)
+        # output_only step: empty inputs — must not crash
+        result = block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
+        assert isinstance(result, dict)
+        assert 0 in result
+
+    def test_hysteresis_safe_on_empty_inputs(self):
+        """Hysteresis with empty inputs returns the held _state (low by default)."""
+        import numpy as np
+        from blocks.hysteresis import HysteresisBlock
+        block = HysteresisBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        result = block.execute(time=0.0, inputs={}, params=params)
+        assert isinstance(result, dict), "Hysteresis must return a dict"
+        assert 0 in result, "Hysteresis must return output port 0"
+        # input=0.0 is between lower=-0.5 and upper=0.5, so state = low = 0.0
+        assert float(result[0]) == pytest.approx(float(params["low"]), abs=1e-9)
+
+    def test_hysteresis_output_only_returns_held_state(self):
+        """Hysteresis output_only after a switch returns the switched state."""
+        import numpy as np
+        from blocks.hysteresis import HysteresisBlock
+        block = HysteresisBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        # Drive input above upper threshold → state switches to high
+        block.execute(time=0.0, inputs={0: np.array([1.0])}, params=params)
+        # output_only path: empty inputs — must return held high state
+        result = block.execute(time=0.01, inputs={}, params=params)
+        assert isinstance(result, dict)
+        assert float(result[0]) == pytest.approx(float(params["high"]), abs=1e-9)
+
+    def test_derivative_safe_on_empty_inputs(self):
+        """Deriv with empty inputs on first call returns zeros (no crash)."""
+        import numpy as np
+        from blocks.derivative import DerivativeBlock
+        block = DerivativeBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        params["_init_start_"] = True
+        result = block.execute(time=0.0, inputs={}, params=params)
+        assert isinstance(result, dict), "Deriv must return a dict"
+        assert 0 in result, "Deriv must return output port 0"
+        assert np.allclose(result[0], 0.0), "Deriv first-call output must be zero"
+
+    def test_derivative_output_only_returns_last_derivative(self):
+        """Deriv output_only after a normal step returns the last computed didt."""
+        import numpy as np
+        from blocks.derivative import DerivativeBlock
+        block = DerivativeBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        params["_init_start_"] = True
+        # Step 1 (init)
+        block.execute(time=0.0, inputs={0: np.array([0.0])}, params=params)
+        # Step 2: input rises to 1.0 over dt=0.1 → didt = 10.0
+        r2 = block.execute(time=0.1, inputs={0: np.array([1.0])}, params=params)
+        expected_didt = r2[0].copy()
+        # Step 3: output_only (empty inputs) — must return held didt, not recompute
+        r3 = block.execute(time=0.2, inputs={}, params=params)
+        assert isinstance(r3, dict)
+        assert np.allclose(r3[0], expected_didt), (
+            "Deriv output_only must return last computed derivative, not recompute with zero input"
+        )
+
+    def test_pid_output_only_does_not_corrupt_state(self):
+        """Calling PID with empty inputs (Loop 1 output_only) must NOT mutate
+        _prev_e or _d_state. Otherwise the next real step's derivative term
+        is computed from corrupted state."""
+        import numpy as np
+        from blocks.pid import PIDBlock
+        block = PIDBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        params['Kp'] = 1.0
+        params['Ki'] = 0.5
+        params['Kd'] = 1.0  # nonzero — exposes the bug
+
+        # Run a real step with setpoint=1, measurement=0 → error=1
+        real_inputs = {0: np.array([1.0]), 1: np.array([0.0])}
+        block.execute(time=0.0, inputs=real_inputs, params=params, dtime=0.01)
+
+        # Capture state after real step
+        prev_e_after_real = params.get('_prev_e')
+        d_state_after_real = params.get('_d_state')
+
+        # Now simulate Loop 1 output_only call (empty inputs)
+        block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
+
+        # State must be unchanged
+        assert params.get('_prev_e') == prev_e_after_real, (
+            f"_prev_e was corrupted by output_only call: "
+            f"{prev_e_after_real} -> {params.get('_prev_e')}"
+        )
+        assert params.get('_d_state') == d_state_after_real, (
+            f"_d_state was corrupted: {d_state_after_real} -> {params.get('_d_state')}"
+        )
+
+    def test_hysteresis_output_only_does_not_flip_state(self):
+        """With non-symmetric thresholds (both above 0), the default 0.0 input
+        must not spuriously trigger a transition. Empty inputs → return current state."""
+        import numpy as np
+        from blocks.hysteresis import HysteresisBlock
+        block = HysteresisBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+        # Configure so 0.0 input would naively cross the upper threshold
+        params['upper'] = -0.05
+        params['lower'] = -0.5
+        params['low'] = 0.0
+        params['high'] = 1.0
+        params['_state'] = 0.0   # currently in low state
+        params['_init_start_'] = False  # already initialized
+
+        # Output-only call with empty inputs — must NOT flip to high
+        result = block.execute(time=0.0, inputs={}, params=params, dtime=0.01)
+        assert params['_state'] == 0.0, "Hysteresis state was spuriously flipped"
+        assert float(result[0]) == pytest.approx(0.0), (
+            "Hysteresis output_only must return current state, not flip"
+        )
+
+    def test_adam_output_only_does_not_corrupt_moments(self):
+        """Adam with empty inputs must not increment _t_ or mutate _m_/_v_."""
+        import numpy as np
+        from blocks.optimization_primitives.adam import AdamBlock
+        block = AdamBlock()
+        params = {k: v["default"] if isinstance(v, dict) else v
+                  for k, v in block.params.items()}
+
+        # Run a real step
+        grad = np.array([1.0, 0.5])
+        block.execute(time=0.0, inputs={0: grad}, params=params)
+
+        m_after_real = params['_m_'].copy()
+        v_after_real = params['_v_'].copy()
+        t_after_real = params['_t_']
+
+        # Output-only call
+        block.execute(time=0.01, inputs={}, params=params)
+
+        assert np.allclose(params['_m_'], m_after_real), "_m_ was corrupted by output_only call"
+        assert np.allclose(params['_v_'], v_after_real), "_v_ was corrupted by output_only call"
+        assert params['_t_'] == t_after_real, "_t_ was incremented by output_only call"
+
+    def test_momentum_output_only_does_not_corrupt_velocity(self):
+        """Momentum with empty inputs must not mutate _velocity_."""
+        import numpy as np
+        from blocks.optimization_primitives.momentum import MomentumBlock
+        block = MomentumBlock()
+        params = {k: v["default"] if isinstance(v, dict) else v
+                  for k, v in block.params.items()}
+
+        # Run a real step
+        grad = np.array([1.0, 0.5])
+        block.execute(time=0.0, inputs={0: grad}, params=params)
+
+        velocity_after_real = params['_velocity_'].copy()
+
+        # Output-only call
+        block.execute(time=0.01, inputs={}, params=params)
+
+        assert np.allclose(params['_velocity_'], velocity_after_real), (
+            "_velocity_ was corrupted by output_only call"
+        )
+
+    def test_rate_limiter_output_only_does_not_corrupt_prev(self):
+        """RateLimiter with empty inputs must not overwrite _prev."""
+        import numpy as np
+        from blocks.rate_limiter import RateLimiterBlock
+        block = RateLimiterBlock()
+        params = {k: (v["default"] if isinstance(v, dict) else v)
+                  for k, v in block.params.items()}
+
+        # Run a real step to initialize
+        block.execute(time=0.0, inputs={0: np.array([2.0])}, params=params, dtime=0.01)
+
+        prev_after_real = np.array(params['_prev']).copy()
+
+        # Output-only call with empty inputs
+        block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
+
+        assert np.allclose(params['_prev'], prev_after_real), (
+            "_prev was corrupted by output_only call"
         )

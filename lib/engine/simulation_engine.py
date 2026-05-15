@@ -866,6 +866,8 @@ class SimulationEngine:
                 # Stateful blocks safe for output_only=True (use inputs.get())
                 'Adam', 'FirstOrderHold', 'Momentum',
                 'RateLimiter', 'RateTransition', 'ZeroOrderHold',
+                # Control blocks hardened to use inputs.get() — safe for output_only=True
+                'Deriv', 'Hysteresis', 'PID',
             ):
                 self.memory_blocks.add(block.name)
             elif block.block_fn == 'TranFn':

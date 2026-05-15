@@ -69,7 +69,11 @@ class HysteresisBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        u = float(np.atleast_1d(inputs[0])[0])
+        # Output-only path: input absent → return current state without checking thresholds.
+        if 0 not in inputs:
+            return {0: np.atleast_1d(params.get('_state', float(params.get('low', 0.0))))}
+
+        u = float(np.atleast_1d(inputs.get(0, 0.0))[0])
 
         if params.get("_init_start_", True):
             # Initialize state based on input

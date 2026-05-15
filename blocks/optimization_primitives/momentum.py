@@ -79,6 +79,11 @@ class MomentumBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
+            # Output-only path: no gradient input → return last velocity without mutating state.
+            if 0 not in inputs:
+                held = params.get('_last_update_', np.array([0.0]))
+                return {0: np.atleast_1d(held), 'E': False}
+
             grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
             alpha = float(params.get('alpha', 0.01))
             beta = float(params.get('beta', 0.9))
@@ -97,6 +102,7 @@ class MomentumBlock(BaseBlock):
             v = beta * v - alpha * grad
             params['_velocity_'] = v
 
+            params['_last_update_'] = v
             return {0: v, 'E': False}
 
         except Exception as e:

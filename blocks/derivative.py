@@ -79,12 +79,22 @@ class DerivativeBlock(BaseBlock):
         return {0: s * u}
 
     def execute(self, time, inputs, params, **kwargs):
+        # When called with output_only=True (empty inputs dict during Loop 1
+        # initialisation) return the last computed derivative without updating
+        # state.  Computing (0 - prev_input)/dt would give a wrong transient.
+        input_present = 0 in inputs
+
         if params.get('_init_start_', True):
+            raw = inputs.get(0, np.zeros(1))
             params['_t_old_'] = time
-            params['_i_old_'] = np.array(inputs[0], dtype=float)
+            params['_i_old_'] = np.array(raw, dtype=float)
             params['_didt_old_'] = np.zeros_like(params['_i_old_'])
             params['_init_start_'] = False
             return {0: params['_didt_old_'].copy()}
+
+        if not input_present:
+            # output_only path: return held last derivative, don't update state
+            return {0: np.array(params['_didt_old_'])}
 
         if time == params['_t_old_']:
             return {0: np.array(params['_didt_old_'])}

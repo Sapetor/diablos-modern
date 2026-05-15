@@ -116,9 +116,15 @@ class PIDBlock(BaseBlock):
             return {}
 
     def execute(self, time, inputs, params, **kwargs):
+        # Output-only path: when inputs are missing (e.g. memory-block pre-population
+        # in Loop 1), return the last computed output without mutating state. The
+        # PID's actual integration happens in the normal Loop 2 execute call.
+        if 0 not in inputs or 1 not in inputs:
+            return {0: np.atleast_1d(params.get('_last_output_', 0.0))}
+
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
-        sp = float(np.atleast_1d(inputs[0])[0])
-        meas = float(np.atleast_1d(inputs[1])[0])
+        sp = float(np.atleast_1d(inputs.get(0, 0.0))[0])
+        meas = float(np.atleast_1d(inputs.get(1, 0.0))[0])
         e = sp - meas
 
         if params.get("_init_start_", True):
@@ -155,4 +161,5 @@ class PIDBlock(BaseBlock):
             if Ki != 0:
                 params["_int"] = (u_max - Kp * e - Kd * params["_d_state"]) / Ki
 
+        params['_last_output_'] = float(np.asarray(u).flatten()[0]) if hasattr(u, 'flatten') else float(u)
         return {0: np.atleast_1d(u)}

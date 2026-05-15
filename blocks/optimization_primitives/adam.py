@@ -93,6 +93,11 @@ class AdamBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
+            # Output-only path: no gradient input → return last update without mutating moments.
+            if 0 not in inputs:
+                held = params.get('_last_update_', np.array([0.0]))
+                return {0: np.atleast_1d(held), 'E': False}
+
             grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
             alpha = float(params.get('alpha', 0.001))
             beta1 = float(params.get('beta1', 0.9))
@@ -133,6 +138,7 @@ class AdamBlock(BaseBlock):
             # Compute update
             update = -alpha * m_hat / (np.sqrt(v_hat) + epsilon)
 
+            params['_last_update_'] = update
             return {0: update, 'E': False}
 
         except Exception as e:

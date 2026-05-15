@@ -61,6 +61,11 @@ class RateLimiterBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
+        # Output-only path: no input → return last held output without mutating _prev.
+        if 0 not in inputs:
+            held = params.get('_prev', np.atleast_1d(0.0))
+            return {0: np.atleast_1d(held)}
+
         dt = float(params.get("dtime", 0.01))
         u = get_vector(inputs, 0)
 
