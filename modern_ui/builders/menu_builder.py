@@ -2,6 +2,8 @@
 import os
 import logging
 
+from PyQt5.QtWidgets import QAction, QActionGroup
+
 logger = logging.getLogger(__name__)
 
 class MenuBuilder:
@@ -152,6 +154,23 @@ class MenuBuilder:
 
         view_menu.addSeparator()
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.window.toggle_theme)
+
+        # Block palette submenu
+        from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
+        palette_menu = view_menu.addMenu("Block &Palette")
+        palette_group = QActionGroup(self.window)
+        palette_group.setExclusive(True)
+        for key, display in PALETTE_DISPLAY_NAMES.items():
+            action = QAction(display, self.window, checkable=True)
+            action.triggered.connect(
+                lambda checked, k=key: self.window._set_palette(k)
+            )
+            palette_group.addAction(action)
+            palette_menu.addAction(action)
+            if key == theme_manager.current_palette:
+                action.setChecked(True)
+        self.window.palette_actions = palette_group
+
         view_menu.addSeparator()
         
         # Variable Editor toggle

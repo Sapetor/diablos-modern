@@ -658,7 +658,40 @@ class ModernDiaBloSWindow(QMainWindow):
     def toggle_theme(self):
         """Toggle theme."""
         theme_manager.toggle_theme()
-    
+
+    def _set_palette(self, palette_key: str):
+        """Switch the active block-color palette and persist the choice."""
+        theme_manager.set_palette(palette_key)
+        self._save_palette_preference(palette_key)
+        # Refresh canvas so blocks re-render with new palette colors
+        if hasattr(self, 'canvas'):
+            self.canvas.update()
+
+    def _save_palette_preference(self, palette_key: str):
+        """Persist palette choice to user_preferences.json under user_data_path."""
+        import os
+        import json
+        from lib.app_paths import user_data_path
+        path = user_data_path("user_preferences.json")
+        prefs = {}
+        try:
+            with open(path, 'r') as f:
+                prefs = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            prefs = {}
+        prefs['block_palette'] = palette_key
+        tmp = path + '.tmp'
+        try:
+            with open(tmp, 'w') as f:
+                json.dump(prefs, f, indent=2)
+            os.replace(tmp, path)
+        except Exception as e:
+            logger.warning("Could not save palette preference: %s", e)
+            try:
+                os.remove(tmp)
+            except FileNotFoundError:
+                pass
+
     def on_theme_changed(self):
         """Handle theme changes."""
         # Update status bar

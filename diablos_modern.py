@@ -122,6 +122,21 @@ def main():
         # Set the initial theme to light
         theme_manager.set_theme(ThemeType.LIGHT)
 
+        # Restore persisted block palette (default: "solarized")
+        from lib.app_paths import user_data_path
+        from modern_ui.themes.theme_manager import PALETTES
+        _palette_name = "solarized"
+        try:
+            _prefs_path = user_data_path("user_preferences.json")
+            with open(_prefs_path, 'r') as _f:
+                _prefs = json.load(_f)
+            _candidate = _prefs.get('block_palette')
+            if _candidate and isinstance(_candidate, str) and _candidate in PALETTES:
+                _palette_name = _candidate
+        except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+            pass  # Missing or corrupt file — use default silently
+        theme_manager.set_palette(_palette_name)
+
         # Setup application
         app = setup_application()
 
