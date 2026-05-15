@@ -70,34 +70,54 @@ class ThemeManager(QObject):
             'border_focus': '#60A5FA',            # Focused elements
             'border_hover': '#6B7280',            # Hover state
 
-            # Block colors - Vibrant, clear tones with excellent contrast
-            'block_default': '#252A32',           # Default block color
-            'block_default_border': '#4B5563',    # Default border
+            # Block colors - Solarized palette (fill=base02, accents are vivid Solarized hues)
+            'block_default': '#073642',           # Default block color (base02)
+            'block_default_border': '#586E75',    # Default border (base01)
 
-            # Source blocks - Vibrant emerald/teal
-            'block_source': '#064E3B',            # Source blocks (darker)
-            'block_source_accent': '#10B981',     # Source accent (brighter)
-            'block_source_border': '#059669',     # Source border
+            # Source blocks - Solarized green
+            'block_source': '#073642',            # Source blocks (base02)
+            'block_source_accent': '#859900',     # Source accent (green)
+            'block_source_border': '#859900',     # Source border (green)
 
-            # Math/Process blocks - Vibrant blue
-            'block_process': '#1E3A8A',           # Process blocks (darker)
-            'block_process_accent': '#60A5FA',    # Process accent (brighter)
-            'block_process_border': '#3B82F6',    # Process border
+            # Math/Process blocks - Solarized blue
+            'block_process': '#073642',           # Process blocks (base02)
+            'block_process_accent': '#268BD2',    # Process accent (blue)
+            'block_process_border': '#268BD2',    # Process border (blue)
 
-            # Control blocks - Vibrant purple
-            'block_control': '#5B21B6',           # Control blocks (darker)
-            'block_control_accent': '#A78BFA',    # Control accent
-            'block_control_border': '#8B5CF6',    # Control border
+            # Control blocks - Solarized violet
+            'block_control': '#073642',           # Control blocks (base02)
+            'block_control_accent': '#6C71C4',    # Control accent (violet)
+            'block_control_border': '#6C71C4',    # Control border (violet)
 
-            # Sink blocks - Vibrant red/rose
-            'block_sink': '#7F1D1D',              # Sink blocks (darker)
-            'block_sink_accent': '#EF4444',       # Sink accent (brighter)
-            'block_sink_border': '#DC2626',       # Sink border
+            # Sink blocks - Solarized red
+            'block_sink': '#073642',              # Sink blocks (base02)
+            'block_sink_accent': '#DC322F',       # Sink accent (red)
+            'block_sink_border': '#DC322F',       # Sink border (red)
 
-            # Other blocks - Vibrant amber
-            'block_other': '#78350F',             # Other blocks (darker)
-            'block_other_accent': '#F59E0B',      # Other accent
-            'block_other_border': '#D97706',      # Other border
+            # Routing blocks - Solarized cyan
+            'block_routing': '#073642',           # Routing blocks (base02)
+            'block_routing_accent': '#2AA198',    # Routing accent (cyan)
+            'block_routing_border': '#2AA198',    # Routing border (cyan)
+
+            # Analysis blocks - Solarized magenta
+            'block_analysis': '#073642',          # Analysis blocks (base02)
+            'block_analysis_accent': '#D33682',   # Analysis accent (magenta)
+            'block_analysis_border': '#D33682',   # Analysis border (magenta)
+
+            # PDE blocks - Solarized yellow
+            'block_pde': '#073642',               # PDE blocks (base02)
+            'block_pde_accent': '#B58900',        # PDE accent (yellow)
+            'block_pde_border': '#B58900',        # PDE border (yellow)
+
+            # Optimization blocks - Solarized orange
+            'block_optimization': '#073642',      # Optimization blocks (base02)
+            'block_optimization_accent': '#CB4B16',  # Optimization accent (orange)
+            'block_optimization_border': '#CB4B16',  # Optimization border (orange)
+
+            # Other blocks - Solarized base1 (gray)
+            'block_other': '#073642',             # Other blocks (base02)
+            'block_other_accent': '#93A1A1',      # Other accent (base1)
+            'block_other_border': '#93A1A1',      # Other border (base1)
 
             # Selection and interaction
             'block_selected': '#60A5FA',          # Selected blocks border (brighter)
@@ -121,7 +141,7 @@ class ThemeManager(QObject):
             # Grid and canvas
             'grid_dots': '#252A32',               # Grid dot color (subtle but visible)
             'grid_lines': '#374151',              # Grid lines (optional)
-            'canvas_background': '#0F1419',       # Canvas background (darker)
+            'canvas_background': '#002B36',       # Canvas background (Solarized base03)
             'canvas_background_alt': '#1A1F26',   # Alternate canvas (for patterns)
             'selection_rectangle': '#60A5FA',     # Selection rectangle
             'selection_rectangle_fill': '#60A5FA1A',  # Selection fill (with alpha)
@@ -187,34 +207,54 @@ class ThemeManager(QObject):
             'border_focus': '#2563EB',            # Focused elements
             'border_hover': '#9CA3AF',            # Hover state
 
-            # Block colors - Soft, pastel tones with good contrast
-            'block_default': '#F9FAFB',           # Default block color
-            'block_default_border': '#D1D5DB',    # Default border
+            # Block colors - Solarized palette (fill=base2, accents are vivid Solarized hues)
+            'block_default': '#EEE8D5',           # Default block color (base2)
+            'block_default_border': '#586E75',    # Default border (base01)
 
-            # Source blocks - Soft emerald/teal
-            'block_source': '#D1FAE5',            # Source blocks
-            'block_source_accent': '#10B981',     # Source accent
-            'block_source_border': '#6EE7B7',     # Source border
+            # Source blocks - Solarized green
+            'block_source': '#EEE8D5',            # Source blocks (base2)
+            'block_source_accent': '#859900',     # Source accent (green)
+            'block_source_border': '#859900',     # Source border (green)
 
-            # Math/Process blocks - Soft blue
-            'block_process': '#DBEAFE',           # Process blocks
-            'block_process_accent': '#2563EB',    # Process accent
-            'block_process_border': '#93C5FD',    # Process border
+            # Math/Process blocks - Solarized blue
+            'block_process': '#EEE8D5',           # Process blocks (base2)
+            'block_process_accent': '#268BD2',    # Process accent (blue)
+            'block_process_border': '#268BD2',    # Process border (blue)
 
-            # Control blocks - Soft purple
-            'block_control': '#E9D5FF',           # Control blocks
-            'block_control_accent': '#9333EA',    # Control accent
-            'block_control_border': '#C084FC',    # Control border
+            # Control blocks - Solarized violet
+            'block_control': '#EEE8D5',           # Control blocks (base2)
+            'block_control_accent': '#6C71C4',    # Control accent (violet)
+            'block_control_border': '#6C71C4',    # Control border (violet)
 
-            # Sink blocks - Soft red/rose
-            'block_sink': '#FEE2E2',              # Sink blocks
-            'block_sink_accent': '#EF4444',       # Sink accent
-            'block_sink_border': '#FCA5A5',       # Sink border
+            # Sink blocks - Solarized red
+            'block_sink': '#EEE8D5',              # Sink blocks (base2)
+            'block_sink_accent': '#DC322F',       # Sink accent (red)
+            'block_sink_border': '#DC322F',       # Sink border (red)
 
-            # Other blocks - Soft amber
-            'block_other': '#FEF3C7',             # Other blocks
-            'block_other_accent': '#F59E0B',      # Other accent
-            'block_other_border': '#FCD34D',      # Other border
+            # Routing blocks - Solarized cyan
+            'block_routing': '#EEE8D5',           # Routing blocks (base2)
+            'block_routing_accent': '#2AA198',    # Routing accent (cyan)
+            'block_routing_border': '#2AA198',    # Routing border (cyan)
+
+            # Analysis blocks - Solarized magenta
+            'block_analysis': '#EEE8D5',          # Analysis blocks (base2)
+            'block_analysis_accent': '#D33682',   # Analysis accent (magenta)
+            'block_analysis_border': '#D33682',   # Analysis border (magenta)
+
+            # PDE blocks - Solarized yellow
+            'block_pde': '#EEE8D5',               # PDE blocks (base2)
+            'block_pde_accent': '#B58900',        # PDE accent (yellow)
+            'block_pde_border': '#B58900',        # PDE border (yellow)
+
+            # Optimization blocks - Solarized orange
+            'block_optimization': '#EEE8D5',      # Optimization blocks (base2)
+            'block_optimization_accent': '#CB4B16',  # Optimization accent (orange)
+            'block_optimization_border': '#CB4B16',  # Optimization border (orange)
+
+            # Other blocks - Solarized base1 (gray)
+            'block_other': '#EEE8D5',             # Other blocks (base2)
+            'block_other_accent': '#93A1A1',      # Other accent (base1)
+            'block_other_border': '#93A1A1',      # Other border (base1)
 
             # Selection and interaction
             'block_selected': '#2563EB',          # Selected blocks border

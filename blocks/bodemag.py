@@ -10,7 +10,7 @@ class BodeMagBlock(BaseBlock):
 
     @property
     def category(self):
-        return "Other"
+        return "Analysis"
 
     @property
     def color(self):

@@ -93,6 +93,14 @@ class SimulationModel:
             return theme_manager.get_color('block_control')
         elif 'sink' in category_lower:
             return theme_manager.get_color('block_sink')
+        elif 'routing' in category_lower:
+            return theme_manager.get_color('block_routing')
+        elif 'analysis' in category_lower:
+            return theme_manager.get_color('block_analysis')
+        elif 'pde' in category_lower:
+            return theme_manager.get_color('block_pde')
+        elif 'optim' in category_lower:
+            return theme_manager.get_color('block_optimization')
         else:
             return theme_manager.get_color('block_other')
 

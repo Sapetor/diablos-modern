@@ -74,6 +74,14 @@ class BlockRenderer:
                 border_color = theme_manager.get_color('block_control_border')
             elif 'sink' in category_lower:
                 border_color = theme_manager.get_color('block_sink_border')
+            elif 'routing' in category_lower:
+                border_color = theme_manager.get_color('block_routing_border')
+            elif 'analysis' in category_lower:
+                border_color = theme_manager.get_color('block_analysis_border')
+            elif 'pde' in category_lower:
+                border_color = theme_manager.get_color('block_pde_border')
+            elif 'optim' in category_lower:
+                border_color = theme_manager.get_color('block_optimization_border')
             else:
                 border_color = theme_manager.get_color('block_other_border')
 
@@ -97,7 +105,7 @@ class BlockRenderer:
         gradient.setColorAt(1, base_color)
         
         painter.setBrush(gradient)
-        painter.setPen(QPen(border_color, 3 if block.selected else 2))
+        painter.setPen(QPen(border_color, 3 if block.selected else 2.5))
 
         if block.block_fn == "Gain":
             # Draw a triangle for the Gain block
