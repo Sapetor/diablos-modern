@@ -114,7 +114,11 @@ class ValidationHelper:
         # Memory blocks break algebraic loops - their output depends on previous state
         MEMORY_BLOCK_TYPES = {
             'Integrator', 'StateSpace', 'DiscreteStateSpace',
-            'DiscreteTranFn', 'ZeroOrderHold', 'Delay'
+            'DiscreteTranFn', 'ZeroOrderHold', 'Delay',
+            # Stateful control/optimization blocks
+            'Adam', 'Deriv', 'FirstOrderHold', 'Hysteresis',
+            'Momentum', 'PID', 'PRBS', 'RateLimiter', 'RateTransition',
+            'StateVariable', 'TransportDelay',
         }
 
         def subsystem_contains_memory(block) -> bool:

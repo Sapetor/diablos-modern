@@ -852,8 +852,21 @@ class SimulationEngine:
                 except Exception:
                     pass
 
-            # Check for known memory block types by name
-            if block.block_fn in ('Integrator', 'StateVariable', 'TransportDelay', 'Delay'):
+            # Check for known memory block types by name.
+            # IMPORTANT: only add blocks here that can safely be called with
+            # output_only=True (empty inputs) during Loop 1 initialisation.
+            # Blocks that access inputs[key] directly (PID, Hysteresis, Deriv)
+            # would raise KeyError and must NOT appear in this set until their
+            # execute() methods are hardened.  Those blocks still break
+            # algebraic loops — see the note in identify_memory_blocks and the
+            # improvements.py MEMORY_BLOCK_TYPES set, which is used by the
+            # separate topological-sort loop detector.
+            if block.block_fn in (
+                'Integrator', 'StateVariable', 'TransportDelay', 'Delay',
+                # Stateful blocks safe for output_only=True (use inputs.get())
+                'Adam', 'FirstOrderHold', 'Momentum',
+                'RateLimiter', 'RateTransition', 'ZeroOrderHold',
+            ):
                 self.memory_blocks.add(block.name)
             elif block.block_fn == 'TranFn':
                 num = block.params.get('numerator', [])
@@ -861,6 +874,9 @@ class SimulationEngine:
                 if len(den) > len(num):
                     self.memory_blocks.add(block.name)
             elif block.block_fn == 'DiscreteTranFn':
+                # Only strictly-proper discrete TFs are safe to run output_only=True
+                # (D=0 means output doesn't depend on current input).
+                # Proper TFs (D!=0) need their input at t=0 for correct initialisation.
                 num = block.params.get('numerator', [])
                 den = block.params.get('denominator', [])
                 if len(den) > len(num):
