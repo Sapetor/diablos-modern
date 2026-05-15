@@ -171,6 +171,13 @@ class MenuBuilder:
                 action.setChecked(True)
         self.window.palette_actions = palette_group
 
+        # Solid block fills toggle
+        solid_fills_action = QAction("Solid Block Fills", self.window, checkable=True)
+        solid_fills_action.setChecked(theme_manager.solid_fills)
+        solid_fills_action.triggered.connect(self.window._toggle_solid_fills)
+        view_menu.addAction(solid_fills_action)
+        self.window.solid_fills_action = solid_fills_action
+
         view_menu.addSeparator()
         
         # Variable Editor toggle

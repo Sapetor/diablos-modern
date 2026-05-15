@@ -195,6 +195,80 @@ class TestSignalOnSetPalette:
 
 
 # ---------------------------------------------------------------------------
+# Solid fills feature
+# ---------------------------------------------------------------------------
+
+class TestSolidFills:
+    def test_solid_fills_default_false(self):
+        mgr = _fresh_manager()
+        assert mgr.solid_fills is False
+
+    def test_set_solid_fills_changes_block_fill_to_accent(self):
+        """Solarized dark: block_source fill goes from #073642 to #859900 (accent)."""
+        mgr = _fresh_manager()
+        mgr.set_palette("solarized")
+        # Default (outline mode): neutral fill
+        assert mgr.get_color("block_source").name().lower() == "#073642"
+        # Solid mode: accent color
+        mgr.set_solid_fills(True)
+        assert mgr.get_color("block_source").name().lower() == "#859900"
+
+    def test_set_solid_fills_does_not_affect_border(self):
+        """Border key is unaffected by solid_fills."""
+        mgr = _fresh_manager()
+        mgr.set_palette("solarized")
+        border_off = mgr.get_color("block_source_border").name().lower()
+        mgr.set_solid_fills(True)
+        border_on = mgr.get_color("block_source_border").name().lower()
+        assert border_off == border_on == "#859900"
+
+    def test_set_solid_fills_does_not_affect_chrome(self):
+        """Chrome keys like canvas_background are unaffected by solid_fills."""
+        mgr = _fresh_manager()
+        bg_off = mgr.get_color("canvas_background").name().lower()
+        mgr.set_solid_fills(True)
+        bg_on = mgr.get_color("canvas_background").name().lower()
+        assert bg_off == bg_on
+
+    def test_set_solid_fills_emits_signal(self):
+        mgr = _fresh_manager()
+        received = []
+        mgr.theme_changed.connect(lambda v: received.append(v))
+        mgr.set_solid_fills(True)
+        assert len(received) == 1
+
+    def test_set_solid_fills_no_signal_if_unchanged(self):
+        mgr = _fresh_manager()
+        received = []
+        mgr.theme_changed.connect(lambda v: received.append(v))
+        mgr.set_solid_fills(False)  # already False
+        assert len(received) == 0
+
+    def test_solid_fills_tailwind_accent(self):
+        """Tailwind dark: block_process fill becomes accent (#60a5fa) in solid mode."""
+        mgr = _fresh_manager()
+        mgr.set_palette("tailwind")
+        mgr.set_solid_fills(True)
+        assert mgr.get_color("block_process").name().lower() == "#60a5fa"
+
+    def test_solid_fills_catppuccin_accent(self):
+        """Catppuccin dark: block_sink fill becomes accent (#e78284) in solid mode."""
+        mgr = _fresh_manager()
+        mgr.set_palette("catppuccin")
+        mgr.set_solid_fills(True)
+        assert mgr.get_color("block_sink").name().lower() == "#e78284"
+
+    def test_solid_fills_accent_key_unredirected(self):
+        """block_source_accent is never redirected (no double-indirection)."""
+        mgr = _fresh_manager()
+        mgr.set_palette("solarized")
+        accent_off = mgr.get_color("block_source_accent").name().lower()
+        mgr.set_solid_fills(True)
+        accent_on = mgr.get_color("block_source_accent").name().lower()
+        assert accent_off == accent_on == "#859900"
+
+
+# ---------------------------------------------------------------------------
 # All 9 categories defined in every palette × 2 themes
 # ---------------------------------------------------------------------------
 

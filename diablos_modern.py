@@ -119,23 +119,34 @@ def main():
 
         logger.info("Starting Modern DiaBloS Application - Phase 1")
 
-        # Set the initial theme to light
-        theme_manager.set_theme(ThemeType.LIGHT)
-
-        # Restore persisted block palette (default: "solarized")
+        # Restore persisted UI preferences (theme, palette, solid_fills)
         from lib.app_paths import user_data_path
         from modern_ui.themes.theme_manager import PALETTES
-        _palette_name = "solarized"
         try:
             _prefs_path = user_data_path("user_preferences.json")
             with open(_prefs_path, 'r') as _f:
                 _prefs = json.load(_f)
-            _candidate = _prefs.get('block_palette')
-            if _candidate and isinstance(_candidate, str) and _candidate in PALETTES:
-                _palette_name = _candidate
-        except (FileNotFoundError, json.JSONDecodeError, AttributeError):
-            pass  # Missing or corrupt file — use default silently
-        theme_manager.set_palette(_palette_name)
+
+            # Theme (dark / light) — default LIGHT for new installs
+            _theme_name = _prefs.get('theme')
+            if _theme_name in ('dark', 'light'):
+                theme_manager.set_theme(ThemeType(_theme_name))
+            else:
+                theme_manager.set_theme(ThemeType.LIGHT)
+
+            # Block palette
+            _palette_name = _prefs.get('block_palette')
+            if _palette_name and isinstance(_palette_name, str) and _palette_name in PALETTES:
+                theme_manager.set_palette(_palette_name)
+
+            # Solid fills
+            _solid = _prefs.get('solid_fills')
+            if isinstance(_solid, bool):
+                theme_manager.set_solid_fills(_solid)
+
+        except (FileNotFoundError, json.JSONDecodeError, AttributeError, ValueError):
+            # Missing or corrupt file, or unrecognised ThemeType string — use defaults
+            theme_manager.set_theme(ThemeType.LIGHT)
 
         # Setup application
         app = setup_application()

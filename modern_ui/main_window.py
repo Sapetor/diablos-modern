@@ -656,19 +656,27 @@ class ModernDiaBloSWindow(QMainWindow):
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
     
     def toggle_theme(self):
-        """Toggle theme."""
+        """Toggle theme and persist the choice."""
         theme_manager.toggle_theme()
+        self._save_user_preferences()
 
     def _set_palette(self, palette_key: str):
         """Switch the active block-color palette and persist the choice."""
         theme_manager.set_palette(palette_key)
-        self._save_palette_preference(palette_key)
+        self._save_user_preferences()
         # Refresh canvas so blocks re-render with new palette colors
         if hasattr(self, 'canvas'):
             self.canvas.update()
 
-    def _save_palette_preference(self, palette_key: str):
-        """Persist palette choice to user_preferences.json under user_data_path."""
+    def _toggle_solid_fills(self, checked: bool):
+        """Toggle solid block fills and persist the choice."""
+        theme_manager.set_solid_fills(checked)
+        if hasattr(self, 'canvas'):
+            self.canvas.update()
+        self._save_user_preferences()
+
+    def _save_user_preferences(self):
+        """Persist all UI preferences (theme, palette, solid_fills) to user_preferences.json."""
         import os
         import json
         from lib.app_paths import user_data_path
@@ -679,14 +687,16 @@ class ModernDiaBloSWindow(QMainWindow):
                 prefs = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             prefs = {}
-        prefs['block_palette'] = palette_key
+        prefs['theme'] = theme_manager.current_theme.value
+        prefs['block_palette'] = theme_manager.current_palette
+        prefs['solid_fills'] = theme_manager.solid_fills
         tmp = path + '.tmp'
         try:
             with open(tmp, 'w') as f:
                 json.dump(prefs, f, indent=2)
             os.replace(tmp, path)
         except Exception as e:
-            logger.warning("Could not save palette preference: %s", e)
+            logger.warning("Could not save user preferences: %s", e)
             try:
                 os.remove(tmp)
             except FileNotFoundError:

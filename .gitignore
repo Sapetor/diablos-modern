@@ -92,3 +92,4 @@ ghkey
 ghkey.pub
 .claude/
 MULTI/
+user_preferences.json

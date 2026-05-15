@@ -225,10 +225,18 @@ class ThemeManager(QObject):
 
     theme_changed = pyqtSignal(str)  # Emitted when theme or palette changes
 
+    # The 9 base block-fill keys (no _border / _accent suffix)
+    _BLOCK_FILL_KEYS = frozenset([
+        "block_source", "block_process", "block_control", "block_sink",
+        "block_routing", "block_analysis", "block_pde", "block_optimization",
+        "block_other",
+    ])
+
     def __init__(self):
         super().__init__()
         self.current_theme = ThemeType.DARK
         self.current_palette = DEFAULT_PALETTE
+        self.solid_fills: bool = False
         self.themes = {
             ThemeType.DARK: self._create_dark_theme(),
             ThemeType.LIGHT: self._create_light_theme()
@@ -436,11 +444,20 @@ class ThemeManager(QObject):
         Block-category keys (block_source, block_source_border, etc.) are
         resolved from the active PALETTE + current dark/light variant.
         All other keys come from the chrome theme dict.
+
+        When solid_fills is True, base fill keys (block_<cat> without suffix)
+        are redirected to the corresponding _accent key for vivid solid fills.
         """
         if color_name in _PALETTE_KEYS:
             theme_key = self.current_theme.value  # "dark" or "light"
             palette = PALETTES.get(self.current_palette, PALETTES[DEFAULT_PALETTE])
-            color_hex = palette[theme_key].get(color_name, '#000000')
+            # Redirect plain fill key to accent when solid_fills is enabled
+            lookup = (
+                color_name + "_accent"
+                if self.solid_fills and color_name in self._BLOCK_FILL_KEYS
+                else color_name
+            )
+            color_hex = palette[theme_key].get(lookup, '#000000')
         else:
             theme = self.get_current_theme()
             color_hex = theme.get(color_name, '#000000')
@@ -481,6 +498,17 @@ class ThemeManager(QObject):
             palette_name = DEFAULT_PALETTE
         if palette_name != self.current_palette:
             self.current_palette = palette_name
+            self.theme_changed.emit(self.current_theme.value)
+
+    def set_solid_fills(self, enabled: bool):
+        """Enable or disable solid (accent-color) block fills.
+
+        When enabled, get_color("block_<cat>") returns the accent color
+        instead of the neutral fill color. Emits theme_changed so all
+        consumers re-render.
+        """
+        if enabled != self.solid_fills:
+            self.solid_fills = enabled
             self.theme_changed.emit(self.current_theme.value)
 
     # ------------------------------------------------------------------
