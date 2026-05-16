@@ -64,8 +64,13 @@ class FileService:
         # Serialize blocks (recurses into Subsystems via _serialize_block)
         blocks_dict = [self._serialize_block(block) for block in self.model.blocks_list]
 
-        # Serialize lines
-        lines_dict = [self._serialize_line(line) for line in self.model.line_list]
+        # Serialize lines, skipping virtual (hidden) Goto/From connections —
+        # those are recreated at execution time by link_goto_from and must
+        # NOT be persisted, or reopened files accumulate stale ghost lines.
+        lines_dict = [
+            self._serialize_line(line) for line in self.model.line_list
+            if not getattr(line, "hidden", False)
+        ]
 
         # Assemble final data structure
         main_dict = {
@@ -117,6 +122,7 @@ class FileService:
             ]
             block_dict['sub_lines'] = [
                 self._serialize_line(child_line) for child_line in getattr(block, 'sub_lines', [])
+                if not getattr(child_line, "hidden", False)
             ]
             block_dict['ports'] = getattr(block, 'ports', {}) or {}
             # JSON only allows string keys; ports_map uses int port indices,
@@ -292,6 +298,21 @@ class FileService:
             line = self._construct_line(line_data, block_name_map)
             if line is not None:
                 self.model.line_list.append(line)
+
+        # Legacy migration: pre-fix diagrams persisted virtual Goto/From
+        # lines as ordinary visible lines.  Detect them by their unique
+        # signature (dstblock is a From block, which has no real input
+        # ports) and mark them hidden so link_goto_from cleans them up
+        # on the next execution_init.  Without this, reopened files
+        # accumulate ghost lines visible on the canvas.
+        from_block_names = {
+            b.name for b in self.model.blocks_list
+            if getattr(b, 'block_fn', '') == 'From'
+        }
+        if from_block_names:
+            for line in self.model.line_list:
+                if line.dstblock in from_block_names and not getattr(line, 'hidden', False):
+                    line.hidden = True
 
         # Update line positions
         self.model.update_lines()
