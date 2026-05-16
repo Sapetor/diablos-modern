@@ -846,10 +846,18 @@ class SimulationEngine:
             block.b_type = 1 if np.all(D == 0) else 2
 
     def identify_memory_blocks(self) -> None:
-        """Identify blocks with memory (integrators, strictly proper TFs, state variables)."""
+        """Identify blocks with memory (integrators, strictly proper TFs, state variables).
+
+        Uses the shared taxonomy in lib/engine/memory_blocks.py — see that
+        module for the unconditional set (OUTPUT_ONLY_SAFE_BLOCK_FNS) and
+        conditional helpers (is_strictly_proper_tf, is_zero_D_statespace).
+        """
+        from lib.engine.memory_blocks import is_memory_block
         self.memory_blocks = set()
         for block in self.active_blocks_list:
-            # Check if block has requires_inputs=False property (can output without inputs)
+            # requires_inputs=False blocks (sources) are always safe to call
+            # with output_only=True; treat them as memory blocks too so the
+            # init loop runs them once.
             block_class = getattr(block, 'block_class', None)
             if block_class:
                 try:
@@ -860,46 +868,8 @@ class SimulationEngine:
                 except Exception:
                     pass
 
-            # Check for known memory block types by name.
-            # IMPORTANT: only add blocks here that can safely be called with
-            # output_only=True (empty inputs) during Loop 1 initialisation.
-            # Blocks that access inputs[key] directly (PID, Hysteresis, Deriv)
-            # would raise KeyError and must NOT appear in this set until their
-            # execute() methods are hardened.  Those blocks still break
-            # algebraic loops — see the note in identify_memory_blocks and the
-            # improvements.py MEMORY_BLOCK_TYPES set, which is used by the
-            # separate topological-sort loop detector.
-            if block.block_fn in (
-                'Integrator', 'StateVariable', 'TransportDelay', 'Delay',
-                # Stateful blocks safe for output_only=True (use inputs.get())
-                'Adam', 'FirstOrderHold', 'Momentum',
-                'RateLimiter', 'RateTransition', 'ZeroOrderHold',
-                # Control blocks hardened to use inputs.get() — safe for output_only=True
-                'Deriv', 'Hysteresis', 'PID',
-            ):
+            if is_memory_block(block):
                 self.memory_blocks.add(block.name)
-            elif block.block_fn == 'TranFn':
-                # Prefer exec_params (resolved arrays); fall back to params for
-                # callers that ran identify_memory_blocks before resolve_params.
-                src = getattr(block, 'exec_params', None) or block.params
-                num = src.get('numerator', [])
-                den = src.get('denominator', [])
-                if len(den) > len(num):
-                    self.memory_blocks.add(block.name)
-            elif block.block_fn == 'DiscreteTranFn':
-                # Only strictly-proper discrete TFs are safe to run output_only=True
-                # (D=0 means output doesn't depend on current input).
-                # Proper TFs (D!=0) need their input at t=0 for correct initialisation.
-                src = getattr(block, 'exec_params', None) or block.params
-                num = src.get('numerator', [])
-                den = src.get('denominator', [])
-                if len(den) > len(num):
-                    self.memory_blocks.add(block.name)
-            elif block.block_fn in ('StateSpace', 'DiscreteStateSpace'):
-                src = getattr(block, 'exec_params', None) or block.params
-                D = np.array(src.get('D', [[0.0]]))
-                if np.all(D == 0):
-                    self.memory_blocks.add(block.name)
         logger.debug(f"MEMORY BLOCKS IDENTIFIED: {self.memory_blocks}")
 
     def propagate_sample_times(self) -> None:

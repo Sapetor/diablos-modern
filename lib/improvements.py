@@ -110,16 +110,10 @@ class ValidationHelper:
             Tuple of (no_loops_found, list_of_errors)
         """
         from collections import defaultdict, deque
-        
-        # Memory blocks break algebraic loops - their output depends on previous state
-        MEMORY_BLOCK_TYPES = {
-            'Integrator', 'StateSpace', 'DiscreteStateSpace',
-            'DiscreteTranFn', 'ZeroOrderHold', 'Delay',
-            # Stateful control/optimization blocks
-            'Adam', 'Deriv', 'FirstOrderHold', 'Hysteresis',
-            'Momentum', 'PID', 'PRBS', 'RateLimiter', 'RateTransition',
-            'StateVariable', 'TransportDelay',
-        }
+        from lib.engine.memory_blocks import (
+            OUTPUT_ONLY_SAFE_BLOCK_FNS,
+            is_memory_block,
+        )
 
         def subsystem_contains_memory(block) -> bool:
             """Check if a subsystem contains any memory blocks internally."""
@@ -128,7 +122,7 @@ class ValidationHelper:
             for sub_block in block.sub_blocks:
                 if sub_block.b_type == 1:
                     return True
-                if sub_block.block_fn in MEMORY_BLOCK_TYPES:
+                if sub_block.block_fn in OUTPUT_ONLY_SAFE_BLOCK_FNS:
                     return True
                 # Recursively check nested subsystems
                 if sub_block.block_fn == 'Subsystem' and subsystem_contains_memory(sub_block):
@@ -149,40 +143,24 @@ class ValidationHelper:
             if not src_block or not dst_block:
                 continue
 
-            # Check if DESTINATION block is a memory block (breaks the loop)
+            # Check if DESTINATION block is a memory block (breaks the loop).
             # A memory block's output at time t depends on its input at time t-1
-            is_memory_block = False
-
-            # Check by b_type: Type 1 blocks are memory blocks
+            # (or on no input at all), so the cycle is broken in time.
+            #
+            # Uses the shared is_memory_block() helper which covers:
+            #   - OUTPUT_ONLY_SAFE_BLOCK_FNS (unconditional)
+            #   - Strictly-proper TranFn / DiscreteTranFn
+            #   - StateSpace / DiscreteStateSpace with D=0
+            breaks_loop = False
             if dst_block.b_type == 1:
-                is_memory_block = True
-            
-            # Check by block function name
-            if dst_block.block_fn in MEMORY_BLOCK_TYPES:
-                is_memory_block = True
-            
-            # TranFn is memory block if strictly proper (num degree < den degree)
-            if dst_block.block_fn == 'TranFn':
-                num = dst_block.params.get('numerator', [])
-                den = dst_block.params.get('denominator', [])
-                if len(den) > len(num):
-                    is_memory_block = True
-                    logger.debug(f"  {dst_block.name} (TranFn) is strictly proper - memory block")
-
-            # DiscreteTranFn is memory block if strictly proper
-            if dst_block.block_fn == 'DiscreteTranFn':
-                num = dst_block.params.get('numerator', [])
-                den = dst_block.params.get('denominator', [])
-                if len(den) > len(num):
-                    is_memory_block = True
-                    logger.debug(f"  {dst_block.name} (DiscreteTranFn) is strictly proper - memory block")
-
-            # Subsystem is treated as memory block if it contains any memory blocks
-            if dst_block.block_fn == 'Subsystem' and subsystem_contains_memory(dst_block):
-                is_memory_block = True
+                breaks_loop = True
+            elif is_memory_block(dst_block):
+                breaks_loop = True
+            elif dst_block.block_fn == 'Subsystem' and subsystem_contains_memory(dst_block):
+                breaks_loop = True
                 logger.debug(f"  {dst_block.name} (Subsystem) contains memory block - breaks loop")
 
-            if is_memory_block:
+            if breaks_loop:
                 logger.debug(f"Memory block {dst_block.name} breaks loop from {src_block.name}")
             else:
                 # Only add edge if destination is NOT a memory block
