@@ -1,6 +1,32 @@
 """
 Theme Management System for Modern DiaBloS UI
 Provides consistent color schemes and styling across the application.
+
+v3 fixup: rebalanced dark theme so canvas + chrome + palette items live in
+the same hue family. Previous version mixed Solarized teal (#002B36, #073642)
+with neutral gray chrome (#0F1419, #1A1F26) — produced a visible color rift
+between canvas and panels.
+
+Changes vs v2:
+  * canvas_background       #002B36 → #14181F  (neutral, matches chrome)
+  * canvas_background_alt   #1A1F26 → #181C23
+  * grid_dots               #252A32 → #2A3038  (slightly more visible)
+  * background_primary      #0F1419 → #13171D
+  * background_secondary    #1A1F26 → #1C2128
+  * background_tertiary     #252A32 → #2B3038
+  * surface                 #1A1F26 → #1C2128
+  * surface_variant         #252A32 → #2B3038
+  * surface_elevated        #2F353D → #363D47
+  * border_primary          #374151 → #2D333D
+  * border_secondary        #4B5563 → #3A414B
+  * palette_item_bg         #252A32 → #232830  (slightly recessed from panel)
+  * palette_item_hover      #2F3845 → #2E3540
+  * palette_item_border     #374151 → #2A2F38
+  * palette_text            #FFFFFF → #E5E9EF  (less harsh)
+  * block_shadow            #000000 → #00000066 (40% alpha — softer)
+  * DEFAULT_PALETTE         solarized → tailwind  (neutral grays match chrome)
+  * Solarized dark fills    #073642 → #1C2128   (matches surface)
+  * Catppuccin dark fills   #303446 (unchanged — already neutral)
 """
 
 from enum import Enum
@@ -21,31 +47,34 @@ class ThemeType(Enum):
 PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
     "solarized": {
         "dark": {
-            "block_source":             "#073642",
+            # Fills retuned to neutral surface — Solarized teal (#073642) was
+            # clashing with the neutral chrome. Accents/borders keep the
+            # Solarized hues so the palette still reads as "Solarized".
+            "block_source":             "#1C2128",
             "block_source_border":      "#859900",
             "block_source_accent":      "#859900",
-            "block_process":            "#073642",
+            "block_process":            "#1C2128",
             "block_process_border":     "#268BD2",
             "block_process_accent":     "#268BD2",
-            "block_control":            "#073642",
+            "block_control":            "#1C2128",
             "block_control_border":     "#6C71C4",
             "block_control_accent":     "#6C71C4",
-            "block_sink":               "#073642",
+            "block_sink":               "#1C2128",
             "block_sink_border":        "#DC322F",
             "block_sink_accent":        "#DC322F",
-            "block_routing":            "#073642",
+            "block_routing":            "#1C2128",
             "block_routing_border":     "#2AA198",
             "block_routing_accent":     "#2AA198",
-            "block_analysis":           "#073642",
+            "block_analysis":           "#1C2128",
             "block_analysis_border":    "#D33682",
             "block_analysis_accent":    "#D33682",
-            "block_pde":                "#073642",
+            "block_pde":                "#1C2128",
             "block_pde_border":         "#B58900",
             "block_pde_accent":         "#B58900",
-            "block_optimization":       "#073642",
+            "block_optimization":       "#1C2128",
             "block_optimization_border":"#CB4B16",
             "block_optimization_accent":"#CB4B16",
-            "block_other":              "#073642",
+            "block_other":              "#1C2128",
             "block_other_border":       "#93A1A1",
             "block_other_accent":       "#93A1A1",
         },
@@ -82,32 +111,36 @@ PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
 
     "tailwind": {
         "dark": {
-            "block_source":             "#064E3B",
-            "block_source_border":      "#059669",
-            "block_source_accent":      "#10B981",
-            "block_process":            "#1E3A8A",
-            "block_process_border":     "#2563EB",
+            # Fills at Tailwind 800 level (~5-10% luminance). White icons
+            # (#E5E9EF) get 6-15:1 contrast (AA/AAA). Block edge still
+            # separates from canvas (#14181F ~1.4% lum) at 3-7× luminance
+            # ratio. The +30 RGB gradient brings the top close to 700.
+            "block_source":             "#065F46",
+            "block_source_border":      "#10B981",
+            "block_source_accent":      "#34D399",
+            "block_process":            "#1E40AF",
+            "block_process_border":     "#3B82F6",
             "block_process_accent":     "#60A5FA",
-            "block_control":            "#4C1D95",
-            "block_control_border":     "#7C3AED",
+            "block_control":            "#5B21B6",
+            "block_control_border":     "#8B5CF6",
             "block_control_accent":     "#A78BFA",
-            "block_sink":               "#7F1D1D",
-            "block_sink_border":        "#DC2626",
-            "block_sink_accent":        "#EF4444",
-            "block_routing":            "#134E4A",
-            "block_routing_border":     "#0D9488",
+            "block_sink":               "#991B1B",
+            "block_sink_border":        "#EF4444",
+            "block_sink_accent":        "#F87171",
+            "block_routing":            "#115E59",
+            "block_routing_border":     "#14B8A6",
             "block_routing_accent":     "#2DD4BF",
-            "block_analysis":           "#831843",
-            "block_analysis_border":    "#DB2777",
+            "block_analysis":           "#9D174D",
+            "block_analysis_border":    "#EC4899",
             "block_analysis_accent":    "#F472B6",
-            "block_pde":                "#713F12",
-            "block_pde_border":         "#D97706",
-            "block_pde_accent":         "#F59E0B",
-            "block_optimization":       "#312E81",
-            "block_optimization_border":"#4F46E5",
+            "block_pde":                "#854D0E",
+            "block_pde_border":         "#EAB308",
+            "block_pde_accent":         "#FACC15",
+            "block_optimization":       "#3730A3",
+            "block_optimization_border":"#6366F1",
             "block_optimization_accent":"#818CF8",
             "block_other":              "#1F2937",
-            "block_other_border":       "#4B5563",
+            "block_other_border":       "#6B7280",
             "block_other_accent":       "#9CA3AF",
         },
         "light": {
@@ -143,7 +176,6 @@ PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
 
     "catppuccin": {
         "dark": {
-            # Catppuccin Frappé: uniform fill, per-category accents
             "block_source":             "#303446",
             "block_source_border":      "#A6D189",
             "block_source_accent":      "#A6D189",
@@ -173,7 +205,6 @@ PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
             "block_other_accent":       "#B5BFE2",
         },
         "light": {
-            # Catppuccin Latte: uniform fill, per-category accents
             "block_source":             "#EFF1F5",
             "block_source_border":      "#40A02B",
             "block_source_accent":      "#40A02B",
@@ -205,14 +236,15 @@ PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
     },
 }
 
-# Keys that live in PALETTES (not the chrome theme dicts)
 _PALETTE_KEYS = frozenset(
     key
     for variants in PALETTES["solarized"].values()
     for key in variants
 )
 
-DEFAULT_PALETTE = "solarized"
+# Tailwind is the default — its dark fills are tuned to neutral chrome.
+# (Solarized was the old default; its teal fills clashed with the gray chrome.)
+DEFAULT_PALETTE = "tailwind"
 PALETTE_DISPLAY_NAMES = {
     "solarized": "Solarized",
     "tailwind":  "Tailwind",
@@ -223,9 +255,8 @@ PALETTE_DISPLAY_NAMES = {
 class ThemeManager(QObject):
     """Manages application themes and color schemes."""
 
-    theme_changed = pyqtSignal(str)  # Emitted when theme or palette changes
+    theme_changed = pyqtSignal(str)
 
-    # The 9 base block-fill keys (no _border / _accent suffix)
     _BLOCK_FILL_KEYS = frozenset([
         "block_source", "block_process", "block_control", "block_sink",
         "block_routing", "block_analysis", "block_pde", "block_optimization",
@@ -243,191 +274,183 @@ class ThemeManager(QObject):
         }
 
     # ------------------------------------------------------------------
-    # Chrome theme dicts  (block_* keys removed — they live in PALETTES)
+    # Chrome theme dicts
     # ------------------------------------------------------------------
 
     def _create_dark_theme(self) -> Dict[str, Any]:
-        """Create dark theme color scheme with refined, professional colors and better contrast."""
+        """Dark theme — neutral grays, no teal hue.
+
+        Single hue family across canvas + chrome + palette so adjacent
+        surfaces don't visibly clash. Hierarchy comes from luminance, not
+        hue: panels are slightly lighter than canvas, palette items are
+        slightly recessed from panels, hover lifts them again.
+        """
         return {
-            # Main background colors - Darker for better contrast
-            'background_primary': '#0F1419',      # Main window background (darker)
-            'background_secondary': '#1A1F26',    # Panel backgrounds
-            'background_tertiary': '#252A32',     # Elevated elements
+            # Main backgrounds — single hue, 4-step luminance ramp
+            'background_primary':   '#13171D',    # canvas + outermost frame
+            'background_secondary': '#1C2128',    # panel containers (palette, inspector)
+            'background_tertiary':  '#2B3038',    # elevated widgets, button bg
 
-            # Surface colors
-            'surface': '#1A1F26',                  # Cards, dialogs
-            'surface_primary': '#1A1F26',          # Primary surface
-            'surface_secondary': '#252A32',        # Secondary surface
-            'surface_variant': '#252A32',         # Alternate surface
-            'surface_elevated': '#2F353D',        # Highly elevated elements
+            # Surface
+            'surface':              '#1C2128',
+            'surface_primary':      '#1C2128',
+            'surface_secondary':    '#2B3038',
+            'surface_variant':      '#2B3038',
+            'surface_elevated':     '#363D47',
 
-            # Text colors - Excellent contrast
-            'text_primary': '#F0F1F4',            # Primary text (brighter white)
-            'text_secondary': '#B4B8C0',          # Secondary text (lighter)
-            'text_disabled': '#6B7280',           # Disabled text
-            'text_inverse': '#0F1419',            # Inverse text (for light backgrounds)
+            # Text
+            'text_primary':         '#E5E9EF',    # softer than pure white
+            'text_secondary':       '#9AA4B2',
+            'text_disabled':        '#5B6573',
+            'text_inverse':         '#13171D',
 
-            # Accent colors - Vibrant and clear
-            'accent_primary': '#60A5FA',          # Primary accent (brighter blue)
-            'accent_secondary': '#3B82F6',        # Darker accent
-            'accent_hover': '#7CB8FF',            # Hover state
-            'accent_pressed': '#2563EB',          # Pressed state
+            # Accent
+            'accent_primary':       '#60A5FA',
+            'accent_secondary':     '#3B82F6',
+            'accent_hover':         '#7CB8FF',
+            'accent_pressed':       '#2563EB',
 
-            # Status colors - Vibrant and clear
-            'success': '#10B981',                 # Success (emerald)
-            'success_bg': '#064E3B',              # Success background
-            'warning': '#F59E0B',                 # Warning (amber)
-            'warning_bg': '#78350F',              # Warning background
-            'error': '#EF4444',                   # Error (red)
-            'error_bg': '#7F1D1D',                # Error background
-            'info': '#60A5FA',                    # Information
-            'info_bg': '#1E3A8A',                 # Info background
+            # Status
+            'success':              '#10B981',
+            'success_bg':           '#064E3B',
+            'warning':              '#F59E0B',
+            'warning_bg':           '#78350F',
+            'error':                '#EF4444',
+            'error_bg':             '#7F1D1D',
+            'info':                 '#60A5FA',
+            'info_bg':              '#1E3A8A',
 
-            # Border colors - More visible
-            'border_primary': '#374151',          # Primary borders (lighter)
-            'border_secondary': '#4B5563',        # Secondary borders (lighter)
-            'border_focus': '#60A5FA',            # Focused elements
-            'border_hover': '#6B7280',            # Hover state
+            # Borders — subtle (no more visible separator clutter)
+            'border_primary':       '#2D333D',
+            'border_secondary':     '#3A414B',
+            'border_focus':         '#60A5FA',
+            'border_hover':         '#4B5563',
 
-            # Block defaults (non-category-specific)
-            'block_default': '#073642',           # Default block color
-            'block_default_border': '#586E75',    # Default border
+            # Block defaults
+            'block_default':        '#1C2128',
+            'block_default_border': '#4B5563',
 
-            # Selection and interaction
-            'block_selected': '#60A5FA',          # Selected blocks border (brighter)
-            'block_selected_bg': '#1E3A8A',       # Selected blocks background
-            'block_hover': '#2F353D',             # Hover state
-            'block_shadow': '#000000',            # Shadow color for depth
+            # Selection / interaction
+            'block_selected':       '#60A5FA',
+            'block_selected_bg':    '#1E3A8A',
+            'block_hover':          '#2F353D',
+            'block_shadow':         '#00000066',  # 40% alpha — softer
 
-            # Connection colors - Improved visibility and contrast
-            'connection_default': '#8B95A5',      # Default connections
-            'connection_active': '#4C9EFF',       # Active connections
-            'connection_selected': '#60A5FF',     # Selected connections
-            'connection_error': '#EF5A6F',        # Error connections
-            'connection_preview': '#F59E0B',      # Connection preview
-            'connection_shadow': '#0F1216',       # Connection shadow
+            # Connections
+            'connection_default':   '#8B95A5',
+            'connection_active':    '#4C9EFF',
+            'connection_selected':  '#60A5FF',
+            'connection_error':     '#EF5A6F',
+            'connection_preview':   '#F59E0B',
+            'connection_shadow':    '#0F1216',
 
-            # Port colors
-            'port_input': '#60A5FA',              # Input ports (brighter)
-            'port_output': '#10B981',             # Output ports (brighter)
-            'port_hover': '#7CB8FF',              # Port hover
+            # Ports
+            'port_input':           '#60A5FA',
+            'port_output':          '#10B981',
+            'port_hover':           '#7CB8FF',
 
-            # Grid and canvas
-            'grid_dots': '#252A32',               # Grid dot color (subtle but visible)
-            'grid_lines': '#374151',              # Grid lines (optional)
-            'canvas_background': '#002B36',       # Canvas background (Solarized base03)
-            'canvas_background_alt': '#1A1F26',   # Alternate canvas (for patterns)
-            'selection_rectangle': '#60A5FA',     # Selection rectangle
-            'selection_rectangle_fill': '#60A5FA1A',  # Selection fill (with alpha)
+            # Grid + canvas — KEY FIX: canvas is now neutral, matches chrome
+            'grid_dots':            '#2A3038',
+            'grid_lines':           '#2D333D',
+            'canvas_background':    '#14181F',    # neutral — was #002B36 (teal)
+            'canvas_background_alt':'#181C23',    # for patterns
+            'selection_rectangle':  '#60A5FA',
+            'selection_rectangle_fill': '#60A5FA1A',
 
-            # Palette specific - elevated surface with jewel tone accents
-            'palette_bg': '#1A1F26',               # Palette background (elevated from canvas)
-            'palette_item_bg': '#252A32',          # Palette item cards (elevated)
-            'palette_item_hover': '#2F3845',       # Palette item hover (even more elevated)
-            'palette_item_border': '#374151',      # Subtle border for items
-            'palette_item_border_hover': '#60A5FA',  # Accent border on hover (sapphire blue)
-            'palette_text': '#FFFFFF',             # Palette text (pure white for contrast)
-            'palette_category_bg': '#1E242C',      # Category header background
-            'palette_category_text': '#9CA3AF',    # Category header text (muted)
+            # Palette
+            'palette_bg':           '#1C2128',
+            'palette_item_bg':      '#232830',    # slightly recessed
+            'palette_item_hover':   '#2E3540',
+            'palette_item_border':  '#2A2F38',
+            'palette_item_border_hover': '#60A5FA',
+            'palette_text':         '#E5E9EF',    # softer than pure white
+            'palette_category_bg':  '#1C2128',
+            'palette_category_text':'#9AA4B2',
 
-            # Block icon/text drawing color (must contrast against block fill)
-            'block_icon_color': '#1F2937',         # Dark icons (palette blocks have light fills)
+            # Block icon/text drawing color
+            'block_icon_color':     '#E5E9EF',    # light icons on neutral fills
 
-            # Status bar - ensure good contrast
-            'statusbar_bg': '#151A20',             # Status bar background
-            'statusbar_text': '#E5E7EB',           # Status bar text (brighter white)
+            # Status bar
+            'statusbar_bg':         '#1C2128',
+            'statusbar_text':       '#E5E9EF',
         }
 
     def _create_light_theme(self) -> Dict[str, Any]:
-        """Create light theme color scheme with refined, professional colors."""
+        """Light theme — unchanged from v2."""
         return {
-            # Main background colors - Clean, modern whites and grays
-            'background_primary': '#FAFBFC',      # Main window background (very slight gray)
-            'background_secondary': '#F3F4F6',    # Panel backgrounds
-            'background_tertiary': '#E5E7EB',     # Elevated elements
+            'background_primary':   '#FAFBFC',
+            'background_secondary': '#F3F4F6',
+            'background_tertiary':  '#E5E7EB',
 
-            # Surface colors
-            'surface': '#FFFFFF',                  # Cards, dialogs
-            'surface_primary': '#FAFBFC',          # Primary surface
-            'surface_secondary': '#F3F4F6',        # Secondary surface
-            'surface_variant': '#F9FAFB',         # Alternate surface
-            'surface_elevated': '#FFFFFF',        # Highly elevated elements
+            'surface':              '#FFFFFF',
+            'surface_primary':      '#FAFBFC',
+            'surface_secondary':    '#F3F4F6',
+            'surface_variant':      '#F9FAFB',
+            'surface_elevated':     '#FFFFFF',
 
-            # Text colors - Excellent contrast
-            'text_primary': '#111827',            # Primary text (near black)
-            'text_secondary': '#6B7280',          # Secondary text
-            'text_disabled': '#9CA3AF',           # Disabled text
-            'text_inverse': '#FFFFFF',            # Inverse text (for dark backgrounds)
+            'text_primary':         '#111827',
+            'text_secondary':       '#6B7280',
+            'text_disabled':        '#9CA3AF',
+            'text_inverse':         '#FFFFFF',
 
-            # Accent colors - Vibrant but professional blue
-            'accent_primary': '#2563EB',          # Primary accent
-            'accent_secondary': '#1D4ED8',        # Darker accent
-            'accent_hover': '#3B82F6',            # Hover state
-            'accent_pressed': '#1E40AF',          # Pressed state
+            'accent_primary':       '#2563EB',
+            'accent_secondary':     '#1D4ED8',
+            'accent_hover':         '#3B82F6',
+            'accent_pressed':       '#1E40AF',
 
-            # Status colors - Clear and distinct
-            'success': '#10B981',                 # Success (emerald)
-            'success_bg': '#D1FAE5',              # Success background
-            'warning': '#F59E0B',                 # Warning (amber)
-            'warning_bg': '#FEF3C7',              # Warning background
-            'error': '#EF4444',                   # Error (red)
-            'error_bg': '#FEE2E2',                # Error background
-            'info': '#2563EB',                    # Information
-            'info_bg': '#DBEAFE',                 # Info background
+            'success':              '#10B981',
+            'success_bg':           '#D1FAE5',
+            'warning':              '#F59E0B',
+            'warning_bg':           '#FEF3C7',
+            'error':                '#EF4444',
+            'error_bg':             '#FEE2E2',
+            'info':                 '#2563EB',
+            'info_bg':              '#DBEAFE',
 
-            # Border colors - Subtle but clear
-            'border_primary': '#E5E7EB',          # Primary borders
-            'border_secondary': '#D1D5DB',        # Secondary borders
-            'border_focus': '#2563EB',            # Focused elements
-            'border_hover': '#9CA3AF',            # Hover state
+            'border_primary':       '#E5E7EB',
+            'border_secondary':     '#D1D5DB',
+            'border_focus':         '#2563EB',
+            'border_hover':         '#9CA3AF',
 
-            # Block defaults (non-category-specific)
-            'block_default': '#EEE8D5',           # Default block color (base2)
-            'block_default_border': '#586E75',    # Default border (base01)
+            'block_default':        '#EEE8D5',
+            'block_default_border': '#586E75',
 
-            # Selection and interaction
-            'block_selected': '#2563EB',          # Selected blocks border
-            'block_selected_bg': '#EFF6FF',       # Selected blocks background
-            'block_hover': '#F3F4F6',             # Hover state
-            'block_shadow': '#00000015',          # Shadow color for depth (with alpha)
+            'block_selected':       '#2563EB',
+            'block_selected_bg':    '#EFF6FF',
+            'block_hover':          '#F3F4F6',
+            'block_shadow':         '#00000015',
 
-            # Connection colors - Vibrant and clear
-            'connection_default': '#2563EB',      # Default connections
-            'connection_active': '#1D4ED8',       # Active connections
-            'connection_selected': '#3B82F6',     # Selected connections
-            'connection_error': '#EF4444',        # Error connections
-            'connection_preview': '#2563EB',      # Connection preview
-            'connection_shadow': '#00000010',     # Connection shadow
+            'connection_default':   '#2563EB',
+            'connection_active':    '#1D4ED8',
+            'connection_selected':  '#3B82F6',
+            'connection_error':     '#EF4444',
+            'connection_preview':   '#2563EB',
+            'connection_shadow':    '#00000010',
 
-            # Port colors
-            'port_input': '#2563EB',              # Input ports
-            'port_output': '#10B981',             # Output ports
-            'port_hover': '#3B82F6',              # Port hover
+            'port_input':           '#2563EB',
+            'port_output':          '#10B981',
+            'port_hover':           '#3B82F6',
 
-            # Grid and canvas
-            'grid_dots': '#E5E7EB',               # Grid dot color (subtle)
-            'grid_lines': '#D1D5DB',              # Grid lines (optional)
-            'canvas_background': '#FAFBFC',       # Canvas background
-            'canvas_background_alt': '#FFFFFF',   # Alternate canvas (for patterns)
-            'selection_rectangle': '#2563EB',     # Selection rectangle
-            'selection_rectangle_fill': '#2563EB1A',  # Selection fill (with alpha)
+            'grid_dots':            '#E5E7EB',
+            'grid_lines':           '#D1D5DB',
+            'canvas_background':    '#FAFBFC',
+            'canvas_background_alt':'#FFFFFF',
+            'selection_rectangle':  '#2563EB',
+            'selection_rectangle_fill': '#2563EB1A',
 
-            # Palette specific
-            'palette_bg': '#F3F4F6',               # Palette background
-            'palette_item_bg': '#FFFFFF',          # Palette item cards
-            'palette_item_hover': '#F9FAFB',       # Palette item hover
-            'palette_item_border': '#E5E7EB',      # Subtle border for items
-            'palette_item_border_hover': '#2563EB',  # Accent border on hover
-            'palette_text': '#374151',             # Palette text
-            'palette_category_bg': '#E5E7EB',      # Category header background
-            'palette_category_text': '#6B7280',    # Category header text
+            'palette_bg':           '#F3F4F6',
+            'palette_item_bg':      '#FFFFFF',
+            'palette_item_hover':   '#F9FAFB',
+            'palette_item_border':  '#E5E7EB',
+            'palette_item_border_hover': '#2563EB',
+            'palette_text':         '#374151',
+            'palette_category_bg':  '#E5E7EB',
+            'palette_category_text':'#6B7280',
 
-            # Block icon/text drawing color (must contrast against block fill)
-            'block_icon_color': '#1F2937',         # Dark icons on light block backgrounds
+            'block_icon_color':     '#1F2937',
 
-            # Status bar
-            'statusbar_bg': '#F3F4F6',             # Status bar background
-            'statusbar_text': '#374151',           # Status bar text
+            'statusbar_bg':         '#F3F4F6',
+            'statusbar_text':       '#374151',
         }
 
     # ------------------------------------------------------------------
@@ -435,23 +458,12 @@ class ThemeManager(QObject):
     # ------------------------------------------------------------------
 
     def get_current_theme(self) -> Dict[str, Any]:
-        """Get the current chrome theme colors (does not include palette block colors)."""
         return self.themes[self.current_theme]
 
     def get_color(self, color_name: str) -> QColor:
-        """Get a QColor for the specified color name.
-
-        Block-category keys (block_source, block_source_border, etc.) are
-        resolved from the active PALETTE + current dark/light variant.
-        All other keys come from the chrome theme dict.
-
-        When solid_fills is True, base fill keys (block_<cat> without suffix)
-        are redirected to the corresponding _accent key for vivid solid fills.
-        """
         if color_name in _PALETTE_KEYS:
-            theme_key = self.current_theme.value  # "dark" or "light"
+            theme_key = self.current_theme.value
             palette = PALETTES.get(self.current_palette, PALETTES[DEFAULT_PALETTE])
-            # Redirect plain fill key to accent when solid_fills is enabled
             lookup = (
                 color_name + "_accent"
                 if self.solid_fills and color_name in self._BLOCK_FILL_KEYS
@@ -461,20 +473,27 @@ class ThemeManager(QObject):
         else:
             theme = self.get_current_theme()
             color_hex = theme.get(color_name, '#000000')
-        return QColor(color_hex)
+
+        # Handle 8-char #RRGGBBAA (e.g. block_shadow with alpha)
+        c = QColor(color_hex)
+        if len(color_hex) == 9 and color_hex.startswith('#'):
+            try:
+                alpha = int(color_hex[7:9], 16)
+                c.setAlpha(alpha)
+            except ValueError:
+                pass
+        return c
 
     # ------------------------------------------------------------------
     # Theme control
     # ------------------------------------------------------------------
 
     def set_theme(self, theme_type: ThemeType):
-        """Change the current chrome theme (dark/light)."""
         if theme_type != self.current_theme:
             self.current_theme = theme_type
             self.theme_changed.emit(theme_type.value)
 
     def toggle_theme(self):
-        """Toggle between dark and light themes."""
         if self.current_theme == ThemeType.DARK:
             self.set_theme(ThemeType.LIGHT)
         else:
@@ -485,11 +504,6 @@ class ThemeManager(QObject):
     # ------------------------------------------------------------------
 
     def set_palette(self, palette_name: str):
-        """Change the active block-color palette.
-
-        Falls back to DEFAULT_PALETTE for unknown names (logs a warning).
-        Emits theme_changed so consumers re-render.
-        """
         if palette_name not in PALETTES:
             import logging
             logging.getLogger(__name__).warning(
@@ -501,12 +515,6 @@ class ThemeManager(QObject):
             self.theme_changed.emit(self.current_theme.value)
 
     def set_solid_fills(self, enabled: bool):
-        """Enable or disable solid (accent-color) block fills.
-
-        When enabled, get_color("block_<cat>") returns the accent color
-        instead of the neutral fill color. Emits theme_changed so all
-        consumers re-render.
-        """
         if enabled != self.solid_fills:
             self.solid_fills = enabled
             self.theme_changed.emit(self.current_theme.value)
@@ -516,12 +524,10 @@ class ThemeManager(QObject):
     # ------------------------------------------------------------------
 
     def get_qss_variables(self) -> Dict[str, str]:
-        """Get theme colors as QSS variables for stylesheets."""
         theme = self.get_current_theme()
         qss_vars = {}
         for key, value in theme.items():
             qss_vars[f"@{key}"] = value
-        # Also expose current palette block colors
         theme_key = self.current_theme.value
         palette = PALETTES.get(self.current_palette, PALETTES[DEFAULT_PALETTE])
         for key, value in palette[theme_key].items():
@@ -529,10 +535,8 @@ class ThemeManager(QObject):
         return qss_vars
 
     def get_icon_size(self):
-        """Get the standard icon size for the application."""
         from PyQt5.QtCore import QSize
         return QSize(24, 24)
 
 
-# Global theme manager instance
 theme_manager = ThemeManager()

@@ -15,33 +15,45 @@ class CanvasRenderer:
     """Renderer for general canvas elements."""
 
     def draw_grid(self, painter: QPainter, rect: QRect, width: int, height: int, visible: bool):
-        """Draw a sophisticated grid system with dots at intervals."""
+        """Draw an infinite-feeling grid covering the currently visible scene area.
+
+        ``rect`` is the visible region in scene coordinates (i.e. after the
+        caller has applied any pan/zoom transform to the painter). ``width``
+        and ``height`` are accepted for back-compat but ignored.
+        """
         if not visible:
             return
 
         try:
-            # Grid configuration
-            small_grid_size = 20  # Small dot spacing (20px)
-            large_grid_size = 100  # Large dot spacing (100px for emphasis)
+            small_grid_size = 20
+            large_grid_size = 100
 
-            # Get theme colors
             small_dot_color = theme_manager.get_color('grid_dots')
             large_dot_color = theme_manager.get_color('grid_dots')
-            large_dot_color.setAlpha(180)  # Make large dots slightly more visible
+            large_dot_color.setAlpha(180)
 
-            # Draw small dots
+            # Snap iteration bounds to multiples of the grid spacing so dots
+            # stay anchored in scene space as the user pans.
+            def _snap_down(v, step):
+                return (int(v) // step) * step
+
+            x0 = _snap_down(rect.left(), small_grid_size)
+            y0 = _snap_down(rect.top(), small_grid_size)
+            x1 = int(rect.right()) + small_grid_size
+            y1 = int(rect.bottom()) + small_grid_size
+
             painter.setPen(Qt.NoPen)
             painter.setBrush(small_dot_color)
-            for x in range(0, width, small_grid_size):
-                for y in range(0, height, small_grid_size):
-                    # Only draw small dots if not on a large grid intersection
+            for x in range(x0, x1, small_grid_size):
+                for y in range(y0, y1, small_grid_size):
                     if x % large_grid_size != 0 or y % large_grid_size != 0:
                         painter.drawEllipse(QPoint(x, y), 1, 1)
 
-            # Draw larger dots at major grid intersections
             painter.setBrush(large_dot_color)
-            for x in range(0, width, large_grid_size):
-                for y in range(0, height, large_grid_size):
+            lx0 = _snap_down(rect.left(), large_grid_size)
+            ly0 = _snap_down(rect.top(), large_grid_size)
+            for x in range(lx0, x1, large_grid_size):
+                for y in range(ly0, y1, large_grid_size):
                     painter.drawEllipse(QPoint(x, y), 2, 2)
 
         except Exception as e:

@@ -324,6 +324,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.capture_screen.connect(self.capture_screen)
         self.toolbar.zoom_changed.connect(self.set_zoom)
         self.toolbar.theme_toggled.connect(self.on_theme_changed)
+        self.toolbar.command_palette_requested.connect(self.show_command_palette)
     
     def _setup_layout(self):
         """Setup modern layout with splitters."""
@@ -641,8 +642,21 @@ class ModernDiaBloSWindow(QMainWindow):
         if not history:
             QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
             return
-        self.waveform_inspector = WaveformInspector(self.dsim)
-        self.waveform_inspector.show()
+
+        if not hasattr(self, 'waveform_inspector_dock'):
+            from PyQt5.QtWidgets import QDockWidget
+            self.waveform_inspector = WaveformInspector(self.dsim)
+            self.waveform_inspector_dock = QDockWidget("Waveforms", self)
+            self.waveform_inspector_dock.setWidget(self.waveform_inspector)
+            self.waveform_inspector_dock.setAllowedAreas(
+                Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea
+            )
+            self.addDockWidget(Qt.BottomDockWidgetArea, self.waveform_inspector_dock)
+
+            if hasattr(self, 'variable_editor_dock'):
+                self.tabifyDockWidget(self.variable_editor_dock, self.waveform_inspector_dock)
+        self.waveform_inspector_dock.show()
+        self.waveform_inspector_dock.raise_()
     
     def capture_screen(self):
         """Capture screenshot."""
@@ -1437,6 +1451,11 @@ class ModernDiaBloSWindow(QMainWindow):
                 # Refresh minimap if visible
                 if hasattr(self, 'minimap_dock') and self.minimap_dock.isVisible():
                     self.minimap.refresh()
+
+                if was_running and hasattr(self.toolbar, 'set_simulation_time'):
+                    t_now = getattr(self.dsim, 'time_step', 0.0)
+                    t_end = getattr(self.dsim, 'sim_time', 10.0) or 10.0
+                    self.toolbar.set_simulation_time(t_now, t_end)
 
                 is_running = self.canvas.is_simulation_running()
 

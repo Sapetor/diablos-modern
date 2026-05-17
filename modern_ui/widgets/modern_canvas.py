@@ -484,14 +484,23 @@ class ModernCanvas(QWidget):
             self.perf_helper.start_timer("canvas_paint")
             painter.setRenderHint(QPainter.Antialiasing)
 
-            painter.translate(self.pan_offset)
-            painter.scale(self.zoom_factor, self.zoom_factor)
-            
-            # Clear canvas with theme-appropriate background
+            # Fill viewport background in WIDGET coordinates so panning
+            # doesn't expose unfilled areas at the edges.
             painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
 
-            # Draw sophisticated grid system
-            self.canvas_renderer.draw_grid(painter, self.rect(), self.width(), self.height(), self.grid_visible)
+            painter.translate(self.pan_offset)
+            painter.scale(self.zoom_factor, self.zoom_factor)
+
+            # Compute the visible region in SCENE coordinates so the grid
+            # tiles across whatever the user has scrolled into view, instead
+            # of looking like a finite sheet that drags around with the pan.
+            zoom = self.zoom_factor or 1.0
+            sx0 = int(-self.pan_offset.x() / zoom) - 1
+            sy0 = int(-self.pan_offset.y() / zoom) - 1
+            sw = int(self.width() / zoom) + 2
+            sh = int(self.height() / zoom) + 2
+            scene_rect = QRect(sx0, sy0, sw, sh)
+            self.canvas_renderer.draw_grid(painter, scene_rect, sw, sh, self.grid_visible)
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
             # This ensures ports appear on top of connection lines

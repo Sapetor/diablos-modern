@@ -94,13 +94,15 @@ class BlockRenderer:
                 # Create a lighter version for selected state, or use base color per original logic
                 painter.setBrush(block.b_color)
 
-        # Draw main block shape with gradient fill
+        # Draw main block shape with gradient fill.
+        # Subtle lighten (+12 RGB) keeps the top close to base so icons over
+        # the top of the block don't wash out against a too-bright gradient.
         gradient = QLinearGradient(block.left, block.top, block.left, block.top + block.height)
         base_color = block.b_color
         lighter_color = QColor(base_color)
-        lighter_color.setRed(min(255, base_color.red() + 30))
-        lighter_color.setGreen(min(255, base_color.green() + 30))
-        lighter_color.setBlue(min(255, base_color.blue() + 30))
+        lighter_color.setRed(min(255, base_color.red() + 12))
+        lighter_color.setGreen(min(255, base_color.green() + 12))
+        lighter_color.setBlue(min(255, base_color.blue() + 12))
         gradient.setColorAt(0, lighter_color)
         gradient.setColorAt(1, base_color)
         
