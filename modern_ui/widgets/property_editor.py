@@ -40,6 +40,15 @@ NO_SLIDER_PARAMS = frozenset({
     'init_conds', 'init_temp', 'init_amplitude', 'N', 'Nx', 'Ny'
 })
 
+# Sink-block scratch state (Scope/Export/FieldScope sample buffers).
+# Public-keyed so the simulation engine and plotter can share the convention,
+# but never user-editable, so we hide them from the property panel.
+_HIDDEN_SCRATCH_KEYS = frozenset({'vector', 'vec_dim', 'vec_labels'})
+
+
+def _is_internal_param(key: str) -> bool:
+    return key.startswith('_') or key in _HIDDEN_SCRATCH_KEYS
+
 
 class CollapsibleSection(QWidget):
     """A collapsible section with toggle arrow and content area."""
@@ -565,7 +574,7 @@ class PropertyEditor(QFrame):
         self._create_name_field()
         self._create_port_count_field()
 
-        keys = [k for k in self.block.params.keys() if not k.startswith('_')]
+        keys = [k for k in self.block.params.keys() if not _is_internal_param(k)]
         groups = self._categorize_params(keys)
 
         for group_name, group_keys in groups.items():
@@ -1228,7 +1237,7 @@ class PropertyEditor(QFrame):
 
     def sizeHint(self):
         if self.block and hasattr(self.block, 'params'):
-            num_props = len([p for p in self.block.params if not p.startswith('_')])
+            num_props = len([p for p in self.block.params if not _is_internal_param(p)])
             if num_props > 0:
                 row_height = 50
                 height = (
