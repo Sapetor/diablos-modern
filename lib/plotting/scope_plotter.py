@@ -1124,8 +1124,16 @@ class ScopePlotter:
                 logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={float(v.min()):.4f}, max={float(v.max()):.4f}, "
                            f"first={float(v[0]):.4f}, last={float(v[-1]):.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
 
-            # Close previous plot window if it exists (prevents stale windows lingering)
+            # Close previous plot window if it exists (prevents stale windows lingering).
+            # Disconnect destroyed BEFORE deleteLater — otherwise the OLD widget's
+            # destroyed signal fires asynchronously and runs _on_plotty_destroyed
+            # AFTER self.plotty has been reassigned to the new window, which nulls
+            # the new reference and lets Qt garbage-collect the new (visible) window.
             if self.plotty is not None:
+                try:
+                    self.plotty.destroyed.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
                 try:
                     self.plotty.close()
                     self.plotty.deleteLater()
@@ -1174,8 +1182,13 @@ class ScopePlotter:
                     labels_list.append(b_labels)
 
             if labels_list != []:
-                # Close previous plot window if it exists
+                # Close previous plot window if it exists. See pyqtPlotScope for
+                # why we must disconnect destroyed BEFORE deleteLater.
                 if self.plotty is not None:
+                    try:
+                        self.plotty.destroyed.disconnect()
+                    except (TypeError, RuntimeError):
+                        pass
                     try:
                         self.plotty.close()
                         self.plotty.deleteLater()

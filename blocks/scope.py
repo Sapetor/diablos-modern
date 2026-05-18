@@ -83,15 +83,32 @@ class ScopeBlock(BaseBlock):
             params['_skip_'] = False
             return {0: np.array([0.0]), 'E': False}
 
+        def _coerce(val):
+            """Coerce any port value to a 1-d float array.
+
+            Handles None (returns [0.0]) and 0-d numpy arrays (which np.concatenate
+            rejects). Without this, an upstream block returning None or a stale
+            params['vector'] from a prior fast-path run (which writes a Python
+            list, not an ndarray) crashes scope.execute() with
+            'zero-dimensional arrays cannot be concatenated'.
+            """
+            if val is None:
+                return np.array([0.0])
+            arr = np.atleast_1d(val).flatten()
+            return arr if arr.size > 0 else np.array([0.0])
+
+        # The fast-path replay loop writes a Python list to exec_params['vector']
+        # after each simulation. If we land here on a later sim with a stale
+        # non-ndarray vector, we cannot safely concatenate. Force re-init.
+        prev_vec = params.get('vector', None)
+        if not isinstance(prev_vec, np.ndarray) or prev_vec.ndim != 1:
+            params['_init_start_'] = True
+
         # Initialization of the saving vector
         # Handle multiple input ports by concatenating all inputs
         if params.get('_init_start_', True):
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initializing, inputs: {inputs}")
-            # Concatenate all input ports in order
-            combined_input = []
-            for port_idx in sorted(inputs.keys()):
-                val = inputs[port_idx]
-                combined_input.append(np.atleast_1d(val).flatten())
+            combined_input = [_coerce(inputs[p]) for p in sorted(inputs.keys())]
             aux_vector = np.concatenate(combined_input) if combined_input else np.array([0.0])
             params['vec_dim'] = len(aux_vector)
 
@@ -109,12 +126,16 @@ class ScopeBlock(BaseBlock):
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initialized, vec_labels: {params['vec_labels']}")
         else:
             aux_vector = params['vector']
-            # Concatenate all input ports in order
-            combined_input = []
-            for port_idx in sorted(inputs.keys()):
-                val = inputs[port_idx]
-                combined_input.append(np.atleast_1d(val).flatten())
+            combined_input = [_coerce(inputs[p]) for p in sorted(inputs.keys())]
             new_sample = np.concatenate(combined_input) if combined_input else np.array([0.0])
-            aux_vector = np.concatenate((aux_vector, new_sample))
+            # If per-sample dimension changed since last init (e.g. user added
+            # a port between sims), re-initialize instead of producing a
+            # ragged buffer.
+            expected_dim = params.get('vec_dim', new_sample.size)
+            if new_sample.size != expected_dim:
+                aux_vector = new_sample
+                params['vec_dim'] = new_sample.size
+            else:
+                aux_vector = np.concatenate((aux_vector, new_sample))
         params['vector'] = aux_vector
         return {0: np.array([0.0]), 'E': False}

@@ -464,7 +464,9 @@ class PropertyEditor(QFrame):
             vsec = CollapsibleSection("Validation", expanded=True)
             self._sections.append(vsec)
             for err in errors[:10]:
-                sev = (getattr(err, 'severity', None) or '').lower()
+                sev_raw = getattr(err, 'severity', None)
+                sev = (sev_raw.value if hasattr(sev_raw, 'value')
+                       else str(sev_raw or '')).lower()
                 color = (error if 'error' in sev else
                          warning if 'warn' in sev else
                          success)

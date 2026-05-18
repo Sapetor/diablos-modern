@@ -1336,7 +1336,12 @@ class ModernDiaBloSWindow(QMainWindow):
             # Refresh the Workspace Editor (table view)
             if hasattr(self, 'workspace_editor'):
                 self.workspace_editor.refresh_variables()
-                
+
+            # Refresh the Property Editor's diagram-inspector Workspace section
+            # (only re-renders when no block is selected — block-state view is unaffected)
+            if hasattr(self, 'property_editor') and self.property_editor.block is None:
+                self.property_editor.set_block(None)
+
             self.toast.show_message(f"✓ Workspace updated ({var_count} variables)", duration=2000)
             self.status_message.setText(f"Workspace updated with {var_count} variable(s)")
             logger.info(f"Workspace updated from Variable Editor: {var_count} variables")
@@ -1889,6 +1894,7 @@ class ModernDiaBloSWindow(QMainWindow):
         if filepath:
             try:
                 WorkspaceManager().load_from_file(filepath)
+                self._on_variables_updated()
                 self.toast.show_message(f"Workspace loaded from {os.path.basename(filepath)}", duration=3000)
             except Exception as e:
                 self.toast.show_message(f"Failed to load workspace: {str(e)}", duration=5000, is_error=True)
