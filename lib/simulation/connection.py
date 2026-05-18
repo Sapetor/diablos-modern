@@ -329,7 +329,7 @@ class DLine:
         """Update line coordinates based on current block positions."""
         if self.hidden:
             return
-            
+
         logger.debug(f"Updating line {self.name}")
         if blocks_list:
             start, end = None, None
@@ -347,11 +347,26 @@ class DLine:
                     dst_found = True
             logger.debug(f"src_found: {src_found}, dst_found: {dst_found}")
             if start and end:
+                # No-op when endpoints haven't actually moved: avoids discarding
+                # custom routing (autoroute, manual edits) on click-with-no-drag.
+                if (self.path is not None
+                        and len(self.points) >= 2
+                        and self.points[0] == start
+                        and self.points[-1] == end):
+                    return
+
                 logger.debug(f"start: {start}, end: {end}")
                 self.points[0] = start
                 self.points[-1] = end
-                self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
-                self.modified = False
+                if self.modified and len(self.points) > 2:
+                    # Preserve user-customised waypoints (autoroute, manual drag)
+                    # by replaying them through create_trajectory with new endpoints.
+                    self.path, self.points, self.segments = self.create_trajectory(
+                        start, end, blocks_list, points=self.points
+                    )
+                else:
+                    self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
+                    self.modified = False
 
 
 
