@@ -49,24 +49,31 @@ class MenuBuilder:
         self._populate_examples_menu(examples_menu)
 
         file_menu.addSeparator()
-        file_menu.addAction("E&xit\tAlt+F4", self.window.close)
+        exit_action = file_menu.addAction("E&xit\tAlt+F4", self.window.close)
+        # Danger-color via dynamic property; QSS picks it up via [role="danger"]
+        exit_action.setProperty("role", "danger")
 
     def _populate_examples_menu(self, menu):
-        """Populate examples submenu."""
+        """Populate examples submenu. Filenames shown without extension."""
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         examples_dir = os.path.join(base_dir, 'examples')
-        
+
         if os.path.exists(examples_dir):
-            found = False
-            for f in os.listdir(examples_dir):
-                if f.endswith('.json') or f.endswith('.dat'):
-                    action = menu.addAction(f)
-                    # Use default argument capture
-                    action.triggered.connect(lambda checked, fname=f: self.window.open_example(os.path.join(examples_dir, fname)))
-                    found = True
-            
-            if not found:
-                 menu.addAction("No examples found").setEnabled(False)
+            files = sorted(
+                f for f in os.listdir(examples_dir)
+                if f.endswith(('.json', '.dat', '.diablos'))
+            )
+            if not files:
+                menu.addAction("No examples found").setEnabled(False)
+                return
+            for f in files:
+                display = os.path.splitext(f)[0].replace('_', ' ')
+                action = menu.addAction(display)
+                action.triggered.connect(
+                    lambda checked, fname=f: self.window.open_example(
+                        os.path.join(examples_dir, fname)
+                    )
+                )
         else:
             menu.addAction("Examples directory not found").setEnabled(False)
 
@@ -151,6 +158,21 @@ class MenuBuilder:
             action.setChecked(getattr(self.window, 'show_grid', True)) # default True
             action.setShortcut("Ctrl+Shift+G")
             self.window.grid_toggle_action = action
+
+        view_menu.addSeparator()
+
+        # Live overlay submenu (Section 4 of UX phase 2)
+        live_menu = view_menu.addMenu("Live overlay")
+        # V1 — port-value chips (default ON)
+        chips_action = QAction("Output value chips", self.window, checkable=True)
+        chips_action.setChecked(True)
+        def _toggle_chips(checked):
+            if hasattr(self.window, 'canvas'):
+                self.window.canvas.show_live_chips = bool(checked)
+                self.window.canvas.update()
+        chips_action.triggered.connect(_toggle_chips)
+        live_menu.addAction(chips_action)
+        self.window.live_chips_action = chips_action
 
         view_menu.addSeparator()
         view_menu.addAction("Toggle &Theme\tCtrl+T", self.window.toggle_theme)

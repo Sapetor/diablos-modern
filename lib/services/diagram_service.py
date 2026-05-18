@@ -42,82 +42,118 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
     # Make dialog larger for better usability
     dialog.resize(900, 600)
 
-    # Apply styling to fix visual issues
-    dialog.setStyleSheet("""
+    # Theme-aware styling — replaces hardcoded light-mode colors so the
+    # dialog reads correctly in dark mode too.
+    from modern_ui.themes.theme_manager import theme_manager
+    qss = """
         QFileDialog {
-            background-color: #f5f5f5;
+            background-color: @background_secondary;
+            color: @text_primary;
+        }
+        QFileDialog QLabel {
+            color: @text_primary;
+            background: transparent;
+            padding: 2px;
         }
         QFileDialog QListView, QFileDialog QTreeView {
-            background-color: white;
-            border: 1px solid #ccc;
+            background-color: @surface;
+            color: @text_primary;
+            border: 1px solid @border_primary;
             border-radius: 4px;
             padding: 4px;
+            alternate-background-color: @surface_variant;
         }
         QFileDialog QListView::item, QFileDialog QTreeView::item {
             padding: 4px;
             border-radius: 2px;
+            color: @text_primary;
+        }
+        QFileDialog QListView::item:hover, QFileDialog QTreeView::item:hover {
+            background-color: @background_tertiary;
         }
         QFileDialog QListView::item:selected, QFileDialog QTreeView::item:selected {
-            background-color: #0078d4;
+            background-color: @accent_primary;
             color: white;
         }
         QFileDialog QLineEdit {
             padding: 6px;
-            border: 1px solid #ccc;
+            border: 1px solid @border_primary;
             border-radius: 4px;
-            background-color: white;
+            background-color: @surface;
+            color: @text_primary;
+            selection-background-color: @accent_primary;
+            selection-color: white;
         }
+        QFileDialog QLineEdit:focus { border-color: @border_focus; }
         QFileDialog QComboBox {
             padding: 6px;
-            border: 1px solid #ccc;
+            border: 1px solid @border_primary;
             border-radius: 4px;
-            background-color: white;
+            background-color: @surface;
+            color: @text_primary;
             min-width: 200px;
         }
-        QFileDialog QComboBox::drop-down {
-            border: none;
-            width: 20px;
+        QFileDialog QComboBox:hover  { border-color: @border_hover; }
+        QFileDialog QComboBox::drop-down { border: none; width: 20px; }
+        QFileDialog QComboBox::down-arrow {
+            image: none;
+            border-left: 3.5px solid transparent;
+            border-right: 3.5px solid transparent;
+            border-top: 5px solid @text_secondary;
+            margin-right: 8px;
         }
         QFileDialog QComboBox QAbstractItemView {
-            background-color: white;
-            border: 1px solid #ccc;
-            selection-background-color: #0078d4;
+            background-color: @surface;
+            color: @text_primary;
+            border: 1px solid @border_primary;
+            selection-background-color: @accent_primary;
+            selection-color: white;
         }
         QFileDialog QPushButton {
             padding: 8px 16px;
-            border: 1px solid #ccc;
+            border: 1px solid @border_primary;
             border-radius: 4px;
-            background-color: #f0f0f0;
+            background-color: @surface;
+            color: @text_primary;
             min-width: 80px;
         }
         QFileDialog QPushButton:hover {
-            background-color: #e0e0e0;
+            background-color: @background_tertiary;
+            border-color: @border_hover;
         }
         QFileDialog QPushButton:pressed {
-            background-color: #d0d0d0;
+            background-color: @accent_pressed;
+            color: white;
         }
+        QFileDialog QPushButton:default {
+            background-color: @accent_primary;
+            color: white;
+            border-color: @accent_secondary;
+        }
+        QFileDialog QPushButton:default:hover { background-color: @accent_hover; }
         QFileDialog QToolButton {
             padding: 4px;
             border: 1px solid transparent;
             border-radius: 4px;
+            color: @text_primary;
         }
         QFileDialog QToolButton:hover {
-            background-color: #e0e0e0;
-            border: 1px solid #ccc;
+            background-color: @background_tertiary;
+            border-color: @border_hover;
         }
-        QFileDialog QLabel {
-            padding: 2px;
-        }
-        QFileDialog QSplitter::handle {
-            background-color: #ddd;
-        }
+        QFileDialog QSplitter::handle { background-color: @border_primary; }
         QFileDialog QHeaderView::section {
-            background-color: #f0f0f0;
+            background-color: @surface_variant;
+            color: @text_primary;
             padding: 6px;
             border: none;
-            border-bottom: 1px solid #ccc;
+            border-bottom: 1px solid @border_primary;
         }
-    """)
+    """
+    for var, color in sorted(theme_manager.get_qss_variables().items(),
+                             key=lambda x: len(x[0]), reverse=True):
+        qss = qss.replace(var, color)
+    dialog.setStyleSheet(qss)
 
     return dialog
 

@@ -216,6 +216,33 @@ class ModernStyles:
     @classmethod
     def get_panel_style(cls) -> str:
         qss = """
+        QDialog {
+            background-color: @background_secondary;
+            color: @text_primary;
+        }
+
+        /* QLabel / QCheckBox color does not inherit from QDialog reliably in
+           Qt's QSS — scope explicit rules to dialog/groupbox descendants so
+           the text stays readable in dark mode. */
+        QDialog QLabel,
+        QGroupBox QLabel {
+            color: @text_primary;
+            background: transparent;
+        }
+        QDialog QCheckBox,
+        QGroupBox QCheckBox {
+            color: @text_primary;
+            background: transparent;
+        }
+
+        /* Hint / muted labels inside dialogs (use objectName="HintLabel" or
+           the inline italic class to opt in — see SimulationDialog hint). */
+        QLabel#HintLabel {
+            color: @text_secondary;
+            font-size: 10pt;
+            font-style: italic;
+        }
+
         QFrame#ModernPanel {
             background-color: @surface;
             border: 1px solid @border_primary;
@@ -380,39 +407,45 @@ class ModernStyles:
     @classmethod
     def get_menubar_style(cls) -> str:
         qss = """
+        /* Top-level menubar — matches the toolbar's tightened look. */
         QMenuBar {
             background-color: @background_secondary;
             border-bottom: 1px solid @border_primary;
             color: @text_primary;
             font-weight: 500;
-            padding: 4px 6px;
+            padding: 3px 6px;
         }
         QMenuBar::item {
             background-color: transparent;
             padding: 6px 10px;
             border-radius: 5px;
             margin: 0px 1px;
+            color: @text_secondary;
         }
-        QMenuBar::item:selected { background-color: @background_tertiary; }
-        QMenuBar::item:pressed  { background-color: @accent_primary; color: white; }
+        QMenuBar::item:selected { background-color: @surface_elevated; color: @text_primary; }
+        QMenuBar::item:pressed  { background-color: @surface_elevated; color: @text_primary; }
 
+        /* Dropdown menus + context menus */
         QMenu {
             background-color: @surface_elevated;
             border: 1px solid @border_primary;
-            border-radius: 6px;
-            padding: 4px;
+            border-radius: 8px;
+            padding: 6px 0px;
             color: @text_primary;
         }
         QMenu::item {
-            padding: 6px 28px 6px 22px;
+            padding: 5px 22px 5px 16px;
             border-radius: 4px;
-            margin: 1px 3px;
+            margin: 1px 4px;
         }
         QMenu::item:selected { background-color: @accent_primary; color: white; }
         QMenu::item:disabled { color: @text_disabled; }
+        /* Items tagged role=danger (Delete, Close diagram, etc.) — red text. */
+        QMenu::item[role="danger"]            { color: @error; }
+        QMenu::item[role="danger"]:selected   { background-color: @error; color: white; }
         QMenu::separator { height: 1px; background-color: @border_primary; margin: 4px 10px; }
-        QMenu::icon { padding-left: 6px; }
-        QMenu::indicator { width: 16px; height: 16px; left: 6px; }
+        QMenu::icon { padding-left: 8px; }
+        QMenu::indicator { width: 14px; height: 14px; left: 6px; }
         """
         return cls._replace_theme_variables(qss)
 

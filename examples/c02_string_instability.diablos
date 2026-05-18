@@ -11,6 +11,7 @@
         {
             "block_fn": "Step",
             "sid": 0,
+            "name": "step0",
             "username": "leader",
             "coords_left": 50,
             "coords_top": 200,
@@ -21,7 +22,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#064e3b",
+            "b_color": "#a6d189",
             "b_type": 0,
             "io_edit": "none",
             "fn_name": "step",
@@ -36,6 +37,7 @@
         {
             "block_fn": "TranFn",
             "sid": 1,
+            "name": "tranfn1",
             "username": "T1",
             "coords_left": 180,
             "coords_top": 200,
@@ -46,7 +48,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#5b21b6",
+            "b_color": "#ca9ee6",
             "b_type": 1,
             "io_edit": "none",
             "fn_name": "transfer_function",
@@ -68,6 +70,7 @@
         {
             "block_fn": "TranFn",
             "sid": 2,
+            "name": "tranfn2",
             "username": "T2",
             "coords_left": 320,
             "coords_top": 200,
@@ -78,7 +81,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#5b21b6",
+            "b_color": "#ca9ee6",
             "b_type": 1,
             "io_edit": "none",
             "fn_name": "transfer_function",
@@ -100,6 +103,7 @@
         {
             "block_fn": "TranFn",
             "sid": 3,
+            "name": "tranfn3",
             "username": "T3",
             "coords_left": 460,
             "coords_top": 200,
@@ -110,7 +114,7 @@
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#5b21b6",
+            "b_color": "#ca9ee6",
             "b_type": 1,
             "io_edit": "none",
             "fn_name": "transfer_function",
@@ -132,6 +136,7 @@
         {
             "block_fn": "Scope",
             "sid": 4,
+            "name": "scope4",
             "username": "scope",
             "coords_left": 630,
             "coords_top": 160,
@@ -142,7 +147,7 @@
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#7f1d1d",
+            "b_color": "#e78284",
             "b_type": 3,
             "io_edit": "input",
             "fn_name": "scope",
@@ -172,7 +177,9 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line1",
@@ -192,7 +199,9 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line2",
@@ -212,7 +221,9 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line3",
@@ -227,11 +238,11 @@
                     220
                 ],
                 [
-                    365,
+                    170,
                     220
                 ],
                 [
-                    365,
+                    170,
                     180
                 ],
                 [
@@ -240,7 +251,9 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line4",
@@ -255,11 +268,19 @@
                     220
                 ],
                 [
-                    430,
+                    310,
                     220
                 ],
                 [
-                    430,
+                    310,
+                    190
+                ],
+                [
+                    610,
+                    190
+                ],
+                [
+                    610,
                     200
                 ],
                 [
@@ -268,7 +289,9 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line5",
@@ -283,12 +306,30 @@
                     220
                 ],
                 [
+                    450,
+                    220
+                ],
+                [
+                    450,
+                    250
+                ],
+                [
+                    610,
+                    250
+                ],
+                [
+                    610,
+                    220
+                ],
+                [
                     630,
                     220
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         },
         {
             "name": "Line6",
@@ -303,11 +344,11 @@
                     220
                 ],
                 [
-                    570,
+                    610,
                     220
                 ],
                 [
-                    570,
+                    610,
                     240
                 ],
                 [
@@ -316,8 +357,22 @@
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
         }
     ],
-    "version": "2.0"
+    "version": "2.0",
+    "ui_state": {
+        "theme": "dark",
+        "zoom_factor": 1.0,
+        "main_splitter_sizes": [
+            190,
+            1078
+        ],
+        "center_splitter_sizes": [
+            731,
+            338
+        ]
+    }
 }

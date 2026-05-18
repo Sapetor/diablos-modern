@@ -94,6 +94,10 @@ class ModernDiaBloSWindow(QMainWindow):
         # Connect property editor signals
         self.property_editor.property_changed.connect(self._on_property_changed)
         self.property_editor.pin_to_tuning.connect(self._add_to_tuning)
+        # Wire the inspector to dsim so its empty-state view can render the
+        # diagram inspector (V1) rather than a blank placeholder.
+        if hasattr(self.property_editor, 'set_diagram_context'):
+            self.property_editor.set_diagram_context(self.dsim, self)
         
         # Initialize Variable Editor (Dockable)
         from PyQt5.QtWidgets import QDockWidget
@@ -146,6 +150,13 @@ class ModernDiaBloSWindow(QMainWindow):
         self.command_palette = CommandPalette(self)
         self.command_palette.command_selected.connect(self._on_command_executed)
         self._setup_command_palette()
+
+        # Global ⌘K / Ctrl+K shortcut so the palette is reachable everywhere.
+        from PyQt5.QtWidgets import QShortcut
+        from PyQt5.QtGui import QKeySequence
+        self._cmdk_shortcut = QShortcut(QKeySequence("Ctrl+K"), self)
+        self._cmdk_shortcut.setContext(Qt.ApplicationShortcut)
+        self._cmdk_shortcut.activated.connect(self.show_command_palette)
 
         # Initialize DSim components
         self.dsim.main_buttons_init()
@@ -533,37 +544,174 @@ class ModernDiaBloSWindow(QMainWindow):
         return super().eventFilter(obj, event)
 
     def _setup_statusbar(self):
-        """Setup modern status bar."""
+        """Compact pill-style status bar (≤ 28px tall).
+
+        Layout left-to-right:  state-pill · file-pill · counts · ⟶ · cursor · zoom · theme-pill
+        Segments are separated by 1px vertical dividers (no pipes).
+        """
+        from modern_ui.widgets.modern_toolbar import _StatusPill  # reuse toolbar pill
+
         statusbar = self.statusBar()
+        statusbar.setSizeGripEnabled(False)
+        statusbar.setFixedHeight(26)
 
-        # Status message
-        self.status_message = QLabel("Ready")
-        statusbar.addWidget(self.status_message)
+        def _vsep():
+            f = QFrame()
+            f.setFrameShape(QFrame.VLine)
+            f.setObjectName("StatusDivider")
+            f.setStyleSheet(
+                f"color: {theme_manager.get_color('border_primary').name()};"
+                f" background: {theme_manager.get_color('border_primary').name()};"
+                f" max-width: 1px; min-width: 1px;"
+            )
+            f.setFixedHeight(14)
+            return f
 
-        # Add permanent widgets
-        statusbar.addPermanentWidget(QLabel("Zoom:"))
-        self.zoom_status = QLabel("100%")
-        statusbar.addPermanentWidget(self.zoom_status)
+        def _mono_label(text=""):
+            from PyQt5.QtGui import QFont as _QF
+            lbl = QLabel(text)
+            f = _QF("Menlo")
+            f.setStyleHint(_QF.Monospace)
+            if hasattr(f, 'setFamilies'):
+                f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+            f.setPointSize(8)
+            lbl.setFont(f)
+            return lbl
 
-        statusbar.addPermanentWidget(QLabel("|"))
+        # Left: status pill (reused from toolbar)
+        self.status_pill = _StatusPill(self)
+        statusbar.addWidget(self.status_pill)
 
-        self.cursor_status = QLabel("Cursor: (0, 0)")
+        # Hidden compatibility shim — many call sites still call status_message.setText(...)
+        self.status_message = QLabel()
+        self.status_message.hide()
+        # Forward text changes to the pill (idle/running/paused detection)
+        def _on_status_text_changed(text):
+            try:
+                self.toolbar.set_status(text)
+            except Exception:
+                pass
+            t = (text or "").lower()
+            if 'run' in t and 'paus' not in t:
+                self.status_pill.set_state('running')
+            elif 'paus' in t:
+                self.status_pill.set_state('paused')
+            elif 'error' in t or 'fail' in t:
+                self.status_pill.set_state('error', text)
+            else:
+                self.status_pill.set_state('idle', text if text else None)
+        # Replace setText to propagate to the pill
+        _orig_setText = self.status_message.setText
+        def _propagating_setText(text):
+            _orig_setText(text)
+            _on_status_text_changed(text)
+        self.status_message.setText = _propagating_setText  # type: ignore[attr-defined]
+
+        statusbar.addWidget(_vsep())
+
+        # File info: filename + unsaved indicator
+        self.file_status = QLabel("untitled")
+        self.file_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_primary').name()};"
+        )
+        self.file_unsaved_status = QLabel("")
+        self.file_unsaved_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_disabled').name()};"
+            f" font-size: 9pt;"
+        )
+        statusbar.addWidget(self.file_status)
+        statusbar.addWidget(self.file_unsaved_status)
+
+        statusbar.addWidget(_vsep())
+
+        # Counts pill: blocks N · wires M · scopes K
+        self.counts_status = _mono_label("blocks 0 · wires 0 · scopes 0")
+        self.counts_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
+        statusbar.addWidget(self.counts_status)
+
+        # ----- right-aligned permanent widgets -----
+        self.cursor_status = _mono_label("cursor 0,0")
+        self.cursor_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
         statusbar.addPermanentWidget(self.cursor_status)
 
-        statusbar.addPermanentWidget(QLabel("|"))
+        statusbar.addPermanentWidget(_vsep())
 
-        self.block_count_status = QLabel("Blocks: 0")
-        statusbar.addPermanentWidget(self.block_count_status)
+        self.zoom_status = _mono_label("zoom 100%")
+        self.zoom_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
+        statusbar.addPermanentWidget(self.zoom_status)
 
-        statusbar.addPermanentWidget(QLabel("|"))
+        statusbar.addPermanentWidget(_vsep())
 
-        # Show actual current theme
-        initial_theme = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
-        self.theme_status = QLabel(initial_theme)
+        # Theme + palette tag
+        theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
+        from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
+        palette_label = PALETTE_DISPLAY_NAMES.get(theme_manager.current_palette, theme_manager.current_palette).split()[0]
+        self.theme_status = QLabel(f"{theme_label} · {palette_label}")
+        self.theme_status.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+            f" background-color: {theme_manager.get_color('background_tertiary').name()};"
+            f" padding: 1px 8px; border-radius: 4px; font-size: 9pt;"
+        )
         statusbar.addPermanentWidget(self.theme_status)
 
-        # Apply initial theme colors to statusbar labels
+        # Drive zoom from toolbar's zoom rocker so the two stay in sync
+        try:
+            self.toolbar.zoom_changed.connect(
+                lambda f: self.zoom_status.setText(f"zoom {int(round(f*100))}%")
+            )
+        except Exception:
+            pass
+
+        # Cursor pos from canvas
+        try:
+            self.canvas.cursor_moved.connect(
+                lambda x, y: self.cursor_status.setText(f"cursor {x},{y}")
+            )
+        except Exception:
+            pass
+
+        # Periodic counts refresh (cheap; runs on the same timer that paints)
+        self._counts_refresh_timer = QTimer(self)
+        self._counts_refresh_timer.timeout.connect(self._refresh_status_counts)
+        self._counts_refresh_timer.start(500)
+
+        # Initial state
+        self._refresh_status_counts()
+        self._refresh_file_status()
+
+        # Apply theme palette to the statusbar host
         self._update_statusbar_colors()
+
+    def _refresh_status_counts(self):
+        """Update the counts pill from current dsim state."""
+        try:
+            dsim = getattr(self, 'dsim', None)
+            if dsim is None:
+                return
+            blocks = list(getattr(dsim, 'blocks_list', []) or [])
+            wires = list(getattr(dsim, 'line_list', []) or [])
+            scopes = sum(1 for b in blocks if getattr(b, 'block_fn', '') in ('Scope', 'FieldScope'))
+            self.counts_status.setText(
+                f"blocks {len(blocks)} · wires {len(wires)} · scopes {scopes}"
+            )
+        except Exception:
+            pass
+
+    def _refresh_file_status(self):
+        """Update filename + unsaved indicator in the status bar."""
+        try:
+            path = getattr(self.dsim, 'current_filepath', None) or getattr(self.dsim, 'filepath', None)
+            name = os.path.basename(path) if path else "untitled"
+            self.file_status.setText(name)
+            self.file_unsaved_status.setText("unsaved" if getattr(self.dsim, 'dirty', False) else "")
+        except Exception:
+            pass
     
     def _setup_connections(self):
         """Setup signal connections."""
@@ -738,27 +886,26 @@ class ModernDiaBloSWindow(QMainWindow):
         """)
 
     def _update_statusbar_colors(self):
-        """Update statusbar label colors for proper contrast."""
-        text_color = theme_manager.get_color('statusbar_text').name()
+        """Apply theme to the status bar shell. Individual pills own their own styles."""
         bg_color = theme_manager.get_color('statusbar_bg').name()
-        
-        # Style the status bar itself
-        self.statusBar().setStyleSheet(f"QStatusBar {{ background-color: {bg_color}; }}")
-        
-        # Style all labels in the status bar
-        statusbar_style = f"QLabel {{ color: {text_color}; background-color: transparent; }}"
-
-        # Update known labels
-        self.status_message.setStyleSheet(statusbar_style)
-        self.zoom_status.setStyleSheet(statusbar_style)
-        self.cursor_status.setStyleSheet(statusbar_style)
-        if hasattr(self, 'block_count_status'):
-            self.block_count_status.setStyleSheet(statusbar_style)
-        self.theme_status.setStyleSheet(statusbar_style)
-
-        # Apply to all statusbar labels (including "Zoom:" and "|" separators)
-        for widget in self.statusBar().findChildren(QLabel):
-            widget.setStyleSheet(statusbar_style)
+        border = theme_manager.get_color('border_primary').name()
+        self.statusBar().setStyleSheet(
+            f"QStatusBar {{ background-color: {bg_color}; border-top: 1px solid {border}; }}"
+            f"QStatusBar::item {{ border: 0; }}"
+        )
+        # Refresh theme pill text
+        if hasattr(self, 'theme_status'):
+            theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
+            from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
+            palette_label = PALETTE_DISPLAY_NAMES.get(
+                theme_manager.current_palette, theme_manager.current_palette
+            ).split()[0]
+            self.theme_status.setText(f"{theme_label} · {palette_label}")
+            self.theme_status.setStyleSheet(
+                f"color: {theme_manager.get_color('text_secondary').name()};"
+                f" background-color: {theme_manager.get_color('background_tertiary').name()};"
+                f" padding: 1px 8px; border-radius: 4px; font-size: 9pt;"
+            )
 
     def _update_menubar_colors(self):
         """Update menubar colors for proper contrast."""
@@ -877,82 +1024,97 @@ class ModernDiaBloSWindow(QMainWindow):
             self.command_palette.show_palette()
 
     def _setup_command_palette(self):
-        """Setup command palette with available commands."""
-        commands = []
+        """Build the command palette index — blocks, sim, view, files, help."""
+        commands: list[dict] = []
 
-        # Add block types dynamically from menu_blocks
-        # This ensures we use the correct fn_name for each block
+        # Block library — typed as 'block' so the BLOCK badge surfaces
         if hasattr(self, 'canvas') and hasattr(self.canvas.dsim, 'menu_blocks'):
-            block_descriptions = {
-                'constant': 'Constant value source',
-                'step': 'Step input signal',
-                'ramp': 'Ramp input signal',
-                'gain': 'Amplify signal by constant',
-                'sum': 'Add or subtract signals',
-                'integrator': 'Integrate signal over time',
-                'deriv': 'Differentiate signal',
-                'tranfn': 'Transfer function block',
-                'scope': 'Display signal values',
-                'mux': 'Multiplex signals',
-                'demux': 'Demultiplex signals',
-                'abs': 'Absolute value',
-                'exp': 'Exponential function',
-                'sqrt': 'Square root',
-                'sin': 'Sine function',
-                'cos': 'Cosine function',
-            }
-
             for menu_block in self.canvas.dsim.menu_blocks:
-                fn_name = menu_block.fn_name
-                block_fn = menu_block.block_fn
-                description = block_descriptions.get(fn_name.lower(), f'{block_fn} block')
-
+                fn_name = getattr(menu_block, 'fn_name', '') or ''
+                block_fn = getattr(menu_block, 'block_fn', '') or fn_name
                 commands.append({
-                    'name': f'Add {block_fn} Block',
+                    'name': f'Add {block_fn} block',
                     'type': 'block',
-                    'description': description,
+                    'description': f'{block_fn} ({fn_name})',
+                    'aliases': [fn_name, block_fn, fn_name.lower()],
                     'callback': lambda mb=menu_block: self._add_block_from_palette_menu(mb),
-                    'data': {'block_type': fn_name}
+                    'data': {'block_type': fn_name},
                 })
 
-        # Add application actions
-        actions = [
-            ('New Diagram', 'Create a new diagram', self.new_diagram),
-            ('Open Diagram', 'Open an existing diagram', self.open_diagram),
-            ('Save Diagram', 'Save current diagram', self.save_diagram),
-            ('Load Workspace', 'Load variables from workspace file', self.load_workspace),
-            ('Run Simulation', 'Start the simulation', self.start_simulation),
-            ('Pause Simulation', 'Pause the simulation', self.pause_simulation),
-            ('Stop Simulation', 'Stop the simulation', self.stop_simulation),
-            ('Show Plots', 'Display simulation plots', self.show_plots),
-            ('Zoom In', 'Increase canvas zoom', self.zoom_in),
-            ('Zoom Out', 'Decrease canvas zoom', self.zoom_out),
-            ('Fit to Window', 'Fit all blocks in view', self.fit_to_window),
-            ('Toggle Theme', 'Switch between light/dark mode', self.toggle_theme),
-            ('Toggle Grid', 'Show/hide canvas grid', self.toggle_grid),
-        ]
-
-        for action_name, description, callback in actions:
+        # Simulation actions (SIM badge)
+        for label, kbd, cb in [
+            ('Run simulation',   'F5', self.start_simulation),
+            ('Pause simulation', 'F6', self.pause_simulation),
+            ('Stop simulation',  'F7', self.stop_simulation),
+            ('Step simulation',  'F8', self.step_simulation),
+            ('Toggle fast solver', '', lambda: self.toggle_fast_solver(not getattr(self, 'use_fast_solver', True))),
+        ]:
             commands.append({
-                'name': action_name,
-                'type': 'action',
-                'description': description,
-                'callback': callback,
-                'data': {}
+                'name': label, 'type': 'sim', 'shortcut': kbd,
+                'callback': cb, 'data': {},
             })
 
-        # Add recent files
-        if hasattr(self, 'recent_files') and self.recent_files:
-            for file_path in self.recent_files[:5]:  # Show top 5 recent files
-                import os
-                file_name = os.path.basename(file_path)
-                commands.append({
-                    'name': file_name,
-                    'type': 'recent',
-                    'description': file_path,
-                    'callback': lambda fp=file_path: self._open_file(fp),
-                    'data': {'file_path': file_path}
-                })
+        # View toggles (VIEW badge)
+        for label, kbd, cb in [
+            ('Zoom in',       'Ctrl++',  self.zoom_in),
+            ('Zoom out',      'Ctrl+-',  self.zoom_out),
+            ('Fit to window', 'Ctrl+0',  self.fit_to_window),
+            ('Toggle theme',  'Ctrl+T',  self.toggle_theme),
+            ('Toggle grid',   'Ctrl+Shift+G', self.toggle_grid),
+            ('Toggle minimap', 'Ctrl+Shift+M', self.toggle_minimap),
+            ('Toggle variable editor', 'Ctrl+Shift+V', self.toggle_variable_editor),
+            ('Toggle workspace variables', 'Ctrl+Shift+W', self.toggle_workspace_editor),
+            ('Toggle tuning panel', '', self.toggle_tuning_panel),
+        ]:
+            commands.append({
+                'name': label, 'type': 'view', 'shortcut': kbd,
+                'callback': cb, 'data': {},
+            })
+
+        # File actions
+        for label, kbd, cb in [
+            ('New diagram',  'Ctrl+N', self.new_diagram),
+            ('Open diagram', 'Ctrl+O', self.open_diagram),
+            ('Save diagram', 'Ctrl+S', self.save_diagram),
+            ('Load workspace…', '', self.load_workspace),
+            ('Show plots',   '',       self.show_plots),
+            ('Export as TikZ…', '',    self.export_tikz),
+        ]:
+            commands.append({
+                'name': label, 'type': 'file', 'shortcut': kbd,
+                'callback': cb, 'data': {},
+            })
+
+        # Index examples on disk — file paths only, load on click
+        try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            examples_dir = os.path.join(base_dir, 'examples')
+            if os.path.isdir(examples_dir):
+                for f in sorted(os.listdir(examples_dir)):
+                    if f.endswith(('.json', '.dat', '.diablos')):
+                        path = os.path.join(examples_dir, f)
+                        commands.append({
+                            'name': f'examples / {os.path.splitext(f)[0]}',
+                            'type': 'file',
+                            'callback': lambda p=path: self.open_example(p),
+                            'data': {'path': path},
+                        })
+        except Exception:
+            logger.debug("Could not index examples for command palette", exc_info=True)
+
+        # Recent files
+        try:
+            recents = self._load_recent_files()
+        except Exception:
+            recents = []
+        for path in recents[:6]:
+            commands.append({
+                'name': os.path.basename(path),
+                'type': 'recent',
+                'description': path,
+                'callback': lambda p=path: self._open_recent_file(p),
+                'data': {'path': path},
+            })
 
         self.command_palette.set_commands(commands)
 

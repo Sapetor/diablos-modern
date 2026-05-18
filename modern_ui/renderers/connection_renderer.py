@@ -6,6 +6,7 @@ Separates rendering logic from the DLine data model.
 
 import math
 import logging
+import numpy as np
 from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF, QFont, QFontMetrics
 from PyQt5.QtCore import Qt, QPoint, QRect
 from modern_ui.themes.theme_manager import theme_manager
@@ -14,6 +15,97 @@ logger = logging.getLogger(__name__)
 
 class ConnectionRenderer:
     """Stateless renderer for connection lines."""
+
+    # ── Live-state V1: port-value chips ────────────────────────────
+
+    def draw_port_value_chips(self, painter: QPainter, blocks) -> None:
+        """Draw a small chip next to each output port showing its current scalar value.
+
+        Called from the canvas paintEvent only when simulation is running.
+        Tries `block.get_held_output(port)`, falls back to `block._held_outputs[port]`.
+        Vector values render as `vec[N]`.
+        """
+        if not painter or not painter.isActive():
+            return
+        try:
+            chip_bg = theme_manager.get_color('surface_elevated')
+            success = theme_manager.get_color('success')
+            border = QColor(success); border.setAlpha(90)
+
+            font = QFont("Menlo")
+            font.setStyleHint(QFont.Monospace)
+            if hasattr(font, 'setFamilies'):
+                font.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "monospace"])
+            font.setPointSize(8)
+            painter.setFont(font)
+            fm = QFontMetrics(font)
+
+            for block in blocks:
+                coords = getattr(block, 'out_coords', None)
+                if not coords:
+                    continue
+                for port_idx, p in enumerate(coords):
+                    val = self._port_value(block, port_idx)
+                    if val is None:
+                        continue
+                    text = self._format_value(val)
+                    if not text:
+                        continue
+
+                    text_w = (fm.horizontalAdvance(text) if hasattr(fm, 'horizontalAdvance')
+                              else fm.width(text))
+                    text_h = fm.height()
+                    pad_x, pad_y = 6, 2
+                    chip_w = text_w + 2 * pad_x
+                    chip_h = text_h + 2 * pad_y
+
+                    # Position to the right of the port; flip to left if it would
+                    # exceed the visible area (best-effort — caller can clip).
+                    x = p.x() + 8
+                    y = p.y() - chip_h // 2
+                    rect = QRect(x, y, chip_w, chip_h)
+
+                    painter.setBrush(chip_bg)
+                    painter.setPen(QPen(border, 1))
+                    painter.drawRoundedRect(rect, 3, 3)
+
+                    painter.setPen(success)
+                    painter.drawText(rect, Qt.AlignCenter, text)
+        except Exception as e:  # never let a render error tank the paint
+            logger.debug("Live port-value chip draw skipped: %s", e)
+
+    def _port_value(self, block, port_idx: int):
+        # Try the canonical API first
+        getter = getattr(block, 'get_held_output', None)
+        if callable(getter):
+            try:
+                return getter(port_idx)
+            except Exception:
+                pass
+        held = getattr(block, '_held_outputs', None)
+        if isinstance(held, dict) and port_idx in held:
+            return held[port_idx]
+        return None
+
+    def _format_value(self, val) -> str:
+        # Scalars → 3-significant-figure float
+        try:
+            if isinstance(val, (int, float, np.floating, np.integer)):
+                f = float(val)
+                if abs(f) < 1e-3 or abs(f) >= 1e4:
+                    return f"{f:.2e}"
+                return f"{f:.3f}"
+            if isinstance(val, np.ndarray):
+                if val.ndim == 0 or val.size == 1:
+                    return self._format_value(float(val.item()))
+                return f"vec[{val.size}]"
+            if isinstance(val, (list, tuple)):
+                if len(val) == 1:
+                    return self._format_value(val[0])
+                return f"vec[{len(val)}]"
+        except Exception:
+            pass
+        return ""
 
     def draw_line(self, line, painter: QPainter):
         """

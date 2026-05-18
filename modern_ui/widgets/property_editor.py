@@ -240,9 +240,26 @@ class PropertyEditor(QFrame):
         self._defaults = {}  # key -> default value
         self._sections = []  # CollapsibleSection references
         self._focus_out_submit = {}  # widget -> callable (PyQt5 5.15 workaround)
+        # Diagram-inspector context (V1 empty-state): set by main_window.
+        self._dsim = None
+        self._main_window = None
+        # TODO(multi-select V3): drop a richer multi-block view here. For now the
+        # selection model already routes only the first block via set_block(), so
+        # the empty-state view shows the diagram and the block-state view shows
+        # the single-block form — no regression vs. previous behavior.
 
         theme_manager.theme_changed.connect(self._update_theme)
         self._update_theme()
+
+    def set_diagram_context(self, dsim, main_window=None):
+        """Wire the inspector to the application so the V1 empty-state view
+        can read solver settings, workspace vars, recent runs, validation."""
+        self._dsim = dsim
+        self._main_window = main_window
+        # Re-render the empty state if no block is selected
+        if self.block is None:
+            self._clear_form()
+            self._show_diagram_inspector()
 
     def eventFilter(self, obj, event):
         """PyQt5 5.15 workaround: QLineEdit inside QScrollArea doesn't get
@@ -280,9 +297,13 @@ class PropertyEditor(QFrame):
         self.block = block
         self._clear_form()
         if self.block is None:
-            self._show_placeholder()
+            if self._dsim is not None:
+                self._show_diagram_inspector()
+            else:
+                self._show_placeholder()
         else:
             self._create_form()
+            self._create_connections_section()
         self.updateGeometry()
 
     # ── Form lifecycle ──────────────────────────────────────────
@@ -315,6 +336,222 @@ class PropertyEditor(QFrame):
         text_color = theme_manager.get_color('text_secondary').name()
         placeholder.setStyleSheet(f"color: {text_color}; padding: 20px;")
         self._main_layout.addWidget(placeholder)
+
+    # ── Diagram inspector (V1 empty-state) ────────────────────────
+
+    def _show_diagram_inspector(self):
+        """Render the V1 'diagram defaults' view when no block is selected.
+
+        Sections: header, Solver, Workspace, Recent runs, Validation.
+        All values are best-effort read from dsim — missing data is hidden,
+        not stubbed, so the view is honest about what's available.
+        """
+        import os as _os
+        text_primary = theme_manager.get_color('text_primary').name()
+        text_secondary = theme_manager.get_color('text_secondary').name()
+        text_disabled = theme_manager.get_color('text_disabled').name()
+        success = theme_manager.get_color('success').name()
+        warning = theme_manager.get_color('warning').name()
+        error = theme_manager.get_color('error').name()
+        border = theme_manager.get_color('border_primary').name()
+        accent = theme_manager.get_color('accent_primary').name()
+
+        # ── Header
+        header = QWidget()
+        h_lay = QVBoxLayout(header)
+        h_lay.setContentsMargins(8, 6, 8, 8)
+        h_lay.setSpacing(2)
+
+        eyebrow = QLabel("DIAGRAM")
+        ef = eyebrow.font(); ef.setPointSize(8); ef.setBold(True); eyebrow.setFont(ef)
+        eyebrow.setStyleSheet(f"color: {text_disabled};")
+        h_lay.addWidget(eyebrow)
+
+        filepath = (getattr(self._dsim, 'current_filepath', None)
+                    or getattr(self._dsim, 'filepath', None))
+        name = (_os.path.splitext(_os.path.basename(filepath))[0]
+                if filepath else "untitled")
+        title = QLabel(name)
+        tf = title.font(); tf.setPointSize(13); tf.setBold(True); title.setFont(tf)
+        title.setStyleSheet(f"color: {text_primary};")
+        h_lay.addWidget(title)
+
+        blocks = list(getattr(self._dsim, 'blocks_list', []) or [])
+        wires = list(getattr(self._dsim, 'line_list', []) or [])
+        sub = QLabel(f"{len(blocks)} blocks · {len(wires)} wires")
+        sub.setStyleSheet(f"color: {text_secondary}; font-size: 10pt;")
+        h_lay.addWidget(sub)
+
+        self._main_layout.addWidget(header)
+
+        # ── Solver section
+        sec = CollapsibleSection("Solver", expanded=True)
+        self._sections.append(sec)
+
+        # Use SimulationConfig and DSim attributes
+        sim_cfg = getattr(self._main_window, 'sim_config', None) if self._main_window else None
+        solver_fields = []
+        # Method
+        solver_fields.append(('solver', getattr(sim_cfg, 'solver', 'RK45') if sim_cfg else 'RK45'))
+        # Step / duration
+        sim_dt = getattr(self._dsim, 'sim_dt', None)
+        sim_time = getattr(self._dsim, 'sim_time', None)
+        if sim_dt is not None:
+            solver_fields.append(('step_size', f"{sim_dt} s"))
+        if sim_time is not None:
+            solver_fields.append(('duration', f"{sim_time} s"))
+        # Tolerances
+        if sim_cfg is not None:
+            for attr, label in [('rtol', 'rtol'), ('atol', 'atol')]:
+                if hasattr(sim_cfg, attr):
+                    solver_fields.append((label, str(getattr(sim_cfg, attr))))
+        # Fast solver
+        fast = getattr(self._main_window, 'use_fast_solver', False) if self._main_window else False
+        solver_fields.append(('fast_solver', "✓ on" if fast else "off"))
+
+        for k, v in solver_fields:
+            sec.addRow(self._mk_kv_label(k, text_secondary),
+                       self._mk_kv_value(v, text_primary, mono=True))
+        self._main_layout.addWidget(sec)
+
+        # ── Workspace
+        wsec = CollapsibleSection("Workspace", expanded=True)
+        self._sections.append(wsec)
+        try:
+            ws = WorkspaceManager().variables or {}
+        except Exception:
+            ws = {}
+        if not ws:
+            empty = QLabel("(no workspace variables)")
+            empty.setStyleSheet(f"color: {text_disabled}; padding: 4px;")
+            wsec.addRow("", empty)
+        else:
+            # Show up to 12 — past that, link to the workspace editor
+            for k, v in list(ws.items())[:12]:
+                wsec.addRow(self._mk_kv_label(k, text_secondary),
+                            self._mk_kv_value(str(v), text_primary, mono=True))
+            if len(ws) > 12:
+                more = QLabel(f"… +{len(ws) - 12} more")
+                more.setStyleSheet(f"color: {text_disabled}; padding: 2px;")
+                wsec.addRow("", more)
+        self._main_layout.addWidget(wsec)
+
+        # ── Recent runs
+        history = []
+        plotter = getattr(self._dsim, 'scope_plotter', None)
+        if plotter is not None:
+            history = list(getattr(plotter, 'run_history', None)
+                           or getattr(self._dsim, 'run_history', None)
+                           or [])
+        if history:
+            rsec = CollapsibleSection("Recent runs", expanded=False)
+            self._sections.append(rsec)
+            for i, run in enumerate(reversed(history[-4:])):
+                label = getattr(run, 'label', None) or f"Run {len(history) - i}"
+                rsec.addRow(self._mk_kv_label(str(label), text_secondary),
+                            self._mk_kv_value("", text_disabled, mono=True))
+            self._main_layout.addWidget(rsec)
+
+        # ── Validation
+        try:
+            errors = []
+            validator = getattr(self._dsim, 'diagram_validator', None)
+            if validator is not None and hasattr(validator, 'validate'):
+                errors = list(validator.validate() or [])
+        except Exception:
+            errors = []
+        if errors:
+            vsec = CollapsibleSection("Validation", expanded=True)
+            self._sections.append(vsec)
+            for err in errors[:10]:
+                sev = (getattr(err, 'severity', None) or '').lower()
+                color = (error if 'error' in sev else
+                         warning if 'warn' in sev else
+                         success)
+                dot = QLabel("●")
+                dot.setStyleSheet(f"color: {color};")
+                msg = QLabel(getattr(err, 'message', str(err)))
+                msg.setWordWrap(True)
+                msg.setStyleSheet(f"color: {text_primary}; font-size: 10pt;")
+                vsec.addRow(dot, msg)
+            self._main_layout.addWidget(vsec)
+        elif blocks:
+            # No issues — show the "all good" confirmation
+            vsec = CollapsibleSection("Validation", expanded=False)
+            self._sections.append(vsec)
+            ok = QLabel("✓ no issues detected")
+            ok.setStyleSheet(f"color: {success}; padding: 2px;")
+            vsec.addRow("", ok)
+            self._main_layout.addWidget(vsec)
+
+        self._main_layout.addStretch(1)
+        self._update_theme()
+
+    def _mk_kv_label(self, text, color):
+        lbl = QLabel(text)
+        f = lbl.font(); f.setPointSize(10); lbl.setFont(f)
+        lbl.setStyleSheet(f"color: {color};")
+        return lbl
+
+    def _mk_kv_value(self, text, color, mono=False):
+        lbl = QLabel(text)
+        if mono:
+            from PyQt5.QtGui import QFont as _QF
+            f = _QF("Menlo"); f.setStyleHint(_QF.Monospace); f.setPointSize(9)
+            if hasattr(f, 'setFamilies'):
+                f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+            lbl.setFont(f)
+        lbl.setStyleSheet(f"color: {color};")
+        return lbl
+
+    # ── Connections section (V2 block view) ───────────────────────
+
+    def _create_connections_section(self):
+        """Show `in[i] ← src` and `out[i] → dst` rows for the selected block.
+
+        Best-effort: reads from `dsim.line_list`. Skips silently if line schema
+        doesn't match what we expect (different DSim build).
+        """
+        if self.block is None or self._dsim is None:
+            return
+        try:
+            lines = list(getattr(self._dsim, 'line_list', []) or [])
+            name = getattr(self.block, 'name', None)
+            if not name:
+                return
+            inbound = []
+            outbound = []
+            for line in lines:
+                src_name = getattr(line, 'srcblock', None) or getattr(getattr(line, 'src_block', None), 'name', None)
+                dst_name = getattr(line, 'dstblock', None) or getattr(getattr(line, 'dst_block', None), 'name', None)
+                src_port = getattr(line, 'srcport', getattr(line, 'src_port', 0))
+                dst_port = getattr(line, 'dstport', getattr(line, 'dst_port', 0))
+                if dst_name == name:
+                    inbound.append((dst_port, src_name, src_port))
+                if src_name == name:
+                    outbound.append((src_port, dst_name, dst_port))
+            if not inbound and not outbound:
+                return
+
+            sec = CollapsibleSection("Connections", expanded=False)
+            self._sections.append(sec)
+            text_secondary = theme_manager.get_color('text_secondary').name()
+            text_primary = theme_manager.get_color('text_primary').name()
+
+            for port, peer, peer_port in sorted(inbound):
+                sec.addRow(
+                    self._mk_kv_label(f"in[{port}]", text_secondary),
+                    self._mk_kv_value(f"← {peer}.out[{peer_port}]", text_primary, mono=True),
+                )
+            for port, peer, peer_port in sorted(outbound):
+                sec.addRow(
+                    self._mk_kv_label(f"out[{port}]", text_secondary),
+                    self._mk_kv_value(f"→ {peer}.in[{peer_port}]", text_primary, mono=True),
+                )
+            self._main_layout.addWidget(sec)
+            self._update_theme()
+        except Exception as e:  # do not break the inspector for unknown DSim line shapes
+            self.logger.debug("Could not build connections section: %s", e)
 
     # ── Form creation ───────────────────────────────────────────
 

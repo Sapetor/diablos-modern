@@ -5,8 +5,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ParamDialog(QDialog):
-    def __init__(self, name, params):
-        super().__init__()
+    def __init__(self, name, params, parent=None):
+        super().__init__(parent)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setModal(True)
 
@@ -48,8 +48,8 @@ class ParamDialog(QDialog):
         return values
 
 class PortDialog(QDialog):
-    def __init__(self, name, params):
-        super().__init__()
+    def __init__(self, name, params, parent=None):
+        super().__init__(parent)
         self.setWindowTitle(f"{name} Port Configuration")
         self.params = params
         self.layout = QVBoxLayout()
@@ -71,8 +71,8 @@ class PortDialog(QDialog):
         return {key: entry.text() for key, entry in self.entries.items()}
 
 class SimulationDialog(QDialog):
-    def __init__(self, sim_time, sim_dt, plot_trange):
-        super().__init__()
+    def __init__(self, sim_time, sim_dt, plot_trange, parent=None):
+        super().__init__(parent)
         from PyQt5.QtWidgets import QGroupBox  # Local import to avoid circular dep issues if any, or just convenience
         
         self.setWindowTitle("Simulation Configuration")
@@ -88,9 +88,9 @@ class SimulationDialog(QDialog):
         self.sampling_time_input = QLineEdit(str(sim_dt))
         solver_layout.addWidget(self.sampling_time_input)
         
-        # Explanation Hint
-        hint_label = QLabel("<i>Global solver step. Discrete blocks execute at their<br>independent 'sampling_time' or synchronized to this step.</i>")
-        hint_label.setStyleSheet("color: gray; font-size: 11px;")
+        # Explanation Hint — themed via QSS, not inline styles
+        hint_label = QLabel("Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step.")
+        hint_label.setObjectName("HintLabel")
         hint_label.setWordWrap(True)
         solver_layout.addWidget(hint_label)
         

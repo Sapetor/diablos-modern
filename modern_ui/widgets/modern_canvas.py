@@ -45,6 +45,7 @@ class ModernCanvas(QWidget):
     simulation_status_changed = pyqtSignal(str)  # Emitted when simulation status changes
     command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     scope_changed = pyqtSignal(list)  # Emitted when navigation scope changes (path)
+    cursor_moved = pyqtSignal(int, int)  # (x, y) in canvas coordinates — drives status bar
     
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
@@ -66,6 +67,9 @@ class ModernCanvas(QWidget):
 
         # Connection routing default
         self.default_routing_mode = "bezier"
+
+        # Live overlay toggles (View → Live overlay submenu)
+        self.show_live_chips = True
 
         # Clipboard for copy-paste (not part of canvas_state - persists across operations)
         self.clipboard_blocks = []
@@ -535,6 +539,18 @@ class ModernCanvas(QWidget):
 
             # Draw routing tag HUD (Goto/From overview)
             self.canvas_renderer.draw_tag_hud(painter, self.dsim)
+
+            # Live overlay: V1 port-value chips while simulation is running.
+            # Hidden during drag/zoom for perf (the chips would jitter anyway).
+            if (self.is_simulation_running()
+                    and getattr(self, 'show_live_chips', True)
+                    and self.state != State.DRAGGING):
+                try:
+                    self.connection_renderer.draw_port_value_chips(
+                        painter, getattr(self.dsim, 'blocks_list', []) or []
+                    )
+                except Exception:
+                    pass
 
             painter.end()
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -1011,6 +1027,12 @@ class ModernCanvas(QWidget):
 
     def mouseMoveEvent(self, event):
         """Handle mouse move events."""
+        # Surface canvas-coords cursor for the status bar
+        try:
+            world = self.screen_to_world(event.pos())
+            self.cursor_moved.emit(world.x(), world.y())
+        except Exception:
+            pass
         # Delegate to InteractionManager
         self.interaction_manager.handle_mouse_move(event)
 

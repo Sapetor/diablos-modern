@@ -147,6 +147,11 @@ class FileService:
             "points": [(p.x(), p.y()) for p in line.points],
             "cptr": getattr(line, 'cptr', 0),
             "selected": line.selected,
+            # Persist routing state so manual / auto-routed waypoints survive
+            # reload. Without these, DLine.__init__ runs the default router and
+            # discards the saved bends.
+            "modified": getattr(line, 'modified', False),
+            "routing_mode": getattr(line, 'routing_mode', 'bezier'),
         }
 
     def save_to_file(self, data: Dict[str, Any], filename: str) -> bool:
@@ -418,11 +423,15 @@ class FileService:
 
         sid = block_data['sid']
         username = block_data.get('username', '') or f"Subsystem{sid}"
+        # Re-derive color from the live theme rather than the file's stale hex —
+        # otherwise example diagrams saved under a different palette/theme render
+        # with mismatched colors.
+        subsystem_color = self.model._get_category_color('Routing')
         block = Subsystem(
             block_name=username,
             sid=sid,
             coords=block_rect,
-            color=block_data.get('b_color') or 'lightgray',
+            color=subsystem_color,
         )
         block.username = username
         if params:
@@ -468,11 +477,15 @@ class FileService:
 
         sid = block_data['sid']
         username = block_data.get('username', '') or f"{block_fn[:2]}{sid}"
+        # Re-derive color from the live theme — example files have stale palette
+        # hex baked in (Inport→Sources, Outport→Sinks).
+        port_category = 'Sources' if block_fn == 'Inport' else 'Sinks'
+        port_color = self.model._get_category_color(port_category)
         block = cls(
             block_name=username,
             sid=sid,
             coords=block_rect,
-            color=block_data.get('b_color') or ('green' if block_fn == 'Inport' else 'red'),
+            color=port_color,
         )
         if params:
             block.params.update(params)
@@ -483,13 +496,14 @@ class FileService:
                         block_name_map: Dict[str, str]) -> Optional[Any]:
         """Reconstruct a single connection line from its serialized dict."""
         from lib.simulation.connection import DLine
+        from PyQt5.QtCore import QPoint
 
         points = [tuple(p) if isinstance(p, list) else p for p in line_data['points']]
 
         srcblock = block_name_map.get(line_data['srcblock'], line_data['srcblock'])
         dstblock = block_name_map.get(line_data['dstblock'], line_data['dstblock'])
 
-        return DLine(
+        line = DLine(
             line_data['sid'],
             srcblock,
             line_data['srcport'],
@@ -497,3 +511,21 @@ class FileService:
             line_data['dstport'],
             points,
         )
+
+        # Replay saved routing. DLine.__init__ ran the default router which
+        # discarded any intermediate waypoints — replay them here so manual
+        # bends and auto-routed paths survive save/reload.
+        saved_mode = line_data.get('routing_mode')
+        if saved_mode:
+            line.routing_mode = saved_mode
+        if line_data.get('modified') and len(points) > 1:
+            line.modified = True
+            saved_qpoints = [
+                QPoint(int(p.x()), int(p.y())) if hasattr(p, 'x') else QPoint(int(p[0]), int(p[1]))
+                for p in points
+            ]
+            line.path, line.points, line.segments = line.create_trajectory(
+                saved_qpoints[0], saved_qpoints[-1], [], points=saved_qpoints
+            )
+
+        return line
