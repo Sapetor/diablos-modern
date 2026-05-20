@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QSlider, QPushButton, QSizePolicy, QApplication
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QEvent
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtGui import QColor, QFont, QPalette
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
 
@@ -373,7 +373,7 @@ class PropertyEditor(QFrame):
 
         eyebrow = QLabel("DIAGRAM")
         ef = eyebrow.font(); ef.setPointSize(8); ef.setBold(True); eyebrow.setFont(ef)
-        eyebrow.setStyleSheet(f"color: {text_disabled};")
+        self._apply_label_color(eyebrow, text_disabled)
         h_lay.addWidget(eyebrow)
 
         filepath = (getattr(self._dsim, 'current_filepath', None)
@@ -382,13 +382,14 @@ class PropertyEditor(QFrame):
                 if filepath else "untitled")
         title = QLabel(name)
         tf = title.font(); tf.setPointSize(13); tf.setBold(True); title.setFont(tf)
-        title.setStyleSheet(f"color: {text_primary};")
+        self._apply_label_color(title, text_primary)
         h_lay.addWidget(title)
 
         blocks = list(getattr(self._dsim, 'blocks_list', []) or [])
         wires = list(getattr(self._dsim, 'line_list', []) or [])
         sub = QLabel(f"{len(blocks)} blocks · {len(wires)} wires")
-        sub.setStyleSheet(f"color: {text_secondary}; font-size: 10pt;")
+        sf = sub.font(); sf.setPointSize(10); sub.setFont(sf)
+        self._apply_label_color(sub, text_secondary)
         h_lay.addWidget(sub)
 
         self._main_layout.addWidget(header)
@@ -432,7 +433,7 @@ class PropertyEditor(QFrame):
             ws = {}
         if not ws:
             empty = QLabel("(no workspace variables)")
-            empty.setStyleSheet(f"color: {text_disabled}; padding: 4px;")
+            self._apply_label_color(empty, text_disabled)
             wsec.addRow("", empty)
         else:
             # Show up to 12 — past that, link to the workspace editor
@@ -441,7 +442,7 @@ class PropertyEditor(QFrame):
                             self._mk_kv_value(str(v), text_primary, mono=True))
             if len(ws) > 12:
                 more = QLabel(f"… +{len(ws) - 12} more")
-                more.setStyleSheet(f"color: {text_disabled}; padding: 2px;")
+                self._apply_label_color(more, text_disabled)
                 wsec.addRow("", more)
         self._main_layout.addWidget(wsec)
 
@@ -498,21 +499,67 @@ class PropertyEditor(QFrame):
         self._main_layout.addStretch(1)
         self._update_theme()
 
+    @staticmethod
+    def _apply_label_color(lbl, hex_color):
+        """Force a label's text color via three independent mechanisms.
+
+        QSS-only failed in practice: a parent's `PropertyEditor QLabel`
+        descendant rule beat the per-label `setStyleSheet("color: ...")` on
+        Windows even when the inline rule used the same id selector.
+        Belt-and-suspenders: inline stylesheet + palette WindowText/Text +
+        WA_StyledBackground so QStyle honors the palette.
+        """
+        from PyQt5.QtGui import QPalette as _QP, QColor as _QC
+        from PyQt5.QtCore import Qt as _Qt
+        c = _QC(hex_color)
+        pal = lbl.palette()
+        pal.setColor(_QP.WindowText, c)
+        pal.setColor(_QP.Text, c)
+        lbl.setPalette(pal)
+        lbl.setAttribute(_Qt.WA_StyledBackground, False)
+        lbl.setStyleSheet(f"color: {hex_color}; background: transparent;")
+
     def _mk_kv_label(self, text, color):
+        import sys as _sys
         lbl = QLabel(text)
-        f = lbl.font(); f.setPointSize(10); lbl.setFont(f)
-        lbl.setStyleSheet(f"color: {color};")
+        lbl.setObjectName("KvLabel")
+        f = lbl.font()
+        # Segoe UI 10pt regular with ClearType renders much thinner than
+        # San Francisco at the same size on macOS — same color, less ink,
+        # reads as "pale". Bump weight + size on Windows to match the
+        # perceived weight Mac users see.
+        if _sys.platform.startswith("win"):
+            f.setPointSize(10)
+            f.setWeight(QFont.Medium)
+        else:
+            f.setPointSize(10)
+        lbl.setFont(f)
+        self._apply_label_color(lbl, color)
         return lbl
 
     def _mk_kv_value(self, text, color, mono=False):
+        import sys as _sys
+        from PyQt5.QtGui import QFont as _QF
         lbl = QLabel(text)
+        lbl.setObjectName("KvValue")
         if mono:
-            from PyQt5.QtGui import QFont as _QF
-            f = _QF("Menlo"); f.setStyleHint(_QF.Monospace); f.setPointSize(9)
+            primary = "Consolas" if _sys.platform.startswith("win") else "Menlo"
+            f = _QF(primary)
+            f.setStyleHint(_QF.Monospace)
+            if _sys.platform.startswith("win"):
+                f.setPointSize(10)
+                f.setWeight(_QF.Medium)
+            else:
+                f.setPointSize(9)
             if hasattr(f, 'setFamilies'):
-                f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+                f.setFamilies([primary, "Menlo", "Consolas",
+                               "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
             lbl.setFont(f)
-        lbl.setStyleSheet(f"color: {color};")
+        elif _sys.platform.startswith("win"):
+            f = lbl.font()
+            f.setWeight(_QF.Medium)
+            lbl.setFont(f)
+        self._apply_label_color(lbl, color)
         return lbl
 
     # ── Connections section (V2 block view) ───────────────────────
@@ -1159,6 +1206,7 @@ class PropertyEditor(QFrame):
     def _update_theme(self):
         bg = theme_manager.get_color('surface').name()
         txt = theme_manager.get_color('text_primary').name()
+        sec = theme_manager.get_color('text_secondary').name()
         border = theme_manager.get_color('border_primary').name()
         input_bg = theme_manager.get_color('surface_variant').name()
         accent = theme_manager.get_color('accent_primary').name()
@@ -1174,7 +1222,15 @@ class PropertyEditor(QFrame):
                 border-radius: 4px;
             }}
             PropertyEditor QCheckBox {{ color: {txt}; spacing: 8px; }}
+            /* Default for labels that don't carry an object name: the
+               readable foreground for the current theme. Specific overrides
+               (KvLabel = dim, KvValue = bright) win via id-selector
+               specificity. Bare-QLabel + descendant rule is needed because
+               on Windows QPalette WindowText doesn't reliably propagate to
+               every QLabel inside a styled container. */
             PropertyEditor QLabel {{ color: {txt}; }}
+            PropertyEditor QLabel#KvLabel {{ color: {sec}; }}
+            PropertyEditor QLabel#KvValue {{ color: {txt}; }}
             PropertyEditor QLineEdit,
             PropertyEditor QSpinBox,
             PropertyEditor QDoubleSpinBox,

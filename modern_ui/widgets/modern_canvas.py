@@ -131,7 +131,7 @@ class ModernCanvas(QWidget):
         """Update canvas styling based on current theme."""
         canvas_bg = theme_manager.get_color('canvas_background')
         border_color = theme_manager.get_color('border_primary')
-        
+
         self.setStyleSheet(f"""
             ModernCanvas {{
                 background-color: {canvas_bg.name()};
@@ -139,6 +139,9 @@ class ModernCanvas(QWidget):
                 border-radius: 6px;
             }}
         """)
+        # Force a repaint so blocks pick up the new theme colors immediately
+        # (BlockRenderer resolves fill/border via theme_manager each paint).
+        self.update()
     
     def add_block_from_palette(self, menu_block, position):
         """Add a new block from the palette at the specified position."""

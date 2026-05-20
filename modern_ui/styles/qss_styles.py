@@ -14,6 +14,8 @@ Same public class (ModernStyles) and entry point (apply_modern_theme), but:
       QPushButton#CommandPaletteBtn
 """
 
+from PyQt5.QtGui import QPalette, QColor
+
 from modern_ui.themes.theme_manager import theme_manager
 
 
@@ -216,23 +218,40 @@ class ModernStyles:
     @classmethod
     def get_panel_style(cls) -> str:
         qss = """
-        QDialog {
+        QDialog,
+        QMessageBox,
+        QInputDialog,
+        QFileDialog {
             background-color: @background_secondary;
             color: @text_primary;
         }
 
         /* QLabel / QCheckBox color does not inherit from QDialog reliably in
            Qt's QSS — scope explicit rules to dialog/groupbox descendants so
-           the text stays readable in dark mode. */
+           the text stays readable in dark mode. QMessageBox / QInputDialog /
+           QFileDialog need explicit selectors on Windows: the QDialog QLabel
+           descendant rule alone is not picked up for their internal labels. */
         QDialog QLabel,
-        QGroupBox QLabel {
+        QGroupBox QLabel,
+        QMessageBox QLabel,
+        QInputDialog QLabel,
+        QFileDialog QLabel {
             color: @text_primary;
             background: transparent;
         }
         QDialog QCheckBox,
-        QGroupBox QCheckBox {
+        QGroupBox QCheckBox,
+        QMessageBox QCheckBox,
+        QInputDialog QCheckBox,
+        QFileDialog QCheckBox {
             color: @text_primary;
             background: transparent;
+        }
+        QFileDialog QListView,
+        QFileDialog QTreeView,
+        QFileDialog QToolButton {
+            color: @text_primary;
+            background-color: @surface;
         }
 
         /* Hint / muted labels inside dialogs (use objectName="HintLabel" or
@@ -463,11 +482,56 @@ class ModernStyles:
         return "\n\n".join(styles)
 
 
+def _build_qpalette() -> QPalette:
+    """Build a QPalette from the active theme.
+
+    QSS alone is not enough on Windows: native-styled widgets and any widget
+    without an explicit QSS color rule fall back to QApplication.palette(),
+    which Qt only auto-syncs with the OS dark mode on macOS. Without this,
+    dark mode shows dark text on dark backgrounds on Windows/Linux.
+    """
+    theme = theme_manager.get_current_theme()
+    text       = QColor(theme['text_primary'])
+    text_dim   = QColor(theme['text_secondary'])
+    text_off   = QColor(theme['text_disabled'])
+    window_bg  = QColor(theme['background_primary'])
+    panel_bg   = QColor(theme['background_secondary'])
+    surface    = QColor(theme['surface'])
+    accent     = QColor(theme['accent_primary'])
+    error      = QColor(theme['error'])
+    white      = QColor('#FFFFFF')
+
+    p = QPalette()
+    p.setColor(QPalette.Window,          window_bg)
+    p.setColor(QPalette.WindowText,      text)
+    p.setColor(QPalette.Base,            surface)
+    p.setColor(QPalette.AlternateBase,   panel_bg)
+    p.setColor(QPalette.Text,            text)
+    p.setColor(QPalette.PlaceholderText, text_dim)
+    p.setColor(QPalette.Button,          panel_bg)
+    p.setColor(QPalette.ButtonText,      text)
+    p.setColor(QPalette.BrightText,      error)
+    p.setColor(QPalette.ToolTipBase,     surface)
+    p.setColor(QPalette.ToolTipText,     text)
+    p.setColor(QPalette.Highlight,       accent)
+    p.setColor(QPalette.HighlightedText, white)
+    p.setColor(QPalette.Link,            accent)
+    p.setColor(QPalette.LinkVisited,     accent)
+
+    p.setColor(QPalette.Disabled, QPalette.WindowText, text_off)
+    p.setColor(QPalette.Disabled, QPalette.Text,       text_off)
+    p.setColor(QPalette.Disabled, QPalette.ButtonText, text_off)
+    p.setColor(QPalette.Disabled, QPalette.Highlight,  panel_bg)
+    p.setColor(QPalette.Disabled, QPalette.HighlightedText, text_off)
+    return p
+
+
 def apply_modern_theme(app):
-    stylesheet = ModernStyles.get_complete_stylesheet()
-    app.setStyleSheet(stylesheet)
+    app.setPalette(_build_qpalette())
+    app.setStyleSheet(ModernStyles.get_complete_stylesheet())
 
     def on_theme_changed():
+        app.setPalette(_build_qpalette())
         app.setStyleSheet(ModernStyles.get_complete_stylesheet())
 
     theme_manager.theme_changed.connect(on_theme_changed)

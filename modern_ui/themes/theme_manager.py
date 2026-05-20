@@ -298,10 +298,13 @@ class ThemeManager(QObject):
             'surface_variant':      '#2B3038',
             'surface_elevated':     '#363D47',
 
-            # Text
+            # Text — brightened from the Mac-tuned values so Windows ClearType
+            # rendering still reads cleanly against #1C2128 panels. The old
+            # secondary (#9AA4B2) and disabled (#5B6573) looked fine with
+            # macOS grayscale antialiasing but went thin/washed-out on Win.
             'text_primary':         '#E5E9EF',    # softer than pure white
-            'text_secondary':       '#9AA4B2',
-            'text_disabled':        '#5B6573',
+            'text_secondary':       '#B5BFCC',    # was #9AA4B2
+            'text_disabled':        '#7A8494',    # was #5B6573
             'text_inverse':         '#13171D',
 
             # Accent
@@ -388,9 +391,12 @@ class ThemeManager(QObject):
             'surface_variant':      '#F9FAFB',
             'surface_elevated':     '#FFFFFF',
 
+            # Darkened from the original (#6B7280 / #9CA3AF) so secondary and
+            # disabled text still read at AA contrast against white panels.
+            # Original disabled (#9CA3AF) hit only ~2.5:1 — below WCAG AA.
             'text_primary':         '#111827',
-            'text_secondary':       '#6B7280',
-            'text_disabled':        '#9CA3AF',
+            'text_secondary':       '#4B5563',    # was #6B7280
+            'text_disabled':        '#6B7280',    # was #9CA3AF
             'text_inverse':         '#FFFFFF',
 
             'accent_primary':       '#2563EB',

@@ -12,6 +12,39 @@ from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
 
+_CATEGORY_KEY_MAP = (
+    ('source',    'block_source'),
+    ('math',      'block_process'),
+    ('control',   'block_control'),
+    ('sink',      'block_sink'),
+    ('routing',   'block_routing'),
+    ('analysis',  'block_analysis'),
+    ('pde',       'block_pde'),
+    ('optim',     'block_optimization'),
+)
+
+
+def _category_token(block) -> str:
+    """Return a lowercased category string from a block, or '' if absent."""
+    cat = getattr(block, 'category', None)
+    if cat is None:
+        return ''
+    return cat.lower() if isinstance(cat, str) else str(cat).lower()
+
+
+def _category_color_key(block, suffix: str = '') -> str:
+    """Resolve the theme-manager color key for a block's category.
+
+    suffix='' returns the fill key (e.g. 'block_source'); '_border' returns
+    the border key. Falls back to 'block_other...' for unknown categories.
+    """
+    cat = _category_token(block)
+    for token, key in _CATEGORY_KEY_MAP:
+        if token in cat:
+            return key + suffix
+    return 'block_other' + suffix
+
+
 class BlockRenderer:
     """
     Stateless renderer for DBlock objects.
@@ -59,46 +92,25 @@ class BlockRenderer:
             shadow_rect = QRect(block.left + shadow_offset, block.top + shadow_offset, block.width, block.height)
             painter.drawRoundedRect(shadow_rect, radius, radius)
 
-        # Determine border color based on block category
-        category_color = block.b_color
-        border_color = theme_manager.get_color('border_primary')
+        # Resolve colors from the *current* theme every paint. The block's
+        # cached b_color is set at startup; when the user toggles dark/light
+        # later, that cache goes stale and produces light fills on a dark
+        # canvas (or vice versa). Going through theme_manager keeps fill
+        # and border in sync with the active theme.
+        if hasattr(block, 'category') and block.category:
+            border_color = theme_manager.get_color(_category_color_key(block, '_border'))
+            base_color = theme_manager.get_color(_category_color_key(block, ''))
+        else:
+            border_color = theme_manager.get_color('border_primary')
+            base_color = block.b_color
 
-        # Try to get category-specific border color
-        if hasattr(block, 'category'):
-            category_lower = block.category.lower() if isinstance(block.category, str) else str(block.category).lower()
-            if 'source' in category_lower:
-                border_color = theme_manager.get_color('block_source_border')
-            elif 'math' in category_lower:
-                border_color = theme_manager.get_color('block_process_border')
-            elif 'control' in category_lower:
-                border_color = theme_manager.get_color('block_control_border')
-            elif 'sink' in category_lower:
-                border_color = theme_manager.get_color('block_sink_border')
-            elif 'routing' in category_lower:
-                border_color = theme_manager.get_color('block_routing_border')
-            elif 'analysis' in category_lower:
-                border_color = theme_manager.get_color('block_analysis_border')
-            elif 'pde' in category_lower:
-                border_color = theme_manager.get_color('block_pde_border')
-            elif 'optim' in category_lower:
-                border_color = theme_manager.get_color('block_optimization_border')
-            else:
-                border_color = theme_manager.get_color('block_other_border')
-
-        # Override border if selected
         if block.selected:
             border_color = theme_manager.get_color('block_selected')
-            if not block.selected:
-                painter.setBrush(category_color)
-            else:
-                # Create a lighter version for selected state, or use base color per original logic
-                painter.setBrush(block.b_color)
 
         # Draw main block shape with gradient fill.
         # Subtle lighten (+12 RGB) keeps the top close to base so icons over
         # the top of the block don't wash out against a too-bright gradient.
         gradient = QLinearGradient(block.left, block.top, block.left, block.top + block.height)
-        base_color = block.b_color
         lighter_color = QColor(base_color)
         lighter_color.setRed(min(255, base_color.red() + 12))
         lighter_color.setGreen(min(255, base_color.green() + 12))
