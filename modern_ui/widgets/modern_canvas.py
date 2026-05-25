@@ -589,8 +589,17 @@ class ModernCanvas(QWidget):
         """Update line positions after block movement."""
         self.connection_manager.update_line_positions()
 
-
-
+    def _reroute_affected_lines(self, block_names):
+        """Re-run A* routing on lines connected to the given block names."""
+        try:
+            from lib.simulation.wire_router import route_all_lines
+            lines = self.dsim.line_list
+            affected = [l for l in lines if l.srcblock in block_names or l.dstblock in block_names]
+            if affected:
+                route_all_lines(affected, self.dsim.blocks_list)
+                self.dsim.dirty = True
+        except Exception as e:
+            logger.error(f"Reroute after move failed: {e}")
 
     def mousePressEvent(self, event):
         """Handle mouse press events."""
@@ -1063,6 +1072,7 @@ class ModernCanvas(QWidget):
 
                 if moved_significantly:
                     self._push_undo("Move")
+                    moved_block_names = {b.name for b in self.drag_start_positions}
                 else:
                     logger.debug("Block moved less than threshold, not capturing undo")
 
@@ -1071,8 +1081,10 @@ class ModernCanvas(QWidget):
                 self.dragging_block = None
                 self.drag_offset = None
                 self.drag_start_positions = {}
-                self._update_line_positions() # Ensure lines are updated after drag finishes
-                self.update() # Trigger a final repaint
+                self._update_line_positions()
+                if moved_significantly:
+                    self._reroute_affected_lines(moved_block_names)
+                self.update()
         except Exception as e:
             logger.error(f"Error finishing drag: {str(e)}")
 
@@ -1093,10 +1105,13 @@ class ModernCanvas(QWidget):
                 pos_change = (abs(block.left - start_rect.left()) +
                              abs(block.top - start_rect.top()))
 
-                if size_change >= resize_threshold or pos_change >= resize_threshold:
+                resized_significantly = size_change >= resize_threshold or pos_change >= resize_threshold
+                if resized_significantly:
                     self._push_undo("Resize")
                 else:
                     logger.debug("Block resized less than threshold, not capturing undo")
+
+                resized_name = block.name
 
                 # Reset resize state
                 self.state = State.IDLE
@@ -1109,6 +1124,8 @@ class ModernCanvas(QWidget):
 
                 # Ensure lines are updated after resize
                 self._update_line_positions()
+                if resized_significantly:
+                    self._reroute_affected_lines({resized_name})
                 self.update()
         except Exception as e:
             logger.error(f"Error finishing resize: {str(e)}")

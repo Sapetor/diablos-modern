@@ -109,7 +109,7 @@ Select the function via the block parameters."""
             # Try to evaluate as a Python expression
             # Context: u (input), t (time), np (numpy), and standard math functions
             raw_func = str(params.get("function", params.get("expression", "sin")))
-            return {0: float(safe_expr(raw_func, variables={"u": u, "t": time}))}
+            return {0: np.atleast_1d(safe_expr(raw_func, variables={"u": u, "t": time}))}
 
         except Exception as e:
             logger.warning(f"MathFunction '{params.get('_name_', '?')}': {e}")

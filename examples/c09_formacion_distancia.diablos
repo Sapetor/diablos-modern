@@ -1,0 +1,695 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 8.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100.0
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Integrator",
+            "sid": 0,
+            "name": "integrator0",
+            "username": "x_state",
+            "coords_left": 640,
+            "coords_top": 300,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ca9ee6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": [
+                    0.0,
+                    0.0,
+                    3.5,
+                    1.0
+                ],
+                "method": "SOLVE_IVP",
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 1,
+            "name": "matrixgain1",
+            "username": "delta_diff",
+            "coords_left": 760,
+            "coords_top": 300,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[1, 0, -1, 0], [0, 1, 0, -1]]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "SgProd",
+            "sid": 2,
+            "name": "sgprod2",
+            "username": "delta_sq",
+            "coords_left": 880,
+            "coords_top": 300,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 3,
+            "name": "matrixgain3",
+            "username": "beta_sum",
+            "coords_left": 1000,
+            "coords_top": 300,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[1, 1]]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 4,
+            "name": "constant4",
+            "username": "d_squared",
+            "coords_left": 1000,
+            "coords_top": 380,
+            "coords_width": 60,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#a6d189",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": 4.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 5,
+            "name": "sum5",
+            "username": "phi_err",
+            "coords_left": 1120,
+            "coords_top": 320,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "SgProd",
+            "sid": 6,
+            "name": "sgprod6",
+            "username": "phi_times_delta",
+            "coords_left": 1220,
+            "coords_top": 270,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 40,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 7,
+            "name": "matrixgain7",
+            "username": "u_dist",
+            "coords_left": 1320,
+            "coords_top": 270,
+            "coords_width": 70,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#8caaee",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[-2, 0], [0, -2], [2, 0], [0, 2]]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "name": "scope8",
+            "username": "positions",
+            "coords_left": 640,
+            "coords_top": 200,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#e78284",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "p1_x,p1_y,p2_x,p2_y"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 9,
+            "name": "scope9",
+            "username": "distance_sq",
+            "coords_left": 1100,
+            "coords_top": 420,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#e78284",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "||p1-p2||^2"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "AgentScope",
+            "sid": 10,
+            "name": "agentscope10",
+            "username": "anim",
+            "coords_left": 740,
+            "coords_top": 200,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#e78284",
+            "b_type": 3,
+            "io_edit": "none",
+            "fn_name": "agentscope",
+            "params": {
+                "n_agents": 2,
+                "show_trails": true,
+                "trail_length": 0,
+                "title": "Distance formation (N=2)"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "matrixgain1",
+            "dstport": 0,
+            "points": [
+                [
+                    700,
+                    320
+                ],
+                [
+                    760,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "matrixgain1",
+            "srcport": 0,
+            "dstblock": "sgprod2",
+            "dstport": 0,
+            "points": [
+                [
+                    830,
+                    320
+                ],
+                [
+                    880,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "matrixgain1",
+            "srcport": 0,
+            "dstblock": "sgprod2",
+            "dstport": 1,
+            "points": [
+                [
+                    830,
+                    320
+                ],
+                [
+                    860,
+                    320
+                ],
+                [
+                    860,
+                    340
+                ],
+                [
+                    880,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "sgprod2",
+            "srcport": 0,
+            "dstblock": "matrixgain3",
+            "dstport": 0,
+            "points": [
+                [
+                    940,
+                    330
+                ],
+                [
+                    980,
+                    330
+                ],
+                [
+                    980,
+                    320
+                ],
+                [
+                    1000,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "matrixgain3",
+            "srcport": 0,
+            "dstblock": "sum5",
+            "dstport": 0,
+            "points": [
+                [
+                    1070,
+                    320
+                ],
+                [
+                    1100,
+                    320
+                ],
+                [
+                    1100,
+                    340
+                ],
+                [
+                    1120,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "constant4",
+            "srcport": 0,
+            "dstblock": "sum5",
+            "dstport": 1,
+            "points": [
+                [
+                    1060,
+                    400
+                ],
+                [
+                    1100,
+                    400
+                ],
+                [
+                    1100,
+                    360
+                ],
+                [
+                    1120,
+                    360
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "sum5",
+            "srcport": 0,
+            "dstblock": "sgprod6",
+            "dstport": 0,
+            "points": [
+                [
+                    1180,
+                    350
+                ],
+                [
+                    1200,
+                    350
+                ],
+                [
+                    1200,
+                    290
+                ],
+                [
+                    1220,
+                    290
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "matrixgain1",
+            "srcport": 0,
+            "dstblock": "sgprod6",
+            "dstport": 1,
+            "points": [
+                [
+                    830,
+                    320
+                ],
+                [
+                    870,
+                    320
+                ],
+                [
+                    870,
+                    290
+                ],
+                [
+                    1200,
+                    290
+                ],
+                [
+                    1200,
+                    310
+                ],
+                [
+                    1220,
+                    310
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "sgprod6",
+            "srcport": 0,
+            "dstblock": "matrixgain7",
+            "dstport": 0,
+            "points": [
+                [
+                    1280,
+                    300
+                ],
+                [
+                    1300,
+                    300
+                ],
+                [
+                    1300,
+                    290
+                ],
+                [
+                    1320,
+                    290
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line9",
+            "sid": 9,
+            "srcblock": "matrixgain7",
+            "srcport": 0,
+            "dstblock": "integrator0",
+            "dstport": 0,
+            "points": [
+                [
+                    1390,
+                    290
+                ],
+                [
+                    1410,
+                    290
+                ],
+                [
+                    1410,
+                    260
+                ],
+                [
+                    620,
+                    260
+                ],
+                [
+                    620,
+                    320
+                ],
+                [
+                    640,
+                    320
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line10",
+            "sid": 10,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "scope8",
+            "dstport": 0,
+            "points": [
+                [
+                    700,
+                    320
+                ],
+                [
+                    720,
+                    320
+                ],
+                [
+                    720,
+                    260
+                ],
+                [
+                    620,
+                    260
+                ],
+                [
+                    620,
+                    220
+                ],
+                [
+                    640,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line11",
+            "sid": 11,
+            "srcblock": "matrixgain3",
+            "srcport": 0,
+            "dstblock": "scope9",
+            "dstport": 0,
+            "points": [
+                [
+                    1070,
+                    320
+                ],
+                [
+                    1090,
+                    320
+                ],
+                [
+                    1090,
+                    440
+                ],
+                [
+                    1100,
+                    440
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        },
+        {
+            "name": "Line12",
+            "sid": 12,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "agentscope10",
+            "dstport": 0,
+            "points": [
+                [
+                    700,
+                    320
+                ],
+                [
+                    720,
+                    320
+                ],
+                [
+                    720,
+                    220
+                ],
+                [
+                    740,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": true,
+            "routing_mode": "bezier"
+        }
+    ],
+    "version": "2.0",
+    "ui_state": {
+        "theme": "dark",
+        "zoom_factor": 1.0,
+        "main_splitter_sizes": [
+            190,
+            1393
+        ],
+        "center_splitter_sizes": [
+            1074,
+            310
+        ]
+    }
+}
