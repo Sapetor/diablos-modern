@@ -244,8 +244,7 @@ class CommandPalette(QDialog):
         self.list.setSpacing(0)
         self.list.setFocusPolicy(Qt.NoFocus)
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.list.itemActivated.connect(lambda _it: self._run_selected())
-        self.list.itemDoubleClicked.connect(lambda _it: self._run_selected())
+        self.list.itemClicked.connect(lambda _it: self._run_selected())
         v.addWidget(self.list)
 
         # Divider 2

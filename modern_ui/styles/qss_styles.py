@@ -532,6 +532,16 @@ def apply_modern_theme(app):
 
     def on_theme_changed():
         app.setPalette(_build_qpalette())
-        app.setStyleSheet(ModernStyles.get_complete_stylesheet())
+        qss = ModernStyles.get_complete_stylesheet()
+        # Never call app.setStyleSheet() after startup — Qt's stylesheet
+        # engine segfaults traversing pyqtgraph/OpenGL widgets.  Apply the
+        # stylesheet per-window, skipping pyqtgraph top-level windows.
+        from PyQt5.QtWidgets import QMainWindow
+        for w in app.topLevelWidgets():
+            try:
+                if isinstance(w, QMainWindow):
+                    w.setStyleSheet(qss)
+            except RuntimeError:
+                pass
 
     theme_manager.theme_changed.connect(on_theme_changed)
