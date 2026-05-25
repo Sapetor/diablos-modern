@@ -252,6 +252,7 @@ class PropertyEditor(QFrame):
         # Diagram-inspector context (V1 empty-state): set by main_window.
         self._dsim = None
         self._main_window = None
+        self._rebuilding_theme = False
         # TODO(multi-select V3): drop a richer multi-block view here. For now the
         # selection model already routes only the first block via set_block(), so
         # the empty-state view shows the diagram and the block-state view shows
@@ -1203,7 +1204,22 @@ class PropertyEditor(QFrame):
             f"QPushButton:hover {{ text-decoration: underline; }}"
         )
 
-    def _update_theme(self):
+    def _update_theme(self, _theme_key=None):
+        if _theme_key is not None and not self._rebuilding_theme:
+            self._rebuilding_theme = True
+            try:
+                self._clear_form()
+                if self.block is not None:
+                    self._create_form()
+                    self._create_connections_section()
+                elif self._dsim is not None:
+                    self._show_diagram_inspector()
+                else:
+                    self._show_placeholder()
+            finally:
+                self._rebuilding_theme = False
+            return
+
         bg = theme_manager.get_color('surface').name()
         txt = theme_manager.get_color('text_primary').name()
         sec = theme_manager.get_color('text_secondary').name()

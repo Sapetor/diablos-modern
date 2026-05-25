@@ -18,6 +18,8 @@ from PyQt5.QtWidgets import (
     QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget
 )
 
+from modern_ui.themes.theme_manager import theme_manager, ThemeType
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,7 +94,8 @@ class SignalPlot(QWidget):
             plot_widget = pg.PlotWidget(title=label)
             plot_widget.showGrid(x=True, y=True)
             self._configure_plot_axes(plot_widget)
-            curve = plot_widget.plot(pen='y', stepMode=self.curve_step_modes[idx])
+            pen = pg.mkPen(color=self._curve_color(idx), width=2)
+            curve = plot_widget.plot(pen=pen, stepMode=self.curve_step_modes[idx])
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
 
@@ -102,22 +105,105 @@ class SignalPlot(QWidget):
         self.auto_btn.clicked.connect(self._on_auto_columns)
         self.min_height_spin.valueChanged.connect(self._on_min_height_changed)
 
-        main_layout.addSpacing(20)
+        main_layout.addSpacing(10)
 
         self.export_button = QPushButton("Export to CSV...")
         self.export_button.setToolTip("Export plot data to CSV file")
         self.export_button.clicked.connect(self.export_to_csv)
         main_layout.addWidget(self.export_button)
 
+        self._apply_theme()
+        theme_manager.theme_changed.connect(self._apply_theme)
+
         self.resize(500, 400)
 
+    # Curve palette: saturated colors with good contrast on both dark and light
+    _CURVE_COLORS_DARK = [
+        '#60A5FA',  # blue
+        '#34D399',  # emerald
+        '#F472B6',  # pink
+        '#FBBF24',  # amber
+        '#A78BFA',  # violet
+        '#FB923C',  # orange
+        '#2DD4BF',  # teal
+        '#F87171',  # red
+        '#818CF8',  # indigo
+        '#4ADE80',  # green
+    ]
+    _CURVE_COLORS_LIGHT = [
+        '#2563EB',  # blue
+        '#059669',  # emerald
+        '#DB2777',  # pink
+        '#D97706',  # amber
+        '#7C3AED',  # violet
+        '#EA580C',  # orange
+        '#0D9488',  # teal
+        '#DC2626',  # red
+        '#4F46E5',  # indigo
+        '#16A34A',  # green
+    ]
+
+    def _curve_color(self, index):
+        is_dark = theme_manager.current_theme == ThemeType.DARK
+        palette = self._CURVE_COLORS_DARK if is_dark else self._CURVE_COLORS_LIGHT
+        return palette[index % len(palette)]
+
     def _configure_plot_axes(self, plot_widget):
-        """Configure plot widget axes for better visibility."""
         plot_widget.setLabel('bottom', 'Time')
         plot_widget.getAxis('bottom').setStyle(tickTextOffset=10)
-        plot_widget.getAxis('bottom').setPen(pg.mkPen(color='k', width=1))
         plot_widget.getAxis('bottom').enableAutoSIPrefix(False)
         plot_widget.setMinimumHeight(self._min_plot_height)
+
+    def _apply_theme(self, *_args):
+        is_dark = theme_manager.current_theme == ThemeType.DARK
+        bg = '#1C2128' if is_dark else '#FAFBFC'
+        fg = '#E5E9EF' if is_dark else '#111827'
+        grid_alpha = 0.12 if is_dark else 0.15
+        axis_pen = pg.mkPen(color=fg, width=1)
+        border = '#2D333D' if is_dark else '#E5E7EB'
+        surface = '#1C2128' if is_dark else '#FFFFFF'
+        accent = '#60A5FA' if is_dark else '#2563EB'
+
+        self.setStyleSheet(f"""
+            SignalPlot {{
+                background-color: {bg};
+                color: {fg};
+            }}
+            QLabel {{
+                color: {fg};
+            }}
+            QPushButton {{
+                background-color: {surface};
+                color: {fg};
+                border: 1px solid {border};
+                border-radius: 4px;
+                padding: 4px 12px;
+            }}
+            QPushButton:hover {{
+                border-color: {accent};
+            }}
+            QSpinBox {{
+                background-color: {surface};
+                color: {fg};
+                border: 1px solid {border};
+                border-radius: 4px;
+                padding: 2px 4px;
+            }}
+        """)
+
+        for idx, plot_widget in enumerate(self.plot_items):
+            plot_widget.setBackground(surface)
+            for axis_name in ('bottom', 'left', 'top', 'right'):
+                axis = plot_widget.getAxis(axis_name)
+                axis.setPen(axis_pen)
+                axis.setTextPen(pg.mkPen(color=fg))
+            plot_widget.getPlotItem().titleLabel.setAttr('color', fg)
+            plot_widget.showGrid(x=True, y=True, alpha=grid_alpha)
+            # Update curve color for the new theme
+            if idx < len(self.curves):
+                self.curves[idx].setPen(
+                    pg.mkPen(color=self._curve_color(idx), width=2)
+                )
 
     def _reflow_grid(self):
         for plot in self.plot_items:
@@ -154,18 +240,6 @@ class SignalPlot(QWidget):
         elif len(modes) > count:
             modes = modes[:count]
         return modes
-
-    def pltcolor(self, index, hues=9, hueOff=180, minHue=0, maxHue=360, val=255, sat=255, alpha=255):
-        """Assigns a color to a vector for plotting purposes."""
-        third = (maxHue - minHue) / 3
-        hues = int(hues)
-        indc = int(index) // 3
-        indr = int(index) % 3
-
-        hsection = indr * third
-        hrange = (indc * third / (hues // 3)) % third
-        h = (hsection + hrange + hueOff) % 360
-        return pg.hsvColor(h / 360, sat / 255, val / 255, alpha / 255)
 
     def plot_config(self, settings_dict={}):
         return
