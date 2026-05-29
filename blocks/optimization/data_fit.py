@@ -237,7 +237,9 @@ class DataFitBlock(BaseBlock):
 
         try:
             if data_file.endswith('.npz'):
-                data = np.load(data_file)
+                # allow_pickle=False: never deserialize Python objects from a data
+                # file path that may originate from an untrusted project file.
+                data = np.load(data_file, allow_pickle=False)
                 t_data = data.get(time_col, data.get('t', np.array([0.0, 1.0])))
                 y_data = data.get(signal_col, data.get('y', np.array([0.0, 0.0])))
             elif data_file.endswith('.csv'):

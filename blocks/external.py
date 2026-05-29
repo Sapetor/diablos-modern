@@ -17,9 +17,13 @@ class ExternalBlock(BaseBlock):
 
     Executes custom Python code loaded from an external .py file.
 
-    NOTE: This is a placeholder. The actual execution happens via
-    block.file_function in the simulation engine, but the loading
-    mechanism is not yet implemented.
+    NOTE: This is a placeholder. External execution is NOT implemented and
+    is intentionally disabled in the simulation engine for security reasons:
+    the `external`/`function` fields are persisted in project files, so
+    dynamically loading and calling code from a file-supplied path would turn
+    opening an untrusted .diablos file into arbitrary code execution. Any
+    future implementation must require explicit user confirmation and must not
+    auto-execute code referenced by a loaded project file.
     """
 
     def __init__(self):
@@ -78,9 +82,9 @@ class ExternalBlock(BaseBlock):
         """
         Execute external function.
 
-        NOTE: When block.external is True, the simulation engine bypasses
-        this method and calls block.file_function directly. This method
-        is only called if the external file loading failed.
+        NOTE: External execution is disabled in the simulation engine for
+        security reasons, so this stub is the only code path. It always
+        returns an error.
         """
         filename = params.get('filename', '')
         if not filename:

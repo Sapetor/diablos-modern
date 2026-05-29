@@ -391,11 +391,17 @@ class SimulationEngine:
                     kwargs['dtime'] = self.sim_dt
             
             if block.external:
-                try:
-                    out_value = getattr(block.file_function, block.fn_name)(**kwargs)
-                except Exception as e:
-                    logger.error(f"ERROR IN EXTERNAL FUNCTION {block.file_function}: {e}")
-                    return False
+                # The External block is an unimplemented stub (see blocks/external.py).
+                # Do NOT dynamically dispatch into a file-supplied function here: the
+                # `external`/`fn_name` flags are persisted in project files, so honoring
+                # them would turn opening a malicious .diablos file into arbitrary code
+                # execution the moment external loading is ever implemented. Treat as a
+                # hard, explicit "not supported" error instead.
+                logger.error(
+                    f"Block {block.name}: external function execution is not supported "
+                    f"and is disabled for security reasons."
+                )
+                return False
             else:
                 if block.block_instance is None:
                     # Logic for blocks without instance (e.g. Subsystem if not flattened correctly)
