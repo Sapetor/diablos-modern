@@ -40,6 +40,7 @@ class ClipboardManager:
                     'block_fn': block.block_fn,
                     'coords': QRect(block.left, block.top, block.width, block.height_base),
                     'color': block.b_color.name(),
+                    'category': getattr(block, 'category', 'Other'),
                     'in_ports': block.in_ports,
                     'out_ports': block.out_ports,
                     'b_type': block.b_type,
@@ -167,6 +168,7 @@ class ClipboardManager:
                     new_block.params = block_data['params'].copy()
                     new_block.params['_name_'] = new_block.name  # Ensure params name matches
                     new_block.external = block_data['external']
+                    new_block.category = block_data.get('category', 'Other')
 
                     # Restore internal structure if available
                     if 'sub_blocks' in block_data:
@@ -195,7 +197,8 @@ class ClipboardManager:
                         external=block_data['external'],
                         username='',  # Let it default to new name
                         block_class=block_class,
-                        colors=self.dsim.colors
+                        colors=self.dsim.colors,
+                        category=block_data.get('category', 'Other')
                     )
                 new_block.flipped = block_data['flipped']
                 new_block.selected = True  # Select the pasted blocks
@@ -327,6 +330,8 @@ class ClipboardManager:
                 external=block.external,
                 block_class=getattr(block, 'block_class', None)
             )
+            # Preserve category so add_block resolves the correct theme color.
+            menu_block.category = getattr(block, 'category', 'Other')
 
             # Use add_block with the MenuBlocks object
             new_block = self.dsim.add_block(menu_block, new_position)

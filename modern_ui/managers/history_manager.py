@@ -98,6 +98,7 @@ class HistoryManager:
                     'block_fn': block.block_fn,
                     'coords': (block.left, block.top, block.width, block.height),
                     'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
+                    'category': getattr(block, 'category', 'Other'),
                     'in_ports': block.in_ports,
                     'out_ports': block.out_ports,
                     'b_type': block.b_type,
@@ -184,7 +185,8 @@ class HistoryManager:
                         block_data['fn_name'],
                         block_data['params'],
                         block_data['external'],
-                        block_class=block_class
+                        block_class=block_class,
+                        category=block_data.get('category', 'Other')
                     )
 
                     # Restore selection state and original name

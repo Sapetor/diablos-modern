@@ -1434,6 +1434,9 @@ class ModernCanvas(QWidget):
                         external=block_data['external'],
                         block_class=block_data.get('block_class', None)
                     )
+                    # Preserve category so add_block resolves the correct
+                    # theme color (otherwise it defaults to 'Other' -> grey).
+                    menu_block.category = block_data.get('category', 'Other')
 
                     # Use add_block with the MenuBlocks object
                     new_block = self.dsim.add_block(menu_block, new_position)

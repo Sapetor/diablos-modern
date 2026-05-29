@@ -245,5 +245,36 @@ class TestConnectionNameResolution:
                 f"Could not resolve dstblock '{line.dstblock}'. Available: {list(name_to_block.keys())}"
 
 
+class TestCategoryRoundTrip:
+    """Regression: pasted blocks must keep their category so the renderer
+    resolves the correct theme color (category drives fill/border, not b_color).
+    """
+
+    def test_copy_stores_category(self, mock_canvas):
+        clipboard = ClipboardManager(mock_canvas)
+        mock_canvas.dsim.blocks_list[0].category = 'Sources'
+        mock_canvas.dsim.blocks_list[1].category = 'Math'
+        mock_canvas.dsim.blocks_list[2].category = 'Sinks'
+
+        clipboard.copy_selected_blocks()
+
+        cats = [bd['category'] for bd in clipboard.clipboard_blocks]
+        assert cats == ['Sources', 'Math', 'Sinks']
+
+    def test_paste_restores_category(self, mock_canvas):
+        clipboard = ClipboardManager(mock_canvas)
+        mock_canvas.dsim.blocks_list[0].category = 'Sources'
+        mock_canvas.dsim.blocks_list[1].category = 'Math'
+        mock_canvas.dsim.blocks_list[2].category = 'Sinks'
+
+        clipboard.copy_selected_blocks()
+        clipboard.paste_blocks()
+
+        # Newly pasted blocks are the ones added after the original 3
+        pasted = mock_canvas.dsim.blocks_list[3:]
+        assert [b.category for b in pasted] == ['Sources', 'Math', 'Sinks'], \
+            "Pasted blocks lost their category (would render as grey 'Other')"
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
