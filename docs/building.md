@@ -5,19 +5,24 @@ DiaBloS can be packaged as a standalone app using PyInstaller. Users don't need 
 ## macOS (Quick Build)
 
 ```bash
-# x86_64 (Rosetta) -- RECOMMENDED for releases (fully functional)
+# arm64 -- RECOMMENDED for releases (fast, working cursor)
+source ~/.venvs/diablos-arm64/bin/activate
+./tools/build.sh
+# Output: dist/DiaBloS-arm64.app + dist/DiaBloS-arm64.dmg (72MB)
+
+# x86_64 (Rosetta) -- fallback for older Intel Macs
 source ~/.venvs/evaluate-diablos/bin/activate
 ./tools/build.sh
 # Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-x86_64.dmg (113MB)
 
 # Move DMG out of vault and clean up
-mv dist/DiaBloS-x86_64.dmg ~/Desktop/
-rm -rf dist/DiaBloS-x86_64.app build/
+mv dist/DiaBloS-*.dmg ~/Desktop/
+rm -rf dist/DiaBloS-*.app build/
 ```
 
 `tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation. App names include the architecture (`DiaBloS-arm64.app`, `DiaBloS-x86_64.app`) so both can coexist in `/Applications`.
 
-> **Why x86_64?** PyQt5 5.15 (the only version available for arm64) has an unfixable macOS bug where the text cursor is invisible in styled QLineEdit widgets (QTBUG-109450). PyQt5 5.9 (x86_64 via Anaconda/Rosetta) works correctly. The arm64 build is ~10x faster to start but has no visible cursor in the property editor. Use x86_64 for releases until a PyQt6 migration.
+> **arm64 cursor bug — FIXED.** PyQt5 5.15 (arm64) had a macOS bug where the text cursor was invisible in styled QLineEdit widgets (QTBUG-109450): the native `macintosh` style fails to draw the caret in any input with a stylesheet `background-color`. Fixed by switching the app to the Fusion style on macOS + Qt >= 5.10 (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. The fix is scoped so the x86_64/PyQt5-5.9 build (native style works there) keeps its native look. arm64 is now ~10x faster to start with a fully working cursor, so it is the preferred release.
 
 ## Build Venvs
 
@@ -34,8 +39,8 @@ Both venvs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
 
 | Build | DMG | App Size | Sim Speed | Startup | Cursor |
 |-------|-----|----------|-----------|---------|--------|
+| arm64 | 72MB | 160MB | ~80K itr/s | ~2s | Works (Fusion fix) |
 | x86_64 | 113MB | 319MB | ~44K itr/s | ~25s (Rosetta) | Works |
-| arm64 | 72MB | 160MB | ~80K itr/s | ~2s | **Invisible** |
 
 ## Key Files
 

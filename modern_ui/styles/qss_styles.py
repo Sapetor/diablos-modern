@@ -526,7 +526,29 @@ def _build_qpalette() -> QPalette:
     return p
 
 
+def _maybe_use_fusion_style(app):
+    """Work around QTBUG-109450 on macOS.
+
+    On macOS with Qt 5.15 the native ``macintosh`` style fails to draw the
+    blinking text caret in any QLineEdit/QSpinBox that has a stylesheet
+    setting ``background-color`` — which is every input field in this app.
+    The Fusion style is fully stylesheet-aware and draws the caret itself,
+    so switching to it restores cursor visibility everywhere.
+
+    Scoped to macOS + Qt >= 5.10: the x86_64 release build ships PyQt5 5.9,
+    whose native style renders the caret correctly, so it is left untouched.
+    """
+    import sys
+    from PyQt5.QtCore import QT_VERSION
+    if sys.platform == 'darwin' and QT_VERSION >= 0x050A00:  # 5.10.0
+        from PyQt5.QtWidgets import QStyleFactory
+        fusion = QStyleFactory.create("Fusion")
+        if fusion is not None:
+            app.setStyle(fusion)
+
+
 def apply_modern_theme(app):
+    _maybe_use_fusion_style(app)
     app.setPalette(_build_qpalette())
     app.setStyleSheet(ModernStyles.get_complete_stylesheet())
 
