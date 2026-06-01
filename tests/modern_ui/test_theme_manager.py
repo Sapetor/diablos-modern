@@ -33,9 +33,9 @@ def qt_app():
 # ---------------------------------------------------------------------------
 
 class TestDefaultPalette:
-    def test_default_palette_is_solarized(self):
+    def test_default_palette_is_tailwind(self):
         mgr = _fresh_manager()
-        assert mgr.current_palette == "solarized"
+        assert mgr.current_palette == "tailwind"
 
     def test_default_theme_is_dark(self):
         mgr = _fresh_manager()
@@ -43,12 +43,16 @@ class TestDefaultPalette:
         assert mgr.current_theme == ThemeType.DARK
 
     def test_solarized_dark_source_fill(self):
+        # Solarized dark fills were retuned to the neutral surface (#1C2128);
+        # the Solarized teal (#073642) clashed with the neutral chrome.
         mgr = _fresh_manager()
+        mgr.set_palette("solarized")
         color = mgr.get_color("block_source")
-        assert color.name().lower() == "#073642"
+        assert color.name().lower() == "#1c2128"
 
     def test_solarized_dark_source_border(self):
         mgr = _fresh_manager()
+        mgr.set_palette("solarized")
         color = mgr.get_color("block_source_border")
         assert color.name().lower() == "#859900"
 
@@ -63,13 +67,13 @@ class TestSetPaletteTailwind:
         mgr.set_palette("tailwind")
         assert mgr.current_palette == "tailwind"
         color = mgr.get_color("block_source")
-        assert color.name().lower() == "#064e3b"
+        assert color.name().lower() == "#065f46"
 
     def test_tailwind_dark_process_fill(self):
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
         color = mgr.get_color("block_process")
-        assert color.name().lower() == "#1e3a8a"
+        assert color.name().lower() == "#1e40af"
 
     def test_tailwind_light_source_fill(self):
         """Switching theme to light with Tailwind palette gives light fill."""
@@ -137,7 +141,7 @@ class TestThemeAndPaletteInteraction:
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
         # dark first
-        assert mgr.get_color("block_source").name().lower() == "#064e3b"
+        assert mgr.get_color("block_source").name().lower() == "#065f46"
         # switch to light
         mgr.set_theme(ThemeType.LIGHT)
         assert mgr.get_color("block_source").name().lower() == "#d1fae5"
@@ -156,14 +160,14 @@ class TestThemeAndPaletteInteraction:
 # ---------------------------------------------------------------------------
 
 class TestUnknownPaletteFallback:
-    def test_unknown_palette_falls_back_to_solarized(self):
+    def test_unknown_palette_falls_back_to_default(self):
         mgr = _fresh_manager()
-        mgr.set_palette("tailwind")  # change away from default
+        mgr.set_palette("solarized")  # change away from default
         mgr.set_palette("does_not_exist")
-        # Should fall back to solarized
-        assert mgr.current_palette == "solarized"
+        # Should fall back to the default palette (tailwind)
+        assert mgr.current_palette == "tailwind"
         color = mgr.get_color("block_source")
-        assert color.name().lower() == "#073642"
+        assert color.name().lower() == "#065f46"
 
 
 # ---------------------------------------------------------------------------
@@ -175,14 +179,14 @@ class TestSignalOnSetPalette:
         mgr = _fresh_manager()
         received = []
         mgr.theme_changed.connect(lambda v: received.append(v))
-        mgr.set_palette("tailwind")
+        mgr.set_palette("solarized")  # change away from default (tailwind)
         assert len(received) == 1
 
     def test_theme_changed_not_emitted_if_palette_unchanged(self):
         mgr = _fresh_manager()
         received = []
         mgr.theme_changed.connect(lambda v: received.append(v))
-        mgr.set_palette("solarized")  # already solarized — no change
+        mgr.set_palette("tailwind")  # already tailwind (default) — no change
         assert len(received) == 0
 
     def test_theme_changed_emitted_on_set_theme(self):
@@ -204,11 +208,11 @@ class TestSolidFills:
         assert mgr.solid_fills is False
 
     def test_set_solid_fills_changes_block_fill_to_accent(self):
-        """Solarized dark: block_source fill goes from #073642 to #859900 (accent)."""
+        """Solarized dark: block_source fill goes from #1c2128 to #859900 (accent)."""
         mgr = _fresh_manager()
         mgr.set_palette("solarized")
-        # Default (outline mode): neutral fill
-        assert mgr.get_color("block_source").name().lower() == "#073642"
+        # Default (outline mode): neutral surface fill
+        assert mgr.get_color("block_source").name().lower() == "#1c2128"
         # Solid mode: accent color
         mgr.set_solid_fills(True)
         assert mgr.get_color("block_source").name().lower() == "#859900"
