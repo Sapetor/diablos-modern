@@ -724,7 +724,11 @@ class SystemCompiler:
                     val = signals.get(_src, 0.0) if _src else 0.0
                     try:
                         signals[b_name] = float(_compiled({"u": val, "t": t}))
-                    except Exception:
+                    except Exception as _e:
+                        # User expression failed this step (e.g. domain/type error);
+                        # fall back to 0.0. Per-timestep hot loop -> debug level to
+                        # avoid flooding while still being diagnosable.
+                        logger.debug("MathFunction expr eval failed for %s: %s", b_name, _e)
                         signals[b_name] = 0.0
                 return exec_mathfunc_expr
             else:

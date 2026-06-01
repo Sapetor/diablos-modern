@@ -871,8 +871,10 @@ class SimulationEngine:
                     if hasattr(instance, 'requires_inputs') and not instance.requires_inputs:
                         self.memory_blocks.add(block.name)
                         continue
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Couldn't instantiate the block class to probe requires_inputs;
+                    # fall back to the static is_memory_block() classification below.
+                    logger.debug(f"Could not probe requires_inputs for {block.name}: {e}")
 
             if is_memory_block(block):
                 self.memory_blocks.add(block.name)

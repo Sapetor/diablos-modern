@@ -75,6 +75,10 @@ venv.bak/
 *.log
 diablos_modern.log
 
+# Archived design handoffs and stale notes (not tracked)
+archive/
+design_handoff_*/
+
 # Saves folder (user data, not tracked)
 saves/
 
