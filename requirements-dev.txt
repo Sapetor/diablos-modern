@@ -5,6 +5,7 @@
 pytest>=7.0.0
 pytest-qt>=4.2.0
 pytest-cov>=4.0.0
+pytest-timeout>=2.1.0  # CI backstop: fail a hung test instead of blocking the job
 
 # Code quality
 pylint>=2.15.0

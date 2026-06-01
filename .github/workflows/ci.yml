@@ -15,6 +15,8 @@ jobs:
   test:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # Hard cap so a wedged test can never burn hours of CI time.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -62,4 +64,6 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run test suite
-        run: pytest tests/
+        # --timeout makes an unexpected hang fail fast (signal method can
+        # interrupt blocking C calls); the job timeout-minutes is the hard cap.
+        run: pytest tests/ --timeout=120 --timeout-method=signal

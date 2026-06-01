@@ -14,6 +14,39 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QPoint, QRect
 from PyQt5.QtGui import QColor
 
+
+@pytest.fixture(scope="session", autouse=True)
+def _no_modal_dialogs():
+    """Stop modal Qt dialogs from blocking the (headless) test suite.
+
+    Engine code such as ``DSim.execution_init_time`` and the simulation
+    controller can pop modal dialogs via ``exec_()``. With no display
+    (CI runs with ``QT_QPA_PLATFORM=offscreen``) those calls block forever.
+    Make every dialog report "Accepted" immediately so the surrounding code
+    follows its normal path using the widget's default field values.
+
+    No test drives dialogs interactively (none call ``.exec_()`` directly),
+    so this is safe and purely a guardrail against hangs.
+    """
+    from PyQt5.QtWidgets import QDialog, QMessageBox
+
+    originals = {}
+
+    def _accept(self, *args, **kwargs):
+        return QDialog.Accepted
+
+    for cls in (QDialog, QMessageBox):
+        for meth in ("exec_", "exec"):
+            if hasattr(cls, meth):
+                originals[(cls, meth)] = getattr(cls, meth)
+                setattr(cls, meth, _accept)
+
+    yield
+
+    for (cls, meth), original in originals.items():
+        setattr(cls, meth, original)
+
+
 # Need a QApplication instance for PyQt tests
 @pytest.fixture(scope="session")
 def qapp():
