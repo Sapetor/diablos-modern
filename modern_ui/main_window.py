@@ -82,6 +82,9 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.managers.appearance_manager import AppearanceManager
         self.appearance_manager = AppearanceManager(self)
 
+        from modern_ui.managers.status_bar_manager import StatusBarManager
+        self.status_bar_manager = StatusBarManager(self)
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
 
@@ -533,175 +536,18 @@ class ModernDiaBloSWindow(QMainWindow):
                 child.setFocus(Qt.MouseFocusReason)
         return super().eventFilter(obj, event)
 
+    # Status-bar facades -> StatusBarManager (see managers/status_bar_manager.py)
     def _setup_statusbar(self):
-        """Compact pill-style status bar (≤ 28px tall).
-
-        Layout left-to-right:  state-pill · file-pill · counts · ⟶ · cursor · zoom · theme-pill
-        Segments are separated by 1px vertical dividers (no pipes).
-        """
-        from modern_ui.widgets.modern_toolbar import _StatusPill  # reuse toolbar pill
-
-        statusbar = self.statusBar()
-        statusbar.setSizeGripEnabled(False)
-        statusbar.setFixedHeight(26)
-
-        def _vsep():
-            f = QFrame()
-            f.setFrameShape(QFrame.VLine)
-            f.setObjectName("StatusDivider")
-            f.setStyleSheet(
-                f"color: {theme_manager.get_color('border_primary').name()};"
-                f" background: {theme_manager.get_color('border_primary').name()};"
-                f" max-width: 1px; min-width: 1px;"
-            )
-            f.setFixedHeight(14)
-            return f
-
-        def _mono_label(text=""):
-            from PyQt5.QtGui import QFont as _QF
-            lbl = QLabel(text)
-            f = _QF("Menlo")
-            f.setStyleHint(_QF.Monospace)
-            if hasattr(f, 'setFamilies'):
-                f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
-            f.setPointSize(8)
-            lbl.setFont(f)
-            return lbl
-
-        # Left: status pill (reused from toolbar)
-        self.status_pill = _StatusPill(self)
-        statusbar.addWidget(self.status_pill)
-
-        # Hidden compatibility shim — many call sites still call status_message.setText(...)
-        self.status_message = QLabel()
-        self.status_message.hide()
-        # Forward text changes to the pill (idle/running/paused detection)
-        def _on_status_text_changed(text):
-            try:
-                self.toolbar.set_status(text)
-            except Exception:
-                pass
-            t = (text or "").lower()
-            if 'run' in t and 'paus' not in t:
-                self.status_pill.set_state('running')
-            elif 'paus' in t:
-                self.status_pill.set_state('paused')
-            elif 'error' in t or 'fail' in t:
-                self.status_pill.set_state('error', text)
-            else:
-                self.status_pill.set_state('idle', text if text else None)
-        # Replace setText to propagate to the pill
-        _orig_setText = self.status_message.setText
-        def _propagating_setText(text):
-            _orig_setText(text)
-            _on_status_text_changed(text)
-        self.status_message.setText = _propagating_setText  # type: ignore[attr-defined]
-
-        statusbar.addWidget(_vsep())
-
-        # File info: filename + unsaved indicator
-        self.file_status = QLabel("untitled")
-        self.file_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_primary').name()};"
-        )
-        self.file_unsaved_status = QLabel("")
-        self.file_unsaved_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_disabled').name()};"
-            f" font-size: 9pt;"
-        )
-        statusbar.addWidget(self.file_status)
-        statusbar.addWidget(self.file_unsaved_status)
-
-        statusbar.addWidget(_vsep())
-
-        # Counts pill: blocks N · wires M · scopes K
-        self.counts_status = _mono_label("blocks 0 · wires 0 · scopes 0")
-        self.counts_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_secondary').name()};"
-        )
-        statusbar.addWidget(self.counts_status)
-
-        # ----- right-aligned permanent widgets -----
-        self.cursor_status = _mono_label("cursor 0,0")
-        self.cursor_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_secondary').name()};"
-        )
-        statusbar.addPermanentWidget(self.cursor_status)
-
-        statusbar.addPermanentWidget(_vsep())
-
-        self.zoom_status = _mono_label("zoom 100%")
-        self.zoom_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_secondary').name()};"
-        )
-        statusbar.addPermanentWidget(self.zoom_status)
-
-        statusbar.addPermanentWidget(_vsep())
-
-        # Theme + palette tag
-        theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
-        from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
-        palette_label = PALETTE_DISPLAY_NAMES.get(theme_manager.current_palette, theme_manager.current_palette).split()[0]
-        self.theme_status = QLabel(f"{theme_label} · {palette_label}")
-        self.theme_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_secondary').name()};"
-            f" background-color: {theme_manager.get_color('background_tertiary').name()};"
-            f" padding: 1px 8px; border-radius: 4px; font-size: 9pt;"
-        )
-        statusbar.addPermanentWidget(self.theme_status)
-
-        # Drive zoom from toolbar's zoom rocker so the two stay in sync
-        try:
-            self.toolbar.zoom_changed.connect(
-                lambda f: self.zoom_status.setText(f"zoom {int(round(f*100))}%")
-            )
-        except Exception:
-            pass
-
-        # Cursor pos from canvas
-        try:
-            self.canvas.cursor_moved.connect(
-                lambda x, y: self.cursor_status.setText(f"cursor {x},{y}")
-            )
-        except Exception:
-            pass
-
-        # Periodic counts refresh (cheap; runs on the same timer that paints)
-        self._counts_refresh_timer = QTimer(self)
-        self._counts_refresh_timer.timeout.connect(self._refresh_status_counts)
-        self._counts_refresh_timer.start(500)
-
-        # Initial state
-        self._refresh_status_counts()
-        self._refresh_file_status()
-
-        # Apply theme palette to the statusbar host
-        self._update_statusbar_colors()
+        """Build the compact pill-style status bar."""
+        self.status_bar_manager.setup()
 
     def _refresh_status_counts(self):
         """Update the counts pill from current dsim state."""
-        try:
-            dsim = getattr(self, 'dsim', None)
-            if dsim is None:
-                return
-            blocks = list(getattr(dsim, 'blocks_list', []) or [])
-            wires = list(getattr(dsim, 'line_list', []) or [])
-            scopes = sum(1 for b in blocks if getattr(b, 'block_fn', '') in ('Scope', 'FieldScope'))
-            self.counts_status.setText(
-                f"blocks {len(blocks)} · wires {len(wires)} · scopes {scopes}"
-            )
-        except Exception:
-            pass
+        self.status_bar_manager.refresh_counts()
 
     def _refresh_file_status(self):
         """Update filename + unsaved indicator in the status bar."""
-        try:
-            path = getattr(self.dsim, 'current_filepath', None) or getattr(self.dsim, 'filepath', None)
-            name = os.path.basename(path) if path else "untitled"
-            self.file_status.setText(name)
-            self.file_unsaved_status.setText("unsaved" if getattr(self.dsim, 'dirty', False) else "")
-        except Exception:
-            pass
+        self.status_bar_manager.refresh_file_status()
     
     def paintEvent(self, event):
         """Paint event - delegated to canvas widget."""
