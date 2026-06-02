@@ -713,10 +713,6 @@ class ModernDiaBloSWindow(QMainWindow):
         except Exception:
             pass
     
-    def _setup_connections(self):
-        """Setup signal connections."""
-        # Theme change updates
-        theme_manager.theme_changed.connect(self.on_theme_changed)
     def paintEvent(self, event):
         """Paint event - delegated to canvas widget."""
         pass
@@ -1578,16 +1574,6 @@ class ModernDiaBloSWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error navigating to error location: {str(e)}")
     
-    def _on_block_drag_started(self, menu_block):
-        """Handle block drag started from palette."""
-        try:
-            block_name = getattr(menu_block, 'fn_name', 'Unknown')
-            logger.info(f"Block drag started: {block_name}")
-            self.status_message.setText(f"Dragging {block_name}")
-            
-        except Exception as e:
-            logger.error(f"Error handling block drag start: {str(e)}")
-    
     # Update safe_update to use the new canvas
     def safe_update(self):
         """Safe update with error handling and performance monitoring."""
@@ -1879,9 +1865,6 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _check_autosave_recovery(self):
         self.project_manager.check_autosave_recovery()
-
-    def _recover_autosave(self):
-        return self.project_manager.recover_autosave()
 
     def _cleanup_autosave(self):
         self.project_manager.cleanup_autosave()
