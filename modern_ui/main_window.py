@@ -88,6 +88,9 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.managers.window_setup_manager import WindowSetupManager
         self.window_setup_manager = WindowSetupManager(self)
 
+        from modern_ui.managers.view_actions_manager import ViewActionsManager
+        self.view_actions_manager = ViewActionsManager(self)
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
 
@@ -237,14 +240,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
-        if hasattr(self, 'minimap_dock'):
-            visible = not self.minimap_dock.isVisible()
-            self.minimap_dock.setVisible(visible)
-            if visible:
-                # Refresh minimap when shown
-                self.minimap.refresh()
-            if hasattr(self, 'minimap_action'):
-                self.minimap_action.setChecked(visible)
+        self.view_actions_manager.toggle_minimap()
 
     def _set_scaling(self, factor):
         import json
@@ -422,12 +418,11 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self.dsim, 'screenshot'):
             self.dsim.screenshot(self)
     
+    # View-action facades -> ViewActionsManager (see managers/view_actions_manager.py)
     def set_zoom(self, factor: float):
         """Set zoom factor."""
-        if hasattr(self, 'canvas'):
-            self.canvas.set_zoom(factor)
-            self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-    
+        self.view_actions_manager.set_zoom(factor)
+
     # Appearance facades -> AppearanceManager (see managers/appearance_manager.py)
     def toggle_theme(self):
         """Toggle theme and persist the choice."""
@@ -494,26 +489,14 @@ class ModernDiaBloSWindow(QMainWindow):
                 self.status_message.setText("No blocks to select")
 
     def zoom_in(self):
-        if hasattr(self, 'canvas'):
-            self.canvas.zoom_in()
-            self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
+        self.view_actions_manager.zoom_in()
 
     def zoom_out(self):
-        if hasattr(self, 'canvas'):
-            self.canvas.zoom_out()
-            self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-            self.toast.show_message(f"🔍 Zoom: {int(self.canvas.zoom_factor * 100)}%", 1500)
+        self.view_actions_manager.zoom_out()
 
     def toggle_grid(self):
         """Toggle grid visibility."""
-        if hasattr(self, 'canvas'):
-            self.canvas.toggle_grid()
-            self.grid_toggle_action.setChecked(self.canvas.grid_visible)
-            status = "shown" if self.canvas.grid_visible else "hidden"
-            self.status_message.setText(f"Grid {status}")
-            icon = "⊞" if self.canvas.grid_visible else "⊟"
-            self.toast.show_message(f"{icon} Grid {status.capitalize()}")
+        self.view_actions_manager.toggle_grid()
 
     # Command-palette facades -> CommandPaletteManager (see managers/command_palette_manager.py)
     def show_command_palette(self):
@@ -534,63 +517,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
-        if not hasattr(self, 'canvas'):
-            return
-
-        from PyQt5.QtCore import QPoint
-
-        # Get all blocks
-        blocks = self.canvas.dsim.blocks_list
-        if not blocks:
-            self.status_message.setText("No blocks to fit")
-            return
-
-        # Calculate bounding box of all blocks
-        min_x = min_y = float('inf')
-        max_x = max_y = float('-inf')
-
-        for block in blocks:
-            min_x = min(min_x, block.left)
-            min_y = min(min_y, block.top)
-            max_x = max(max_x, block.left + block.width)
-            max_y = max(max_y, block.top + block.height)
-
-        # Add padding around blocks
-        padding = 100
-        min_x -= padding
-        min_y -= padding
-        max_x += padding
-        max_y += padding
-
-        # Calculate diagram dimensions
-        diagram_width = max_x - min_x
-        diagram_height = max_y - min_y
-
-        # Get canvas dimensions
-        canvas_width = self.canvas.width()
-        canvas_height = self.canvas.height()
-
-        # Calculate zoom to fit
-        zoom_x = canvas_width / diagram_width if diagram_width > 0 else 1.0
-        zoom_y = canvas_height / diagram_height if diagram_height > 0 else 1.0
-        new_zoom = min(zoom_x, zoom_y, 2.0)  # Cap at 200% max zoom
-
-        # Apply zoom
-        self.canvas.zoom_factor = max(0.1, min(new_zoom, 2.0))  # Clamp between 10% and 200%
-
-        # Calculate center point of diagram
-        center_x = (min_x + max_x) / 2
-        center_y = (min_y + max_y) / 2
-
-        # Calculate pan offset to center the diagram
-        offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
-        offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
-        self.canvas.pan_offset = QPoint(int(offset_x), int(offset_y))
-
-        # Update display
-        self.canvas.update()
-        self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
-        self.status_message.setText(f"Fit {len(blocks)} block(s) to window")
+        self.view_actions_manager.fit_to_window()
     
     def show_keyboard_shortcuts(self):
         """Show keyboard shortcuts help dialog."""
