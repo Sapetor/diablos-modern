@@ -256,22 +256,6 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, 'canvas') and hasattr(self.canvas, '_create_subsystem_trigger'):
             self.canvas._create_subsystem_trigger()
 
-    def toggle_variable_editor(self):
-        # Implementation depends on logic elsewhere, ensuring method exists
-        if hasattr(self, 'variable_editor'):
-             visible = not self.variable_editor.isVisible()
-             self.variable_editor.setVisible(visible)
-             if hasattr(self, 'variable_editor_action'):
-                 self.variable_editor_action.setChecked(visible)
-
-    def toggle_workspace_editor(self):
-        """Toggle visibility of the workspace editor dock."""
-        if hasattr(self, 'workspace_editor_dock'):
-             visible = not self.workspace_editor_dock.isVisible()
-             self.workspace_editor_dock.setVisible(visible)
-             if hasattr(self, 'workspace_editor_action'):
-                 self.workspace_editor_action.setChecked(visible)
-
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
         if hasattr(self, 'minimap_dock'):
@@ -720,9 +704,6 @@ class ModernDiaBloSWindow(QMainWindow):
     # Toolbar action handlers (delegation to project_manager)
     def open_diagram(self):
         self.project_manager.open_diagram()
-
-    def _update_recent_files_menu(self):
-        self.project_manager.update_recent_files_menu()
 
     def open_example(self, filename):
         self.project_manager.open_example(filename)
