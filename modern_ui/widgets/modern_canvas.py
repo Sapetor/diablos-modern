@@ -31,6 +31,7 @@ from modern_ui.managers.clipboard_manager import ClipboardManager
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 from modern_ui.managers.connection_manager import ConnectionManager
 from modern_ui.managers.rendering_manager import RenderingManager
+from modern_ui.managers.drag_resize_manager import DragResizeManager
 from modern_ui.controllers.simulation_controller import SimulationController
 from modern_ui.widgets.canvas_state import CanvasState
 
@@ -92,6 +93,11 @@ class ModernCanvas(QWidget):
         self.zoom_pan_manager = ZoomPanManager(self)
         self.connection_manager = ConnectionManager(self)
         self.rendering_manager = RenderingManager(self)
+        self.drag_resize_manager = DragResizeManager(self)
+
+        # Plain attribute set only in start_drag (never via canvas_state); guard
+        # against AttributeError when _finish_drag reads it before any drag.
+        self.dragging_block = None
 
         # Simulation lifecycle controller (re-emits status as our own signal)
         self._sim_controller = SimulationController(self.dsim, parent=self)
@@ -592,132 +598,15 @@ class ModernCanvas(QWidget):
 
     def start_drag(self, block, pos):
         """Start dragging a block (or multiple selected blocks)."""
-        try:
-            self.state = State.DRAGGING
-            self.dragging_block = block
-            # Calculate drag offset based on block's top-left corner
-            self.drag_offset = QPoint(pos.x() - block.left, pos.y() - block.top)
-
-            # Store RELATIVE offsets from the clicked block to all other selected blocks
-            # This maintains relative positions when dragging multiple blocks
-            self.drag_offsets = {}
-            self.drag_start_positions = {}  # Track starting positions for undo threshold
-            for b in self.dsim.blocks_list:
-                if b.selected:
-                    # Store offset from clicked block to this block
-                    self.drag_offsets[b] = QPoint(b.left - block.left, b.top - block.top)
-                    # Store starting position
-                    self.drag_start_positions[b] = (b.left, b.top)
-
-            logger.debug(f"Started dragging {len(self.drag_offsets)} block(s)")
-        except Exception as e:
-            logger.error(f"Error starting drag: {str(e)}")
+        return self.drag_resize_manager.start_drag(block, pos)
 
     def _start_resize(self, block, handle, pos):
         """Start resizing a block."""
-        try:
-            self.state = State.RESIZING
-            self.resizing_block = block
-            self.resize_handle = handle
-            self.resize_start_pos = pos
-            self.resize_start_rect = QRect(block.left, block.top, block.width, block.height)
-
-            logger.debug(f"Started resizing block {block.name} from handle {handle}")
-        except Exception as e:
-            logger.error(f"Error starting resize: {str(e)}")
+        return self.drag_resize_manager._start_resize(block, handle, pos)
 
     def _perform_resize(self, pos):
         """Perform the resize operation based on current mouse position."""
-        try:
-            if not self.resizing_block or not self.resize_handle:
-                return
-
-            block = self.resizing_block
-            handle = self.resize_handle
-            start_rect = self.resize_start_rect
-
-            # Calculate delta from start position
-            delta_x = pos.x() - self.resize_start_pos.x()
-            delta_y = pos.y() - self.resize_start_pos.y()
-
-            # Calculate new position and size based on handle
-            new_left = start_rect.left()
-            new_top = start_rect.top()
-            new_width = start_rect.width()
-            new_height = start_rect.height()
-
-            if 'left' in handle:
-                new_left = start_rect.left() + delta_x
-                new_width = start_rect.width() - delta_x
-            elif 'right' in handle:
-                new_width = start_rect.width() + delta_x
-
-            if 'top' in handle:
-                new_top = start_rect.top() + delta_y
-                new_height = start_rect.height() - delta_y
-            elif 'bottom' in handle:
-                new_height = start_rect.height() + delta_y
-
-            # Apply minimum size constraints
-            try:
-                from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
-                min_width = MIN_BLOCK_WIDTH
-                min_height = MIN_BLOCK_HEIGHT
-            except ImportError:
-                min_width = 50
-                min_height = 40
-
-            # Also check block's port-based minimum height (for multi-port blocks)
-            if hasattr(block, 'calculate_min_size'):
-                port_min_height = block.calculate_min_size()
-                min_height = max(min_height, port_min_height)
-
-            # Track if we're hitting the resize limit
-            at_width_limit = new_width <= min_width
-            at_height_limit = new_height <= min_height
-
-            # Ensure minimum size
-            if new_width < min_width:
-                if 'left' in handle:
-                    new_left = start_rect.right() - min_width
-                new_width = min_width
-
-            if new_height < min_height:
-                if 'top' in handle:
-                    new_top = start_rect.bottom() - min_height
-                new_height = min_height
-
-            # Visual feedback: change cursor when at limit
-            if at_width_limit or at_height_limit:
-                self.setCursor(Qt.ForbiddenCursor)
-                self.resize_at_limit = True
-            else:
-                # Restore appropriate resize cursor
-                cursor_map = {
-                    'top_left': Qt.SizeFDiagCursor,
-                    'top_right': Qt.SizeBDiagCursor,
-                    'bottom_left': Qt.SizeBDiagCursor,
-                    'bottom_right': Qt.SizeFDiagCursor,
-                    'top': Qt.SizeVerCursor,
-                    'bottom': Qt.SizeVerCursor,
-                    'left': Qt.SizeHorCursor,
-                    'right': Qt.SizeHorCursor,
-                }
-                self.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
-                self.resize_at_limit = False
-
-            # Update block position and size
-            block.left = new_left
-            block.top = new_top
-            block.resize_Block(new_width, new_height)
-            block.rect.moveTo(new_left, new_top)
-
-            # Update connected lines
-            self._update_line_positions()
-            self.update()
-
-        except Exception as e:
-            logger.error(f"Error performing resize: {str(e)}")
+        return self.drag_resize_manager._perform_resize(pos)
 
     def mouseMoveEvent(self, event):
         """Handle mouse move events."""
@@ -737,80 +626,11 @@ class ModernCanvas(QWidget):
 
     def _finish_drag(self):
         """Finish dragging operation."""
-        try:
-            if self.dragging_block:
-                logger.debug(f"Finished dragging block: {getattr(self.dragging_block, 'fn_name', 'Unknown')}")
-
-                # Only push undo if blocks actually moved significantly (threshold: 5 pixels)
-                moved_significantly = False
-                move_threshold = 5  # pixels
-
-                for block, start_pos in self.drag_start_positions.items():
-                    start_left, start_top = start_pos
-                    distance = abs(block.left - start_left) + abs(block.top - start_top)
-                    if distance >= move_threshold:
-                        moved_significantly = True
-                        break
-
-                if moved_significantly:
-                    self._push_undo("Move")
-                    moved_block_names = {b.name for b in self.drag_start_positions}
-                else:
-                    logger.debug("Block moved less than threshold, not capturing undo")
-
-                # Reset drag state
-                self.state = State.IDLE
-                self.dragging_block = None
-                self.drag_offset = None
-                self.drag_start_positions = {}
-                self._update_line_positions()
-                if moved_significantly:
-                    self._reroute_affected_lines(moved_block_names)
-                self.update()
-        except Exception as e:
-            logger.error(f"Error finishing drag: {str(e)}")
+        return self.drag_resize_manager._finish_drag()
 
     def _finish_resize(self):
         """Finish resizing operation."""
-        try:
-            if self.resizing_block and self.resize_start_rect:
-                logger.debug(f"Finished resizing block: {getattr(self.resizing_block, 'fn_name', 'Unknown')}")
-
-                # Only push undo if block actually resized significantly (threshold: 5 pixels)
-                block = self.resizing_block
-                start_rect = self.resize_start_rect
-                resize_threshold = 5  # pixels
-
-                # Check if size or position changed significantly
-                size_change = (abs(block.width - start_rect.width()) +
-                              abs(block.height - start_rect.height()))
-                pos_change = (abs(block.left - start_rect.left()) +
-                             abs(block.top - start_rect.top()))
-
-                resized_significantly = size_change >= resize_threshold or pos_change >= resize_threshold
-                if resized_significantly:
-                    self._push_undo("Resize")
-                else:
-                    logger.debug("Block resized less than threshold, not capturing undo")
-
-                resized_name = block.name
-
-                # Reset resize state
-                self.state = State.IDLE
-                self.resizing_block = None
-                self.resize_handle = None
-                self.resize_start_rect = None
-                self.resize_start_pos = None
-                self.resize_at_limit = False
-                self.setCursor(Qt.ArrowCursor)
-
-                # Ensure lines are updated after resize
-                self._update_line_positions()
-                if resized_significantly:
-                    self._reroute_affected_lines({resized_name})
-                self.update()
-        except Exception as e:
-            logger.error(f"Error finishing resize: {str(e)}")
+        return self.drag_resize_manager._finish_resize()
 
     def _cancel_line_creation(self):
         """Cancel line creation process."""
