@@ -201,6 +201,53 @@ class TestSimulationExecution:
         # Check that output varies (sine wave effect)
         assert np.std(vector) > 0.5, "Output should vary due to sine input"
 
+    def test_chain_ramp_function_scope(self):
+        """Function block as a nonlinearity: Ramp → Function 'sin(u[0])' → Scope."""
+        from blocks.ramp import RampBlock
+        from blocks.function import FunctionBlock
+        from blocks.scope import ScopeBlock
+
+        ramp_block = RampBlock()
+        func_block = FunctionBlock()
+        scope_block = ScopeBlock()
+
+        ramp_params = {'slope': 1.0, 'delay': 0.0, '_init_start_': True}
+        func_params = {'expression': 'sin(u[0])', '_inputs_': 1}
+        scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'TestScope'}
+
+        times = np.linspace(0, np.pi, 30)
+        for t in times:
+            ramp_out = ramp_block.execute(time=t, inputs={}, params=ramp_params)
+            func_out = func_block.execute(time=t, inputs={0: ramp_out[0]}, params=func_params)
+            scope_block.execute(time=t, inputs={0: func_out[0]}, params=scope_params)
+
+        vector = np.asarray(scope_params['vector']).flatten()
+        # Ramp value equals t (slope 1), so output should track sin(t).
+        assert np.isclose(vector[0], 0.0, atol=1e-6), f"At t=0, sin(0)=0, got {vector[0]}"
+        assert np.allclose(vector, np.sin(times), atol=1e-6)
+
+    def test_function_block_two_input_product(self):
+        """Function block combining two signals: u1*u2."""
+        from blocks.sine import SineBlock
+        from blocks.constant import ConstantBlock
+        from blocks.function import FunctionBlock
+
+        sine_block = SineBlock()
+        const_block = ConstantBlock()
+        func_block = FunctionBlock()
+
+        sine_params = {'amplitude': 1.0, 'omega': 2 * np.pi, 'init_angle': 0.0}
+        const_params = {'value': 3.0}
+        func_params = {'expression': 'u1 * u2', '_inputs_': 2}
+
+        t = 0.25  # sin(2*pi*0.25) = sin(pi/2) = 1
+        sine_out = sine_block.execute(time=t, inputs={}, params=sine_params)
+        const_out = const_block.execute(time=t, inputs={}, params=const_params)
+        func_out = func_block.execute(
+            time=t, inputs={0: sine_out[0], 1: const_out[0]}, params=func_params
+        )
+        assert np.isclose(np.asarray(func_out[0]).flatten()[0], 3.0, atol=1e-6)
+
     def test_feedback_loop_integrator(self):
         """Test simple feedback loop with integrator."""
         from blocks.constant import ConstantBlock

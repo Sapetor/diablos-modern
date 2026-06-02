@@ -17,6 +17,50 @@ from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
+# Compiled-solver methods that scipy.integrate.solve_ivp accepts directly.
+SCIPY_SOLVER_METHODS = ('RK45', 'RK23', 'DOP853', 'Radau', 'BDF', 'LSODA')
+# Fixed-step schemes integrated in-house (use the simulation step dt).
+FIXED_STEP_METHODS = ('Euler', 'RK4')
+
+
+def integrate_fixed_step(model_func, t_eval, y0, scheme):
+    """
+    Integrate an ODE system on the fixed grid ``t_eval`` (steps taken from the
+    grid spacing, i.e. the simulation dt).
+
+    Args:
+        model_func: callable (t, y) -> dy/dt
+        t_eval: 1-D array of sample times (monotonic)
+        y0: initial state vector
+        scheme: 'euler' (explicit Euler) or 'rk4' (classic Runge-Kutta 4)
+
+    Returns:
+        y_history: array of shape (n_states, len(t_eval))
+    """
+    y0 = np.asarray(y0, dtype=float)
+    n_states = len(y0)
+    n_steps = len(t_eval)
+    y_history = np.zeros((n_states, n_steps))
+    y = y0.copy()
+    y_history[:, 0] = y
+
+    scheme = scheme.lower()
+    for idx in range(1, n_steps):
+        t_prev = t_eval[idx - 1]
+        h = t_eval[idx] - t_prev
+        if scheme == 'rk4':
+            k1 = np.asarray(model_func(t_prev, y), dtype=float)
+            k2 = np.asarray(model_func(t_prev + h / 2.0, y + h / 2.0 * k1), dtype=float)
+            k3 = np.asarray(model_func(t_prev + h / 2.0, y + h / 2.0 * k2), dtype=float)
+            k4 = np.asarray(model_func(t_prev + h, y + h * k3), dtype=float)
+            y = y + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        else:  # explicit Euler
+            dy = np.asarray(model_func(t_prev, y), dtype=float)
+            y = y + h * dy
+        y_history[:, idx] = y
+
+    return y_history
+
 
 class SimulationEngine:
     """
@@ -54,6 +98,10 @@ class SimulationEngine:
         # Simulation parameters
         self.sim_time: float = 1.0
         self.sim_dt: float = 0.01
+        # Compiled-solver selection (see run_compiled_simulation).
+        self.solver_method: str = 'RK45'
+        self.rtol: float = 1e-9
+        self.atol: float = 1e-12
         self.real_time: bool = True
         self.execution_time: float = 1.0
         self.time_step: float = 0.0
@@ -735,16 +783,28 @@ class SimulationEngine:
 
         return children_list
 
-    def update_sim_params(self, sim_time: float, sim_dt: float) -> None:
+    def update_sim_params(self, sim_time: float, sim_dt: float,
+                          solver_method: str = None, rtol: float = None,
+                          atol: float = None) -> None:
         """
         Update simulation parameters.
 
         Args:
             sim_time: Total simulation time
             sim_dt: Time step
+            solver_method: Compiled-solver method (e.g. 'RK45', 'RK4', 'Euler',
+                'LSODA', 'BDF', 'Radau', 'RK23', 'DOP853'). Unchanged if None.
+            rtol: Relative tolerance for adaptive scipy solvers. Unchanged if None.
+            atol: Absolute tolerance for adaptive scipy solvers. Unchanged if None.
         """
         self.sim_time = sim_time
         self.sim_dt = sim_dt
+        if solver_method is not None:
+            self.solver_method = solver_method
+        if rtol is not None:
+            self.rtol = rtol
+        if atol is not None:
+            self.atol = atol
 
     def get_execution_status(self):
         """
@@ -1083,37 +1143,43 @@ class SimulationEngine:
                 sol.message = "Algebraic system computed successfully"
                 logger.info("System is algebraic (0 states). Skipping solver.")
             else:
-                # Check for stochastic blocks — adaptive solvers evaluate the
-                # RHS multiple times per step, seeing different random values
-                # each time, which makes error estimates explode and causes
-                # the solver to hang.  Use fixed-step Euler instead.
-                # Note: PRBS is deterministic (seeded LFSR) and safe with RK45.
+                method = getattr(self, 'solver_method', 'RK45') or 'RK45'
+                rtol = getattr(self, 'rtol', 1e-9)
+                atol = getattr(self, 'atol', 1e-12)
+
+                # Stochastic blocks force a fixed step: adaptive solvers evaluate
+                # the RHS multiple times per step, seeing different random values
+                # each time, which makes error estimates explode and the solver
+                # hang. (PRBS is a deterministic seeded LFSR and is safe.)
                 stochastic_fns = {'Noise'}
                 has_stochastic = any(
                     (b.block_fn.title() if b.block_fn else '') in stochastic_fns
                     for b in current_blocks
                 )
+                if has_stochastic and method not in FIXED_STEP_METHODS:
+                    logger.info(
+                        f"Stochastic source detected — overriding '{method}' "
+                        f"with fixed-step Euler"
+                    )
+                    method = 'Euler'
 
-                if has_stochastic:
-                    logger.info("Stochastic source detected — using fixed-step Euler solver")
-                    n_states = len(y0)
-                    n_steps = len(t_eval)
-                    y_history = np.zeros((n_states, n_steps))
-                    y = y0.copy()
-                    y_history[:, 0] = y
-                    for idx in range(1, n_steps):
-                        dy = model_func(t_eval[idx - 1], y)
-                        y = y + dt * np.asarray(dy)
-                        y_history[:, idx] = y
-
+                if method in FIXED_STEP_METHODS:
+                    scheme = 'rk4' if method == 'RK4' else 'euler'
+                    y_history = integrate_fixed_step(model_func, t_eval, y0, scheme)
                     sol = _SolverResult()
                     sol.t = t_eval
                     sol.y = y_history
                     sol.success = True
-                    sol.message = "Fixed-step Euler (stochastic system)"
+                    sol.message = f"Fixed-step {method}"
                 else:
-                    # Using RK45 by default with strict tolerances for long-duration stability
-                    sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval, method='RK45', rtol=1e-9, atol=1e-12)
+                    if method not in SCIPY_SOLVER_METHODS:
+                        logger.warning(
+                            f"Unknown solver '{method}', falling back to RK45"
+                        )
+                        method = 'RK45'
+                    logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
+                    sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval,
+                                    method=method, rtol=rtol, atol=atol)
             
             if not sol.success:
                 logger.error(f"Solver failed: {sol.message}")

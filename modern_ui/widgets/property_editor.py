@@ -390,11 +390,10 @@ class PropertyEditor(QFrame):
         sec = CollapsibleSection("Solver", expanded=True)
         self._sections.append(sec)
 
-        # Use SimulationConfig and DSim attributes
-        sim_cfg = getattr(self._main_window, 'sim_config', None) if self._main_window else None
+        # Reflect the live DSim simulation parameters (set via the run dialog).
         solver_fields = []
         # Method
-        solver_fields.append(('solver', getattr(sim_cfg, 'solver', 'RK45') if sim_cfg else 'RK45'))
+        solver_fields.append(('solver', getattr(self._dsim, 'solver_method', 'RK45')))
         # Step / duration
         sim_dt = getattr(self._dsim, 'sim_dt', None)
         sim_time = getattr(self._dsim, 'sim_time', None)
@@ -402,11 +401,10 @@ class PropertyEditor(QFrame):
             solver_fields.append(('step_size', f"{sim_dt} s"))
         if sim_time is not None:
             solver_fields.append(('duration', f"{sim_time} s"))
-        # Tolerances
-        if sim_cfg is not None:
-            for attr, label in [('rtol', 'rtol'), ('atol', 'atol')]:
-                if hasattr(sim_cfg, attr):
-                    solver_fields.append((label, str(getattr(sim_cfg, attr))))
+        # Tolerances (relevant to adaptive solvers)
+        for attr, label in [('rtol', 'rtol'), ('atol', 'atol')]:
+            if hasattr(self._dsim, attr):
+                solver_fields.append((label, str(getattr(self._dsim, attr))))
         # Fast solver
         fast = getattr(self._main_window, 'use_fast_solver', False) if self._main_window else False
         solver_fields.append(('fast_solver', "✓ on" if fast else "off"))

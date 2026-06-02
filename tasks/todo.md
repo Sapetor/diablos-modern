@@ -73,7 +73,7 @@
 
 ### Teaching & Interaction
 - [x] **Live parameter tuning** — Manipulate-style interactive tuning: pin block parameters to a tuning panel, drag sliders and watch scope plots update in real-time via headless re-simulation. Supports float params and individual list elements (e.g., transfer function coefficients). Scope window stays on top during tuning. Right-click slider rows to set custom range.
-- [ ] **Custom Python Function block** — A block where users type a Python expression (e.g., `lambda u: np.sin(u[0]**2) + u[1]`). Enables unlimited modeling without writing new block classes.
+- [x] **Custom Python Function block** — `blocks/function.py` ("Function"). Users type an expression of the inputs and time (e.g. `sin(u[0]**2) + u[1]`). Inputs exposed as 0-indexed `u[i]` and 1-indexed `u1`/`u2`; `t` is sim time. Variable input-port count via `io_editable='input'`. Evaluated through the hardened `safe_expr` AST walker (numpy math allowed; imports/attribute escapes rejected). List expressions yield vector outputs. Diagrams containing it use the interpreted engine (not in `COMPILABLE_BLOCKS`). Tests: `tests/unit/test_function_block.py` (19), integration chains in `test_simulation_execution.py`.
 - [x] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications. File > Export > Export as TikZ... with live preview, clipboard copy, and configurable options.
 
 ### Research & Data
@@ -149,6 +149,9 @@
 
 | Date | Change |
 |------|--------|
+| 2026-06-02 | Added solver selection: `SimulationDialog` (lib/dialogs.py) now offers a solver dropdown (RK45/RK23/DOP853/Radau/BDF/LSODA adaptive + fixed-step RK4/Euler) and rtol/atol fields. Compiled solver (`simulation_engine.py run_compiled_simulation`) dispatches on `solver_method`; new module fn `integrate_fixed_step` does in-house Euler/RK4; stochastic systems still force Euler; unknown method → RK45. Settings persist in `.diablos` (`solver_method`/`rtol`/`atol` via file_service + lib.py save/serialize/deserialize) and surface read-only in the property editor. Tests: `tests/unit/test_solver_selection.py` (19, incl. end-to-end runs across all solvers). |
+| 2026-06-02 | Added Logic blocks: `RelationalOperator` (in1 OP in2), `CompareToConstant` (in OP constant), `LogicalOperator` (AND/OR/NAND/NOR/XOR/NOT, variable inputs). Category "Logic"; output 1.0/0.0 element-wise. Tests: `tests/unit/test_logic_blocks.py` (27). |
+| 2026-06-02 | Added Custom Python Function block (`blocks/function.py`, "Function"): expression of inputs `u[i]`/`u1..` and time `t`, variable input ports (`io_editable='input'`), `safe_expr` sandbox, vector output via list expressions. Tests: `tests/unit/test_function_block.py`, integration chains in `test_simulation_execution.py`. |
 | 2026-02-12 | Added TikZ export feature: File > Export > Export as TikZ... with live preview, standalone/snippet modes, configurable options. New files: `lib/export/tikz_exporter.py`, `modern_ui/widgets/tikz_export_dialog.py`. |
 | 2026-02-11 | Fixed compiled solver execution order bug: state blocks (TranFn, Integrator) now run after algebraic blocks. Fixed cursor visibility in property editor. |
 | 2026-02-06 | Dark mode fixes: invalid theme keys, block icon colors, error panel, canvas renderer. Compact toolbar (icon-only, 20px icons) |

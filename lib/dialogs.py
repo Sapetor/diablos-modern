@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox
 from PyQt5.QtCore import Qt
 import logging
 
@@ -71,40 +71,73 @@ class PortDialog(QDialog):
         return {key: entry.text() for key, entry in self.entries.items()}
 
 class SimulationDialog(QDialog):
-    def __init__(self, sim_time, sim_dt, plot_trange, parent=None):
+    # Methods offered in the solver dropdown. Fixed-step methods (Euler, RK4)
+    # use the base step size; the rest are adaptive scipy.integrate solvers.
+    SOLVER_METHODS = ["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA", "RK4", "Euler"]
+
+    def __init__(self, sim_time, sim_dt, plot_trange, parent=None,
+                 solver_method="RK45", rtol=1e-9, atol=1e-12):
         super().__init__(parent)
         from PyQt5.QtWidgets import QGroupBox  # Local import to avoid circular dep issues if any, or just convenience
-        
+
         self.setWindowTitle("Simulation Configuration")
-        self.resize(480, 350)
+        self.resize(480, 420)
         self.layout = QVBoxLayout()
 
         # --- Solver Configuration Group ---
         solver_group = QGroupBox("Solver Configuration")
         solver_layout = QVBoxLayout()
-        
+
+        # Solver method
+        solver_layout.addWidget(QLabel("Solver Method"))
+        self.solver_method_combo = QComboBox()
+        self.solver_method_combo.addItems(self.SOLVER_METHODS)
+        idx = self.solver_method_combo.findText(str(solver_method))
+        self.solver_method_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        solver_layout.addWidget(self.solver_method_combo)
+
+        method_hint = QLabel(
+            "Adaptive: RK45 (default), RK23, DOP853; stiff: Radau, BDF, LSODA. "
+            "Fixed-step (use the step size below): RK4, Euler."
+        )
+        method_hint.setObjectName("HintLabel")
+        method_hint.setWordWrap(True)
+        solver_layout.addWidget(method_hint)
+
+        solver_layout.addSpacing(10)
+
         # Base Step Size
         solver_layout.addWidget(QLabel("Base Step Size (dt) [s]"))
         self.sampling_time_input = QLineEdit(str(sim_dt))
         solver_layout.addWidget(self.sampling_time_input)
-        
+
         # Explanation Hint — themed via QSS, not inline styles
         hint_label = QLabel("Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step.")
         hint_label.setObjectName("HintLabel")
         hint_label.setWordWrap(True)
         solver_layout.addWidget(hint_label)
-        
+
         solver_layout.addSpacing(10)
-        
+
         # Simulation Time
         solver_layout.addWidget(QLabel("Simulation Duration [s]"))
         self.sim_time_input = QLineEdit(str(sim_time))
         solver_layout.addWidget(self.sim_time_input)
-        
+
+        # Tolerances (adaptive solvers only)
+        tol_row = QHBoxLayout()
+        tol_row.addWidget(QLabel("Rel. tol"))
+        self.rtol_input = QLineEdit(str(rtol))
+        tol_row.addWidget(self.rtol_input)
+        tol_row.addWidget(QLabel("Abs. tol"))
+        self.atol_input = QLineEdit(str(atol))
+        tol_row.addWidget(self.atol_input)
+        solver_layout.addLayout(tol_row)
+
         # Real-time Checkbox
         self.real_time_checkbox = QCheckBox("Run in real-time")
         solver_layout.addWidget(self.real_time_checkbox)
-        
+
         solver_group.setLayout(solver_layout)
         self.layout.addWidget(solver_group)
 
@@ -145,5 +178,8 @@ class SimulationDialog(QDialog):
             'sim_dt': float(self.sampling_time_input.text()),
             'plot_trange': float(self.plot_range_input.text()),
             'dynamic_plot': self.dynamic_plot_checkbox.isChecked(),
-            'real_time': self.real_time_checkbox.isChecked()
+            'real_time': self.real_time_checkbox.isChecked(),
+            'solver_method': self.solver_method_combo.currentText(),
+            'rtol': float(self.rtol_input.text()),
+            'atol': float(self.atol_input.text())
         }

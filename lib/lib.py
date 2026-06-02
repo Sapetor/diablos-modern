@@ -99,6 +99,9 @@ class DSim:
         # Delegate simulation parameters to engine
         self.sim_time = self.engine.sim_time
         self.sim_dt = self.engine.sim_dt
+        self.solver_method = self.engine.solver_method
+        self.rtol = self.engine.rtol
+        self.atol = self.engine.atol
         self.plot_trange = 100
 
         # Execution state (properties delegate to engine)
@@ -292,7 +295,10 @@ class DSim:
         sim_params = {
             'sim_time': self.sim_time,
             'sim_dt': self.sim_dt,
-            'plot_trange': self.plot_trange
+            'plot_trange': self.plot_trange,
+            'solver_method': getattr(self, 'solver_method', 'RK45'),
+            'rtol': getattr(self, 'rtol', 1e-9),
+            'atol': getattr(self, 'atol', 1e-12),
         }
         self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
         self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
@@ -317,7 +323,10 @@ class DSim:
         sim_params = {
             'sim_time': self.sim_time,
             'sim_dt': self.sim_dt,
-            'plot_trange': self.plot_trange
+            'plot_trange': self.plot_trange,
+            'solver_method': getattr(self, 'solver_method', 'RK45'),
+            'rtol': getattr(self, 'rtol', 1e-9),
+            'atol': getattr(self, 'atol', 1e-12),
         }
         return self.file_service.serialize(modern_ui_data, sim_params)
 
@@ -332,6 +341,9 @@ class DSim:
         self.sim_time = sim_params.get('sim_time', 1.0)
         self.sim_dt = sim_params.get('sim_dt', 0.01)
         self.plot_trange = sim_params.get('plot_trange', 100)
+        self.solver_method = sim_params.get('solver_method', 'RK45')
+        self.rtol = sim_params.get('rtol', 1e-9)
+        self.atol = sim_params.get('atol', 1e-12)
         self.ss_count = 0
         self.filename = self.file_service.filename
         return sim_params
@@ -375,6 +387,9 @@ class DSim:
         self.filename = 'data.dat'
         self.sim_time = 1.0
         self.sim_dt = 0.01
+        self.solver_method = 'RK45'
+        self.rtol = 1e-9
+        self.atol = 1e-12
         self.plot_trange = 100
         self.dynamic_plot = False
 
@@ -386,7 +401,12 @@ class DSim:
         :purpose: Creates a pop-up window to ask for graph simulation setup values.
         :description: The first step in order to be able to perform a network simulation, is to have the execution data. These are mainly simulation time and sampling period, but we also ask for variables needed for the graphs.
         """
-        dialog = SimulationDialog(self.sim_time, self.sim_dt, self.plot_trange)
+        dialog = SimulationDialog(
+            self.sim_time, self.sim_dt, self.plot_trange,
+            solver_method=getattr(self, 'solver_method', 'RK45'),
+            rtol=getattr(self, 'rtol', 1e-9),
+            atol=getattr(self, 'atol', 1e-12),
+        )
         if dialog.exec_() == QDialog.Accepted:
             try:
                 values = dialog.get_values()
@@ -395,6 +415,9 @@ class DSim:
                 self.plot_trange = values['plot_trange']
                 self.dynamic_plot = values['dynamic_plot']
                 self.real_time = values['real_time']
+                self.solver_method = values.get('solver_method', getattr(self, 'solver_method', 'RK45'))
+                self.rtol = values.get('rtol', getattr(self, 'rtol', 1e-9))
+                self.atol = values.get('atol', getattr(self, 'atol', 1e-12))
                 return self.sim_time
             except ValueError:
                 logger.warning("Invalid input. Using default values.")
@@ -478,7 +501,12 @@ class DSim:
             logger.debug("Initializing execution...")
 
             # Sync simulation parameters to engine before initialization
-            self.engine.update_sim_params(self.sim_time, self.sim_dt)
+            self.engine.update_sim_params(
+                self.sim_time, self.sim_dt,
+                solver_method=getattr(self, 'solver_method', None),
+                rtol=getattr(self, 'rtol', None),
+                atol=getattr(self, 'atol', None),
+            )
 
             # Initialize engine with ROOT context (will trigger flattening)
             # Pass lines explicitly!

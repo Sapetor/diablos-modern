@@ -58,7 +58,10 @@ class FileService:
             "fps": 60,
             "sim_time": sim_params.get('sim_time', 1.0),
             "sim_dt": sim_params.get('sim_dt', 0.01),
-            "sim_trange": sim_params.get('plot_trange', 100)
+            "sim_trange": sim_params.get('plot_trange', 100),
+            "solver_method": sim_params.get('solver_method', 'RK45'),
+            "rtol": sim_params.get('rtol', 1e-9),
+            "atol": sim_params.get('atol', 1e-12)
         }
 
         # Serialize blocks (recurses into Subsystems via _serialize_block)
@@ -284,7 +287,10 @@ class FileService:
         sim_params = {
             'sim_time': sim_data.get('sim_time', 1.0),
             'sim_dt': sim_data.get('sim_dt', 0.01),
-            'plot_trange': sim_data.get('sim_trange', 100)
+            'plot_trange': sim_data.get('sim_trange', 100),
+            'solver_method': sim_data.get('solver_method', 'RK45'),
+            'rtol': sim_data.get('rtol', 1e-9),
+            'atol': sim_data.get('atol', 1e-12)
         }
 
         # Recreate top-level blocks (recurses into Subsystems via _construct_block)
