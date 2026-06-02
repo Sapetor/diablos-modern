@@ -14,6 +14,10 @@ from lib.engine.pde_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# np.trapz was renamed to np.trapezoid in NumPy 2.0 (old name removed).
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
+
 class SystemCompiler:
     """
     Compiles a block diagram into a flat numerical function for fast ODE solving.
@@ -395,7 +399,11 @@ class SystemCompiler:
                 if size == 1 and n_inputs == 1:
                     # Fast scalar path (SISO, 1st-order)
                     def exec_ss(t, y, dy_vec, signals):
-                        u = signals.get(src, 0.0) if src else 0.0
+                        u_val = signals.get(src, 0.0) if src else 0.0
+                        # Upstream signals may be 1-element arrays; in NumPy 2.0
+                        # assigning an array into dy_vec[start] (a scalar slot)
+                        # is an error, so reduce to a scalar here.
+                        u = np.ravel(u_val)[0] if np.ndim(u_val) else u_val
                         x_s = y[start]
                         dx = A[0,0]*x_s + B[0,0]*u
                         y_out = C[0,0]*x_s + D[0,0]*u
@@ -1474,7 +1482,7 @@ class SystemCompiler:
 
                 N = len(field)
                 dx = _L / (N - 1) if N > 1 else _L
-                integral = np.trapz(field, dx=dx)
+                integral = _trapezoid(field, dx=dx)
 
                 if _norm:
                     integral = integral / _L

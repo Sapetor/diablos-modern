@@ -20,6 +20,7 @@ This results in 2N state variables for N spatial nodes.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import as_scalar
 from blocks.param_templates import (
     wave_speed_param, domain_params_1d, init_flag_param
 )
@@ -223,8 +224,8 @@ class WaveEquation1DBlock(BaseBlock):
 
         # Get inputs
         force = inputs.get(0, 0.0)
-        bc_left = inputs.get(1, 0.0)
-        bc_right = inputs.get(2, 0.0)
+        bc_left = as_scalar(inputs.get(1, 0.0))
+        bc_right = as_scalar(inputs.get(2, 0.0))
 
         # Ensure force is array
         if isinstance(force, (int, float)):
@@ -317,8 +318,8 @@ class WaveEquation1DBlock(BaseBlock):
 
         # Get inputs
         force = inputs.get('force', 0.0)
-        bc_left = inputs.get('bc_left', 0.0)
-        bc_right = inputs.get('bc_right', 0.0)
+        bc_left = as_scalar(inputs.get('bc_left', 0.0))
+        bc_right = as_scalar(inputs.get('bc_right', 0.0))
 
         if isinstance(force, (int, float)):
             force = np.full(N, float(force))

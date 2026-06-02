@@ -11,6 +11,7 @@ These blocks process array/field outputs from PDE blocks:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import trapezoid
 
 logger = logging.getLogger(__name__)
 
@@ -231,7 +232,7 @@ class FieldIntegralBlock(BaseBlock):
         dx = L / (N - 1) if N > 1 else L
 
         # Trapezoidal integration
-        integral = np.trapz(field, dx=dx)
+        integral = trapezoid(field, dx=dx)
 
         if params.get('normalize', False):
             integral = integral / L

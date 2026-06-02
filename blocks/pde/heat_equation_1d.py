@@ -16,6 +16,7 @@ This converts the PDE into N coupled ODEs that the solver handles.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import as_scalar
 from blocks.param_templates import (
     diffusivity_param, domain_params_1d, init_flag_param, robin_bc_params
 )
@@ -196,8 +197,8 @@ class HeatEquation1DBlock(BaseBlock):
 
         # Get inputs
         q_src = inputs.get(0, 0.0)
-        bc_left_val = inputs.get(1, 0.0)
-        bc_right_val = inputs.get(2, 0.0)
+        bc_left_val = as_scalar(inputs.get(1, 0.0))
+        bc_right_val = as_scalar(inputs.get(2, 0.0))
 
         # Ensure q_src is array of correct size
         if isinstance(q_src, (int, float)):
@@ -287,8 +288,8 @@ class HeatEquation1DBlock(BaseBlock):
 
         # Get inputs
         q_src = inputs.get('q_src', 0.0)
-        bc_left_val = inputs.get('bc_left', 0.0)
-        bc_right_val = inputs.get('bc_right', 0.0)
+        bc_left_val = as_scalar(inputs.get('bc_left', 0.0))
+        bc_right_val = as_scalar(inputs.get('bc_right', 0.0))
 
         # Ensure q_src is array
         if isinstance(q_src, (int, float)):

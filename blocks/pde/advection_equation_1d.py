@@ -16,6 +16,7 @@ Uses upwind scheme for stability.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import as_scalar
 from blocks.param_templates import (
     advection_velocity_param, domain_params_1d, init_flag_param
 )
@@ -190,7 +191,7 @@ class AdvectionEquation1DBlock(BaseBlock):
         c = params.get('c', np.zeros(N))
 
         # Get inputs
-        c_inlet = inputs.get(0, 0.0)
+        c_inlet = as_scalar(inputs.get(0, 0.0))
 
         # Compute spatial derivative using second-order upwind scheme
         # This reduces numerical diffusion compared to first-order upwind
@@ -294,7 +295,7 @@ class AdvectionEquation1DBlock(BaseBlock):
         dx = L / (N - 1)
         bc_type = params.get('bc_type', 'Dirichlet')
 
-        c_inlet = inputs.get('c_inlet', 0.0)
+        c_inlet = as_scalar(inputs.get('c_inlet', 0.0))
 
         dc_dt = np.zeros(N)
 
@@ -334,7 +335,7 @@ class AdvectionEquation1DBlock(BaseBlock):
         N = len(c)
         v = float(params.get('velocity', 1.0))
         bc_type = params.get('bc_type', 'Dirichlet')
-        c_inlet = inputs.get('c_inlet', 0.0)
+        c_inlet = as_scalar(inputs.get('c_inlet', 0.0))
 
         c_mod = c.copy()
 

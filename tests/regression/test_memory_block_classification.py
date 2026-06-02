@@ -227,7 +227,7 @@ class TestHardenedBlockEmptyInputs:
         result = block.execute(time=0.1, inputs={}, params=params, dtime=0.01)
         assert isinstance(result, dict), "PID must return a dict"
         assert 0 in result, "PID must return output port 0"
-        assert float(result[0]) == pytest.approx(0.0, abs=1e-9), (
+        assert float(np.ravel(result[0])[0]) == pytest.approx(0.0, abs=1e-9), (
             "PID with no accumulated error should output ~0 on first call"
         )
 
@@ -256,7 +256,7 @@ class TestHardenedBlockEmptyInputs:
         assert isinstance(result, dict), "Hysteresis must return a dict"
         assert 0 in result, "Hysteresis must return output port 0"
         # input=0.0 is between lower=-0.5 and upper=0.5, so state = low = 0.0
-        assert float(result[0]) == pytest.approx(float(params["low"]), abs=1e-9)
+        assert float(np.ravel(result[0])[0]) == pytest.approx(float(params["low"]), abs=1e-9)
 
     def test_hysteresis_output_only_returns_held_state(self):
         """Hysteresis output_only after a switch returns the switched state."""
@@ -269,7 +269,7 @@ class TestHardenedBlockEmptyInputs:
         # output_only path: empty inputs — must return held high state
         result = block.execute(time=0.01, inputs={}, params=params)
         assert isinstance(result, dict)
-        assert float(result[0]) == pytest.approx(float(params["high"]), abs=1e-9)
+        assert float(np.ravel(result[0])[0]) == pytest.approx(float(params["high"]), abs=1e-9)
 
     def test_derivative_safe_on_empty_inputs(self):
         """Deriv with empty inputs on first call returns zeros (no crash)."""
@@ -352,7 +352,7 @@ class TestHardenedBlockEmptyInputs:
         # Output-only call with empty inputs — must NOT flip to high
         result = block.execute(time=0.0, inputs={}, params=params, dtime=0.01)
         assert params['_state'] == 0.0, "Hysteresis state was spuriously flipped"
-        assert float(result[0]) == pytest.approx(0.0), (
+        assert float(np.ravel(result[0])[0]) == pytest.approx(0.0), (
             "Hysteresis output_only must return current state, not flip"
         )
 
