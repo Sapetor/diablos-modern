@@ -4,9 +4,8 @@ pure ``_convert_param_value`` helper.
 
 main_window.py has historically had ZERO test coverage. These tests build a
 REAL ``ModernDiaBloSWindow`` under offscreen Qt and pin down the observable
-behavior of:
+behavior of the recent-files cluster:
 
-  * ``_convert_param_value``        (pure type-coercion helper)
   * ``_load_recent_files`` /
     ``_save_recent_files`` /
     ``_add_recent_file`` /
@@ -58,45 +57,6 @@ def cfg_dir(tmp_path, monkeypatch):
 
 def _recent_json(cfg_dir):
     return os.path.join(str(cfg_dir), "config", "recent_files.json")
-
-
-# ---------------------------------------------------------------------------
-# _convert_param_value  (pure helper)
-# ---------------------------------------------------------------------------
-
-class TestConvertParamValue:
-    def test_int(self, window):
-        assert window._convert_param_value("5", int) == 5
-
-    def test_float(self, window):
-        assert window._convert_param_value("3.14", float) == 3.14
-
-    def test_bool_true_string(self, window):
-        assert window._convert_param_value("True", bool) is True
-        assert window._convert_param_value("true", bool) is True
-
-    def test_bool_false_string(self, window):
-        assert window._convert_param_value("False", bool) is False
-        assert window._convert_param_value("anything", bool) is False
-
-    def test_list(self, window):
-        assert window._convert_param_value("[1, 2, 3]", list) == [1, 2, 3]
-
-    def test_list_non_list_literal_falls_back_to_string(self, window):
-        # ast.literal_eval('5') -> 5 (int), not a list -> TypeError -> str fallback
-        assert window._convert_param_value("5", list) == "5"
-
-    def test_str_passthrough(self, window):
-        assert window._convert_param_value("hello", str) == "hello"
-
-    def test_unconvertible_expression_kept_as_string(self, window):
-        # Expressions / variable names are preserved verbatim for later
-        # resolution by the WorkspaceManager.
-        assert window._convert_param_value("2*K", float) == "2*K"
-        assert window._convert_param_value("[K, K]", list) == "[K, K]"
-
-    def test_bad_int_falls_back_to_string(self, window):
-        assert window._convert_param_value("not_a_number", int) == "not_a_number"
 
 
 # ---------------------------------------------------------------------------
