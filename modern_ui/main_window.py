@@ -26,7 +26,6 @@ from lib.improvements import (
 
 # Import modern UI components
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
-from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
@@ -35,7 +34,6 @@ from modern_ui.widgets.minimap_widget import MinimapWidget
 from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.tuning_panel import TuningPanel
 from modern_ui.controllers.tuning_controller import TuningController
-from modern_ui.platform_config import get_platform_config
 
 # Setup logging
 LoggingHelper.setup_logging(level="INFO", log_file="diablos_modern.log")
@@ -86,6 +84,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         from modern_ui.managers.layout_manager import LayoutManager
         self.layout_manager = LayoutManager(self)
+
+        from modern_ui.managers.window_setup_manager import WindowSetupManager
+        self.window_setup_manager = WindowSetupManager(self)
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -220,47 +221,14 @@ class ModernDiaBloSWindow(QMainWindow):
         self.line_start_port = None
         self.temp_line = None
     
+    # Window/menubar/toolbar facades -> WindowSetupManager (see managers/window_setup_manager.py)
     def _setup_window(self):
         """Setup main window properties with screen-aware sizing."""
-        self.setWindowTitle("DiaBloS - Modern Block Diagram Simulator")
+        self.window_setup_manager.setup_window()
 
-        # Get platform configuration
-        config = get_platform_config()
-
-        # Calculate responsive window size based on available screen space
-        if self.screen_geometry:
-            target_width = int(self.screen_geometry.width() * config.window_width_percent)
-            target_height = int(self.screen_geometry.height() * config.window_height_percent)
-
-            # On standard DPI, cap window size to avoid giant windows
-            if config.should_cap_window_size:
-                target_width = min(target_width, 1600)
-                target_height = min(target_height, 1000)
-
-            # Set minimum size
-            min_width = max(int(target_width * 0.70), config.window_min_width)
-            min_height = max(int(target_height * 0.70), config.window_min_height)
-
-            self.setMinimumSize(min_width, min_height)
-            self.resize(target_width, target_height)
-
-            logger.info(f"Window sizing: target={target_width}×{target_height}, min={min_width}×{min_height}")
-        else:
-            # Fallback to larger sizes
-            self.setMinimumSize(1200, 800)
-            self.resize(1600, 1000)
-
-        # Set modern font
-        font = QFont("Segoe UI", 10)
-        self.setFont(font)
-
-        # Apply modern theme
-        self.setObjectName("ModernMainWindow")
-    
     def _setup_menubar(self):
         """Setup modern menu bar."""
-        if self.menu_builder:
-            self.menu_builder.setup_menubar()
+        self.window_setup_manager.setup_menubar()
 
     def create_subsystem(self):
         """Create subsystem from selection (delegate to canvas)."""
@@ -315,23 +283,8 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _setup_toolbar(self):
         """Setup modern toolbar."""
-        self.toolbar = ModernToolBar(self)
-        self.addToolBar(self.toolbar)
-        
-        # Connect toolbar signals (will implement handlers below)
-        self.toolbar.new_diagram.connect(self.new_diagram)
-        self.toolbar.open_diagram.connect(self.open_diagram)
-        self.toolbar.save_diagram.connect(self.save_diagram)
-        self.toolbar.play_simulation.connect(self.start_simulation)
-        self.toolbar.pause_simulation.connect(self.pause_simulation)
-        self.toolbar.stop_simulation.connect(self.stop_simulation)
-        self.toolbar.step_simulation.connect(self.step_simulation)
-        self.toolbar.plot_results.connect(self.show_plots)
-        self.toolbar.capture_screen.connect(self.capture_screen)
-        self.toolbar.zoom_changed.connect(self.set_zoom)
-        self.toolbar.theme_toggled.connect(self.on_theme_changed)
-        self.toolbar.command_palette_requested.connect(self.show_command_palette)
-    
+        self.window_setup_manager.setup_toolbar()
+
     # Layout/panel facades -> LayoutManager (see managers/layout_manager.py)
     def _setup_layout(self):
         """Setup modern layout with splitters."""
