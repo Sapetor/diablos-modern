@@ -72,13 +72,8 @@ class ModernCanvas(QWidget):
         # Live overlay toggles (View → Live overlay submenu)
         self.show_live_chips = True
 
-        # Clipboard for copy-paste (not part of canvas_state - persists across operations)
-        self.clipboard_blocks = []
-
-        # Undo/Redo system (managed by history_manager, kept here for compatibility)
-        self.undo_stack = []
-        self.redo_stack = []
-        self.max_undo_steps = 50
+        # Clipboard and undo/redo state live in their managers
+        # (clipboard_manager / history_manager) — the single source of truth.
 
         # Initialize helpers
         self.performance = PerformanceHelper()
@@ -911,8 +906,6 @@ class ModernCanvas(QWidget):
     def copy_selected_blocks(self):
         """Copy selected blocks to clipboard."""
         self.clipboard_manager.copy_selected_blocks()
-        # Keep clipboard_blocks accessible for backward compatibility
-        self.clipboard_blocks = self.clipboard_manager.clipboard_blocks
 
     def paste_blocks(self):
         """Paste blocks from clipboard."""
@@ -979,20 +972,21 @@ class ModernCanvas(QWidget):
             from lib.simulation.menu_block import MenuBlocks
             from PyQt5.QtCore import QPoint
 
-            if not self.clipboard_blocks:
+            clipboard_blocks = self.clipboard_manager.clipboard_blocks
+            if not clipboard_blocks:
                 return
 
             # Push undo state before pasting
             self._push_undo("Paste")
 
             # Calculate offset from first block's position to paste position
-            if self.clipboard_blocks:
-                first_block_coords = self.clipboard_blocks[0]['coords']
+            if clipboard_blocks:
+                first_block_coords = clipboard_blocks[0]['coords']
                 offset_x = pos.x() - first_block_coords.x()
                 offset_y = pos.y() - first_block_coords.y()
 
                 self._clear_selections()
-                for block_data in self.clipboard_blocks:
+                for block_data in clipboard_blocks:
                     # Calculate new position (center of block)
                     new_position = QPoint(
                         block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
@@ -1027,7 +1021,7 @@ class ModernCanvas(QWidget):
                     if new_block:
                         new_block.selected = True
 
-                logger.info(f"Pasted {len(self.clipboard_blocks)} blocks")
+                logger.info(f"Pasted {len(clipboard_blocks)} blocks")
                 self.update()
 
         except Exception as e:
