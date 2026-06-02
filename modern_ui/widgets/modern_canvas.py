@@ -587,39 +587,13 @@ class ModernCanvas(QWidget):
         """Check for port clicks to create connections. Returns True if a port was clicked."""
         return self.connection_manager.check_port_clicks(pos)
 
-    def _handle_port_click(self, block, port_type, port_index, pos):
-        """Handle port click for connection creation."""
-        self.connection_manager.handle_port_click(block, port_type, port_index, pos)
-
     def _finish_line_creation(self, end_block, end_port):
         """Complete line creation between two blocks."""
         self.connection_manager.finish_line_creation(end_block, end_port)
 
-    def _check_line_clicks(self, pos):
-        """Check for clicks on connection lines."""
-        self.connection_manager.check_line_clicks(pos)
-
-    def _point_near_line(self, pos, line):
-        """Check if a point is near a line."""
-        return self.connection_manager.point_near_line(pos, line)
-
-    def _point_to_line_distance(self, point, line_start, line_end):
-        """Calculate minimum distance from point to line segment."""
-        return self.connection_manager.point_to_line_distance(point, line_start, line_end)
-
     def _handle_line_click(self, line, collision_result, pos):
         """Handle clicking on a connection line."""
         self.connection_manager.handle_line_click(line, collision_result, pos)
-
-    def _configure_block(self, block):
-        """Configure a block (right-click action)."""
-        try:
-            logger.info(f"Configuring block: {getattr(block, 'fn_name', 'Unknown')}")
-            # Use DSim's configuration dialog
-            if hasattr(self.dsim, 'configure_block'):
-                self.dsim.configure_block(block)
-        except Exception as e:
-            logger.error(f"Error configuring block: {str(e)}")
 
     def start_drag(self, block, pos):
         """Start dragging a block (or multiple selected blocks)."""
@@ -1085,14 +1059,6 @@ class ModernCanvas(QWidget):
     def _update_hover_states(self, pos):
         """Update hover states for blocks, ports, and connections."""
         self.rendering_manager.update_hover_states(pos)
-
-    def _point_near_port(self, point, port_pos, threshold=12):
-        """Check if a point is near a port position."""
-        return self.rendering_manager.point_near_port(point, port_pos, threshold)
-
-    def _set_resize_cursor(self, handle):
-        """Set the appropriate cursor for a resize handle."""
-        self.rendering_manager.set_resize_cursor(handle)
 
     # Validation System
     def run_validation(self):
