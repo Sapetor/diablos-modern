@@ -87,6 +87,9 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.managers.property_controller import PropertyController
         self.property_controller = PropertyController(self)
 
+        from modern_ui.managers.command_palette_manager import CommandPaletteManager
+        self.command_palette_manager = CommandPaletteManager(self)
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
 
@@ -735,143 +738,22 @@ class ModernDiaBloSWindow(QMainWindow):
             icon = "⊞" if self.canvas.grid_visible else "⊟"
             self.toast.show_message(f"{icon} Grid {status.capitalize()}")
 
+    # Command-palette facades -> CommandPaletteManager (see managers/command_palette_manager.py)
     def show_command_palette(self):
         """Show the command palette for quick access."""
-        if hasattr(self, 'command_palette'):
-            self.command_palette.show_palette()
+        self.command_palette_manager.show()
 
     def _setup_command_palette(self):
         """Build the command palette index — blocks, sim, view, files, help."""
-        commands: list[dict] = []
-
-        # Block library — typed as 'block' so the BLOCK badge surfaces
-        if hasattr(self, 'canvas') and hasattr(self.canvas.dsim, 'menu_blocks'):
-            for menu_block in self.canvas.dsim.menu_blocks:
-                fn_name = getattr(menu_block, 'fn_name', '') or ''
-                block_fn = getattr(menu_block, 'block_fn', '') or fn_name
-                commands.append({
-                    'name': f'Add {block_fn} block',
-                    'type': 'block',
-                    'description': f'{block_fn} ({fn_name})',
-                    'aliases': [fn_name, block_fn, fn_name.lower()],
-                    'callback': lambda mb=menu_block: self._add_block_from_palette_menu(mb),
-                    'data': {'block_type': fn_name},
-                })
-
-        # Simulation actions (SIM badge)
-        for label, kbd, cb in [
-            ('Run simulation',   'F5', self.start_simulation),
-            ('Pause simulation', 'F6', self.pause_simulation),
-            ('Stop simulation',  'F7', self.stop_simulation),
-            ('Step simulation',  'F8', self.step_simulation),
-            ('Toggle fast solver', '', lambda: self.toggle_fast_solver(not getattr(self, 'use_fast_solver', True))),
-        ]:
-            commands.append({
-                'name': label, 'type': 'sim', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
-
-        # View toggles (VIEW badge)
-        for label, kbd, cb in [
-            ('Zoom in',       'Ctrl++',  self.zoom_in),
-            ('Zoom out',      'Ctrl+-',  self.zoom_out),
-            ('Fit to window', 'Ctrl+0',  self.fit_to_window),
-            ('Toggle theme',  'Ctrl+T',  self.toggle_theme),
-            ('Toggle grid',   'Ctrl+Shift+G', self.toggle_grid),
-            ('Toggle minimap', 'Ctrl+Shift+M', self.toggle_minimap),
-            ('Toggle variable editor', 'Ctrl+Shift+V', self.toggle_variable_editor),
-            ('Toggle workspace variables', 'Ctrl+Shift+W', self.toggle_workspace_editor),
-            ('Toggle tuning panel', '', self.toggle_tuning_panel),
-        ]:
-            commands.append({
-                'name': label, 'type': 'view', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
-
-        # File actions
-        for label, kbd, cb in [
-            ('New diagram',  'Ctrl+N', self.new_diagram),
-            ('Open diagram', 'Ctrl+O', self.open_diagram),
-            ('Save diagram', 'Ctrl+S', self.save_diagram),
-            ('Load workspace…', '', self.load_workspace),
-            ('Show plots',   '',       self.show_plots),
-            ('Export as TikZ…', '',    self.export_tikz),
-        ]:
-            commands.append({
-                'name': label, 'type': 'file', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
-
-        # Index examples on disk — file paths only, load on click
-        try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            examples_dir = os.path.join(base_dir, 'examples')
-            if os.path.isdir(examples_dir):
-                for f in sorted(os.listdir(examples_dir)):
-                    if f.endswith(('.json', '.dat', '.diablos')):
-                        path = os.path.join(examples_dir, f)
-                        commands.append({
-                            'name': f'examples / {os.path.splitext(f)[0]}',
-                            'type': 'file',
-                            'callback': lambda p=path: self.open_example(p),
-                            'data': {'path': path},
-                        })
-        except Exception:
-            logger.debug("Could not index examples for command palette", exc_info=True)
-
-        # Recent files
-        try:
-            recents = self._load_recent_files()
-        except Exception:
-            recents = []
-        for path in recents[:6]:
-            commands.append({
-                'name': os.path.basename(path),
-                'type': 'recent',
-                'description': path,
-                'callback': lambda p=path: self._open_recent_file(p),
-                'data': {'path': path},
-            })
-
-        self.command_palette.set_commands(commands)
+        self.command_palette_manager.setup()
 
     def _add_block_from_palette_menu(self, menu_block):
         """Add a block to the canvas from command palette."""
-        if not hasattr(self, 'canvas'):
-            return
-
-        from PyQt5.QtCore import QPoint
-        from PyQt5.QtGui import QCursor
-
-        # Get current mouse position in global coordinates
-        global_pos = QCursor.pos()
-
-        # Convert to canvas widget coordinates
-        canvas_widget_pos = self.canvas.mapFromGlobal(global_pos)
-
-        # Check if mouse is within canvas bounds
-        if self.canvas.rect().contains(canvas_widget_pos):
-            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int((canvas_widget_pos.x() - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
-            canvas_y = int((canvas_widget_pos.y() - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
-            canvas_pos = QPoint(canvas_x, canvas_y)
-        else:
-            # Fallback: add at center of visible canvas area
-            center_x = self.canvas.width() // 2
-            center_y = self.canvas.height() // 2
-
-            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int((center_x - self.canvas.pan_offset.x()) / self.canvas.zoom_factor)
-            canvas_y = int((center_y - self.canvas.pan_offset.y()) / self.canvas.zoom_factor)
-            canvas_pos = QPoint(canvas_x, canvas_y)
-
-        # Add the block using the canvas method
-        self.canvas.add_block_from_palette(menu_block, canvas_pos)
-        self.toast.show_message(f"✅ Added {menu_block.block_fn} block")
+        self.command_palette_manager.add_block_from_palette_menu(menu_block)
 
     def _on_command_executed(self, command_type: str, data: dict):
         """Handle command palette command execution."""
-        logger.info(f"Command executed: {command_type}, data: {data}")
+        self.command_palette_manager.on_command_executed(command_type, data)
 
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
