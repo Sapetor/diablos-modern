@@ -11,9 +11,8 @@ Features modern layout, theming, and enhanced user interface.
 import os
 import logging
 from typing import Any, Optional
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QSplitter, QLabel, QFrame,
-                             QMessageBox, QScrollArea, QFileDialog)
+from PyQt5.QtWidgets import (QMainWindow, QWidget,
+                             QMessageBox, QFileDialog)
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent
 from PyQt5.QtGui import QFont
@@ -28,17 +27,12 @@ from lib.improvements import (
 # Import modern UI components
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 from modern_ui.widgets.modern_toolbar import ModernToolBar
-from modern_ui.widgets.modern_canvas import ModernCanvas
-from modern_ui.widgets.modern_palette import ModernBlockPalette
-from modern_ui.widgets.property_editor import PropertyEditor
 from modern_ui.widgets.toast_notification import ToastNotification
-from modern_ui.widgets.error_panel import ErrorPanel
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
 from modern_ui.widgets.workspace_editor import WorkspaceEditor
 from modern_ui.widgets.minimap_widget import MinimapWidget
 from modern_ui.widgets.waveform_inspector import WaveformInspector
-from modern_ui.widgets.breadcrumb_bar import BreadcrumbBar
 from modern_ui.widgets.tuning_panel import TuningPanel
 from modern_ui.controllers.tuning_controller import TuningController
 from modern_ui.platform_config import get_platform_config
@@ -89,6 +83,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         from modern_ui.managers.command_palette_manager import CommandPaletteManager
         self.command_palette_manager = CommandPaletteManager(self)
+
+        from modern_ui.managers.layout_manager import LayoutManager
+        self.layout_manager = LayoutManager(self)
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -335,200 +332,27 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.theme_toggled.connect(self.on_theme_changed)
         self.toolbar.command_palette_requested.connect(self.show_command_palette)
     
+    # Layout/panel facades -> LayoutManager (see managers/layout_manager.py)
     def _setup_layout(self):
         """Setup modern layout with splitters."""
-        # Create central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        # Main horizontal layout
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(4, 4, 4, 4)
-        main_layout.setSpacing(4)
-        
-        # Create main splitter
-        main_splitter = QSplitter(Qt.Horizontal)
-        main_splitter.setObjectName("MainSplitter")
-        main_splitter.setChildrenCollapsible(False)
-        main_splitter.setHandleWidth(5)
-        main_layout.addWidget(main_splitter)
-
-        # Left panel (Block Palette)
-        self.left_panel = self._create_left_panel()
-        main_splitter.addWidget(self.left_panel)
-
-        # Center area (Canvas + Property Panel on right)
-        center_splitter = QSplitter(Qt.Horizontal)
-        center_splitter.setObjectName("CenterSplitter")
-        center_splitter.setChildrenCollapsible(False)
-        center_splitter.setHandleWidth(5)
-
-        # Canvas area (will contain the drawing canvas)
-        self.canvas_area = self._create_canvas_area()
-        center_splitter.addWidget(self.canvas_area)
-
-        # Property panel (right side, vertical)
-        self.property_panel = self._create_property_panel()
-        center_splitter.addWidget(self.property_panel)
-
-        # Set stretch factors: canvas gets priority when resizing
-        center_splitter.setStretchFactor(0, 1)  # Canvas stretches
-        center_splitter.setStretchFactor(1, 0)  # Property panel stays fixed size
-
-        # Don't set splitter sizes here - will be set after window is shown
-        # This ensures calculations use actual window width, not screen width
-
-        main_splitter.addWidget(center_splitter)
-
-        # Set stretch factors: center (canvas+properties) gets priority when resizing
-        main_splitter.setStretchFactor(0, 0)  # Left panel stays fixed size
-        main_splitter.setStretchFactor(1, 1)  # Center area stretches
-
-        # Store reference to center splitter for initial sizing
-        self._center_splitter_for_init = center_splitter
-        
-        # Store splitters for theme updates
-        self.main_splitter = main_splitter
-        self.center_splitter = center_splitter
+        self.layout_manager.setup_layout()
 
     def _initialize_splitter_sizes(self):
-        """Initialize splitter sizes based on actual window dimensions.
-        Called after window is shown to ensure accurate sizing."""
-        # Get platform configuration and actual window width
-        config = get_platform_config()
-        actual_width = self.width()
+        """Initialize splitter sizes based on actual window dimensions."""
+        self.layout_manager.initialize_splitter_sizes()
 
-        logger.info(f"Initializing splitters with actual window width: {actual_width}px")
-
-        # Main splitter: left panel gets fixed width, rest goes to center
-        left_width = config.splitter_left_width
-        center_width = actual_width - left_width
-        self.main_splitter.setSizes([left_width, center_width])
-
-        # Center splitter: canvas gets most space, property panel gets configured percentage
-        property_width = int(center_width * config.splitter_property_percent)
-        canvas_width = center_width - property_width
-
-        # Ensure property panel is at least minimum width
-        min_property_width = config.splitter_property_min_width
-        if property_width < min_property_width:
-            property_width = min_property_width
-            canvas_width = center_width - property_width
-
-        self.center_splitter.setSizes([canvas_width, property_width])
-
-        logger.info(f"Splitter sizes: left={left_width}, canvas={canvas_width}, properties={property_width}")
-    
     def _create_left_panel(self) -> QWidget:
         """Create modern left panel for block palette."""
-        panel = QFrame()
-        panel.setObjectName("ModernPanel")
+        return self.layout_manager.create_left_panel()
 
-        # Get platform configuration
-        config = get_platform_config()
-
-        panel.setMinimumWidth(config.left_panel_min_width)
-        
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
-
-        # Panel title
-        title = QLabel("Block Palette")
-        title.setObjectName("PanelTitle")
-        title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
-        layout.addWidget(title)
-
-        # Modern block palette widget (Phase 2)
-        self.block_palette = ModernBlockPalette(self.dsim)
-        layout.addWidget(self.block_palette)
-        return panel
-    
     def _create_canvas_area(self) -> QWidget:
         """Create modern canvas area with responsive sizing and error panel."""
-        # Create container widget
-        container = QWidget()
-        container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(4)
+        return self.layout_manager.create_canvas_area()
 
-        # Create the modern canvas widget
-        self.canvas = ModernCanvas(self.dsim)
-
-        # Set default routing mode for new connections
-        self.canvas.default_routing_mode = self.default_routing_mode
-
-        # Get platform configuration
-        config = get_platform_config()
-
-        self.canvas.setMinimumSize(config.canvas_min_width, config.canvas_min_height)
-
-        logger.info(f"Canvas minimum size: {config.canvas_min_width}×{config.canvas_min_height}")
-
-        # Connect canvas signals
-        self.canvas.block_selected.connect(self._on_block_selected)
-        self.canvas.connection_created.connect(self._on_connection_created)
-        self.canvas.simulation_status_changed.connect(self._on_simulation_status_changed)
-        self.canvas.command_palette_requested.connect(self.show_command_palette)
-        self.toolbar.auto_route_wires.connect(self.canvas.auto_route_lines)
-
-        # Create breadcrumb bar
-        self.breadcrumb_bar = BreadcrumbBar()
-        self.breadcrumb_bar.path_clicked.connect(self.canvas.navigate_scope)
-        self.canvas.scope_changed.connect(self.breadcrumb_bar.set_path)
-
-        # Add widgets to container
-        container_layout.addWidget(self.breadcrumb_bar)
-        container_layout.addWidget(self.canvas, 1)  # Canvas gets stretch priority
-
-        # Create error panel
-        self.error_panel = ErrorPanel()
-        self.error_panel.error_clicked.connect(self._on_error_clicked)
-        self.error_panel.setMaximumHeight(200)  # Limit height
-        container_layout.addWidget(self.error_panel, 0)  # Error panel doesn't stretch
-
-        return container
-    
     def _create_property_panel(self) -> QWidget:
         """Create modern property panel on right side with size constraints."""
-        panel = QFrame()
-        panel.setObjectName("ModernPanel")
-        panel.setFrameStyle(QFrame.StyledPanel)
+        return self.layout_manager.create_property_panel()
 
-        # Get platform configuration
-        config = get_platform_config()
-
-        panel.setMinimumWidth(config.property_panel_min_width)
-
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
-
-        # Panel title
-        title = QLabel("Properties")
-        title.setObjectName("PanelTitle")
-        title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
-        layout.addWidget(title)
-
-        # Scroll area for properties
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameStyle(QFrame.NoFrame)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll_area.setFocusPolicy(Qt.NoFocus)
-        layout.addWidget(scroll_area)
-
-        # Property editor
-        self.property_editor = PropertyEditor()
-        scroll_area.setWidget(self.property_editor)
-
-        # PyQt5 5.15: QScrollArea viewport absorbs mouse clicks and doesn't
-        # transfer focus to child widgets. Install event filter to fix this.
-        self._prop_scroll_viewport = scroll_area.viewport()
-        self._prop_scroll_viewport.installEventFilter(self)
-
-        return panel
-    
     def eventFilter(self, obj, event):
         """Forward focus to child input widgets inside the property scroll area.
         PyQt5 5.15: QScrollArea viewport absorbs clicks without focusing children."""
