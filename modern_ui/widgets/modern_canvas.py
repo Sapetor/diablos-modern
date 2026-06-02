@@ -1298,14 +1298,6 @@ class ModernCanvas(QWidget):
         self.canvas_state.zoom_pan.pan_offset = value
 
     @property
-    def offset(self):
-        return self.canvas_state.zoom_pan.pan_offset
-
-    @offset.setter
-    def offset(self, value):
-        self.canvas_state.zoom_pan.pan_offset = value
-
-    @property
     def panning(self):
         return self.canvas_state.zoom_pan.is_panning
 
