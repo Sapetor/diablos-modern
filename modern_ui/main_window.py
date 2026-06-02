@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QMessageBox, QScrollArea, QFileDialog)
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -78,6 +78,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         from modern_ui.managers.recent_files_manager import RecentFilesManager
         self.recent_files_manager = RecentFilesManager(self)
+
+        from modern_ui.managers.appearance_manager import AppearanceManager
+        self.appearance_manager = AppearanceManager(self)
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -797,148 +800,34 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.set_zoom(factor)
             self.zoom_status.setText(f"{int(self.canvas.zoom_factor * 100)}%")
     
+    # Appearance facades -> AppearanceManager (see managers/appearance_manager.py)
     def toggle_theme(self):
         """Toggle theme and persist the choice."""
-        theme_manager.toggle_theme()
-        self._save_user_preferences()
+        self.appearance_manager.toggle_theme()
 
     def _set_palette(self, palette_key: str):
         """Switch the active block-color palette and persist the choice."""
-        theme_manager.set_palette(palette_key)
-        self._save_user_preferences()
-        # Refresh canvas so blocks re-render with new palette colors
-        if hasattr(self, 'canvas'):
-            self.canvas.update()
+        self.appearance_manager.set_palette(palette_key)
 
     def _toggle_solid_fills(self, checked: bool):
         """Toggle solid block fills and persist the choice."""
-        theme_manager.set_solid_fills(checked)
-        if hasattr(self, 'canvas'):
-            self.canvas.update()
-        self._save_user_preferences()
+        self.appearance_manager.toggle_solid_fills(checked)
 
     def _save_user_preferences(self):
         """Persist all UI preferences (theme, palette, solid_fills) to user_preferences.json."""
-        import os
-        import json
-        from lib.app_paths import user_data_path
-        path = user_data_path("user_preferences.json")
-        prefs = {}
-        try:
-            with open(path, 'r') as f:
-                prefs = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            prefs = {}
-        prefs['theme'] = theme_manager.current_theme.value
-        prefs['block_palette'] = theme_manager.current_palette
-        prefs['solid_fills'] = theme_manager.solid_fills
-        tmp = path + '.tmp'
-        try:
-            with open(tmp, 'w') as f:
-                json.dump(prefs, f, indent=2)
-            os.replace(tmp, path)
-        except Exception as e:
-            logger.warning("Could not save user preferences: %s", e)
-            try:
-                os.remove(tmp)
-            except FileNotFoundError:
-                pass
+        self.appearance_manager.save_preferences()
 
     def on_theme_changed(self):
         """Handle theme changes."""
-        # Update status bar
-        theme_name = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
-        self.theme_status.setText(theme_name)
-
-        # Update statusbar label colors
-        self._update_statusbar_colors()
-
-        # Update menubar colors
-        self._update_menubar_colors()
-
-        # Update canvas area styling
-        self.canvas_area.setStyleSheet(f"""
-            #CanvasArea {{
-                background-color: {theme_manager.get_color('canvas_background').name()};
-                border: 1px solid {theme_manager.get_color('border_primary').name()};
-                border-radius: 6px;
-            }}
-        """)
+        self.appearance_manager.on_theme_changed()
 
     def _update_statusbar_colors(self):
         """Apply theme to the status bar shell. Individual pills own their own styles."""
-        bg_color = theme_manager.get_color('statusbar_bg').name()
-        border = theme_manager.get_color('border_primary').name()
-        self.statusBar().setStyleSheet(
-            f"QStatusBar {{ background-color: {bg_color}; border-top: 1px solid {border}; }}"
-            f"QStatusBar::item {{ border: 0; }}"
-        )
-        # Refresh theme pill text
-        if hasattr(self, 'theme_status'):
-            theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
-            from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
-            palette_label = PALETTE_DISPLAY_NAMES.get(
-                theme_manager.current_palette, theme_manager.current_palette
-            ).split()[0]
-            self.theme_status.setText(f"{theme_label} · {palette_label}")
-            self.theme_status.setStyleSheet(
-                f"color: {theme_manager.get_color('text_secondary').name()};"
-                f" background-color: {theme_manager.get_color('background_tertiary').name()};"
-                f" padding: 1px 8px; border-radius: 4px; font-size: 9pt;"
-            )
+        self.appearance_manager.update_statusbar_colors()
 
     def _update_menubar_colors(self):
         """Update menubar colors for proper contrast."""
-        bg_color = theme_manager.get_color('surface').name()
-        text_color = theme_manager.get_color('text_primary').name()
-        hover_bg = theme_manager.get_color('accent_primary').name()
-        hover_bg_alpha = theme_manager.get_color('accent_primary')
-        hover_bg_alpha.setAlpha(30)
-        disabled_color = theme_manager.get_color('text_disabled').name()
-
-        menubar_style = f"""
-            QMenuBar {{
-                background-color: {bg_color};
-                color: {text_color};
-                border-bottom: 1px solid {theme_manager.get_color('border_primary').name()};
-            }}
-            QMenuBar::item {{
-                background-color: transparent;
-                padding: 4px 10px;
-            }}
-            QMenuBar::item:selected {{
-                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
-                border-radius: 4px;
-            }}
-            QMenuBar::item:pressed {{
-                background-color: {hover_bg};
-                border-radius: 4px;
-            }}
-            QMenu {{
-                background-color: {bg_color};
-                color: {text_color};
-                border: 1px solid {theme_manager.get_color('border_primary').name()};
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QMenu::item {{
-                padding: 6px 24px 6px 12px;
-                border-radius: 4px;
-            }}
-            QMenu::item:selected {{
-                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
-            }}
-            QMenu::item:disabled {{
-                color: {disabled_color};
-            }}
-            QMenu::separator {{
-                height: 1px;
-                background: {theme_manager.get_color('border_secondary').name()};
-                margin: 4px 8px;
-            }}
-        """
-
-        self.menuBar().setStyleSheet(menubar_style)
+        self.appearance_manager.update_menubar_colors()
 
     # Menu action handlers (simplified for Phase 1)
     def undo_action(self):
