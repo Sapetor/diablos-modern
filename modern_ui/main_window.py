@@ -10,7 +10,6 @@ Features modern layout, theming, and enhanced user interface.
 
 import os
 import logging
-import ast
 from typing import Any, Optional
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QSplitter, QLabel, QFrame,
@@ -84,6 +83,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         from modern_ui.managers.status_bar_manager import StatusBarManager
         self.status_bar_manager = StatusBarManager(self)
+
+        from modern_ui.managers.property_controller import PropertyController
+        self.property_controller = PropertyController(self)
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -1124,103 +1126,18 @@ class ModernDiaBloSWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Error", message)
 
+    # Property/param facades -> PropertyController (see managers/property_controller.py)
     def _convert_param_value(self, new_value, target_type):
-        """
-        Convert a parameter value to the target type, handling variables.
-        
-        Args:
-            new_value: The string input from the user.
-            target_type: The expected type (int, float, bool, list).
-            
-        Returns:
-            The converted value.
-            
-        Raises:
-            ValueError, TypeError, SyntaxError: If conversion fails and it's not a valid variable name.
-        """
-        try:
-            # Try to convert to the expected type
-            if target_type == bool:
-                if isinstance(new_value, str):
-                    return new_value.lower() == 'true'
-                return bool(new_value)
-            elif target_type == list:
-                converted = ast.literal_eval(new_value)
-                if not isinstance(converted, list):
-                    raise TypeError("Input must be a list (e.g., [1, 2, 3])")
-                return converted
-            elif target_type == int:
-                return int(new_value)
-            elif target_type == float:
-                return float(new_value)
-            else:
-                return str(new_value)
-        except (ValueError, TypeError, SyntaxError):
-            # If conversion fails, treat as a string (potential variable name or expression)
-            # We allow this so that expressions like '[K, K]' or '2*K' can be stored as strings
-            # and resolved later by the WorkspaceManager.
-            logger.debug(f"Could not convert '{new_value}' to {target_type}, keeping as string.")
-            return str(new_value)
+        """Convert a parameter value to the target type, handling variables."""
+        return self.property_controller.convert_param_value(new_value, target_type)
 
     def _on_property_changed(self, block_name: str, prop_name: str, new_value: Any) -> None:
         """Handle property changes from the property editor."""
-        try:
-            for block in self.canvas.dsim.blocks_list:
-                if block.name == block_name:
-                    # Handle username change (special case - not in params)
-                    if prop_name == '_username_':
-                        self.canvas.dsim.dirty = True
-                        self.canvas.update()
-                        return
-
-                    # Handle port count change from property editor
-                    if prop_name in ('_inputs_', '_outputs_'):
-                        self.canvas._push_undo("Edit Ports")
-                        if prop_name == '_inputs_':
-                            block.in_ports = int(new_value)
-                        else:
-                            block.out_ports = int(new_value)
-                        block.update_Block()
-                        block.params['_inputs_'] = block.in_ports
-                        block.params['_outputs_'] = block.out_ports
-                        self.canvas.dsim.dirty = True
-                        self.canvas.update()
-                        return
-
-                    param_type = type(block.params.get(prop_name))
-
-                    # If the value is already a list or numpy array, preserve it
-                    # (property editor may have already converted it for accepts_array params)
-                    if isinstance(new_value, (list, tuple)):
-                        converted_value = list(new_value)
-                    elif hasattr(new_value, 'tolist'):  # numpy array
-                        converted_value = new_value
-                    else:
-                        converted_value = self._convert_param_value(new_value, param_type)
-
-                    logger.debug(f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})")
-                    block.update_params({prop_name: converted_value})
-                    self.canvas.dsim.dirty = True
-                    # For Goto/From blocks, refresh labels and virtual links immediately
-                    if block.block_fn in ("Goto", "From") and prop_name in ("tag", "signal_name"):
-                        try:
-                            self.canvas.dsim.model.link_goto_from()
-                        except Exception as e:
-                            logger.warning(f"Could not relink Goto/From after property change: {e}")
-                    # Refresh canvas to show updated block visuals (Sum signs, labels, etc.)
-                    self.canvas.update()
-                    break
-        except (ValueError, TypeError, SyntaxError) as e:
-            logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
-            self.show_error(f"Invalid input for {prop_name}: {e}")
-        except Exception as e:
-            logger.error(f"Error updating property: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+        self.property_controller.on_property_changed(block_name, prop_name, new_value)
 
     def _add_to_tuning(self, block, param_name):
         """Add a block parameter to the tuning panel."""
-        self.tuning_panel.add_parameter(block, param_name)
+        self.property_controller.add_to_tuning(block, param_name)
 
     def toggle_tuning_panel(self):
         """Toggle the tuning panel visibility."""
