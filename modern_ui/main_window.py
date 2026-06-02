@@ -15,7 +15,6 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget,
                              QMessageBox, QFileDialog)
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent
-from PyQt5.QtGui import QFont
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -90,6 +89,9 @@ class ModernDiaBloSWindow(QMainWindow):
 
         from modern_ui.managers.view_actions_manager import ViewActionsManager
         self.view_actions_manager = ViewActionsManager(self)
+
+        from modern_ui.managers.simulation_actions_manager import SimulationActionsManager
+        self.simulation_actions_manager = SimulationActionsManager(self)
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -350,44 +352,14 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
 
+    # Simulation facades -> SimulationActionsManager (see managers/simulation_actions_manager.py)
     def pause_simulation(self):
         """Pause simulation."""
-        if hasattr(self.dsim, 'execution_pause'):
-            self.dsim.execution_pause = True
-        self.toolbar.set_simulation_state(True, True)
+        self.simulation_actions_manager.pause()
 
     def step_simulation(self):
-        """Execute a single timestep of the simulation.
-
-        If simulation is not running, it will be initialized first,
-        allowing step-by-step execution from t=0.
-        """
-        if not hasattr(self.dsim, 'single_step'):
-            self.status_message.setText("Single-step not available")
-            return
-
-        # Check if this is the first step (will initialize)
-        was_initialized = self.dsim.execution_initialized
-
-        success = self.dsim.single_step()
-        if success:
-            if not was_initialized:
-                self.status_message.setText(f"Started stepping at t={self.dsim.time_step:.4f}s")
-            else:
-                self.status_message.setText(f"Stepped to t={self.dsim.time_step:.4f}s")
-            self.canvas.update()
-            # Keep toolbar in paused state (step always pauses)
-            self.toolbar.set_simulation_state(True, True)
-        else:
-            # Check if simulation ended or failed to start
-            if not self.dsim.execution_initialized:
-                self.toolbar.set_simulation_state(False, False)
-                if was_initialized:
-                    self.status_message.setText("Simulation finished")
-                else:
-                    self.status_message.setText("Failed to initialize simulation")
-            else:
-                self.status_message.setText("Step failed")
+        """Execute a single timestep of the simulation."""
+        self.simulation_actions_manager.step()
 
     def show_plots(self):
         """Show plots."""
@@ -519,93 +491,6 @@ class ModernDiaBloSWindow(QMainWindow):
         """Fit all blocks to window by auto-zooming and panning."""
         self.view_actions_manager.fit_to_window()
     
-    def show_keyboard_shortcuts(self):
-        """Show keyboard shortcuts help dialog."""
-        from PyQt5.QtWidgets import QDialog, QTableWidget, QTableWidgetItem, QVBoxLayout, QPushButton
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Keyboard Shortcuts")
-        dialog.setMinimumSize(600, 500)
-
-        layout = QVBoxLayout()
-
-        # Create table
-        table = QTableWidget()
-        table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
-        table.horizontalHeader().setStretchLastSection(True)
-
-        # Define shortcuts (category, shortcut, description)
-        shortcuts = [
-            ("File Operations", "", ""),
-            ("", "Ctrl+N", "New Diagram"),
-            ("", "Ctrl+O", "Open Diagram"),
-            ("", "Ctrl+S", "Save Diagram"),
-            ("", "", ""),
-            ("Editing", "", ""),
-            ("", "Ctrl+Z / Cmd+Z", "Undo"),
-            ("", "Ctrl+Y / Cmd+Shift+Z", "Redo"),
-            ("", "Ctrl+A", "Select All"),
-            ("", "Ctrl+C", "Copy"),
-            ("", "Ctrl+V", "Paste"),
-            ("", "Ctrl+D", "Duplicate"),
-            ("", "Delete / Backspace", "Delete Selected"),
-            ("", "Ctrl+F", "Flip Block"),
-            ("", "", ""),
-            ("View", "", ""),
-            ("", "Ctrl++", "Zoom In"),
-            ("", "Ctrl+-", "Zoom Out"),
-            ("", "Ctrl+0", "Fit to Window"),
-            ("", "Middle Mouse", "Pan Canvas"),
-            ("", "", ""),
-            ("Simulation", "", ""),
-            ("", "F5", "Run Simulation"),
-            ("", "F6", "Pause Simulation"),
-            ("", "F7", "Stop Simulation"),
-            ("", "", ""),
-            ("Canvas", "", ""),
-            ("", "Esc", "Cancel Operation"),
-            ("", "Right Click", "Context Menu"),
-        ]
-
-        table.setRowCount(len(shortcuts))
-
-        for i, (category, shortcut, action) in enumerate(shortcuts):
-            if category:  # Category header
-                cat_item = QTableWidgetItem(category)
-                cat_item.setFont(QFont("Arial", 10, QFont.Bold))
-                table.setItem(i, 0, cat_item)
-                table.setSpan(i, 0, 1, 2)
-            else:
-                table.setItem(i, 0, QTableWidgetItem(shortcut))
-                table.setItem(i, 1, QTableWidgetItem(action))
-
-        table.resizeColumnsToContents()
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
-        table.setSelectionMode(QTableWidget.NoSelection)
-
-        layout.addWidget(table)
-
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(dialog.accept)
-        layout.addWidget(close_btn)
-
-        dialog.setLayout(layout)
-        dialog.exec_()
-
-    def show_about(self):
-        """Show about dialog."""
-        QMessageBox.about(self, "About DiaBloS",
-                         "DiaBloS - Modern Block Diagram Simulator\n"
-                         "Phase 2: Interactive Block Canvas\n"
-                         "✅ Modern UI Foundation\n"
-                         "✅ Interactive Block Palette\n"
-                         "✅ Drag-and-Drop Block Creation\n"
-                         "✅ Modern Canvas with Mouse Events\n"
-                         "Built with PyQt5 and modern design principles")
-    
-
     def toggle_variable_editor(self):
         """Toggle Variable Editor visibility."""
         if self.variable_editor_dock.isVisible():
@@ -859,81 +744,15 @@ class ModernDiaBloSWindow(QMainWindow):
     
     def start_simulation(self) -> None:
         """Start simulation with validation."""
-        if not hasattr(self, 'canvas'):
-            self.status_message.setText("Canvas not available")
-            return
-
-        # Run diagram validation first
-        from lib.diagram_validator import ErrorSeverity
-
-        logger.info("Running pre-simulation validation...")
-        errors = self.canvas.run_validation()
-
-        # Check for critical errors that block simulation
-        has_errors = any(e.severity == ErrorSeverity.ERROR for e in errors)
-
-        if errors:
-            # Show error panel with results
-            self.error_panel.set_errors(errors)
-
-            if has_errors:
-                # Critical errors found - don't start simulation
-                error_count = sum(1 for e in errors if e.severity == ErrorSeverity.ERROR)
-                self.status_message.setText(f"Cannot start simulation: {error_count} error(s) found")
-                logger.warning(f"Simulation blocked by {error_count} validation error(s)")
-
-                # Show a message box for critical errors
-                QMessageBox.warning(
-                    self,
-                    "Validation Errors",
-                    f"Cannot start simulation due to {error_count} validation error(s).\n\n"
-                    f"Please fix the errors shown in the error panel before running."
-                )
-                return
-            else:
-                # Only warnings - allow simulation but notify user
-                warning_count = sum(1 for e in errors if e.severity == ErrorSeverity.WARNING)
-                logger.info(f"Starting simulation with {warning_count} warning(s)")
-                self.status_message.setText(f"Starting simulation with {warning_count} warning(s)...")
-        else:
-            # No errors or warnings - clear error panel
-            self.error_panel.clear()
-            logger.info("Validation passed - no errors or warnings")
-            self.status_message.setText("Starting simulation...")
-
-        # Clear validation indicators from canvas before starting
-        # (errors will be shown in panel, don't need red borders during simulation)
-        self.canvas.clear_validation()
-
-        # Start the simulation
-        # Start the simulation
-        # Check fast solver preference
-        if hasattr(self, 'use_fast_solver'):
-             self.dsim.use_fast_solver = self.use_fast_solver
-             
-        self.canvas.start_simulation()
-
-        # Arm tuning controller after batch simulation completes
-        # (safe_update timer can't detect batch completion since it runs synchronously)
-        if not self.canvas.is_simulation_running():
-            sim_time = getattr(self.dsim, 'sim_time', None)
-            sim_dt = getattr(self.dsim, 'sim_dt', None)
-            if sim_time and sim_dt:
-                self.tuning_controller.store_sim_params(sim_time, sim_dt)
+        self.simulation_actions_manager.start()
 
     def stop_simulation(self):
         """Stop simulation."""
-        if hasattr(self, 'canvas'):
-            self.canvas.stop_simulation()
-        self.toolbar.set_simulation_state(False, False)
-        self.status_message.setText("Simulation stopped")
+        self.simulation_actions_manager.stop()
 
     def toggle_fast_solver(self, checked):
         """Toggle fast solver mode."""
-        self.use_fast_solver = checked
-        if hasattr(self, 'dsim'):
-            self.dsim.use_fast_solver = checked
-        logger.info(f"Fast Solver enabled: {checked}")
+        self.simulation_actions_manager.toggle_fast_solver(checked)
 
     # Recent Files Management
     # Recent-files facades -> RecentFilesManager (see managers/recent_files_manager.py)
