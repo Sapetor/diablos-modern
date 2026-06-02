@@ -76,6 +76,9 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.managers.project_manager import ProjectManager
         self.project_manager = ProjectManager(self)
 
+        from modern_ui.managers.recent_files_manager import RecentFilesManager
+        self.recent_files_manager = RecentFilesManager(self)
+
         # Initialize state management (keeping from improved version)
         self._init_state_management()
 
@@ -1695,124 +1698,30 @@ class ModernDiaBloSWindow(QMainWindow):
         logger.info(f"Fast Solver enabled: {checked}")
 
     # Recent Files Management
+    # Recent-files facades -> RecentFilesManager (see managers/recent_files_manager.py)
     def _load_recent_files(self):
         """Load recent files list from config."""
-        import json
-        from lib.app_paths import user_data_path
-        config_path = user_data_path('config/recent_files.json')
-        try:
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as f:
-                    data = json.load(f)
-                    return data.get('recent_files', [])
-        except Exception as e:
-            logger.error(f"Error loading recent files: {e}")
-        return []
+        return self.recent_files_manager.load()
 
     def _save_recent_files(self, recent_files):
         """Save recent files list to config."""
-        import json
-        from lib.app_paths import user_data_path
-        config_path = user_data_path('config/recent_files.json')
-        try:
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
-            with open(config_path, 'w') as f:
-                json.dump({'recent_files': recent_files}, f, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving recent files: {e}")
+        self.recent_files_manager.save(recent_files)
 
     def _add_recent_file(self, filepath):
         """Add a file to the recent files list."""
-        if not filepath:
-            return
-
-        recent_files = self._load_recent_files()
-
-        # Remove if already in list
-        if filepath in recent_files:
-            recent_files.remove(filepath)
-
-        # Add to front
-        recent_files.insert(0, filepath)
-
-        # Keep only last 10
-        recent_files = recent_files[:10]
-
-        self._save_recent_files(recent_files)
-        self._update_recent_files_menu()
+        self.recent_files_manager.add(filepath)
 
     def _update_recent_files_menu(self):
         """Update the recent files menu."""
-        self.recent_files_menu.clear()
-
-        recent_files = self._load_recent_files()
-
-        if not recent_files:
-            action = self.recent_files_menu.addAction("No recent files")
-            action.setEnabled(False)
-            return
-
-        for filepath in recent_files:
-            # Show only filename, but store full path
-            filename = os.path.basename(filepath)
-            action = self.recent_files_menu.addAction(filename)
-            action.setData(filepath)
-            action.triggered.connect(lambda checked, path=filepath: self._open_recent_file(path))
-
-        self.recent_files_menu.addSeparator()
-        clear_action = self.recent_files_menu.addAction("Clear Recent Files")
-        clear_action.triggered.connect(self._clear_recent_files)
+        self.recent_files_manager.update_menu()
 
     def _open_recent_file(self, filepath):
         """Open a file from the recent files list."""
-        if os.path.exists(filepath):
-            # Open the diagram using the diagram service (or direct load method)
-            # Since open_diagram doesn't take arguments in its current form (it opens dialog),
-            # we should call dsim.open directly or refactor open_diagram to accept an optional path.
-            # Looking at existing code, MainWindow.open_diagram calls self.dsim.open() (which opens dialog)
-            # We want to bypass the dialog.
-            
-            try:
-                # Use DSim's open mechanism that supports filepath
-                # dsim.open_file(filepath) or dsim.file_service.load(filepath)
-                # Let's check DSim.open in lib.py - it takes no args usually?
-                # Using the FileService directly via DSim is safer if DSim.open is UI-bound.
-                # However, DSim.serialize/deserialize were added.
-                
-                # Check if we have file_service
-                if hasattr(self.dsim, 'file_service'):
-                    block_data = self.dsim.file_service.load(filepath=filepath)
-                    self.dsim.deserialize(block_data)
-                else:
-                    # Fallback to older mechanism if needed
-                    self.dsim.open(filepath)
-                
-                self._add_recent_file(filepath)
-                self.status_message.setText(f"Opened: {os.path.basename(filepath)}")
-                logger.info(f"Opening recent file: {filepath}")
-                self.canvas.update()
-                
-            except Exception as e:
-                logger.error(f"Failed to open recent file: {e}")
-                QMessageBox.critical(self, "Error", f"Failed to open file:\n{str(e)}")
-        else:
-            QMessageBox.warning(
-                self,
-                "File Not Found",
-                f"The file '{filepath}' no longer exists."
-            )
-            # Remove from recent files
-            recent_files = self._load_recent_files()
-            if filepath in recent_files:
-                recent_files.remove(filepath)
-                self._save_recent_files(recent_files)
-                self._update_recent_files_menu()
+        self.recent_files_manager.open(filepath)
 
     def _clear_recent_files(self):
         """Clear the recent files list."""
-        self._save_recent_files([])
-        self._update_recent_files_menu()
-        self.status_message.setText("Recent files cleared")
+        self.recent_files_manager.clear()
 
     # Auto-Save and Recovery
     def _auto_save(self):
