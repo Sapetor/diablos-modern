@@ -3,7 +3,7 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget, QApplication, QMenu, QToolTip
+from PyQt5.QtWidgets import QWidget, QApplication, QToolTip
 from PyQt5.QtCore import Qt, QPoint, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor
 
@@ -444,22 +444,6 @@ class ModernCanvas(QWidget):
             self.menu_manager.handle_context_menu(pos)
         except Exception as e:
             logger.error(f"Error in _handle_right_click: {str(e)}")
-
-    def show_bode_plot_menu(self, block, pos):
-        """Show context menu for the BodeMag block."""
-        menu = QMenu(self)
-        plot_action = menu.addAction("Generate Bode Plot")
-        action = menu.exec_(pos)
-        if action == plot_action:
-            self.generate_bode_plot(block)
-
-    def show_root_locus_menu(self, block, pos):
-        """Show context menu for the RootLocus block."""
-        menu = QMenu(self)
-        plot_action = menu.addAction("Generate Root Locus Plot")
-        action = menu.exec_(pos)
-        if action == plot_action:
-            self.generate_root_locus(block)
 
     def _get_clicked_block(self, pos):
         # logger.info(f"Checking click at {pos}")
@@ -1007,110 +991,6 @@ class ModernCanvas(QWidget):
         # Just accept the event to prevent duplicate menu from appearing.
         event.accept()
 
-    def _show_block_context_menu(self, block, global_pos):
-        """Show context menu for a block."""
-        from PyQt5.QtWidgets import QMenu, QAction
-        
-        context_menu = QMenu(self)
-        
-        # DEBUG LOGGING for context menu logic
-        logger.info(f"Opening context menu for block: {block.name}")
-        logger.info(f"  block_fn: {getattr(block, 'block_fn', 'N/A')}")
-        logger.info(f"  type(block): {type(block)}")
-        
-        # Check selection (might be multiple)
-        selected_blocks = [b for b in self.dsim.blocks_list if b.selected]
-        if block not in selected_blocks:
-            # Right clicked on unselected block?
-            # Maybe select it alone?
-            pass # Usually right click doesn't change selection unless separate logic
-            
-        # If multiple selected, actions apply to all
-        target_blocks = selected_blocks if selected_blocks else [block]
-
-        # Duplicate
-        action_duplicate = QAction("Duplicate", self)
-        action_duplicate.triggered.connect(lambda: [self._duplicate_block(b) for b in target_blocks])
-        context_menu.addAction(action_duplicate)
-        
-        # Delete
-        action_delete = QAction("Delete", self)
-        action_delete.triggered.connect(self.remove_selected_items)
-        context_menu.addAction(action_delete)
-        
-        context_menu.addSeparator()
-        
-        # Copy
-        action_copy = QAction("Copy", self)
-        action_copy.triggered.connect(self._copy_selected_blocks)
-        context_menu.addAction(action_copy)
-
-        context_menu.addSeparator()
-        
-        # Subsystem Creation
-        if len(target_blocks) > 0:
-            action_create_subsystem = QAction("Create Subsystem from Selection", self)
-            action_create_subsystem.triggered.connect(self._create_subsystem_trigger)
-            context_menu.addAction(action_create_subsystem)
-            
-        # Specific Block Actions (e.g. Bode)
-        if hasattr(block, 'block_fn'):
-             logger.info(f"Checking specific block actions for {block.block_fn}")
-             if block.block_fn == 'BodeMag':
-                 logger.info("Adding BodeMag action")
-                 context_menu.addSeparator()
-                 action_bode = QAction("Generate Bode Plot", self)
-                 action_bode.triggered.connect(lambda: self.generate_bode_plot(block))
-                 context_menu.addAction(action_bode)
-             elif block.block_fn == 'RootLocus':
-                 logger.info("Adding RootLocus action")
-                 context_menu.addSeparator()
-                 action_rl = QAction("Generate Root Locus", self)
-                 action_rl.triggered.connect(lambda: self.generate_root_locus(block))
-                 context_menu.addAction(action_rl)
-             elif block.block_fn == 'Nyquist':
-                 logger.info("Adding Nyquist action")
-                 context_menu.addSeparator()
-                 action_nyq = QAction("Generate Nyquist Plot", self)
-                 action_nyq.triggered.connect(lambda: self.generate_nyquist_plot(block))
-                 context_menu.addAction(action_nyq)
-             elif block.block_fn == 'BodePhase':
-                 logger.info("Adding BodePhase action")
-                 context_menu.addSeparator()
-                 action_bp = QAction("Generate Bode Phase Plot", self)
-                 action_bp.triggered.connect(lambda: self.generate_bode_phase_plot(block))
-                 context_menu.addAction(action_bp)
-             else:
-                 logger.info(f"No specific actions for {block.block_fn}")
-
-        context_menu.exec_(global_pos)
-
-    def _show_canvas_context_menu(self, global_pos):
-        """Show context menu for empty canvas."""
-        from PyQt5.QtWidgets import QMenu, QAction
-        context_menu = QMenu(self)
-        
-        action_paste = QAction("Paste", self)
-        action_paste.triggered.connect(lambda: self._paste_blocks(self.mapFromGlobal(global_pos)))
-        if not getattr(self, 'clipboard_blocks', None):
-            action_paste.setEnabled(False)
-        context_menu.addAction(action_paste)
-        
-        context_menu.exec_(global_pos)
-
-    def _show_connection_context_menu(self, line, global_pos):
-        """Show context menu for connection."""
-        from PyQt5.QtWidgets import QMenu, QAction
-        context_menu = QMenu(self)
-        
-        action_delete = QAction("Delete Connection", self)
-        # Assuming line is selected or we target it specifically
-        # For now reusing remove_selected_items if line selected
-        action_delete.triggered.connect(self.remove_selected_items)
-        context_menu.addAction(action_delete)
-        
-        context_menu.exec_(global_pos)
-        
     def _create_subsystem_trigger(self):
         """Trigger subsystem creation."""
         logger.info("Create subsystem trigger called")
