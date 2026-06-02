@@ -41,6 +41,25 @@ def _no_modal_dialogs():
                 originals[(cls, meth)] = getattr(cls, meth)
                 setattr(cls, meth, _accept)
 
+    # The QMessageBox *static* convenience methods (information/warning/
+    # critical/question) construct and exec their own dialog at the C++ level,
+    # bypassing the instance ``exec_`` patch above -- so they still block under
+    # ``offscreen``. Neutralize them too, returning a sensible default button.
+    static_defaults = {
+        "information": QMessageBox.Ok,
+        "warning": QMessageBox.Ok,
+        "critical": QMessageBox.Ok,
+        "question": QMessageBox.Yes,
+        "about": None,
+        "aboutQt": None,
+    }
+    for meth, default in static_defaults.items():
+        if hasattr(QMessageBox, meth):
+            originals[(QMessageBox, meth)] = getattr(QMessageBox, meth)
+            setattr(QMessageBox, meth, staticmethod(
+                (lambda _d: (lambda *a, **k: _d))(default)
+            ))
+
     yield
 
     for (cls, meth), original in originals.items():
