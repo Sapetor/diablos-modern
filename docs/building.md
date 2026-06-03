@@ -10,10 +10,14 @@ source ~/.venvs/diablos-arm64/bin/activate
 ./tools/build.sh
 # Output: dist/DiaBloS-arm64.app + dist/DiaBloS-arm64.dmg (72MB)
 
-# x86_64 (Rosetta) -- fallback for older Intel Macs
-source ~/.venvs/evaluate-diablos/bin/activate
-./tools/build.sh
-# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-x86_64.dmg (113MB)
+# x86_64 (Rosetta) -- fallback for older Intel Macs.
+# Built from the x86_64 conda env under Rosetta (PyInstaller bundles the
+# active interpreter, so the env MUST be x86_64 -- arm64 venvs produce arm64).
+arch -x86_64 /bin/bash -c '
+  source ~/opt/anaconda3/etc/profile.d/conda.sh
+  conda activate diablos_x86
+  ./tools/build.sh'
+# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-x86_64.dmg (~117MB)
 
 # Move DMG out of vault and clean up
 mv dist/DiaBloS-*.dmg ~/Desktop/
@@ -28,12 +32,15 @@ rm -rf dist/DiaBloS-*.app build/
 
 Two separate venvs are used because PyInstaller bundles the Python interpreter from the active venv:
 
-| Venv | Python | PyQt5 | Arch | Status |
+| Env | Python | PyQt5 | Arch | Status |
 |------|--------|-------|------|--------|
-| `~/.venvs/evaluate-diablos/` | 3.9 (Anaconda) | 5.9.7 | x86_64 | **Release build** |
-| `~/.venvs/diablos-arm64/` | 3.12 (Homebrew) | 5.15.11 | arm64 | Dev/testing only (cursor bug) |
+| conda env `diablos_x86` (`~/opt/anaconda3/envs/diablos_x86`) | 3.9 (Anaconda) | 5.15.9 | x86_64 | x86_64 release (build via `arch -x86_64`) |
+| `~/.venvs/diablos-arm64/` | 3.12 (Homebrew) | 5.15.11 | arm64 | **Recommended release** (Fusion cursor fix) |
 
-Both venvs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`
+Both envs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`.
+The x86_64 env is a conda env (not a `~/.venvs/` venv) and must be built under
+Rosetta. PyInstaller cannot cross-compile -- it bundles whatever interpreter is
+active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 
 ## Output
 
