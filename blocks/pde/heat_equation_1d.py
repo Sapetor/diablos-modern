@@ -282,7 +282,7 @@ class HeatEquation1DBlock(BaseBlock):
 
         return {0: T_new, 1: T_avg, 'E': False}
 
-    def compute_derivatives(self, T, params, inputs):
+    def compute_derivatives(self, time, state, inputs, params):
         """
         Compute dT/dt for the ODE solver.
 
@@ -297,6 +297,7 @@ class HeatEquation1DBlock(BaseBlock):
         Returns:
             dT_dt: Time derivatives (N values)
         """
+        T = state  # signature unified with the 2D PDE blocks
         alpha = float(params.get('alpha', 1.0))
         L = float(params.get('L', 1.0))
         N = int(params.get('N', 20))

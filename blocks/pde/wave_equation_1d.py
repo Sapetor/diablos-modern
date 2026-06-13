@@ -295,9 +295,10 @@ class WaveEquation1DBlock(BaseBlock):
 
         return kinetic + potential
 
-    def compute_derivatives(self, state, params, inputs):
+    def compute_derivatives(self, time, state, inputs, params):
         """
-        Compute d[u,v]/dt for the ODE solver.
+        Compute d[u,v]/dt for the ODE solver. Signature unified with the 2D
+        PDE blocks: (self, time, state, inputs, params).
 
         Args:
             state: Current state vector [u (N values), v (N values)]

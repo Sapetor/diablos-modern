@@ -272,10 +272,12 @@ class DiffusionReaction1DBlock(BaseBlock):
 
         return {0: c_new, 1: c_total, 2: reaction_rate, 'E': False}
 
-    def compute_derivatives(self, c, params, inputs):
+    def compute_derivatives(self, time, state, inputs, params):
         """
-        Compute dc/dt for the ODE solver.
+        Compute dc/dt for the ODE solver. Signature unified with the 2D PDE
+        blocks: (self, time, state, inputs, params).
         """
+        c = state
         N = int(params.get('N', 30))
         D = float(params.get('D', 0.01))
         k = float(params.get('k', 0.1))

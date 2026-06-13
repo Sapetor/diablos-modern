@@ -283,12 +283,14 @@ class AdvectionEquation1DBlock(BaseBlock):
 
         return {0: c_new, 1: c_total, 'E': False}
 
-    def compute_derivatives(self, c, params, inputs):
+    def compute_derivatives(self, time, state, inputs, params):
         """
-        Compute dc/dt for the ODE solver.
+        Compute dc/dt for the ODE solver. Signature unified with the 2D PDE
+        blocks: (self, time, state, inputs, params).
 
         Uses second-order upwind differencing for reduced numerical diffusion.
         """
+        c = state
         N = int(params.get('N', 50))
         v = float(params.get('velocity', 1.0))
         L = float(params.get('L', 1.0))
