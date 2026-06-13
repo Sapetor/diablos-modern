@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import pyqtSignal, Qt
 import logging
 
+from modern_ui.themes.theme_manager import theme_manager
+
 logger = logging.getLogger(__name__)
 
 class BreadcrumbBar(QWidget):
@@ -80,6 +82,3 @@ class BreadcrumbBar(QWidget):
 
         # Add stretch at end to push items left
         self.layout.addStretch()
-
-# Import needs to be late to avoid circular dep availability or if theme_manager is globally available
-from modern_ui.themes.theme_manager import theme_manager

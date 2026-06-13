@@ -14,6 +14,8 @@ Upgraded with 7 UI improvements:
 import logging
 import ast
 import math
+import os
+import sys
 from collections import OrderedDict
 from PyQt5.QtWidgets import (
     QAbstractSpinBox, QLabel, QLineEdit, QComboBox, QCheckBox,
@@ -347,7 +349,6 @@ class PropertyEditor(QFrame):
         All values are best-effort read from dsim — missing data is hidden,
         not stubbed, so the view is honest about what's available.
         """
-        import os as _os
         text_primary = theme_manager.get_color('text_primary').name()
         text_secondary = theme_manager.get_color('text_secondary').name()
         text_disabled = theme_manager.get_color('text_disabled').name()
@@ -370,7 +371,7 @@ class PropertyEditor(QFrame):
 
         filepath = (getattr(self._dsim, 'current_filepath', None)
                     or getattr(self._dsim, 'filepath', None))
-        name = (_os.path.splitext(_os.path.basename(filepath))[0]
+        name = (os.path.splitext(os.path.basename(filepath))[0]
                 if filepath else "untitled")
         title = QLabel(name)
         tf = title.font(); tf.setPointSize(13); tf.setBold(True); title.setFont(tf)
@@ -419,7 +420,8 @@ class PropertyEditor(QFrame):
         self._sections.append(wsec)
         try:
             ws = WorkspaceManager().variables or {}
-        except Exception:
+        except Exception as e:
+            self.logger.debug("workspace read failed: %s", e)
             ws = {}
         if not ws:
             empty = QLabel("(no workspace variables)")
@@ -458,7 +460,8 @@ class PropertyEditor(QFrame):
             validator = getattr(self._dsim, 'diagram_validator', None)
             if validator is not None and hasattr(validator, 'validate'):
                 errors = list(validator.validate() or [])
-        except Exception:
+        except Exception as e:
+            self.logger.debug("validator failed: %s", e)
             errors = []
         if errors:
             vsec = CollapsibleSection("Validation", expanded=True)
@@ -499,18 +502,15 @@ class PropertyEditor(QFrame):
         Belt-and-suspenders: inline stylesheet + palette WindowText/Text +
         WA_StyledBackground so QStyle honors the palette.
         """
-        from PyQt5.QtGui import QPalette as _QP, QColor as _QC
-        from PyQt5.QtCore import Qt as _Qt
-        c = _QC(hex_color)
+        c = QColor(hex_color)
         pal = lbl.palette()
-        pal.setColor(_QP.WindowText, c)
-        pal.setColor(_QP.Text, c)
+        pal.setColor(QPalette.WindowText, c)
+        pal.setColor(QPalette.Text, c)
         lbl.setPalette(pal)
-        lbl.setAttribute(_Qt.WA_StyledBackground, False)
+        lbl.setAttribute(Qt.WA_StyledBackground, False)
         lbl.setStyleSheet(f"color: {hex_color}; background: transparent;")
 
     def _mk_kv_label(self, text, color):
-        import sys as _sys
         lbl = QLabel(text)
         lbl.setObjectName("KvLabel")
         f = lbl.font()
@@ -518,7 +518,7 @@ class PropertyEditor(QFrame):
         # San Francisco at the same size on macOS — same color, less ink,
         # reads as "pale". Bump weight + size on Windows to match the
         # perceived weight Mac users see.
-        if _sys.platform.startswith("win"):
+        if sys.platform.startswith("win"):
             f.setPointSize(10)
             f.setWeight(QFont.Medium)
         else:
@@ -528,26 +528,24 @@ class PropertyEditor(QFrame):
         return lbl
 
     def _mk_kv_value(self, text, color, mono=False):
-        import sys as _sys
-        from PyQt5.QtGui import QFont as _QF
         lbl = QLabel(text)
         lbl.setObjectName("KvValue")
         if mono:
-            primary = "Consolas" if _sys.platform.startswith("win") else "Menlo"
-            f = _QF(primary)
-            f.setStyleHint(_QF.Monospace)
-            if _sys.platform.startswith("win"):
+            primary = "Consolas" if sys.platform.startswith("win") else "Menlo"
+            f = QFont(primary)
+            f.setStyleHint(QFont.Monospace)
+            if sys.platform.startswith("win"):
                 f.setPointSize(10)
-                f.setWeight(_QF.Medium)
+                f.setWeight(QFont.Medium)
             else:
                 f.setPointSize(9)
             if hasattr(f, 'setFamilies'):
                 f.setFamilies([primary, "Menlo", "Consolas",
                                "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
             lbl.setFont(f)
-        elif _sys.platform.startswith("win"):
+        elif sys.platform.startswith("win"):
             f = lbl.font()
-            f.setWeight(_QF.Medium)
+            f.setWeight(QFont.Medium)
             lbl.setFont(f)
         self._apply_label_color(lbl, color)
         return lbl
@@ -866,7 +864,17 @@ class PropertyEditor(QFrame):
         # Integer → QSpinBox
         if isinstance(value, int):
             sb = QSpinBox()
-            sb.setRange(-999999, 999999)
+            # QSpinBox is backed by a C++ int, so cap the range at the 32-bit
+            # signed limit to avoid overflow.
+            qspin_limit = 2147483647
+            if 'range' in meta:
+                lo, hi = meta['range']
+                sb.setRange(int(lo), int(hi))
+            else:
+                # Auto-expand so a default exceeding the nominal bound isn't
+                # silently clamped on display, while keeping a sane minimum.
+                bound = min(max(abs(value) * 10, 999999), qspin_limit)
+                sb.setRange(-int(bound), int(bound))
             sb.setValue(value)
             submit = lambda: self._on_property_changed(key, sb.value())
             sb.editingFinished.connect(submit)
@@ -921,7 +929,11 @@ class PropertyEditor(QFrame):
             return False
         if group == 'Advanced':
             return False
-        if not math.isfinite(value) or value == 0:
+        # Slider eligibility is a property of the param, not its current value:
+        # a tunable float that happens to be 0.0 still gets a slider (the range
+        # falls back to a default span in _get_slider_range). Only non-finite
+        # values (inf/nan) are excluded since they have no meaningful position.
+        if not math.isfinite(value):
             return False
         return True
 
@@ -929,6 +941,10 @@ class PropertyEditor(QFrame):
         if 'range' in meta:
             return list(meta['range'])
         span = abs(value) * 10
+        if span == 0:
+            # value == 0 (or a degenerate magnitude) yields no usable span;
+            # fall back to a fixed default so the slider stays interactive.
+            return [-1.0, 1.0]
         return [-span, span]
 
     # ── Documentation section ──────────────────────────────────
@@ -1057,7 +1073,7 @@ class PropertyEditor(QFrame):
                 converted_value = [float(x) for x in val]
             else:
                 raise ValueError("Expected a number or list of numbers")
-        except (ValueError, SyntaxError):
+        except (ValueError, SyntaxError, TypeError):
             ws = WorkspaceManager()
             if text in ws.variables:
                 converted_value = text
@@ -1127,33 +1143,43 @@ class PropertyEditor(QFrame):
     def _on_name_changed(self, widget):
         if self.block is None:
             return
+        block_name = getattr(self.block, 'name', 'Unknown')
         new_name = widget.text().strip()
         if new_name == '--' or new_name == '':
-            self.block.username = self.block.name
-            widget.setText(self.block.name)
+            self.block.username = block_name
+            widget.setText(block_name)
         else:
             self.block.username = new_name
-        self.property_changed.emit(self.block.name, '_username_', self.block.username)
+        self.property_changed.emit(block_name, '_username_', self.block.username)
 
     # ── Reset to default (#6) ──────────────────────────────────
 
     def _reset_param(self, key):
-        default = self._defaults.get(key)
-        if default is None:
+        # Distinguish a missing default from a legitimate None default: a param
+        # whose true default is None must still be resettable.
+        if key not in self._defaults:
             return
+        default = self._defaults[key]
         editor, _, _ = self._widgets[key]
-        if isinstance(editor, QCheckBox):
-            editor.setChecked(bool(default))
-        elif isinstance(editor, QComboBox):
-            editor.setCurrentText(str(default))
-        elif isinstance(editor, QSpinBox):
-            editor.setValue(int(default))
-        elif isinstance(editor, SliderSpinBox):
-            editor.setValue(float(default))
-        elif isinstance(editor, QDoubleSpinBox):
-            editor.setValue(float(default))
-        elif isinstance(editor, QLineEdit):
-            editor.setText(str(default))
+        try:
+            if isinstance(editor, QCheckBox):
+                editor.setChecked(bool(default))
+            elif isinstance(editor, QComboBox):
+                editor.setCurrentText(str(default))
+            elif isinstance(editor, QSpinBox):
+                editor.setValue(int(default))
+            elif isinstance(editor, SliderSpinBox):
+                editor.setValue(float(default))
+            elif isinstance(editor, QDoubleSpinBox):
+                editor.setValue(float(default))
+            elif isinstance(editor, QLineEdit):
+                editor.setText(str(default))
+        except (TypeError, ValueError):
+            # A numeric editor with a non-numeric default (e.g. a workspace
+            # variable name) can't be cast; fall back to a textual display
+            # for QLineEdit and otherwise leave the editor unchanged.
+            if isinstance(editor, QLineEdit):
+                editor.setText(str(default))
         self._set_validation_error(key, None)
         self._on_property_changed(key, default)
 

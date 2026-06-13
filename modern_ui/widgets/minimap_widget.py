@@ -163,6 +163,11 @@ class MinimapWidget(QWidget):
         pan_offset = self.canvas.pan_offset
         zoom_factor = self.canvas.zoom_factor
 
+        # Guard against a non-positive zoom factor (mirrors the _scale<=0
+        # guard in _pan_to_minimap_pos) to avoid ZeroDivisionError during paint.
+        if zoom_factor <= 0:
+            return
+
         # Viewport bounds in diagram coordinates
         viewport_left = -pan_offset.x() / zoom_factor
         viewport_top = -pan_offset.y() / zoom_factor

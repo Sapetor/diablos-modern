@@ -29,24 +29,19 @@ class SimulationConfig:
     
     def validate(self) -> Tuple[bool, List[str]]:
         """Validate configuration parameters."""
-        errors = []
-        
-        if self.simulation_time <= 0:
-            errors.append("Simulation time must be positive")
-        
-        if self.time_step <= 0:
-            errors.append("Time step must be positive")
-        
-        if self.time_step >= self.simulation_time:
-            errors.append("Time step cannot be larger than simulation time")
-        
+        # Delegate the shared timing checks (positivity, step < time, and the
+        # step-count cap) to validate_simulation_parameters so those rules live
+        # in one place and cannot drift out of sync.
+        _, errors = validate_simulation_parameters(self.simulation_time, self.time_step)
+        errors = list(errors)
+
         if self.fps <= 0:
             errors.append("FPS must be positive")
-        
+
         valid_methods = ["FWD_RECT", "BWD_RECT", "TUSTIN", "RK45"]
         if self.solver_method not in valid_methods:
             errors.append(f"Solver method must be one of {valid_methods}")
-        
+
         return len(errors) == 0, errors
 
 
@@ -442,5 +437,5 @@ def safe_execute_block_function(func: Any, *args, **kwargs) -> Tuple[bool, Any, 
         
     except Exception as e:
         error_msg = f"Exception in block function: {str(e)}"
-        logger.error(error_msg)
+        logger.exception(error_msg)
         return False, None, error_msg

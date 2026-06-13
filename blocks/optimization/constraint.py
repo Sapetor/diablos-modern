@@ -196,6 +196,7 @@ class ConstraintBlock(BaseBlock):
         mode = params.get('mode', 'max')
         constraint_type = params.get('type', '<=')
         bound = float(params.get('bound', 1.0))
+        tolerance = float(params.get('tolerance', 1e-6))
 
         # Get the value based on mode
         if mode == 'max':
@@ -221,7 +222,14 @@ class ConstraintBlock(BaseBlock):
             return ('ineq', value)
         elif constraint_type == '==':
             # signal == bound -> signal - bound = 0
-            value = signal - bound
+            # Honor the configured tolerance band so this path agrees with
+            # _compute_violation(): deviations within +/- tolerance count as
+            # satisfied (zero deviation) rather than a strict equality miss.
+            deviation = signal - bound
+            if abs(deviation) <= tolerance:
+                value = 0.0
+            else:
+                value = deviation - np.sign(deviation) * tolerance
             return ('eq', value)
         else:
             return ('ineq', 0.0)

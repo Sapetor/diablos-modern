@@ -111,7 +111,9 @@ class DBlock:
         if block_class:
             self.block_instance = block_class()
 
-            # Check if block supports dynamic port configuration and update accordingly
+            # Check if block supports dynamic port configuration and update accordingly.
+            # update_Block() below refreshes geometry regardless, so we only need to
+            # reconcile the port count here.
             if hasattr(self.block_instance, 'get_inputs'):
                 try:
                     # Get initial input configuration based on default params
@@ -123,7 +125,7 @@ class DBlock:
                         logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
                         self.in_ports = initial_input_count
                         self.params['_inputs_'] = initial_input_count
-                except Exception as e:
+                except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
         else:
             self.block_instance = None
@@ -270,7 +272,8 @@ class DBlock:
                 else:
                     inputs = []
                 input_names = [inp.get('name', f'in{i}') for i, inp in enumerate(inputs)]
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Falling back to generic input port names for {self.name}: {e}")
                 input_names = [f'in{i}' for i in range(self.in_ports)]
 
             # Get output names
@@ -280,7 +283,8 @@ class DBlock:
                 else:
                     outputs = []
                 output_names = [out.get('name', f'out{i}') for i, out in enumerate(outputs)]
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Falling back to generic output port names for {self.name}: {e}")
                 output_names = [f'out{i}' for i in range(self.out_ports)]
         else:
             # Fallback to generic names
@@ -319,16 +323,6 @@ class DBlock:
         return max(self.height_base, required_height)
 
 
-        # These should be set to match your DSim class attributes
-        self.ls_width = 5
-        self.l_width = 5
-        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
-        logging.debug(f"Block initialized: {self.name}")
-
-
-
-
-
     def toggle_selection(self) -> None:
         """Toggle the selection state of this block."""
         self.selected = not self.selected
@@ -348,7 +342,8 @@ class DBlock:
         if hasattr(self, 'block_instance') and self.block_instance:
             try:
                 port_defs = self.block_instance.get_inputs(self.params) if hasattr(self.block_instance, 'get_inputs') else self.block_instance.inputs
-            except Exception:
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                logger.warning(f"Could not resolve port definitions for {self.name}: {e}")
                 port_defs = []
             for idx, pdef in enumerate(port_defs or []):
                 if isinstance(pdef, dict):
@@ -502,16 +497,33 @@ class DBlock:
 
         logger.debug(f"Resized block {self.name} to {new_width}x{new_height}")
 
+    @staticmethod
+    def _parse_port_count(value, current):
+        """Parse a port count from dialog input, clamped to a non-negative int.
+
+        Returns ``current`` unchanged if the value is non-numeric or negative,
+        so invalid input cannot leave the block with an inconsistent port count.
+        """
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            logger.warning(f"Invalid port count {value!r}; keeping {current}")
+            return current
+        if parsed < 0:
+            logger.warning(f"Negative port count {parsed}; keeping {current}")
+            return current
+        return parsed
+
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")
-        
+
         if self.io_edit == 'both':
             # Inputs and outputs can be edited
             dialog = PortDialog(self.name, {'inputs': self.in_ports, 'outputs': self.out_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.in_ports = int(new_io['inputs'])
-                self.out_ports = int(new_io['outputs'])
+                self.in_ports = self._parse_port_count(new_io['inputs'], self.in_ports)
+                self.out_ports = self._parse_port_count(new_io['outputs'], self.out_ports)
                 logger.debug(f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}")
 
         elif self.io_edit == 'input':
@@ -519,7 +531,7 @@ class DBlock:
             dialog = PortDialog(self.name, {'inputs': self.in_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.in_ports = int(new_io['inputs'])
+                self.in_ports = self._parse_port_count(new_io['inputs'], self.in_ports)
                 logger.debug(f"Changed input ports to {self.in_ports}")
 
         elif self.io_edit == 'output':
@@ -527,7 +539,7 @@ class DBlock:
             dialog = PortDialog(self.name, {'outputs': self.out_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.out_ports = int(new_io['outputs'])
+                self.out_ports = self._parse_port_count(new_io['outputs'], self.out_ports)
                 logger.debug(f"Changed output ports to {self.out_ports}")
 
         else:
@@ -561,16 +573,18 @@ class DBlock:
             new_params: Dictionary of parameters to load
 
         Returns:
-            Dictionary with list values converted to numpy arrays
+            A new dictionary with list values converted to numpy arrays. The
+            input dict is left unmodified.
         """
+        out = dict(new_params)
         try:
-            for key in new_params.keys():
-                if isinstance(new_params[key], list):
-                    new_params[key] = np.array(new_params[key])
-            return new_params
+            for key, value in out.items():
+                if isinstance(value, list):
+                    out[key] = np.array(value)
+            return out
         except (TypeError, ValueError) as e:
             logger.warning(f"Failed to convert parameter lists to arrays: {e}")
-            return new_params
+            return out
 
     def change_params(self):
         logger.info(f"change_params called for block {self.name}")
@@ -596,37 +610,56 @@ class DBlock:
                         self.params[key] = value
                         self.initial_params[key] = value
 
-                # Check if block supports dynamic port configuration
-                if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
-                    try:
-                        # Get new input configuration based on updated params
-                        new_inputs_config = self.block_instance.get_inputs(self.params)
-                        new_input_count = len(new_inputs_config)
-
-                        # Update port count if it changed
-                        if new_input_count != self.in_ports:
-                            logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
-                            self.in_ports = new_input_count
-                            self.params['_inputs_'] = new_input_count
-                            # Update block geometry and port positions
-                            self.update_Block()
-                    except Exception as e:
-                        logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
+                # Update port count if the block reconfigures ports from params
+                self._refresh_dynamic_ports()
 
         if self.external:
             self.load_external_data(params_reset=False)
 
-        if self.block_fn == 'TranFn':
-            num = self.params.get('numerator', [])
-            den = self.params.get('denominator', [])
-            if len(den) > len(num):
-                self.b_type = 1
-            else:
-                self.b_type = 2
-            self.params['_init_start_'] = True
+        self._refresh_tranfn_btype()
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
-        self.dirty = True
+
+    def _refresh_dynamic_ports(self) -> None:
+        """Recompute input port count from the block's dynamic ``get_inputs``.
+
+        Blocks that support dynamic port configuration recompute their input
+        count from current params; when it changes, update geometry/ports.
+        Shared by ``__init__``, ``change_params`` and ``update_params``.
+        """
+        if not (self.block_instance and hasattr(self.block_instance, 'get_inputs')):
+            return
+        try:
+            new_inputs_config = self.block_instance.get_inputs(self.params)
+            new_input_count = len(new_inputs_config)
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
+            return
+
+        if new_input_count != self.in_ports:
+            logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+            self.in_ports = new_input_count
+            self.params['_inputs_'] = new_input_count
+            # Update block geometry and port positions
+            self.update_Block()
+
+    def _refresh_tranfn_btype(self) -> None:
+        """Recompute ``b_type`` for TranFn blocks from numerator/denominator.
+
+        A strictly proper transfer function (more poles than zeros) is a state
+        block (b_type 1); otherwise it has direct feedthrough (b_type 2). Also
+        flags the block for re-initialization. Shared by ``change_params`` and
+        ``update_params``.
+        """
+        if self.block_fn != 'TranFn':
+            return
+        num = self.params.get('numerator', [])
+        den = self.params.get('denominator', [])
+        if len(den) > len(num):
+            self.b_type = 1
+        else:
+            self.b_type = 2
+        self.params['_init_start_'] = True
 
     def load_external_data(self, params_reset=False):
         # Implement this method based on your specific requirements for loading external data
@@ -642,34 +675,13 @@ class DBlock:
                 if key in self.params:
                     self.params[key] = value
 
-        # Check if block supports dynamic port configuration
-        if self.block_instance and hasattr(self.block_instance, 'get_inputs'):
-            try:
-                # Get new input configuration based on updated params
-                new_inputs = self.block_instance.get_inputs(self.params)
-                new_input_count = len(new_inputs)
+        # Update port count if the block reconfigures ports from params
+        self._refresh_dynamic_ports()
 
-                # Update port count if it changed
-                if new_input_count != self.in_ports:
-                    logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
-                    self.in_ports = new_input_count
-                    self.params['_inputs_'] = new_input_count
-                    # Update block geometry and port positions
-                    self.update_Block()
-            except Exception as e:
-                logger.error(f"Error updating dynamic ports for {self.name}: {str(e)}")
-
-        if self.block_fn == 'TranFn':
-            num = self.params.get('numerator', [])
-            den = self.params.get('denominator', [])
-            if len(den) > len(num):
-                self.b_type = 1
-            else:
-                self.b_type = 2
-            self.params['_init_start_'] = True
+        self._refresh_tranfn_btype()
 
         logger.debug(f"Final parameters for {self.name}: {self.params}")
-        self.dirty = True
+
     def __deepcopy__(self, memo):
         """
         Custom deepcopy implementation to assume QPixmap is not copied (recreate or ignore).
@@ -680,6 +692,11 @@ class DBlock:
         result = cls.__new__(cls)
         memo[id(self)] = result
         
+        # Attributes that must never be silently nulled: corrupting them would
+        # produce hard-to-trace AttributeErrors / wrong results far from here.
+        load_bearing_keys = {'params', 'initial_params', 'exec_params', 'rect',
+                             'rectf', 'b_color', 'name', 'block_fn', 'sid'}
+
         for k, v in self.__dict__.items():
             if k == 'image' or k == 'pixmap':
                 # QPixmap cannot be copied, create a new empty one
@@ -689,6 +706,12 @@ class DBlock:
                 f = QFont()
                 f.setPointSize(self.font_size)
                 setattr(result, k, f)
+            elif isinstance(v, QColor):
+                # QColor cannot always be deepcopied; reconstruct it explicitly
+                setattr(result, k, QColor(v))
+            elif isinstance(v, (QRect, QPoint)):
+                # Qt geometry types: reconstruct via copy constructor
+                setattr(result, k, type(v)(v))
             elif k == 'sub_blocks':
                  # List of blocks, recurse
                  setattr(result, k, copy.deepcopy(v, memo))
@@ -696,11 +719,14 @@ class DBlock:
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))
                 except Exception as e:
-                    # Only log if it's not a known safe-to-skip Qt object
-                    # QColor and QRect are usually fine.
+                    # Load-bearing state must not be silently corrupted: re-raise
+                    # so the failure surfaces at its real cause.
+                    if k in load_bearing_keys:
+                        logger.error(f"Deepcopy failed for load-bearing key {k}: {e}")
+                        raise
                     logger.warning(f"Deepcopy failed for key {k}: {e}")
-                    setattr(result, k, None) 
-        
+                    setattr(result, k, None)
+
         return result
 
     # Add reload_image method if needed to restore pixmap?

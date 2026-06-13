@@ -1,8 +1,11 @@
 """
 FirstOrderHold block for multi-rate simulation.
 
-Provides linear interpolation between samples, smoother than ZOH
-but introduces a one-sample delay.
+Implements a causal first-order hold: between sample instants the output is a
+ramp obtained by extrapolating forward from the most recent sample using the
+slope of the last two samples. This is smoother than a zero-order hold but,
+being causal, it predicts ahead of the latest sample rather than interpolating
+between a past and a future sample.
 """
 from blocks.base_block import BaseBlock
 import numpy as np
@@ -12,9 +15,11 @@ class FirstOrderHoldBlock(BaseBlock):
     """
     First-Order Hold (FOH) block.
 
-    Linearly interpolates between samples to produce a smoother output
-    than Zero-Order Hold. Introduces a one-sample delay since it needs
-    two samples to interpolate.
+    Causal first-order hold: produces a ramp between sample instants by
+    extrapolating forward from the most recent sample using the slope of the
+    last two samples. This yields a smoother output than Zero-Order Hold.
+    The slope is undefined until two samples have been collected, so the
+    output simply holds the first sample value until then.
     """
 
     def __init__(self):
@@ -50,14 +55,16 @@ class FirstOrderHoldBlock(BaseBlock):
     def doc(self):
         return (
             "First-Order Hold (FOH)"
-            "\n\nSamples input at fixed rate and linearly interpolates between samples."
+            "\n\nSamples input at a fixed rate and produces a ramp between samples by"
+            " extrapolating forward from the most recent sample (causal FOH)."
             "\n\nParameters:"
             "\n- Sampling Time: The period (in seconds) between samples."
             "\n\nUsage:"
             "\n- Smoother output than Zero-Order Hold"
-            "\n- Introduces one sample delay for interpolation"
+            "\n- Needs two samples before a slope is available; holds the first sample until then"
             "\n- Good for continuous-to-discrete conversion when smoothness matters"
-            "\n\nNote: Output = linear interpolation from previous sample to current sample"
+            "\n\nNote: Output = most recent sample value extrapolated forward along the"
+            " slope between the last two samples (predicts ahead, does not interpolate)"
         )
 
     @property

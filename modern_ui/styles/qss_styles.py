@@ -557,7 +557,19 @@ def apply_modern_theme(app):
         qss = ModernStyles.get_complete_stylesheet()
         # Never call app.setStyleSheet() after startup — Qt's stylesheet
         # engine segfaults traversing pyqtgraph/OpenGL widgets.  Apply the
-        # stylesheet per-window, skipping pyqtgraph top-level windows.
+        # stylesheet per-window, restricted to QMainWindow instances only.
+        #
+        # Non-QMainWindow top-level windows (free-floating dialogs, detached
+        # panels, editors) are intentionally skipped for two reasons:
+        # (1) the app-wide palette re-applied above already retones
+        # native/palette-driven widgets, and (2) the known self-styling
+        # widgets (error_panel, command_palette, workspace_editor,
+        # variable_editor, property_editor, …) subscribe to
+        # theme_manager.theme_changed and re-style themselves. Blindly
+        # restyling every top-level widget would also risk pushing this QSS
+        # onto pyqtgraph/OpenGL windows, re-triggering the segfault noted
+        # above. A top-level window that relies purely on inherited QSS and
+        # does not self-subscribe will keep stale colors until reconstructed.
         from PyQt5.QtWidgets import QMainWindow
         for w in app.topLevelWidgets():
             try:

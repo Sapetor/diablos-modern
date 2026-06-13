@@ -169,6 +169,23 @@ class SimulationModel:
             menu_block.param_meta = param_metadata
             self.menu_blocks.append(menu_block)
 
+    @staticmethod
+    def _parse_id_suffix(name: str, prefix_len: int) -> Optional[int]:
+        """
+        Parse the trailing numeric suffix of a name (the part after prefix_len chars).
+
+        Args:
+            name: Full element name (e.g. 'Gain3', 'Line12')
+            prefix_len: Number of leading characters that make up the prefix
+
+        Returns:
+            The integer suffix, or None if the suffix is not a valid integer.
+        """
+        try:
+            return int(name[prefix_len:])
+        except (ValueError, TypeError):
+            return None
+
     def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
         """
         Add a new block instance to the diagram.
@@ -185,10 +202,13 @@ class SimulationModel:
         """
         logger.debug(f"Adding new block of type {block.block_fn} at position {m_pos}")
 
-        # Find next available ID for this block type
-        id_list = [int(b_elem.name[len(b_elem.block_fn):])
+        # Find next available ID for this block type. Names that do not match
+        # the '<block_fn><int>' convention are skipped rather than raising.
+        id_list = [parsed
                    for b_elem in self.blocks_list
-                   if b_elem.block_fn == block.block_fn]
+                   if b_elem.block_fn == block.block_fn
+                   for parsed in (self._parse_id_suffix(b_elem.name, len(b_elem.block_fn)),)
+                   if parsed is not None]
         sid = max(id_list) + 1 if id_list else 0
 
         try:
@@ -292,8 +312,12 @@ class SimulationModel:
             src_point = src_block.in_coords[0] if src_block.in_coords else src_block.rect.center()
             dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
             signal_name = b.params.get('signal_name') or b.params.get('tag', '')
+            # Use max(sid)+1 (mirroring add_line) to avoid duplicate line
+            # names/sids when lines have been deleted; len(line_list) can
+            # collide with an existing sid.
+            vline_sid = max([ln.sid for ln in self.line_list] + [-1]) + 1
             vline = DLine(
-                sid=len(self.line_list),
+                sid=vline_sid,
                 srcblock=src_line['srcblock'],
                 srcport=src_line['srcport'],
                 dstblock=b.name,
@@ -332,8 +356,12 @@ class SimulationModel:
             logger.debug("Error: Invalid line data")
             return None
 
-        # Find next available ID
-        id_list = [int(line.name[4:]) for line in self.line_list]
+        # Find next available ID. Names not matching 'Line<int>' are skipped
+        # rather than raising (len('Line') == 4).
+        id_list = [parsed
+                   for line in self.line_list
+                   for parsed in (self._parse_id_suffix(line.name, 4),)
+                   if parsed is not None]
         sid = max(id_list) + 1 if id_list else 0
 
         try:

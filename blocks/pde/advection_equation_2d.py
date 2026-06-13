@@ -329,9 +329,13 @@ class AdvectionEquation2DBlock(BaseBlock):
         # Boundary conditions using penalty method for Dirichlet
         penalty = 1000.0
 
+        # Edge passes below fill only the edge-interior (excluding the four
+        # corners); corners are resolved last so that outflow copies never
+        # read a neighbor derivative that has not been computed yet.
+
         # Left boundary (i=0)
         if bc_type_left == 'Dirichlet':
-            for j in range(Ny):
+            for j in range(1, Ny - 1):
                 dc_dt[j, 0] = penalty * (bc_left - c[j, 0])
         elif bc_type_left == 'Neumann':
             for j in range(1, Ny - 1):
@@ -349,12 +353,12 @@ class AdvectionEquation2DBlock(BaseBlock):
                 S = source[j, 0] if isinstance(source, np.ndarray) else source
                 dc_dt[j, 0] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
         else:  # Outflow
-            for j in range(Ny):
+            for j in range(1, Ny - 1):
                 dc_dt[j, 0] = dc_dt[j, 1] if Nx > 1 else 0.0
 
         # Right boundary (i=Nx-1)
         if bc_type_right == 'Dirichlet':
-            for j in range(Ny):
+            for j in range(1, Ny - 1):
                 dc_dt[j, Nx-1] = penalty * (bc_right - c[j, Nx-1])
         elif bc_type_right == 'Neumann':
             for j in range(1, Ny - 1):
@@ -371,12 +375,12 @@ class AdvectionEquation2DBlock(BaseBlock):
                 S = source[j, Nx-1] if isinstance(source, np.ndarray) else source
                 dc_dt[j, Nx-1] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
         else:  # Outflow
-            for j in range(Ny):
+            for j in range(1, Ny - 1):
                 dc_dt[j, Nx-1] = dc_dt[j, Nx-2] if Nx > 1 else 0.0
 
         # Bottom boundary (j=0)
         if bc_type_bottom == 'Dirichlet':
-            for i in range(Nx):
+            for i in range(1, Nx - 1):
                 dc_dt[0, i] = penalty * (bc_bottom - c[0, i])
         elif bc_type_bottom == 'Neumann':
             for i in range(1, Nx - 1):
@@ -393,12 +397,12 @@ class AdvectionEquation2DBlock(BaseBlock):
                 S = source[0, i] if isinstance(source, np.ndarray) else source
                 dc_dt[0, i] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
         else:  # Outflow
-            for i in range(Nx):
+            for i in range(1, Nx - 1):
                 dc_dt[0, i] = dc_dt[1, i] if Ny > 1 else 0.0
 
         # Top boundary (j=Ny-1)
         if bc_type_top == 'Dirichlet':
-            for i in range(Nx):
+            for i in range(1, Nx - 1):
                 dc_dt[Ny-1, i] = penalty * (bc_top - c[Ny-1, i])
         elif bc_type_top == 'Neumann':
             for i in range(1, Nx - 1):
@@ -415,7 +419,46 @@ class AdvectionEquation2DBlock(BaseBlock):
                 S = source[Ny-1, i] if isinstance(source, np.ndarray) else source
                 dc_dt[Ny-1, i] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
         else:  # Outflow
-            for i in range(Nx):
+            for i in range(1, Nx - 1):
                 dc_dt[Ny-1, i] = dc_dt[Ny-2, i] if Ny > 1 else 0.0
+
+        # Corner resolution (after all four edge passes). Each corner lies on
+        # two edges; the vertical-edge (bottom/top) BC takes precedence over the
+        # horizontal-edge (left/right) BC unless the vertical edge is Neumann, in
+        # which case the horizontal edge governs. Outflow corners copy the
+        # edge-normal interior neighbor, which is now guaranteed to be computed.
+        def _corner_dc_dt(j, i, v_type, v_bc, v_neighbor, h_type, h_bc, h_neighbor):
+            # v_* describes the bottom/top (vertical) edge; h_* the left/right.
+            if v_type == 'Dirichlet':
+                return penalty * (v_bc - c[j, i])
+            if v_type == 'Outflow':
+                return dc_dt[v_neighbor] if Ny > 1 else 0.0
+            # v_type == 'Neumann': defer to the horizontal edge.
+            if h_type == 'Dirichlet':
+                return penalty * (h_bc - c[j, i])
+            if h_type == 'Outflow':
+                return dc_dt[h_neighbor] if Nx > 1 else 0.0
+            return 0.0  # both edges Neumann -> leave corner unforced
+
+        # Bottom-left (0, 0): vertical=bottom, horizontal=left
+        dc_dt[0, 0] = _corner_dc_dt(
+            0, 0,
+            bc_type_bottom, bc_bottom, (1, 0),
+            bc_type_left, bc_left, (0, 1))
+        # Bottom-right (0, Nx-1): vertical=bottom, horizontal=right
+        dc_dt[0, Nx-1] = _corner_dc_dt(
+            0, Nx-1,
+            bc_type_bottom, bc_bottom, (1, Nx-1),
+            bc_type_right, bc_right, (0, Nx-2))
+        # Top-left (Ny-1, 0): vertical=top, horizontal=left
+        dc_dt[Ny-1, 0] = _corner_dc_dt(
+            Ny-1, 0,
+            bc_type_top, bc_top, (Ny-2, 0),
+            bc_type_left, bc_left, (Ny-1, 1))
+        # Top-right (Ny-1, Nx-1): vertical=top, horizontal=right
+        dc_dt[Ny-1, Nx-1] = _corner_dc_dt(
+            Ny-1, Nx-1,
+            bc_type_top, bc_top, (Ny-2, Nx-1),
+            bc_type_right, bc_right, (Ny-1, Nx-2))
 
         return dc_dt.flatten()

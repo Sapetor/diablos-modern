@@ -143,9 +143,8 @@ class GainBlock(BaseBlock):
             # Parse gain - handle string representation of matrices
             if isinstance(K_raw, str):
                 try:
-                    import ast
-                    K = np.array(ast.literal_eval(K_raw), dtype=float)
-                except (ValueError, SyntaxError):
+                    K = np.array(safe_literal(K_raw), dtype=float)
+                except (SafeEvalError, ValueError):
                     K = np.array([float(K_raw)], dtype=float)
             else:
                 K = np.atleast_1d(K_raw).astype(float)
@@ -165,12 +164,15 @@ class GainBlock(BaseBlock):
                 # Vector gain: element-wise multiplication
                 if len(K) == len(u):
                     y = K * u
-                elif len(K) == 1:
-                    y = K[0] * u
                 else:
-                    # Broadcast to minimum length
-                    min_len = min(len(K), len(u))
-                    y = K[:min_len] * u[:min_len]
+                    # Dimension mismatch - surface the error instead of
+                    # silently truncating to the shorter length.
+                    msg = (
+                        f"Gain block: vector gain length {len(K)} does not "
+                        f"match input length {len(u)}"
+                    )
+                    logger.error(msg)
+                    return {'E': True, 'error': msg}
             else:
                 # Scalar gain: simple multiplication
                 y = K.flatten()[0] * u

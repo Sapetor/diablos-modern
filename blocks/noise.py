@@ -41,7 +41,9 @@ class NoiseBlock(BaseBlock):
     def params(self):
         return {
             "mu": {"type": "float", "default": 0.0, "doc": "The mean of the noise."},
-            "sigma": {"type": "float", "default": 1.0, "doc": "The standard deviation of the noise."}
+            "sigma": {"type": "float", "default": 1.0, "doc": "The standard deviation of the noise."},
+            "seed": {"type": "int", "default": 0, "doc": "Random seed for reproducibility (0 = random)."},
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
 
     @property
@@ -68,7 +70,14 @@ class NoiseBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
+        if params.get("_init_start_", True):
+            seed = int(params.get("seed", 0))
+            # seed == 0 means non-reproducible (entropy-seeded); otherwise reproducible.
+            params["_rng"] = np.random.default_rng(seed if seed != 0 else None)
+            params["_init_start_"] = False
+
         sigma = float(params['sigma'])
         mu = float(params['mu'])
-        return {0: np.array(sigma * np.random.randn() + mu, dtype=float)}
+        rng = params["_rng"]
+        return {0: np.array(sigma * rng.standard_normal() + mu, dtype=float)}
 

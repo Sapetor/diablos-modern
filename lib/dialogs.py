@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox, QMessageBox
 from PyQt5.QtCore import Qt
 import logging
 
@@ -171,6 +171,37 @@ class SimulationDialog(QDialog):
         self.layout.addLayout(button_layout)
 
         self.setLayout(self.layout)
+
+    # Numeric fields validated before the dialog is accepted. Maps the user-facing
+    # label to the QLineEdit so validation errors can name the offending field.
+    def _numeric_fields(self):
+        return [
+            ("Simulation Duration", self.sim_time_input),
+            ("Base Step Size (dt)", self.sampling_time_input),
+            ("Plot Window Range", self.plot_range_input),
+            ("Rel. tol", self.rtol_input),
+            ("Abs. tol", self.atol_input),
+        ]
+
+    def accept(self):
+        # Validate all numeric fields before closing so get_values() (which calls
+        # float() unconditionally) cannot raise into the caller's accept flow.
+        invalid = []
+        for label, entry in self._numeric_fields():
+            try:
+                float(entry.text())
+            except (ValueError, TypeError):
+                invalid.append(label)
+
+        if invalid:
+            QMessageBox.warning(
+                self,
+                "Invalid Input",
+                "Please enter a valid number for: " + ", ".join(invalid) + ".",
+            )
+            return  # Keep the dialog open for correction.
+
+        super().accept()
 
     def get_values(self):
         return {

@@ -24,12 +24,18 @@ class CanvasRenderer:
         if not visible:
             return
 
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
         try:
             small_grid_size = 20
             large_grid_size = 100
 
-            small_dot_color = theme_manager.get_color('grid_dots')
-            large_dot_color = theme_manager.get_color('grid_dots')
+            # Copy before mutating alpha so we never corrupt shared theme state
+            # if get_color ever starts caching its QColor instances.
+            small_dot_color = QColor(theme_manager.get_color('grid_dots'))
+            large_dot_color = QColor(theme_manager.get_color('grid_dots'))
             large_dot_color.setAlpha(180)
 
             # Snap iteration bounds to multiples of the grid spacing so dots
@@ -57,11 +63,16 @@ class CanvasRenderer:
                     painter.drawEllipse(QPoint(x, y), 2, 2)
 
         except Exception as e:
-            logger.error(f"Error drawing grid: {str(e)}")
+            logger.error(f"Error drawing grid: {str(e)}", exc_info=True)
+        finally:
+            painter.restore()
 
     def draw_selection_rect(self, painter: QPainter, start: QPoint, end: QPoint):
         """Draw the selection rectangle."""
         if not start or not end:
+            return
+
+        if not painter or not painter.isActive():
             return
 
         painter.save()
@@ -74,8 +85,8 @@ class CanvasRenderer:
 
             selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
 
-            # Draw semi-transparent fill
-            fill_color = theme_manager.get_color('selection_rectangle')
+            # Draw semi-transparent fill (copy before mutating alpha)
+            fill_color = QColor(theme_manager.get_color('selection_rectangle'))
             fill_color.setAlpha(50)
             painter.fillRect(selection_rect, fill_color)
 
@@ -89,6 +100,9 @@ class CanvasRenderer:
 
     def draw_temp_line(self, painter: QPainter, start: QPoint, end: QPoint, is_valid_target: bool):
         """Draw the temporary connection line during drag-and-drop."""
+        if not painter or not painter.isActive():
+            return
+
         # Choose color based on validity
         if is_valid_target:
             line_color = theme_manager.get_color('success')  # Green for valid
@@ -135,6 +149,9 @@ class CanvasRenderer:
 
     def draw_hover_effects(self, painter: QPainter, hovered_port=None, hovered_block=None, hovered_line=None):
         """Draw hover effects for ports, blocks, and connections."""
+        if not painter or not painter.isActive():
+            return
+
         painter.save()
         try:
             # Draw hovered port (highest priority)
@@ -144,22 +161,22 @@ class CanvasRenderer:
                 if port_idx < len(port_list):
                     port_pos = port_list[port_idx]
 
-                    # Draw pulsing glow around hovered port
-                    glow_color = theme_manager.get_color('accent_primary')
+                    # Draw pulsing glow around hovered port (copy before mutating alpha)
+                    glow_color = QColor(theme_manager.get_color('accent_primary'))
                     glow_color.setAlpha(100)
                     painter.setBrush(glow_color)
                     painter.setPen(Qt.NoPen)
                     painter.drawEllipse(port_pos, 12, 12)
 
-                    # Draw brighter center
-                    center_color = theme_manager.get_color('accent_primary')
+                    # Draw brighter center (copy before mutating alpha)
+                    center_color = QColor(theme_manager.get_color('accent_primary'))
                     center_color.setAlpha(180)
                     painter.setBrush(center_color)
                     painter.drawEllipse(port_pos, 8, 8)
 
             # Draw hovered block outline
             elif hovered_block and not getattr(hovered_block, 'selected', False):
-                hover_color = theme_manager.get_color('accent_secondary')
+                hover_color = QColor(theme_manager.get_color('accent_secondary'))
                 hover_color.setAlpha(120)
 
                 # Draw glowing outline
@@ -184,7 +201,7 @@ class CanvasRenderer:
             elif hovered_line and not getattr(hovered_line, 'selected', False):
                 path = getattr(hovered_line, 'path', None)
                 if path and not path.isEmpty():
-                    hover_color = theme_manager.get_color('accent_secondary')
+                    hover_color = QColor(theme_manager.get_color('accent_secondary'))
                     hover_color.setAlpha(150)
 
                     # Draw thicker line underneath
@@ -193,12 +210,14 @@ class CanvasRenderer:
                     painter.drawPath(path)
 
         except Exception as e:
-            logger.error(f"Error drawing hover effects: {str(e)}")
+            logger.error(f"Error drawing hover effects: {str(e)}", exc_info=True)
         finally:
             painter.restore()
 
     def draw_tag_hud(self, painter: QPainter, dsim_instance):
         """Draw a compact HUD summarizing Goto/From tags."""
+        if not painter or not painter.isActive():
+            return
         try:
             # Only show if there is at least one routing block
             tags = {}
@@ -242,8 +261,8 @@ class CanvasRenderer:
             margin = 12
             rect = QRect(margin, margin, max_w, box_h)
 
-            # Background
-            bg = theme_manager.get_color('surface')
+            # Background (copy before mutating alpha)
+            bg = QColor(theme_manager.get_color('surface'))
             bg.setAlpha(200)
             painter.setBrush(bg)
             painter.setPen(Qt.NoPen)
@@ -258,10 +277,12 @@ class CanvasRenderer:
 
             painter.restore()
         except Exception as e:
-            logger.error(f"Error drawing tag HUD: {e}")
+            logger.error(f"Error drawing tag HUD: {e}", exc_info=True)
 
     def draw_validation_errors(self, painter: QPainter, blocks_with_errors, blocks_with_warnings):
         """Draw visual indicators for validation errors."""
+        if not painter or not painter.isActive():
+            return
         try:
             painter.save()
 
@@ -283,15 +304,20 @@ class CanvasRenderer:
             painter.restore()
 
         except Exception as e:
-            logger.error(f"Error drawing validation errors: {str(e)}")
+            logger.error(f"Error drawing validation errors: {str(e)}", exc_info=True)
 
     def _draw_error_indicator_on_block(self, painter: QPainter, block, is_error: bool):
-        """Helper to draw error/warning icon on a block."""
-        # Calculate position (top-right corner of block)
+        """Helper to draw error/warning icon on a block.
+
+        The badge is intentionally anchored to the block's top-right corner and
+        does not depend on the block's height, so it sits at a fixed offset from
+        the top edge regardless of block size.
+        """
+        # Calculate position (top-right corner of block); height is unused by design.
         left = getattr(block, 'left', 0)
         top = getattr(block, 'top', 0)
         width = getattr(block, 'width', 0)
-        
+
         indicator_size = 14
         x = left + width - indicator_size / 2
         y = top - indicator_size / 2

@@ -461,13 +461,12 @@ class FieldScopeBlock(BaseBlock):
         field = inputs.get(0, np.array([0.0]))
         field = np.atleast_1d(field).flatten()
 
-        # Store snapshot
+        # Store snapshot. The history is kept as a growing list and only
+        # converted to a NumPy array lazily (in plot_field / at simulation end);
+        # rebuilding the full array every step is O(T^2 * N) and was unused
+        # downstream (the plotting/replay paths read '_field_history_' directly).
         params['_field_history_'].append(field.copy())
         params['_time_history_'].append(time)
-
-        # Also store in 'vector' format for compatibility with ScopePlotter
-        history = np.array(params['_field_history_'])
-        params['vector'] = history
 
         return {'E': False}
 
@@ -486,8 +485,10 @@ class FieldScopeBlock(BaseBlock):
             logger.warning("FieldScope: No data to plot")
             return
 
-        # Convert to numpy array
+        # Convert to numpy array (lazy build of the full-history vector; this
+        # used to be rebuilt every timestep in execute(), which was O(T^2)).
         data = np.array(history)  # Shape: (n_times, n_points)
+        params['vector'] = data
 
         L = float(params.get('L', 1.0))
         N = data.shape[1] if data.ndim > 1 else 1
@@ -512,6 +513,10 @@ class FieldScopeBlock(BaseBlock):
 
         plt.tight_layout()
         plt.show()
+
+        # Close the figure so it is not left registered with pyplot's global
+        # figure manager (otherwise repeated runs accumulate figures/memory).
+        plt.close(fig)
 
         return fig
 
@@ -694,8 +699,15 @@ class FieldLaplacianBlock(BaseBlock):
         for i in range(1, N-1):
             laplacian[i] = (field[i+1] - 2*field[i] + field[i-1]) / dx_sq
 
-        # Boundary values (use one-sided differences)
-        laplacian[0] = (field[2] - 2*field[1] + field[0]) / dx_sq
-        laplacian[N-1] = (field[N-1] - 2*field[N-2] + field[N-3]) / dx_sq
+        # Boundary values: use genuine one-sided 4-point second-derivative
+        # stencils (second-order accurate) when enough nodes are available.
+        if N >= 4:
+            laplacian[0] = (2*field[0] - 5*field[1] + 4*field[2] - field[3]) / dx_sq
+            laplacian[N-1] = (2*field[N-1] - 5*field[N-2] + 4*field[N-3] - field[N-4]) / dx_sq
+        else:
+            # N == 3: not enough nodes for a one-sided 4-point stencil, so the
+            # endpoints reuse the single interior central second difference.
+            laplacian[0] = (field[2] - 2*field[1] + field[0]) / dx_sq
+            laplacian[N-1] = laplacian[0]
 
         return {0: laplacian, 'E': False}

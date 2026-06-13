@@ -260,6 +260,10 @@ class _BlockGlyphLabel(QWidget):
         super().__init__(parent)
         self.menu_block = menu_block
         self.colors = colors
+        # Resolve the category once (it may instantiate the block class) so
+        # paintEvent does not reconstruct a block on every repaint.
+        self._category = _block_category_name(menu_block)
+        self._glyph_kind = _glyph_kind_for(getattr(menu_block, 'fn_name', '') or '')
         self.setFixedSize(QSize(self.SIZE, self.SIZE))
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         theme_manager.theme_changed.connect(self.update)
@@ -268,7 +272,7 @@ class _BlockGlyphLabel(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing, True)
 
-        cat = _block_category_name(self.menu_block)
+        cat = self._category
         bg, accent, fg = _category_chip_colors(cat)
 
         # Chip
@@ -284,7 +288,7 @@ class _BlockGlyphLabel(QWidget):
         p.setPen(pen)
         p.setBrush(Qt.NoBrush)
 
-        kind = _glyph_kind_for(getattr(self.menu_block, 'fn_name', '') or '')
+        kind = self._glyph_kind
         _draw_glyph(p, kind, fg, self.SIZE)
         p.end()
 
@@ -796,7 +800,13 @@ class ModernBlockPalette(QWidget):
                 item = self.blocks_layout.itemAt(i)
                 w = item.widget()
                 if w:
+                    # Detach from the layout and schedule for deletion. Deleting
+                    # the widget (and, for sections, its child rows/glyphs)
+                    # releases their theme_manager.theme_changed connections so
+                    # orphaned widgets stop receiving restyle/repaint callbacks.
+                    self.blocks_layout.removeWidget(w)
                     w.setParent(None)
+                    w.deleteLater()
                 else:
                     self.blocks_layout.removeItem(item)
             self._sections.clear()

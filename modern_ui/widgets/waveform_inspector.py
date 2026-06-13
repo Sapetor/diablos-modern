@@ -29,7 +29,6 @@ class WaveformInspector(QWidget):
         self.timeline = None
         self.traces = []
         self.active_traces = set()
-        self.active_indices = set()
         self.persist_enabled = bool(getattr(dsim, "run_history_persist_enabled", False))
 
         self.setWindowTitle("Waveform Inspector")
@@ -136,7 +135,6 @@ class WaveformInspector(QWidget):
 
         # rebuild trace list UI
         self.active_traces = set(range(len(self.traces)))
-        self.active_indices = set(self.active_traces)
         self._populate_trace_list()
         self._update_scrub_max()
 
@@ -172,6 +170,8 @@ class WaveformInspector(QWidget):
             # Align lengths
             y = tr["y"]
             x = self.timeline
+            if x is None or len(x) == 0 or len(y) == 0:
+                continue
             if step_mode and len(x) == len(y):
                 x = np.append(x, x[-1] + (x[-1] - x[-2] if len(x) > 1 else 1.0))
             elif len(x) > len(y):
@@ -237,8 +237,20 @@ class WaveformInspector(QWidget):
             y = tr["y"]
             if len(y) == 0:
                 continue
-            yi = y[min(idx, len(y) - 1)]
-            vals.append(f"{tr['name']}: {yi:.4g}")
+            # Resolve each trace against its own run timeline; the shared
+            # self.timeline is the longest run's, so a cursor past a shorter
+            # run's data must read "n/a" rather than clamp to its last sample.
+            run = self.run_history[tr["run_idx"]] if 0 <= tr.get("run_idx", -1) < len(self.run_history) else None
+            run_timeline = run["timeline"] if run is not None else None
+            if run_timeline is not None and len(run_timeline):
+                tr_idx = int(np.searchsorted(run_timeline, t, side="left"))
+                tr_idx = min(max(tr_idx, 0), len(run_timeline) - 1)
+            else:
+                tr_idx = idx
+            if tr_idx >= len(y):
+                vals.append(f"{tr['name']}: n/a")
+            else:
+                vals.append(f"{tr['name']}: {y[tr_idx]:.4g}")
         self.readout.setText(f"t = {self.timeline[idx]:.4g}, " + ("; ".join(vals) if vals else "no active traces"))
         self.scrub.blockSignals(True)
         self.scrub.setValue(idx)
@@ -255,16 +267,25 @@ class WaveformInspector(QWidget):
         if not filepath:
             return
         # Build matrix with selected traces
-        active = [i for i in range(len(self.traces)) if i in self.active_indices]
+        active = [i for i in range(len(self.traces)) if i in self.active_traces]
         if not active:
             QMessageBox.warning(self, "No Selection", "Select at least one trace to export.")
             return
-        data_cols = [self.timeline]
+        # Align all columns to a common length so column_stack cannot fail on
+        # traces that are shorter than the (longest-run) timeline.
+        n = len(self.timeline)
+        for i in active:
+            n = min(n, len(self.traces[i]["y"]))
+        if n == 0:
+            QMessageBox.warning(self, "No Data", "Selected traces contain no samples.")
+            return
+        data_cols = [self.timeline[:n]]
         header = ["time"]
         for i in active:
-            y = self.traces[i]["y"]
-            y = y[:len(self.timeline)]
-            data_cols.append(y)
+            data_cols.append(self.traces[i]["y"][:n])
             header.append(self.traces[i]["name"])
-        mat = np.column_stack(data_cols)
-        np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments='')
+        try:
+            mat = np.column_stack(data_cols)
+            np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments='')
+        except (ValueError, OSError) as exc:
+            QMessageBox.warning(self, "Export Failed", f"Could not export CSV:\n{exc}")

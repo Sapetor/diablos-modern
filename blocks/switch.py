@@ -24,12 +24,16 @@ class SwitchBlock(BaseBlock):
     def doc(self):
         return (
             "Signal Switch."
-            "\n\nPasses one of the inputs based on the Control signal (middle port)."
-            "\n\nCriteria:"
-            "\n- u2 >= Threshold: Output = u1 (Top port)"
-            "\n- u2 < Threshold:  Output = u3 (Bottom port)"
+            "\n\nPasses one of the data inputs based on the Control signal (ctrl, top port)."
+            "\n\nThreshold mode:"
+            "\n- ctrl >= Threshold: Output = in0 (first data input)"
+            "\n- ctrl <  Threshold: Output = in1 (second data input)"
+            "\n\nIndex mode:"
+            "\n- Output = in<round(ctrl)>, clamped to the available data inputs."
             "\n\nParameters:"
-            "\n- Threshold: Switching value."
+            "\n- Threshold: Switching value (threshold mode)."
+            "\n- n_inputs: Number of data inputs (>=2)."
+            "\n- mode: 'threshold' or 'index'."
             "\n\nUsage:"
             "\nConditional logic or selecting between valid signals."
         )
@@ -88,7 +92,7 @@ class SwitchBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        ctrl = float(np.atleast_1d(inputs[0])[0])
+        ctrl = float(np.atleast_1d(inputs.get(0, 0.0))[0])
         mode = params.get("mode", "threshold")
         n = max(2, int(params.get("n_inputs", 2)))
 

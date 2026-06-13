@@ -105,7 +105,7 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
                 return {'E': True, 'error': f'Failed to convert TF to SS: {e}'}
 
             # Discretize
-            dtime = params['dtime']
+            dtime = kwargs.get('dtime', params.get('dtime', 0.01))
             try:
                 Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime)
             except Exception as e:

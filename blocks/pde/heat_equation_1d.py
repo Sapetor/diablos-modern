@@ -192,8 +192,10 @@ class HeatEquation1DBlock(BaseBlock):
         dx = params.get('dx', L / (N - 1))
         dtime = float(params.get('dtime', 0.01))
 
-        # Get current state
-        T = params.get('T', np.zeros(N))
+        # Get current state. Copy so boundary-condition algebra below does not
+        # mutate the stored previous-state array in place (the BC updates assign
+        # to T[0]/T[N-1] and would otherwise corrupt params['T'] mid-step).
+        T = np.array(params.get('T', np.zeros(N)), dtype=float)
 
         # Get inputs
         q_src = inputs.get(0, 0.0)
@@ -257,7 +259,21 @@ class HeatEquation1DBlock(BaseBlock):
             T[N-1] = (k * T[N-2] / dx + h * bc_right_val) / (k / dx + h)
             dT_dt[N-1] = 0.0
 
-        # Forward Euler time step (simple, for interpreter mode)
+        # Forward Euler time step (simple, for interpreter mode).
+        # FTCS is only stable for dtime <= dx^2 / (2*alpha); beyond that the
+        # explicit update diverges silently. Warn once if the step is too large
+        # so the user can reduce dtime (or use the compiled solver).
+        if alpha > 0:
+            cfl_limit = dx * dx / (2.0 * alpha)
+            if dtime > cfl_limit and not params.get('_cfl_warned_', False):
+                logger.warning(
+                    "HeatEquation1D: interpreter dtime=%g exceeds FTCS "
+                    "stability limit dx^2/(2*alpha)=%g (dx=%g, alpha=%g); "
+                    "explicit Forward Euler may diverge. Reduce dtime or use "
+                    "the compiled solver.",
+                    dtime, cfl_limit, dx, alpha,
+                )
+                params['_cfl_warned_'] = True
         T_new = T + dT_dt * dtime
         params['T'] = T_new
 

@@ -480,15 +480,15 @@ class ThemeManager(QObject):
             theme = self.get_current_theme()
             color_hex = theme.get(color_name, '#000000')
 
-        # Handle 8-char #RRGGBBAA (e.g. block_shadow with alpha)
-        c = QColor(color_hex)
+        # Handle 8-digit #RRGGBBAA (e.g. block_shadow with alpha).
+        # PyQt5's QColor mis-parses 9-char strings, so parse channels by hand.
         if len(color_hex) == 9 and color_hex.startswith('#'):
             try:
-                alpha = int(color_hex[7:9], 16)
-                c.setAlpha(alpha)
+                r, g, b, a = (int(color_hex[i:i + 2], 16) for i in (1, 3, 5, 7))
+                return QColor(r, g, b, a)
             except ValueError:
-                pass
-        return c
+                return QColor(color_hex[:7])
+        return QColor(color_hex)
 
     # ------------------------------------------------------------------
     # Theme control

@@ -164,10 +164,15 @@ class TikZExportDialog(QDialog):
         out_layout = QHBoxLayout(out_group)
         out_layout.setContentsMargins(8, 4, 8, 4)
 
+        # Tracks whether the current path came from the save dialog
+        # (which already confirms overwrite); typed/default paths do not.
+        self._path_confirmed_via_dialog = False
+
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("Select output file...")
         default_path = os.path.join(os.path.expanduser("~"), "diagram.tex")
         self.path_edit.setText(default_path)
+        self.path_edit.textEdited.connect(self._on_path_edited)
 
         self.browse_btn = QPushButton("Browse...")
         self.browse_btn.setFixedWidth(72)
@@ -281,8 +286,12 @@ class TikZExportDialog(QDialog):
             tikz_code = self._generate_tikz()
             self.preview_edit.setPlainText(tikz_code)
         except Exception as e:
-            logger.error(f"TikZ preview error: {e}")
+            logger.exception("TikZ preview error")
             self.preview_edit.setPlainText(f"% Error generating preview:\n% {e}")
+
+    def _on_path_edited(self, *_args):
+        """A manually typed path has not been confirmed by the save dialog."""
+        self._path_confirmed_via_dialog = False
 
     def _browse_file(self):
         filepath, _ = QFileDialog.getSaveFileName(
@@ -293,6 +302,7 @@ class TikZExportDialog(QDialog):
             if not filepath.lower().endswith('.tex'):
                 filepath += '.tex'
             self.path_edit.setText(filepath)
+            self._path_confirmed_via_dialog = True
 
     def _copy_to_clipboard(self):
         try:
@@ -308,6 +318,16 @@ class TikZExportDialog(QDialog):
         if not filepath:
             QMessageBox.warning(self, "Error", "Please specify an output file path.")
             return
+
+        # The save dialog already confirms overwrite; a typed/default path does not.
+        if not self._path_confirmed_via_dialog and os.path.exists(filepath):
+            reply = QMessageBox.question(
+                self, "Overwrite File?",
+                f"The file already exists:\n{filepath}\n\nOverwrite it?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
 
         try:
             tikz_code = self._generate_tikz()

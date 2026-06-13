@@ -77,6 +77,19 @@ class ExportBlock(BaseBlock):
             params['_skip_'] = False
             return {0: np.array([0.0]), 'E': False}
 
+        # Guard against a missing/None input on port 0. A connected sink is
+        # normally wired before execute(), but a dangling port would otherwise
+        # raise an unguarded KeyError (line below) or feed None into concatenate.
+        if inputs.get(0) is None:
+            return {'E': True, 'error': 'Export has no input'}
+
+        # The fast-path replay loop writes a Python list to params['vector']
+        # after each simulation. If we land here on a later sim with a stale
+        # non-ndarray vector, we cannot safely concatenate; force re-init.
+        prev_vec = params.get('vector', None)
+        if not isinstance(prev_vec, np.ndarray):
+            params['_init_start_'] = True
+
         # Initialization of the saving vector
         if params.get('_init_start_', True):
             aux_vector = np.array([inputs[0]])
@@ -90,8 +103,8 @@ class ExportBlock(BaseBlock):
                 labels = params['_name_'] + '-0'
             labels = labels.replace(' ', '').split(',')
             if len(labels) < params['vec_dim']:
-                for i in range(params['vec_dim'] - len(labels)):
-                    labels.append(params['_name_'] + '-' + str(params['vec_dim'] + i - 1))
+                for i in range(len(labels), params['vec_dim']):
+                    labels.append(params['_name_'] + '-' + str(i))
             elif len(labels) > params['vec_dim']:
                 labels = labels[:params['vec_dim']]
             if len(labels) == params['vec_dim'] == 1:
@@ -100,6 +113,18 @@ class ExportBlock(BaseBlock):
             params['_init_start_'] = False
         else:
             aux_vector = params['vector']
-            aux_vector = np.concatenate((aux_vector, [inputs[0]]))
+            try:
+                new_dim = len(inputs[0])
+            except TypeError:
+                new_dim = 1
+            # If the per-sample dimension changed since init (e.g. the upstream
+            # signal width varies mid-run), re-initialize instead of producing a
+            # ragged buffer that np.concatenate would reject or that breaks the
+            # (N, vec_dim) layout expected by export_data().
+            if new_dim != params.get('vec_dim', new_dim):
+                aux_vector = np.array([inputs[0]])
+                params['vec_dim'] = new_dim
+            else:
+                aux_vector = np.concatenate((aux_vector, [inputs[0]]))
         params['vector'] = aux_vector
         return {0: np.array([0.0]), 'E': False}

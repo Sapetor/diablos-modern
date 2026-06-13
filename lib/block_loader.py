@@ -112,7 +112,7 @@ def _collect_block_classes(module_names):
                 if issubclass(obj, BaseBlock) and obj is not BaseBlock and not inspect.isabstract(obj):
                     block_classes.append(obj)
         except Exception as e:
-            print(f"Error loading block {module_name}: {e}")
+            logger.error(f"Error loading block {module_name}: {e}", exc_info=True)
     return block_classes
 
 

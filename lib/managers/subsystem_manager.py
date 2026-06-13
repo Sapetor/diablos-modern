@@ -207,10 +207,10 @@ class SubsystemManager:
             selected_blocks: List of blocks to include in subsystem
 
         Returns:
-            Subsystem block instance
+            Subsystem block instance, or None if selected_blocks is empty.
         """
         if not selected_blocks:
-            return
+            return None
 
         # Calculate bounding box of selected blocks
         min_x = min(b.rect.left() for b in selected_blocks)
@@ -292,9 +292,10 @@ class SubsystemManager:
         for l in internal_lines:
             if l in self.dsim.line_list:
                 self.dsim.line_list.remove(l)
+            # connections_list aliases line_list (see enter/exit_subsystem), so the
+            # line is already removed above; guard the non-aliased case defensively.
             if l in self.dsim.connections_list:
-                if l in self.dsim.connections_list:
-                    self.dsim.connections_list.remove(l)
+                self.dsim.connections_list.remove(l)
             subsys.sub_lines.append(l)
 
         # Recalculate internal lines visually
@@ -333,6 +334,11 @@ class SubsystemManager:
         # Handle Ports
         inport_idx = 1
         outport_idx = 1
+
+        # Per-direction boundary counts so port Y-positions are spaced
+        # evenly within each direction rather than across the combined total.
+        num_in_boundary = sum(1 for _, d in boundary_lines if d == 'in')
+        num_out_boundary = sum(1 for _, d in boundary_lines if d == 'out')
 
         for line, direction in boundary_lines:
             if direction == 'in':
@@ -380,7 +386,7 @@ class SubsystemManager:
                 if 'in' not in subsys.ports:
                     subsys.ports['in'] = []
 
-                port_pos = (0, (subsys.height / (len(boundary_lines) + 1)) * inport_idx)
+                port_pos = (0, (subsys.height / (num_in_boundary + len(unconnected_inputs) + 1)) * inport_idx)
                 subsys.ports['in'].append({
                     'pos': port_pos,
                     'type': 'input',
@@ -433,14 +439,14 @@ class SubsystemManager:
                             outport.in_coords[0],
                             subsys.sub_blocks
                         )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Traj calc failed for new internal line: {e}")
 
                 subsys.sub_lines.append(internal_line)
 
                 if 'out' not in subsys.ports:
                     subsys.ports['out'] = []
-                port_pos = (subsys.width, (subsys.height / (len(boundary_lines) + 1)) * outport_idx)
+                port_pos = (subsys.width, (subsys.height / (num_out_boundary + len(unconnected_outputs) + 1)) * outport_idx)
                 subsys.ports['out'].append({
                     'pos': port_pos,
                     'type': 'output',
@@ -501,7 +507,7 @@ class SubsystemManager:
             if 'in' not in subsys.ports:
                 subsys.ports['in'] = []
 
-            total_inputs = len(boundary_lines) + len(unconnected_inputs)
+            total_inputs = num_in_boundary + len(unconnected_inputs)
             port_pos = (0, (subsys.height / (total_inputs + 1)) * inport_idx)
             subsys.ports['in'].append({
                 'pos': port_pos,
@@ -553,8 +559,8 @@ class SubsystemManager:
                         outport.in_coords[0],
                         subsys.sub_blocks
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Traj calc failed for unconnected output line: {e}")
 
             subsys.sub_lines.append(internal_line)
 
@@ -562,7 +568,7 @@ class SubsystemManager:
             if 'out' not in subsys.ports:
                 subsys.ports['out'] = []
 
-            total_outputs = len(boundary_lines) + len(unconnected_outputs)
+            total_outputs = num_out_boundary + len(unconnected_outputs)
             port_pos = (subsys.width, (subsys.height / (total_outputs + 1)) * outport_idx)
             subsys.ports['out'].append({
                 'pos': port_pos,

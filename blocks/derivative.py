@@ -96,7 +96,10 @@ class DerivativeBlock(BaseBlock):
             # output_only path: return held last derivative, don't update state
             return {0: np.array(params['_didt_old_'])}
 
-        if time == params['_t_old_']:
+        # Guard with a tolerance (not just exact equality) so a time value that
+        # is extremely close to the previous timestamp does not produce a tiny
+        # denominator and a huge spurious derivative spike.
+        if abs(time - params['_t_old_']) < 1e-12:
             return {0: np.array(params['_didt_old_'])}
 
         dt = time - params['_t_old_']

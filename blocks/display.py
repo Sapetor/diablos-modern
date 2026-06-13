@@ -1,5 +1,9 @@
+import logging
+
 import numpy as np
 from blocks.base_block import BaseBlock
+
+logger = logging.getLogger(__name__)
 
 
 class DisplayBlock(BaseBlock):
@@ -31,7 +35,7 @@ class DisplayBlock(BaseBlock):
             "Numerical Display."
             "\n\nShows the current value of the input signal."
             "\n\nParameters:"
-            "\n- Format: standard Python f-string format (e.g. {:.2f})."
+            "\n- Format: printf-style format string (e.g. %.2f)."
             "\n- Label: Text label prefix."
             "\n\nUsage:"
             "\nMonitor scalar values during simulation."
@@ -85,7 +89,11 @@ class DisplayBlock(BaseBlock):
                 # Single value
                 val = float(np.atleast_1d(input_value)[0])
                 formatted = fmt % val
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
+            logger.warning(
+                f"Display '{params.get('_name_', '?')}': could not format value with "
+                f"'{fmt}' ({e}); showing raw value."
+            )
             formatted = str(input_value)
         
         # Add label prefix if specified

@@ -301,14 +301,18 @@ class FieldScope2DBlock(BaseBlock):
 
         field = np.atleast_2d(field)
 
-        # Sample at specified interval to reduce memory
-        sample_interval = int(params.get('sample_interval', 5))
-        params['_sample_count_'] = params.get('_sample_count_', 0) + 1
+        # Sample at specified interval to reduce memory.
+        # Use a frame index that starts at 0 and store when frame % interval == 0
+        # so the t=0 initial field (frame 0) is always captured, matching the
+        # engine replay path (simulation_engine.py: "if i % sample_interval == 0").
+        sample_interval = max(1, int(params.get('sample_interval', 5)))
+        frame_index = params.get('_sample_count_', 0)
 
-        if params['_sample_count_'] >= sample_interval:
+        if frame_index % sample_interval == 0:
             params['_field_history_2d_'].append(field.copy())
             params['_time_history_'].append(time)
-            params['_sample_count_'] = 0
+
+        params['_sample_count_'] = frame_index + 1
 
         return {'E': False}
 

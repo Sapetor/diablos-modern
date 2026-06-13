@@ -36,14 +36,35 @@ class ConfigManager:
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r') as f:
-                    self._config = json.load(f)
+                    loaded = json.load(f)
+                # Deep-merge loaded values over defaults so every section/key
+                # has a baseline even if the on-disk file is partial.
+                self._config = self._deep_merge(self._get_default_config(), loaded)
                 logger.info(f"Configuration loaded from {self.config_file}")
             else:
                 logger.warning(f"Configuration file {self.config_file} not found, using defaults")
                 self._config = self._get_default_config()
-        except Exception as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.error(f"Error loading configuration: {e}")
             self._config = self._get_default_config()
+
+    @staticmethod
+    def _deep_merge(base: Dict[str, Any], override: Any) -> Dict[str, Any]:
+        """Recursively merge ``override`` onto a copy of ``base``.
+
+        Nested dicts are merged key-by-key; non-dict overrides replace the
+        corresponding base value. If ``override`` is not a dict, ``base`` is
+        returned unchanged (a defensive guard against malformed files).
+        """
+        if not isinstance(override, dict):
+            return base
+        merged = dict(base)
+        for key, value in override.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = ConfigManager._deep_merge(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
     
     def _get_default_config(self) -> Dict[str, Any]:
         """Get default configuration."""
@@ -115,8 +136,8 @@ class ConfigManager:
                     return default
             
             return value
-            
-        except Exception as e:
+
+        except (AttributeError, TypeError) as e:
             logger.error(f"Error getting config key {key_path}: {e}")
             return default
     
@@ -144,8 +165,8 @@ class ConfigManager:
             # Set the final key
             config_ref[keys[-1]] = value
             return True
-            
-        except Exception as e:
+
+        except (AttributeError, TypeError) as e:
             logger.error(f"Error setting config key {key_path}: {e}")
             return False
     
@@ -160,8 +181,8 @@ class ConfigManager:
             
             logger.info(f"Configuration saved to {self.config_file}")
             return True
-            
-        except Exception as e:
+
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error saving configuration: {e}")
             return False
     
@@ -192,8 +213,8 @@ class ConfigManager:
                 dsim_instance.sim_dt = self.get("simulation.default_timestep", 0.01)
             
             logger.info("Configuration applied to DSim instance")
-            
-        except Exception as e:
+
+        except (AttributeError, TypeError) as e:
             logger.error(f"Error applying configuration to DSim: {e}")
     
     def validate_config(self) -> tuple[bool, list[str]]:
@@ -233,8 +254,8 @@ class ConfigManager:
                 errors.append(f"Invalid solver '{solver}', must be one of {available_solvers}")
             
             return len(errors) == 0, errors
-            
-        except Exception as e:
+
+        except TypeError as e:
             logger.error(f"Error validating configuration: {e}")
             return False, [f"Configuration validation error: {str(e)}"]
     

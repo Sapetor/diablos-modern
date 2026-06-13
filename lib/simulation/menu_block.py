@@ -5,6 +5,8 @@ MenuBlocks class - represents blocks in the palette menu.
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt, QRect
 
+from lib.app_paths import resource_path
+
 
 class MenuBlocks:
     """Represents a block template in the block palette."""
@@ -20,7 +22,7 @@ class MenuBlocks:
         self.b_color = b_color
         self.size = coords
         self.side_length = (30, 30)
-        pixmap = QPixmap(f'./lib/icons/{self.block_fn.lower()}.png')
+        pixmap = QPixmap(resource_path(f'lib/icons/{self.block_fn.lower()}.png'))
         if not pixmap.isNull():
             self.image = pixmap.scaled(self.side_length[0], self.side_length[1], Qt.KeepAspectRatio, Qt.SmoothTransformation)
         else:

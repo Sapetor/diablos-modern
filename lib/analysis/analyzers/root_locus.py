@@ -22,9 +22,10 @@ class RootLocusAnalyzer(BaseAnalyzer):
             num, den, dt = model
             
             # Root Locus Calculation
-            # Gain range K from 0 to inf? 
-            # Use logspace for K
-            k_values = np.logspace(-2, 2, 500)
+            # Gain range K from 0 to inf?
+            # Use logspace for K. Only the positive-gain locus over this fixed
+            # range is computed; the complementary (negative-K) locus is not shown.
+            k_values = np.logspace(-3, 4, 500)
             k_values = np.insert(k_values, 0, 0) # Start at K=0
             
             all_roots = []
@@ -118,6 +119,16 @@ class RootLocusAnalyzer(BaseAnalyzer):
             plot_window.show()
             return plot_window
             
-        except Exception as e:
-            logger.error(f"Error calculating Root Locus: {e}")
+        except (ValueError, AttributeError, TypeError, np.linalg.LinAlgError) as e:
+            logger.exception("Error calculating Root Locus")
+            self._show_error(f"Failed to compute Root Locus:\n{e}")
             return None
+
+    def _show_error(self, message):
+        """Show error in a message box."""
+        from PyQt5.QtWidgets import QMessageBox
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Root Locus Error")
+        msg.setText(message)
+        msg.exec_()

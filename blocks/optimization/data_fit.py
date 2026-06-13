@@ -145,7 +145,6 @@ class DataFitBlock(BaseBlock):
             params['_ss_res_'] = 0.0
             params['_init_start_'] = False
 
-        dtime = float(params.get('dtime', 0.01))
         weight = float(params.get('weight', 1.0))
         fit_type = params.get('fit_type', 'MSE')
 
@@ -170,12 +169,24 @@ class DataFitBlock(BaseBlock):
                 idx = np.argmin(np.abs(t_data - time))
                 measured = y_data[idx]
             elif interpolation == 'spline':
-                try:
-                    from scipy.interpolate import UnivariateSpline
-                    spline = UnivariateSpline(t_data, y_data, s=0)
-                    measured = float(spline(time))
-                except Exception:
+                # Build the spline once and cache the callable; t_data/y_data are
+                # loaded once in _load_data() and never change, so rebuilding the
+                # spline on every timestep is wasteful. The cached callable lives in
+                # the (runtime) params dict alongside _time_data_/_signal_data_, which
+                # are never persisted to project files.
+                spline = params.get('_spline_')
+                if spline is None:
+                    try:
+                        from scipy.interpolate import UnivariateSpline
+                        spline = UnivariateSpline(t_data, y_data, s=0)
+                    except Exception:
+                        # Fall back to linear interpolation; sentinel avoids retrying.
+                        spline = np.interp
+                    params['_spline_'] = spline
+                if spline is np.interp:
                     measured = float(np.interp(time, t_data, y_data))
+                else:
+                    measured = float(spline(time))
             else:
                 # Linear interpolation
                 measured = float(np.interp(time, t_data, y_data))
@@ -229,6 +240,9 @@ class DataFitBlock(BaseBlock):
         time_col = params.get('time_col', 't')
         signal_col = params.get('signal_col', 'y')
 
+        # Invalidate any cached spline so it is rebuilt against the new data.
+        params.pop('_spline_', None)
+
         if not data_file:
             params['_time_data_'] = np.array([0.0, 1.0])
             params['_signal_data_'] = np.array([0.0, 0.0])
@@ -248,14 +262,18 @@ class DataFitBlock(BaseBlock):
                     reader = csv.DictReader(f)
                     rows = list(reader)
 
-                if time_col.isdigit():
-                    time_idx = int(time_col)
-                    signal_idx = int(signal_col) if signal_col.isdigit() else 1
-                    t_data = np.array([float(list(row.values())[time_idx]) for row in rows])
-                    y_data = np.array([float(list(row.values())[signal_idx]) for row in rows])
-                else:
-                    t_data = np.array([float(row.get(time_col, 0)) for row in rows])
-                    y_data = np.array([float(row.get(signal_col, 0)) for row in rows])
+                # Resolve each column independently: positional index if the
+                # spec is numeric, otherwise a named DictReader lookup. This
+                # supports mixed cases (e.g. numeric time_col with a named
+                # signal_col) instead of assuming signal is column 1.
+                def _column(rows, col):
+                    if col.isdigit():
+                        idx = int(col)
+                        return np.array([float(list(row.values())[idx]) for row in rows])
+                    return np.array([float(row.get(col, 0)) for row in rows])
+
+                t_data = _column(rows, time_col)
+                y_data = _column(rows, signal_col)
             else:
                 # Try numpy loadtxt
                 data = np.loadtxt(data_file)

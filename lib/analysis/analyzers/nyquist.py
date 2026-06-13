@@ -28,11 +28,13 @@ class NyquistAnalyzer(BaseAnalyzer):
                 sys = signal.TransferFunction(num, den, dt=dt)
                 w_max = np.pi / dt
                 w = np.logspace(np.log10(w_max/1000.0), np.log10(w_max), 1000)
+                # Discrete systems require dfreqresp; the module-level freqresp
+                # only supports continuous-time systems and raises otherwise.
+                w, H = signal.dfreqresp(sys, w=w)
             else:
                 sys = signal.TransferFunction(num, den)
                 w = np.logspace(-3, 3, 1000)
-                
-            w, H = signal.freqresp(sys, w=w)
+                w, H = signal.freqresp(sys, w=w)
             
             real = H.real
             imag = H.imag

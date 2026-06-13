@@ -27,20 +27,20 @@ class ViewActionsManager:
         window = self.window
         if hasattr(window, 'canvas'):
             window.canvas.set_zoom(factor)
-            window.zoom_status.setText(f"{int(window.canvas.zoom_factor * 100)}%")
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
 
     def zoom_in(self):
         window = self.window
         if hasattr(window, 'canvas'):
             window.canvas.zoom_in()
-            window.zoom_status.setText(f"{int(window.canvas.zoom_factor * 100)}%")
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
             window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
 
     def zoom_out(self):
         window = self.window
         if hasattr(window, 'canvas'):
             window.canvas.zoom_out()
-            window.zoom_status.setText(f"{int(window.canvas.zoom_factor * 100)}%")
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
             window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
 
     def toggle_grid(self):
@@ -110,8 +110,10 @@ class ViewActionsManager:
         zoom_y = canvas_height / diagram_height if diagram_height > 0 else 1.0
         new_zoom = min(zoom_x, zoom_y, 2.0)  # Cap at 200% max zoom
 
-        # Apply zoom
-        window.canvas.zoom_factor = max(0.1, min(new_zoom, 2.0))  # Clamp between 10% and 200%
+        # Apply zoom through the canvas zoom API so internal zoom state
+        # (zoom_pan_manager) stays in sync with canvas.zoom_factor.
+        clamped_zoom = max(0.1, min(new_zoom, 2.0))  # Clamp between 10% and 200%
+        window.canvas.set_zoom(clamped_zoom)
 
         # Calculate center point of diagram
         center_x = (min_x + max_x) / 2
@@ -124,5 +126,5 @@ class ViewActionsManager:
 
         # Update display
         window.canvas.update()
-        window.zoom_status.setText(f"{int(window.canvas.zoom_factor * 100)}%")
+        window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
         window.status_message.setText(f"Fit {len(blocks)} block(s) to window")

@@ -31,6 +31,9 @@ class ToastNotification(QLabel):
         # Animation
         self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
         self.fade_animation.setEasingCurve(QEasingCurve.InOutQuad)
+        # Connect once; hide only when a fade-OUT (end value 0.0) completes so the
+        # fade-IN's finished signal does not hide a freshly shown toast.
+        self.fade_animation.finished.connect(self._on_fade_finished)
 
         # Auto-hide timer
         self.hide_timer = QTimer(self)
@@ -95,5 +98,9 @@ class ToastNotification(QLabel):
         self.fade_animation.setDuration(300)
         self.fade_animation.setStartValue(0.95)
         self.fade_animation.setEndValue(0.0)
-        self.fade_animation.finished.connect(self.hide)
         self.fade_animation.start()
+
+    def _on_fade_finished(self):
+        """Hide the toast only when a fade-out animation has finished."""
+        if self.fade_animation.endValue() == 0.0:
+            self.hide()

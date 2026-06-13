@@ -4,6 +4,7 @@ DLine (connection) class - represents connections between blocks.
 
 import logging
 import copy
+import math
 from typing import List, Tuple, Optional, Union
 from PyQt5.QtGui import QPainterPath, QColor
 from PyQt5.QtCore import QPoint, QRect
@@ -393,15 +394,18 @@ class DLine:
             v = p2 - p1
             u = m_coords - p1
 
+            # Use a single consistent metric (true Euclidean distance) in both
+            # branches so the comparison against line_threshold has uniform units.
             length_squared = v.x()**2 + v.y()**2
             if length_squared == 0:
-                dist_sq = u.x()**2 + u.y()**2
+                dist = math.hypot(u.x(), u.y())
             else:
                 t = max(0, min(1, QPoint.dotProduct(u, v) / length_squared))
-                projection = p1 + t * v
-                dist_sq = (m_coords - projection).manhattanLength()
+                proj_dx = m_coords.x() - (p1.x() + t * v.x())
+                proj_dy = m_coords.y() - (p1.y() + t * v.y())
+                dist = math.hypot(proj_dx, proj_dy)
 
-            if dist_sq <= line_threshold:
+            if dist <= line_threshold:
                 return ("segment", i)
 
         return None
@@ -454,14 +458,18 @@ class DLine:
                 # QRect pickles fine.
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))
-                except Exception:
-                     # Fallback 
+                except Exception as e:
+                     # Fallback: leave collision geometry empty but surface the
+                     # failure so the copied line being unclickable is observable.
+                     logger.warning(f"Failed to deepcopy segments on {self.name}: {e}")
                      setattr(result, k, [])
             else:
                  try:
                     setattr(result, k, copy.deepcopy(v, memo))
                  except Exception as e:
-                    # Ignore unpickleable UI assets
+                    # Ignore unpickleable UI assets, but log so silent data loss
+                    # of a real attribute is observable.
+                    logger.warning(f"Failed to deepcopy attribute '{k}' on {self.name}: {e}")
                     setattr(result, k, None)
                     
         return result

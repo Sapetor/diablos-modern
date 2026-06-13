@@ -93,6 +93,8 @@ class BaseAnalyzer:
                 dt = params.get('sampling_time', 0.0)
                 return num, den, float(dt)
             except Exception:
+                logger.warning("Failed to extract transfer-function model from "
+                               "numerator/denominator params", exc_info=True)
                 return None
                 
         # B) State Space 
@@ -104,17 +106,38 @@ class BaseAnalyzer:
                 sys_tf = sys.to_tf()
                 return sys_tf.num, sys_tf.den, float(sys.dt) if sys.dt else 0.0
              except Exception:
+                 logger.warning("Failed to extract state-space model from "
+                                "A/B/C/D params", exc_info=True)
                  return None
 
         # C) PID Controller
         if block.block_fn == 'PID':
              try:
-                 kp = float(params.get('kp', 1.0))
-                 ki = float(params.get('ki', 0.0))
-                 kd = float(params.get('kd', 0.0))
-                 # TF = (Kd*s^2 + Kp*s + Ki) / s
-                 return np.array([kd, kp, ki]), np.array([1, 0]), 0.0
+                 # Param keys match the PID block definition (capitalized).
+                 kp = float(params.get('Kp', params.get('kp', 1.0)))
+                 ki = float(params.get('Ki', params.get('ki', 0.0)))
+                 kd = float(params.get('Kd', params.get('kd', 0.0)))
+                 n = float(params.get('N', 20.0))
+                 # Match the PID block's filtered-derivative form:
+                 #   C(s) = Kp + Ki/s + Kd*N*s/(s + N)
+                 # Combined over the common denominator s*(s + N):
+                 #   num = (Kp + Kd*N)*s^2 + (Kp*N + Ki)*s + Ki*N
+                 #   den = s^2 + N*s
+                 # This yields a proper TF (deg 2 / deg 2) instead of the
+                 # improper ideal form (Kd*s^2 + Kp*s + Ki)/s, which crashed
+                 # downstream root-locus computation when Kd != 0.
+                 if n != 0.0:
+                     num = np.array([kp + kd * n, kp * n + ki, ki * n], dtype=float)
+                     den = np.array([1.0, n, 0.0], dtype=float)
+                 else:
+                     # Without a derivative filter the term Kd*N*s/(s+N) -> 0,
+                     # leaving the ideal PI form (Kp*s + Ki)/s (proper).
+                     num = np.array([kp, ki], dtype=float)
+                     den = np.array([1.0, 0.0], dtype=float)
+                 return num, den, 0.0
              except Exception:
+                 logger.warning("Failed to extract transfer-function model "
+                                "from PID params", exc_info=True)
                  return None
 
         # D) Generic check
@@ -194,27 +217,24 @@ class BaseAnalyzer:
         # And ModernCanvas has self.analyzer (the facade).
         # The facade has self.plot_windows.
         
-        try:
-            # Try to find the facade to get window count
-            # self.parent is likely ModernCanvas (passed in init)
-            # ModernCanvas.analyzer is the facade
-            count = 0
-            if hasattr(self.parent, 'analyzer'):
-                count = len(self.parent.analyzer.plot_windows)
-            
-            # Cascade
-            x = base_x + (count * offset)
-            y = base_y + (count * offset)
-            
-            # Keep within screen bounds (roughly)
-            # Logic to reset if too far
-            if x > 800: x = base_x
-            if y > 600: y = base_y
-            
-            window.move(x, y)
-            window.resize(600, 400)
-            
-        except Exception:
-            # Fallback to simple default
-            window.move(100, 100)
-            window.resize(600, 400)
+        # Try to find the facade to get window count for cascading.
+        # self.parent is likely ModernCanvas (passed in init), and
+        # ModernCanvas.analyzer is the facade holding plot_windows.
+        # Compute the count defensively so a missing attribute simply
+        # falls back to count=0 rather than masking unexpected errors.
+        count = 0
+        facade = getattr(self.parent, 'analyzer', None)
+        plot_windows = getattr(facade, 'plot_windows', None)
+        if plot_windows is not None:
+            count = len(plot_windows)
+
+        # Cascade
+        x = base_x + (count * offset)
+        y = base_y + (count * offset)
+
+        # Keep within screen bounds (roughly): reset if too far
+        if x > 800: x = base_x
+        if y > 600: y = base_y
+
+        window.move(x, y)
+        window.resize(600, 400)

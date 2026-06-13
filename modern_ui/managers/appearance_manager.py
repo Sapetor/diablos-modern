@@ -83,11 +83,7 @@ class AppearanceManager:
     def on_theme_changed(self):
         """Handle theme changes."""
         window = self.window
-        # Update status bar
-        theme_name = "Dark Theme" if theme_manager.current_theme == ThemeType.DARK else "Light Theme"
-        window.theme_status.setText(theme_name)
-
-        # Update statusbar label colors
+        # Update statusbar label colors (also sets the authoritative theme pill text)
         self.update_statusbar_colors()
 
         # Update menubar colors

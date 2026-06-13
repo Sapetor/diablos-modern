@@ -15,7 +15,6 @@ from typing import Dict, List, Optional
 from lib.export.tikz_exporter import (
     _poly_to_latex,
     _escape_latex,
-    _name_to_math,
     _sanitize_node_id,
 )
 
@@ -94,16 +93,11 @@ class BloxExporter:
         prev_node = None
         node_ids = {}  # block.name -> blox node id
 
-        for i, block in enumerate(chain):
+        for block in chain:
             nid = _sanitize_node_id(
                 block.username if block.username != block.name else block.name
             )
             node_ids[block.name] = nid
-
-            if i == 0 and self._is_source(block):
-                parts.append(f'  \\bXInput{{{nid}}}')
-                prev_node = nid
-                continue
 
             if self._is_source(block):
                 parts.append(f'  \\bXInput{{{nid}}}')
@@ -154,31 +148,13 @@ class BloxExporter:
 
             fb_label = ''
             if opts.get('show_signal_labels') and line.label:
-                fb_label = line.label
+                fb_label = self._latex_label(line.label)
 
-            # Check if there's a feedback block (e.g., H(s)) between src and dst
-            fb_block = self._find_feedback_block(src_block, dst_block, feedback)
-            if fb_block:
-                fb_nid = node_ids.get(fb_block.name, _sanitize_node_id(fb_block.name))
-                node_ids[fb_block.name] = fb_nid
-                fb_content = self._block_content(fb_block, opts)
-                # Branch point at output
-                branch_nid = f'{src_nid}_branch'
-                parts.append(f'  \\bXBranchy[{dist}]{{{src_nid}}}{{{branch_nid}}}')
-                parts.append(
-                    f'  \\bXBlocrL[{dist}]{{{fb_nid}}}{{{fb_content}}}{{{branch_nid}}}'
-                )
-                label_opt = f'[{fb_label}]' if fb_label else ''
-                parts.append(
-                    f'  \\bXReturn{label_opt}{{{fb_nid}}}{{{dst_nid}}}'
-                )
-            else:
-                # Simple feedback with no intermediate block
-                fb_dist = max(dist, 4.0)
-                label_opt = f'[{fb_label}]' if fb_label else ''
-                parts.append(
-                    f'  \\bXReturn[{fb_dist}]{{{src_nid}}}{{{dst_nid}}}{{{fb_label}}}'
-                )
+            # Simple feedback with no intermediate block
+            fb_dist = max(dist, 4.0)
+            parts.append(
+                f'  \\bXReturn[{fb_dist}]{{{src_nid}}}{{{dst_nid}}}{{{fb_label}}}'
+            )
 
         parts.append(r'\end{tikzpicture}')
 
@@ -285,13 +261,21 @@ class BloxExporter:
 
         return (chain, back_edges)
 
-    def _find_feedback_block(self, src_block, dst_block, feedback_list):
-        """Check if there's an intermediate block on a feedback path.
+    @staticmethod
+    def _latex_label(raw_label):
+        """Convert a raw line label into a LaTeX-safe math snippet.
 
-        This is a simplification — for now we don't detect intermediate
-        blocks. The blox \\bXReturn handles direct feedback.
+        Mirrors the escaping used by ``_find_label``: already math-delimited
+        labels are passed through untouched, anything else is escaped and
+        wrapped in math mode so characters like ``_ & # % { }`` cannot break
+        or inject LaTeX.
         """
-        return None
+        label = raw_label.strip()
+        if not label:
+            return ''
+        if label.startswith('$') and label.endswith('$'):
+            return label
+        return f'${_escape_latex(label)}$'
 
     # ------------------------------------------------------------------
     # Block content helpers
@@ -356,19 +340,30 @@ class BloxExporter:
         return _escape_latex(fn)
 
     def _emit_sum(self, nid, prev_node, sign_str, dist):
-        """Emit the appropriate blox comparator/sum command."""
+        """Emit the appropriate blox comparator/sum command.
+
+        The two standard 2-input comparators keep the nicer ``\\bXComp`` /
+        ``\\bXComp*`` rendering.  Every other sign combination (``'++'``,
+        ``'--'``, a single sign, or 3+ inputs) is routed through
+        ``\\bXCompSum`` so the configured per-port signs are rendered
+        explicitly instead of being silently dropped by a plain summing
+        junction.
+
+        ``\\bXCompSum[dist]{name}{prev}{n}{s}{w}{e}`` places signs on the
+        north/south/west/east anchors.  Ports map to anchors deliberately as
+        west, south, north, east (in that order); missing ports leave the
+        corresponding anchor blank.
+        """
         if sign_str == '+-':
             return f'  \\bXComp[{dist}]{{{nid}}}{{{prev_node}}}'
         if sign_str == '-+':
             return f'  \\bXComp*[{dist}]{{{nid}}}{{{prev_node}}}'
-        if len(sign_str) <= 2:
-            return f'  \\bXSumb[{dist}]{{{nid}}}{{{prev_node}}}'
-        # General case: use bXCompSum with per-port signs
-        # bXCompSum{name}{prev}{n}{s}{w}{e}
-        n_sign = sign_str[0] if len(sign_str) > 2 else ''
-        s_sign = sign_str[1] if len(sign_str) > 1 else ''
+
+        # General case: map port signs to blox compass anchors w, s, n, e.
         w_sign = sign_str[0] if len(sign_str) > 0 else '+'
-        e_sign = ''
+        s_sign = sign_str[1] if len(sign_str) > 1 else ''
+        n_sign = sign_str[2] if len(sign_str) > 2 else ''
+        e_sign = sign_str[3] if len(sign_str) > 3 else ''
         return (
             f'  \\bXCompSum[{dist}]{{{nid}}}{{{prev_node}}}'
             f'{{{n_sign}}}{{{s_sign}}}{{{w_sign}}}{{{e_sign}}}'
@@ -391,8 +386,5 @@ class BloxExporter:
             d_nid = node_ids.get(dst.name, '')
             if s_nid == src_nid and d_nid == dst_nid:
                 if line.label:
-                    label = line.label.strip()
-                    if label.startswith('$') and label.endswith('$'):
-                        return label
-                    return f'${_escape_latex(label)}$'
+                    return self._latex_label(line.label)
         return ''

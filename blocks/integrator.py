@@ -97,7 +97,6 @@ class IntegratorBlock(BaseBlock):
         Integrator block with multiple integration methods.
         """
         output_only = kwargs.get('output_only', False)
-        next_add_in_memory = kwargs.get('next_add_in_memory', True)
         dtime = kwargs.get('dtime', params.get('dtime', 0.01))
 
         # Initialization
@@ -114,8 +113,6 @@ class IntegratorBlock(BaseBlock):
             if params['method'] == 'RK45':
                 params['nb_loop'] = 0
                 params['RK45_Klist'] = [0, 0, 0, 0]
-
-            params['add_in_memory'] = True
 
         if output_only:
             result = {0: params.get('output', params['mem']), 'E': False}
@@ -136,23 +133,11 @@ class IntegratorBlock(BaseBlock):
 
         # Integration by method
         if params['method'] == 'FWD_EULER':
-            if params['add_in_memory']:
-                params['mem'] += params['dtime'] * inputs[0]
-            else:
-                params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * inputs[0])
-                return {0: params['aux'], 'E': False}
+            params['mem'] += params['dtime'] * inputs[0]
         elif params['method'] == 'BWD_EULER':
-            if params['add_in_memory']:
-                params['mem'] += params['dtime'] * params['mem_list'][-1]
-            else:
-                params['aux'] = np.array(params['mem'] + 0.5 * params['dtime'] * params['mem_list'][-1])
-                return {0: params['aux'], 'E': False}
+            params['mem'] += params['dtime'] * params['mem_list'][-1]
         elif params['method'] == 'TUSTIN':
-            if params['add_in_memory']:
-                params['mem'] += 0.5*params['dtime'] * (inputs[0] + params['mem_list'][-1])
-            else:
-                params['aux'] = np.array(params['mem'] + 0.25 * params['dtime'] * (inputs[0] + params['mem_list'][-1]))
-                return {0: params['aux'], 'E': False}
+            params['mem'] += 0.5*params['dtime'] * (inputs[0] + params['mem_list'][-1])
         elif params['method'] == 'RK45':
             K_list = params['RK45_Klist']
             K_list[params['nb_loop']] = params['dtime'] * np.array(inputs[0], dtype=float)
@@ -191,8 +176,8 @@ class IntegratorBlock(BaseBlock):
         aux_list = params['mem_list']
         aux_list.append(inputs[0])
         if len(aux_list) > params['mem_len']:
-            aux_list = aux_list[-5:]
+            aux_list = aux_list[-int(params['mem_len']):]
         params['mem_list'] = aux_list
 
-        result = {0: params['mem'], 'E': False} if params['add_in_memory'] else {'E': False}
+        result = {0: params['mem'], 'E': False}
         return result

@@ -59,7 +59,10 @@ def _make_block(name, x, y, w=100, h=80):
 
 
 def _zoom_pct(window):
-    return f"{int(window.canvas.zoom_factor * 100)}%"
+    # Canonical pill format is "zoom N%" (see status_bar_manager: initial label
+    # "zoom 100%" and the toolbar-rocker driver). ViewActionsManager was unified
+    # to this format to fix the prior "N%" vs "zoom N%" inconsistency.
+    return f"zoom {int(window.canvas.zoom_factor * 100)}%"
 
 
 # ---------------------------------------------------------------------------

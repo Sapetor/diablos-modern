@@ -74,8 +74,10 @@ class LQRAnalyzer(BaseAnalyzer):
             self._show_error(f"Unexpected error:\n{e}")
             return None
 
-        # Check stability
-        stable = all(e.real < 0 for e in eig_cl)
+        # Check stability. Use a small negative tolerance so an eigenvalue
+        # sitting on the imaginary axis within numerical noise (e.g. ~±1e-15)
+        # does not flip the verdict between runs.
+        stable = all(e.real < -1e-9 for e in eig_cl)
 
         # Show results dialog
         plant_source = ss_block.name if ss_block else None

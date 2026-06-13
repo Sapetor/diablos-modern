@@ -3,11 +3,6 @@ Modern Main Window for DiaBloS
 Features modern layout, theming, and enhanced user interface.
 """
 
-"""
-Modern Main Window for DiaBloS
-Features modern layout, theming, and enhanced user interface.
-"""
-
 import os
 import logging
 from typing import Any, Optional
@@ -19,7 +14,7 @@ from PyQt5.QtCore import Qt, QTimer, QEvent
 # Import existing DSim functionality
 from lib.lib import DSim
 from lib.improvements import (
-    PerformanceHelper, SafetyChecks, LoggingHelper,
+    PerformanceHelper, SafetyChecks,
     SimulationConfig
 )
 
@@ -34,8 +29,8 @@ from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.tuning_panel import TuningPanel
 from modern_ui.controllers.tuning_controller import TuningController
 
-# Setup logging
-LoggingHelper.setup_logging(level="INFO", log_file="diablos_modern.log")
+# Logging is configured by the application entry point (diablos_modern.py via
+# lib.logging_config). Modules only acquire a logger at import time.
 logger = logging.getLogger(__name__)
 
 
@@ -788,8 +783,9 @@ class ModernDiaBloSWindow(QMainWindow):
             if not self.canvas.dsim.blocks_list and not self.canvas.dsim.line_list:
                 return
 
-            # Create config directory if it doesn't exist
-            os.makedirs('config', exist_ok=True)
+            # self.autosave_path comes from user_data_path(), which already
+            # creates its parent directory; no relative makedirs needed (it
+            # would fail against a read-only cwd in frozen builds).
 
             # Save using file_service for proper JSON format
             if hasattr(self.dsim, 'file_service'):

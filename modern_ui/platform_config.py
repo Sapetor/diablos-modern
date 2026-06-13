@@ -23,7 +23,15 @@ class PlatformConfig:
 
     def _detect_platform(self):
         """Detect platform and screen characteristics."""
+        if QApplication.instance() is None:
+            raise RuntimeError(
+                "PlatformConfig requires an active QApplication with a display"
+            )
         screen = QApplication.primaryScreen()
+        if screen is None:
+            raise RuntimeError(
+                "PlatformConfig requires an active QApplication with a display"
+            )
         self.device_ratio = screen.devicePixelRatio()
 
         screen_geometry = screen.availableGeometry()

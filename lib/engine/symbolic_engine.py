@@ -252,8 +252,23 @@ class SymbolicEngine:
 
         elif block_type == 'Sum':
             signs = params.get('sign', params.get('inputs', '++'))
+            # Keep only valid sign characters; ignore spaces / count specs / etc.
+            valid_signs = [c for c in str(signs) if c in '+-']
+            if len(valid_signs) != len(str(signs)):
+                logger.warning(
+                    "Sum block '%s' sign spec %r contains non-sign characters; "
+                    "ignoring them.", getattr(block, 'name', '?'), signs)
+            # Warn if the sign spec does not cover every connected input port.
+            connected_ports = set(input_exprs.keys())
+            if connected_ports and len(valid_signs) < (max(connected_ports) + 1):
+                logger.warning(
+                    "Sum block '%s' has connected input port(s) up to index %d "
+                    "but only %d sign(s) %r; uncovered inputs are dropped from "
+                    "the symbolic expression.",
+                    getattr(block, 'name', '?'),
+                    max(connected_ports), len(valid_signs), signs)
             result = sympy.Integer(0)
-            for i, sign in enumerate(signs):
+            for i, sign in enumerate(valid_signs):
                 u = input_exprs.get(i, sympy.Integer(0))
                 if sign == '+':
                     result = result + u
@@ -304,25 +319,45 @@ class SymbolicEngine:
             # Transfer function matrix: C * (sI-A)^(-1) * B + D
             G = C_sym * resolvent * B_sym + D_sym
 
-            u = input_exprs.get(0, Symbol('u'))
-            if G.shape == (1, 1):
-                return {0: G[0, 0] * u}
-            else:
-                return {0: G * u}
+            # G has shape (n_outputs, n_inputs). Build a per-input column vector
+            # from the connected input ports so MIMO systems are handled
+            # correctly; a single scalar would be dimensionally wrong here.
+            n_inputs = G.shape[1]
+            u_vec = Matrix([
+                input_exprs.get(i, Symbol(f'u{i}')) for i in range(n_inputs)
+            ])
+            Y = G * u_vec  # shape (n_outputs, 1)
+
+            if Y.shape == (1, 1):
+                return {0: Y[0, 0]}
+            # Expose each output as its own port.
+            return {row: Y[row, 0] for row in range(Y.shape[0])}
 
         elif block_type == 'PID':
-            Kp = params.get('Kp', 1.0)
-            Ki = params.get('Ki', 0.0)
-            Kd = params.get('Kd', 0.0)
-            N = params.get('N', 20.0)
+            # Coerce gains to exact sympy Floats so numpy scalars/arrays do not
+            # leak into the symbolic expression (matches the Gain block above).
+            Kp = sympy.Float(float(params.get('Kp', 1.0)))
+            Ki = sympy.Float(float(params.get('Ki', 0.0)))
+            Kd = sympy.Float(float(params.get('Kd', 0.0)))
+            N = sympy.Float(float(params.get('N', 20.0)))
 
-            # PID transfer function: Kp + Ki/s + Kd*N*s/(s + N)
             sp = input_exprs.get(0, Symbol('sp'))
             meas = input_exprs.get(1, Symbol('meas'))
             e = sp - meas
 
-            # P + I/s + D*N*s/(s+N)
-            C_pid = Kp + Ki/self.s + Kd*N*self.s/(self.s + N)
+            # P + I/s + filtered-derivative term D*N*s/(s+N).
+            C_pid = Kp + Ki / self.s
+            if Kd != 0:
+                if N <= 0:
+                    # Ideal (unfiltered) derivative when the filter is disabled;
+                    # avoids the degenerate s/(s+0) = 1 the filtered form gives.
+                    logger.warning(
+                        "PID block '%s' has derivative filter N=%s <= 0; "
+                        "using ideal derivative Kd*s.",
+                        getattr(block, 'name', '?'), N)
+                    C_pid = C_pid + Kd * self.s
+                else:
+                    C_pid = C_pid + Kd * N * self.s / (self.s + N)
             return {0: simplify(C_pid * e)}
 
         elif block_type in ('Constant', 'Step'):
@@ -359,6 +394,36 @@ class SymbolicEngine:
 
         # Trace to output
         Y = self._get_block_output(to_block, to_port, input_symbols, set())
+
+        # A transfer function only exists if Y depends *linearly* on U, i.e.
+        # dY/dU is independent of U. Other independent sources (Constant/Step
+        # return numeric values) or nonlinear blocks (Saturation) break this,
+        # making the naive Y/U a U-dependent, incorrect "transfer function".
+        try:
+            dYdU = simplify(diff(Y, U))
+            if dYdU.has(U):
+                logger.warning(
+                    "Transfer function from '%s' to '%s' is not well defined: "
+                    "the output is nonlinear in the input (dY/dU still depends "
+                    "on the input). The returned G(s) is unreliable.",
+                    from_block, to_block)
+            elif Y.has(U) is False:
+                logger.warning(
+                    "Transfer function from '%s' to '%s' is not well defined: "
+                    "the output does not depend on the input.",
+                    from_block, to_block)
+            else:
+                # Affine offset (independent of U) from other sources also
+                # invalidates the plain Y/U ratio.
+                offset = simplify(Y - dYdU * U)
+                if offset != 0:
+                    logger.warning(
+                        "Transfer function from '%s' to '%s' has an "
+                        "input-independent offset (other sources contribute); "
+                        "G(s) = Y/U includes that offset and may be incorrect.",
+                        from_block, to_block)
+        except Exception as exc:
+            logger.debug("Linearity check for transfer function failed: %s", exc)
 
         # G(s) = Y(s) / U(s)
         G = simplify(Y / U)
@@ -404,7 +469,10 @@ class SymbolicEngine:
             output_block: Output block name
 
         Returns:
-            Tuple of (A, B, C, D) state space matrices
+            Tuple of (A, B, C, D) state space matrices on success, or None if
+            the transfer function could not be converted to state space (e.g.
+            it is non-rational, has symbolic/non-numeric coefficients, or
+            scipy's tf2ss raises). Callers must check for None before unpacking.
         """
         # Get transfer function
         G = self.extract_transfer_function(input_block, output_block)
@@ -426,7 +494,12 @@ class SymbolicEngine:
             return (A, B, C, D)
 
         except Exception as e:
-            logger.warning(f"Could not convert to state space: {e}")
+            logger.warning(
+                "Could not convert transfer function from '%s' to '%s' into "
+                "state space (non-rational, non-numeric coefficients, or "
+                "tf2ss failure): %s",
+                input_block, output_block, e
+            )
             return None
 
     def to_latex(self, expr, simplified: bool = True) -> str:
@@ -491,15 +564,16 @@ class SymbolicEngine:
                     lines.append(f'y = {latex_expr}')
                     lines.append(r'\end{equation}')
                     lines.append('')
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Skipping LaTeX export for block '%s': %s",
+                                   name, exc)
 
         lines.append(r'\end{document}')
 
         result = '\n'.join(lines)
 
         if filename:
-            with open(filename, 'w') as f:
+            with open(filename, 'w', encoding='utf-8') as f:
                 f.write(result)
 
         return result

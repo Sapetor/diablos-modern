@@ -53,6 +53,10 @@ class FromBlock(BaseBlock):
         return None
 
     def execute(self, time, inputs, params, **kwargs):
-        # Value will be fed via hidden virtual line into input_queue under key 0
+        # Value will be fed via hidden virtual line into input_queue under key 0.
+        # This is a pure pass-through routing block: the incoming signal is
+        # forwarded untouched (no shape/dtype normalization) so any signal type
+        # ("any" port) is preserved. The bare-int 0 default only applies when the
+        # virtual routing line is absent (an unconnected/dangling From tag).
         return {0: inputs.get(0, 0)}
 

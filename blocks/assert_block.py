@@ -86,11 +86,14 @@ class AssertBlock(BaseBlock):
                 break
         
         if not passed:
+            # Coerce time defensively so the assertion message is always produced,
+            # even if time is ever passed as a numpy array/multi-element value.
+            time_val = float(np.atleast_1d(time)[0])
             # Return error signal to stop simulation
             return {
                 0: np.array([0.0]),
                 'E': True,
-                'error': f"{message} (value={val}, condition={condition}, time={time:.4f})"
+                'error': f"{message} (value={val}, condition={condition}, time={time_val:.4f})"
             }
         
         return {0: np.array([0.0])}

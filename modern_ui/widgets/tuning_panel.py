@@ -170,6 +170,12 @@ class TuningParameterRow(QFrame):
             self.set_range(val * 1.5 if val < 0 else val * 0.5, self._max)
         elif val > self._max:
             self.set_range(self._min, val * 1.5 if val > 0 else val * 0.5)
+        # If set_range bailed (it returns early when min >= max), the value may
+        # still be outside the range and the slider thumb would not track it.
+        # Widen symmetrically around the typed value so the thumb stays in sync.
+        if not (self._min <= val <= self._max):
+            margin = abs(val) + 1.0
+            self.set_range(val - margin, val + margin)
         self._suppress_signals = True
         self._slider.setValue(self._val_to_slider(val))
         self._suppress_signals = False

@@ -14,9 +14,73 @@ class ScopePlotter:
     def __init__(self, dsim):
         self.dsim = dsim
         self.plotty = None
+        # Matplotlib figures created by the various _plot_* helpers. Tracked so
+        # they can be closed on the next plot_again() instead of accumulating
+        # (and retaining their Qt windows, widgets and captured data arrays)
+        # across simulation runs.
+        self._open_figs = []
         # Sync to dsim for backward compatibility
         if hasattr(self.dsim, 'plotty'):
             self.dsim.plotty = None
+
+    def _close_open_figures(self):
+        """Close any matplotlib figures created by previous plot calls.
+
+        pyplot keeps a global registry of figures, so without this each re-plot
+        would leak the old figure (and its Qt window, Slider/Button widgets and
+        the large data arrays captured in their update/export closures).
+        """
+        import matplotlib.pyplot as plt
+        for fig in self._open_figs:
+            try:
+                plt.close(fig)
+            except Exception:
+                pass
+        self._open_figs = []
+
+    def _register_figure(self, fig):
+        """Track a freshly-created figure so it can be closed on the next plot.
+
+        Also closes the figure (releasing its captured closures) when the user
+        dismisses its window.
+        """
+        self._open_figs.append(fig)
+        try:
+            fig.canvas.mpl_connect(
+                'close_event',
+                lambda event, f=fig: self._on_figure_closed(f)
+            )
+        except Exception:
+            pass
+
+    def _on_figure_closed(self, fig):
+        """Drop a figure from the tracking list once its window is closed."""
+        try:
+            self._open_figs.remove(fig)
+        except ValueError:
+            pass
+
+    def _close_plotty(self):
+        """Close the previous SignalPlot window if one exists.
+
+        Disconnect destroyed BEFORE deleteLater -- otherwise the OLD widget's
+        destroyed signal fires asynchronously and runs _on_plotty_destroyed
+        AFTER self.plotty has been reassigned to the new window, which nulls
+        the new reference and lets Qt garbage-collect the new (visible) window.
+        """
+        if self.plotty is not None:
+            try:
+                self.plotty.destroyed.disconnect()
+            except (TypeError, RuntimeError):
+                pass
+            try:
+                self.plotty.close()
+                self.plotty.deleteLater()
+            except Exception:
+                pass
+            self.plotty = None
+            if hasattr(self.dsim, 'plotty'):
+                self.dsim.plotty = None
 
     def plot_again(self):
         """
@@ -25,6 +89,9 @@ class ScopePlotter:
         if self.dsim.dirty:
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
+        # Close any matplotlib figures left over from a previous plot so they
+        # don't accumulate across runs.
+        self._close_open_figures()
         try:
             # Use active blocks from engine if available (flattened execution), otherwise model list
             has_engine = hasattr(self.dsim, 'engine')
@@ -52,6 +119,9 @@ class ScopePlotter:
                 # Print verification metrics for comparison scopes
                 self._print_verification_summary(source_blocks)
             else:
+                # No scope data this run -- close any stale SignalPlot window
+                # from a previous run so it doesn't linger showing old data.
+                self._close_plotty()
                 logger.info("PLOT: No scope data available to plot.")
             
             # Plot XYGraphs
@@ -146,13 +216,14 @@ class ScopePlotter:
         y_label = block.params.get('y_label', 'Y')
         
         fig, ax = plt.subplots(figsize=(8, 6))
+        self._register_figure(fig)
         ax.plot(x_data, y_data, 'b-', linewidth=1)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         ax.set_title(f"{title} ({block.name})")
         ax.grid(True, alpha=0.3)
         ax.set_aspect('equal', adjustable='box')
-        
+
         plt.tight_layout()
         plt.show()
 
@@ -211,6 +282,7 @@ class ScopePlotter:
         # Plot
         title = params.get('title', 'FFT Spectrum')
         fig, ax = plt.subplots(figsize=(10, 6))
+        self._register_figure(fig)
         ax.plot(freqs, magnitude, 'b-', linewidth=1)
         ax.set_xlabel('Frequency (Hz)')
         ax.set_ylabel('Magnitude (dB)' if params.get('log_scale', False) else 'Magnitude')
@@ -303,6 +375,7 @@ class ScopePlotter:
 
         # Create figure
         fig, ax = plt.subplots(figsize=(10, 8))
+        self._register_figure(fig)
 
         # Create 2D heatmap using imshow
         # Extent: [x_min, x_max, t_min, t_max]
@@ -366,6 +439,7 @@ class ScopePlotter:
 
         # Create figure with slider space
         fig, ax = plt.subplots(figsize=(10, 7))
+        self._register_figure(fig)
         plt.subplots_adjust(bottom=0.15)
 
         # Initial time
@@ -497,6 +571,7 @@ class ScopePlotter:
 
         # Create figure with slider space
         fig, ax = plt.subplots(figsize=(10, 9))
+        self._register_figure(fig)
         plt.subplots_adjust(bottom=0.15)
 
         # Start with initial frame (t=0) to show the initial condition
@@ -619,6 +694,7 @@ class ScopePlotter:
         pad_y = 0.1 * (y_max - y_min) if y_max > y_min else 1.0
 
         fig, ax = plt.subplots(figsize=(8, 8))
+        self._register_figure(fig)
         plt.subplots_adjust(bottom=0.18)
         ax.set_xlim(x_min - pad_x, x_max + pad_x)
         ax.set_ylim(y_min - pad_y, y_max + pad_y)
@@ -730,97 +806,6 @@ class ScopePlotter:
             logger.error(f"Failed to show export dialog: {e}")
             import traceback
             logger.error(traceback.format_exc())
-
-    def _plot_field_snapshot(self, block):
-        """
-        Plot the current field snapshot as a 1D profile.
-
-        Useful for viewing instantaneous field distribution.
-        """
-        import matplotlib.pyplot as plt
-
-        params = getattr(block, 'exec_params', block.params)
-
-        # Get the latest field
-        field_history = params.get('_field_history_', [])
-        time_history = params.get('_time_history_', [])
-
-        if not field_history:
-            logger.warning(f"FieldScope {block.name}: No field data for snapshot")
-            return
-
-        # Get the last field
-        field = np.array(field_history[-1])
-        current_time = time_history[-1] if time_history else 0.0
-
-        L = float(params.get('L', 1.0))
-        n_nodes = len(field)
-        x = np.linspace(0, L, n_nodes)
-
-        title = params.get('title', 'Field Profile')
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(x, field, 'b-', linewidth=2)
-        ax.set_xlabel('Position (x)')
-        ax.set_ylabel('Field Value')
-        ax.set_title(f"{title} at t={current_time:.4f} ({block.name})")
-        ax.grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        plt.show()
-
-    def _plot_field_animation(self, block, interval=50):
-        """
-        Create an animated plot of field evolution.
-
-        Args:
-            block: FieldScope block
-            interval: Time between frames in milliseconds
-        """
-        import matplotlib.pyplot as plt
-        from matplotlib.animation import FuncAnimation
-
-        params = getattr(block, 'exec_params', block.params)
-
-        field_history = params.get('_field_history_', [])
-        time_history = params.get('_time_history_', [])
-
-        if not field_history or len(field_history) < 2:
-            logger.warning(f"FieldScope {block.name}: Not enough data for animation")
-            return
-
-        field_data = np.array(field_history)
-        time_data = np.array(time_history)
-        n_times, n_nodes = field_data.shape
-
-        L = float(params.get('L', 1.0))
-        x = np.linspace(0, L, n_nodes)
-
-        title = params.get('title', 'Field Evolution')
-
-        # Create figure
-        fig, ax = plt.subplots(figsize=(10, 6))
-        line, = ax.plot(x, field_data[0], 'b-', linewidth=2)
-
-        ax.set_xlim(0, L)
-        ax.set_ylim(np.min(field_data) * 1.1, np.max(field_data) * 1.1)
-        ax.set_xlabel('Position (x)')
-        ax.set_ylabel('Field Value')
-        time_text = ax.set_title(f"{title} t=0.000 ({block.name})")
-        ax.grid(True, alpha=0.3)
-
-        def animate(frame):
-            line.set_ydata(field_data[frame])
-            time_text.set_text(f"{title} t={time_data[frame]:.3f} ({block.name})")
-            return line, time_text
-
-        anim = FuncAnimation(fig, animate, frames=n_times,
-                            interval=interval, blit=True, repeat=True)
-
-        plt.tight_layout()
-        plt.show()
-
-        return anim
 
     def _is_discrete_upstream(self, block_name, visited=None):
         """
@@ -1124,21 +1109,11 @@ class ScopePlotter:
                 logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={float(v.min()):.4f}, max={float(v.max()):.4f}, "
                            f"first={float(v[0]):.4f}, last={float(v[-1]):.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
 
-            # Close previous plot window if it exists (prevents stale windows lingering).
-            # Disconnect destroyed BEFORE deleteLater — otherwise the OLD widget's
-            # destroyed signal fires asynchronously and runs _on_plotty_destroyed
-            # AFTER self.plotty has been reassigned to the new window, which nulls
-            # the new reference and lets Qt garbage-collect the new (visible) window.
-            if self.plotty is not None:
-                try:
-                    self.plotty.destroyed.disconnect()
-                except (TypeError, RuntimeError):
-                    pass
-                try:
-                    self.plotty.close()
-                    self.plotty.deleteLater()
-                except Exception:
-                    pass
+            # Close previous plot window if it exists (prevents stale windows
+            # lingering). _close_plotty disconnects destroyed BEFORE deleteLater
+            # so the old widget's async destroyed signal can't null the new
+            # reference (see _close_plotty for the full rationale).
+            self._close_plotty()
 
             # Use step mode for discrete/ZOH signals to keep values constant between samples
             self.plotty = SignalPlot(self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes)
@@ -1182,18 +1157,9 @@ class ScopePlotter:
                     labels_list.append(b_labels)
 
             if labels_list != []:
-                # Close previous plot window if it exists. See pyqtPlotScope for
+                # Close previous plot window if it exists. See _close_plotty for
                 # why we must disconnect destroyed BEFORE deleteLater.
-                if self.plotty is not None:
-                    try:
-                        self.plotty.destroyed.disconnect()
-                    except (TypeError, RuntimeError):
-                        pass
-                    try:
-                        self.plotty.close()
-                        self.plotty.deleteLater()
-                    except Exception:
-                        pass
+                self._close_plotty()
 
                 step_modes = self._scope_step_modes()
                 self.plotty = SignalPlot(self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes)

@@ -60,8 +60,8 @@ def _recent_path() -> str:
     base = os.path.expanduser("~/.diablos")
     try:
         os.makedirs(base, exist_ok=True)
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("Could not create recents dir %s: %s", base, e)
     return os.path.join(base, "commands.json")
 
 
@@ -71,8 +71,8 @@ def _load_recents() -> List[str]:
             data = json.load(f)
         if isinstance(data, list):
             return [str(x) for x in data][:32]
-    except (OSError, json.JSONDecodeError):
-        pass
+    except (OSError, json.JSONDecodeError) as e:
+        logger.debug("Could not load recents: %s", e)
     return []
 
 
@@ -80,8 +80,8 @@ def _save_recents(names: List[str]):
     try:
         with open(_recent_path(), "w") as f:
             json.dump(names[:32], f)
-    except OSError:
-        pass
+    except OSError as e:
+        logger.debug("Could not save recents: %s", e)
 
 
 class _PaletteRow(QWidget):

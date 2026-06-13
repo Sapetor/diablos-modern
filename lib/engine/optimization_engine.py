@@ -115,6 +115,24 @@ class OptimizationEngine:
                 }
 
             if not info['fixed']:
+                # Guard against degenerate bounds: a non-positive range would
+                # make np.clip in the transforms collapse every value onto a
+                # single bound. Fall back to a sensible default span so the
+                # parameter remains tunable.
+                lower = float(info.get('lower', 0.0))
+                upper = float(info.get('upper', 10.0))
+                if not (lower < upper):
+                    logger.warning(
+                        f"Parameter '{info['name']}' has degenerate bounds "
+                        f"(lower={lower}, upper={upper}); expanding range "
+                        f"around current value to keep it tunable")
+                    value = float(info.get('value', lower))
+                    span = max(abs(value), 1.0)
+                    lower = value - span
+                    upper = value + span
+                info['lower'] = lower
+                info['upper'] = upper
+
                 info['block'] = block
                 params_info.append(info)
 
@@ -270,6 +288,10 @@ class OptimizationEngine:
         """
         verbose = config.get('verbose', True)
         use_penalty = config.get('use_penalty', False)
+        # Cap history growth: for differential_evolution or long runs the
+        # per-evaluation records (including x.copy()) accumulate without bound.
+        # max_history <= 0 disables recording entirely.
+        max_history = int(config.get('max_history', 10000))
 
         def objective(x):
             self.n_evaluations += 1
@@ -315,11 +337,12 @@ class OptimizationEngine:
                                       for i, info in enumerate(params_info)])
                 logger.info(f"Eval {self.n_evaluations}: cost={cost:.6g} ({param_str})")
 
-            self.history.append({
-                'n': self.n_evaluations,
-                'x': x.copy(),
-                'cost': cost,
-            })
+            if max_history > 0 and len(self.history) < max_history:
+                self.history.append({
+                    'n': self.n_evaluations,
+                    'x': x.copy(),
+                    'cost': cost,
+                })
 
             return cost
 
@@ -334,7 +357,7 @@ class OptimizationEngine:
         """
         scipy_constraints = []
 
-        for block in self.constraint_blocks:
+        for index, block in enumerate(self.constraint_blocks):
             constraint_type = block.params.get('type', '<=')
 
             if constraint_type == '==':
@@ -342,19 +365,21 @@ class OptimizationEngine:
             else:
                 scipy_type = 'ineq'
 
-            def make_constraint_func(block):
+            def make_constraint_func(constraint_index):
                 def constraint_func(x):
-                    # Parameters are set by objective function
+                    # Parameters are set by the objective function before scipy
+                    # evaluates constraints. compute_constraints() returns one
+                    # (type, value) entry per block in self.constraint_blocks
+                    # order, so select this block's value by its index.
                     constraints = self.compute_constraints()
-                    for ctype, value in constraints:
-                        # Return value for this specific constraint
-                        pass
-                    return 0.0  # Placeholder
+                    if constraint_index < len(constraints):
+                        return constraints[constraint_index][1]
+                    return 0.0
                 return constraint_func
 
             scipy_constraints.append({
                 'type': scipy_type,
-                'fun': make_constraint_func(block),
+                'fun': make_constraint_func(index),
             })
 
         return scipy_constraints
@@ -424,9 +449,15 @@ class OptimizationEngine:
 
         try:
             if method.lower() == 'differential_evolution':
+                # Note: DE's `tol` is a *relative* population-convergence
+                # tolerance, which differs semantically from minimize's `tol`
+                # (gradient/step tolerance). The shared `tol` config therefore
+                # behaves differently across methods. `x0` seeds the initial
+                # population with the computed initial guess.
                 result = optimize.differential_evolution(
                     objective,
                     bounds,
+                    x0=x0,
                     maxiter=config.get('max_iter', 100),
                     tol=config.get('tol', 1e-6),
                     popsize=config.get('popsize', 15),

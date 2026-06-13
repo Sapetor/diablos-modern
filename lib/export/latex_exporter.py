@@ -195,6 +195,45 @@ class LaTeXExporter:
 
         return latex
 
+    @staticmethod
+    def escape_latex(text: str) -> str:
+        """
+        Escape LaTeX special characters in free-text (non-math) content.
+
+        Note: this is intended for plain text such as titles and descriptions,
+        not for LaTeX math expressions which must be passed through verbatim.
+
+        Args:
+            text: Plain text string
+
+        Returns:
+            LaTeX-safe string
+        """
+        text = str(text)
+        # Replace the simple escapes first (order independent), then handle the
+        # characters whose replacements themselves contain LaTeX control chars.
+        replacements = [
+            ('&', r'\&'),
+            ('%', r'\%'),
+            ('$', r'\$'),
+            ('#', r'\#'),
+            ('_', r'\_'),
+            ('~', r'\textasciitilde{}'),
+            ('^', r'\textasciicircum{}'),
+            ('\\', r'\textbackslash{}'),
+            ('{', r'\{'),
+            ('}', r'\}'),
+        ]
+        # Use a placeholder pass so replacement text is not itself re-escaped.
+        placeholders = {}
+        for i, (old, new) in enumerate(replacements):
+            token = f'\x00{i}\x00'
+            placeholders[token] = new
+            text = text.replace(old, token)
+        for token, new in placeholders.items():
+            text = text.replace(token, new)
+        return text
+
     def export_document(self, content: Dict, filename: str = None) -> str:
         """
         Export a complete LaTeX document.
@@ -225,11 +264,11 @@ class LaTeXExporter:
 
         # Add sections
         if 'title' in content:
-            doc.append(r'\section{%s}' % content['title'])
+            doc.append(r'\section{%s}' % self.escape_latex(content['title']))
             doc.append('')
 
         if 'description' in content:
-            doc.append(content['description'])
+            doc.append(self.escape_latex(content['description']))
             doc.append('')
 
         if 'transfer_function' in content:
@@ -259,8 +298,9 @@ class LaTeXExporter:
         if 'equations' in content:
             doc.append(r'\section{Block Equations}')
             for name, eq in content['equations'].items():
-                doc.append(r'\subsection{%s}' % name.replace('_', r'\_'))
+                doc.append(r'\subsection{%s}' % self.escape_latex(name))
                 doc.append(r'\begin{equation}')
+                # eq is a LaTeX math expression by contract; emit verbatim.
                 doc.append(f'y = {eq}')
                 doc.append(r'\end{equation}')
                 doc.append('')
@@ -270,9 +310,12 @@ class LaTeXExporter:
         result = '\n'.join(doc)
 
         if filename:
-            with open(filename, 'w') as f:
-                f.write(result)
-            logger.info(f"LaTeX document exported to {filename}")
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(result)
+                logger.info(f"LaTeX document exported to {filename}")
+            except OSError as exc:
+                logger.error(f"Failed to write LaTeX document to {filename}: {exc}")
 
         return result
 
@@ -300,8 +343,12 @@ class LaTeXExporter:
         result = '\n'.join(lines)
 
         if filename:
-            with open(filename, 'w') as f:
-                f.write(result)
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(result)
+                logger.info(f"LaTeX equations exported to {filename}")
+            except OSError as exc:
+                logger.error(f"Failed to write LaTeX equations to {filename}: {exc}")
 
         return result
 
@@ -401,6 +448,14 @@ class MathematicaExporter:
         Convert state-space to Mathematica StateSpaceModel.
         """
         def array_to_mma(arr):
+            # Coerce lists/scalars/None into an ndarray so .ndim is always valid.
+            # None (common for D=0) and scalars become 1x1 matrices.
+            if arr is None:
+                arr = np.zeros((1, 1))
+            else:
+                arr = np.asarray(arr)
+            if arr.ndim == 0:
+                arr = np.atleast_2d(arr)
             if arr.ndim == 1:
                 return "{" + ", ".join(str(x) for x in arr) + "}"
             return "{" + ", ".join("{" + ", ".join(str(x) for x in row) + "}"

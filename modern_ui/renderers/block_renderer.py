@@ -5,8 +5,12 @@ Separates the view/drawing logic from the data model.
 """
 
 import logging
+import math
 from typing import Optional
-from PyQt5.QtGui import QColor, QPen, QPainter, QPolygonF, QLinearGradient, QPainterPath, QRadialGradient, QTransform
+from PyQt5.QtGui import (
+    QColor, QPen, QPainter, QPolygonF, QLinearGradient, QPainterPath,
+    QRadialGradient, QTransform, QFont, QFontMetrics,
+)
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager
 
@@ -51,7 +55,9 @@ class BlockRenderer:
     """
 
     def __init__(self):
-        pass
+        # Tracks block_fns whose draw_icon has already raised, so the failure
+        # is logged once at warning level rather than every paint frame.
+        self._draw_icon_warned = set()
 
     def draw_block(self, block, painter: Optional[QPainter], draw_name: bool = True, draw_ports: bool = True) -> None:
         """
@@ -66,6 +72,17 @@ class BlockRenderer:
         if painter is None:
             return
 
+        # Wrap the whole body so font/pen/brush/transform mutations (including
+        # those applied by the icon helpers) cannot leak to the next block or
+        # back to the caller, even if an exception is raised mid-paint.
+        painter.save()
+        try:
+            self._draw_block_body(block, painter, draw_name, draw_ports)
+        finally:
+            painter.restore()
+
+    def _draw_block_body(self, block, painter: QPainter, draw_name: bool, draw_ports: bool) -> None:
+        """Body of draw_block; runs inside a painter.save()/restore() guard."""
         # Draw shadow for depth (offset slightly down and right)
         shadow_offset = 3
         shadow_color = theme_manager.get_color('block_shadow')
@@ -150,7 +167,15 @@ class BlockRenderer:
                 if custom_path is not None:
                     path = custom_path
             except Exception as e:
-                logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
+                # Log once per block type at warning; subsequent identical
+                # failures drop to debug to avoid per-frame log spam. The
+                # legacy-icon fallback below recovers cleanly (it guards on
+                # path.isEmpty()), so this is non-fatal.
+                if block.block_fn not in self._draw_icon_warned:
+                    self._draw_icon_warned.add(block.block_fn)
+                    logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
+                else:
+                    logger.debug(f"draw_icon failed for {block.block_fn}: {e}")
         
         # Fallback to legacy switch statement
         self._draw_legacy_icon(block, painter, path)
@@ -176,8 +201,10 @@ class BlockRenderer:
         if draw_name:
             text_color = theme_manager.get_color('text_primary')
             painter.setPen(text_color)
-            font = block.font
-            font.setWeight(400)
+            # Copy the model's QFont before mutating; this renderer is stateless
+            # and must not alter shared model state (block.font is persistent).
+            font = QFont(block.font)
+            font.setWeight(QFont.Normal)
             painter.setFont(font)
             text_rect = QRect(block.left, block.top + block.height + 2, block.width, 28)
             painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, block.username)
@@ -269,7 +296,6 @@ class BlockRenderer:
         input_names, output_names = block.get_port_names()
 
         # Setup font for labels
-        from PyQt5.QtGui import QFont, QFontMetrics
         label_font = QFont("Arial", 8)
         label_font.setBold(False)
         painter.setFont(label_font)
@@ -617,11 +643,19 @@ class BlockRenderer:
     def _draw_corner_labels(self, block, painter, tl, bl):
         font = painter.font()
         orig = font.pointSize()
+        orig_bold = font.bold()
+        orig_italic = font.italic()
         font.setPointSize(orig - 1)
+        # Normalize bold/italic so this helper does not inherit state left on
+        # the painter font by a prior icon helper.
+        font.setBold(False)
+        font.setItalic(False)
         painter.setFont(font)
         painter.drawText(QRect(block.left + 4, block.top + 2, block.width // 2, block.height // 2), Qt.AlignLeft | Qt.AlignTop, tl)
         painter.drawText(QRect(block.left + 4, block.top + block.height // 2, block.width // 2, block.height // 2), Qt.AlignLeft | Qt.AlignBottom, bl)
         font.setPointSize(orig)
+        font.setBold(orig_bold)
+        font.setItalic(orig_italic)
         painter.setFont(font)
 
     def _draw_sample_rate_indicator(self, block, painter: Optional[QPainter]) -> None:
@@ -669,7 +703,6 @@ class BlockRenderer:
         else:
             # Fixed discrete rate - color based on sample time
             # Use log scale: 0.001s (1kHz) = red, 1s (1Hz) = blue
-            import math
             log_min = math.log10(0.001)  # 1ms = fast (red)
             log_max = math.log10(1.0)    # 1s = slow (blue)
             log_sample = math.log10(max(0.001, min(1.0, sample_time)))

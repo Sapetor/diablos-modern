@@ -45,4 +45,10 @@ class ExponentialBlock(BaseBlock):
         return [{"name": "y", "type": "any"}]
 
     def execute(self, time, inputs, params, **kwargs):
-        return {0: params['a'] * np.exp(np.clip(params['b'] * inputs[0], -700, 700))}
+        try:
+            x = inputs.get(0, 0.0)
+            a = params.get('a', 1.0)
+            b = params.get('b', 1.0)
+            return {0: a * np.exp(np.clip(b * x, -700, 700))}
+        except Exception as e:
+            return {'E': True, 'error': str(e)}

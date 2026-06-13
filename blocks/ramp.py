@@ -64,8 +64,8 @@ class RampBlock(BaseBlock):
         slope = float(params['slope'])
         delay = float(params['delay'])
         if slope == 0:
-            return {0: np.array(0, dtype=float)}
+            return {0: np.atleast_1d(np.array(0.0, dtype=float)), 'E': False}
         elif slope > 0:
-            return {0: np.maximum(0, slope * (time - delay))}
-        elif slope < 0:
-            return {0: np.minimum(0, slope * (time - delay))}
+            return {0: np.atleast_1d(np.maximum(0, slope * (time - delay))), 'E': False}
+        else:  # slope < 0
+            return {0: np.atleast_1d(np.minimum(0, slope * (time - delay))), 'E': False}

@@ -109,11 +109,20 @@ Select the function via the block parameters."""
             # Try to evaluate as a Python expression
             # Context: u (input), t (time), np (numpy), and standard math functions
             raw_func = str(params.get("function", params.get("expression", "sin")))
-            return {0: np.atleast_1d(safe_expr(raw_func, variables={"u": u, "t": time}))}
+            try:
+                return {0: np.atleast_1d(safe_expr(raw_func, variables={"u": u, "t": time}))}
+            except (SafeEvalError, ValueError, TypeError) as e:
+                logger.warning(
+                    f"MathFunction '{params.get('_name_', '?')}' expression error "
+                    f"in '{raw_func}': {e}"
+                )
+                return {"E": True, "error": f"MathFunction expression error: {e}"}
 
         except Exception as e:
             logger.warning(f"MathFunction '{params.get('_name_', '?')}': {e}")
-            return {0: 0.0}
+            # Preserve the input shape so downstream blocks are not corrupted by a
+            # bare scalar replacing a vector signal.
+            return {0: np.zeros_like(np.asarray(u, dtype=float))}
 
     def draw_icon(self, block_rect):
         """MathFunction uses f(·) text rendering - handled in DBlock switch."""

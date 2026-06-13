@@ -1,6 +1,7 @@
 
 import logging
 import copy
+import re
 from lib.simulation.connection import DLine
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,19 @@ class Flattener:
         for line in lines:
             src = f"{prefix}{line.srcblock}"
             dst = f"{prefix}{line.dstblock}"
-            self.input_drivers[(dst, line.dstport)] = (src, line.srcport)
+            key = (dst, line.dstport)
+            if key in self.input_drivers:
+                # One input port cannot legally have two sources. The new line
+                # would silently overwrite the existing driver and drop a
+                # connection, so surface it instead of losing it quietly.
+                prev_src, prev_port = self.input_drivers[key]
+                logger.warning(
+                    f"Flattener: duplicate driver for input port {dst}:{line.dstport}. "
+                    f"Keeping previous source '{prev_src}':{prev_port}, "
+                    f"ignoring new source '{src}':{line.srcport}."
+                )
+                continue
+            self.input_drivers[key] = (src, line.srcport)
             
         # 2. Process blocks
         for block in blocks:
@@ -111,8 +124,17 @@ class Flattener:
         
         while curr:
             if curr in visited:
-                logger.error("Cycle detected during flattening")
-                return None
+                # A loop among passthrough boundaries (Inport/Outport/Subsystem)
+                # is a malformed diagram. Fail loudly for consistency with the
+                # other unresolved-boundary branches below, instead of silently
+                # dropping the connection (which would wire downstream zeros).
+                msg = (
+                    f"Flattener: cycle detected while resolving driver for "
+                    f"'{block_name}':{port_idx}. Revisited node "
+                    f"'{curr[0]}':{curr[1]}; visited path: {sorted(visited)}."
+                )
+                logger.error(msg)
+                raise RuntimeError(msg)
             visited.add(curr)
             
             # Find what drives 'curr'
@@ -146,17 +168,27 @@ class Flattener:
                                  found_idx = idx
                                  break
                     
-                    # 2. Fallback to name parsing if map failed
+                    # 2. Fallback to name parsing if map failed.
+                    #    Restrict to the conventional Inport naming convention
+                    #    ("In1", "inport1", "Inport1") so an arbitrary name with
+                    #    a trailing digit (e.g. "Sensor3") is not silently
+                    #    mapped to the wrong parent input port.
                     if found_idx is None:
-                        try:
-                             # Handle "In1", "inport1", "Inport1"
-                             import re
-                             match = re.search(r'(\d+)$', my_name)
-                             if match:
-                                 found_idx = int(match.group(1)) - 1
-                        except (ValueError, AttributeError):
-                            pass
-                            
+                        match = re.match(r'(?:in|inport)(\d+)$', my_name, re.IGNORECASE)
+                        if match:
+                            found_idx = int(match.group(1)) - 1
+
+                    # Validate the resolved index against the parent's declared
+                    # input count when known; an out-of-range index would point
+                    # at a non-existent port and mis-wire the diagram. A count
+                    # of 0 means the parent's port metadata was never synced
+                    # (e.g. ports declared only via sub_blocks), so the upper
+                    # bound is unreliable and only the lower bound is enforced.
+                    if found_idx is not None:
+                        parent_in_ports = getattr(parent_block, 'in_ports', 0) or 0
+                        if found_idx < 0 or (parent_in_ports > 0 and found_idx >= parent_in_ports):
+                            found_idx = None
+
                     if found_idx is not None:
                         # Now we look for what drives ParentSubsystem:found_idx
                         curr = (parent_path, found_idx)
@@ -175,8 +207,22 @@ class Flattener:
                          raise RuntimeError(msg)
 
                 else:
-                     # Top level Inport - Valid Source
-                     return driver
+                     # Top-level Inport (no parent Subsystem). Inports are
+                     # boundary wires, not functional primitives, so they were
+                     # excluded from the emitted block list. Returning it as a
+                     # connection source would emit a DLine referencing a block
+                     # that does not exist in the flattened diagram (a dangling
+                     # source). A top-level Inport has no parent to resolve to,
+                     # so fail loudly rather than mis-wire the diagram.
+                     msg = (
+                         f"Flattener: top-level Inport '{src_name}' drives "
+                         f"'{block_name}':{port_idx} but has no parent Subsystem "
+                         f"to resolve to. Top-level Inports are unsupported as "
+                         f"connection sources; wrap the diagram in a Subsystem "
+                         f"or replace the Inport with a source block."
+                     )
+                     logger.error(msg)
+                     raise RuntimeError(msg)
             
             elif b_type == 'Subsystem':
                 # Driver is a Subsystem block.

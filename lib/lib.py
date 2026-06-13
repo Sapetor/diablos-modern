@@ -1,6 +1,7 @@
 "lib.py - Contains all the core functions and classes for the simulation and execution of the graphs."
 
 import numpy as np
+import os
 import time
 import sys
 from typing import Dict, Any, Optional, List
@@ -296,9 +297,9 @@ class DSim:
             'sim_time': self.sim_time,
             'sim_dt': self.sim_dt,
             'plot_trange': self.plot_trange,
-            'solver_method': getattr(self, 'solver_method', 'RK45'),
-            'rtol': getattr(self, 'rtol', 1e-9),
-            'atol': getattr(self, 'atol', 1e-12),
+            'solver_method': self.solver_method,
+            'rtol': self.rtol,
+            'atol': self.atol,
         }
         self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
         self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
@@ -324,9 +325,9 @@ class DSim:
             'sim_time': self.sim_time,
             'sim_dt': self.sim_dt,
             'plot_trange': self.plot_trange,
-            'solver_method': getattr(self, 'solver_method', 'RK45'),
-            'rtol': getattr(self, 'rtol', 1e-9),
-            'atol': getattr(self, 'atol', 1e-12),
+            'solver_method': self.solver_method,
+            'rtol': self.rtol,
+            'atol': self.atol,
         }
         return self.file_service.serialize(modern_ui_data, sim_params)
 
@@ -403,9 +404,9 @@ class DSim:
         """
         dialog = SimulationDialog(
             self.sim_time, self.sim_dt, self.plot_trange,
-            solver_method=getattr(self, 'solver_method', 'RK45'),
-            rtol=getattr(self, 'rtol', 1e-9),
-            atol=getattr(self, 'atol', 1e-12),
+            solver_method=self.solver_method,
+            rtol=self.rtol,
+            atol=self.atol,
         )
         if dialog.exec_() == QDialog.Accepted:
             try:
@@ -415,15 +416,58 @@ class DSim:
                 self.plot_trange = values['plot_trange']
                 self.dynamic_plot = values['dynamic_plot']
                 self.real_time = values['real_time']
-                self.solver_method = values.get('solver_method', getattr(self, 'solver_method', 'RK45'))
-                self.rtol = values.get('rtol', getattr(self, 'rtol', 1e-9))
-                self.atol = values.get('atol', getattr(self, 'atol', 1e-12))
+                self.solver_method = values.get('solver_method', self.solver_method)
+                self.rtol = values.get('rtol', self.rtol)
+                self.atol = values.get('atol', self.atol)
                 return self.sim_time
             except ValueError:
                 logger.warning("Invalid input. Using default values.")
                 return self.sim_time
         else:
             return -1
+
+    def _resolve_block_params(self, blocks, workspace_manager, sim_dt) -> bool:
+        """
+        Recursively resolve execution parameters for a block hierarchy.
+
+        Shared by execution_init (interactive) and run_tuning_simulation
+        (headless) so both paths handle Transfer-Function typing, External
+        data reload, and Subsystem recursion identically.
+
+        Returns True on success, False if an external file is missing or a
+        reload raised (self.error_msg is set in those cases).
+        """
+        for block in blocks:
+            # Resolve parameters using WorkspaceManager
+            block.exec_params = workspace_manager.resolve_params(block.params)
+            # Copy internal parameters that start with '_'
+            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+
+            # Dynamically set b_type for Transfer Functions (delegated to engine)
+            self.engine.set_block_type(block)
+
+            block.exec_params['dtime'] = sim_dt
+
+            # Reload external data
+            try:
+                if block.block_fn == 'External':  # Check explicitly or reload_external_data handles it
+                    missing_file_flag = block.reload_external_data()
+                    if missing_file_flag == 1:
+                        msg = f"Missing external file for block: {block.name}"
+                        logger.error(msg)
+                        self.error_msg = msg
+                        return False
+            except Exception as e:
+                msg = f"Error reloading external data for block {block.name}: {str(e)}"
+                logger.error(msg)
+                self.error_msg = msg
+                return False
+
+            # Recurse if subsystem
+            if getattr(block, 'block_type', '') == 'Subsystem':
+                if self._resolve_block_params(block.sub_blocks, workspace_manager, sim_dt) is False:
+                    return False
+        return True
 
     def execution_init(self) -> bool:
         """
@@ -458,54 +502,24 @@ class DSim:
             workspace_manager = WorkspaceManager()
             logger.debug(f"[TIMING] WorkspaceManager created: {time.time() - _t0:.3f}s")
 
-            # Helper for recursive parameter resolution
-            def resolve_recursive(blocks):
-                for block in blocks:
-                    # Resolve parameters using WorkspaceManager
-                    block.exec_params = workspace_manager.resolve_params(block.params)
-                    # Copy internal parameters that start with '_'
-                    block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
-                    
-                    # Dynamically set b_type for Transfer Functions (delegated to engine)
-                    self.engine.set_block_type(block)
-                    
-                    block.exec_params['dtime'] = self.sim_dt
-                    
-                    # Reload external data
-                    try:
-                         if block.block_fn == 'External': # Check explicitly or reload_external_data handles it
-                             missing_file_flag = block.reload_external_data()
-                             if missing_file_flag == 1:
-                                 logger.error(f"Missing external file for block: {block.name}")
-                                 return False
-                    except Exception as e:
-                         logger.error(f"Error reloading external data for block {block.name}: {str(e)}")
-                         return False
-                         
-                    # Recurse if subsystem
-                    if getattr(block, 'block_type', '') == 'Subsystem':
-                        if resolve_recursive(block.sub_blocks) is False:
-                            return False
-                return True
-
             # Get Root Context for execution
             root_blocks, root_lines = self.get_root_context()
 
             # Resolve params for ALL blocks in hierarchy
             logger.debug(f"Resolving parameters for hierarchy...")
             _t1 = time.time()
-            if not resolve_recursive(root_blocks):
+            if not self._resolve_block_params(root_blocks, workspace_manager, self.sim_dt):
                  return False
-            logger.debug(f"[TIMING] resolve_recursive: {time.time() - _t1:.3f}s")
+            logger.debug(f"[TIMING] _resolve_block_params: {time.time() - _t1:.3f}s")
 
             logger.debug("Initializing execution...")
 
             # Sync simulation parameters to engine before initialization
             self.engine.update_sim_params(
                 self.sim_time, self.sim_dt,
-                solver_method=getattr(self, 'solver_method', None),
-                rtol=getattr(self, 'rtol', None),
-                atol=getattr(self, 'atol', None),
+                solver_method=self.solver_method,
+                rtol=self.rtol,
+                atol=self.atol,
             )
 
             # Initialize engine with ROOT context (will trigger flattening)
@@ -515,15 +529,16 @@ class DSim:
                 self.execution_failed(self.engine.error_msg)
                 return False
             logger.debug(f"[TIMING] engine.initialize_execution: {time.time() - _t2:.3f}s")
-                
-            # Generation of a checklist for the computation of functions (Legacy? Engine handles global_computed_list now)
-            # self.global_computed_list is synced from engine via property
+
+            # self.global_computed_list is synced from the engine via property;
+            # the engine owns the per-block computation checklist.
 
             self.reset_execution_data() # Delegates to engine
             self.execution_time_start = time.time()
             logger.debug("Execution initialization complete")
         except Exception as e:
-            logger.error(f"Error during execution initialization: {str(e)}")
+            logger.exception("Error during execution initialization")
+            self.error_msg = f"Error during execution initialization: {e}"
             return False
 
         logger.debug("*****EXECUTION START*****")
@@ -532,9 +547,6 @@ class DSim:
         # Initialization of the progress bar
         self.pbar = tqdm(desc='SIMULATION PROGRESS', total=int(self.execution_time/self.sim_dt), unit='itr')
         self.dirty = False
-
-        # Check the existence of algebraic loops (part 1)
-        check_loop = self.count_computed_global_list()
 
         # Identify memory blocks to correctly solve algebraic loops (delegated to engine)
         self.engine.identify_memory_blocks()
@@ -557,9 +569,9 @@ class DSim:
         self._validate_signal_dimensions()
         logger.debug(f"[TIMING] post-init checks: {time.time() - _t3:.3f}s")
 
-        # NOTE: Removed redundant second call to engine.initialize_execution()
-        # The first call at line 842 already initialized the engine with root_blocks/root_lines
-        # This duplicate was causing 2x initialization overhead
+        # NOTE: The earlier engine.initialize_execution() call in this method already
+        # initialized the engine with root_blocks/root_lines; a second call here would
+        # only double the initialization overhead, so it is intentionally omitted.
 
         # Retrieve state from engine
         self.max_hier = self.engine.max_hier
@@ -659,16 +671,17 @@ class DSim:
             self.timeline = np.array([self.time_step])
             self.sim_time = sim_time
             self.sim_dt = sim_dt
+            # Mirror execution_init: keep a single duration attribute (execution_time)
+            # used consistently by both the interactive and headless loops.
+            self.execution_time = sim_time
 
-            # Resolve parameters for all blocks
+            # Resolve parameters for all blocks (handles External reload and
+            # Subsystem recursion identically to execution_init)
             workspace_manager = WorkspaceManager()
             root_blocks, root_lines = self.get_root_context()
 
-            for block in root_blocks:
-                block.exec_params = workspace_manager.resolve_params(block.params)
-                block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
-                self.engine.set_block_type(block)
-                block.exec_params['dtime'] = sim_dt
+            if not self._resolve_block_params(root_blocks, workspace_manager, sim_dt):
+                return (False, self.error_msg or "Parameter resolution failed")
 
             # Initialize engine
             if not self.engine.initialize_execution(root_blocks, root_lines):
@@ -742,22 +755,27 @@ class DSim:
             current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
 
             for block in current_blocks:
-                if block.name in self.memory_blocks:
-                    if not block.should_execute(self.time_step):
-                        if block.b_type != 3:
-                            held = {p: block.get_held_output(p) for p in range(block.out_ports)}
-                            self.engine.propagate_outputs(block, held)
-                        continue
-                    out_value = self.engine.execute_block(block, output_only=True)
-                    if out_value is None or ('E' in out_value and out_value['E']):
-                        self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
-                        return
-                    # set_held_output / schedule_next_execution are handled
-                    # by the hierarchy loop's state-updating execute below.
-                    self.engine.propagate_outputs(block, out_value)
+                try:
+                    if block.name in self.memory_blocks:
+                        if not block.should_execute(self.time_step):
+                            if block.b_type != 3:
+                                held = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                self.engine.propagate_outputs(block, held)
+                            continue
+                        out_value = self.engine.execute_block(block, output_only=True)
+                        if out_value is None or ('E' in out_value and out_value['E']):
+                            self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                            return
+                        # set_held_output / schedule_next_execution are handled
+                        # by the hierarchy loop's state-updating execute below.
+                        self.engine.propagate_outputs(block, out_value)
 
-                if self.rk45_len and self.rk_counter != 0:
-                    block.params['_skip_'] = True
+                    if self.rk45_len and self.rk_counter != 0:
+                        block.params['_skip_'] = True
+                except Exception as e:
+                    logger.error(f"Error executing block {block.name}: {str(e)}")
+                    self.execution_failed(f"Error executing block {block.name}: {e}")
+                    return
 
             # See execution_loop() for the rationale behind both inner (within-level)
             # and outer (cross-level) re-iteration. Same logic applies here.
@@ -811,7 +829,7 @@ class DSim:
                 if not outer_progressed:
                     break
 
-            if self.time_step > self.sim_time:
+            if self.time_step > self.execution_time:
                 self.timeline = np.array(self._timeline_list)
                 self.execution_initialized = False
                 self.reset_memblocks()
@@ -921,7 +939,7 @@ class DSim:
                         block.params['_skip_'] = True
                 except Exception as e:
                     logger.error(f"Error executing block {block.name}: {str(e)}")
-                    self.execution_failed()
+                    self.execution_failed(f"Error executing block {block.name}: {e}")
                     return
 
             # All blocks are executed according to the hierarchy order defined in the first iteration.
@@ -1033,7 +1051,7 @@ class DSim:
             import traceback
             logger.error(f"Error during execution loop: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
-            self.execution_failed()
+            self.execution_failed(f"Error during execution loop: {e}")
 
     def execution_failed(self, msg=""):
         """
@@ -1190,8 +1208,17 @@ class DSim:
                     for i in range(block.params['vec_dim']):
                         vec_dict[labels[i]] = vector[:, i]
         if export_toggle:
-            np.savez('saves/' + self.filename[:-4], t=self.timeline, **vec_dict)
-            logger.info("DATA EXPORTED TO " + 'saves/' + self.filename[:-4] + '.npz')
+            # Derive basename without assuming a fixed-length extension
+            basename = os.path.splitext(self.filename)[0]
+            export_path = os.path.join('saves', basename)
+            # In frozen mode, redirect saves/ to a writable location (mirrors FileService)
+            if getattr(sys, 'frozen', False) and not os.path.isabs(export_path):
+                from lib.app_paths import get_user_data_dir
+                export_path = os.path.join(get_user_data_dir(), export_path)
+            # Ensure the target directory exists before writing
+            os.makedirs(os.path.dirname(export_path) or '.', exist_ok=True)
+            np.savez(export_path, t=self.timeline, **vec_dict)
+            logger.info("DATA EXPORTED TO " + export_path + '.npz')
 
     def run_optimization(self, callback=None):
         """

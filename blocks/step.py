@@ -44,7 +44,7 @@ class StepBlock(BaseBlock):
         return {
             "value": {"type": "float", "default": 1.0, "doc": "The value of the step."},
             "delay": {"type": "float", "default": 0.0, "doc": "The delay of the step."},
-            "type": {"type": "string", "default": "up", "doc": "up, down, pulse, constant"},
+            "type": {"type": "string", "default": "up", "doc": "up, down, pulse, constant, impulse"},
             "pulse_start_up": {"type": "bool", "default": True, "doc": "If type is pulse, defines if it starts up or down."}
         }
 
@@ -71,6 +71,7 @@ class StepBlock(BaseBlock):
         if params.get('_init_start_', True):
             params['_step_old'] = time
             params['_change_old'] = not params.get('pulse_start_up', True)
+            params['_impulse_fired'] = False
             params['_init_start_'] = False
 
         delay = float(params.get('delay', 0.0))
@@ -81,11 +82,14 @@ class StepBlock(BaseBlock):
         elif step_type == 'down':
             change = True if time > delay else False
         elif step_type == 'pulse':
-            if time - params['_step_old'] >= delay:
+            if delay <= 0:
+                return {'E': True, 'error': "pulse 'delay' (half-period) must be positive"}
+            # Advance across every half-period boundary crossed since last call so
+            # that large/variable timesteps do not skip toggles (mirrors PRBS).
+            while time - params['_step_old'] >= delay:
                 params['_step_old'] += delay
-                change = not params['_change_old']
-            else:
-                change = params['_change_old']
+                params['_change_old'] = not params['_change_old']
+            change = params['_change_old']
         elif step_type == 'impulse':
             dt = kwargs.get('dtime', params.get('dtime', 0.01))
             if not params.get('_impulse_fired', False) and time >= delay:
@@ -96,8 +100,7 @@ class StepBlock(BaseBlock):
         elif step_type == 'constant':
             change = False
         else:
-            print("ERROR: 'type' not correctly defined in", params.get('_name_', 'unknown'))
-            return {0: 0.0, 'E': True}
+            return {'E': True, 'error': f"unknown step type {step_type}"}
 
         value = params.get('value', 1.0)
         if change:

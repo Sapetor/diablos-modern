@@ -217,11 +217,12 @@ class DiagramValidator:
         goto_tags = {}
         from_tags = {}
         for block in self.dsim.blocks_list:
-            if block.block_fn == 'Goto':
-                tag = str(block.params.get('tag', '')).strip()
+            block_fn = getattr(block, 'block_fn', None)
+            if block_fn == 'Goto':
+                tag = str(getattr(block, 'params', {}).get('tag', '')).strip()
                 goto_tags.setdefault(tag, []).append(block)
-            elif block.block_fn == 'From':
-                tag = str(block.params.get('tag', '')).strip()
+            elif block_fn == 'From':
+                tag = str(getattr(block, 'params', {}).get('tag', '')).strip()
                 from_tags.setdefault(tag, []).append(block)
 
         # Multiple Goto with same tag -> warning (ambiguous source)
@@ -301,7 +302,7 @@ class DiagramValidator:
 
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Block '{block.username if block else block_name}' input port {port_idx+1} has {len(connections)} connections",
+                    message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx+1} has {len(connections)} connections",
                     blocks=[block] if block else [],
                     connections=connections,
                     suggestion=f"Remove all but one connection to input port {port_idx+1}"
@@ -352,9 +353,10 @@ class DiagramValidator:
             """Get effective sample time from block params. Returns -1 for continuous."""
             if not block:
                 return -1.0
-            sample_time = block.params.get('sampling_time',
-                          block.params.get('sample_time',
-                          block.params.get('output_sample_time', -1.0)))
+            params = getattr(block, 'params', {})
+            sample_time = params.get('sampling_time',
+                          params.get('sample_time',
+                          params.get('output_sample_time', -1.0)))
             try:
                 return float(sample_time)
             except (ValueError, TypeError):
@@ -364,7 +366,7 @@ class DiagramValidator:
             """Check if block is a rate transition type."""
             if not block:
                 return False
-            return block.block_fn in ('RateTransition', 'ZeroOrderHold', 'FirstOrderHold')
+            return getattr(block, 'block_fn', None) in ('RateTransition', 'ZeroOrderHold', 'FirstOrderHold')
 
         # Check each connection for rate mismatches
         for line in self.dsim.line_list:

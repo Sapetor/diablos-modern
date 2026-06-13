@@ -23,9 +23,6 @@ class VectorSumBlock(BaseBlock):
     - x_next = x_current + velocity (signs = "++")
     """
 
-    def __init__(self):
-        super().__init__()
-
     @property
     def block_name(self):
         return "VectorSum"

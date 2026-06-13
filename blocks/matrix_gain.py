@@ -1,21 +1,20 @@
 
 import logging
-import ast
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.safe_eval import safe_literal, SafeEvalError
 
 logger = logging.getLogger(__name__)
 
 
 class MatrixGainBlock(BaseBlock):
     """
-    A gain block that accepts scalar, vector, matrix values or workspace variables.
+    A gain block that accepts scalar, vector, or matrix values.
 
     The gain parameter is a text field, so you can enter:
     - A scalar: 2.5
     - A vector: [1, 2, 3]
     - A matrix: [[1, 0], [0, 2]]
-    - A workspace variable name: K
 
     Operations:
     - Scalar: y = K * u (element-wise)
@@ -39,7 +38,6 @@ class MatrixGainBlock(BaseBlock):
     def doc(self):
         return (
             "Scales the input by a gain that can be a scalar, vector, or matrix."
-            "\n\nAccepts workspace variable names (e.g. K) or direct values."
             "\n\nOperations:"
             "\n- Scalar: y = K * u"
             "\n- Vector: y = K .* u (element-wise)"
@@ -48,7 +46,6 @@ class MatrixGainBlock(BaseBlock):
             "\n  2.5              (scalar)"
             "\n  [1, 2, 3]       (vector)"
             "\n  [[1, 0], [0, 2]] (matrix)"
-            "\n  K                (workspace variable)"
         )
 
     @property
@@ -57,7 +54,7 @@ class MatrixGainBlock(BaseBlock):
             "gain": {
                 "type": "string",
                 "default": "1.0",
-                "doc": "Gain: scalar, vector, matrix, or workspace variable name."
+                "doc": "Gain: scalar, vector, or matrix."
             }
         }
 
@@ -85,8 +82,8 @@ class MatrixGainBlock(BaseBlock):
 
             if isinstance(K_raw, str):
                 try:
-                    K = np.array(ast.literal_eval(K_raw), dtype=float)
-                except (ValueError, SyntaxError):
+                    K = np.array(safe_literal(K_raw), dtype=float)
+                except (SafeEvalError, ValueError):
                     K = np.array([float(K_raw)], dtype=float)
             else:
                 K = np.atleast_1d(np.array(K_raw, dtype=float))
@@ -100,11 +97,11 @@ class MatrixGainBlock(BaseBlock):
                         u = u[:K.shape[1]]
                 y = K @ u
             elif K.ndim == 1 and len(K) > 1:
+                # Vector gain (len(K) > 1 is guaranteed by the guard above).
                 if len(K) == len(u):
                     y = K * u
-                elif len(K) == 1:
-                    y = K[0] * u
                 else:
+                    # Dimension mismatch - element-wise over the common length.
                     min_len = min(len(K), len(u))
                     y = K[:min_len] * u[:min_len]
             else:

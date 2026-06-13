@@ -63,7 +63,7 @@ class MuxBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         combined = []
-        for val in inputs.values():
-            combined.extend(np.atleast_1d(val).flatten())
+        for p in sorted(inputs.keys()):
+            combined.extend(np.atleast_1d(inputs[p]).flatten())
         return {0: np.array(combined)}
 

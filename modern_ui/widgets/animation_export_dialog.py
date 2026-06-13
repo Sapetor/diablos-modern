@@ -84,6 +84,7 @@ class AnimationExportDialog(QDialog):
         self.exporter = exporter
         self.block_name = block_name
         self.worker = None
+        self._export_filepath = None
 
         self.setWindowTitle("Export Animation")
         self.setMinimumWidth(400)
@@ -287,10 +288,24 @@ class AnimationExportDialog(QDialog):
         self.progress_bar.setRange(0, self.exporter.n_frames)
         self.progress_bar.setValue(0)
 
+        # Remember the target path so we can clean up a partial file on failure/cancel
+        self._export_filepath = filepath
+
+        # Ensure any prior worker has fully finished before reassigning, so we
+        # don't orphan a still-running QThread.
+        if self.worker is not None:
+            if self.worker.isRunning():
+                self.worker.cancel()
+                self.worker.wait()
+            self.worker.deleteLater()
+            self.worker = None
+
         # Start worker thread
         self.worker = ExportWorker(self.exporter, filepath, format, fps, dpi)
         self.worker.progress.connect(self._on_progress)
         self.worker.finished.connect(self._on_export_finished)
+        # Schedule Qt-side cleanup of the thread object once it stops.
+        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.start()
 
     def _on_progress(self, current, total):
@@ -301,22 +316,51 @@ class AnimationExportDialog(QDialog):
         """Handle export completion."""
         self.progress_bar.setVisible(False)
 
+        # The worker is scheduled for deleteLater via its finished signal; drop
+        # our reference so a subsequent re-export starts a fresh thread.
+        self.worker = None
+
         if success:
             QMessageBox.information(self, "Export Complete", message)
             self.accept()
         else:
+            # Remove any partial file left behind by a failed/cancelled export.
+            self._cleanup_partial_file()
+
             QMessageBox.critical(self, "Export Failed", message)
             # Re-enable controls
             self.export_btn.setEnabled(True)
             self.browse_btn.setEnabled(True)
             self.fps_spin.setEnabled(True)
             self.quality_combo.setEnabled(True)
+            # Re-enable both format radios so _check_writers() is the single
+            # source of truth for disabling only the unavailable ones.
+            self.gif_radio.setEnabled(True)
+            self.mp4_radio.setEnabled(True)
             self._check_writers()  # Re-check to set correct enabled states
+
+    def _cleanup_partial_file(self):
+        """Delete a partially written output file from a failed/cancelled export."""
+        filepath = getattr(self, '_export_filepath', None)
+        if not filepath:
+            return
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except OSError as e:
+            logger.warning(f"Could not remove partial export file '{filepath}': {e}")
 
     def closeEvent(self, event):
         """Handle dialog close - stop any running export."""
         if self.worker and self.worker.isRunning():
             self.worker.cancel()
             self.worker.quit()
-            self.worker.wait(3000)
+            # Block close until the worker truly stops. If the cooperative
+            # cancel does not return in time, forcibly terminate so we don't
+            # leave a thread running after the dialog is gone.
+            if not self.worker.wait(3000):
+                self.worker.terminate()
+                self.worker.wait()
+            # The export was interrupted; remove any partial output file.
+            self._cleanup_partial_file()
         super().closeEvent(event)

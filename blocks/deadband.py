@@ -72,6 +72,10 @@ class DeadbandBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
+        # Output-only path: input absent → deadband is stateless, so emit zero.
+        if 0 not in inputs:
+            return {0: np.atleast_1d(0.0)}
+
         u = np.array(inputs[0], dtype=float)
         start = float(params.get("start", -0.5))
         end = float(params.get("end", 0.5))

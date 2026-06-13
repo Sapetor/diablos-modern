@@ -1,4 +1,5 @@
 import collections
+import copy
 import logging
 from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QColor
@@ -96,7 +97,7 @@ class HistoryManager:
                 block_data = {
                     'name': block.name,
                     'block_fn': block.block_fn,
-                    'coords': (block.left, block.top, block.width, block.height),
+                    'coords': (block.left, block.top, block.width, block.height_base),
                     'color': block.b_color.name() if hasattr(block.b_color, 'name') else str(block.b_color),
                     'category': getattr(block, 'category', 'Other'),
                     'in_ports': block.in_ports,
@@ -104,7 +105,7 @@ class HistoryManager:
                     'b_type': block.b_type,
                     'io_edit': block.io_edit,
                     'fn_name': block.fn_name,
-                    'params': block.params.copy() if hasattr(block, 'params') and block.params else {},
+                    'params': copy.deepcopy(block.params) if hasattr(block, 'params') and block.params else {},
                     'external': block.external,
                     'selected': block.selected
                 }
@@ -203,16 +204,39 @@ class HistoryManager:
             # Restore connections
             block_by_name = {b.name: b for b in self.dsim.blocks_list}
             for line_data in state['lines']:
-                src_block = block_by_name.get(line_data['srcblock'])
-                dst_block = block_by_name.get(line_data['dstblock'])
+                try:
+                    src_block = block_by_name.get(line_data['srcblock'])
+                    dst_block = block_by_name.get(line_data['dstblock'])
 
-                if src_block and dst_block:
-                    src_port_pos = src_block.out_coords[line_data['srcport']]
-                    dst_port_pos = dst_block.in_coords[line_data['dstport']]
+                    if not (src_block and dst_block):
+                        continue
+
+                    src_port = line_data['srcport']
+                    dst_port = line_data['dstport']
+
+                    # Bounds-check ports: the rebuilt block may have fewer ports
+                    # than the snapshot recorded. Skip the bad connection rather
+                    # than raising IndexError, which would abort the whole
+                    # restore after the canvas has already been cleared.
+                    if src_port >= len(src_block.out_coords):
+                        logger.warning(
+                            f"Restore: srcport {src_port} out of range for "
+                            f"'{src_block.name}' ({len(src_block.out_coords)} out ports); skipping connection"
+                        )
+                        continue
+                    if dst_port >= len(dst_block.in_coords):
+                        logger.warning(
+                            f"Restore: dstport {dst_port} out of range for "
+                            f"'{dst_block.name}' ({len(dst_block.in_coords)} in ports); skipping connection"
+                        )
+                        continue
+
+                    src_port_pos = src_block.out_coords[src_port]
+                    dst_port_pos = dst_block.in_coords[dst_port]
 
                     line = self.dsim.add_line(
-                        (line_data['srcblock'], line_data['srcport'], src_port_pos),
-                        (line_data['dstblock'], line_data['dstport'], dst_port_pos)
+                        (line_data['srcblock'], src_port, src_port_pos),
+                        (line_data['dstblock'], dst_port, dst_port_pos)
                     )
                     if line:
                         line.selected = line_data.get('selected', False)
@@ -224,6 +248,12 @@ class HistoryManager:
                             line.label = line_data['label']
                         # Recalculate path with restored routing mode (if canvas has block list reference)
                         line.update_line(self.dsim.blocks_list)
+
+                except Exception as e:
+                    logger.error(
+                        f"Error restoring connection {line_data.get('name', 'unknown')}: {str(e)}"
+                    )
+                    continue
 
             if hasattr(self.canvas, 'update'):
                 self.canvas.update()

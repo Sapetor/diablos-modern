@@ -48,12 +48,23 @@ class Linearizer:
         if blocks is None and self.dsim is not None:
             blocks = self.dsim.blocks_list
 
+        if blocks is None:
+            raise ValueError(
+                "No blocks provided and no DSim instance available to source them"
+            )
+
         self.blocks = blocks
         self.state_blocks = []
 
+        # NOTE: keep this set in exact correspondence with the block types
+        # handled in get_state_vector / set_state_vector so detected blocks
+        # always contribute a consistent number of states. RateLimiter is
+        # intentionally excluded: its persisted '_prev' is a discrete
+        # sample-hold value, not a continuous state, and it has no branch in
+        # the state get/set routines.
         state_block_types = {
             'Integrator', 'StateSpace', 'TransferFcn', 'TranFn',
-            'PID', 'RateLimiter', 'HeatEquation1D', 'WaveEquation1D',
+            'PID', 'HeatEquation1D', 'WaveEquation1D',
             'AdvectionEquation1D', 'DiffusionReaction1D'
         }
 
@@ -164,7 +175,11 @@ class Linearizer:
                 idx += n
 
             elif block_type == 'WaveEquation1D':
-                n = params.get('N', 50)
+                # Derive n from the actual stored u array so set round-trips
+                # exactly what get_state_vector read (which uses the real u/v
+                # lengths, not the 'N' param which may disagree).
+                u = params.get('u', np.zeros(50))
+                n = np.atleast_1d(u).size
                 params['u'] = x[idx:idx + n]
                 params['v'] = x[idx + n:idx + 2*n]
                 idx += 2 * n
@@ -182,18 +197,24 @@ class Linearizer:
         Returns:
             Jacobian matrix A = df/dx at x0
         """
+        # Work in float so an integer-typed x0 cannot truncate the perturbation
+        # to zero (which would yield spurious all-zero Jacobian columns).
+        x0 = np.asarray(x0, dtype=float)
         n = len(x0)
         A = np.zeros((n, n))
 
-        f0 = f(x0)
-
         for j in range(n):
+            # Relative step scaled by the magnitude of the component, so the
+            # perturbation stays meaningful for both small and large states.
+            h = eps * max(1.0, abs(x0[j]))
+
             x_plus = x0.copy()
-            x_plus[j] += eps
+            x_plus[j] += h
+            x_minus = x0.copy()
+            x_minus[j] -= h
 
-            f_plus = f(x_plus)
-
-            A[:, j] = (f_plus - f0) / eps
+            # Central difference: O(h^2) accuracy vs O(h) for one-sided.
+            A[:, j] = (f(x_plus) - f(x_minus)) / (2.0 * h)
 
         return A
 
@@ -210,84 +231,41 @@ class Linearizer:
 
         Returns:
             Dict with A, B, C, D matrices and metadata
+
+        Raises:
+            NotImplementedError: numerical linearization is not yet implemented.
+                The derivative/output evaluation that would produce real A, B, C
+                and D matrices has not been built, so this method refuses to run
+                rather than return fabricated all-zero matrices that would be
+                mistaken for a valid model.
         """
         if self.dsim is None:
             raise ValueError("DSim instance required for linearization")
 
-        # Find state blocks
+        # Find state blocks (real work; safe and independently useful).
         self.find_state_blocks()
 
         if len(self.state_blocks) == 0:
             logger.warning("No state blocks found")
             return None
 
-        # Get current state
+        # Get current state (real work; the state-vector helpers are correct).
         x0, state_names = self.get_state_vector()
         n = len(x0)
 
-        logger.info(f"Linearizing system with {n} states")
-
-        # Define state derivative function
-        def compute_derivatives(x):
-            # Set state
-            self.set_state_vector(x)
-
-            # Run one simulation step (or compute derivatives directly)
-            # This is a simplified version - full implementation would
-            # need to handle the simulation loop properly
-
-            dx = np.zeros_like(x)
-            idx = 0
-
-            for block in self.state_blocks:
-                block_type = getattr(block, 'block_fn', '')
-                params = getattr(block, 'exec_params', block.params)
-
-                if block_type == 'Integrator':
-                    # dx/dt = input
-                    mem = params.get('mem', np.array([0.0]))
-                    n_states = np.atleast_1d(mem).size
-                    # Would need to get actual input here
-                    dx[idx:idx + n_states] = 0.0  # Placeholder
-                    idx += n_states
-
-                # Add other block types...
-
-            return dx
-
-        # Compute A matrix (Jacobian of dx/dt w.r.t. x)
-        A = self.compute_jacobian_numerical(compute_derivatives, x0)
-
-        # For a complete implementation, we'd also compute B, C, D
-        # by perturbing inputs and measuring outputs
-
-        # Placeholder B, C, D matrices
-        m = len(input_blocks) if input_blocks else 1  # inputs
-        p = len(output_blocks) if output_blocks else 1  # outputs
-
-        B = np.zeros((n, m))
-        C = np.zeros((p, n))
-        D = np.zeros((p, m))
-
-        # Compute eigenvalues for stability analysis
-        eigenvalues = np.linalg.eigvals(A)
-
-        # Stability check
-        is_stable = np.all(np.real(eigenvalues) < 0)
-
-        return {
-            'A': A,
-            'B': B,
-            'C': C,
-            'D': D,
-            'n_states': n,
-            'n_inputs': m,
-            'n_outputs': p,
-            'state_names': state_names,
-            'eigenvalues': eigenvalues,
-            'is_stable': is_stable,
-            'operating_point': operating_point,
-        }
+        # The derivative function (A) and the input/output perturbations needed
+        # for B, C and D have not been implemented. Computing them requires
+        # driving block.execute()/the engine step at the perturbed state, which
+        # is out of scope here. Fail loudly instead of returning placeholder
+        # zero matrices that downstream TF/controllability/observability code
+        # would treat as a real linearization.
+        raise NotImplementedError(
+            "linearize_at_point is not implemented: numerical computation of "
+            f"the A/B/C/D matrices (found {n} states: {state_names}) requires "
+            "evaluating state derivatives and outputs at the operating point, "
+            "which is not yet wired to the simulation engine. Refusing to "
+            "return fabricated all-zero matrices."
+        )
 
     def compute_transfer_function(self, A: np.ndarray, B: np.ndarray,
                                  C: np.ndarray, D: np.ndarray) -> Tuple:
@@ -305,8 +283,19 @@ class Linearizer:
         from scipy import signal
 
         try:
-            tf = signal.ss2tf(A, B, C, D)
-            return tf[0][0], tf[1]
+            num, den = signal.ss2tf(A, B, C, D)
+            # signal.ss2tf returns ``num`` as a 2D array with one row per
+            # output. For a single-output system return that row (SISO shape,
+            # preserved for backwards compatibility); for multi-output systems
+            # return the full numerator array instead of silently dropping the
+            # remaining output rows.
+            if num.shape[0] == 1:
+                return num[0], den
+            logger.warning(
+                "ss2tf produced %d output rows; returning the full numerator "
+                "array for the multi-output system.", num.shape[0]
+            )
+            return num, den
         except Exception as e:
             logger.error(f"Failed to convert to transfer function: {e}")
             return None, None
@@ -335,16 +324,21 @@ class Linearizer:
         dominant_idx = np.argmax(real_parts)
         dominant_pole = eigenvalues[dominant_idx]
 
-        # Time constants (for real negative eigenvalues)
+        # Time constants (for real negative eigenvalues). Use a tolerance on
+        # the imaginary part so genuinely-real eigenvalues that eigvals returns
+        # with a tiny numerical imaginary component are still included.
+        imag_tol = 1e-9
         time_constants = []
         for ev in eigenvalues:
-            if np.isreal(ev) and np.real(ev) < 0:
+            if abs(np.imag(ev)) < imag_tol and np.real(ev) < 0:
                 time_constants.append(-1.0 / np.real(ev))
 
-        # Natural frequencies and damping (for complex pairs)
+        # Natural frequencies and damping (for complex pairs). Only consider
+        # eigenvalues with a positive imaginary part so each complex-conjugate
+        # pair is counted once rather than twice.
         oscillatory_modes = []
         for i, ev in enumerate(eigenvalues):
-            if np.imag(ev) != 0:
+            if np.imag(ev) > imag_tol:
                 omega_n = np.abs(ev)
                 zeta = -np.real(ev) / omega_n if omega_n > 0 else 0
                 oscillatory_modes.append({

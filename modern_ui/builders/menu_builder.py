@@ -59,10 +59,15 @@ class MenuBuilder:
         examples_dir = os.path.join(base_dir, 'examples')
 
         if os.path.exists(examples_dir):
-            files = sorted(
-                f for f in os.listdir(examples_dir)
-                if f.endswith(('.json', '.dat', '.diablos'))
-            )
+            try:
+                files = sorted(
+                    f for f in os.listdir(examples_dir)
+                    if f.endswith(('.json', '.dat', '.diablos'))
+                )
+            except OSError as exc:
+                logger.warning("Could not read examples directory %s: %s", examples_dir, exc)
+                menu.addAction("Examples directory not readable").setEnabled(False)
+                return
             if not files:
                 menu.addAction("No examples found").setEnabled(False)
                 return

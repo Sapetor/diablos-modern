@@ -52,11 +52,16 @@ class SystemCompiler:
             'PiD', 'PID',
             'RateLimiter',
             'WaveGenerator',
-            'Noise',
+            # 'Noise' — excluded: np.random in the ODE RHS is re-sampled on every
+            # solve_ivp stage/rejected step, breaking adaptive error control and
+            # reproducibility. Falls back to the interpreted path (blocks/noise.py).
             'PRBS',
             'MathFunction',
             'Selector',
-            'Hysteresis',
+            # 'Hysteresis' — excluded: the relay latch is path-dependent and cannot
+            # be a pure function of (t, y). solve_ivp probes the RHS at non-accepted,
+            # non-monotonic times, corrupting the latch. Falls back to the
+            # interpreted path (blocks/hysteresis.py).
             # PDE Blocks (Method of Lines) - 1D
             'HeatEquation1D',
             'WaveEquation1D',
@@ -78,7 +83,11 @@ class SystemCompiler:
             'FieldScope2D',
             'FieldSlice',
             # Optimization Primitives
-            'StateVariable',
+            # 'StateVariable' — excluded: it performs a discrete state update inside
+            # the continuous ODE RHS keyed on a monotonic-time assumption that
+            # solve_ivp violates (repeated/rejected/non-monotonic probe times).
+            # Falls back to the interpreted path
+            # (blocks/optimization_primitives/state_variable.py).
             'Product',
         }
 
@@ -110,25 +119,15 @@ class SystemCompiler:
             if b_type in ('Inport', 'Outport'):
                 continue
 
-            if b_type not in self.COMPILABLE_BLOCKS:
-                # Try correcting case (Capitalize first letter) just in case
-                if b_type.title() in self.COMPILABLE_BLOCKS:
-                     # It's compilable if we treat it as the TitleCase version
-                     pass
-                elif b_type.upper() in self.COMPILABLE_BLOCKS: # For PID
-                     pass
-                else: 
-                     logger.debug(f"Block {block.name} ({block.block_fn}) is not compilable.")
-                     return False
-            
-            # Check for custom scripts (External blocks are generally not compilable unless specific standard ones)
-            if block.external:
-                # We might allow standard library external blocks if we implement their logic
-                # For now, simplistic check: everything in standard library that matches COMPILABLE_BLOCKS is ok.
-                # But if it's a "Custom Script" user block, reject.
-                pass 
-        
-        return True 
+            # Accept the block if its name matches the allowlist directly or
+            # via case correction (TitleCase, e.g. Sine; or UPPER, e.g. PID).
+            if (b_type not in self.COMPILABLE_BLOCKS
+                    and b_type.title() not in self.COMPILABLE_BLOCKS
+                    and b_type.upper() not in self.COMPILABLE_BLOCKS):
+                logger.debug(f"Block {block.name} ({block.block_fn}) is not compilable.")
+                return False
+
+        return True
 
     def _create_block_executor(self, block: DBlock, input_map: Dict, state_map: Dict, block_matrices: Dict) -> Callable[[float, np.ndarray, np.ndarray, Dict], None]:
         """
@@ -214,9 +213,23 @@ class SystemCompiler:
                         u = u[:K.shape[1]]
                     signals[b_name] = K @ u
             elif K.ndim == 1 and K.size > 1:
-                def exec_mgain(t, y, dy_vec, signals):
+                _warned = [False]
+
+                def exec_mgain(t, y, dy_vec, signals, _warned=_warned):
                     u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float)
-                    signals[b_name] = K * u if len(K) == len(u) else K[:min(len(K),len(u))] * u[:min(len(K),len(u))]
+                    if len(K) == len(u):
+                        signals[b_name] = K * u
+                    else:
+                        # Dimension mismatch is almost always a wiring/config
+                        # error; warn once instead of silently truncating.
+                        if not _warned[0]:
+                            logger.warning(
+                                "MatrixGain %s: vector gain length %d does not match "
+                                "input length %d; truncating to the overlapping prefix.",
+                                b_name, len(K), len(u))
+                            _warned[0] = True
+                        m = min(len(K), len(u))
+                        signals[b_name] = K[:m] * u[:m]
             else:
                 k_scalar = float(K.flatten()[0])
                 def exec_mgain(t, y, dy_vec, signals):
@@ -226,9 +239,13 @@ class SystemCompiler:
 
         elif fn == 'Sum':
             signs = params.get('sign', params.get('inputs', '++'))
-            # Bake signs and sources
+            # Bake signs and sources. Iterate over the connected input ports
+            # (not just the sign string) so extra wired inputs are not silently
+            # dropped; missing sign characters default to '+'.
+            n_terms = max(len(signs), len(input_sources))
             ops = []
-            for i, char in enumerate(signs):
+            for i in range(n_terms):
+                char = signs[i] if i < len(signs) else '+'
                 src = input_sources[i] if i < len(input_sources) else None
                 ops.append((src, 1.0 if char == '+' else -1.0))
             
@@ -588,7 +605,12 @@ class SystemCompiler:
                      if op == '*':
                          res *= val
                      elif op == '/':
-                         res = res / val if val != 0 else 1e308
+                         if val != 0:
+                             res = res / val
+                         else:
+                             # True division by zero -> propagate signed inf
+                             # (matches IEEE-754) instead of a magic constant.
+                             res = np.sign(res) * np.inf if res != 0 else np.nan
                  signals[b_name] = res
              return exec_product
 
@@ -649,9 +671,16 @@ class SystemCompiler:
         elif fn == 'RateLimiter':
              start, size = state_map[b_name]
              src = input_sources[0] if input_sources else None
-             rising = float(params.get('rising', 1.0))
-             falling = float(params.get('falling', -1.0))
-             # Stiffness gain
+             # Match the interpreted RateLimiterBlock param keys
+             # (rising_slew/falling_slew, default infinite, magnitude-only).
+             rising = abs(float(params.get('rising_slew', np.inf)))
+             falling = -abs(float(params.get('falling_slew', np.inf)))
+             # Compiled approximation: the interpreted block applies exact
+             # per-step slew clamping, but inside a continuous ODE RHS we model
+             # the limiter as a stiff first-order chase dy = clip((u-y)*K, ...).
+             # K is a large stiffness gain so the output tracks u closely while
+             # the clip enforces the slew bounds. This diverges slightly from the
+             # interpreted path; rerun without the fast solver for exact parity.
              K = 1000.0
              
              def exec_ratelimiter(t, y, dy_vec, signals):
@@ -716,7 +745,13 @@ class SystemCompiler:
             elif func == 'floor':
                 np_func = np.floor
             elif func == 'reciprocal':
-                np_func = lambda x: np.where(x != 0, 1.0 / np.where(x != 0, x, 1.0), 0.0) if isinstance(x, np.ndarray) else (1.0 / x if x != 0 else 0.0)
+                def _reciprocal(x):
+                    if isinstance(x, np.ndarray):
+                        m = x != 0
+                        # Build the non-zero mask once and reuse it.
+                        return np.where(m, 1.0 / np.where(m, x, 1.0), 0.0)
+                    return 1.0 / x if x != 0 else 0.0
+                np_func = _reciprocal
             elif func == 'cube':
                 np_func = lambda x: x * x * x
             else:
@@ -728,6 +763,18 @@ class SystemCompiler:
                 # Compile expression once at compile time for hot-loop performance
                 _compiled_expr = compile_expr(expr_str)
 
+                # Dry-run once on a representative input so structural failures
+                # (undefined names, bad subscripts, type errors) surface at
+                # compile time as a WARNING instead of being silently swallowed
+                # to 0.0 on every step for the whole run.
+                try:
+                    _compiled_expr({"u": 1.0, "t": 0.0})
+                except Exception as _e:  # noqa: BLE001 - report any setup failure once
+                    logger.warning(
+                        "MathFunction %s: expression %r failed to evaluate on a "
+                        "sample input (%s); it will fall back to 0.0 each step.",
+                        b_name, expr_str, _e)
+
                 def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _compiled=_compiled_expr):
                     val = signals.get(_src, 0.0) if _src else 0.0
                     try:
@@ -735,7 +782,9 @@ class SystemCompiler:
                     except Exception as _e:
                         # User expression failed this step (e.g. domain/type error);
                         # fall back to 0.0. Per-timestep hot loop -> debug level to
-                        # avoid flooding while still being diagnosable.
+                        # avoid flooding while still being diagnosable. Persistent
+                        # structural failures are already surfaced once at compile
+                        # time via the dry-run WARNING above.
                         logger.debug("MathFunction expr eval failed for %s: %s", b_name, _e)
                         signals[b_name] = 0.0
                 return exec_mathfunc_expr
@@ -758,8 +807,14 @@ class SystemCompiler:
                 part = part.strip()
                 if ':' in part:
                     parts = part.split(':')
-                    start_idx = int(parts[0]) if parts[0] else 0
-                    end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else None
+                    try:
+                        start_idx = int(parts[0]) if parts[0] else 0
+                        end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else None
+                    except ValueError:
+                        logger.warning(
+                            "Selector %s: malformed range '%s'; defaulting to full range.",
+                            b_name, part)
+                        start_idx, end_idx = 0, None
                     parsed_indices.append(('range', start_idx, end_idx))
                 else:
                     try:
@@ -1217,8 +1272,18 @@ class SystemCompiler:
                 bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
                 bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
 
-                if isinstance(force, np.ndarray) and force.size == 1:
-                    force = float(force.flat[0])
+                if isinstance(force, np.ndarray):
+                    if force.size == 1:
+                        force = float(force.flat[0])
+                    elif force.shape != (_Ny, _Nx):
+                        # Downstream indexes force[j, i] as a (Ny, Nx) grid. A
+                        # connected source of any other shape would mis-index or
+                        # raise inside the RHS, so broadcast it to the grid when
+                        # possible, else fall back to a scalar (its first value).
+                        try:
+                            force = np.broadcast_to(force, (_Ny, _Nx))
+                        except ValueError:
+                            force = float(np.atleast_1d(force).flat[0])
 
                 du_dt = v.copy()
                 dv_dt = np.zeros((_Ny, _Nx))
@@ -1334,8 +1399,18 @@ class SystemCompiler:
                 bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
                 bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
 
-                if isinstance(source, np.ndarray) and source.size == 1:
-                    source = float(source.flat[0])
+                if isinstance(source, np.ndarray):
+                    if source.size == 1:
+                        source = float(source.flat[0])
+                    elif source.shape != (_Ny, _Nx):
+                        # Downstream indexes source[j, i] as a (Ny, Nx) grid.
+                        # Broadcast any other shape to the grid when possible,
+                        # else fall back to a scalar (its first value), so the
+                        # RHS never mis-indexes or raises.
+                        try:
+                            source = np.broadcast_to(source, (_Ny, _Nx))
+                        except ValueError:
+                            source = float(np.atleast_1d(source).flat[0])
 
                 dc_dt = np.zeros((_Ny, _Nx))
                 dx_sq = _dx * _dx
@@ -1365,6 +1440,11 @@ class SystemCompiler:
                     for j in range(_Ny):
                         dc_dt[j, 0] = penalty * (bc_left - c[j, 0])
                 elif _bc_type_left == 'Neumann':
+                    # NOTE: the prescribed-gradient (bc_*) is applied to the
+                    # advective term (dc_dx) only. The diffusive Laplacian here
+                    # uses a zero-gradient ghost-node form and intentionally
+                    # ignores bc_* — i.e. advection Neumann diffusion is treated
+                    # as zero-gradient, unlike Heat2D's flux-carrying ghost node.
                     for j in range(1, _Ny - 1):
                         dc_dx = bc_left if _vx >= 0 else (c[j, 1] - c[j, 0]) / _dx
                         dc_dy = (c[j, 0] - c[j-1, 0]) / _dy if _vy >= 0 else (c[j+1, 0] - c[j, 0]) / _dy
@@ -1806,10 +1886,11 @@ class SystemCompiler:
                 current_state_idx += 2
 
             elif fn == 'RateLimiter':
-                # State is the output y.
+                # State is the output y. RateLimiterBlock has no initial-output
+                # parameter (it latches its first input at runtime), so the
+                # compiled state starts at 0.0.
                 state_map[b_name] = (current_state_idx, 1)
-                ic = float(sparams.get('init_cond', 0.0))
-                y0_list.append(ic)
+                y0_list.append(0.0)
                 current_state_idx += 1
 
             # ==================== PDE BLOCKS STATE ALLOCATION ====================

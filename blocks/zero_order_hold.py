@@ -1,4 +1,6 @@
+import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 
 class ZeroOrderHoldBlock(BaseBlock):
@@ -65,33 +67,27 @@ class ZeroOrderHoldBlock(BaseBlock):
         Zero-Order Hold: Samples input at specified rate and holds value.
         """
         output_only = kwargs.get('output_only', False)
-        
+
         if params.get('_init_start_', True):
             params['_init_start_'] = False
             params['_next_sample_time_'] = 0.0
             # Initialize held value with initial input if available, else 0
-            val = inputs.get(0, 0.0)
-            if hasattr(val, 'item'):
-                val = val.item()
-            params['_held_value_'] = float(val)
+            params['_held_value_'] = get_vector(inputs, 0)
 
         # Get current held value
-        held_val = params['_held_value_']
-        
+        held_val = np.atleast_1d(params.get('_held_value_', 0.0))
+
         # Check if it's time to sample
-        sampling_time = params['sampling_time']
+        sampling_time = params.get('sampling_time', 0.1)
         if time >= params['_next_sample_time_'] - 1e-9:
             if not output_only:
                 # Update held value
-                val = inputs.get(0, 0.0)
-                if hasattr(val, 'item'):
-                    val = val.item()
-                params['_held_value_'] = float(val)
-                
+                params['_held_value_'] = get_vector(inputs, 0)
+
                 # Schedule next sample
                 while params['_next_sample_time_'] <= time + 1e-9:
                     params['_next_sample_time_'] += sampling_time
-            
-            return {0: params['_held_value_'], 'E': False}
-            
-        return {0: held_val, 'E': False}
+
+            return {0: np.atleast_1d(params['_held_value_'])}
+
+        return {0: held_val}

@@ -96,7 +96,7 @@ def parse_pde_initial_condition(
 
 
 def parse_pde_2d_initial_condition(
-    ic_spec: Union[str, int, float],
+    ic_spec: Union[str, int, float, List, np.ndarray],
     Nx: int,
     Ny: int,
     Lx: float = 1.0,
@@ -107,7 +107,7 @@ def parse_pde_2d_initial_condition(
     Parse initial conditions for 2D PDE blocks.
 
     Args:
-        ic_spec: Initial condition specification (string or scalar)
+        ic_spec: Initial condition specification (string, scalar, or array)
         Nx: Number of grid points in x direction
         Ny: Number of grid points in y direction
         Lx: Domain length in x direction
@@ -142,8 +142,33 @@ def parse_pde_2d_initial_condition(
                 return np.full((Ny, Nx), float(ic_spec))
             except ValueError:
                 return np.zeros((Ny, Nx))
-    else:
+
+    # Handle scalar values
+    elif isinstance(ic_spec, (int, float)):
         return np.full((Ny, Nx), float(ic_spec))
+
+    # Handle array-like values (mirror the 1D parser's robustness)
+    else:
+        ic_arr = np.array(ic_spec, dtype=float)
+
+        # Already the right 2D shape - use directly
+        if ic_arr.shape == (Ny, Nx):
+            return ic_arr
+
+        flat = ic_arr.flatten()
+        if flat.size == 1:
+            # Single value - broadcast to full field
+            return np.full((Ny, Nx), flat[0])
+        elif flat.size == Ny * Nx:
+            # Right number of elements but wrong shape - reshape
+            return flat.reshape((Ny, Nx))
+        else:
+            # Size mismatch - cannot map to grid; default to zeros and warn
+            logger.warning(
+                f"parse_pde_2d_initial_condition: array IC of size {flat.size} "
+                f"does not match grid (Ny={Ny}, Nx={Nx}); defaulting to zeros"
+            )
+            return np.zeros((Ny, Nx))
 
 
 class BoundaryConditionHandler:
@@ -220,22 +245,32 @@ class BoundaryConditionHandler:
         penalty: float = 1000.0
     ) -> None:
         """
-        Apply Robin BC (mixed convective).
-        Robin BC: k*dT/dx = h*(T_inf - T)
+        Apply a *simplified* Robin BC (mixed convective).
 
-        For simplicity, uses penalty method similar to Dirichlet.
+        LIMITATION: This does NOT implement the true Robin condition
+        k*dT/dx = h*(T_inf - T). The convective flux physics is ignored:
+        the ``h``, ``k`` and ``dx`` arguments are accepted only for API
+        symmetry with the other BC helpers and are currently UNUSED. The
+        body simply applies a Dirichlet-style penalty that forces the
+        boundary value toward ``bc_val`` (i.e. behaves as if T_inf were a
+        fixed boundary value). For correct convective Robin behavior, use
+        the ghost-node formulation implemented inline in the PDE blocks
+        (see blocks/pde/heat_equation_1d.py and
+        blocks/pde/diffusion_reaction_1d.py).
 
         Args:
             dc_dt: Derivative array to modify (in-place)
             idx: Index of boundary node
             bc_val: Ambient/reference value (T_inf)
             c_val: Current value at boundary
-            h: Convective heat transfer coefficient
-            k: Thermal conductivity
-            dx: Grid spacing
+            h: Convective heat transfer coefficient (UNUSED, see limitation)
+            k: Thermal conductivity (UNUSED, see limitation)
+            dx: Grid spacing (UNUSED, see limitation)
             penalty: Penalty coefficient
         """
-        # Simplified: use penalty method to force value toward bc_val
+        # Simplified: use penalty method to force value toward bc_val.
+        # NOTE: h, k and dx are intentionally unused here; see the docstring
+        # limitation above.
         dc_dt[idx] = penalty * (bc_val - c_val)
 
 
@@ -310,7 +345,12 @@ def ensure_field_array(
     elif len(arr) == 1:
         return np.full(N, arr[0])
     else:
-        # Size mismatch - use first value or default
+        # Size mismatch - degrade to a constant field but warn, since this
+        # likely indicates a user error (a wrong-sized field array).
+        logger.warning(
+            f"ensure_field_array: value of length {len(arr)} does not match "
+            f"required size {N}; filling with {'first element' if len(arr) > 0 else 'default'}"
+        )
         return np.full(N, arr[0] if len(arr) > 0 else default)
 
 

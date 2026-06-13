@@ -30,11 +30,14 @@ class PRBSBlock(BaseBlock):
     def doc(self):
         return (
             "Pseudo-Random Binary Sequence (PRBS)."
-            "\n\nGenerates a binary signal (-Amp, +Amp) that approximates white noise."
-            "\nUseful for System Identification."
+            "\n\nGenerates a binary signal (low/high) from a maximal-length LFSR that"
+            "\napproximates white noise. Useful for System Identification."
             "\n\nParameters:"
-            "\n- Amplitude: Height of the binary steps."
-            "\n- Clock Period: Time duration of each step."
+            "\n- high: Value output for logic high."
+            "\n- low: Value output for logic low."
+            "\n- bit_time: Seconds each bit is held before advancing the sequence."
+            "\n- order: LFSR order (sequence length 2^order-1)."
+            "\n- seed: Non-zero initial LFSR state."
             "\n\nUsage:"
             "\nApply to system input to estimate frequency response (rich frequency content)."
         )

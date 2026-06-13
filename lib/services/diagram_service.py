@@ -190,6 +190,22 @@ class DiagramService:
              
         self.current_file = None
 
+    def _report_error(self, title, message):
+        """Surface an error to the user without hard-coupling to the GUI.
+
+        Always logs the error. Only pops a modal QMessageBox when a real
+        widget parent is available, so the service can still be driven
+        headlessly (tests/CLI/autosave) where ``main_window`` may be a
+        non-widget stub or absent.
+        """
+        try:
+            from PyQt5.QtWidgets import QWidget
+            if isinstance(self.main_window, QWidget):
+                QMessageBox.critical(self.main_window, title, message)
+        except Exception:
+            # Never let error reporting itself raise (e.g. no QApplication).
+            logger.debug("Suppressed error dialog for headless context", exc_info=True)
+
     def save_diagram(self, filename=None):
         """
         Save the current diagram to a file.
@@ -209,11 +225,16 @@ class DiagramService:
                 "DiaBloS Files (*.diablos);;All Files (*)",
                 save=True
             )
-            if dialog.exec_() == QFileDialog.Accepted:
-                files = dialog.selectedFiles()
-                filename = files[0] if files else ""
-            else:
-                filename = ""
+            try:
+                if dialog.exec_() == QFileDialog.Accepted:
+                    files = dialog.selectedFiles()
+                    filename = files[0] if files else ""
+                else:
+                    filename = ""
+            finally:
+                # Dispose the dialog promptly so repeated save cycles don't
+                # accumulate styled child widgets under the parent window.
+                dialog.deleteLater()
 
         if not filename:
             return False
@@ -243,7 +264,7 @@ class DiagramService:
             
         except Exception as e:
             logger.error(f"Failed to save diagram: {e}")
-            QMessageBox.critical(self.main_window, "Save Error", f"Could not save diagram:\n{str(e)}")
+            self._report_error("Save Error", f"Could not save diagram:\n{str(e)}")
             return False
 
     def load_diagram(self, filename=None):
@@ -267,11 +288,16 @@ class DiagramService:
                 "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
                 save=False
             )
-            if dialog.exec_() == QFileDialog.Accepted:
-                files = dialog.selectedFiles()
-                filename = files[0] if files else ""
-            else:
-                filename = ""
+            try:
+                if dialog.exec_() == QFileDialog.Accepted:
+                    files = dialog.selectedFiles()
+                    filename = files[0] if files else ""
+                else:
+                    filename = ""
+            finally:
+                # Dispose the dialog promptly so repeated load cycles don't
+                # accumulate styled child widgets under the parent window.
+                dialog.deleteLater()
             logger.info(f"File dialog returned: {filename}")
 
         if not filename:
@@ -303,7 +329,7 @@ class DiagramService:
 
         except Exception as e:
             logger.error(f"Failed to load diagram: {e}")
-            QMessageBox.critical(self.main_window, "Load Error", f"Could not load diagram:\n{str(e)}")
+            self._report_error("Load Error", f"Could not load diagram:\n{str(e)}")
             return None
 
     def new_diagram(self):

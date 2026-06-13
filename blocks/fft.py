@@ -82,8 +82,10 @@ class FFTBlock(BaseBlock):
             params['_fft_buffer_'] = []
             params['_fft_time_'] = []
         
-        # Store signal value
-        params['_fft_buffer_'].append(u[0] if len(u) == 1 else u)
+        # Store signal value. Always append the full 1-D array so np.array(buffer)
+        # yields a regular array (avoids a ragged object array if the input width
+        # ever changes). plot_spectrum/_plot_fft take channel 0 for multi-dim signals.
+        params['_fft_buffer_'].append(u)
         params['_fft_time_'].append(time)
         
         return {'E': False}

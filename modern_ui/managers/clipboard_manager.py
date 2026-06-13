@@ -75,10 +75,10 @@ class ClipboardManager:
             name_to_block = {b.name: b for b in self.dsim.blocks_list}
 
             # Debug: Log state for diagnosing connection copy issues
-            logger.info(f"Copy: {len(self.dsim.connections_list)} connections in dsim, {len(selected_blocks)} selected blocks")
+            logger.info(f"Copy: {len(self.dsim.line_list)} connections in dsim, {len(selected_blocks)} selected blocks")
             logger.info(f"Copy: Selected block names: {[b.name for b in selected_blocks]}")
 
-            for line in self.dsim.connections_list:
+            for line in self.dsim.line_list:
                 # Resolve block objects from names
                 src_obj = name_to_block.get(line.srcblock)
                 dst_obj = name_to_block.get(line.dstblock)
@@ -111,6 +111,8 @@ class ClipboardManager:
                 logger.info(f"  Connection {i}: start_index={conn['start_index']}, end_index={conn['end_index']}")
         except Exception as e:
             logger.error(f"Error copying blocks: {str(e)}")
+            if hasattr(self.canvas, 'simulation_status_changed'):
+                self.canvas.simulation_status_changed.emit(f"Copy failed: {e}")
 
     def paste_blocks(self):
         """Paste blocks from clipboard."""
@@ -165,7 +167,8 @@ class ClipboardManager:
                     # Restore other attributes
                     new_block.io_edit = block_data['io_edit']
                     new_block.fn_name = block_data['fn_name']
-                    new_block.params = block_data['params'].copy()
+                    # Deep copy so repeated pastes get independent (possibly nested) params
+                    new_block.params = copy.deepcopy(block_data['params'])
                     new_block.params['_name_'] = new_block.name  # Ensure params name matches
                     new_block.external = block_data['external']
                     new_block.category = block_data.get('category', 'Other')
@@ -193,7 +196,8 @@ class ClipboardManager:
                         b_type=block_data['b_type'],
                         io_edit=block_data['io_edit'],
                         fn_name=block_data['fn_name'],
-                        params=block_data['params'].copy(),
+                        # Deep copy so repeated pastes get independent (possibly nested) params
+                        params=copy.deepcopy(block_data['params']),
                         external=block_data['external'],
                         username='',  # Let it default to new name
                         block_class=block_class,
@@ -241,7 +245,7 @@ class ClipboardManager:
 
                     # Create new line
                     # Need new SID
-                    line_ids = [l.sid for l in self.dsim.connections_list]
+                    line_ids = [l.sid for l in self.dsim.line_list]
                     new_sid = max(line_ids) + 1 if line_ids else 0
 
                     # Minimal points (start/end)
@@ -259,7 +263,7 @@ class ClipboardManager:
 
                     # Ensure path is calculated
                     # Add to list FIRST so update_line can see it if it needs to check existence (though it mainly checks blocks)
-                    self.dsim.connections_list.append(new_line)
+                    self.dsim.line_list.append(new_line)
 
                     try:
                         # Pass the full block list including new ones
@@ -286,6 +290,8 @@ class ClipboardManager:
 
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
+            if hasattr(self.canvas, 'simulation_status_changed'):
+                self.canvas.simulation_status_changed.emit(f"Paste failed: {e}")
 
     def cut_selected_blocks(self):
         """Cut selected blocks to clipboard."""

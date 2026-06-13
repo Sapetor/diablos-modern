@@ -32,7 +32,6 @@ class TransportDelayBlock(BaseBlock):
             "\n\nParameters:"
             "\n- Time Delay: Amount of delay in seconds."
             "\n- Initial Output: Output value before t < Delay."
-            "\n- Buffer Size: Max history length (increase if simulation is long/fast)."
             "\n\nUsage:"
             "\nModels pipe flow, conveyor belts, or communication latency."
         )
@@ -67,24 +66,31 @@ class TransportDelayBlock(BaseBlock):
         
         time_buffer = params["_time_buffer_"]
         value_buffer = params["_value_buffer_"]
-        
+
+        # Target time for output (current time minus delay)
+        target_time = float(time) - delay_time
+
+        # Output-only path (init / no input available): return the held output
+        # without appending a spurious sample to the interpolation history.
+        if kwargs.get("output_only") or 0 not in inputs:
+            if target_time < 0 or len(time_buffer) < 2:
+                return {0: np.atleast_1d(initial_value)}
+            return {0: self._interpolate(time_buffer, value_buffer, target_time, initial_value)}
+
         # Get current input
         current_input = np.atleast_1d(inputs.get(0, initial_value))
-        
+
         # Add current time and value to buffer
         time_buffer.append(float(time))
         value_buffer.append(current_input.copy())
-        
-        # Target time for output (current time minus delay)
-        target_time = float(time) - delay_time
-        
+
         # If target time is before simulation start, return initial value
         if target_time < 0 or len(time_buffer) < 2:
             output = np.atleast_1d(initial_value)
         else:
             # Find interpolation points
             output = self._interpolate(time_buffer, value_buffer, target_time, initial_value)
-        
+
         # Prune old buffer entries (keep only what's needed for delay)
         # Keep a margin of 2x delay time for safety
         prune_time = float(time) - 2.0 * delay_time

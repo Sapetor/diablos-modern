@@ -77,8 +77,10 @@ class TestFieldScope2D:
         history = params['_field_history_2d_']
 
         # With sample_interval=3, we get snapshots at frames 3, 6, 9 (0-indexed)
-        # Actually the counter increments first, so: frames 2, 5, 8 stored
-        assert len(history) == 3, f"Should have 3 snapshots with interval=3, got {len(history)}"
+        # Frames are stored when frame_index % 3 == 0, i.e. frames 0, 3, 6, 9 --
+        # the t=0 frame is always captured (matching the engine replay path,
+        # simulation_engine "if i % sample_interval == 0"). That is 4 of 10 frames.
+        assert len(history) == 4, f"Should have 4 snapshots with interval=3, got {len(history)}"
 
     def test_field_scope_2d_preserves_shape(self):
         """Test FieldScope2D preserves field shape correctly."""

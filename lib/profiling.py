@@ -129,8 +129,15 @@ def profile_block(func):
             start = time.perf_counter()
             result = func(*args, **kwargs)
             elapsed = time.perf_counter() - start
-            # Try to get block name from kwargs or args
-            block_name = kwargs.get('block_name', 'unknown')
+            # Resolve the block name. Per the block contract execute() is
+            # generally called positionally, so an explicit block_name kwarg
+            # is rarely present; fall back to the bound instance's
+            # block_name attribute (or its class name) before 'unknown'.
+            block_name = kwargs.get('block_name')
+            if block_name is None and args:
+                block_name = getattr(args[0], 'block_name', type(args[0]).__name__)
+            if block_name is None:
+                block_name = 'unknown'
             profiler.record_block(block_name, elapsed)
             return result
         return func(*args, **kwargs)

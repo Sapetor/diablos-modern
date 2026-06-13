@@ -557,10 +557,10 @@ class ModernToolBar(QToolBar):
     def set_status(self, message: str):
         """Compatibility shim — also drives the status pill color."""
         m = (message or "").lower()
-        if 'run' in m or 'simulat' in m and 'pause' not in m:
-            self.status_pill.set_state('running')
-        elif 'paus' in m:
+        if 'paus' in m:
             self.status_pill.set_state('paused')
+        elif 'run' in m or 'simulat' in m:
+            self.status_pill.set_state('running')
         elif 'error' in m or 'fail' in m:
             self.status_pill.set_state('error')
         else:

@@ -18,9 +18,9 @@ class RootLocusBlock(BaseBlock):
 
     @property
     def params(self):
-        return {
-            "_init_start_": {"default": True, "type": "bool"},
-        }
+        # Stateless analysis block: execute() is a no-op, so no persistent
+        # per-step state (and hence no _init_start_ flag) is required.
+        return {}
 
     @property
     def doc(self):

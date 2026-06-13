@@ -175,6 +175,7 @@ class CostFunctionBlock(BaseBlock):
             return {0: params.get('_accumulated_cost_', 0.0), 'E': False}
 
         accumulated = params.get('_accumulated_cost_', 0.0)
+        prev_time = params.get('_prev_time_', 0.0)
 
         if cost_type.upper() == 'ISE':
             # Integral Squared Error
@@ -239,9 +240,11 @@ class CostFunctionBlock(BaseBlock):
         # Apply weight
         weighted_cost = accumulated * weight
 
-        # Debug logging
-        if time < 1.1 or int(time * 10) % 10 == 0:  # Log at start and every second
-            logger.info(f"CostFunction: t={time:.2f}, signal={signal:.4f}, error={error:.4f}, cost={weighted_cost:.4f}")
+        # Debug logging: emit only when crossing an integer-second boundary
+        # (uses prev_time captured before the update above). Kept at DEBUG so it
+        # stays silent during optimization loops that re-run the whole simulation.
+        if logger.isEnabledFor(logging.DEBUG) and int(time) != int(prev_time):
+            logger.debug(f"CostFunction: t={time:.2f}, signal={signal:.4f}, error={error:.4f}, cost={weighted_cost:.4f}")
 
         return {0: weighted_cost, 'E': False}
 

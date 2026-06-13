@@ -76,7 +76,7 @@ class StateSpaceBlock(StateSpaceBaseBlock):
             A, B, C, D, n, m, p = result
 
             # Discretize continuous system
-            dtime = params['dtime']
+            dtime = kwargs.get('dtime', params.get('dtime', 0.01))
             try:
                 Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime, method='zoh')
             except Exception as e:

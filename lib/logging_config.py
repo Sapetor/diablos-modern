@@ -34,9 +34,16 @@ def setup_logging(config_path: Optional[str] = None) -> None:
                     handler['filename'] = _get_log_file_path(fn)
             logging.config.dictConfig(config)
             return
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
+        except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:
             print(f"Warning: Failed to load logging config from {config_path}: {e}")
             print("Falling back to default logging configuration.")
+            # Fallback to basic configuration, then re-log the original error.
+            _setup_default_logging()
+            logging.getLogger(__name__).warning(
+                "Failed to load logging config from %s: %s; using default logging configuration.",
+                config_path, e
+            )
+            return
 
     # Fallback to basic configuration
     _setup_default_logging()

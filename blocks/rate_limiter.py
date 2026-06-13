@@ -66,7 +66,7 @@ class RateLimiterBlock(BaseBlock):
             held = params.get('_prev', np.atleast_1d(0.0))
             return {0: np.atleast_1d(held)}
 
-        dt = float(params.get("dtime", 0.01))
+        dt = float(kwargs.get("dtime", params.get("dtime", 0.01)))
         u = get_vector(inputs, 0)
 
         init_mgr = InitStateManager(params)

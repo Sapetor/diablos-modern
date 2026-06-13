@@ -11,6 +11,7 @@ from PyQt5.QtGui import QPainter, QPen, QColor
 import sys
 import os
 import copy
+import types
 
 # Add project root to path (idempotent check)
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -77,7 +78,6 @@ class ModernCanvas(QWidget):
         # (clipboard_manager / history_manager) — the single source of truth.
 
         # Initialize helpers
-        self.performance = PerformanceHelper()
         self.validator = ValidationHelper()
         self.safety = SafetyChecks()
 
@@ -171,14 +171,20 @@ class ModernCanvas(QWidget):
 
                     logger.info(f"Successfully added {block_name}")
 
-                    # Capture state for undo
-                    self._push_undo("Add Block")
+                    # The block now exists in dsim. Keep the return value
+                    # consistent with dsim state even if a post-add step
+                    # (undo capture, signal emit, repaint) raises.
+                    try:
+                        # Capture state for undo
+                        self._push_undo("Add Block")
 
-                    # Emit signal
-                    self.block_selected.emit(new_block)
+                        # Emit signal
+                        self.block_selected.emit(new_block)
 
-                    # Trigger repaint
-                    self.update()
+                        # Trigger repaint
+                        self.update()
+                    except Exception as e:
+                        logger.error(f"Post-add step failed for {block_name}: {str(e)}")
 
                     return new_block
                 else:
@@ -282,8 +288,10 @@ class ModernCanvas(QWidget):
                     self.connection_renderer.draw_port_value_chips(
                         painter, getattr(self.dsim, 'blocks_list', []) or []
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Non-critical live overlay: log at debug so a genuine
+                    # chip-render bug is diagnosable without spamming each frame.
+                    logger.debug(f"Port-value chip render failed: {e}")
 
             painter.end()
             paint_duration = self.perf_helper.end_timer("canvas_paint")
@@ -328,6 +336,9 @@ class ModernCanvas(QWidget):
             if affected:
                 route_all_lines(affected, self.dsim.blocks_list)
                 self.dsim.dirty = True
+                # Request a repaint so rerouted wires show immediately, even if
+                # the caller's interaction flow doesn't trigger update().
+                self.update()
         except Exception as e:
             logger.error(f"Reroute after move failed: {e}")
 
@@ -614,8 +625,10 @@ class ModernCanvas(QWidget):
         try:
             world = self.screen_to_world(event.pos())
             self.cursor_moved.emit(world.x(), world.y())
-        except Exception:
-            pass
+        except Exception as e:
+            # Status-bar cursor readout only; log at debug so a broken
+            # coordinate transform stays observable without disrupting moves.
+            logger.debug(f"Cursor coordinate emit failed: {e}")
         # Delegate to InteractionManager
         self.interaction_manager.handle_mouse_move(event)
 
@@ -796,53 +809,63 @@ class ModernCanvas(QWidget):
             if not clipboard_blocks:
                 return
 
-            # Push undo state before pasting
+            # Push undo state before pasting (snapshot must be the pre-paste
+            # state). If nothing is actually created we roll this back below so
+            # the user doesn't get a no-op 'Paste' entry on the undo stack.
             self._push_undo("Paste")
 
             # Calculate offset from first block's position to paste position
-            if clipboard_blocks:
-                first_block_coords = clipboard_blocks[0]['coords']
-                offset_x = pos.x() - first_block_coords.x()
-                offset_y = pos.y() - first_block_coords.y()
+            first_block_coords = clipboard_blocks[0]['coords']
+            offset_x = pos.x() - first_block_coords.x()
+            offset_y = pos.y() - first_block_coords.y()
 
-                self._clear_selections()
-                for block_data in clipboard_blocks:
-                    # Calculate new position (center of block)
-                    new_position = QPoint(
-                        block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
-                        block_data['coords'].y() + block_data['coords'].height() // 2 + offset_y
-                    )
+            self._clear_selections()
+            created_count = 0
+            for block_data in clipboard_blocks:
+                # Calculate new position (center of block)
+                new_position = QPoint(
+                    block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
+                    block_data['coords'].y() + block_data['coords'].height() // 2 + offset_y
+                )
 
-                    # Create MenuBlocks object from clipboard data
-                    io_params = {
-                        'inputs': block_data['in_ports'],
-                        'outputs': block_data['out_ports'],
-                        'b_type': block_data['b_type'],
-                        'io_edit': block_data['io_edit']
-                    }
+                # Create MenuBlocks object from clipboard data
+                io_params = {
+                    'inputs': block_data['in_ports'],
+                    'outputs': block_data['out_ports'],
+                    'b_type': block_data['b_type'],
+                    'io_edit': block_data['io_edit']
+                }
 
-                    menu_block = MenuBlocks(
-                        block_fn=block_data['block_fn'],
-                        fn_name=block_data['fn_name'],
-                        io_params=io_params,
-                        ex_params=block_data['params'],
-                        b_color=block_data['color'],
-                        coords=(block_data['coords'].width(), block_data['coords'].height()),
-                        external=block_data['external'],
-                        block_class=block_data.get('block_class', None)
-                    )
-                    # Preserve category so add_block resolves the correct
-                    # theme color (otherwise it defaults to 'Other' -> grey).
-                    menu_block.category = block_data.get('category', 'Other')
+                menu_block = MenuBlocks(
+                    block_fn=block_data['block_fn'],
+                    fn_name=block_data['fn_name'],
+                    io_params=io_params,
+                    ex_params=block_data['params'],
+                    b_color=block_data['color'],
+                    coords=(block_data['coords'].width(), block_data['coords'].height()),
+                    external=block_data['external'],
+                    block_class=block_data.get('block_class', None)
+                )
+                # Preserve category so add_block resolves the correct
+                # theme color (otherwise it defaults to 'Other' -> grey).
+                menu_block.category = block_data.get('category', 'Other')
 
-                    # Use add_block with the MenuBlocks object
-                    new_block = self.dsim.add_block(menu_block, new_position)
+                # Use add_block with the MenuBlocks object
+                new_block = self.dsim.add_block(menu_block, new_position)
 
-                    if new_block:
-                        new_block.selected = True
+                if new_block:
+                    new_block.selected = True
+                    created_count += 1
 
-                logger.info(f"Pasted {len(clipboard_blocks)} blocks")
+            if created_count:
+                logger.info(f"Pasted {created_count} blocks")
                 self.update()
+            else:
+                # Nothing was created: drop the no-op 'Paste' undo entry so the
+                # user isn't forced to undo twice for no visible change.
+                if self.history_manager.undo_stack:
+                    self.history_manager.undo_stack.pop()
+                logger.warning("Paste produced no new blocks; skipped undo entry")
 
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
@@ -1084,22 +1107,14 @@ class ModernCanvas(QWidget):
             if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
                 validation_errors.append("RootLocus block can only be connected to a Transfer Function.")
 
-            # Check if connection already exists
+            # Check if the destination input port is already connected.
+            # An exact-duplicate connection (same src+srcport+dst+dstport) is a
+            # strict subset of this case, so a single pass over the destination
+            # port covers both without emitting two overlapping messages.
             existing_lines = getattr(self.dsim, 'line_list', [])
-            for line in existing_lines:
-                if (hasattr(line, 'srcblock') and hasattr(line, 'dstblock') and
-                    hasattr(line, 'srcport') and hasattr(line, 'dstport')):
-                    start_name = getattr(start_block, 'name', '')
-                    end_name = getattr(end_block, 'name', '')
-                    if (line.srcblock == start_name and line.srcport == start_port and
-                        line.dstblock == end_name and line.dstport == end_port):
-                        validation_errors.append("Connection already exists")
-                        break
-
-            # Check if input port is already connected
+            end_name = getattr(end_block, 'name', '')
             for line in existing_lines:
                 if (hasattr(line, 'dstblock') and hasattr(line, 'dstport')):
-                    end_name = getattr(end_block, 'name', '')
                     if line.dstblock == end_name and line.dstport == end_port:
                         validation_errors.append("Input port already connected")
                         break
@@ -1111,12 +1126,12 @@ class ModernCanvas(QWidget):
                 # Create a temporary line list for validation
                 temp_lines = list(all_lines)
                 # Add our proposed connection for validation
-                temp_line = type('TempLine', (), {
-                    'srcblock': getattr(start_block, 'name', ''),
-                    'srcport': start_port,
-                    'dstblock': getattr(end_block, 'name', ''),
-                    'dstport': end_port
-                })()
+                temp_line = types.SimpleNamespace(
+                    srcblock=getattr(start_block, 'name', ''),
+                    srcport=start_port,
+                    dstblock=getattr(end_block, 'name', ''),
+                    dstport=end_port
+                )
                 temp_lines.append(temp_line)
 
                 is_valid, helper_errors = ValidationHelper.validate_block_connections(
@@ -1124,8 +1139,15 @@ class ModernCanvas(QWidget):
                 )
                 if not is_valid:
                     validation_errors.extend(helper_errors)
+            except AttributeError as e:
+                # Helper genuinely unavailable (method missing) — expected on
+                # builds without the extended validator; keep it quiet.
+                logger.debug(f"ValidationHelper not available: {str(e)}")
             except Exception as e:
-                logger.debug(f"ValidationHelper not available or failed: {str(e)}")
+                # The helper exists but raised while validating: that's a real
+                # bug in the validator, not an absent feature. Surface it so a
+                # broken validator isn't mistaken for a passing connection.
+                logger.warning(f"ValidationHelper execution failed: {str(e)}")
 
 
             return len(validation_errors) == 0, validation_errors

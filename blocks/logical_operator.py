@@ -44,6 +44,8 @@ class LogicalOperatorBlock(BaseBlock):
             "\n\nUsage:"
             "\nGate events, combine threshold detectors, build switching logic."
             "\nNOT uses only the first input."
+            "\nXOR over more than two inputs is cascaded (odd-parity): the"
+            "\noutput is True when an odd number of inputs are True."
         )
 
     @property

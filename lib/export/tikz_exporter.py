@@ -8,10 +8,27 @@ conventions: Sum=circle, Gain=triangle, TF=rectangle with fraction.
 import math
 import re
 import logging
-from collections import Counter
+from collections import Counter, deque
 from typing import Dict, List, Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _all_finite_numbers(coeffs) -> bool:
+    """Return True if *coeffs* is a sequence of real, finite numbers.
+
+    Used to guard _poly_to_latex against user-editable params that may
+    contain strings or non-finite values, which would otherwise raise
+    mid-export.
+    """
+    if not isinstance(coeffs, (list, tuple)) or not coeffs:
+        return False
+    for c in coeffs:
+        if isinstance(c, bool) or not isinstance(c, (int, float)):
+            return False
+        if not math.isfinite(c):
+            return False
+    return True
 
 
 def _poly_to_latex(coeffs, var='s'):
@@ -162,7 +179,7 @@ class TikZExporter:
 
         # Filter blocks
         blocks = list(self.blocks)
-        if not opts['include_sinks']:
+        if not opts.get('include_sinks', True):
             blocks = [b for b in blocks if b.category != 'Sinks']
 
         if not blocks:
@@ -194,7 +211,7 @@ class TikZExporter:
         # Filter connections before drawing so feedback depths
         # can be pre-computed
         visible_lines = [ln for ln in self.lines if not ln.hidden]
-        if not opts['include_sinks']:
+        if not opts.get('include_sinks', True):
             sink_names = {b.name for b in self.blocks if b.category == 'Sinks'}
             sink_usernames = {b.username for b in self.blocks if b.category == 'Sinks'}
             visible_lines = [
@@ -335,10 +352,10 @@ class TikZExporter:
         # BFS to establish topological order
         visited = set()
         order = []
-        queue = list(roots)
+        queue = deque(roots)
 
         while queue:
-            name = queue.pop(0)
+            name = queue.popleft()
             if name in visited:
                 continue
             visited.add(name)
@@ -576,7 +593,7 @@ class TikZExporter:
                 return f'${_name_to_math(uname)}$'
             if show_values:
                 gain = block.params.get('gain', 1.0)
-                if isinstance(gain, (int, float)):
+                if isinstance(gain, (int, float)) and math.isfinite(gain):
                     return f'${gain:.4g}$' if gain != int(gain) else f'${int(gain)}$'
                 return '$K$'
             sym = self._gain_symbols.get(block.name, 'K')
@@ -586,7 +603,7 @@ class TikZExporter:
             if show_values:
                 num = block.params.get('numerator', [1.0])
                 den = block.params.get('denominator', [1.0, 1.0])
-                if isinstance(num, (list, tuple)) and isinstance(den, (list, tuple)):
+                if _all_finite_numbers(num) and _all_finite_numbers(den):
                     num_tex = _poly_to_latex(num)
                     den_tex = _poly_to_latex(den)
                     return f'$\\dfrac{{{num_tex}}}{{{den_tex}}}$'
@@ -609,7 +626,7 @@ class TikZExporter:
             if show_values:
                 num = block.params.get('numerator', [1.0])
                 den = block.params.get('denominator', [1.0, 1.0])
-                if isinstance(num, (list, tuple)) and isinstance(den, (list, tuple)):
+                if _all_finite_numbers(num) and _all_finite_numbers(den):
                     num_tex = _poly_to_latex(num, var='z')
                     den_tex = _poly_to_latex(den, var='z')
                     return f'$\\dfrac{{{num_tex}}}{{{den_tex}}}$'
@@ -622,10 +639,16 @@ class TikZExporter:
         if fn in ('Step', 'Constant'):
             if show_values and fn == 'Step':
                 val = block.params.get('value', 1.0)
-                return f'Step({val})'
+                if isinstance(val, (int, float)) and math.isfinite(val):
+                    val_str = f'{val:.4g}' if val != int(val) else f'{int(val)}'
+                    return f'Step({val_str})'
+                return f'Step({_escape_latex(str(val))})'
             if show_values and fn == 'Constant':
                 val = block.params.get('value', 0.0)
-                return f'${val}$'
+                if isinstance(val, (int, float)) and math.isfinite(val):
+                    val_str = f'{val:.4g}' if val != int(val) else f'{int(val)}'
+                    return f'${val_str}$'
+                return f'$\\text{{{_escape_latex(str(val))}}}$'
             return fn
 
         if block.category == 'Sources':
@@ -792,11 +815,16 @@ class TikZExporter:
 
     @staticmethod
     def _format_explicit_label(label):
-        """Format an explicit line label, preserving LaTeX math mode."""
+        """Format an explicit line label, preserving LaTeX math mode.
+
+        Only labels fully wrapped in ``$...$`` are passed through verbatim
+        (the user explicitly opted into math mode). Everything else is
+        escaped so that user-supplied text containing backslashes, braces,
+        or other special characters cannot inject raw LaTeX into the
+        generated (and later compiled) .tex output.
+        """
         label = label.strip()
-        if label.startswith('$') and label.endswith('$'):
-            return label
-        if '\\' in label:
+        if len(label) >= 2 and label.startswith('$') and label.endswith('$'):
             return label
         return _escape_latex(label)
 

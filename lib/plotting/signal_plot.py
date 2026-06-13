@@ -117,6 +117,20 @@ class SignalPlot(QWidget):
 
         self.resize(500, 400)
 
+    def closeEvent(self, event):
+        """Disconnect from the long-lived theme_manager singleton on close.
+
+        theme_manager is a module-level singleton that retains a bound-method
+        reference to this widget via the theme_changed connection. Without
+        disconnecting, the widget cannot be garbage-collected and a later theme
+        change would invoke _apply_theme on a deleted C++ QWidget (RuntimeError).
+        """
+        try:
+            theme_manager.theme_changed.disconnect(self._apply_theme)
+        except (TypeError, RuntimeError):
+            pass
+        super().closeEvent(event)
+
     # Curve palette: saturated colors with good contrast on both dark and light
     _CURVE_COLORS_DARK = [
         '#60A5FA',  # blue
@@ -241,43 +255,40 @@ class SignalPlot(QWidget):
             modes = modes[:count]
         return modes
 
-    def plot_config(self, settings_dict={}):
-        return
-
     def loop(self, new_t, new_y):
         """Updates the time and scope vectors and plot them."""
         try:
-             self.timeline = new_t
-             self.data_vectors = new_y
- 
-             for i, curve in enumerate(self.curves):
-                 if i < len(new_y):
-                     # Flatten data if it's (N, 1)
-                     y_data = new_y[i]
-                     if hasattr(y_data, 'ndim') and y_data.ndim > 1 and y_data.shape[1] == 1:
-                         y_data = y_data.flatten()
+            self.timeline = new_t
+            self.data_vectors = new_y
 
-                     step_mode = self.curve_step_modes[i] if i < len(self.curve_step_modes) else False
-                     if step_mode:
-                         # For stepMode=True, x must be len(y) + 1
-                         if len(new_t) == len(y_data):
-                             t_step = np.append(new_t, new_t[-1] + self.dt)
-                         elif len(new_t) > len(y_data):
-                             t_step = new_t[:len(y_data) + 1]
-                         else:
-                             t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t) + 1))
-                         curve.setData(t_step, y_data)
-                     else:
-                         # For normal plotting, x and y must have same length
-                         if len(new_t) == len(y_data):
-                             t_step = new_t
-                         elif len(new_t) > len(y_data):
-                             t_step = new_t[:len(y_data)]
-                         else:
-                             t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t)))
-                         curve.setData(t_step, y_data)
+            for i, curve in enumerate(self.curves):
+                if i < len(new_y):
+                    # Flatten data if it's (N, 1)
+                    y_data = new_y[i]
+                    if hasattr(y_data, 'ndim') and y_data.ndim > 1 and y_data.shape[1] == 1:
+                        y_data = y_data.flatten()
+
+                    step_mode = self.curve_step_modes[i] if i < len(self.curve_step_modes) else False
+                    if step_mode:
+                        # For stepMode=True, x must be len(y) + 1
+                        if len(new_t) == len(y_data):
+                            t_step = np.append(new_t, new_t[-1] + self.dt)
+                        elif len(new_t) > len(y_data):
+                            t_step = new_t[:len(y_data) + 1]
+                        else:
+                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t) + 1))
+                        curve.setData(t_step, y_data)
+                    else:
+                        # For normal plotting, x and y must have same length
+                        if len(new_t) == len(y_data):
+                            t_step = new_t
+                        elif len(new_t) > len(y_data):
+                            t_step = new_t[:len(y_data)]
+                        else:
+                            t_step = np.append(new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t)))
+                        curve.setData(t_step, y_data)
         except Exception as e:
-             logger.error(f"Error updating plot: {e}")
+            logger.error(f"Error updating plot: {e}")
 
     def export_to_csv(self):
         """Export plot data to CSV file with user selection of which scopes to include."""

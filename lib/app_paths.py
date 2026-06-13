@@ -52,5 +52,7 @@ def get_user_data_dir() -> str:
 def user_data_path(relative_path: str) -> str:
     """Resolve a path to a writable user data file."""
     full = os.path.join(get_user_data_dir(), relative_path)
-    os.makedirs(os.path.dirname(full), exist_ok=True)
+    parent = os.path.dirname(full)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     return full

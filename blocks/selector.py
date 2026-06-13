@@ -109,7 +109,13 @@ class SelectorBlock(BaseBlock):
                 parts = part.split(':')
                 start = int(parts[0]) if parts[0] else 0
                 end = int(parts[1]) if parts[1] else max_len
-                indices.extend(range(start, min(end, max_len)))
+                # Normalize negative bounds like the single-index path
+                if start < 0:
+                    start = max_len + start
+                if end < 0:
+                    end = max_len + end
+                # Filter to valid in-range indices (mirrors single-index validation)
+                indices.extend(v for v in range(start, end) if 0 <= v < max_len)
             else:
                 # Single index
                 idx = int(part)

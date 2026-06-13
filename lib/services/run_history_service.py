@@ -21,7 +21,7 @@ class RunHistoryService:
         try:
             if not self.persist_path.exists():
                 return
-            with open(self.persist_path, "r") as f:
+            with open(self.persist_path, "r", encoding="utf-8") as f:
                 payload = json.load(f)
             
             self.persist_enabled = bool(payload.get("persist", False))
@@ -83,7 +83,7 @@ class RunHistoryService:
                 "persist": self.persist_enabled,
                 "runs": serializable_runs
             }
-            with open(self.persist_path, "w") as f:
+            with open(self.persist_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f)
             logger.debug("Run history saved.")
         except Exception as e:
@@ -97,8 +97,8 @@ class RunHistoryService:
             try:
                 if self.persist_path.exists():
                     self.persist_path.unlink()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Could not remove run history file: {e}")
         else:
             self.save_history()
 
@@ -117,11 +117,21 @@ class RunHistoryService:
         
         if run_name is None:
             run_name = f"Run {datetime.datetime.now().strftime('%H:%M:%S')}"
-            
+
+        # Defensively copy caller-owned buffers so later runs that reuse/mutate
+        # the same timeline/trace arrays cannot corrupt previously recorded history.
+        timeline_copy = np.array(timeline)
+        traces_copy = []
+        for tr in (traces or []):
+            tr_copy = dict(tr)
+            if "y" in tr_copy:
+                tr_copy["y"] = np.array(tr_copy["y"])
+            traces_copy.append(tr_copy)
+
         run_entry = {
             "name": run_name,
-            "timeline": timeline,
-            "traces": traces,
+            "timeline": timeline_copy,
+            "traces": traces_copy,
             "sim_dt": sim_dt,
             "sim_time": sim_time,
             "pinned": False,

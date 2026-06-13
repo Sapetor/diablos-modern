@@ -11,7 +11,7 @@ import logging
 import sys
 
 from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QWidget
 
 from lib.improvements import SafetyChecks, ValidationHelper
 
@@ -66,8 +66,11 @@ class SimulationController(QObject):
                     error_msg = self.dsim.error_msg if hasattr(self.dsim, 'error_msg') and self.dsim.error_msg else "Initialization failed (see logs)."
                     logger.error(f"Simulation initialization failed. {error_msg}")
                     self.status_changed.emit(f"Simulation failed to start. {error_msg}")
-                    # Also pop up a message box
-                    msgBox = QMessageBox()
+                    # Also pop up a message box, parented to the owning widget so
+                    # it stays attached to / centered on the main window and
+                    # inherits the application theme.
+                    parent_widget = self.parent() if isinstance(self.parent(), QWidget) else None
+                    msgBox = QMessageBox(parent_widget)
                     msgBox.setIcon(QMessageBox.Critical)
                     msgBox.setText("Simulation Failed to Start")
                     msgBox.setInformativeText(error_msg)
@@ -76,7 +79,7 @@ class SimulationController(QObject):
                     msgBox.exec_()
                     return False
             else:
-                logger.error("DSim does not have execution_initialize method")
+                logger.error("DSim does not have execution_init method")
                 self.status_changed.emit("Simulation start failed")
                 return False
 
@@ -220,22 +223,23 @@ class SimulationController(QObject):
                 # Scope convergence verification
                 if scope_convergence:
                     print("\n📈 Signal Convergence:", flush=True)
+
+                    def format_val(v):
+                        if v is None:
+                            return "N/A"
+                        v = np.atleast_1d(v)
+                        if len(v) == 1:
+                            return f"{float(v[0]):.6g}"
+                        elif len(v) <= 3:
+                            return np.array2string(v, precision=4, suppress_small=True)
+                        else:
+                            return f"[{v[0]:.4g}, {v[1]:.4g}, ...]"
+
                     for name, info in scope_convergence.items():
                         first = info['first']
                         last = info['last']
                         samples = info['samples']
                         data = info['data']
-
-                        def format_val(v):
-                            if v is None:
-                                return "N/A"
-                            v = np.atleast_1d(v)
-                            if len(v) == 1:
-                                return f"{float(v[0]):.6g}"
-                            elif len(v) <= 3:
-                                return np.array2string(v, precision=4, suppress_small=True)
-                            else:
-                                return f"[{v[0]:.4g}, {v[1]:.4g}, ...]"
 
                         # Check convergence criteria
                         first_norm = np.linalg.norm(np.atleast_1d(first))

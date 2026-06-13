@@ -181,8 +181,8 @@ class RateTransitionBlock(BaseBlock):
         # Check if it's time to produce output
         at_output_time = time >= params['_next_output_time_'] - 1e-9
 
-        if not output_only:
-            # Store sample in buffer for averaging/filtering
+        if not output_only and mode == 'Average':
+            # Store sample in buffer for averaging (only Average mode consumes it)
             params['_sample_buffer_'].append((time, val))
             # Limit buffer size
             if len(params['_sample_buffer_']) > 100:

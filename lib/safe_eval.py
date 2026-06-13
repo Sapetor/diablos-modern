@@ -6,6 +6,7 @@ strict whitelist of allowed node types. No eval(), no exec() anywhere.
 """
 
 import ast
+import logging
 import math
 import types
 from typing import Any, Dict, Optional
@@ -15,6 +16,8 @@ try:
     _HAS_NUMPY = True
 except ImportError:
     _HAS_NUMPY = False
+
+_logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Public exception
@@ -30,10 +33,102 @@ class SafeEvalError(ValueError):
 
 _MAX_LEN = 4096
 
+# Maximum number of elements an allocating numpy constructor may produce.
+# Guards against memory-exhaustion DoS via user-controlled parameter strings
+# (e.g. np.zeros(10**9) or np.ones((100000, 100000))), which would otherwise
+# bypass the Pow exponent cap since the large value is a Call argument.
+_MAX_ALLOC_ELEMENTS = 10_000_000
+
+
+def _shape_element_count(shape: Any) -> Optional[int]:
+    """
+    Return the total element count implied by a numpy ``shape`` argument
+    (an int or a tuple/list of ints), or None if it can't be determined.
+    """
+    try:
+        if isinstance(shape, (int, np.integer)) and not isinstance(shape, bool):
+            return int(shape)
+        if isinstance(shape, (tuple, list)):
+            total = 1
+            for dim in shape:
+                if not isinstance(dim, (int, np.integer)) or isinstance(dim, bool):
+                    return None
+                total *= int(dim)
+            return total
+    except Exception:
+        return None
+    return None
+
+
+def _guard_alloc(count: Optional[int]) -> None:
+    """Raise SafeEvalError if a requested element count exceeds the cap."""
+    if count is not None and count > _MAX_ALLOC_ELEMENTS:
+        raise SafeEvalError(
+            f"Array of {count} elements exceeds the maximum allowed size "
+            f"({_MAX_ALLOC_ELEMENTS}) to prevent memory exhaustion"
+        )
+
+
 def _make_np_namespace() -> types.SimpleNamespace:
     """Build a frozen namespace with only the allowed numpy names."""
     if not _HAS_NUMPY:
         return types.SimpleNamespace()
+
+    # Bounded wrappers around allocating constructors. They accept the same
+    # positional signatures numpy exposes (safe_eval forbids keyword args), and
+    # raise SafeEvalError before delegating if the request is too large.
+    def _bounded_shape_ctor(fn):
+        def wrapper(shape, *rest):
+            _guard_alloc(_shape_element_count(shape))
+            return fn(shape, *rest)
+        return wrapper
+
+    def _bounded_eye(N, *rest):
+        M = rest[0] if rest else N
+        count = None
+        if (isinstance(N, (int, np.integer)) and not isinstance(N, bool)
+                and (M is None
+                     or (isinstance(M, (int, np.integer)) and not isinstance(M, bool)))):
+            count = int(N) * (int(N) if M is None else int(M))
+        _guard_alloc(count)
+        return np.eye(N, *rest)
+
+    def _bounded_identity(n, *rest):
+        count = None
+        if isinstance(n, (int, np.integer)) and not isinstance(n, bool):
+            count = int(n) * int(n)
+        _guard_alloc(count)
+        return np.identity(n, *rest)
+
+    def _bounded_arange(*args):
+        # arange([start,] stop[, step])
+        count = None
+        try:
+            if len(args) == 1:
+                start, stop, step = 0, args[0], 1
+            elif len(args) == 2:
+                start, stop, step = args[0], args[1], 1
+            elif len(args) >= 3:
+                start, stop, step = args[0], args[1], args[2]
+            else:
+                start = stop = step = None
+            if step not in (None, 0) and all(
+                isinstance(v, (int, float, np.integer, np.floating))
+                for v in (start, stop, step)
+            ):
+                count = max(int(math.ceil((float(stop) - float(start)) / float(step))), 0)
+        except (TypeError, ValueError, ZeroDivisionError, OverflowError):
+            count = None
+        # Guard outside the try so SafeEvalError (a ValueError subclass) is not
+        # swallowed by the except clause above.
+        _guard_alloc(count)
+        return np.arange(*args)
+
+    def _bounded_linspace(start, stop, *rest):
+        num = rest[0] if rest else 50
+        if isinstance(num, (int, np.integer)) and not isinstance(num, bool):
+            _guard_alloc(int(num))
+        return np.linspace(start, stop, *rest)
 
     _np_names = {
         # Constants
@@ -63,12 +158,15 @@ def _make_np_namespace() -> types.SimpleNamespace:
         "std": np.std, "var": np.var,
         "dot": np.dot, "cross": np.cross,
         "where": np.where, "clip": np.clip, "hypot": np.hypot,
-        # Array constructors
+        # Array constructors (allocating ones wrapped to cap element count)
         "array": np.array, "asarray": np.asarray,
         "atleast_1d": np.atleast_1d, "atleast_2d": np.atleast_2d,
-        "zeros": np.zeros, "ones": np.ones, "eye": np.eye,
-        "identity": np.identity, "full": np.full,
-        "linspace": np.linspace, "arange": np.arange,
+        "zeros": _bounded_shape_ctor(np.zeros),
+        "ones": _bounded_shape_ctor(np.ones),
+        "eye": _bounded_eye,
+        "identity": _bounded_identity,
+        "full": _bounded_shape_ctor(np.full),
+        "linspace": _bounded_linspace, "arange": _bounded_arange,
         "diag": np.diag, "vstack": np.vstack, "hstack": np.hstack,
         "concatenate": np.concatenate, "reshape": np.reshape,
         "transpose": np.transpose,
@@ -371,6 +469,11 @@ class _Walker:
         except (ZeroDivisionError, OverflowError, ValueError) as exc:
             raise SafeEvalError(str(exc)) from exc
         except Exception as exc:
+            # An unexpected error from an allowlisted callable may be a genuine
+            # defect rather than user-input error. Log it before reclassifying
+            # as a SafeEvalError so it isn't silently masked.
+            _logger.debug("Unexpected error calling %r in safe_eval: %s",
+                          getattr(callee, "__name__", callee), exc, exc_info=True)
             raise SafeEvalError(f"Call error: {exc}") from exc
 
     # --- Subscript ---------------------------------------------------------
@@ -505,6 +608,23 @@ def compile_expr(s: str, allow_numpy: bool = True) -> CompiledExpr:
     return CompiledExpr(tree, allow_numpy)
 
 
+# Marker/structural node base classes that _Walker.visit never receives
+# directly (operators are dispatched via type(node.op) lookups, contexts are
+# read off Name/Subscript nodes, etc.). These must be skipped when checking
+# for a corresponding _visit_<name> handler.
+_NON_VISITED_NODE_BASES = (
+    ast.expr_context,   # Load / Store / Del
+    ast.operator,       # Add / Sub / Mult / ...
+    ast.unaryop,        # UAdd / USub / Not / Invert
+    ast.boolop,         # And / Or
+    ast.cmpop,          # Eq / Lt / ...
+    ast.comprehension,  # only inside (already-forbidden) comprehensions
+    ast.arguments,
+    ast.arg,
+    ast.keyword,        # Call keywords are rejected explicitly below
+)
+
+
 def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
     """
     Walk the AST for structural validity without resolving Name values.
@@ -514,6 +634,15 @@ def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
         name = type(node).__name__
         if name in _FORBIDDEN_NODE_NAMES:
             raise SafeEvalError(f"Forbidden AST node: {name}")
+
+        # Mirror _Walker.visit: any node that the walker would actually visit
+        # must have a _visit_<name> handler. Reject unsupported-but-not-forbidden
+        # nodes at compile time so compile_expr fully validates structure upfront
+        # (matching its docstring) instead of only failing at first __call__.
+        if (node is not tree
+                and not isinstance(node, _NON_VISITED_NODE_BASES)
+                and not hasattr(_Walker, f"_visit_{name}")):
+            raise SafeEvalError(f"Unsupported AST node: {name}")
 
         # Check Attribute nodes at compile time
         if isinstance(node, ast.Attribute):

@@ -186,7 +186,7 @@ class DiagramBuilder:
             
             # Destination: left edge of block, adjust for port
             dst_x = dst_b["coords_left"]
-            port_spacing = dst_b["coords_height"] // (dst_b["in_ports"] + 1)
+            port_spacing = max(1, dst_b["coords_height"] // (dst_b["in_ports"] + 1))
             dst_y = dst_b["coords_top"] + port_spacing * (dst_port + 1)
             
             points = [[src_x, src_y], [dst_x, dst_y]]

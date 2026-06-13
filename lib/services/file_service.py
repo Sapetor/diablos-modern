@@ -210,7 +210,10 @@ class FileService:
             if filepath:
                  file = filepath
             elif '_AUTOSAVE' not in self.filename:
-                file = f'saves/{self.filename[:-4]}_AUTOSAVE.dat'
+                # Strip the extension robustly: filename[:-4] assumed a 3-char
+                # extension (.dat) and mangled longer ones like .diablos.
+                stem = os.path.splitext(self.filename)[0]
+                file = f'saves/{stem}_AUTOSAVE.dat'
             else:
                 file = f'saves/{self.filename}'
             # In frozen mode, redirect saves/ to a writable location
@@ -258,6 +261,13 @@ class FileService:
             with open(filepath, 'r', encoding='utf-8') as fp:
                 data = json.load(fp)
 
+            if not self._is_valid_diagram_data(data):
+                logger.error(
+                    f"File {filepath} is not a valid DiaBloS diagram "
+                    f"(unexpected top-level structure)"
+                )
+                return None
+
             self.filename = os.path.basename(filepath)
             logger.info(f"LOADED FROM {filepath}")
             return data
@@ -265,6 +275,27 @@ class FileService:
         except Exception as e:
             logger.error(f"Error loading file {filepath}: {e}")
             return None
+
+    @staticmethod
+    def _is_valid_diagram_data(data: Any) -> bool:
+        """
+        Lightweight structural check for loaded diagram data.
+
+        Guards against malformed/hostile files producing crashes deep inside
+        reconstruction. We only assert the top-level shape here; individual
+        bad blocks/lines are skipped per-record during apply_loaded_data.
+        """
+        if not isinstance(data, dict):
+            return False
+        # blocks_data / lines_data are optional (empty diagram), but when
+        # present they must be lists so the reconstruction loops are safe.
+        for key in ('blocks_data', 'lines_data'):
+            if key in data and not isinstance(data[key], list):
+                return False
+        sim_data = data.get('sim_data')
+        if sim_data is not None and not isinstance(sim_data, dict):
+            return False
+        return True
 
     def apply_loaded_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -293,20 +324,31 @@ class FileService:
             'atol': sim_data.get('atol', 1e-12)
         }
 
-        # Recreate top-level blocks (recurses into Subsystems via _construct_block)
+        # Recreate top-level blocks (recurses into Subsystems via _construct_block).
+        # Each block is constructed defensively: a single malformed record
+        # (e.g. missing required keys) is skipped and logged rather than
+        # aborting the whole load and leaving the model half-cleared.
         blocks_data = data.get('blocks_data', [])
         for block_data in blocks_data:
-            block = self._construct_block(block_data)
+            try:
+                block = self._construct_block(block_data)
+            except Exception as e:
+                logger.warning(f"Skipping malformed block during load: {e}")
+                continue
             if block is not None:
                 self.model.blocks_list.append(block)
 
         # Build username→name and name→name maps for flexible line references
         block_name_map = self._build_name_map(self.model.blocks_list)
 
-        # Recreate top-level lines
+        # Recreate top-level lines (defensively, as with blocks)
         lines_data = data.get('lines_data', [])
         for line_data in lines_data:
-            line = self._construct_line(line_data, block_name_map)
+            try:
+                line = self._construct_line(line_data, block_name_map)
+            except Exception as e:
+                logger.warning(f"Skipping malformed line during load: {e}")
+                continue
             if line is not None:
                 self.model.line_list.append(line)
 
@@ -381,7 +423,8 @@ class FileService:
                 try:
                     block_instance = menu_block.block_class()
                     b_type = getattr(block_instance, 'b_type', block_data.get('b_type', 2))
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Failed to instantiate block_class for {block_fn}: {e}")
                     b_type = block_data.get('b_type', 2)
             else:
                 b_type = block_data.get('b_type', 2)
@@ -453,15 +496,24 @@ class FileService:
             for kind, mapping in ports_map_raw.items()
         }
 
-        # Recursively rebuild internal blocks and lines.
+        # Recursively rebuild internal blocks and lines. As with the top-level
+        # loops, skip and log a malformed child rather than aborting the load.
         for child_data in block_data.get('sub_blocks', []) or []:
-            child = self._construct_block(child_data)
+            try:
+                child = self._construct_block(child_data)
+            except Exception as e:
+                logger.warning(f"Skipping malformed sub-block during load: {e}")
+                continue
             if child is not None:
                 block.sub_blocks.append(child)
 
         sub_name_map = self._build_name_map(block.sub_blocks)
         for child_line_data in block_data.get('sub_lines', []) or []:
-            child_line = self._construct_line(child_line_data, sub_name_map)
+            try:
+                child_line = self._construct_line(child_line_data, sub_name_map)
+            except Exception as e:
+                logger.warning(f"Skipping malformed sub-line during load: {e}")
+                continue
             if child_line is not None:
                 block.sub_lines.append(child_line)
 
@@ -469,7 +521,11 @@ class FileService:
         try:
             block.update_Block()
         except Exception as e:
-            logger.warning(f"Subsystem update_Block failed after load: {e}")
+            logger.error(
+                f"Subsystem update_Block failed after load "
+                f"(name={getattr(block, 'name', '?')}, sid={sid}): {e}. "
+                f"Reloaded subsystem may have stale/empty port geometry."
+            )
         return block
 
     def _construct_port_block(self, block_fn, block_data, block_rect, params):

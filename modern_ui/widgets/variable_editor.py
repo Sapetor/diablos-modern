@@ -4,8 +4,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
                              QDockWidget, QFrame)
 from PyQt5.QtCore import pyqtSignal, QRegExp
 from PyQt5.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
+import ast
 import logging
 from lib.workspace import WorkspaceManager
+from lib.safe_eval import safe_expr, SafeEvalError
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
@@ -34,8 +36,8 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Strings (single and double quotes)
         string_format = QTextCharFormat()
         string_format.setForeground(QColor("#6A8759"))  # Green-ish
-        self.highlighting_rules.append((QRegExp(r'".*"'), string_format))
-        self.highlighting_rules.append((QRegExp(r"'.*'"), string_format))
+        self.highlighting_rules.append((QRegExp(r'"[^"]*"'), string_format))
+        self.highlighting_rules.append((QRegExp(r"'[^']*'"), string_format))
 
         # Comments
         comment_format = QTextCharFormat()
@@ -50,7 +52,9 @@ class PythonHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         for pattern, format in self.highlighting_rules:
-            expression = QRegExp(pattern)
+            # Reuse the precompiled QRegExp directly; indexIn does not mutate the
+            # pattern, so reconstructing it per call is unnecessary work.
+            expression = pattern
             index = expression.indexIn(text)
             while index >= 0:
                 length = expression.matchedLength()
@@ -113,7 +117,7 @@ class VariableEditor(QWidget):
         # Text Editor
         self.editor = QTextEdit()
         self.editor.setFont(QFont("Monospace", 11))
-        self.editor.setPlaceholderText("# Define variables here\nK = 10\namplitude = 5\n\n# You can use math\nimport math\nomega = 2 * math.pi * 50")
+        self.editor.setPlaceholderText("# Define variables here\nK = 10\namplitude = 5\n\n# You can use math/numpy expressions (no import needed)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])")
         self.editor.setStyleSheet("border: none;")
         
         # Apply syntax highlighting
@@ -193,7 +197,7 @@ class VariableEditor(QWidget):
         
         if filename:
             try:
-                with open(filename, 'r') as f:
+                with open(filename, 'r', encoding='utf-8') as f:
                     content = f.read()
                 self.editor.setPlainText(content)
                 self.status_label.setText(f"Loaded {os.path.basename(filename)}")
@@ -221,42 +225,70 @@ class VariableEditor(QWidget):
             logger.warning("Could not find parent QDockWidget to float/dock")
 
     def update_workspace(self):
-        """Execute the code in the editor and update the workspace."""
+        """Parse the editor text and update the workspace with assigned variables.
+
+        Each top-level ``name = expression`` statement is parsed with ``ast`` and
+        the right-hand side is evaluated through the sandboxed ``safe_expr`` (no
+        raw ``exec``/``eval``), so arbitrary Python / OS access is not possible.
+        Non-assignment statements (e.g. ``import``) are reported as errors.
+        """
         code = self.editor.toPlainText()
         if not code.strip():
             self.status_label.setText("No code to execute")
             return
 
         try:
-            # Create a dictionary to serve as the local namespace
-            local_vars = {}
-            
-            # Execute the code
-            exec(code, {}, local_vars)
-            
-            # Filter out modules and internal variables
-            import types
-            new_vars = {k: v for k, v in local_vars.items() 
-                       if not isinstance(v, types.ModuleType) and not k.startswith('_')}
-            
-            # Update the workspace manager
-            self.workspace_manager.variables.update(new_vars)
-            
-            # Log success
-            var_list = list(new_vars.keys())
-            logger.info(f"Workspace updated with {len(new_vars)} variables: {var_list}")
-            
-            # Emit signal
-            self.variables_updated.emit()
-            
-            # Update status inline
-            self.status_label.setText(f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list)>3 else ''}")
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
-            
-        except Exception as e:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            logger.error(f"Error parsing workspace code: {e}")
+            self.status_label.setText(f"⚠ Syntax error: {str(e)}")
+            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            return
+
+        new_vars = {}
+        local_vars = dict(self.workspace_manager.variables)
+        try:
+            for node in tree.body:
+                if not isinstance(node, ast.Assign):
+                    raise SafeEvalError(
+                        "Only 'name = expression' assignments are supported"
+                    )
+                # Evaluate the right-hand side once, then bind to each target.
+                rhs_src = ast.get_source_segment(code, node.value)
+                if rhs_src is None:
+                    # Fallback for environments without source-segment support.
+                    rhs_src = ast.unparse(node.value)
+                value = safe_expr(rhs_src, variables=local_vars, allow_numpy=True)
+                for target in node.targets:
+                    if not isinstance(target, ast.Name):
+                        raise SafeEvalError(
+                            "Only simple variable assignments are supported"
+                        )
+                    if target.id.startswith('_'):
+                        raise SafeEvalError(
+                            f"Variable names starting with '_' are not allowed: {target.id}"
+                        )
+                    new_vars[target.id] = value
+                    local_vars[target.id] = value
+        except SafeEvalError as e:
             logger.error(f"Error updating workspace: {e}")
             self.status_label.setText(f"⚠ Error: {str(e)}")
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            return
+
+        # Update the workspace manager
+        self.workspace_manager.variables.update(new_vars)
+
+        # Log success
+        var_list = list(new_vars.keys())
+        logger.info(f"Workspace updated with {len(new_vars)} variables: {var_list}")
+
+        # Emit signal
+        self.variables_updated.emit()
+
+        # Update status inline
+        self.status_label.setText(f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list)>3 else ''}")
+        self.status_label.setStyleSheet("color: green; font-weight: bold;")
 
     def set_text(self, text):
         self.editor.setPlainText(text)

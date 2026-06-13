@@ -317,6 +317,7 @@ class AnimationExporter:
             logger.error(f"Writer '{writer_name}' not available for {format} export")
             return False
 
+        fig = None
         try:
             # Create animation
             fig, anim = self.create_animation(fps=fps, dpi=dpi)
@@ -346,8 +347,6 @@ class AnimationExporter:
             else:
                 anim.save(str(filepath), writer=writer)
 
-            plt.close(fig)
-
             logger.info(f"Animation exported successfully to {filepath}")
             return True
 
@@ -356,6 +355,12 @@ class AnimationExporter:
             import traceback
             logger.error(traceback.format_exc())
             return False
+
+        finally:
+            # Always release the figure (and its colorbar/agg buffers) on both
+            # the success and failure paths.
+            if fig is not None:
+                plt.close(fig)
 
     @staticmethod
     def check_writers():
@@ -383,7 +388,7 @@ class AnimationExporter:
                 timeout=5
             )
             available['mp4'] = result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             pass
 
         return available

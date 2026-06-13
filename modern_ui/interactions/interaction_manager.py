@@ -1,7 +1,7 @@
 
 import logging
 from enum import Enum
-from PyQt5.QtCore import Qt, QPoint, QPointF
+from PyQt5.QtCore import Qt, QPoint
 
 logger = logging.getLogger(__name__)
 
@@ -9,11 +9,9 @@ class State(Enum):
     """State enumeration for canvas interactions."""
     IDLE = "idle"
     DRAGGING = "dragging"
-    DRAGGING_BLOCK = "dragging_block"
     DRAGGING_LINE_POINT = "dragging_line_point"
     DRAGGING_LINE_SEGMENT = "dragging_line_segment"
     CONNECTING = "connecting"
-    CONFIGURING = "configuring"
     RESIZING = "resizing"
 
 class InteractionManager:
@@ -24,30 +22,9 @@ class InteractionManager:
 
     def __init__(self, canvas):
         self.canvas = canvas
-        # self.state is now a property delegating to canvas
-        
-        # Interaction context
-        self.drag_start_pos = QPoint()
-        self.last_mouse_pos = QPoint()
-        
-        # Connection context
-        self.connection_start_block = None
-        self.connection_start_port = -1
-        self.connection_end_block = None
-        self.connection_end_port = -1
-        self.temp_connection_points = []
-        
-        # Dragging context
-        self.dragging_block = None
-        self.dragging_line = None
-        self.dragging_segment_index = -1
-        self.dragging_point_index = -1
-        self.drag_offset = QPointF(0, 0)
-        
-        # Resizing context
-        self.resizing_block = None
-        self.resize_handle = None
-        self.original_block_rect = None
+        # All interaction context (dragging/connection/resize state) is owned by
+        # the canvas (see ModernCanvas); the handlers below read it from there so
+        # the canvas remains the single source of truth.
 
     @property
     def state(self):
@@ -71,9 +48,7 @@ class InteractionManager:
             return
 
         pos = self.canvas.screen_to_world(event.pos())
-        self.last_mouse_pos = pos
-        self.drag_start_pos = pos
-        
+
         if event.button() == Qt.LeftButton:
             self._handle_left_click(pos, event.modifiers())
         elif event.button() == Qt.RightButton:
@@ -193,11 +168,18 @@ class InteractionManager:
                 if len(line.points) == 2:
                     if is_horizontal:
                         new_point = QPoint(int(p1.x() + (p2.x() - p1.x()) // 2), int(pos.y()))
+                        new_index = 1 if pos.y() > p1.y() else 0
                     else:
                         new_point = QPoint(int(pos.x()), int(p1.y() + (p2.y() - p1.y()) // 2))
+                        new_index = 1 if pos.x() > p1.x() else 0
                     line.points.insert(1, new_point)
-                    self.canvas.dragging_item = (line, 1 if pos.y() > p1.y() else 0)
-                    segment_index = self.canvas.dragging_item[1]
+                    self.canvas.dragging_item = (line, new_index)
+                    segment_index = new_index
+
+                # Defensive guard: dragging_item may originate elsewhere with a
+                # stale index after points were inserted/removed.
+                if not (0 <= segment_index < len(line.points) - 1):
+                    return
 
                 if is_horizontal:
                     is_first_segment = (segment_index == 0)
@@ -221,7 +203,11 @@ class InteractionManager:
                 self.canvas.temp_line = (self.canvas.temp_line[0], pos)
                 self.canvas.update()
         except Exception as e:
-            logger.error(f"Error in handle_mouse_move: {str(e)}")
+            # Reset interaction state so a failure mid-drag does not leave the
+            # canvas stuck in a dragging/resizing state.
+            logger.error(f"Error in handle_mouse_move: {str(e)}", exc_info=True)
+            self.canvas.state = State.IDLE
+            self.canvas.dragging_item = None
 
     def handle_mouse_release(self, event):
         """Handle mouse release events."""
@@ -249,4 +235,8 @@ class InteractionManager:
                 self.canvas.update()
 
         except Exception as e:
-            logger.error(f"Error in handle_mouse_release: {str(e)}")
+            # Reset interaction state so a failure during release does not leave
+            # the canvas stuck mid-drag.
+            logger.error(f"Error in handle_mouse_release: {str(e)}", exc_info=True)
+            self.canvas.state = State.IDLE
+            self.canvas.dragging_item = None

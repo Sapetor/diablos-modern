@@ -1,8 +1,8 @@
 
 import os
 import logging
-from PyQt5.QtWidgets import QMessageBox, QAction
-from PyQt5.QtCore import QSettings
+from PyQt5.QtWidgets import QMessageBox
+from lib.app_paths import user_data_path
 from lib.services.diagram_service import DiagramService
 
 logger = logging.getLogger(__name__)
@@ -14,8 +14,11 @@ class ProjectManager:
     def __init__(self, main_window):
         self.window = main_window
         self.diagram_service = DiagramService(self.window)
-        self.settings = QSettings("Sapetor", "DiaBloS")
-        self.autosave_path = os.path.join(os.path.dirname(os.path.abspath(main_window.__module__)), 'autosave.json')
+        # Use the canonical autosave path the main window writes to
+        # (user_data_path('config/.autosave.diablos')). Deriving a path from
+        # main_window.__module__ resolved to <cwd>/autosave.json, which never
+        # matched the real autosave file, so recovery/cleanup were no-ops.
+        self.autosave_path = user_data_path('config/.autosave.diablos')
 
         # Initialize diagram service with window context if needed
         # (MainWindow code passed self to DiagramService, so we pass window)
@@ -40,7 +43,12 @@ class ProjectManager:
             logger.info(f"load_diagram returned: {result is not None}")
             if result:
                  self.window.status_message.setText("Diagram opened")
-                 self.add_recent_file(self.diagram_service.current_file)
+                 # Single source of truth for the Recent Files menu is
+                 # RecentFilesManager (config/recent_files.json). Routing here
+                 # avoids a second, divergent QSettings-backed store writing the
+                 # same menu widget.
+                 if getattr(self.window, 'recent_files_manager', None):
+                     self.window.recent_files_manager.add(self.diagram_service.current_file)
         else:
             logger.warning("diagram_service is None!")
 
@@ -58,38 +66,12 @@ class ProjectManager:
             # DiagramService usually returns success?
         self.window.status_message.setText("Diagram saved")
 
-    def update_recent_files_menu(self):
-        """Update the Recent Files menu."""
-        if not hasattr(self.window, 'recent_files_menu'):
-            return
-
-        self.window.recent_files_menu.clear()
-        recent_files = self.settings.value("recent_files", [], type=list)
-        
-        # Filter existing files
-        recent_files = [f for f in recent_files if os.path.exists(f)]
-        self.settings.setValue("recent_files", recent_files)
-
-        for file_path in recent_files:
-            action = QAction(os.path.basename(file_path), self.window)
-            action.setData(file_path)
-            action.setStatusTip(file_path)
-            action.triggered.connect(lambda checked, path=file_path: self.diagram_service.load_diagram(path))
-            self.window.recent_files_menu.addAction(action)
-
-        if not recent_files:
-            self.window.recent_files_menu.addAction("No recent files").setEnabled(False)
-            
-    def add_recent_file(self, file_path):
-        """Add file to recent list."""
-        if not file_path: return
-        recent_files = self.settings.value("recent_files", [], type=list)
-        if file_path in recent_files:
-            recent_files.remove(file_path)
-        recent_files.insert(0, file_path)
-        recent_files = recent_files[:10]  # Keep last 10
-        self.settings.setValue("recent_files", recent_files)
-        self.update_recent_files_menu()
+    # Recent files are owned by RecentFilesManager (config/recent_files.json),
+    # which backs the Recent Files menu the user sees. ProjectManager used to
+    # keep a second, divergent QSettings-backed store that cleared and
+    # repopulated the same menu widget, producing nondeterministic contents and
+    # purging entries on transient os.path.exists misses. That code was removed;
+    # open_diagram now routes through window.recent_files_manager.add(...).
 
     # Autosave Logic
     def check_autosave_recovery(self):

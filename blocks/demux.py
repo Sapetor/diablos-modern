@@ -76,6 +76,9 @@ class DemuxBlock(BaseBlock):
         except (ValueError, TypeError):
             return {'E': True, 'error': 'Invalid input type in demux block. Expected numeric.'}
 
+        if output_shape < 1:
+            return {'E': True, 'error': f"Output shape must be >= 1 in {params.get('_name_', 'Demux')}"}
+
         # Check input dimensions
         if n_elements / output_shape < n_outputs:
             return {'E': True, 'error': f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}"}

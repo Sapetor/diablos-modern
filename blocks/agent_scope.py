@@ -86,6 +86,13 @@ class AgentScopeBlock(BaseBlock):
             params["_init_start_"] = False
 
         u = np.atleast_1d(np.asarray(inputs.get(0, 0), dtype=float)).flatten()
+        # Record one sample per time step for post-simulation playback. This is
+        # intentional recorder-style behavior (like Scope/XYGraph): the full,
+        # uncapped history is required so ScopePlotter can render the time
+        # slider and Export (GIF/MP4) at full fidelity. ``trail_length`` only
+        # bounds the rendered trail, not this stored history. Memory therefore
+        # grows linearly with the number of time steps, which is expected for
+        # this sink; very long runs will accumulate proportional memory.
         params["_pos_history_"].append(u.copy())
         params["_time_history_"].append(float(time))
         return {'E': False}

@@ -130,10 +130,16 @@ def _scene_bounds(blocks, extra_points: List[QPoint]) -> Tuple[int, int, int, in
     return (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
 
 
-def route_line(line, blocks) -> Optional[List[QPoint]]:
-    """Compute orthogonal waypoints for one DLine. Returns None on failure."""
-    src = next((b for b in blocks if b.name == line.srcblock), None)
-    dst = next((b for b in blocks if b.name == line.dstblock), None)
+def route_line(line, blocks, block_index=None) -> Optional[List[QPoint]]:
+    """Compute orthogonal waypoints for one DLine. Returns None on failure.
+
+    `block_index` is an optional {block.name: block} mapping; when provided it
+    avoids re-scanning `blocks` to resolve the endpoints.
+    """
+    if block_index is None:
+        block_index = {b.name: b for b in blocks}
+    src = block_index.get(line.srcblock)
+    dst = block_index.get(line.dstblock)
     if src is None or dst is None:
         return None
     if line.srcport >= len(src.out_coords) or line.dstport >= len(dst.in_coords):
@@ -165,14 +171,15 @@ def route_line(line, blocks) -> Optional[List[QPoint]]:
 def route_all_lines(lines, blocks) -> int:
     """Recompute routing for every line in `lines` in place. Returns count routed."""
     rerouted = 0
+    block_index = {b.name: b for b in blocks}
     for line in lines:
         if getattr(line, 'hidden', False):
             continue
-        new_pts = route_line(line, blocks)
+        new_pts = route_line(line, blocks, block_index=block_index)
         if not new_pts or len(new_pts) < 2:
             continue
-        src = next((b for b in blocks if b.name == line.srcblock), None)
-        dst = next((b for b in blocks if b.name == line.dstblock), None)
+        src = block_index.get(line.srcblock)
+        dst = block_index.get(line.dstblock)
         if src is None or dst is None:
             continue
         start = src.out_coords[line.srcport]

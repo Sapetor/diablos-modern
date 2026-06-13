@@ -110,10 +110,18 @@ class TuningController(QObject):
                     if match:
                         base_name, idx = match.group(1), int(match.group(2))
                         base_val = block.params.get(base_name)
-                        if isinstance(base_val, (list, tuple)) and idx < len(base_val):
+                        if isinstance(base_val, (list, tuple, np.ndarray)) and idx < len(base_val):
                             base_val = list(base_val)
                             base_val[idx] = value
                             block.params[base_name] = base_val
+                        else:
+                            # Param changed type/length since slider creation;
+                            # surface the skip so stale tuning isn't applied silently.
+                            msg = (f"Tuning: skipped '{block_name}.{param_name}' "
+                                   f"(param '{base_name}' is not an indexable "
+                                   f"list/array of sufficient length)")
+                            logger.warning(msg)
+                            self._set_status(msg)
                     else:
                         block.params[param_name] = value
                     break

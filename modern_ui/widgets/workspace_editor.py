@@ -212,12 +212,15 @@ class WorkspaceEditor(QWidget):
                 
                 # Update backend
                 self.workspace_manager.set_variable(name, new_val)
-                
+
                 # Update type column
                 self.table.blockSignals(True) # Prevent recursion
                 type_item = QTableWidgetItem(type(new_val).__name__)
                 type_item.setFlags(type_item.flags() ^ Qt.ItemIsEditable)
                 self.table.setItem(row, 2, type_item)
+                # Clear any stale error styling from a previous invalid edit
+                self.table.item(row, 1).setForeground(QColor(theme_manager.get_color("text_primary").name()))
+                self.table.item(row, 1).setToolTip("")
                 self.table.blockSignals(False)
                 
                 logger.info(f"Updated variable {name} to {new_val}")
