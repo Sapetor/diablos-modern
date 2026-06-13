@@ -101,6 +101,9 @@ class TestEnsembleResultWindow:
         assert isinstance(win, QWidget)
         assert win.plot is None
         assert win.combo is None
+        assert win.hist_plot is None
+        assert win.metric_combo is None
+        assert win.view_combo is None
         assert "0/4" in win.header_label.text()
 
     def test_none_result_builds(self, qapp):
@@ -108,3 +111,45 @@ class TestEnsembleResultWindow:
         win = EnsembleResultWindow(None)
         assert isinstance(win, QWidget)
         assert win.plot is None
+
+    # --------------------------------------------------------- histogram view
+    def test_view_and_metric_combos_present(self, qapp):
+        from lib.analysis.monte_carlo import OUTCOME_METRICS
+
+        win = EnsembleResultWindow(_sample_result(n_signals=2))
+        assert win.view_combo is not None and win.metric_combo is not None
+        views = [win.view_combo.itemText(i) for i in range(win.view_combo.count())]
+        assert views == ["Time Series", "Histogram"]
+        metrics = [win.metric_combo.itemText(i) for i in range(win.metric_combo.count())]
+        assert metrics == list(OUTCOME_METRICS.keys())
+
+    def test_metric_combo_enabled_only_in_histogram_view(self, qapp):
+        win = EnsembleResultWindow(_sample_result(n_signals=1))
+        # Starts on the time-series view: metric picker is inactive.
+        assert win.stack.currentIndex() == 0
+        assert not win.metric_combo.isEnabled()
+        win.view_combo.setCurrentIndex(1)  # Histogram
+        assert win.stack.currentIndex() == 1
+        assert win.metric_combo.isEnabled()
+
+    def test_histogram_derives_from_runs_without_metrics_key(self, qapp):
+        """_sample_result carries no 'metrics'; the window derives from 'runs'."""
+        win = EnsembleResultWindow(_sample_result(n_signals=1))
+        win.view_combo.setCurrentIndex(1)
+        win.metric_combo.setCurrentText("max")
+        title = win.hist_plot.getPlotItem().titleLabel.text
+        assert "Scope_A" in title and "max" in title
+
+    def test_histogram_uses_supplied_metrics_when_present(self, qapp):
+        result = _sample_result(n_signals=1)
+        name = next(iter(result["signals"]))
+        n_ok = result["n_ok"]
+        result["signals"][name]["metrics"] = {
+            "final": np.arange(n_ok, dtype=float),
+        }
+        win = EnsembleResultWindow(result)
+        win.view_combo.setCurrentIndex(1)
+        win.metric_combo.setCurrentText("final")
+        # Builds without error and reflects the selected metric/signal.
+        title = win.hist_plot.getPlotItem().titleLabel.text
+        assert name in title and "final" in title

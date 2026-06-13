@@ -36,6 +36,21 @@ def derive_seed(master_seed, run_index, tag):
     return s if s != 0 else 1
 
 
+# Per-run outcome metrics. Each maps an ensemble matrix ``M`` of shape
+# (n_ok, L) -- one row per successful run -- to a length-``n_ok`` vector holding
+# one scalar summary per run. These power the results window's outcome-metric
+# histograms (the distribution of, e.g., final value or peak across the
+# ensemble). Insertion order is the order they appear in the metric picker.
+OUTCOME_METRICS = {
+    "final": lambda M: np.asarray(M)[:, -1],
+    "mean": lambda M: np.asarray(M).mean(axis=1),
+    "max": lambda M: np.asarray(M).max(axis=1),
+    "min": lambda M: np.asarray(M).min(axis=1),
+    "peak-to-peak": lambda M: np.ptp(np.asarray(M), axis=1),
+    "rms": lambda M: np.sqrt((np.asarray(M) ** 2).mean(axis=1)),
+}
+
+
 class MonteCarloRunner:
     """Run N seeded simulations of ``dsim`` and aggregate Scope-trace statistics."""
 
@@ -43,7 +58,7 @@ class MonteCarloRunner:
         self.dsim = dsim
 
     def run(self, n_runs, master_seed=12345, sim_time=None, sim_dt=None,
-            samplers=None, progress_cb=None):
+            samplers=None, progress_cb=None, cancel_cb=None):
         """Run ``n_runs`` simulations and aggregate ensemble statistics.
 
         Args:
@@ -53,6 +68,9 @@ class MonteCarloRunner:
             samplers: optional {(block_name, param_name): (low, high) | callable(rng)->value}
                 for per-run parameter Monte-Carlo (uniform draw when a (low, high) tuple).
             progress_cb: optional callable(done, total).
+            cancel_cb: optional callable() -> bool, polled before each run; when it
+                returns True the loop stops early and the partial ensemble gathered
+                so far is aggregated and returned (the diagram is still restored).
 
         Returns:
             An ensemble-result dict (see :meth:`_aggregate`).
@@ -83,6 +101,9 @@ class MonteCarloRunner:
         runs = []
         try:
             for i in range(n_runs):
+                if cancel_cb is not None and cancel_cb():
+                    logger.info("Monte-Carlo cancelled after %d/%d runs", i, n_runs)
+                    break
                 # Per-run seed injection for every stochastic block.
                 for b in seed_blocks:
                     _set(b, 'seed', derive_seed(master_seed, i, b.name))
@@ -163,8 +184,11 @@ class MonteCarloRunner:
         """Aggregate per-run harvests into ensemble statistics.
 
         Returns {n_runs, n_ok, timeline, signals: {name: {runs, mean, std, p5,
-        p50, p95, min, max}}}. Signals are restricted to those present in every
-        successful run and truncated to a common length so all series align.
+        p50, p95, min, max, metrics}}}. The per-timestep series (mean/std/
+        percentiles/min/max) are length-L arrays over the timeline; ``metrics``
+        is {metric_name: length-n_ok vector} of per-run scalar outcomes (see
+        :data:`OUTCOME_METRICS`). Signals are restricted to those present in
+        every successful run and truncated to a common length so all series align.
         """
         ok = [r for r in runs if r is not None and r['signals']]
         result = {'n_runs': len(runs), 'n_ok': len(ok), 'timeline': None, 'signals': {}}
@@ -197,5 +221,7 @@ class MonteCarloRunner:
                 'p95': np.percentile(M, 95, axis=0),
                 'min': M.min(axis=0),
                 'max': M.max(axis=0),
+                # Per-run scalar outcomes: {metric_name: length-n_ok vector}.
+                'metrics': {k: fn(M) for k, fn in OUTCOME_METRICS.items()},
             }
         return result

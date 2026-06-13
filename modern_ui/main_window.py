@@ -391,10 +391,13 @@ class ModernDiaBloSWindow(QMainWindow):
         """Run a Monte-Carlo ensemble of the current diagram and show statistics.
 
         Opens a dialog (N runs, master seed, sim time/dt), runs the seeded
-        ensemble, and shows a mean + percentile-band window. Runs synchronously
-        (the dialog lets the user bound N); a wait cursor is shown meanwhile.
+        ensemble on a background thread behind a cancellable progress dialog, and
+        shows a mean + percentile-band / outcome-histogram window. The run is off
+        the UI thread so the GUI stays responsive; the modal progress dialog
+        keeps anything else from mutating the diagram mid-run, and cancelling
+        still shows the partial ensemble gathered so far.
         """
-        from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication
+        from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
         from PyQt5.QtCore import Qt
         if not self.dsim.blocks_list:
             QMessageBox.information(self, "Monte Carlo", "No blocks to simulate.")
@@ -405,19 +408,52 @@ class ModernDiaBloSWindow(QMainWindow):
         if dlg.exec_() != QDialog.Accepted:
             return
         sel = dlg.get_selection()
+        n_runs = int(sel.get("n_runs", 100))
 
-        from lib.analysis.monte_carlo import MonteCarloRunner
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            result = MonteCarloRunner(self.dsim).run(
-                n_runs=sel.get("n_runs", 100),
-                master_seed=sel.get("master_seed", 12345),
-                sim_time=sel.get("sim_time"),
-                sim_dt=sel.get("sim_dt"),
-            )
-        finally:
-            QApplication.restoreOverrideCursor()
+        progress = QProgressDialog(
+            "Running Monte-Carlo ensemble...", "Cancel", 0, n_runs, self)
+        progress.setWindowTitle("Monte Carlo")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.setValue(0)
 
+        from modern_ui.widgets.monte_carlo_worker import MonteCarloWorker
+        worker = MonteCarloWorker(self.dsim, sel, parent=self)
+
+        def _on_progress(done, total):
+            if progress.maximum() != total:
+                progress.setMaximum(total)
+            progress.setLabelText(
+                f"Running Monte-Carlo ensemble... ({done}/{total})")
+            progress.setValue(done)
+
+        def _on_finished(result):
+            progress.close()
+            self._mc_worker = None
+            self._show_ensemble_result(result)
+
+        def _on_failed(msg):
+            progress.close()
+            self._mc_worker = None
+            QMessageBox.critical(
+                self, "Monte Carlo", f"Monte-Carlo run failed:\n{msg}")
+
+        worker.progress.connect(_on_progress)
+        worker.finished.connect(_on_finished)
+        worker.failed.connect(_on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        progress.canceled.connect(worker.cancel)
+
+        # Retain a reference so the QThread is not garbage-collected mid-run.
+        self._mc_worker = worker
+        worker.start()
+        progress.show()
+
+    def _show_ensemble_result(self, result):
+        """Open a (retained) results window for a Monte-Carlo ensemble result."""
         from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
         win = EnsembleResultWindow(result)  # top-level window
         if not hasattr(self, '_analysis_windows'):

@@ -130,6 +130,46 @@ class TestMonteCarlo:
                                           samplers=samplers)
         assert np.allclose(_only_signal(res2)["runs"], sig["runs"])
 
+    def test_outcome_metrics_present_and_shaped(self, qapp, tmp_path):
+        """Each signal carries per-run scalar outcome metrics of length n_ok."""
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=2.0))
+        s = b.add_block("Scope", 250, 100, params=_params("Scope"))
+        b.connect(c, 0, s, 0)
+        dsim = _load(b, tmp_path, "const.diablos")
+
+        res = MonteCarloRunner(dsim).run(5, master_seed=1, sim_time=0.5, sim_dt=0.05)
+        assert res["n_ok"] == 5
+        sig = _only_signal(res)
+        assert "metrics" in sig
+        m = sig["metrics"]
+        for key in ("final", "mean", "max", "min", "peak-to-peak", "rms"):
+            assert key in m
+            assert np.asarray(m[key]).shape == (5,)
+        # A constant 2.0 trace: final/mean/max/min == 2, peak-to-peak == 0, rms == 2.
+        assert np.allclose(m["final"], 2.0)
+        assert np.allclose(m["mean"], 2.0)
+        assert np.allclose(m["peak-to-peak"], 0.0)
+        assert np.allclose(m["rms"], 2.0)
+
+    def test_cancel_returns_partial_ensemble(self, qapp, tmp_path):
+        """cancel_cb stops the loop early; the partial ensemble is aggregated."""
+        b = DiagramBuilder()
+        n = b.add_block("Noise", 50, 100, params=_params("Noise"))
+        s = b.add_block("Scope", 250, 100, params=_params("Scope"))
+        b.connect(n, 0, s, 0)
+        dsim = _load(b, tmp_path, "cancel.diablos")
+
+        done = {"n": 0}
+        res = MonteCarloRunner(dsim).run(
+            10, master_seed=7, sim_time=0.3, sim_dt=0.05,
+            progress_cb=lambda d, t: done.__setitem__("n", d),
+            cancel_cb=lambda: done["n"] >= 3,  # allow 3 runs, then cancel
+        )
+        # Three runs completed before the 4th was polled and cancelled.
+        assert res["n_ok"] == 3
+        assert res["signals"], "partial ensemble should still carry signals"
+
     def test_random_delay_ensemble_runs(self, qapp, tmp_path):
         """Step -> VariableTransportDelay, with tau driven by a Noise source:
         a random-latency ensemble that runs end-to-end and is reproducible."""
