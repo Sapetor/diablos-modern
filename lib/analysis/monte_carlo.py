@@ -18,7 +18,13 @@ restored afterwards so the runner never mutates the user's diagram.
 import logging
 import numpy as np
 
+# Re-exported from the shared re-sim module so existing
+# ``from lib.analysis.monte_carlo import OUTCOME_METRICS`` imports keep working.
+from lib.analysis.resim import OUTCOME_METRICS, harvest_scope_signals
+
 logger = logging.getLogger(__name__)
+
+__all__ = ["MonteCarloRunner", "derive_seed", "OUTCOME_METRICS"]
 
 
 def derive_seed(master_seed, run_index, tag):
@@ -34,21 +40,6 @@ def derive_seed(master_seed, run_index, tag):
     ])
     s = int(ss.generate_state(1, dtype=np.uint32)[0])
     return s if s != 0 else 1
-
-
-# Per-run outcome metrics. Each maps an ensemble matrix ``M`` of shape
-# (n_ok, L) -- one row per successful run -- to a length-``n_ok`` vector holding
-# one scalar summary per run. These power the results window's outcome-metric
-# histograms (the distribution of, e.g., final value or peak across the
-# ensemble). Insertion order is the order they appear in the metric picker.
-OUTCOME_METRICS = {
-    "final": lambda M: np.asarray(M)[:, -1],
-    "mean": lambda M: np.asarray(M).mean(axis=1),
-    "max": lambda M: np.asarray(M).max(axis=1),
-    "min": lambda M: np.asarray(M).min(axis=1),
-    "peak-to-peak": lambda M: np.ptp(np.asarray(M), axis=1),
-    "rms": lambda M: np.sqrt((np.asarray(M) ** 2).mean(axis=1)),
-}
 
 
 class MonteCarloRunner:
@@ -134,50 +125,19 @@ class MonteCarloRunner:
                     b.params.pop(pn, None)
                 else:
                     b.params[pn] = val
+                # Keep exec_params in sync with params (restore the original value
+                # rather than dropping the key) so the diagram is left untouched.
                 if getattr(b, 'exec_params', None) is not None:
-                    b.exec_params.pop(pn, None)
+                    if val is None:
+                        b.exec_params.pop(pn, None)
+                    else:
+                        b.exec_params[pn] = val
 
         return self._aggregate(runs)
 
     def _harvest(self):
         """Read each Scope's trace(s) into {signal_name: 1-D ndarray} + timeline."""
-        dsim = self.dsim
-        timeline = getattr(dsim, 'timeline', None)
-        if timeline is None or len(np.atleast_1d(timeline)) == 0:
-            return None
-        blocks = getattr(dsim.engine, 'active_blocks_list', None) or dsim.blocks_list
-        signals = {}
-        seen = {}
-
-        def put(name, arr):
-            if name in seen:
-                seen[name] += 1
-                name = f"{name}#{seen[name]}"
-            else:
-                seen[name] = 0
-            signals[name] = np.asarray(arr, dtype=float).ravel()
-
-        for b in blocks:
-            if b.block_fn != 'Scope':
-                continue
-            params = getattr(b, 'exec_params', None) or b.params
-            vec = params.get('vector')
-            if vec is None:
-                continue
-            arr = np.asarray(vec, dtype=float)
-            vec_dim = int(params.get('vec_dim', 1) or 1)
-            labels = params.get('vec_labels')
-            # Scope stores a flat concatenated buffer; reshape multi-channel data.
-            if arr.ndim == 1 and vec_dim > 1 and arr.size % vec_dim == 0:
-                arr = arr.reshape(-1, vec_dim)
-            if arr.ndim == 1:
-                put(labels if isinstance(labels, str) else b.name, arr)
-            else:
-                for j in range(arr.shape[1]):
-                    nm = (labels[j] if isinstance(labels, (list, tuple)) and j < len(labels)
-                          else f"{b.name}[{j}]")
-                    put(nm, arr[:, j])
-        return {'timeline': np.asarray(timeline, dtype=float), 'signals': signals}
+        return harvest_scope_signals(self.dsim)
 
     @staticmethod
     def _aggregate(runs):

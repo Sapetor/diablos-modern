@@ -402,6 +402,11 @@ class ModernDiaBloSWindow(QMainWindow):
         if not self.dsim.blocks_list:
             QMessageBox.information(self, "Monte Carlo", "No blocks to simulate.")
             return
+        # Re-entrancy guard: one ensemble at a time (it mutates/restores diagram params).
+        if getattr(self, '_mc_worker', None) is not None:
+            QMessageBox.information(
+                self, "Monte Carlo", "A Monte-Carlo run is already running.")
+            return
 
         from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
         dlg = MonteCarloDialog(self.dsim, parent=self)
@@ -448,14 +453,110 @@ class ModernDiaBloSWindow(QMainWindow):
         progress.canceled.connect(worker.cancel)
 
         # Retain a reference so the QThread is not garbage-collected mid-run.
+        # Show the modal progress dialog before starting the thread.
         self._mc_worker = worker
-        worker.start()
         progress.show()
+        worker.start()
 
     def _show_ensemble_result(self, result):
         """Open a (retained) results window for a Monte-Carlo ensemble result."""
         from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
         win = EnsembleResultWindow(result)  # top-level window
+        if not hasattr(self, '_analysis_windows'):
+            self._analysis_windows = []
+        self._analysis_windows.append(win)
+        win.show()
+
+    def run_parameter_sweep(self):
+        """Sweep one/two block parameters across a grid and show the results.
+
+        Opens a dialog (axes, ranges, sim time/dt), runs the grid on a background
+        thread behind a cancellable progress dialog, and shows a response-family /
+        metric-vs-parameter window (1-D) or an outcome-metric heatmap (2-D). The
+        run is off the UI thread; the modal progress dialog keeps anything else
+        from mutating the diagram mid-run, and cancelling still shows the partial
+        grid gathered so far.
+        """
+        from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
+        from PyQt5.QtCore import Qt
+        if not self.dsim.blocks_list:
+            QMessageBox.information(self, "Parameter Sweep", "No blocks to simulate.")
+            return
+        # Re-entrancy guard: one sweep at a time (it mutates/restores diagram params).
+        if getattr(self, '_sweep_worker', None) is not None:
+            QMessageBox.information(
+                self, "Parameter Sweep", "A parameter sweep is already running.")
+            return
+
+        from modern_ui.widgets.parameter_sweep_dialog import (
+            ParameterSweepDialog, sweepable_blocks,
+        )
+        if not sweepable_blocks(self.dsim):
+            QMessageBox.information(
+                self, "Parameter Sweep",
+                "No block exposes a numeric scalar parameter to sweep.")
+            return
+
+        dlg = ParameterSweepDialog(self.dsim, parent=self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        sel = dlg.get_selection()
+        if any(not ax.get("param") for ax in sel.get("axes", [])):
+            QMessageBox.information(
+                self, "Parameter Sweep", "Please choose a parameter for each axis.")
+            return
+
+        # Total grid points = product of each axis's value count.
+        total = 1
+        for ax in sel.get("axes", []):
+            total *= max(1, len(ax.get("values", [])))
+
+        progress = QProgressDialog(
+            "Running parameter sweep...", "Cancel", 0, total, self)
+        progress.setWindowTitle("Parameter Sweep")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.setValue(0)
+
+        from modern_ui.widgets.parameter_sweep_worker import ParameterSweepWorker
+        worker = ParameterSweepWorker(self.dsim, sel, parent=self)
+
+        def _on_progress(done, total_):
+            if progress.maximum() != total_:
+                progress.setMaximum(total_)
+            progress.setLabelText(f"Running parameter sweep... ({done}/{total_})")
+            progress.setValue(done)
+
+        def _on_finished(result):
+            progress.close()
+            self._sweep_worker = None
+            self._show_sweep_result(result)
+
+        def _on_failed(msg):
+            progress.close()
+            self._sweep_worker = None
+            QMessageBox.critical(
+                self, "Parameter Sweep", f"Parameter sweep failed:\n{msg}")
+
+        worker.progress.connect(_on_progress)
+        worker.finished.connect(_on_finished)
+        worker.failed.connect(_on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        progress.canceled.connect(worker.cancel)
+
+        # Retain a reference so the QThread is not garbage-collected mid-run.
+        # Show the modal progress dialog before starting the thread.
+        self._sweep_worker = worker
+        progress.show()
+        worker.start()
+
+    def _show_sweep_result(self, result):
+        """Open a (retained) results window for a parameter-sweep result."""
+        from modern_ui.widgets.sweep_result_window import SweepResultWindow
+        win = SweepResultWindow(result)  # top-level window
         if not hasattr(self, '_analysis_windows'):
             self._analysis_windows = []
         self._analysis_windows.append(win)
