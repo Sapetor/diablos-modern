@@ -87,9 +87,8 @@ def _make_np_namespace() -> types.SimpleNamespace:
         M = rest[0] if rest else N
         count = None
         if (isinstance(N, (int, np.integer)) and not isinstance(N, bool)
-                and (M is None
-                     or (isinstance(M, (int, np.integer)) and not isinstance(M, bool)))):
-            count = int(N) * (int(N) if M is None else int(M))
+                and isinstance(M, (int, np.integer)) and not isinstance(M, bool)):
+            count = int(N) * int(M)
         _guard_alloc(count)
         return np.eye(N, *rest)
 

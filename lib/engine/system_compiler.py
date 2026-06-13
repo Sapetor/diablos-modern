@@ -18,6 +18,29 @@ logger = logging.getLogger(__name__)
 _trapezoid = getattr(np, "trapezoid", None) or np.trapz
 
 
+def _fill_neumann_corners(arr, ny, nx, left_open, right_open, bottom_open, top_open):
+    """Assign 2D-PDE corner derivatives for the all-Neumann case.
+
+    The Neumann edge loops use range(1, N-1) and skip the endpoints, so a corner
+    is left unset only when BOTH its adjacent edges are "open" (Neumann) -- a
+    Dirichlet/Outflow edge already covers corners via its full-range loop. For
+    such corners, approximate the derivative as the mean of the two edge
+    neighbors so they evolve instead of staying frozen at the initial value.
+    The ``*_open`` flags are computed by the caller per its own BC convention
+    (heat/wave: ``!= 'Dirichlet'``; advection: ``== 'Neumann'``).
+    """
+    if ny < 3 or nx < 3:
+        return
+    if left_open and bottom_open:
+        arr[0, 0] = 0.5 * (arr[0, 1] + arr[1, 0])
+    if right_open and bottom_open:
+        arr[0, nx - 1] = 0.5 * (arr[0, nx - 2] + arr[1, nx - 1])
+    if left_open and top_open:
+        arr[ny - 1, 0] = 0.5 * (arr[ny - 1, 1] + arr[ny - 2, 0])
+    if right_open and top_open:
+        arr[ny - 1, nx - 1] = 0.5 * (arr[ny - 1, nx - 2] + arr[ny - 2, nx - 1])
+
+
 class SystemCompiler:
     """
     Compiles a block diagram into a flat numerical function for fast ODE solving.
@@ -1224,21 +1247,12 @@ class SystemCompiler:
                         d2Tdy2 = (2*T[_Ny-2, i] - 2*T[_Ny-1, i] + 2*_dy*bc_top) / dy_sq
                         dT_dt[_Ny-1, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
 
-                # Corner nodes are skipped by the Neumann edge loops (range(1, N-1)),
-                # so a corner is left unset only when BOTH its adjacent edges are
-                # Neumann. Approximate such corners as the mean of their two edge
-                # neighbors so they evolve instead of staying frozen at the initial
-                # value. Dirichlet edges already cover corners via their full-range
-                # loop, so mixed/Dirichlet configurations are unaffected.
-                if _Ny >= 3 and _Nx >= 3:
-                    if _bc_type_left != 'Dirichlet' and _bc_type_bottom != 'Dirichlet':
-                        dT_dt[0, 0] = 0.5 * (dT_dt[0, 1] + dT_dt[1, 0])
-                    if _bc_type_right != 'Dirichlet' and _bc_type_bottom != 'Dirichlet':
-                        dT_dt[0, _Nx-1] = 0.5 * (dT_dt[0, _Nx-2] + dT_dt[1, _Nx-1])
-                    if _bc_type_left != 'Dirichlet' and _bc_type_top != 'Dirichlet':
-                        dT_dt[_Ny-1, 0] = 0.5 * (dT_dt[_Ny-1, 1] + dT_dt[_Ny-2, 0])
-                    if _bc_type_right != 'Dirichlet' and _bc_type_top != 'Dirichlet':
-                        dT_dt[_Ny-1, _Nx-1] = 0.5 * (dT_dt[_Ny-1, _Nx-2] + dT_dt[_Ny-2, _Nx-1])
+                # Fill the all-Neumann corners (skipped by the Neumann edge loops)
+                # from their edge neighbors. Dirichlet edges already cover corners.
+                _fill_neumann_corners(
+                    dT_dt, _Ny, _Nx,
+                    _bc_type_left != 'Dirichlet', _bc_type_right != 'Dirichlet',
+                    _bc_type_bottom != 'Dirichlet', _bc_type_top != 'Dirichlet')
 
                 # Output: temperature field (2D), average, max
                 signals[b_name] = T
@@ -1363,20 +1377,12 @@ class SystemCompiler:
                         f = force[_Ny-1, i] if isinstance(force, np.ndarray) else force
                         dv_dt[_Ny-1, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[_Ny-1, i] + f
 
-                # Corner dv_dt is skipped by the Neumann edge loops (range(1, N-1)),
-                # leaving it frozen at 0 when both adjacent edges are Neumann. (du_dt
-                # corners are already correct via du_dt = v.copy().) Approximate the
-                # corner acceleration as the mean of its two edge neighbors so all-
-                # Neumann corners evolve. Dirichlet edges cover corners already.
-                if _Ny >= 3 and _Nx >= 3:
-                    if _bc_type_left != 'Dirichlet' and _bc_type_bottom != 'Dirichlet':
-                        dv_dt[0, 0] = 0.5 * (dv_dt[0, 1] + dv_dt[1, 0])
-                    if _bc_type_right != 'Dirichlet' and _bc_type_bottom != 'Dirichlet':
-                        dv_dt[0, _Nx-1] = 0.5 * (dv_dt[0, _Nx-2] + dv_dt[1, _Nx-1])
-                    if _bc_type_left != 'Dirichlet' and _bc_type_top != 'Dirichlet':
-                        dv_dt[_Ny-1, 0] = 0.5 * (dv_dt[_Ny-1, 1] + dv_dt[_Ny-2, 0])
-                    if _bc_type_right != 'Dirichlet' and _bc_type_top != 'Dirichlet':
-                        dv_dt[_Ny-1, _Nx-1] = 0.5 * (dv_dt[_Ny-1, _Nx-2] + dv_dt[_Ny-2, _Nx-1])
+                # Fill the all-Neumann corners of dv_dt from their edge neighbors
+                # (du_dt corners are already correct via du_dt = v.copy()).
+                _fill_neumann_corners(
+                    dv_dt, _Ny, _Nx,
+                    _bc_type_left != 'Dirichlet', _bc_type_right != 'Dirichlet',
+                    _bc_type_bottom != 'Dirichlet', _bc_type_top != 'Dirichlet')
 
                 signals[b_name] = u
                 signals[b_name + '_v'] = v
@@ -1535,20 +1541,12 @@ class SystemCompiler:
                     for i in range(_Nx):
                         dc_dt[_Ny-1, i] = dc_dt[_Ny-2, i] if _Ny > 1 else 0.0
 
-                # Corner nodes are skipped by the Neumann edge loops (range(1, N-1));
-                # Dirichlet and Outflow edges cover corners via their full-range loops.
-                # A corner is therefore unset only when BOTH adjacent edges are Neumann.
-                # Approximate such corners as the mean of their two edge neighbors so
-                # they evolve rather than staying frozen at the initial value.
-                if _Ny >= 3 and _Nx >= 3:
-                    if _bc_type_left == 'Neumann' and _bc_type_bottom == 'Neumann':
-                        dc_dt[0, 0] = 0.5 * (dc_dt[0, 1] + dc_dt[1, 0])
-                    if _bc_type_right == 'Neumann' and _bc_type_bottom == 'Neumann':
-                        dc_dt[0, _Nx-1] = 0.5 * (dc_dt[0, _Nx-2] + dc_dt[1, _Nx-1])
-                    if _bc_type_left == 'Neumann' and _bc_type_top == 'Neumann':
-                        dc_dt[_Ny-1, 0] = 0.5 * (dc_dt[_Ny-1, 1] + dc_dt[_Ny-2, 0])
-                    if _bc_type_right == 'Neumann' and _bc_type_top == 'Neumann':
-                        dc_dt[_Ny-1, _Nx-1] = 0.5 * (dc_dt[_Ny-1, _Nx-2] + dc_dt[_Ny-2, _Nx-1])
+                # Fill the all-Neumann corners from their edge neighbors. Dirichlet
+                # and Outflow edges already cover corners via their full-range loops.
+                _fill_neumann_corners(
+                    dc_dt, _Ny, _Nx,
+                    _bc_type_left == 'Neumann', _bc_type_right == 'Neumann',
+                    _bc_type_bottom == 'Neumann', _bc_type_top == 'Neumann')
 
                 signals[b_name] = c
                 signals[b_name + '_avg'] = np.mean(c)
