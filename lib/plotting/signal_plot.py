@@ -420,19 +420,3 @@ class SignalPlot(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", f"Failed to export data:\n{str(e)}")
             logger.error(f"Failed to export plot data: {e}")
-
-    def sort_labels(self, labels):
-        """Rearranges the list if some elements are lists too."""
-        self.labels = []
-        for elem in labels:
-            if isinstance(elem, str):
-                self.labels += [elem]
-            elif isinstance(elem, list):
-                self.labels += elem
-
-    def sort_vectors(self, ny):
-        """Rearranges all vectors in one matrix."""
-        new_vec = ny[0]
-        for i in range(1, len(ny)):
-            new_vec = np.column_stack((new_vec, ny[i]))
-        return new_vec

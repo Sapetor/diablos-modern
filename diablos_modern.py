@@ -90,11 +90,17 @@ def setup_application():
 
     # Load config and set font
     try:
-        from lib.app_paths import resource_path
-        with open(resource_path('config/default_config.json'), 'r') as f:
+        from lib.app_paths import resource_path, user_data_path
+        # Read the user-writable config first (where _set_scaling persists the
+        # scaling factor), falling back to the bundled default. Previously this
+        # read only the read-only bundled resource, so a user's saved scaling
+        # never took effect in frozen/packaged builds despite the restart prompt.
+        user_cfg = user_data_path('config/default_config.json')
+        cfg_path = user_cfg if os.path.exists(user_cfg) else resource_path('config/default_config.json')
+        with open(cfg_path, 'r') as f:
             config = json.load(f)
         scaling_factor = config.get('display', {}).get('scaling_factor', 1.0)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         scaling_factor = 1.0
 
     # Use platform-appropriate font
