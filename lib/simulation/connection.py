@@ -75,6 +75,32 @@ class DLine:
         """Toggle the selection state of this line."""
         self.selected = not self.selected
 
+    def _resolve_port_directions(self, blocks_list: List) -> Tuple[int, int]:
+        """
+        Derive the outward horizontal stub direction for the source output port
+        and the destination input port from the actual block orientation.
+
+        A non-flipped block has its output port on the right edge (the wire
+        leaves toward +x) and its input port on the left edge (the wire enters
+        from -x, so the outward stub points toward -x). A flipped block mirrors
+        both: the output exits toward -x and the input is entered from +x.
+
+        Returns:
+            Tuple ``(src_dir, dst_dir)`` of stub signs (+1 / -1). The signs are
+            chosen so the standard, unflipped layout reduces exactly to the
+            historic behaviour (``src_dir == +1``, ``dst_dir == -1``).
+        """
+        src_dir = 1   # output exits to the right by default
+        dst_dir = -1  # input entered from the left by default
+        for block in blocks_list:
+            if block.name == self.srcblock and getattr(block, 'flipped', False):
+                # Flipped source: output port sits on the left edge.
+                src_dir = -1
+            if block.name == self.dstblock and getattr(block, 'flipped', False):
+                # Flipped destination: input port sits on the right edge.
+                dst_dir = 1
+        return src_dir, dst_dir
+
     def _create_orthogonal_route(self, start: QPoint, finish: QPoint, blocks_list: List) -> List[QPoint]:
         """
         Create an orthogonal (Manhattan-style) route from start to finish, avoiding blocks.
@@ -104,8 +130,16 @@ class DLine:
                 block.height + 2 * margin
             ))
 
-        # Check if straight orthogonal path is clear
-        is_feedback = start.x() > finish.x()
+        # Derive the real outward stub direction from each port's orientation
+        # instead of assuming output->+x / input->-x. This keeps feedback,
+        # right-to-left and flipped/rotated layouts routing correctly.
+        src_dir, dst_dir = self._resolve_port_directions(blocks_list)
+
+        # A feedback (route-around) situation arises when the destination does
+        # not lie in the direction the source output is facing. For the
+        # standard unflipped layout (src_dir == +1) this reduces exactly to
+        # ``start.x() > finish.x()``.
+        is_feedback = src_dir * (finish.x() - start.x()) < 0
 
         if is_feedback:
             # Feedback connection - route around source block
@@ -116,13 +150,14 @@ class DLine:
                     break
 
             if src_block:
-                # Route to the right, down, left, then to destination
+                # Leave the source along its facing side, drop below it, then
+                # approach the destination from its facing side.
                 clearance = 30
-                right_point = QPoint(start.x() + clearance, start.y())
-                bottom_point = QPoint(right_point.x(), src_block.top + src_block.height + clearance)
-                left_point = QPoint(finish.x() - clearance, bottom_point.y())
+                out_point = QPoint(start.x() + src_dir * clearance, start.y())
+                bottom_point = QPoint(out_point.x(), src_block.top + src_block.height + clearance)
+                in_point = QPoint(finish.x() + dst_dir * clearance, bottom_point.y())
 
-                waypoints.extend([right_point, bottom_point, left_point, QPoint(left_point.x(), finish.y())])
+                waypoints.extend([out_point, bottom_point, in_point, QPoint(in_point.x(), finish.y())])
             else:
                 # Fallback: simple mid-point routing
                 mid_x = int((start.x() + finish.x()) / 2)
@@ -164,23 +199,26 @@ class DLine:
                     space_below = finish.y() - max_obstacle_bottom
                     route_above = space_above > space_below
 
+                # Stub away from each port along its facing side.
+                src_stub_x = start.x() + src_dir * 20
+                dst_stub_x = finish.x() + dst_dir * 20
                 if route_above and min_obstacle_top != float('inf'):
                     # Route above obstacles
                     detour_y = min_obstacle_top - margin
                     waypoints.extend([
-                        QPoint(start.x() + 20, start.y()),
-                        QPoint(start.x() + 20, detour_y),
-                        QPoint(finish.x() - 20, detour_y),
-                        QPoint(finish.x() - 20, finish.y())
+                        QPoint(src_stub_x, start.y()),
+                        QPoint(src_stub_x, detour_y),
+                        QPoint(dst_stub_x, detour_y),
+                        QPoint(dst_stub_x, finish.y())
                     ])
                 elif max_obstacle_bottom != float('-inf'):
                     # Route below obstacles
                     detour_y = max_obstacle_bottom + margin
                     waypoints.extend([
-                        QPoint(start.x() + 20, start.y()),
-                        QPoint(start.x() + 20, detour_y),
-                        QPoint(finish.x() - 20, detour_y),
-                        QPoint(finish.x() - 20, finish.y())
+                        QPoint(src_stub_x, start.y()),
+                        QPoint(src_stub_x, detour_y),
+                        QPoint(dst_stub_x, detour_y),
+                        QPoint(dst_stub_x, finish.y())
                     ])
                 else:
                     # Fallback to simple routing
@@ -210,7 +248,11 @@ class DLine:
             # Use orthogonal routing
             all_points = self._create_orthogonal_route(start, finish, blocks_list)
         else:
-            is_feedback = start.x() > finish.x()
+            # Derive stub directions from real port orientation so feedback,
+            # right-to-left and flipped layouts route correctly. For the
+            # standard unflipped layout this reduces to start.x() > finish.x().
+            src_dir, dst_dir = self._resolve_port_directions(blocks_list)
+            is_feedback = src_dir * (finish.x() - start.x()) < 0
 
             if is_feedback:
                 src_block = None
@@ -220,9 +262,9 @@ class DLine:
                         break
 
                 if src_block:
-                    p1 = QPoint(start.x() + 20, start.y())
+                    p1 = QPoint(start.x() + src_dir * 20, start.y())
                     p2 = QPoint(p1.x(), src_block.rect.bottom() + 30)
-                    p3 = QPoint(finish.x() - 20, p2.y())
+                    p3 = QPoint(finish.x() + dst_dir * 20, p2.y())
                     p4 = QPoint(p3.x(), finish.y())
                     all_points = [start, p1, p2, p3, p4, finish]
                 else:  # fallback for feedback if src_block not found

@@ -43,17 +43,38 @@ class CanvasRenderer:
             def _snap_down(v, step):
                 return (int(v) // step) * step
 
-            x0 = _snap_down(rect.left(), small_grid_size)
-            y0 = _snap_down(rect.top(), small_grid_size)
+            # Effective device-pixel spacing of the small-dot grid. The caller
+            # applies the pan/zoom transform to ``painter`` before calling us,
+            # so m11() is the scene-unit -> device-pixel scale (the zoom). When
+            # zoomed out far enough that the small dots are only a few device
+            # pixels apart, drawing them produces a near-solid field of dots and
+            # an unbounded O(W*H) number of drawEllipse calls per frame for no
+            # visual benefit. Skip the small-dot grid below a density threshold;
+            # the large-grid dots (5x the spacing) still provide orientation.
+            #
+            # ~6 device px is below where individual small dots remain visually
+            # distinct, so at normal/high zoom (spacing >= 6px) behaviour is
+            # identical to before.
+            min_small_dot_spacing_px = 6.0
+            small_dot_spacing_px = small_grid_size * abs(painter.transform().m11())
+            draw_small_dots = small_dot_spacing_px >= min_small_dot_spacing_px
+
             x1 = int(rect.right()) + small_grid_size
             y1 = int(rect.bottom()) + small_grid_size
 
+            # Set NoPen unconditionally so the large-dot loop below renders
+            # identically whether or not the small dots are drawn.
             painter.setPen(Qt.NoPen)
-            painter.setBrush(small_dot_color)
-            for x in range(x0, x1, small_grid_size):
-                for y in range(y0, y1, small_grid_size):
-                    if x % large_grid_size != 0 or y % large_grid_size != 0:
-                        painter.drawEllipse(QPoint(x, y), 1, 1)
+
+            if draw_small_dots:
+                x0 = _snap_down(rect.left(), small_grid_size)
+                y0 = _snap_down(rect.top(), small_grid_size)
+
+                painter.setBrush(small_dot_color)
+                for x in range(x0, x1, small_grid_size):
+                    for y in range(y0, y1, small_grid_size):
+                        if x % large_grid_size != 0 or y % large_grid_size != 0:
+                            painter.drawEllipse(QPoint(x, y), 1, 1)
 
             painter.setBrush(large_dot_color)
             lx0 = _snap_down(rect.left(), large_grid_size)

@@ -35,6 +35,13 @@ class StepBlock(BaseBlock):
             "\n\nParameters:"
             "\n- Final Value: The height of the step."
             "\n- Step Time: Time (seconds) when the step occurs."
+            "\n\nThe 'type' parameter selects the waveform:"
+            "\n- up: 0 before Delay, Value afterwards (default)."
+            "\n- down: Value before Delay, 0 afterwards."
+            "\n- pulse: square wave with Delay as the half-period."
+            "\n- constant: always outputs Value."
+            "\n- impulse: Dirac-delta approximation (Value/dt for one step at"
+            " Delay, 0 elsewhere); equivalent to the standalone Impulse block."
             "\n\nUsage:"
             "\nCommonly used to test step response of control systems."
         )
@@ -42,9 +49,9 @@ class StepBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "value": {"type": "float", "default": 1.0, "doc": "The value of the step."},
-            "delay": {"type": "float", "default": 0.0, "doc": "The delay of the step."},
-            "type": {"type": "string", "default": "up", "doc": "up, down, pulse, constant, impulse"},
+            "value": {"type": "float", "default": 1.0, "doc": "The value of the step (or impulse strength/area when type is 'impulse')."},
+            "delay": {"type": "float", "default": 0.0, "doc": "The delay of the step (half-period when type is 'pulse'; fire time when type is 'impulse')."},
+            "type": {"type": "string", "default": "up", "doc": "Waveform: up, down, pulse, constant, or impulse (Dirac-delta approximation, same as the Impulse block)."},
             "pulse_start_up": {"type": "bool", "default": True, "doc": "If type is pulse, defines if it starts up or down."}
         }
 
@@ -66,6 +73,22 @@ class StepBlock(BaseBlock):
         path.lineTo(0.5, 0.3)
         path.lineTo(0.9, 0.3)
         return path
+
+    @staticmethod
+    def _impulse_output(time, params, dt):
+        """Shared Dirac-delta approximation for the type=='impulse' subtype.
+
+        Mirrors the standalone ImpulseBlock: emit value/dt for the single first
+        sample at or after ``delay`` (recorded via the ``_impulse_fired`` flag in
+        params), and 0 elsewhere. Kept here as a same-file helper so the impulse
+        shape is defined once for the Step block's 'impulse' branch.
+        """
+        delay = float(params.get('delay', 0.0))
+        value = params.get('value', 1.0)
+        if not params.get('_impulse_fired', False) and time >= delay:
+            params['_impulse_fired'] = True
+            return {0: np.atleast_1d(np.array(value / dt, dtype=float)), 'E': False}
+        return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), 'E': False}
 
     def execute(self, time, inputs, params, **kwargs):
         if params.get('_init_start_', True):
@@ -92,11 +115,7 @@ class StepBlock(BaseBlock):
             change = params['_change_old']
         elif step_type == 'impulse':
             dt = kwargs.get('dtime', params.get('dtime', 0.01))
-            if not params.get('_impulse_fired', False) and time >= delay:
-                params['_impulse_fired'] = True
-                value = params.get('value', 1.0)
-                return {0: np.atleast_1d(np.array(value / dt, dtype=float)), 'E': False}
-            return {0: np.atleast_1d(np.zeros_like(np.array(params.get('value', 1.0), dtype=float))), 'E': False}
+            return self._impulse_output(time, params, dt)
         elif step_type == 'constant':
             change = False
         else:

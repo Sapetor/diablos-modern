@@ -40,6 +40,11 @@ class MinimapWidget(QWidget):
         self._scale = 1.0
         self._offset = QPoint(0, 0)
 
+        # Fingerprint of the inputs that determine the cached bounds/scale/offset
+        # (block geometries + widget size). Recomputed only when this changes,
+        # so the cache can never go stale relative to the diagram or the widget.
+        self._geometry_fingerprint = None
+
         # Enable mouse tracking for click-to-pan
         self.setMouseTracking(True)
 
@@ -47,6 +52,36 @@ class MinimapWidget(QWidget):
         theme_manager.theme_changed.connect(self.update)
 
         logger.info("MinimapWidget initialized")
+
+    def _compute_geometry_fingerprint(self):
+        """Build a cheap fingerprint of everything that affects the cached
+        bounds/scale/offset: each block's geometry plus the widget size.
+
+        Iterating the block list once to build a tuple is far cheaper than the
+        four separate min/max passes and float arithmetic in
+        ``_calculate_diagram_bounds``/``_calculate_scale_and_offset``, and it
+        guarantees the cache is invalidated whenever a block is added, removed,
+        moved, or resized, or when the minimap widget itself is resized.
+        """
+        return (
+            self.width(),
+            self.height(),
+            tuple(
+                (b.left, b.top, b.width, b.height)
+                for b in self.dsim.blocks_list
+            ),
+        )
+
+    def _ensure_bounds_cache(self):
+        """Recompute and cache the diagram bounds/scale/offset only when the
+        underlying block geometry or widget size has changed."""
+        fingerprint = self._compute_geometry_fingerprint()
+        if fingerprint != self._geometry_fingerprint:
+            self._diagram_bounds = self._calculate_diagram_bounds()
+            self._scale, self._offset = self._calculate_scale_and_offset(
+                self._diagram_bounds
+            )
+            self._geometry_fingerprint = fingerprint
 
     def _calculate_diagram_bounds(self):
         """Calculate the bounding box of all blocks in the diagram."""
@@ -100,9 +135,9 @@ class MinimapWidget(QWidget):
         painter.setPen(QPen(border_color, 1))
         painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
 
-        # Calculate bounds and scale
-        self._diagram_bounds = self._calculate_diagram_bounds()
-        self._scale, self._offset = self._calculate_scale_and_offset(self._diagram_bounds)
+        # Calculate bounds and scale (cached; recomputed only when block
+        # geometry or the widget size changes).
+        self._ensure_bounds_cache()
 
         # Apply transformation
         painter.translate(self._offset)

@@ -10,6 +10,21 @@ logger = logging.getLogger(__name__)
 # Integration method choices
 INTEGRATOR_METHODS = ["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"]
 
+# scipy.integrate.solve_ivp ODE methods exposed for the SOLVE_IVP strategy.
+# "RK45" matches scipy's own default, so the default behaviour is unchanged.
+SOLVE_IVP_METHODS = ["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA"]
+
+
+def _ivp_constant_rhs(t, y, u):
+    """RHS for the SOLVE_IVP integrator strategy.
+
+    The Integrator's input is held constant over a single [t, t+dtime] step,
+    so dy/dt is simply the (constant) input vector ``u``. Defining this at
+    module scope (and passing ``u`` via solve_ivp's ``args``) avoids rebuilding
+    a closure on every time step while producing identical RHS values.
+    """
+    return u
+
 
 class IntegratorBlock(BaseBlock):
     def __init__(self):
@@ -37,6 +52,8 @@ class IntegratorBlock(BaseBlock):
         return {
             **init_conds_param(default=0.0, doc="Initial condition value"),
             **method_param(INTEGRATOR_METHODS, default="SOLVE_IVP", doc="Integration method"),
+            **method_param(SOLVE_IVP_METHODS, default="RK45", param_name="ivp_method",
+                           doc="scipy ODE solver used when Method is SOLVE_IVP"),
             **init_flag_param(),
             "sampling_time": {"default": -1.0, "type": "float",
                              "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
@@ -162,11 +179,16 @@ class IntegratorBlock(BaseBlock):
         elif params['method'] == 'SOLVE_IVP':
             mem_shape = params['mem'].shape
             y0 = np.atleast_1d(params['mem']).flatten()
-            
-            def fun(t, y):
-                return np.atleast_1d(inputs[0]).flatten()
-            
-            sol = solve_ivp(fun, [time, time + dtime], y0)
+
+            # Input is constant over the step, so dy/dt = u. Pass u through
+            # solve_ivp's args to a module-level RHS instead of rebuilding a
+            # closure each call, and honor the configured ODE method (defaults
+            # to scipy's own default, RK45, so results are unchanged).
+            u = np.atleast_1d(inputs[0]).flatten()
+            ivp_method = params.get('ivp_method', 'RK45')
+
+            sol = solve_ivp(_ivp_constant_rhs, [time, time + dtime], y0,
+                            method=ivp_method, args=(u,))
             params['mem'] = sol.y[:, -1].reshape(mem_shape)
             return {0: params['mem'], 'E': False}
         else:

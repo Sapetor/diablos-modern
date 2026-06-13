@@ -36,6 +36,15 @@ def _category_token(block) -> str:
     return cat.lower() if isinstance(cat, str) else str(cat).lower()
 
 
+# Memoizes the (category-token, suffix) -> color-key substring scan. The
+# mapping is purely theme-independent (it resolves a category string to a
+# theme_manager color *key*, not a QColor), so it never needs invalidation on
+# theme/palette change and can be cached for the process lifetime. This keeps
+# the linear scan over _CATEGORY_KEY_MAP off the per-frame paint path; the
+# category set is tiny and bounded, so the cache cannot grow unbounded.
+_CATEGORY_KEY_CACHE: dict = {}
+
+
 def _category_color_key(block, suffix: str = '') -> str:
     """Resolve the theme-manager color key for a block's category.
 
@@ -43,10 +52,18 @@ def _category_color_key(block, suffix: str = '') -> str:
     the border key. Falls back to 'block_other...' for unknown categories.
     """
     cat = _category_token(block)
+    cache_key = (cat, suffix)
+    cached = _CATEGORY_KEY_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
     for token, key in _CATEGORY_KEY_MAP:
         if token in cat:
-            return key + suffix
-    return 'block_other' + suffix
+            result = key + suffix
+            break
+    else:
+        result = 'block_other' + suffix
+    _CATEGORY_KEY_CACHE[cache_key] = result
+    return result
 
 
 class BlockRenderer:

@@ -134,6 +134,24 @@ class BaseAnalyzer:
                      # leaving the ideal PI form (Kp*s + Ki)/s (proper).
                      num = np.array([kp, ki], dtype=float)
                      den = np.array([1.0, 0.0], dtype=float)
+
+                 # If the PID block is configured as discrete (sampling_time > 0),
+                 # convert the continuous controller TF to its discrete equivalent
+                 # so downstream analyzers receive a discrete TF (matching the
+                 # numerator/denominator and state-space extraction paths above).
+                 # sampling_time conventions (see PIDBlock.params):
+                 #   -1 = continuous, 0 = inherited, >0 = discrete.
+                 sampling_time = float(params.get('sampling_time', -1.0))
+                 if sampling_time > 0.0:
+                     num_d, den_d, dt_d = signal.cont2discrete(
+                         (num, den), sampling_time)
+                     # cont2discrete returns the numerator as a 2D array of
+                     # shape (1, n); flatten to 1D to match the contract of the
+                     # other extraction paths (1D num/den arrays).
+                     num = np.atleast_1d(np.squeeze(np.asarray(num_d, dtype=float)))
+                     den = np.atleast_1d(np.asarray(den_d, dtype=float))
+                     return num, den, float(dt_d)
+
                  return num, den, 0.0
              except Exception:
                  logger.warning("Failed to extract transfer-function model "

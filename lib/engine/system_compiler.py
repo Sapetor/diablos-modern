@@ -56,7 +56,12 @@ class SystemCompiler:
             'Constant',
             'Sine',
             'Step',
-            'Impulse',
+            # 'Impulse' — excluded: the compiled path models the impulse as a
+            # dt*1e-3-wide rectangular pulse, which adaptive RK45 can step over
+            # entirely (the response is then silently lost). Falls back to the
+            # interpreted path (blocks/impulse.py), which fires a correct
+            # value/dt sample on the fixed-dt grid. Step(type='impulse') is
+            # likewise gated out in check_compilability below.
             'TransferFcn',
             'TranFn',
             'StateSpace',
@@ -141,6 +146,13 @@ class SystemCompiler:
             # They are flattened away or handled as sources/sinks
             if b_type in ('Inport', 'Outport'):
                 continue
+
+            # Step's 'impulse' subtype is a narrow Dirac approximation the
+            # adaptive compiled solver can step over; force the interpreter path
+            # (same rationale as the excluded Impulse block in COMPILABLE_BLOCKS).
+            if b_type == 'Step' and getattr(block, 'params', {}).get('type') == 'impulse':
+                logger.debug(f"Block {block.name} (Step/impulse) is not compilable; using interpreter.")
+                return False
 
             # Accept the block if its name matches the allowlist directly or
             # via case correction (TitleCase, e.g. Sine; or UPPER, e.g. PID).
@@ -935,10 +947,9 @@ class SystemCompiler:
                 dT_dt = np.zeros(_N)
                 dx_sq = _dx * _dx
 
-                # Interior nodes: central difference
-                for i in range(1, _N-1):
-                    d2T_dx2 = (T[i+1] - 2*T[i] + T[i-1]) / dx_sq
-                    dT_dt[i] = _alpha * d2T_dx2 + q_src[i]
+                # Interior nodes: central difference (vectorized; identical to the
+                # per-node stencil but avoids the Python loop in the ODE RHS).
+                dT_dt[1:-1] = _alpha * (T[2:] - 2 * T[1:-1] + T[:-2]) / dx_sq + q_src[1:-1]
 
                 # Left boundary
                 if _bc_type_left == 'Dirichlet':
@@ -1007,10 +1018,9 @@ class SystemCompiler:
                 du_dt = v.copy()
                 dv_dt = np.zeros(_N)
 
-                # Interior
-                for i in range(1, _N-1):
-                    d2u_dx2 = (u[i+1] - 2*u[i] + u[i-1]) / dx_sq
-                    dv_dt[i] = c_sq * d2u_dx2 - _damping * v[i] + force[i]
+                # Interior (vectorized; identical to the per-node stencil)
+                dv_dt[1:-1] = (c_sq * (u[2:] - 2 * u[1:-1] + u[:-2]) / dx_sq
+                               - _damping * v[1:-1] + force[1:-1])
 
                 # Boundaries
                 if _bc_type_left == 'Dirichlet':
@@ -1055,10 +1065,8 @@ class SystemCompiler:
 
                 if _v >= 0:
                     # Second-order backward difference (upwind) - reduces numerical diffusion
-                    # Interior: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
-                    for i in range(2, _N):
-                        dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*_dx)
-                        dc_dt[i] = -_v * dc_dx
+                    # Interior: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)  (vectorized)
+                    dc_dt[2:] = -_v * (3 * c[2:] - 4 * c[1:-1] + c[:-2]) / (2 * _dx)
                     # First interior point: first-order fallback
                     if _N > 1:
                         dc_dx = (c[1] - c[0]) / _dx
@@ -1070,10 +1078,8 @@ class SystemCompiler:
                         dc_dt[0] = -_v * dc_dx
                 else:
                     # Second-order forward difference (upwind)
-                    # Interior: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
-                    for i in range(_N-2):
-                        dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*_dx)
-                        dc_dt[i] = -_v * dc_dx
+                    # Interior: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)  (vectorized)
+                    dc_dt[:-2] = -_v * (-3 * c[:-2] + 4 * c[1:-1] - c[2:]) / (2 * _dx)
                     # Last interior point: first-order fallback
                     if _N > 1:
                         dc_dx = (c[_N-1] - c[_N-2]) / _dx
@@ -1125,11 +1131,11 @@ class SystemCompiler:
                 dc_dt = np.zeros(_N)
                 dx_sq = _dx * _dx
 
-                # Interior
-                for i in range(1, _N-1):
-                    d2c_dx2 = (c[i+1] - 2*c[i] + c[i-1]) / dx_sq
-                    reaction = _k * np.power(max(c[i], 0), _n)
-                    dc_dt[i] = _D * d2c_dx2 - reaction + source[i]
+                # Interior (vectorized; identical to the per-node stencil).
+                # np.maximum matches the per-element max(c[i], 0) reaction clamp.
+                d2c_dx2 = (c[2:] - 2 * c[1:-1] + c[:-2]) / dx_sq
+                reaction = _k * np.power(np.maximum(c[1:-1], 0.0), _n)
+                dc_dt[1:-1] = _D * d2c_dx2 - reaction + source[1:-1]
 
                 # Boundaries - use penalty method for Dirichlet to force value
                 if _bc_type_left == 'Dirichlet':
@@ -1200,12 +1206,11 @@ class SystemCompiler:
                 dy_sq = _dy * _dy
                 penalty = 1000.0
 
-                # Interior nodes: 5-point stencil
-                for j in range(1, _Ny - 1):
-                    for i in range(1, _Nx - 1):
-                        d2Tdx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / dx_sq
-                        d2Tdy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / dy_sq
-                        dT_dt[j, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
+                # Interior nodes: 5-point stencil (vectorized; identical per-node math)
+                dT_dt[1:-1, 1:-1] = _alpha * (
+                    (T[1:-1, 2:] - 2 * T[1:-1, 1:-1] + T[1:-1, :-2]) / dx_sq
+                    + (T[2:, 1:-1] - 2 * T[1:-1, 1:-1] + T[:-2, 1:-1]) / dy_sq
+                ) + q_src
 
                 # Left boundary (i=0)
                 if _bc_type_left == 'Dirichlet':
@@ -1321,13 +1326,12 @@ class SystemCompiler:
                 dy_sq = _dy * _dy
                 penalty = 1000.0
 
-                # Interior: 5-point stencil
-                for j in range(1, _Ny - 1):
-                    for i in range(1, _Nx - 1):
-                        d2udx2 = (u[j, i+1] - 2*u[j, i] + u[j, i-1]) / dx_sq
-                        d2udy2 = (u[j+1, i] - 2*u[j, i] + u[j-1, i]) / dy_sq
-                        f = force[j, i] if isinstance(force, np.ndarray) else force
-                        dv_dt[j, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, i] + f
+                # Interior: 5-point stencil (vectorized; identical per-node math)
+                _f_int = force[1:-1, 1:-1] if isinstance(force, np.ndarray) else force
+                dv_dt[1:-1, 1:-1] = (_c_sq * (
+                    (u[1:-1, 2:] - 2 * u[1:-1, 1:-1] + u[1:-1, :-2]) / dx_sq
+                    + (u[2:, 1:-1] - 2 * u[1:-1, 1:-1] + u[:-2, 1:-1]) / dy_sq)
+                    - _damping * v[1:-1, 1:-1] + _f_int)
 
                 # Left boundary (i=0)
                 if _bc_type_left == 'Dirichlet':
@@ -1454,23 +1458,22 @@ class SystemCompiler:
                 dy_sq = _dy * _dy
                 penalty = 1000.0
 
-                # Interior: upwind advection + central diffusion
-                for j in range(1, _Ny - 1):
-                    for i in range(1, _Nx - 1):
-                        if _vx >= 0:
-                            dc_dx = (c[j, i] - c[j, i-1]) / _dx
-                        else:
-                            dc_dx = (c[j, i+1] - c[j, i]) / _dx
-                        if _vy >= 0:
-                            dc_dy = (c[j, i] - c[j-1, i]) / _dy
-                        else:
-                            dc_dy = (c[j+1, i] - c[j, i]) / _dy
-
-                        d2c_dx2 = (c[j, i+1] - 2*c[j, i] + c[j, i-1]) / dx_sq
-                        d2c_dy2 = (c[j+1, i] - 2*c[j, i] + c[j-1, i]) / dy_sq
-
-                        S = source[j, i] if isinstance(source, np.ndarray) else source
-                        dc_dt[j, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
+                # Interior: upwind advection + central diffusion (vectorized;
+                # _vx/_vy are constants so the upwind branch is hoisted out).
+                _ci = c[1:-1, 1:-1]
+                if _vx >= 0:
+                    _dc_dx = (_ci - c[1:-1, :-2]) / _dx
+                else:
+                    _dc_dx = (c[1:-1, 2:] - _ci) / _dx
+                if _vy >= 0:
+                    _dc_dy = (_ci - c[:-2, 1:-1]) / _dy
+                else:
+                    _dc_dy = (c[2:, 1:-1] - _ci) / _dy
+                _d2c_dx2 = (c[1:-1, 2:] - 2 * _ci + c[1:-1, :-2]) / dx_sq
+                _d2c_dy2 = (c[2:, 1:-1] - 2 * _ci + c[:-2, 1:-1]) / dy_sq
+                _S_int = source[1:-1, 1:-1] if isinstance(source, np.ndarray) else source
+                dc_dt[1:-1, 1:-1] = (-_vx * _dc_dx - _vy * _dc_dy
+                                     + _D * (_d2c_dx2 + _d2c_dy2) + _S_int)
 
                 # Left boundary (i=0)
                 if _bc_type_left == 'Dirichlet':
