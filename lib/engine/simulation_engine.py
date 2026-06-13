@@ -1837,8 +1837,56 @@ class SimulationEngine:
                         out_val = np.array(vals) if vals else 0.0
 
                     elif fn == 'Demux':
-                        # Pass through - demux output depends on which port is connected
-                        out_val = inputs.get(0, 0.0)
+                        # Split the vector input into N consecutive sub-vectors of
+                        # length output_shape each (mirrors blocks/demux.py). Port
+                        # 0 is the primary out_val (stored at signals[b_name]);
+                        # secondary ports use the "{b_name}_out{i}" convention.
+                        arr = np.atleast_1d(np.asarray(inputs.get(0, 0.0), dtype=float)).flatten()
+                        output_shape = int(block.params.get('output_shape', 1))
+                        if output_shape < 1:
+                            output_shape = 1
+                        n_outputs = int(block.params.get(
+                            '_outputs_', getattr(block, 'out_ports', 1)))
+                        if n_outputs < 1:
+                            n_outputs = 1
+                        out_val = arr[0:output_shape]
+                        for p in range(1, n_outputs):
+                            current_signals[b_name + f'_out{p}'] = arr[p * output_shape:(p + 1) * output_shape]
+
+                    elif fn in ('Logicaloperator', 'LogicalOperator'):
+                        # Boolean logic over inputs (nonzero = True), element-wise.
+                        # Mirrors blocks/logical_operator.py exactly.
+                        op = str(block.params.get('operator', 'AND')).upper()
+                        if '_inputs_' in block.params:
+                            n_logic = int(block.params['_inputs_'])
+                        elif inputs:
+                            n_logic = max(inputs.keys()) + 1
+                        else:
+                            n_logic = 1
+                        n_logic = max(n_logic, 1)
+                        bvals = [np.atleast_1d(np.asarray(inputs.get(idx, 0.0), dtype=float)) != 0
+                                 for idx in range(n_logic)]
+                        if op == 'NOT':
+                            res = np.logical_not(bvals[0])
+                        elif op in ('AND', 'NAND'):
+                            res = bvals[0]
+                            for b in bvals[1:]:
+                                res = np.logical_and(res, b)
+                            if op == 'NAND':
+                                res = np.logical_not(res)
+                        elif op in ('OR', 'NOR'):
+                            res = bvals[0]
+                            for b in bvals[1:]:
+                                res = np.logical_or(res, b)
+                            if op == 'NOR':
+                                res = np.logical_not(res)
+                        elif op == 'XOR':
+                            res = bvals[0]
+                            for b in bvals[1:]:
+                                res = np.logical_xor(res, b)
+                        else:
+                            res = np.zeros_like(bvals[0], dtype=bool)
+                        out_val = np.atleast_1d(res).astype(float)
 
                     elif fn == 'Fieldprobe':
                         # FieldProbe: Extract value at position from field array

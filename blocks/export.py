@@ -27,6 +27,7 @@ class ExportBlock(BaseBlock):
     def params(self):
         return {
             "str_name": {"default": "default", "type": "string"},
+            "format": {"default": "npz", "type": "choice", "choices": ["npz", "csv", "mat"]},
             "_init_start_": {"default": True, "type": "bool"},
         }
 
@@ -34,10 +35,11 @@ class ExportBlock(BaseBlock):
     def doc(self):
         return (
             "Data Export."
-            "\n\nSaves simulation data to a file (e.g., .npz, .mat, .csv)."
+            "\n\nSaves simulation data to a file (.npz, .csv, or .mat)."
             "\n\nParameters:"
             "\n- Filename: Destination file path."
             "\n- Variable Name: Name of variable in saved file."
+            "\n- Format: Output format (npz, csv, or mat)."
             "\n\nUsage:"
             "\nSave results for post-processing in Python or other tools."
         )

@@ -16,6 +16,7 @@ _BLOCK_MODULES = [
     'blocks.assert_block',
     'blocks.bodemag',
     'blocks.bodephase',
+    'blocks.chirp',
     'blocks.compare_to_constant',
     'blocks.constant',
     'blocks.deadband',

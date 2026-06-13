@@ -534,3 +534,70 @@ class TestWaveGeneratorBlock:
 
         result = block.execute(time=0.0, inputs={}, params=params)
         assert isinstance(result[0], (int, float, np.number)), "Should return numeric value"
+
+
+@pytest.mark.unit
+class TestChirpBlock:
+    """Tests for Chirp (swept-sine) source block."""
+
+    def test_block_properties(self):
+        """Chirp is a source with one output and no inputs."""
+        from blocks.chirp import ChirpBlock
+        block = ChirpBlock()
+        assert block.block_name == "Chirp"
+        assert block.category == "Sources"
+        assert block.b_type == 0
+        assert block.requires_inputs is False
+        assert block.inputs == []
+        assert len(block.outputs) == 1
+
+    def test_chirp_zero_at_t0(self):
+        """Linear chirp starts at amplitude*sin(0) = 0 at t=0."""
+        from blocks.chirp import ChirpBlock
+        block = ChirpBlock()
+        amplitude = 2.5
+        params = {'f0': 1.0, 'f1': 10.0, 't1': 10.0,
+                  'amplitude': amplitude, 'method': 'linear'}
+
+        result = block.execute(time=0.0, inputs={}, params=params)
+        # phi=-90deg makes it a sine: amplitude * sin(0) == 0
+        assert np.isclose(result[0], amplitude * np.sin(0.0), atol=1e-9), \
+            f"Chirp at t=0 should be 0, got {result[0]}"
+
+    def test_chirp_amplitude_scales(self):
+        """Output scales linearly with amplitude at a fixed time."""
+        from blocks.chirp import ChirpBlock
+        block = ChirpBlock()
+        base = {'f0': 1.0, 'f1': 5.0, 't1': 10.0, 'method': 'linear'}
+
+        r1 = block.execute(time=0.37, inputs={}, params={**base, 'amplitude': 1.0})
+        r2 = block.execute(time=0.37, inputs={}, params={**base, 'amplitude': 3.0})
+        assert np.isclose(r2[0], 3.0 * r1[0]), \
+            "Chirp output should scale linearly with amplitude"
+
+    def test_chirp_finite_across_sweep(self):
+        """All values across the sweep are finite and within +/- amplitude."""
+        from blocks.chirp import ChirpBlock
+        block = ChirpBlock()
+        amplitude = 2.0
+        params = {'f0': 1.0, 'f1': 20.0, 't1': 5.0,
+                  'amplitude': amplitude, 'method': 'linear'}
+
+        for t in np.linspace(0.0, 5.0, 200):
+            result = block.execute(time=float(t), inputs={}, params=params)
+            val = result[0]
+            assert np.isfinite(val), f"Chirp produced non-finite value at t={t}"
+            assert abs(val) <= amplitude + 1e-9, \
+                f"Chirp value {val} exceeded amplitude {amplitude} at t={t}"
+
+    def test_chirp_methods_finite(self):
+        """Linear, logarithmic, and quadratic sweeps all produce finite values."""
+        from blocks.chirp import ChirpBlock
+        block = ChirpBlock()
+        for method in ('linear', 'logarithmic', 'quadratic'):
+            params = {'f0': 1.0, 'f1': 10.0, 't1': 5.0,
+                      'amplitude': 1.0, 'method': method}
+            for t in np.linspace(0.0, 5.0, 50):
+                result = block.execute(time=float(t), inputs={}, params=params)
+                assert np.isfinite(result[0]), \
+                    f"method={method} produced non-finite value at t={t}"

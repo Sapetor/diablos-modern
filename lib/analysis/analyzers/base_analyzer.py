@@ -201,6 +201,141 @@ class BaseAnalyzer:
                          
         return None, None
 
+    @staticmethod
+    def _auto_frequency_range(num, den, dt=0.0, n_points=500):
+        """Derive a sensible frequency sweep from the system poles/zeros.
+
+        Instead of a fixed ``np.logspace(-2, 2)`` window, span roughly two
+        decades below the slowest finite pole/zero to two decades above the
+        fastest one, so both fast and slow dynamics land on screen. Frequencies
+        are taken as the magnitudes of the roots of ``num`` and ``den``
+        (``np.roots``); poles/zeros at the origin (magnitude 0) and non-finite
+        roots are ignored when picking the band.
+
+        For discrete systems (``dt > 0``) the sweep is clamped to the valid
+        ``(0, pi/dt]`` band (the Nyquist frequency).
+
+        Returns a logarithmically spaced ``w`` array (rad/s).
+        """
+        num = np.atleast_1d(np.asarray(num, dtype=float)).flatten()
+        den = np.atleast_1d(np.asarray(den, dtype=float)).flatten()
+
+        roots = []
+        for coeffs in (num, den):
+            if coeffs.size > 1 and np.any(coeffs):
+                try:
+                    roots.append(np.roots(coeffs))
+                except (np.linalg.LinAlgError, ValueError):
+                    pass
+
+        mags = np.array([], dtype=float)
+        if roots:
+            all_roots = np.concatenate(roots)
+            all_roots = all_roots[np.isfinite(all_roots)]
+            mags = np.abs(all_roots)
+            mags = mags[mags > 1e-12]  # drop integrators/origin roots
+
+        if mags.size > 0:
+            w_lo = mags.min() / 100.0   # two decades below the slowest
+            w_hi = mags.max() * 100.0   # two decades above the fastest
+        else:
+            # No finite, non-origin dynamics (e.g. pure gain or integrator):
+            # fall back to the historical default band.
+            w_lo, w_hi = 1e-2, 1e2
+
+        if dt > 0:
+            # Discrete: never sweep past the Nyquist frequency.
+            w_nyq = np.pi / dt
+            w_hi = min(w_hi, w_nyq)
+            w_lo = min(w_lo, w_hi / 1000.0)
+
+        # Guard against degenerate (collapsed) ranges.
+        if not (w_lo > 0) or not (w_hi > w_lo):
+            w_lo, w_hi = 1e-2, 1e2
+
+        return np.logspace(np.log10(w_lo), np.log10(w_hi), int(n_points))
+
+    @staticmethod
+    def _compute_stability_margins(w, mag_db, phase_deg):
+        """Compute gain/phase margins from precomputed Bode data.
+
+        Args:
+            w: frequency vector (rad/s), monotonically increasing.
+            mag_db: open-loop magnitude in dB at each ``w``.
+            phase_deg: open-loop phase in degrees at each ``w``.
+
+        Returns a dict with:
+            gain_margin_db, gain_crossover_w (the -180 deg phase crossing),
+            phase_margin_deg, phase_crossover_w (the 0 dB gain crossing).
+        Values that have no crossing in the swept band are ``inf`` (margins)
+        / ``None`` (frequencies).
+
+        The "gain crossover" here is the -180 deg phase crossing used for the
+        gain margin; the "phase crossover" is the 0 dB gain crossing used for
+        the phase margin (matching the classical control definitions).
+        """
+        w = np.asarray(w, dtype=float)
+        mag_db = np.asarray(mag_db, dtype=float)
+        phase_deg = np.asarray(phase_deg, dtype=float)
+
+        result = {
+            'gain_margin_db': float('inf'),
+            'gain_crossover_w': None,
+            'phase_margin_deg': float('inf'),
+            'phase_crossover_w': None,
+        }
+
+        def _interp_crossings(x, y, level):
+            """Linear-interpolated x values where y crosses ``level``."""
+            yl = y - level
+            crossings = []
+            for i in range(len(yl) - 1):
+                a, b = yl[i], yl[i + 1]
+                if a == 0.0:
+                    crossings.append((x[i], i))
+                elif a * b < 0.0:
+                    frac = a / (a - b)
+                    xc = x[i] + frac * (x[i + 1] - x[i])
+                    crossings.append((xc, i))
+            return crossings
+
+        # --- Gain margin: at the -180 deg phase crossing ---
+        # Phase can wrap; evaluate against the nearest odd multiple of 180.
+        if phase_deg.size >= 2:
+            # Use a single reference of -180 within the principal band; for
+            # higher-order systems the swept phase already trends through -180.
+            gm_crossings = _interp_crossings(w, phase_deg, -180.0)
+            if gm_crossings:
+                # Choose the lowest-frequency -180 crossing (classical GM).
+                xc, idx = gm_crossings[0]
+                # Interpolate magnitude at that frequency.
+                if idx < len(w) - 1:
+                    denom = (w[idx + 1] - w[idx])
+                    frac = (xc - w[idx]) / denom if denom != 0 else 0.0
+                    mag_at = mag_db[idx] + frac * (mag_db[idx + 1] - mag_db[idx])
+                else:
+                    mag_at = mag_db[idx]
+                result['gain_crossover_w'] = float(xc)
+                # GM (dB) = -magnitude at the -180 crossing.
+                result['gain_margin_db'] = float(-mag_at)
+
+        # --- Phase margin: at the 0 dB gain crossing ---
+        if mag_db.size >= 2:
+            pm_crossings = _interp_crossings(w, mag_db, 0.0)
+            if pm_crossings:
+                xc, idx = pm_crossings[0]
+                if idx < len(w) - 1:
+                    denom = (w[idx + 1] - w[idx])
+                    frac = (xc - w[idx]) / denom if denom != 0 else 0.0
+                    ph_at = phase_deg[idx] + frac * (phase_deg[idx + 1] - phase_deg[idx])
+                else:
+                    ph_at = phase_deg[idx]
+                result['phase_crossover_w'] = float(xc)
+                # PM (deg) = 180 + phase at the 0 dB crossing.
+                result['phase_margin_deg'] = float(180.0 + ph_at)
+
+        return result
+
     def _setup_plot_widget(self, plot_window, title):
         """Configure standard white-bg plot widget."""
         plot_window.setWindowTitle(title)

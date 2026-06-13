@@ -1192,14 +1192,23 @@ class DSim:
 
     def export_data(self):
         """
-        :purpose: Exports the data saved in Export blocks in .npz format.
-        :description: This function is executed after the simulation has finished or stopped. It looks for export blocks, which have some vectors saved with signal outputs from previous blocks. Then it merge all vectors in one big matrix, which is exported with the time vector to a .npz file, formatted in a way it is ready for graph libraries.
+        :purpose: Exports the data saved in Export blocks to the selected format.
+        :description: This function is executed after the simulation has finished or stopped. It looks for export blocks, which have some vectors saved with signal outputs from previous blocks. Then it merges all vectors in one big matrix, which is exported with the time vector. The output format is selected by the Export block's ``format`` parameter:
+
+            - ``npz`` (default): ``np.savez`` archive with one array per labelled signal plus ``t``.
+            - ``csv``: ``np.savetxt`` with a header of ``t`` followed by the signal labels (one column per signal).
+            - ``mat``: ``scipy.io.savemat`` with a dict of ``t`` plus one entry per labelled signal.
         """
+        # Preserve column order so csv/mat columns mirror the order signals were
+        # encountered. vec_dict maps label -> 1-D array of length len(timeline).
         vec_dict = {}
         export_toggle = False
+        out_format = 'npz'
         for block in self.blocks_list:
             if block.block_fn == 'Export':
                 export_toggle = True
+                # Last Export block's format wins (diagrams typically have one).
+                out_format = str(block.params.get('format', 'npz')).lower()
                 labels = block.params['vec_labels']
                 vector = block.params['vector']
                 if block.params['vec_dim'] == 1:
@@ -1207,18 +1216,48 @@ class DSim:
                 elif block.params['vec_dim'] > 1:
                     for i in range(block.params['vec_dim']):
                         vec_dict[labels[i]] = vector[:, i]
-        if export_toggle:
-            # Derive basename without assuming a fixed-length extension
-            basename = os.path.splitext(self.filename)[0]
-            export_path = os.path.join('saves', basename)
-            # In frozen mode, redirect saves/ to a writable location (mirrors FileService)
-            if getattr(sys, 'frozen', False) and not os.path.isabs(export_path):
-                from lib.app_paths import get_user_data_dir
-                export_path = os.path.join(get_user_data_dir(), export_path)
-            # Ensure the target directory exists before writing
-            os.makedirs(os.path.dirname(export_path) or '.', exist_ok=True)
-            np.savez(export_path, t=self.timeline, **vec_dict)
-            logger.info("DATA EXPORTED TO " + export_path + '.npz')
+        if not export_toggle:
+            return
+
+        if out_format not in ('npz', 'csv', 'mat'):
+            logger.warning(
+                "Unknown export format '%s'; falling back to 'npz'.", out_format)
+            out_format = 'npz'
+
+        # Derive basename without assuming a fixed-length extension
+        basename = os.path.splitext(self.filename)[0]
+        export_path = os.path.join('saves', basename)
+        # In frozen mode, redirect saves/ to a writable location (mirrors FileService)
+        if getattr(sys, 'frozen', False) and not os.path.isabs(export_path):
+            from lib.app_paths import get_user_data_dir
+            export_path = os.path.join(get_user_data_dir(), export_path)
+        # Ensure the target directory exists before writing
+        os.makedirs(os.path.dirname(export_path) or '.', exist_ok=True)
+
+        timeline = np.asarray(self.timeline)
+
+        if out_format == 'npz':
+            np.savez(export_path, t=timeline, **vec_dict)
+            out_file = export_path + '.npz'
+        elif out_format == 'csv':
+            labels = list(vec_dict.keys())
+            # Build (N, 1 + n_signals) matrix: time column first, then signals.
+            columns = [timeline.reshape(-1)]
+            for label in labels:
+                columns.append(np.asarray(vec_dict[label]).reshape(-1))
+            data = np.column_stack(columns)
+            header = ','.join(['t'] + [str(label) for label in labels])
+            out_file = export_path + '.csv'
+            np.savetxt(out_file, data, delimiter=',', header=header, comments='')
+        else:  # 'mat'
+            from scipy.io import savemat
+            mat_dict = {'t': timeline.reshape(-1)}
+            for label, value in vec_dict.items():
+                mat_dict[str(label)] = np.asarray(value).reshape(-1)
+            out_file = export_path + '.mat'
+            savemat(out_file, mat_dict)
+
+        logger.info("DATA EXPORTED TO " + out_file)
 
     def run_optimization(self, callback=None):
         """

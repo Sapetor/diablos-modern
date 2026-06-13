@@ -26,14 +26,19 @@ class BodeAnalyzer(BaseAnalyzer):
             # Create discrete or continuous system
             if dt > 0:
                 sys = signal.TransferFunction(num, den, dt=dt)
-                w_max = np.pi / dt
-                w = np.logspace(np.log10(w_max/1000.0), np.log10(w_max), 500)
             else:
                 sys = signal.TransferFunction(num, den)
-                w = np.logspace(-2, 2, 500) # Default range
-                
+
+            # Auto-range the frequency sweep from the system poles/zeros so
+            # both fast and slow dynamics land on screen, instead of a fixed
+            # np.logspace(-2, 2) window.
+            w = self._auto_frequency_range(num, den, dt=dt, n_points=500)
+
             w, mag, phase = sys.bode(w=w)
-            
+
+            # Stability margins computed from the magnitude/phase arrays.
+            margins = self._compute_stability_margins(w, mag, phase)
+
             from PyQt5.QtWidgets import QWidget # Lazy import
             plot_window = QWidget()
             
@@ -50,7 +55,19 @@ class BodeAnalyzer(BaseAnalyzer):
                 
                 # Add -180 deg line
                 plot_widget.addLine(y=-180, pen=pg.mkPen('r', width=1, style=Qt.DashLine))
-                
+
+                # Annotate phase margin at the 0 dB gain crossover.
+                pm = margins.get('phase_margin_deg')
+                pcw = margins.get('phase_crossover_w')
+                if pcw is not None and np.isfinite(pm):
+                    plot_widget.addLine(
+                        x=np.log10(pcw),
+                        pen=pg.mkPen('g', width=1, style=Qt.DashLine))
+                    pm_text = pg.TextItem(
+                        f"PM = {pm:.1f} deg @ {pcw:.3g} rad/s", color='g')
+                    pm_text.setPos(np.log10(pcw), -180)
+                    plot_widget.addItem(pm_text)
+
             else: # Magnitude
                 title = f"Bode Magnitude Plot: {sys_block.name}"
                 plot_widget = self._setup_plot_widget(plot_window, title)
@@ -63,7 +80,19 @@ class BodeAnalyzer(BaseAnalyzer):
                 
                 # Add 0 dB line
                 plot_widget.addLine(y=0, pen=pg.mkPen('k', width=1, style=Qt.DashLine))
-                
+
+                # Annotate gain margin at the -180 deg phase crossover.
+                gm = margins.get('gain_margin_db')
+                gcw = margins.get('gain_crossover_w')
+                if gcw is not None and np.isfinite(gm):
+                    plot_widget.addLine(
+                        x=np.log10(gcw),
+                        pen=pg.mkPen('r', width=1, style=Qt.DashLine))
+                    gm_text = pg.TextItem(
+                        f"GM = {gm:.1f} dB @ {gcw:.3g} rad/s", color='r')
+                    gm_text.setPos(np.log10(gcw), 0)
+                    plot_widget.addItem(gm_text)
+
                 # Add Nyquist line for discrete
                 if dt > 0:
                      nyquist_freq = np.pi / dt

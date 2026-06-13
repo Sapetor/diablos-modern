@@ -35,7 +35,9 @@ class FileService:
             model: SimulationModel instance containing blocks and lines
         """
         self.model = model
-        self.filename: str = 'data.dat'
+        # Default new saves to the canonical .diablos extension. Older files
+        # used .dat; load still accepts those for backward compatibility.
+        self.filename: str = 'data.diablos'
         self.SCREEN_WIDTH: int = 1280
         self.SCREEN_HEIGHT: int = 770
 
@@ -193,18 +195,21 @@ class FileService:
             else:
                 options = QFileDialog.Options()
                 initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
+                # .diablos is the canonical/default filter; .dat kept for back-compat.
                 file, _ = QFileDialog.getSaveFileName(
                     None,
                     "Save File",
                     os.path.join(initial_dir, self.filename),
-                    "Data Files (*.dat);;All Files (*)",
+                    "DiaBloS Files (*.diablos);;Data Files (*.dat);;All Files (*)",
                     options=options
                 )
 
             if not file:
                 return 1
-            if not file.lower().endswith('.dat'):
-                file += '.dat'
+            # Default new saves to .diablos but accept an explicit .dat the user
+            # typed (backward compatibility) rather than forcing a double extension.
+            if not file.lower().endswith(('.diablos', '.dat')):
+                file += '.diablos'
         else:
             # Autosave to saves/ directory
             if filepath:
@@ -212,8 +217,12 @@ class FileService:
             elif '_AUTOSAVE' not in self.filename:
                 # Strip the extension robustly: filename[:-4] assumed a 3-char
                 # extension (.dat) and mangled longer ones like .diablos.
-                stem = os.path.splitext(self.filename)[0]
-                file = f'saves/{stem}_AUTOSAVE.dat'
+                # Preserve the original extension (.diablos canonical, .dat legacy)
+                # so the autosave matches the source file's format.
+                stem, ext = os.path.splitext(self.filename)
+                if ext.lower() not in ('.diablos', '.dat'):
+                    ext = '.diablos'
+                file = f'saves/{stem}_AUTOSAVE{ext}'
             else:
                 file = f'saves/{self.filename}'
             # In frozen mode, redirect saves/ to a writable location
@@ -246,11 +255,13 @@ class FileService:
         if filepath is None:
             options = QFileDialog.Options()
             initial_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'saves')
+            # Show .diablos files (the format every example uses) by default,
+            # while still accepting legacy .dat/.json files for back-compat.
             filepath, _ = QFileDialog.getOpenFileName(
                 None,
                 "Open File",
                 initial_dir,
-                "Data Files (*.dat);;All Files (*)",
+                "DiaBloS Files (*.diablos *.dat *.json);;All Files (*)",
                 options=options
             )
 
