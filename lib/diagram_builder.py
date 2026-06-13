@@ -25,8 +25,11 @@ BLOCK_DEFAULTS = {
     "Constant": {"category": "Sources", "color": "#90EE90", "b_type": 0, "in_ports": 0, "out_ports": 1},
     "Noise": {"category": "Sources", "color": "#90EE90", "b_type": 0, "in_ports": 0, "out_ports": 1},
     "PRBS": {"category": "Sources", "color": "#90EE90", "b_type": 0, "in_ports": 0, "out_ports": 1},
-    
+    "FromFile": {"category": "Sources", "color": "#90EE90", "b_type": 0, "in_ports": 0, "out_ports": 1},
+
     "Sum": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 2, "out_ports": 1, "io_edit": "both"},
+    "LookupTable1D": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 1, "out_ports": 1},
+    "LookupTable2D": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 2, "out_ports": 1},
     "Gain": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 1, "out_ports": 1},
     "SgProd": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 2, "out_ports": 1},
     "Abs": {"category": "Math", "color": "#87CEEB", "b_type": 2, "in_ports": 1, "out_ports": 1},

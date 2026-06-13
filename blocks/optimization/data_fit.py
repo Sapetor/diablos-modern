@@ -249,50 +249,21 @@ class DataFitBlock(BaseBlock):
             params['_mean_y_'] = 0.0
             return
 
+        # Shared, validated loader (CSV / NPZ / MAT / text) -- see
+        # lib/services/timeseries_loader.py. On any failure fall back to trivial
+        # data so a bad path never aborts an optimization run.
+        from lib.services.timeseries_loader import (
+            load_timeseries,
+            TimeseriesLoadError,
+        )
         try:
-            if data_file.endswith('.npz'):
-                # allow_pickle=False: never deserialize Python objects from a data
-                # file path that may originate from an untrusted project file.
-                data = np.load(data_file, allow_pickle=False)
-                t_data = data.get(time_col, data.get('t', np.array([0.0, 1.0])))
-                y_data = data.get(signal_col, data.get('y', np.array([0.0, 0.0])))
-            elif data_file.endswith('.csv'):
-                import csv
-                with open(data_file, 'r') as f:
-                    reader = csv.DictReader(f)
-                    rows = list(reader)
-
-                # Resolve each column independently: positional index if the
-                # spec is numeric, otherwise a named DictReader lookup. This
-                # supports mixed cases (e.g. numeric time_col with a named
-                # signal_col) instead of assuming signal is column 1.
-                def _column(rows, col):
-                    if col.isdigit():
-                        idx = int(col)
-                        return np.array([float(list(row.values())[idx]) for row in rows])
-                    return np.array([float(row.get(col, 0)) for row in rows])
-
-                t_data = _column(rows, time_col)
-                y_data = _column(rows, signal_col)
-            else:
-                # Try numpy loadtxt
-                data = np.loadtxt(data_file)
-                if data.ndim == 1:
-                    t_data = np.arange(len(data))
-                    y_data = data
-                else:
-                    time_idx = int(time_col) if time_col.isdigit() else 0
-                    signal_idx = int(signal_col) if signal_col.isdigit() else 1
-                    t_data = data[:, time_idx]
-                    y_data = data[:, signal_idx]
-
+            t_data, y_data = load_timeseries(data_file, time_col, signal_col)
             params['_time_data_'] = np.atleast_1d(t_data).flatten()
             params['_signal_data_'] = np.atleast_1d(y_data).flatten()
             params['_mean_y_'] = np.mean(params['_signal_data_'])
-
             logger.info(f"DataFit: Loaded {len(t_data)} points from {data_file}")
 
-        except Exception as e:
+        except TimeseriesLoadError as e:
             logger.error(f"DataFit: Failed to load data from {data_file}: {e}")
             params['_time_data_'] = np.array([0.0, 1.0])
             params['_signal_data_'] = np.array([0.0, 0.0])
