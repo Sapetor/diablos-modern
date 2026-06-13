@@ -165,8 +165,38 @@
 
 ---
 
+## Code Quality Review (2026-06-13) — follow-ups
+
+A whole-app review fixed ~292 of 334 findings (see
+`tasks/code-quality-review-2026-06-13.md` and its `-deferred.md` companion).
+Remaining deferred items, by priority:
+
+### High value
+- [ ] **Single-source PDE finite-difference/BC kernels** shared by the blocks and
+  `SystemCompiler` — the Robin BC already diverged (convective vs penalty
+  Dirichlet), so interpreter and compiled paths can compute different physics.
+- [ ] **Impulse/Step-`impulse` vs adaptive solver** — force solver evaluations at
+  pulse edges (`t_eval`/`max_step`) or model the impulse analytically.
+- [ ] **Equivalence tests** for each compiled stateful block (RateLimiter, PID,
+  TransportDelay, Selector) vs the interpreter; integration test for all-Neumann
+  2D PDE corners.
+
+### Performance (needs perf tests first)
+- [ ] Vectorize per-node Python loops in the compiled PDE RHS (1D & 2D).
+- [ ] `Scope`/`Export` O(n²) per-step concatenation → list + single concat at end
+  (add a `BaseBlock` finalize hook).
+- [ ] `draw_grid`, minimap bounds, and per-frame `QColor` reconstruction caching.
+
+### Design debt (optional refactors, no behavior change)
+- [ ] Decompose `main_window`/`modern_canvas` constructors; break the
+  `lib/` ↔ `modern_ui/` import cycle via dependency inversion.
+- [ ] `base_analyzer` discrete PID TF (c2d); unify `file_service` save/load paths.
+
+---
+
 ## References
 
+- `tasks/code-quality-review-2026-06-13.md` - Full whole-app review (334 findings)
 - `docs/REFACTORING_TODO.md` - Detailed refactoring history
 - `docs/PDE_ROADMAP.md` - Full PDE enhancement roadmap with architecture diagrams
 - `CLAUDE.md` - Project overview and recent work
