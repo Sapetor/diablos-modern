@@ -146,3 +146,134 @@ class TestPacketLoss:
                 time=k * dtime, inputs={0: np.array([99.0])},
                 params=params, dtime=dtime)[0])
             assert np.allclose(out, [10.0])  # held, not the new 99.0
+
+    def test_default_loss_model_is_bernoulli(self):
+        """The block defaults to the i.i.d. Bernoulli model."""
+        block = PacketLossBlock()
+        assert block.params["loss_model"]["default"] == "bernoulli"
+        assert block.params["loss_model"]["choices"] == ["bernoulli", "gilbert_elliott"]
+
+
+def _drop_seq(deliveries):
+    """Drop indicator sequence: 1 if dropped, 0 if delivered."""
+    return [0 if d else 1 for d in deliveries]
+
+
+def _max_run_length(drop_seq):
+    """Longest run of consecutive drops (value==1)."""
+    best = run = 0
+    for v in drop_seq:
+        if v == 1:
+            run += 1
+            best = max(best, run)
+        else:
+            run = 0
+    return best
+
+
+@pytest.mark.unit
+class TestGilbertElliott:
+    def test_ge_is_bursty_vs_bernoulli(self):
+        """Gilbert-Elliott yields markedly more clustered (bursty) drops than
+        i.i.d. Bernoulli at a comparable average loss rate."""
+        n = 6000
+        inputs = np.arange(1, n + 1, dtype=float)
+
+        # GE: rarely enters the bad state (p_bg small) but stays a while
+        # (p_gb small) dropping almost everything there -> bursts.
+        ge_params = _fresh_params(
+            loss_model="gilbert_elliott", seed=7,
+            loss_prob=0.0,        # good state never drops
+            loss_prob_bad=1.0,    # bad state always drops
+            p_bg=0.02,            # good->bad
+            p_gb=0.1,             # bad->good (stays bad ~10 samples)
+        )
+        _, ge_deliv = _run(ge_params, inputs)
+        ge_drops = _drop_seq(ge_deliv)
+        ge_rate = sum(ge_drops) / n
+
+        # Bernoulli at the SAME average loss rate.
+        bern_params = _fresh_params(
+            loss_model="bernoulli", seed=7, loss_prob=ge_rate)
+        _, bern_deliv = _run(bern_params, inputs)
+        bern_drops = _drop_seq(bern_deliv)
+
+        # Sanity: a meaningful number of drops actually occurred.
+        assert sum(ge_drops) > 50
+        # Burstiness: GE's longest consecutive-drop run is much larger than
+        # i.i.d. Bernoulli at the same mean rate.
+        assert _max_run_length(ge_drops) > 2 * _max_run_length(bern_drops)
+
+    def test_ge_drops_cluster_in_bad_state(self):
+        """With good-state loss 0 and bad-state loss 1, every drop must occur
+        while the chain is in the bad state, and drops come in contiguous runs
+        (length > 1 on average)."""
+        n = 4000
+        inputs = np.arange(1, n + 1, dtype=float)
+        params = _fresh_params(
+            loss_model="gilbert_elliott", seed=11,
+            loss_prob=0.0, loss_prob_bad=1.0,
+            p_bg=0.03, p_gb=0.2)
+        _, deliveries = _run(params, inputs)
+        drops = _drop_seq(deliveries)
+        total_drops = sum(drops)
+        assert total_drops > 20
+        # Count bursts (maximal runs of consecutive drops).
+        bursts = 0
+        prev = 0
+        for v in drops:
+            if v == 1 and prev == 0:
+                bursts += 1
+            prev = v
+        # Average burst length clearly > 1 (bursty, not isolated drops).
+        assert total_drops / bursts > 1.5
+
+    def test_ge_reproducible_with_fixed_seed(self):
+        """Two fresh GE blocks with the same seed drop identically."""
+        inputs = np.arange(1, 801, dtype=float)
+        kw = dict(loss_model="gilbert_elliott", seed=99,
+                  loss_prob=0.05, loss_prob_bad=0.95, p_bg=0.1, p_gb=0.4)
+        _, d1 = _run(_fresh_params(**kw), inputs)
+        _, d2 = _run(_fresh_params(**kw), inputs)
+        assert d1 == d2
+
+    def test_ge_different_seed_differs(self):
+        """Different seeds give a different GE drop pattern."""
+        inputs = np.arange(1, 801, dtype=float)
+        base = dict(loss_model="gilbert_elliott",
+                    loss_prob=0.05, loss_prob_bad=0.95, p_bg=0.1, p_gb=0.4)
+        _, d1 = _run(_fresh_params(seed=1, **base), inputs)
+        _, d2 = _run(_fresh_params(seed=2, **base), inputs)
+        assert d1 != d2
+
+    def test_ge_honors_drop_mode_and_hold(self):
+        """GE reuses the existing drop_mode/hold logic: a held value repeats
+        the last delivered packet on a dropped sample."""
+        params = _fresh_params(
+            loss_model="gilbert_elliott", seed=3, drop_mode="hold",
+            loss_prob=0.0, loss_prob_bad=1.0, p_bg=0.5, p_gb=0.1,
+            initial_value=0.0)
+        n = 300
+        inputs = np.arange(1, n + 1, dtype=float)
+        outputs, deliveries = _run(params, inputs)
+
+        last_delivered = np.atleast_1d(0.0)
+        found_drop = False
+        for out, delivered, val in zip(outputs, deliveries, inputs):
+            if delivered:
+                last_delivered = np.atleast_1d(float(val))
+            else:
+                found_drop = True
+                assert np.allclose(out, last_delivered)
+        assert found_drop
+
+    def test_bernoulli_path_unchanged_by_new_params(self):
+        """Adding GE params must not change the Bernoulli RNG stream: an
+        explicit bernoulli model with the default loss_prob reproduces the
+        same drop pattern as a plain default-model run."""
+        inputs = np.arange(1, 501, dtype=float)
+        _, d_default = _run(_fresh_params(loss_prob=0.5, seed=42), inputs)
+        _, d_explicit = _run(
+            _fresh_params(loss_model="bernoulli", loss_prob=0.5, seed=42),
+            inputs)
+        assert d_default == d_explicit

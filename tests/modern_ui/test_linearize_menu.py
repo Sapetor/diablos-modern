@@ -1,8 +1,8 @@
-"""Integration wiring test for the Linearize & Analyze feature.
+"""Integration wiring tests for the Analysis menu features.
 
-The controller / results window / dialog are unit-tested separately; this checks
-that the feature is reachable from the GUI: the Analysis menu exists with a
-Linearize action, the window method exists, and the empty-diagram path is safe.
+The controllers / windows / dialogs are unit-tested separately; this checks the
+features are reachable from the GUI: the Analysis menu exists with Linearize and
+Monte Carlo actions, the window methods exist, and the empty-diagram paths are safe.
 """
 
 import pytest
@@ -25,13 +25,18 @@ def test_analysis_menu_and_method_wired(qapp, monkeypatch):
         assert isinstance(analysis_menu, QMenu), "Analysis menu not found in menubar"
         assert any("Linearize" in a.text() for a in analysis_menu.actions())
 
-        # Empty diagram: should show an info box (monkeypatched) and not crash.
+        # Monte Carlo is wired too.
+        assert hasattr(w, "run_monte_carlo")
+        assert any("Monte Carlo" in a.text() for a in analysis_menu.actions())
+
+        # Empty diagram: both features show an info box (monkeypatched), no crash.
         import PyQt5.QtWidgets as qtw
         calls = []
         monkeypatch.setattr(qtw.QMessageBox, "information",
                             lambda *a, **k: calls.append(a))
         w.dsim.blocks_list = []
         w.linearize_and_analyze()
-        assert calls, "empty-diagram path should inform the user"
+        w.run_monte_carlo()
+        assert len(calls) == 2, "empty-diagram paths should inform the user"
     finally:
         w.close()

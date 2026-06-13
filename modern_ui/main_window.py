@@ -387,6 +387,44 @@ class ModernDiaBloSWindow(QMainWindow):
         self._analysis_windows.append(win)
         win.show()
 
+    def run_monte_carlo(self):
+        """Run a Monte-Carlo ensemble of the current diagram and show statistics.
+
+        Opens a dialog (N runs, master seed, sim time/dt), runs the seeded
+        ensemble, and shows a mean + percentile-band window. Runs synchronously
+        (the dialog lets the user bound N); a wait cursor is shown meanwhile.
+        """
+        from PyQt5.QtWidgets import QMessageBox, QDialog, QApplication
+        from PyQt5.QtCore import Qt
+        if not self.dsim.blocks_list:
+            QMessageBox.information(self, "Monte Carlo", "No blocks to simulate.")
+            return
+
+        from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
+        dlg = MonteCarloDialog(self.dsim, parent=self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        sel = dlg.get_selection()
+
+        from lib.analysis.monte_carlo import MonteCarloRunner
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            result = MonteCarloRunner(self.dsim).run(
+                n_runs=sel.get("n_runs", 100),
+                master_seed=sel.get("master_seed", 12345),
+                sim_time=sel.get("sim_time"),
+                sim_dt=sel.get("sim_dt"),
+            )
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
+        win = EnsembleResultWindow(result)  # top-level window
+        if not hasattr(self, '_analysis_windows'):
+            self._analysis_windows = []
+        self._analysis_windows.append(win)
+        win.show()
+
     # Simulation facades -> SimulationActionsManager (see managers/simulation_actions_manager.py)
     def pause_simulation(self):
         """Pause simulation."""
