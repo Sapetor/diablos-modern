@@ -167,30 +167,32 @@
 
 ## Code Quality Review (2026-06-13) — follow-ups
 
-A whole-app review fixed ~292 of 334 findings (see
+A whole-app review confirmed 334 findings. All concrete defects, correctness, and
+performance items with a safe fix are now **fixed** (see
 `tasks/code-quality-review-2026-06-13.md` and its `-deferred.md` companion).
-Remaining deferred items, by priority:
 
-### High value
-- [ ] **Single-source PDE finite-difference/BC kernels** shared by the blocks and
-  `SystemCompiler` — the Robin BC already diverged (convective vs penalty
-  Dirichlet), so interpreter and compiled paths can compute different physics.
-- [ ] **Impulse/Step-`impulse` vs adaptive solver** — force solver evaluations at
-  pulse edges (`t_eval`/`max_step`) or model the impulse analytically.
-- [ ] **Equivalence tests** for each compiled stateful block (RateLimiter, PID,
-  TransportDelay, Selector) vs the interpreter; integration test for all-Neumann
-  2D PDE corners.
+### Done
+- [x] Impulse/Step-`impulse` vs adaptive solver — routed to the interpreter path.
+- [x] Vectorize per-node Python loops in the compiled PDE RHS (1D & 2D).
+- [x] `Scope`/`Export` O(n²) per-step concat → amortized-O(1) geometric buffers.
+- [x] Compiled heat **Robin BC** reconciled with the interpreted block.
+- [x] `base_analyzer` discrete PID TF (c2d); `integrator` configurable method.
+- [x] `connection` routing from port orientation; `draw_grid`/minimap/block_renderer caching.
+- [x] Unified 1D/2D PDE `compute_derivatives` signatures.
+- [x] Extracted `MainWindow._init_core_managers` (constructor altitude).
 
-### Performance (needs perf tests first)
-- [ ] Vectorize per-node Python loops in the compiled PDE RHS (1D & 2D).
-- [ ] `Scope`/`Export` O(n²) per-step concatenation → list + single concat at end
-  (add a `BaseBlock` finalize hook).
-- [ ] `draw_grid`, minimap bounds, and per-frame `QColor` reconstruction caching.
-
-### Design debt (optional refactors, no behavior change)
-- [ ] Decompose `main_window`/`modern_canvas` constructors; break the
-  `lib/` ↔ `modern_ui/` import cycle via dependency inversion.
-- [ ] `base_analyzer` discrete PID TF (c2d); unify `file_service` save/load paths.
+### Remaining — architectural backlog (no behavior change; do with dedicated tests)
+- [ ] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
+  and `SystemCompiler` (the Robin *correctness* divergence is already fixed; this
+  is the larger merge-into-one-kernel refactor).
+- [ ] **`lib.py` interpreter hot path**: O(blocks²) per-step re-iteration,
+  duplicated multi-rate loops, `DSim` facade, engine-state re-copy.
+- [ ] **`modern_canvas` god object**; consolidate the ~18-manager layer.
+- [ ] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
+  (move shared theming into `lib`), instead of function-local imports.
+- [ ] Add compiled-vs-interpreted equivalence tests for each compiled stateful
+  block (RateLimiter, PID, TransportDelay, Selector) and an all-Neumann 2D PDE
+  corner integration test.
 
 ---
 

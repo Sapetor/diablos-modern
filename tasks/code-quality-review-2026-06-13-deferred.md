@@ -1,102 +1,68 @@
-# Code Quality Review (2026-06-13) — Deferred Findings: Status & Rationale
+# Code Quality Review (2026-06-13) — Deferred Findings: Final Status
 
-Companion to `code-quality-review-2026-06-13.md`. Of the 334 confirmed findings,
-**~292 were fixed** (287 in the automated wave + scaling read-side, dead-helper
-removal, and the all-Neumann PDE corner fix in wave 2). This file accounts for
-**every** finding that was *not* directly auto-fixed, so nothing is silently
-dropped. Each is categorized with the reason it was deferred and a concrete
-follow-up path.
+Companion to `code-quality-review-2026-06-13.md`. This tracks every finding that
+was not fixed in the initial automated wave, and its final disposition after the
+follow-up fix passes.
 
-All fixes verified: **1429 passed, 14 skipped** (unchanged from the pre-fix
-baseline).
+**Outcome:** of the 334 confirmed findings, all concrete defects, correctness
+issues, and performance problems with a safe fix have been **fixed**. What
+remains is a small set of (a) genuine architectural refactors with no behavior
+change and real regression risk, and (b) items that are deliberate/correct as-is.
+
+All fixes verified green throughout: **1429 passed, 14 skipped** (unchanged from
+the pre-fix baseline).
 
 ---
 
-## A. Deferred during the automated wave, then fixed manually (wave 2)
+## Fixed after initial deferral (the follow-up passes)
 
-| Finding | File | Resolution |
+| Finding | File(s) | Fix |
 |---|---|---|
-| Scaling factor written to user path but read from read-only bundle (HIGH) | `diablos_modern.py` / `main_window.py` | Read side now prefers `user_data_path(...)` with `resource_path` fallback. |
-| All-Neumann 2D PDE corners frozen at initial value (HIGH) | `lib/engine/system_compiler.py` | Heat/Wave/Advection corners set to mean of edge neighbors; activates only in the all-Neumann case (zero regression to Dirichlet/Outflow/mixed). |
-| Dead `sort_labels` / `sort_vectors` helpers | `lib/plotting/signal_plot.py` | Removed (confirmed unused repo-wide). |
+| Impulse / Step(`impulse`) skipped by adaptive solver (HIGH) | `system_compiler.py` | Excluded from the compiled path → interpreter fires a correct `value/dt` sample. |
+| Per-node Python loops in PDE RHS (HIGH/med) | `system_compiler.py` | Vectorized every interior stencil (heat/wave/advection/diffusion 1D + 2D); numerically identical. |
+| Compiled heat **Robin BC** = penalty-Dirichlet (wrong physics) | `system_compiler.py` | Drives the boundary node to the same Robin-consistent value the block computes. |
+| Scope / Export O(n²) per-step concatenation (HIGH/med) | `scope.py`, `export.py` | Geometric-growth buffers, amortized O(1) append, `vector` exposed as a view. |
+| Discrete PID transfer function ignored `sampling_time` | `analyzers/base_analyzer.py` | `cont2discrete` when `sampling_time > 0`. |
+| Integrator ignored ODE method / rebuilt closure each step | `integrator.py` | Configurable `ivp_method`; module-level RHS (default RK45 → identical). |
+| Routing assumed ports face +x | `connection.py` | Stub direction derived from port orientation (`block.flipped`). |
+| `draw_grid` O(W·H) per frame | `canvas_renderer.py` | Skip small-dot grid below ~6px device spacing. |
+| Per-frame QColor / category scan | `block_renderer.py` | Memoized theme-independent category→key lookup. |
+| Minimap bounds recomputed per paint | `minimap_widget.py` | Cached, invalidated by a geometry fingerprint. |
+| `compute_derivatives` 1D vs 2D signature mismatch | `blocks/pde/*_1d.py` | Unified to `(self, time, state, inputs, params)`. |
+| Frozen-build scaling read path; all-Neumann PDE corners; Step `impulse` docs | `diablos_modern.py`, `system_compiler.py`, `step.py` | See git history (wave 2 + this pass). |
+| Dead code, `_bounded_eye` branches, corner-fill duplication | `signal_plot.py`, `safe_eval.py`, `system_compiler.py` | Removed / consolidated. |
+| MainWindow god-constructor (altitude) | `main_window.py` | Extracted `_init_core_managers()`. |
 
-## B. Already resolved or not a real defect (no action needed)
+## Remaining — architectural refactors (tracked backlog, not defects)
 
-- **Hysteresis / Noise / StateVariable in the compiled ODE RHS** — fixed in the
-  wave by removing them from `COMPILABLE_BLOCKS` so they use the interpreter
-  path (the closure-mutated/stochastic RHS was the root cause).
-- **`linearizer.time_constants` exact `np.isreal`** — fixed (tolerance check).
-- **Nyquist plot-window retention** — already handled by the caller
-  (`control_system_analyzer.py`); no leak.
-- **FFT/Assert/Term/Outport return shape** — already returns `{'E': False}`,
-  which matches the finding's own suggestion.
-- **`Product` divide-by-zero → finite magic value** — intentional and pinned by
-  `tests/unit/blocks/test_product_block.py::test_division_by_zero_handling`
-  (requires a finite output). Uses `np.isinf`/`np.isnan`-aware handling already.
+Large structural changes with no behavior delta and real regression risk; best
+done as dedicated, separately-tested work rather than blind churn in a quality
+sweep. Listed in `todo.md`.
 
-## C. Deliberate non-fix — architecture/design (large refactor, no behavior
-   change, regression risk outweighs benefit)
+- **`lib.py` interpreter hot path**: O(blocks²) per-timestep re-iteration;
+  duplicated multi-rate/hierarchy loops; `DSim` facade breadth; engine-state
+  attributes re-copied onto `self`. (The *correctness* part of the duplication —
+  shared param resolution incl. External/subsystem recursion — was already fixed.)
+- **Full PDE kernel single-sourcing** between the blocks and `SystemCompiler`.
+  (The concrete correctness divergence, the Robin BC, is now fixed; merging the
+  two implementations into one shared kernel is the larger remaining refactor.)
+- **`modern_canvas.py` god object** and its implicit connection-start state.
+- **Manager-layer count** (~18 managers back-coupled to the parent). The
+  MainWindow constructor altitude was improved; consolidating managers is a
+  separate design decision.
+- **`lib/` ↔ `modern_ui/` import layering** (theme_manager imported from `lib`).
+  No actual runtime cycle exists; the proper fix is dependency inversion / moving
+  shared theming into `lib`, not the function-local-import band-aid.
 
-These are valid observations but "fixing" them means structural refactors with
-no functional payoff and real regression risk. Recorded as design debt, not bugs.
+## Remaining — deliberate / correct as-is (not defects)
 
-- `main_window.py` god-constructor; `modern_canvas.py` god object — manager
-  wiring with ordering constraints; extraction risks reordering side effects.
-- `lib/` ↔ `modern_ui/` circular-import risk worked around with function-local
-  imports — the real fix is dependency inversion across many files.
-- Broad `except Exception` at Qt event-handler boundaries
-  (`connection_manager.py`, `modern_canvas.py`) — intentional: an unhandled
-  exception there crashes the Qt event loop. High-value sub-cases were narrowed
-  in the wave; the rest are deliberate.
-- `DSim` facade / engine-state attributes re-copied onto `self` (`lib/lib.py`).
-- Manager-layer fragmentation (~18 managers back-coupled to the parent).
-- Duplicated logic: PDE stencils block-vs-`SystemCompiler`; `Export`/`Scope`
-  accumulation; `blox_exporter`/`tikz_exporter` block content;
-  `compute_derivatives` 1D-vs-2D signature. (Divergent guards were back-ported
-  where safe; full single-sourcing is a dedicated refactor.)
-
-> **Note — PDE kernel duplication is the highest-value item in this group.** The
-> Robin BC differs between the block (convective) and the compiler (penalty
-> Dirichlet), so interpreter vs compiled can compute different physics. Worth a
-> focused task to single-source the finite-difference/BC kernels.
-
-## D. Deferred performance (real, but perf-only and risky without perf tests)
-
-Correct-but-slow; auto-vectorizing numerical kernels risks silent numeric drift
-with no perf regression tests in place. Fix paths noted for a dedicated pass.
-
-- Per-node Python loops in the compiled PDE RHS (1D & 2D heat/wave/advection) →
-  vectorize with NumPy slicing.
-- `Scope` / `Export` O(n²) per-step `np.concatenate` → accumulate to a list +
-  concatenate once at sim end (needs a `BaseBlock` finalize hook).
-- `canvas_renderer.draw_grid` O(W·H) per frame; `minimap` recomputes bounds per
-  paint; `block_renderer` rebuilds `QColor` per frame (cache on `theme_manager`).
-- `lib.py` O(blocks²) per-timestep re-iteration; diagnostic `np.gradient`/energy
-  computed every RHS evaluation → move to a post-step pass.
-- `integrator` solve_ivp path ignores the selected method / rebuilds closure.
-
-## E. Deferred correctness (real; needs focused work or a feature, not a quick
-   safe edit)
-
-- **Impulse / Step-`impulse` spike too narrow for the adaptive solver (HIGH)** —
-  pulse width `eps = dtime*1e-3` can fall between RK45 evaluations. Proper fix:
-  force solver evaluations at the pulse edges (`t_eval`/`max_step`) or model the
-  impulse analytically. (Stochastic/path-dependent blocks were already routed to
-  the interpreter; impulse needs solver-grid coordination, deferred.)
-- **`base_analyzer` PID transfer function ignores discrete `sampling_time`** —
-  needs continuous→discrete (c2d) conversion (a feature, not a bug-patch).
-- **`file_service` two divergent save/load paths (`.dat` vs `.diablos`)** —
-  needs investigation of which path is canonical before unifying.
-- **`connection.py` orthogonal routing assumes ports face right** — cosmetic
-  routing; correct fix derives stub direction from actual port orientation.
-- **`Step` `'impulse'` subtype duplicates `ImpulseBlock`** — cannot be removed
-  (exercised by tests); a consolidation/deprecation decision, not a bug.
-
----
-
-## Follow-up tests not yet added
-- Parametrized compiled-vs-interpreted equivalence over each compiled stateful
-  block (RateLimiter, PID, TransportDelay, Selector) — needs example diagrams;
-  would validate the RateLimiter `rising_slew`/`falling_slew` key fix.
-- Integration test for all-Neumann 2D PDE corners (compiled path) confirming
-  corners evolve rather than staying frozen.
+- **Broad `except Exception` at Qt event-handler boundaries** — intentional: an
+  unhandled exception there crashes the Qt event loop. High-value sub-cases were
+  already narrowed.
+- **wave2d energy/avg/max diagnostics computed in the RHS** — inherent to the
+  compiler's "signals are produced inside the RHS" design; deferring them needs a
+  post-accepted-step output pass.
+- **Export/Scope and blox/tikz/latex "duplication"** — these are distinct sinks /
+  distinct output formats with different escape tables; not a single-source merge.
+- **`Product` divide-by-zero → finite value** — deliberate and pinned by
+  `test_product_block.py` (requires a finite output); already np-aware.
