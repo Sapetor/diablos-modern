@@ -387,6 +387,29 @@ class ModernDiaBloSWindow(QMainWindow):
         self._analysis_windows.append(win)
         win.show()
 
+    def find_operating_point(self):
+        """Solve for an equilibrium (trim point) of the current diagram.
+
+        Runs the operating-point solver on the compiled ODE RHS and shows the
+        equilibrium state values in a table. The result's operating point can be
+        copied and reused as a starting point for linearization.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+        if not self.dsim.blocks_list:
+            QMessageBox.information(
+                self, "Find Operating Point", "No blocks to analyze.")
+            return
+
+        from modern_ui.controllers.analysis_controller import AnalysisController
+        result = AnalysisController(self.dsim).find_trim()
+
+        from modern_ui.widgets.operating_point_window import OperatingPointWindow
+        win = OperatingPointWindow(result)  # top-level window
+        if not hasattr(self, '_analysis_windows'):
+            self._analysis_windows = []
+        self._analysis_windows.append(win)
+        win.show()
+
     def run_monte_carlo(self):
         """Run a Monte-Carlo ensemble of the current diagram and show statistics.
 

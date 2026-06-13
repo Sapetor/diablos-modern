@@ -22,6 +22,8 @@ Result-dict contract (see also the results window which consumes EXACTLY this):
       "gain_crossover": float|None, "phase_crossover": float|None,
       "tf_num": [float]|None, "tf_den": [float]|None,
       "bode": {"w":[float], "mag_db":[float], "phase_deg":[float]}|None,
+      "step_response": {"t":[float], "y":[float]}|None,
+      "impulse_response": {"t":[float], "y":[float]}|None,
       "controllable": bool|None, "observable": bool|None,
       "operating_point": {block_name: value},
       "summary": str,
@@ -62,6 +64,8 @@ def _empty_result(error=""):
         "tf_num": None,
         "tf_den": None,
         "bode": None,
+        "step_response": None,
+        "impulse_response": None,
         "controllable": None,
         "observable": None,
         "operating_point": {},
@@ -130,7 +134,111 @@ class AnalysisController:
             res["summary"] = f"Analysis failed:\n{exc}"
             return res
 
+    def find_trim(self, input_overrides=None):
+        """Solve for an operating point (equilibrium) of ``self.dsim``.
+
+        Solves f(0, y*) = 0 on the compiled ODE RHS via the linearizer's
+        :meth:`find_operating_point`. This is the find-equilibrium half of the
+        trim -> linearize -> analyze workflow, surfaced as a standalone tool.
+
+        Args:
+            input_overrides: optional {source_block: value} held fixed while
+                solving (e.g. a constant control input).
+
+        Returns:
+            A headless result dict::
+
+                {
+                  "ok": bool, "error": str,
+                  "success": bool, "message": str,
+                  "residual_norm": float|None,
+                  "states": [{"name": str, "value": float}],
+                  "operating_point": {block_name: value},
+                  "summary": str,
+                }
+
+            On any failure returns ``{"ok": False, "error": <msg>, ...}`` rather
+            than raising.
+        """
+        try:
+            lin = Linearizer(self.dsim)
+            trim = lin.find_operating_point(input_overrides=input_overrides)
+
+            y = np.atleast_1d(np.asarray(trim.get("y", []), dtype=float)).flatten()
+            if y.size == 0:
+                res = self._empty_trim(
+                    "Diagram has no continuous states; no operating point to "
+                    "solve for."
+                )
+                res["summary"] = res["error"]
+                return res
+
+            names = list(trim.get("state_names", []))
+            if len(names) != y.size:
+                names = [f"x{i}" for i in range(y.size)]
+            residual = np.atleast_1d(
+                np.asarray(trim.get("residual", []), dtype=float)
+            ).flatten()
+            residual_norm = (
+                float(np.linalg.norm(residual)) if residual.size else None
+            )
+
+            result = self._empty_trim()
+            result["ok"] = True
+            result["success"] = bool(trim.get("success", False))
+            result["message"] = str(trim.get("message", ""))
+            result["residual_norm"] = residual_norm
+            result["states"] = [
+                {"name": str(n), "value": float(v)} for n, v in zip(names, y)
+            ]
+            result["operating_point"] = self._operating_point_to_dict(
+                trim.get("operating_point"), names
+            )
+            result["summary"] = self._build_trim_summary(result)
+            return result
+
+        except ValueError as exc:
+            logger.info("AnalysisController: trim unavailable: %s", exc)
+            res = self._empty_trim(str(exc))
+            res["summary"] = f"Operating-point search unavailable:\n{exc}"
+            return res
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("AnalysisController: unexpected trim failure")
+            res = self._empty_trim(f"Unexpected error: {exc}")
+            res["summary"] = f"Operating-point search failed:\n{exc}"
+            return res
+
     # ----------------------------------------------------------------- helpers
+
+    @staticmethod
+    def _empty_trim(error=""):
+        """A fully-populated trim failure result (window never KeyErrors)."""
+        return {
+            "ok": False,
+            "error": error,
+            "success": False,
+            "message": "",
+            "residual_norm": None,
+            "states": [],
+            "operating_point": {},
+            "summary": "",
+        }
+
+    @staticmethod
+    def _build_trim_summary(result):
+        lines = []
+        if result["success"]:
+            lines.append("Operating point found (trim converged).")
+        else:
+            lines.append("Trim did NOT converge; showing the best estimate.")
+        msg = result.get("message")
+        if msg:
+            lines.append(f"Solver: {msg}")
+        rn = result.get("residual_norm")
+        if rn is not None:
+            lines.append(f"Residual ||f(y*)||: {rn:.4g}")
+        lines.append(f"States: {len(result['states'])}")
+        return "\n".join(lines)
 
     def _assemble(self, lin_res, trim_note=None):
         """Convert a Linearizer result into the shared result-dict contract."""
@@ -193,6 +301,9 @@ class AnalysisController:
                 result["phase_margin_deg"] = margins.get("phase_margin_deg")
                 result["gain_crossover"] = margins.get("gain_crossover_w")
                 result["phase_crossover"] = margins.get("phase_crossover_w")
+            step, impulse = self._step_impulse(num, den)
+            result["step_response"] = step
+            result["impulse_response"] = impulse
 
         result["summary"] = self._build_summary(result, lin_res, trim_note)
         return result
@@ -292,6 +403,32 @@ class AnalysisController:
             margins = None
 
         return bode, margins
+
+    @staticmethod
+    def _step_impulse(num, den):
+        """Time-domain step and impulse responses of a SISO num/den system.
+
+        Returns (step_dict, impulse_dict), each ``{"t": [...], "y": [...]}`` or
+        None. scipy auto-selects the time horizon from the system poles.
+        """
+        from scipy import signal
+
+        out = {}
+        for name, fn in (("step", signal.step), ("impulse", signal.impulse)):
+            try:
+                t, y = fn((num, den))
+                t = np.asarray(t, dtype=float).flatten()
+                y = np.asarray(y, dtype=float).flatten()
+                finite = np.isfinite(t) & np.isfinite(y)
+                t, y = t[finite], y[finite]
+                out[name] = (
+                    {"t": [float(v) for v in t], "y": [float(v) for v in y]}
+                    if t.size else None
+                )
+            except Exception:
+                logger.warning("%s-response computation failed", name, exc_info=True)
+                out[name] = None
+        return out["step"], out["impulse"]
 
     # -- summary --------------------------------------------------------------
 

@@ -29,8 +29,13 @@ def _sample_ok_result(with_bode=True):
             "mag_db": (-20.0 * np.log10(w)).tolist(),
             "phase_deg": (-90.0 - 10.0 * np.log10(w)).tolist(),
         }
+        t = np.linspace(0, 5, 60)
+        step_response = {"t": t.tolist(), "y": (1.0 - np.exp(-t)).tolist()}
+        impulse_response = {"t": t.tolist(), "y": np.exp(-t).tolist()}
     else:
         bode = None
+        step_response = None
+        impulse_response = None
 
     return {
         "ok": True,
@@ -55,6 +60,8 @@ def _sample_ok_result(with_bode=True):
         "tf_num": [1.0],
         "tf_den": [1.0, 3.0, 2.0],
         "bode": bode,
+        "step_response": step_response,
+        "impulse_response": impulse_response,
         "controllable": True,
         "observable": True,
         "operating_point": {"Integrator0": 0.0, "Integrator1": 0.0},
@@ -72,22 +79,27 @@ class TestLinearizationResultWindow:
         win = LinearizationResultWindow(_sample_ok_result())
         assert "Linearized" in win.windowTitle()
 
-    def test_has_three_tabs(self, qapp):
+    def test_has_all_tabs(self, qapp):
         win = LinearizationResultWindow(_sample_ok_result())
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
-        assert tabs.count() == 3
+        assert tabs.count() == 5
         labels = [tabs.tabText(i) for i in range(tabs.count())]
         assert "Pole-Zero" in labels
         assert "Bode" in labels
+        assert "Step" in labels
+        assert "Impulse" in labels
         assert "Summary" in labels
 
     def test_bode_none_builds_without_error(self, qapp):
-        """A result without Bode (no I/O designated) still builds with 3 tabs."""
+        """A result without Bode (no I/O designated) still builds with all tabs.
+
+        Step/Impulse tabs are present too, showing their 'designate I/O' hint.
+        """
         win = LinearizationResultWindow(_sample_ok_result(with_bode=False))
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
-        assert tabs.count() == 3
+        assert tabs.count() == 5
 
     def test_error_result_builds_without_tabs(self, qapp):
         """When ok is False the window shows the error, not the tab widget."""
@@ -157,4 +169,4 @@ class TestLinearizationResultWindow:
         win = LinearizationResultWindow(result)
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
-        assert tabs.count() == 3
+        assert tabs.count() == 5

@@ -169,3 +169,110 @@ class TestAnalysisController:
         # Minimal keys still present for the consuming window.
         assert "summary" in res
         assert res["n_states"] == 0
+
+
+@pytest.mark.unit
+class TestStepImpulseResponse:
+    def test_siso_has_step_and_impulse(self, qapp, tmp_path):
+        """Constant -> Integrator -> Scope (TF = 1/s).
+
+        Step response of 1/s is a ramp (y == t); impulse response is constant 1.
+        """
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=1.0))
+        i = b.add_block("Integrator", 200, 100, params=_params("Integrator", init_conds=0.0))
+        sc = b.add_block("Scope", 350, 100, params=_params("Scope"))
+        b.connect(c, 0, i, 0)
+        b.connect(i, 0, sc, 0)
+        dsim = _load(b, tmp_path, "siso_si.diablos")
+
+        src = _name_of(dsim, "Constant")
+        integ = _name_of(dsim, "Integrator")
+        res = AnalysisController(dsim).analyze(input_blocks=[src], output_blocks=[integ])
+
+        step = res["step_response"]
+        impulse = res["impulse_response"]
+        assert isinstance(step, dict) and isinstance(impulse, dict)
+        assert len(step["t"]) == len(step["y"]) > 0
+        assert len(impulse["t"]) == len(impulse["y"]) > 0
+        # Step of 1/s is a ramp: final y ~= final t.
+        assert np.isclose(step["y"][-1], step["t"][-1], rtol=1e-3, atol=1e-6)
+        # Impulse of 1/s is the constant 1.
+        assert np.allclose(impulse["y"], 1.0, atol=1e-6)
+        # All finite.
+        assert all(np.isfinite(step["y"])) and all(np.isfinite(impulse["y"]))
+
+    def test_no_io_has_no_step_impulse(self, qapp, tmp_path):
+        """Without a designated SISO I/O pair there is no TF -> no time response."""
+        b = DiagramBuilder()
+        i = b.add_block("Integrator", 200, 100, params=_params("Integrator", init_conds=1.0))
+        g = b.add_block("Gain", 350, 100, params=_params("Gain", gain=-3.0))
+        b.connect(i, 0, g, 0)
+        b.connect(g, 0, i, 0)
+        dsim = _load(b, tmp_path, "noio_si.diablos")
+
+        res = AnalysisController(dsim).analyze()
+        assert res["step_response"] is None
+        assert res["impulse_response"] is None
+
+
+@pytest.mark.unit
+class TestFindTrim:
+    def test_first_order_equilibrium(self, qapp, tmp_path):
+        """x' = 6 - 3x has the equilibrium x* = 2.
+
+        Constant(6) + Gain(-3)*x summed into an Integrator.
+        """
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=6.0))
+        s = b.add_block("Sum", 150, 100, params=_params("Sum"))
+        i = b.add_block("Integrator", 300, 100, params=_params("Integrator", init_conds=0.0))
+        g = b.add_block("Gain", 300, 220, params=_params("Gain", gain=-3.0))
+        b.connect(c, 0, s, 0)
+        b.connect(g, 0, s, 1)
+        b.connect(s, 0, i, 0)
+        b.connect(i, 0, g, 0)
+        dsim = _load(b, tmp_path, "trim_first.diablos")
+
+        res = AnalysisController(dsim).find_trim()
+        assert res["ok"] is True
+        assert res["success"] is True
+        assert len(res["states"]) == 1
+        assert np.isclose(res["states"][0]["value"], 2.0, atol=1e-6)
+        # Residual at the equilibrium is ~0.
+        assert res["residual_norm"] is not None
+        assert res["residual_norm"] < 1e-6
+        # operating_point is keyed by block name and reusable.
+        assert any(np.isclose(v, 2.0, atol=1e-6)
+                   for v in res["operating_point"].values())
+        assert isinstance(res["summary"], str) and res["summary"].strip()
+
+    def test_no_states_reports_cleanly(self, qapp, tmp_path):
+        """A purely algebraic diagram has no equilibrium to solve for."""
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=1.0))
+        g = b.add_block("Gain", 200, 100, params=_params("Gain", gain=2.0))
+        sc = b.add_block("Scope", 350, 100, params=_params("Scope"))
+        b.connect(c, 0, g, 0)
+        b.connect(g, 0, sc, 0)
+        dsim = _load(b, tmp_path, "trim_nostate.diablos")
+
+        res = AnalysisController(dsim).find_trim()
+        # No continuous states: ok=False with a clean message, no raise.
+        assert res["ok"] is False
+        assert res["states"] == []
+        assert isinstance(res["summary"], str) and res["summary"].strip()
+
+    def test_uncompilable_returns_not_ok(self, qapp, tmp_path):
+        """An interpreter-only diagram (Noise) cannot be trimmed; no raise."""
+        b = DiagramBuilder()
+        n = b.add_block("Noise", 50, 100, params=_params("Noise"))
+        i = b.add_block("Integrator", 200, 100, params=_params("Integrator"))
+        sc = b.add_block("Scope", 350, 100, params=_params("Scope"))
+        b.connect(n, 0, i, 0)
+        b.connect(i, 0, sc, 0)
+        dsim = _load(b, tmp_path, "trim_noise.diablos")
+
+        res = AnalysisController(dsim).find_trim()
+        assert res["ok"] is False
+        assert isinstance(res["error"], str) and res["error"].strip()

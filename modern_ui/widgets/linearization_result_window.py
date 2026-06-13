@@ -20,6 +20,8 @@ Result-dict contract (see the feature spec)::
       "gain_crossover": float|None, "phase_crossover": float|None,
       "tf_num": [float]|None, "tf_den": [float]|None,
       "bode": {"w":[float], "mag_db":[float], "phase_deg":[float]}|None,
+      "step_response": {"t":[float], "y":[float]}|None,
+      "impulse_response": {"t":[float], "y":[float]}|None,
       "controllable": bool|None, "observable": bool|None,
       "operating_point": {block_name: value},
       "summary": str,
@@ -46,6 +48,8 @@ class LinearizationResultWindow(QWidget):
       * "Pole-Zero" -- scatter of poles (x) and zeros (o) on the complex plane.
       * "Bode"      -- stacked magnitude (dB) and phase (deg) vs log-frequency,
                        or a friendly hint when no Bode data is available.
+      * "Step"      -- step response vs time (when a SISO TF is available).
+      * "Impulse"   -- impulse response vs time (when a SISO TF is available).
       * "Summary"   -- read-only text: the human summary plus formatted
                        A/B/C/D matrices, stability margins, and the
                        controllable/observable flags.
@@ -72,6 +76,14 @@ class LinearizationResultWindow(QWidget):
 
         self.tabs.addTab(self._build_pole_zero_tab(), "Pole-Zero")
         self.tabs.addTab(self._build_bode_tab(), "Bode")
+        self.tabs.addTab(
+            self._build_response_tab("step_response", "Step Response"),
+            "Step",
+        )
+        self.tabs.addTab(
+            self._build_response_tab("impulse_response", "Impulse Response"),
+            "Impulse",
+        )
         self.tabs.addTab(self._build_summary_tab(), "Summary")
 
     # ------------------------------------------------------------------ error
@@ -179,6 +191,34 @@ class LinearizationResultWindow(QWidget):
 
         box.addWidget(mag_plot)
         box.addWidget(phase_plot)
+        return container
+
+    # --------------------------------------------------------- time responses
+    def _build_response_tab(self, key, title):
+        """Build a time-response tab from result[key] = {"t":[...], "y":[...]}."""
+        container = QWidget()
+        box = QVBoxLayout()
+        container.setLayout(box)
+
+        data = self.result.get(key)
+        if not data or not data.get("t"):
+            label = QLabel(
+                "Designate input & output blocks to compute the time response."
+            )
+            label.setAlignment(Qt.AlignCenter)
+            label.setWordWrap(True)
+            label.setStyleSheet("color: #555; font-size: 13px; padding: 24px;")
+            box.addWidget(label)
+            return container
+
+        t = np.asarray(data.get("t", []), dtype=float)
+        y = np.asarray(data.get("y", []), dtype=float)
+
+        plot = pg.PlotWidget()
+        self._style_plot(plot, title, "Time (s)", "Output")
+        if t.size and y.size:
+            plot.plot(t, y, pen=pg.mkPen("b", width=2))
+        box.addWidget(plot)
         return container
 
     # ---------------------------------------------------------------- summary

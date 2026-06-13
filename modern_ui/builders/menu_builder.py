@@ -29,6 +29,7 @@ class MenuBuilder:
         analysis_menu = menubar.addMenu("&Analysis")
         # "&&" renders a literal "&": label shows "Linearize & Analyze...".
         analysis_menu.addAction("&Linearize && Analyze...", self.window.linearize_and_analyze)
+        analysis_menu.addAction("&Find Operating Point (Trim)...", self.window.find_operating_point)
         analysis_menu.addAction("&Parameter Sweep...", self.window.run_parameter_sweep)
         analysis_menu.addAction("&Monte Carlo...", self.window.run_monte_carlo)
 
