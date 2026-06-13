@@ -124,18 +124,45 @@ class ScopeBlock(BaseBlock):
             params['vec_labels'] = labels
             params['_init_start_'] = False
             logger.debug(f"Scope {params.get('_name_', 'unknown')} initialized, vec_labels: {params['vec_labels']}")
+            # Amortized-O(1) append: keep samples in a geometrically-grown flat
+            # buffer and expose params['vector'] as a length-bounded view, instead
+            # of np.concatenate-ing the entire history every step (which was
+            # O(n^2) total for long runs). _scope_buf_/_scope_len_ are runtime
+            # state (trailing-underscore => excluded from save and the dialog).
+            buf = np.asarray(aux_vector, dtype=float).copy()
+            params['_scope_buf_'] = buf
+            params['_scope_len_'] = buf.size
+            params['vector'] = buf[:buf.size]
         else:
-            aux_vector = params['vector']
             combined_input = [_coerce(inputs[p]) for p in sorted(inputs.keys())]
-            new_sample = np.concatenate(combined_input) if combined_input else np.array([0.0])
+            new_sample = np.asarray(
+                np.concatenate(combined_input) if combined_input else np.array([0.0]),
+                dtype=float)
             # If per-sample dimension changed since last init (e.g. user added
             # a port between sims), re-initialize instead of producing a
             # ragged buffer.
             expected_dim = params.get('vec_dim', new_sample.size)
             if new_sample.size != expected_dim:
-                aux_vector = new_sample
+                buf = new_sample.copy()
+                params['_scope_buf_'] = buf
+                params['_scope_len_'] = buf.size
                 params['vec_dim'] = new_sample.size
+                params['vector'] = buf[:buf.size]
             else:
-                aux_vector = np.concatenate((aux_vector, new_sample))
-        params['vector'] = aux_vector
+                buf = params.get('_scope_buf_')
+                cur_len = int(params.get('_scope_len_', 0))
+                # Rebuild if the buffer is missing/stale (e.g. a prior fast-path
+                # run wrote a plain list to params['vector']).
+                if not isinstance(buf, np.ndarray) or buf.ndim != 1 or cur_len > buf.size:
+                    buf = np.atleast_1d(params.get('vector', np.array([0.0]))).astype(float).flatten().copy()
+                    cur_len = buf.size
+                need = cur_len + new_sample.size
+                if need > buf.size:
+                    grown = np.empty(max(need, buf.size * 2), dtype=float)
+                    grown[:cur_len] = buf[:cur_len]
+                    buf = grown
+                buf[cur_len:need] = new_sample
+                params['_scope_buf_'] = buf
+                params['_scope_len_'] = need
+                params['vector'] = buf[:need]
         return {0: np.array([0.0]), 'E': False}

@@ -111,20 +111,46 @@ class ExportBlock(BaseBlock):
                 labels = labels[0]
             params['vec_labels'] = labels
             params['_init_start_'] = False
+            # Amortized-O(1) append via a geometrically-grown row buffer; was
+            # np.concatenate of the full history each step (O(n^2)). Runtime-only
+            # keys (trailing underscore => excluded from save).
+            _row = np.asarray(inputs[0], dtype=float)
+            _buf = np.empty((8,) + _row.shape, dtype=float)
+            _buf[0] = _row
+            params['_export_buf_'] = _buf
+            params['_export_len_'] = 1
+            params['vector'] = _buf[:1]
         else:
-            aux_vector = params['vector']
             try:
                 new_dim = len(inputs[0])
             except TypeError:
                 new_dim = 1
+            _row = np.asarray(inputs[0], dtype=float)
             # If the per-sample dimension changed since init (e.g. the upstream
             # signal width varies mid-run), re-initialize instead of producing a
-            # ragged buffer that np.concatenate would reject or that breaks the
-            # (N, vec_dim) layout expected by export_data().
+            # ragged buffer that breaks the (N, vec_dim) layout export_data() expects.
             if new_dim != params.get('vec_dim', new_dim):
-                aux_vector = np.array([inputs[0]])
+                _buf = np.empty((8,) + _row.shape, dtype=float)
+                _buf[0] = _row
+                params['_export_buf_'] = _buf
+                params['_export_len_'] = 1
                 params['vec_dim'] = new_dim
+                params['vector'] = _buf[:1]
             else:
-                aux_vector = np.concatenate((aux_vector, [inputs[0]]))
-        params['vector'] = aux_vector
+                _buf = params.get('_export_buf_')
+                _len = int(params.get('_export_len_', 0))
+                # Rebuild if missing/stale (e.g. a prior fast-path run wrote a list).
+                if (not isinstance(_buf, np.ndarray) or _len < 1
+                        or _len > _buf.shape[0] or _buf.shape[1:] != _row.shape):
+                    _buf = np.asarray(params.get('vector', np.array([inputs[0]])), dtype=float).copy()
+                    _len = _buf.shape[0]
+                if _len >= _buf.shape[0]:
+                    _grown = np.empty((max(_len + 1, _buf.shape[0] * 2),) + _buf.shape[1:], dtype=float)
+                    _grown[:_len] = _buf[:_len]
+                    _buf = _grown
+                _buf[_len] = _row
+                _len += 1
+                params['_export_buf_'] = _buf
+                params['_export_len_'] = _len
+                params['vector'] = _buf[:_len]
         return {0: np.array([0.0]), 'E': False}
