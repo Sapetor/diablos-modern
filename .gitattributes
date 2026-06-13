@@ -1,0 +1,24 @@
+# Normalize line endings across Windows / WSL / Linux / macOS.
+# Git stores text as LF in the repository and checks it out as LF everywhere,
+# so a Windows editor/terminal rewriting files to CRLF no longer shows up as a
+# whole-file "change".
+* text=auto eol=lf
+
+# Shell scripts must stay LF to be executable.
+*.sh   text eol=lf
+
+# Windows batch files conventionally need CRLF.
+*.bat  text eol=crlf
+
+# Binary assets: never normalize.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.mp4  binary
+*.woff binary
+*.woff2 binary
