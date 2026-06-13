@@ -355,6 +355,38 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
 
+    def linearize_and_analyze(self):
+        """Linearize the current diagram at an operating point and show analysis.
+
+        Opens an input/output picker, runs the numerical linearizer on the
+        compiled ODE RHS, and shows a pole-zero / Bode / summary window.
+        """
+        from PyQt5.QtWidgets import QMessageBox, QDialog
+        if not self.dsim.blocks_list:
+            QMessageBox.information(self, "Linearize & Analyze", "No blocks to analyze.")
+            return
+
+        from modern_ui.widgets.linearize_dialog import LinearizeDialog
+        dlg = LinearizeDialog(self.dsim, parent=self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        sel = dlg.get_selection()
+
+        from modern_ui.controllers.analysis_controller import AnalysisController
+        result = AnalysisController(self.dsim).analyze(
+            input_blocks=sel.get("input_blocks") or None,
+            output_blocks=sel.get("output_blocks") or None,
+            find_trim=sel.get("find_trim", False),
+        )
+
+        from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
+        win = LinearizationResultWindow(result)  # top-level window
+        # Retain a reference so the window is not garbage-collected immediately.
+        if not hasattr(self, '_analysis_windows'):
+            self._analysis_windows = []
+        self._analysis_windows.append(win)
+        win.show()
+
     # Simulation facades -> SimulationActionsManager (see managers/simulation_actions_manager.py)
     def pause_simulation(self):
         """Pause simulation."""

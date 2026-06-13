@@ -20,8 +20,15 @@ class MenuBuilder:
         self._create_file_menu(menubar)
         self._create_edit_menu(menubar)
         self._create_simulation_menu(menubar)
+        self._create_analysis_menu(menubar)
         self._create_view_menu(menubar)
         self._create_help_menu(menubar)
+
+    def _create_analysis_menu(self, menubar):
+        """Create Analysis menu (linearization-based system analysis)."""
+        analysis_menu = menubar.addMenu("&Analysis")
+        # "&&" renders a literal "&": label shows "Linearize & Analyze...".
+        analysis_menu.addAction("&Linearize && Analyze...", self.window.linearize_and_analyze)
 
     def _create_file_menu(self, menubar):
         """Create File menu."""
