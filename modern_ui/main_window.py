@@ -58,35 +58,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self.sim_config = SimulationConfig()
 
         # Core Managers (Must be before state init)
-        from modern_ui.managers.project_manager import ProjectManager
-        self.project_manager = ProjectManager(self)
-
-        from modern_ui.managers.recent_files_manager import RecentFilesManager
-        self.recent_files_manager = RecentFilesManager(self)
-
-        from modern_ui.managers.appearance_manager import AppearanceManager
-        self.appearance_manager = AppearanceManager(self)
-
-        from modern_ui.managers.status_bar_manager import StatusBarManager
-        self.status_bar_manager = StatusBarManager(self)
-
-        from modern_ui.managers.property_controller import PropertyController
-        self.property_controller = PropertyController(self)
-
-        from modern_ui.managers.command_palette_manager import CommandPaletteManager
-        self.command_palette_manager = CommandPaletteManager(self)
-
-        from modern_ui.managers.layout_manager import LayoutManager
-        self.layout_manager = LayoutManager(self)
-
-        from modern_ui.managers.window_setup_manager import WindowSetupManager
-        self.window_setup_manager = WindowSetupManager(self)
-
-        from modern_ui.managers.view_actions_manager import ViewActionsManager
-        self.view_actions_manager = ViewActionsManager(self)
-
-        from modern_ui.managers.simulation_actions_manager import SimulationActionsManager
-        self.simulation_actions_manager = SimulationActionsManager(self)
+        self._init_core_managers()
 
         # Initialize state management (keeping from improved version)
         self._init_state_management()
@@ -195,6 +167,42 @@ class ModernDiaBloSWindow(QMainWindow):
 
         logger.info("Modern DiaBloS Window initialized successfully")
     
+    def _init_core_managers(self):
+        """Instantiate the core manager/controller objects.
+
+        Extracted from __init__ to keep the constructor at a readable altitude;
+        ordering is preserved (these must exist before _init_state_management).
+        """
+        from modern_ui.managers.project_manager import ProjectManager
+        self.project_manager = ProjectManager(self)
+
+        from modern_ui.managers.recent_files_manager import RecentFilesManager
+        self.recent_files_manager = RecentFilesManager(self)
+
+        from modern_ui.managers.appearance_manager import AppearanceManager
+        self.appearance_manager = AppearanceManager(self)
+
+        from modern_ui.managers.status_bar_manager import StatusBarManager
+        self.status_bar_manager = StatusBarManager(self)
+
+        from modern_ui.managers.property_controller import PropertyController
+        self.property_controller = PropertyController(self)
+
+        from modern_ui.managers.command_palette_manager import CommandPaletteManager
+        self.command_palette_manager = CommandPaletteManager(self)
+
+        from modern_ui.managers.layout_manager import LayoutManager
+        self.layout_manager = LayoutManager(self)
+
+        from modern_ui.managers.window_setup_manager import WindowSetupManager
+        self.window_setup_manager = WindowSetupManager(self)
+
+        from modern_ui.managers.view_actions_manager import ViewActionsManager
+        self.view_actions_manager = ViewActionsManager(self)
+
+        from modern_ui.managers.simulation_actions_manager import SimulationActionsManager
+        self.simulation_actions_manager = SimulationActionsManager(self)
+
     def _init_state_management(self):
         """Initialize state management from improved version."""
         from enum import Enum, auto
