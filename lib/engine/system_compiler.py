@@ -2132,8 +2132,20 @@ class SystemCompiler:
                 # Integrator: output = state
                 state_output_preloads.append((b_name, start, size, None))
 
-        # 6. Create optimized closure
-        def model_func(t, y):
+        # 6. Create optimized closure.
+        # The executor list is ordered sources-first (sorted_order above), so we
+        # can split it at the source boundary. This lets a linearization helper
+        # override input-source signals *after* the sources run but *before* the
+        # downstream/state blocks consume them, without disturbing normal solves.
+        n_sources = len(sources)
+
+        def _evaluate(t, y, input_overrides=None):
+            """Run the compiled diagram once; return (dy_vec, signals).
+
+            input_overrides: optional {block_name: value} merged into the signal
+            dict immediately after the source blocks execute. Used by the
+            numerical linearizer to perturb inputs; pass None for normal solves.
+            """
             signals = {}
             dy_vec = np.zeros_like(y)
 
@@ -2149,10 +2161,24 @@ class SystemCompiler:
                     # Integrator: output = state
                     signals[b_name] = y[start] if size == 1 else y[start:start + size]
 
-            # Execute all blocks (computes derivatives and refines outputs)
-            for exec_fn in execution_sequence:
+            # Sources first, then optional input overrides, then the rest.
+            for exec_fn in execution_sequence[:n_sources]:
+                exec_fn(t, y, dy_vec, signals)
+            if input_overrides:
+                signals.update(input_overrides)
+            for exec_fn in execution_sequence[n_sources:]:
                 exec_fn(t, y, dy_vec, signals)
 
-            return dy_vec
+            return dy_vec, signals
+
+        def model_func(t, y):
+            return _evaluate(t, y)[0]
+
+        # Expose the richer evaluator + source names for numerical linearization
+        # (lib/analysis/linearizer.py). Attached as attributes so the
+        # compile_system return contract is unchanged.
+        model_func.evaluate = _evaluate
+        model_func.source_names = [b.name for b in sources]
+        model_func.state_map = state_map
 
         return model_func, y0, state_map, block_matrices
