@@ -1194,9 +1194,10 @@ class SimulationEngine:
                 # the RHS multiple times per step, seeing different random values
                 # each time, which makes error estimates explode and the solver
                 # hang. (PRBS is a deterministic seeded LFSR and is safe.)
-                stochastic_fns = {'Noise'}
+                stochastic_fns = {'Noise', 'PacketLoss'}
                 has_stochastic = any(
-                    (b.block_fn.title() if b.block_fn else '') in stochastic_fns
+                    (b.block_fn in stochastic_fns
+                     or (b.block_fn.title() if b.block_fn else '') in stochastic_fns)
                     for b in current_blocks
                 )
                 if has_stochastic and method not in FIXED_STEP_METHODS:
