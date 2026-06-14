@@ -16,8 +16,6 @@ import os
 import json
 import logging
 
-from PyQt5.QtGui import QColor
-
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
 logger = logging.getLogger(__name__)
@@ -122,55 +120,14 @@ class AppearanceManager:
             )
 
     def update_menubar_colors(self):
-        """Update menubar colors for proper contrast."""
-        window = self.window
-        bg_color = theme_manager.get_color('surface').name()
-        text_color = theme_manager.get_color('text_primary').name()
-        hover_bg = theme_manager.get_color('accent_primary').name()
-        hover_bg_alpha = theme_manager.get_color('accent_primary')
-        hover_bg_alpha.setAlpha(30)
-        disabled_color = theme_manager.get_color('text_disabled').name()
+        """Re-apply the canonical menubar/menu styling on theme change.
 
-        menubar_style = f"""
-            QMenuBar {{
-                background-color: {bg_color};
-                color: {text_color};
-                border-bottom: 1px solid {theme_manager.get_color('border_primary').name()};
-            }}
-            QMenuBar::item {{
-                background-color: transparent;
-                padding: 4px 10px;
-            }}
-            QMenuBar::item:selected {{
-                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
-                border-radius: 4px;
-            }}
-            QMenuBar::item:pressed {{
-                background-color: {hover_bg};
-                border-radius: 4px;
-            }}
-            QMenu {{
-                background-color: {bg_color};
-                color: {text_color};
-                border: 1px solid {theme_manager.get_color('border_primary').name()};
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QMenu::item {{
-                padding: 6px 24px 6px 12px;
-                border-radius: 4px;
-            }}
-            QMenu::item:selected {{
-                background-color: {hover_bg_alpha.name(QColor.HexArgb)};
-            }}
-            QMenu::item:disabled {{
-                color: {disabled_color};
-            }}
-            QMenu::separator {{
-                height: 1px;
-                background: {theme_manager.get_color('border_secondary').name()};
-                margin: 4px 8px;
-            }}
+        Single source of truth: ``ModernStyles.get_menubar_style()``. This used
+        to build a *second*, divergent menubar stylesheet inline (different
+        padding/radius, no role=danger items) and set it directly on the
+        menuBar widget, which overrode the cascaded app stylesheet — so the menu
+        visibly changed appearance after the first theme toggle. Delegating to
+        the shared generator keeps the two in lockstep.
         """
-
-        window.menuBar().setStyleSheet(menubar_style)
+        from modern_ui.styles.qss_styles import ModernStyles
+        self.window.menuBar().setStyleSheet(ModernStyles.get_menubar_style())

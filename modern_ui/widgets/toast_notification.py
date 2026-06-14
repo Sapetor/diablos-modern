@@ -40,16 +40,24 @@ class ToastNotification(QLabel):
         self.hide_timer.setSingleShot(True)
         self.hide_timer.timeout.connect(self._start_fade_out)
 
+        # Whether the current message is an error (drives red styling). Must be
+        # set before the first _apply_styling() call below.
+        self._is_error = False
         self._apply_styling()
 
         # Connect to theme changes
         theme_manager.theme_changed.connect(self._apply_styling)
 
     def _apply_styling(self):
-        """Apply theme-aware styling."""
-        bg_color = theme_manager.get_color('surface_elevated')
-        text_color = theme_manager.get_color('text_primary')
-        border_color = theme_manager.get_color('accent_primary')
+        """Apply theme-aware styling (red error variant when ``self._is_error``)."""
+        if self._is_error:
+            bg_color = theme_manager.get_color('error_bg')
+            text_color = theme_manager.get_color('text_primary')
+            border_color = theme_manager.get_color('error')
+        else:
+            bg_color = theme_manager.get_color('surface_elevated')
+            text_color = theme_manager.get_color('text_primary')
+            border_color = theme_manager.get_color('accent_primary')
 
         self.setStyleSheet(f"""
             QLabel {{
@@ -61,14 +69,22 @@ class ToastNotification(QLabel):
             }}
         """)
 
-    def show_message(self, message: str, duration: int = 2000):
+    def show_message(self, message: str, duration: int = 2000, is_error: bool = False):
         """
         Show a toast notification with a message.
 
         Args:
             message: The message to display
             duration: How long to show the message in milliseconds (default 2000ms)
+            is_error: When True, style the toast with the theme's error colors
+                (red border + tinted background) instead of the neutral accent.
         """
+        # Re-style only when the error state changes, so the common (non-error)
+        # path keeps using the already-applied stylesheet.
+        if is_error != self._is_error:
+            self._is_error = is_error
+            self._apply_styling()
+
         self.setText(message)
         self.adjustSize()
 

@@ -90,11 +90,21 @@ class SimulationController(QObject):
 
     def run_batch(self):
         """Run the simulation in batch mode (as fast as possible)."""
+        from PyQt5.QtWidgets import QApplication
+        from PyQt5.QtCore import Qt
+
         logger.info("Running simulation in batch mode.")
         self.status_changed.emit("Running simulation...")
 
-        # This will block the UI. In a real application, this should be run in a separate thread.
-        self.dsim.execution_batch()
+        # execution_batch() blocks the UI thread (a worker-thread version is a
+        # planned follow-up). Until then, show a wait cursor and let the status
+        # text / cursor paint once so the freeze reads as "working", not a hang.
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.processEvents()
+        try:
+            self.dsim.execution_batch()
+        finally:
+            QApplication.restoreOverrideCursor()
 
         solver_type = getattr(self.dsim, 'last_solver_type', 'Standard')
         self.status_changed.emit(f"Simulation finished [{solver_type}]")

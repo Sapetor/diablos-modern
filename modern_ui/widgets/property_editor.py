@@ -841,7 +841,10 @@ class PropertyEditor(QFrame):
 
     def _create_editor_for_value(self, key, value, meta, group):
         accepts_array = meta.get('accepts_array', False)
-        choices = meta.get('choices', None)
+        # Enum parameters declare their allowed values under either 'choices'
+        # (newer blocks) or 'options' (most blocks). Accept both so enum params
+        # render as a QComboBox instead of silently degrading to a free-text box.
+        choices = meta.get('choices') or meta.get('options')
 
         # Boolean → QCheckBox
         if isinstance(value, bool):
