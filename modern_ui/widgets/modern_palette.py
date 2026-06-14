@@ -18,7 +18,8 @@ import logging
 import os
 import sys
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QLineEdit, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QLineEdit, QFrame,
+    QMenu
 )
 from PyQt5.QtCore import (
     Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
@@ -27,17 +28,82 @@ from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 
 # QSettings org/app — sourced from the shared constants in lib.app_paths so
 # palette UI state lives in the same store as the rest of the app's UI
-# preferences (see main_window.py first-run flag).
+# preferences (see main_window.py first-run flag). ui_settings() is the shared
+# accessor used for Favorites/Recent persistence (same store).
 from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
+from lib.app_paths import ui_settings
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
 _CHEVRON_EXPANDED = "▾"
 _CHEVRON_COLLAPSED = "▸"
 
+# QSettings keys for the curated/auto sections at the top of the palette.
+_FAVORITES_KEY = "palette/favorites"
+_RECENT_KEY = "palette/recent"
+# How many recently-added blocks the Recent section keeps.
+_RECENT_CAP = 6
+
 
 def _collapsed_settings_key(category_name: str) -> str:
     """QSettings key under which a category's collapsed flag is persisted."""
     return f"palette/collapsed/{category_name}"
+
+
+def update_recents(recents, fn_name, cap=_RECENT_CAP):
+    """Return a new recents list with ``fn_name`` promoted to the front.
+
+    Pure helper (no I/O) so the ordering rule is unit-testable in isolation:
+    newest-first, de-duplicated (a re-added block moves to the front rather
+    than appearing twice), and capped at ``cap`` entries. The input list is
+    not mutated.
+    """
+    if not fn_name:
+        return list(recents)
+    result = [fn_name] + [n for n in recents if n != fn_name]
+    return result[:max(0, int(cap))]
+
+
+def _load_favorites() -> set:
+    """Read the persisted set of favorited block fn_names (best-effort)."""
+    try:
+        stored = ui_settings().value(_FAVORITES_KEY, [])
+        if stored is None:
+            return set()
+        # QSettings may round-trip a single-element list to a bare string.
+        if isinstance(stored, str):
+            return {stored} if stored else set()
+        return {str(s) for s in stored if s}
+    except Exception:
+        return set()
+
+
+def _save_favorites(fn_names) -> None:
+    """Persist the set of favorited block fn_names (best-effort)."""
+    try:
+        ui_settings().setValue(_FAVORITES_KEY, sorted(fn_names))
+    except Exception:
+        pass
+
+
+def _load_recents() -> list:
+    """Read the persisted recents list, newest-first (best-effort)."""
+    try:
+        stored = ui_settings().value(_RECENT_KEY, [])
+        if stored is None:
+            return []
+        if isinstance(stored, str):
+            return [stored] if stored else []
+        return [str(s) for s in stored if s]
+    except Exception:
+        return []
+
+
+def _save_recents(fn_names) -> None:
+    """Persist the recents list (best-effort)."""
+    try:
+        ui_settings().setValue(_RECENT_KEY, list(fn_names))
+    except Exception:
+        pass
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -202,6 +268,36 @@ class CompactBlockRow(QFrame):
     def mouseReleaseEvent(self, event):
         self.setCursor(Qt.OpenHandCursor)
 
+    # -- Context menu (Favorites) -------------------------------------------
+
+    def contextMenuEvent(self, event):
+        """Right-click menu to pin/unpin this block to the Favorites section.
+
+        The menu mutates favorites through the owning palette so persistence
+        and section refresh happen in one place; if the row is detached (no
+        owning palette) the menu is simply not shown.
+        """
+        palette = self._owning_palette()
+        if palette is None:
+            return
+        fn_name = getattr(self.menu_block, 'fn_name', None)
+        if not fn_name:
+            return
+
+        is_fav = palette.is_favorite(fn_name)
+        menu = QMenu(self)
+        act = menu.addAction("Unpin from Favorites" if is_fav else "Pin to Favorites")
+        event.accept()
+        # exec_ blocks; mutating favorites here would refresh_blocks() and delete
+        # this row mid-menu. Capture the chosen action and act *after* exec_
+        # returns, going through the captured ``palette`` (never ``self``).
+        chosen = menu.exec_(event.globalPos())
+        if chosen is act:
+            if is_fav:
+                palette.unpin_favorite(fn_name)
+            else:
+                palette.pin_favorite(fn_name)
+
     # -- Keyboard navigation ------------------------------------------------
 
     def keyPressEvent(self, event):
@@ -255,13 +351,23 @@ class CompactBlockRow(QFrame):
         self.block_drag_started.emit(self.menu_block, None)
         palette = self._owning_palette()
         if palette is not None:
+            # Emit the public add-signal first; record_recent() rebuilds the
+            # palette (deleting this row), so do it last via the captured
+            # ``palette`` after the menu_block has been handed off.
             palette.block_drag_started.emit(self.menu_block)
+            palette.record_recent(getattr(self.menu_block, 'fn_name', None))
 
     def _start_drag(self, event):
+        # Resolve the palette + fn_name up front. Recording recents triggers a
+        # palette rebuild that deletes this row, so it must happen *after*
+        # drag.exec_ returns (the blocking drag loop) — and via captured locals,
+        # never by touching ``self`` post-rebuild.
+        palette = self._owning_palette()
+        fn_name = getattr(self.menu_block, 'fn_name', None)
         try:
             drag = QDrag(self)
             mime = QMimeData()
-            mime.setText(f"diablo_block:{getattr(self.menu_block, 'fn_name', 'Unknown')}")
+            mime.setText(f"diablo_block:{fn_name or 'Unknown'}")
             drag.menu_block = self.menu_block
 
             # Drag preview: render a full block via existing BlockRenderer
@@ -272,6 +378,12 @@ class CompactBlockRow(QFrame):
             drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction)
         except Exception as e:
             logger.error(f"Drag start failed: {e}")
+        # Dragging a row onto the canvas is an "add from palette" gesture, so
+        # record it for the Recent section. The drop itself is handled by the
+        # canvas (out of this widget's reach); drag-start is the earliest
+        # in-palette hook that covers it.
+        if palette is not None:
+            palette.record_recent(fn_name)
 
     def _drag_pixmap(self) -> QPixmap:
         try:
@@ -745,6 +857,27 @@ class _CategoryHeaderLabel(QLabel):
         super().mousePressEvent(event)
 
 
+class _PinnedSection(_CategorySection):
+    """A curated/auto section (Favorites, Recent) at the top of the palette.
+
+    Reuses every bit of ``_CategorySection`` (header, persisted collapse keyed
+    by the section title, per-row filtering, central theme restyling via the
+    ``findChildren(_CategorySection)`` fan-out). The only difference is the row
+    dots: each row keeps its block's *real* category color instead of the
+    section title's, so a pinned block still reads as Source/Math/etc.
+    """
+
+    def __init__(self, title, menu_blocks, colors, parent=None):
+        super().__init__(title, menu_blocks, colors, parent)
+        # Re-color the category dots from each block's own category. The rows
+        # were built with the section title as their category_name, which would
+        # collapse every dot to the default grey otherwise.
+        for row in self.rows:
+            real_cat = _block_category_name(row.menu_block)
+            row.dot._cat = real_cat
+            row.dot.update()
+
+
 # -----------------------------------------------------------------------------
 # Top-level palette
 # -----------------------------------------------------------------------------
@@ -847,6 +980,16 @@ class ModernBlockPalette(QWidget):
                 self._add_placeholder()
                 return
 
+            # fn_name -> menu_block index, so the Favorites/Recent sections can
+            # resolve persisted fn_names back to live menu_block objects.
+            self._block_index = {
+                getattr(b, 'fn_name', None): b for b in menu_blocks
+                if getattr(b, 'fn_name', None)
+            }
+
+            # Pinned sections first (hidden when empty), then categories.
+            self._build_pinned_sections()
+
             categories = self._categorize_blocks(menu_blocks)
             total = 0
             for cat_name, blocks in categories.items():
@@ -861,6 +1004,27 @@ class ModernBlockPalette(QWidget):
         except Exception as e:
             logger.error(f"Error loading blocks: {e}")
             self._add_placeholder()
+
+    def _build_pinned_sections(self):
+        """Build the Favorites then Recent sections at the top of the list.
+
+        Each is hidden when it has no resolvable blocks. Persisted fn_names
+        that no longer map to a loaded block (e.g. a removed block) are skipped.
+        Both are registered in ``self._sections`` so filter/collapse apply.
+        """
+        index = getattr(self, '_block_index', {})
+
+        fav_blocks = [index[n] for n in sorted(_load_favorites()) if n in index]
+        if fav_blocks:
+            fav = _PinnedSection("Favorites", fav_blocks, self.dsim.colors)
+            self.blocks_layout.addWidget(fav)
+            self._sections.append(fav)
+
+        recent_blocks = [index[n] for n in _load_recents() if n in index]
+        if recent_blocks:
+            recent = _PinnedSection("Recent", recent_blocks, self.dsim.colors)
+            self.blocks_layout.addWidget(recent)
+            self._sections.append(recent)
 
     def _categorize_blocks(self, menu_blocks):
         # Same logic as the original
@@ -999,6 +1163,50 @@ class ModernBlockPalette(QWidget):
         self.count_label.setStyleSheet(
             f"color:{text2}; background: transparent; padding: 2px 6px;"
         )
+
+    # -- Favorites / Recent -------------------------------------------------
+
+    def is_favorite(self, fn_name) -> bool:
+        """Whether ``fn_name`` is currently pinned to Favorites."""
+        return bool(fn_name) and fn_name in _load_favorites()
+
+    def pin_favorite(self, fn_name):
+        """Add ``fn_name`` to Favorites, persist, and rebuild the sections."""
+        if not fn_name:
+            return
+        favs = _load_favorites()
+        if fn_name in favs:
+            return
+        favs.add(fn_name)
+        _save_favorites(favs)
+        self.refresh_blocks()
+
+    def unpin_favorite(self, fn_name):
+        """Remove ``fn_name`` from Favorites, persist, and rebuild sections."""
+        if not fn_name:
+            return
+        favs = _load_favorites()
+        if fn_name not in favs:
+            return
+        favs.discard(fn_name)
+        _save_favorites(favs)
+        self.refresh_blocks()
+
+    def record_recent(self, fn_name):
+        """Record a block addition into the Recent list and rebuild sections.
+
+        Newest-first, de-duplicated and capped via ``update_recents``. No-ops
+        (and avoids a rebuild) when the list is unchanged, so re-adding the
+        already-most-recent block doesn't churn the UI.
+        """
+        if not fn_name:
+            return
+        current = _load_recents()
+        updated = update_recents(current, fn_name, _RECENT_CAP)
+        if updated == current:
+            return
+        _save_recents(updated)
+        self.refresh_blocks()
 
     # -- Public API (preserved) --------------------------------------------
 
