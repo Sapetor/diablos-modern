@@ -112,6 +112,7 @@ def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFo
     """
     f = QFont(UI_FONT_STACK[0])
     f.setFamilies(UI_FONT_STACK)
+    f.setStyleHint(QFont.SansSerif)
     if size is not None:
         f.setPointSize(size)
     if weight is not None:
@@ -123,6 +124,7 @@ def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> Q
     """Build a QFont from the canonical monospace stack (kbd hints, time readout)."""
     f = QFont(MONO_FONT_STACK[0])
     f.setFamilies(MONO_FONT_STACK)
+    f.setStyleHint(QFont.Monospace)
     if size is not None:
         f.setPointSize(size)
     if weight is not None:

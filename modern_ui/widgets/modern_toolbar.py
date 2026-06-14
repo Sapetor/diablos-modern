@@ -31,9 +31,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF
 from PyQt5.QtGui import (
-    QIcon, QPixmap, QPainter, QColor, QPen, QBrush, QPainterPath, QFont, QPolygonF
+    QIcon, QPixmap, QPainter, QColor, QPen, QBrush, QPainterPath, QPolygonF
 )
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_mono_font, TYPE
 
 
 # ----------------------------------------------------------------------------- 
@@ -374,12 +374,7 @@ class _TransportGroup(QWidget):
 
         self.time_label = QLabel("t = 0.000 / 10.000 s")
         self.time_label.setObjectName("TransportTimeLabel")
-        mono = QFont("Menlo")
-        mono.setStyleHint(QFont.Monospace)
-        if hasattr(mono, 'setFamilies'):  # Qt 5.13+
-            mono.setFamilies(["Menlo", "Consolas", "DejaVu Sans Mono", "monospace"])
-        mono.setPointSize(9)
-        self.time_label.setFont(mono)
+        self.time_label.setFont(get_mono_font(TYPE['body']))
         self.time_label.setMinimumWidth(140)
         self.time_label.setAlignment(Qt.AlignCenter)
 

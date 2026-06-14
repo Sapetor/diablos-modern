@@ -39,7 +39,7 @@ class ModernStyles:
             background-color: @background_primary;
             color: @text_primary;
             font-family: -apple-system, "Segoe UI", "Inter", "Roboto", sans-serif;
-            font-size: 10pt;
+            font-size: @font_body_strong;
         }
         QMainWindow::separator {
             background-color: @border_primary;
@@ -62,21 +62,21 @@ class ModernStyles:
             background-color: @background_secondary;
             border: none;
             border-bottom: 1px solid @border_primary;
-            spacing: 2px;
-            padding: 4px 8px;
+            spacing: @space_xs;
+            padding: @space_sm @space_md;
         }
 
         QToolBar#ModernToolBar::separator {
             background-color: @border_primary;
             width: 1px;
-            margin: 4px 8px;
+            margin: @space_sm @space_md;
         }
 
         /* Generic toolbar button — compact, icon-only */
         QToolBar#ModernToolBar QToolButton {
             background-color: transparent;
             border: 1px solid transparent;
-            border-radius: 6px;
+            border-radius: @radius_md;
             padding: 4px 6px;
             color: @text_primary;
             min-width: 0px;
@@ -108,7 +108,7 @@ class ModernStyles:
         QToolButton#TransportStep {
             background-color: @surface_variant;
             border: 1px solid @border_primary;
-            border-radius: 6px;
+            border-radius: @radius_md;
             padding: 0px;
             min-width: 28px;
             min-height: 26px;
@@ -138,14 +138,14 @@ class ModernStyles:
             color: @text_secondary;
             background-color: @surface_variant;
             border: 1px solid @border_primary;
-            border-radius: 6px;
+            border-radius: @radius_md;
             padding: 3px 10px;
         }
 
         /* Status pill — right side. Pill is a QFrame containing a colored
            dot widget + a QLabel, so the dot's color is independent of text. */
         QFrame#StatusPill {
-            border-radius: 11px;
+            border-radius: @radius_pill;
             border: 1px solid @border_primary;
         }
         QFrame#StatusPill[state="idle"]    { background-color: @surface_variant; }
@@ -166,7 +166,7 @@ class ModernStyles:
         QToolButton#ZoomRockerBtn {
             background-color: transparent;
             border: 1px solid transparent;
-            border-radius: 4px;
+            border-radius: @radius_sm;
             min-width: 22px;
             min-height: 22px;
         }
@@ -184,7 +184,7 @@ class ModernStyles:
         QPushButton#CommandPaletteBtn {
             background-color: @surface_variant;
             border: 1px solid @border_primary;
-            border-radius: 6px;
+            border-radius: @radius_md;
             padding: 3px 10px;
             color: @text_secondary;
             font-weight: 400;
@@ -258,29 +258,29 @@ class ModernStyles:
            the inline italic class to opt in — see SimulationDialog hint). */
         QLabel#HintLabel {
             color: @text_secondary;
-            font-size: 10pt;
+            font-size: @font_body_strong;
             font-style: italic;
         }
 
         QFrame#ModernPanel {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 8px;
-            padding: 8px;
+            border-radius: @radius_lg;
+            padding: @space_md;
         }
         QLabel#PanelTitle {
             color: @text_primary;
             font-weight: 600;
-            font-size: 12pt;
+            font-size: @font_title;
             padding: 6px 4px;
         }
         QGroupBox {
             font-weight: 600;
             color: @text_primary;
             border: 1px solid @border_primary;
-            border-radius: 6px;
-            margin-top: 12px;
-            padding-top: 4px;
+            border-radius: @radius_md;
+            margin-top: @space_lg;
+            padding-top: @space_sm;
             background-color: @surface_variant;
         }
         QGroupBox::title {
@@ -289,20 +289,20 @@ class ModernStyles:
             left: 10px;
             padding: 2px 8px;
             background-color: @surface;
-            border-radius: 3px;
+            border-radius: @radius_sm;
             color: @text_primary;
-            font-size: 9pt;
+            font-size: @font_body;
         }
         QScrollArea { border: none; background-color: transparent; }
         QScrollBar:vertical {
             background-color: @surface_variant;
             width: 10px;
-            border-radius: 5px;
+            border-radius: @radius_md;
             margin: 0px;
         }
         QScrollBar::handle:vertical {
             background-color: @border_secondary;
-            border-radius: 5px;
+            border-radius: @radius_md;
             min-height: 24px;
         }
         QScrollBar::handle:vertical:hover { background-color: @border_hover; }
@@ -319,7 +319,7 @@ class ModernStyles:
         QPushButton {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 6px;
+            border-radius: @radius_md;
             padding: 5px 12px;
             color: @text_primary;
             font-weight: 500;
@@ -345,7 +345,7 @@ class ModernStyles:
         QLineEdit, QTextEdit, QPlainTextEdit {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 5px;
+            border-radius: @radius_md;
             padding: 5px 9px;
             color: @text_primary;
             selection-background-color: @accent_primary;
@@ -354,7 +354,7 @@ class ModernStyles:
         QSpinBox, QDoubleSpinBox {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 5px;
+            border-radius: @radius_md;
             padding: 4px 18px 4px 6px;
             color: @text_primary;
             selection-background-color: @accent_primary;
@@ -380,7 +380,7 @@ class ModernStyles:
         QComboBox {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 5px;
+            border-radius: @radius_md;
             padding: 5px 10px;
             color: @text_primary;
             min-height: 22px;
@@ -398,7 +398,7 @@ class ModernStyles:
         QComboBox QAbstractItemView {
             background-color: @surface;
             border: 1px solid @border_primary;
-            border-radius: 5px;
+            border-radius: @radius_md;
             padding: 4px;
             selection-background-color: @accent_primary;
             selection-color: white;
@@ -415,7 +415,7 @@ class ModernStyles:
             background-color: @background_secondary;
             border-top: 1px solid @border_primary;
             color: @text_secondary;
-            font-size: 9pt;
+            font-size: @font_body;
             padding: 3px 8px;
         }
         QStatusBar::item { border: none; padding: 2px 8px; }
@@ -437,7 +437,7 @@ class ModernStyles:
         QMenuBar::item {
             background-color: transparent;
             padding: 6px 10px;
-            border-radius: 5px;
+            border-radius: @radius_md;
             margin: 0px 1px;
             color: @text_secondary;
         }
@@ -448,13 +448,13 @@ class ModernStyles:
         QMenu {
             background-color: @surface_elevated;
             border: 1px solid @border_primary;
-            border-radius: 8px;
+            border-radius: @radius_lg;
             padding: 6px 0px;
             color: @text_primary;
         }
         QMenu::item {
             padding: 5px 22px 5px 16px;
-            border-radius: 4px;
+            border-radius: @radius_sm;
             margin: 1px 4px;
         }
         QMenu::item:selected { background-color: @accent_primary; color: white; }

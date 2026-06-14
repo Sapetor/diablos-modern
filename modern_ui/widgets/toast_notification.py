@@ -4,8 +4,7 @@ Brief visual feedback for keyboard shortcuts and actions.
 
 from PyQt5.QtWidgets import QLabel, QGraphicsOpacityEffect
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt5.QtGui import QFont
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE, WEIGHT
 
 
 class ToastNotification(QLabel):
@@ -18,7 +17,7 @@ class ToastNotification(QLabel):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         # Styling
-        self.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        self.setFont(get_ui_font(TYPE['body_strong'], WEIGHT['bold']))
         self.setAlignment(Qt.AlignCenter)
         self.setMinimumWidth(200)
         self.setMaximumWidth(400)

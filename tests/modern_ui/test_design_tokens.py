@@ -136,3 +136,21 @@ class TestQssVariableExposure:
         out = ModernStyles._replace_theme_variables("a { font-size: @font_body_strong; }")
         assert "@font_body" not in out
         assert "10pt" in out
+
+
+class TestCompleteStylesheetUsesTokens:
+    def test_complete_stylesheet_has_no_unresolved_tokens(self):
+        import re
+        from modern_ui.styles.qss_styles import ModernStyles
+        css = ModernStyles.get_complete_stylesheet()
+        assert not re.findall(r"@[a-z_]+", css), "stylesheet has unresolved @tokens"
+
+    def test_radii_resolve_to_scale_values(self):
+        # Radii now come from the RADIUS scale: pill (999) fully rounds the
+        # status pill; the old 3/5/11px literals must be gone.
+        from modern_ui.styles.qss_styles import ModernStyles
+        css = ModernStyles.get_complete_stylesheet()
+        assert "border-radius: 999px" in css            # @radius_pill
+        assert "border-radius: 11px" not in css
+        assert "border-radius: 5px" not in css
+        assert "border-radius: 3px" not in css

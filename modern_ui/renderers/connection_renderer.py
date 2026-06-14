@@ -7,9 +7,10 @@ Separates rendering logic from the DLine data model.
 import math
 import logging
 import numpy as np
-from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF, QFont, QFontMetrics
+from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF, QFontMetrics
+
 from PyQt5.QtCore import Qt, QPoint, QRect
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_ui_font, get_mono_font, TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,7 @@ class ConnectionRenderer:
             success = theme_manager.get_color('success')
             border = QColor(success); border.setAlpha(90)
 
-            font = QFont("Menlo")
-            font.setStyleHint(QFont.Monospace)
-            if hasattr(font, 'setFamilies'):
-                font.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "monospace"])
-            font.setPointSize(8)
+            font = get_mono_font(TYPE['caption'])
             painter.setFont(font)
             fm = QFontMetrics(font)
 
@@ -210,8 +207,8 @@ class ConnectionRenderer:
         mid_index = len(line.points) // 2
         label_pos = line.points[mid_index]
 
-        # Draw label background
-        font = QFont("Arial", 9)
+        # Draw label background (canonical UI stack instead of fixed Arial)
+        font = get_ui_font(TYPE['body'])
         painter.setFont(font)
 
         metrics = QFontMetrics(font)

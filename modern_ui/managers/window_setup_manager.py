@@ -15,7 +15,7 @@ just triggers it.
 
 import logging
 
-from PyQt5.QtGui import QFont
+from modern_ui.themes.theme_manager import get_ui_font, TYPE
 
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.platform_config import get_platform_config
@@ -60,9 +60,10 @@ class WindowSetupManager:
             window.setMinimumSize(1200, 800)
             window.resize(1600, 1000)
 
-        # Set modern font
-        font = QFont("Segoe UI", 10)
-        window.setFont(font)
+        # Set the app-wide base font from the canonical UI stack (Segoe UI on
+        # Windows, -apple-system on macOS, …). The old hardcoded "Segoe UI" was
+        # wrong on macOS/Linux.
+        window.setFont(get_ui_font(TYPE['body_strong']))
 
         # Apply modern theme
         window.setObjectName("ModernMainWindow")

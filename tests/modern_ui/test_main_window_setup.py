@@ -21,10 +21,10 @@ Run with:
 
 import pytest
 from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QFont
 
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.platform_config import get_platform_config
+from modern_ui.themes.theme_manager import get_ui_font, TYPE
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +51,10 @@ class TestSetupWindow:
         window._setup_window()
         assert window.windowTitle() == "DiaBloS - Modern Block Diagram Simulator"
         assert window.objectName() == "ModernMainWindow"
-        assert window.font().family() == QFont("Segoe UI", 10).family()
+        # The base font now comes from the canonical UI stack (get_ui_font),
+        # not a hardcoded "Segoe UI" that was wrong on macOS/Linux.
+        assert window.font().family() == get_ui_font().family()
+        assert window.font().pointSize() == TYPE['body_strong']
 
     def test_fallback_sizing_when_no_screen_geometry(self, window, monkeypatch):
         captured = {}

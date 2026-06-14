@@ -12,7 +12,7 @@ from PyQt5.QtGui import (
     QRadialGradient, QTransform, QFont, QFontMetrics,
 )
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -312,8 +312,8 @@ class BlockRenderer:
         # Get port names from block
         input_names, output_names = block.get_port_names()
 
-        # Setup font for labels
-        label_font = QFont("Arial", 8)
+        # Setup font for labels (canonical UI stack instead of fixed Arial)
+        label_font = get_ui_font(TYPE['caption'])
         label_font.setBold(False)
         painter.setFont(label_font)
         font_metrics = QFontMetrics(label_font)

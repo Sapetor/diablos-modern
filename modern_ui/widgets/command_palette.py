@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QListWidgetItem, QLabel, QWidget, QFrame, QSizePolicy
 )
 
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_mono_font
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,7 @@ TYPE_BADGE = {
 
 
 def _mono(size: int = 9) -> QFont:
-    f = QFont("Menlo")
-    f.setStyleHint(QFont.Monospace)
-    if hasattr(f, 'setFamilies'):
-        f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
-    f.setPointSize(size)
-    return f
+    return get_mono_font(size)
 
 
 def _recent_path() -> str:
