@@ -20,8 +20,24 @@ import sys
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QLineEdit, QFrame
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize
+from PyQt5.QtCore import (
+    Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
+)
 from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
+
+# QSettings org/app — matches the rest of the app (see main_window.py first-run
+# flag) so palette UI state lives in the same store as other UI preferences.
+_SETTINGS_ORG = "DiaBloS"
+_SETTINGS_APP = "DiaBloS"
+
+# Chevron glyphs for the collapsible category header (expanded / collapsed).
+_CHEVRON_EXPANDED = "▾"
+_CHEVRON_COLLAPSED = "▸"
+
+
+def _collapsed_settings_key(category_name: str) -> str:
+    """QSettings key under which a category's collapsed flag is persisted."""
+    return f"palette/collapsed/{category_name}"
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -72,6 +88,9 @@ class CompactBlockRow(QFrame):
         self.setCursor(Qt.OpenHandCursor)
         self.setFrameShape(QFrame.NoFrame)
         self.setAttribute(Qt.WA_StyledBackground, True)
+        # Keyboard navigation: rows accept focus so Down/Up from the filter box
+        # (and Tab) can land on them, and Enter activates the focused row.
+        self.setFocusPolicy(Qt.StrongFocus)
 
         # Tooltip with doc / ports / params, same logic as the original widget
         self._build_tooltip()
@@ -144,6 +163,10 @@ class CompactBlockRow(QFrame):
                 background-color: {bg_hover};
                 border: 1px solid {border};
             }}
+            QFrame#PaletteRow:focus {{
+                background-color: {bg_hover};
+                border: 1px solid {accent};
+            }}
             QLabel {{
                 color: {text};
                 background: transparent;
@@ -178,6 +201,61 @@ class CompactBlockRow(QFrame):
 
     def mouseReleaseEvent(self, event):
         self.setCursor(Qt.OpenHandCursor)
+
+    # -- Keyboard navigation ------------------------------------------------
+
+    def keyPressEvent(self, event):
+        """Enter activates the row; Down/Up move focus to sibling rows.
+
+        Focus traversal hops over hidden rows (filtered out, or inside a
+        collapsed category) so the keyboard walk matches what is on screen.
+        """
+        key = event.key()
+        if key in (Qt.Key_Return, Qt.Key_Enter):
+            self.activate()
+            event.accept()
+            return
+        if key == Qt.Key_Down:
+            self._focus_sibling(+1)
+            event.accept()
+            return
+        if key == Qt.Key_Up:
+            self._focus_sibling(-1)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def _focus_sibling(self, direction: int):
+        """Move focus to the next/previous visible row in the owning palette."""
+        palette = self._owning_palette()
+        if palette is None:
+            return
+        rows = [r for r in palette.findChildren(CompactBlockRow) if r.isVisible()]
+        if self not in rows:
+            return
+        idx = rows.index(self) + direction
+        if 0 <= idx < len(rows):
+            rows[idx].setFocus(Qt.OtherFocusReason)
+
+    def _owning_palette(self):
+        """Walk up to the ModernBlockPalette that owns this row, if any."""
+        w = self.parent()
+        while w is not None and not isinstance(w, ModernBlockPalette):
+            w = w.parent()
+        return w
+
+    def activate(self):
+        """Add this block to the canvas — same effect as a click/drag-add.
+
+        Emits the row-level ``block_drag_started`` (carrying the menu_block and
+        no specific position) and asks the owning palette to re-emit its
+        public ``block_drag_started(object)`` signal so existing consumers fire
+        without needing a real drag gesture.
+        """
+        self.block_drag_started.emit(self.menu_block, None)
+        palette = self._owning_palette()
+        if palette is not None:
+            palette.block_drag_started.emit(self.menu_block)
 
     def _start_drag(self, event):
         try:
@@ -532,18 +610,33 @@ def _draw_text(p: QPainter, color: QColor, s: int, text: str,
 # -----------------------------------------------------------------------------
 
 class _CategorySection(QWidget):
+    """Collapsible category: a clickable header toggles its rows.
+
+    The collapsed state is persisted per-category via QSettings (keyed by
+    category name) and restored when the section is rebuilt, so a user's
+    expand/collapse choices survive ``refresh_blocks()`` and app restarts.
+    """
+
     def __init__(self, category_name, menu_blocks, colors, parent=None):
         super().__init__(parent)
         self.category_name = category_name
         self.menu_blocks = menu_blocks
         self.colors = colors
+        # Last filter text, so a header toggle re-applies the active filter
+        # instead of unconditionally showing every row.
+        self._filter_text = ''
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 6, 0, 2)
         lay.setSpacing(0)
 
-        # Header
-        header = QLabel(category_name.upper())
+        # Restore the persisted collapsed flag before building the header so
+        # the chevron and initial row visibility match the stored state.
+        self._collapsed = self._load_collapsed()
+
+        # Header — clickable label that toggles the section. The chevron prefix
+        # indicates state (▾ expanded / ▸ collapsed).
+        header = _CategoryHeaderLabel(self)
         f = QFont()
         f.setPointSize(8)
         f.setBold(True)
@@ -551,7 +644,9 @@ class _CategorySection(QWidget):
         header.setFont(f)
         header.setContentsMargins(12, 2, 8, 4)
         header.setObjectName("PaletteCategoryHeader")
+        header.setCursor(Qt.PointingHandCursor)
         lay.addWidget(header)
+        self.header = header
 
         # Rows
         self.rows = []
@@ -560,8 +655,54 @@ class _CategorySection(QWidget):
             lay.addWidget(row)
             self.rows.append(row)
 
+        self._refresh_header_text()
+        self._apply_row_visibility()
         self._apply_styling()
         # Restyled on theme change by ModernBlockPalette._on_theme_changed.
+
+    # -- Collapse / persistence --------------------------------------------
+
+    def _load_collapsed(self) -> bool:
+        try:
+            settings = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            return bool(settings.value(
+                _collapsed_settings_key(self.category_name), False, type=bool
+            ))
+        except Exception:
+            return False
+
+    def _save_collapsed(self):
+        try:
+            settings = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+            settings.setValue(
+                _collapsed_settings_key(self.category_name), self._collapsed
+            )
+        except Exception:
+            pass
+
+    def toggle_collapsed(self):
+        """Flip collapsed state, persist it, and update the header + rows."""
+        self._collapsed = not self._collapsed
+        self._save_collapsed()
+        self._refresh_header_text()
+        self._apply_row_visibility()
+
+    def is_collapsed(self) -> bool:
+        return self._collapsed
+
+    def _refresh_header_text(self):
+        chevron = _CHEVRON_COLLAPSED if self._collapsed else _CHEVRON_EXPANDED
+        self.header.setText(f"{chevron}  {self.category_name.upper()}")
+
+    def _apply_row_visibility(self):
+        """Show rows that pass the active filter, unless the section is collapsed."""
+        text = self._filter_text
+        for r in self.rows:
+            name = getattr(r.menu_block, 'fn_name', '').lower()
+            matches = (not text) or (text in name)
+            r.setVisible(matches and not self._collapsed)
+
+    # -- Styling ------------------------------------------------------------
 
     def _apply_styling(self):
         muted = theme_manager.get_color('text_secondary').name()
@@ -570,15 +711,36 @@ class _CategorySection(QWidget):
         )
 
     def filter(self, text: str) -> bool:
-        """Return True if at least one row remains visible."""
-        any_visible = False
+        """Apply a filter; return True if the section stays visible.
+
+        A collapsed section keeps its rows hidden but still reports whether any
+        row matches, so the header remains visible (and toggleable) under an
+        active filter.
+        """
+        self._filter_text = text
+        any_match = False
         for r in self.rows:
             name = getattr(r.menu_block, 'fn_name', '').lower()
-            visible = (not text) or (text in name)
-            r.setVisible(visible)
-            any_visible = any_visible or visible
-        self.setVisible(any_visible)
-        return any_visible
+            matches = (not text) or (text in name)
+            r.setVisible(matches and not self._collapsed)
+            any_match = any_match or matches
+        self.setVisible(any_match)
+        return any_match
+
+
+class _CategoryHeaderLabel(QLabel):
+    """Category header label that toggles its owning section when clicked."""
+
+    def __init__(self, section, parent=None):
+        super().__init__(parent)
+        self._section = section
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._section.toggle_collapsed()
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 # -----------------------------------------------------------------------------
@@ -650,6 +812,8 @@ class ModernBlockPalette(QWidget):
         self.search_bar.setPlaceholderText("Filter blocks…")
         self.search_bar.setClearButtonEnabled(True)
         self.search_bar.textChanged.connect(self._filter_blocks)
+        # Down/Up from the search box step into the visible rows (keyboard nav).
+        self.search_bar.installEventFilter(self)
         sw.addWidget(self.search_bar)
         outer.addWidget(search_wrap)
 
@@ -756,6 +920,30 @@ class ModernBlockPalette(QWidget):
         text = (text or '').strip().lower()
         for s in self._sections:
             s.filter(text)
+
+    # -- Keyboard navigation ------------------------------------------------
+
+    def visible_rows(self):
+        """Currently-visible block rows, in on-screen (top-to-bottom) order."""
+        return [r for r in self.findChildren(CompactBlockRow) if r.isVisible()]
+
+    def eventFilter(self, obj, event):
+        """Route Down/Up from the search box into the visible row list.
+
+        Down focuses the first visible row, Up the last, so the user can leave
+        the filter box and walk the results without the mouse. Once on a row,
+        CompactBlockRow.keyPressEvent handles further arrow/Enter navigation.
+        """
+        from PyQt5.QtCore import QEvent
+        if obj is self.search_bar and event.type() == QEvent.KeyPress:
+            key = event.key()
+            if key in (Qt.Key_Down, Qt.Key_Up):
+                rows = self.visible_rows()
+                if rows:
+                    target = rows[0] if key == Qt.Key_Down else rows[-1]
+                    target.setFocus(Qt.OtherFocusReason)
+                    return True
+        return super().eventFilter(obj, event)
 
     # -- Styling ------------------------------------------------------------
 

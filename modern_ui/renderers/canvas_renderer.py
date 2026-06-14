@@ -168,8 +168,20 @@ class CanvasRenderer:
         finally:
             painter.restore()
 
-    def draw_hover_effects(self, painter: QPainter, hovered_port=None, hovered_block=None, hovered_line=None):
-        """Draw hover effects for ports, blocks, and connections."""
+    # Base alpha of the hovered-port glow halo. The outer halo breathes via the
+    # canvas phase (when a pulse_alpha callable is supplied); the inner center
+    # stays at full strength so the port itself reads as a solid target.
+    _PORT_GLOW_BASE_ALPHA = 100
+    _PORT_CENTER_ALPHA = 180
+
+    def draw_hover_effects(self, painter: QPainter, hovered_port=None, hovered_block=None, hovered_line=None, pulse_alpha=None):
+        """Draw hover effects for ports, blocks, and connections.
+
+        ``pulse_alpha`` is an optional ``callable(base_alpha) -> int`` (the
+        canvas's ``glow_pulse_alpha``) used to gently modulate the hovered-port
+        glow's alpha by the canvas animation phase. When ``None`` the glow uses
+        its flat base alpha, so the renderer stays usable standalone.
+        """
         if not painter or not painter.isActive():
             return
 
@@ -182,16 +194,20 @@ class CanvasRenderer:
                 if port_idx < len(port_list):
                     port_pos = port_list[port_idx]
 
-                    # Draw pulsing glow around hovered port (copy before mutating alpha)
+                    # Draw pulsing glow around hovered port (copy before mutating
+                    # alpha). The phase-modulated alpha makes it breathe while
+                    # the canvas animation timer runs.
+                    glow_alpha = (pulse_alpha(self._PORT_GLOW_BASE_ALPHA)
+                                  if callable(pulse_alpha) else self._PORT_GLOW_BASE_ALPHA)
                     glow_color = QColor(theme_manager.get_color('accent_primary'))
-                    glow_color.setAlpha(100)
+                    glow_color.setAlpha(glow_alpha)
                     painter.setBrush(glow_color)
                     painter.setPen(Qt.NoPen)
                     painter.drawEllipse(port_pos, 12, 12)
 
                     # Draw brighter center (copy before mutating alpha)
                     center_color = QColor(theme_manager.get_color('accent_primary'))
-                    center_color.setAlpha(180)
+                    center_color.setAlpha(self._PORT_CENTER_ALPHA)
                     painter.setBrush(center_color)
                     painter.drawEllipse(port_pos, 8, 8)
 

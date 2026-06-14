@@ -29,7 +29,9 @@ from PyQt5.QtWidgets import (
     QToolBar, QAction, QWidget, QHBoxLayout, QLabel, QPushButton, QToolButton,
     QSizePolicy, QFrame
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF
+import math
+
+from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt5.QtGui import (
     QIcon, QPixmap, QPainter, QColor, QPen, QBrush, QPainterPath, QPolygonF
 )
@@ -251,7 +253,13 @@ class _StatusPill(QFrame):
 
 
 class _StateDot(QWidget):
-    """6px filled circle painted in the state color (green / amber / red / grey)."""
+    """6px filled circle painted in the state color (green / amber / red / grey).
+
+    While a simulation is *running* the soft glow ring breathes via a small
+    self-owned ~30fps timer. The timer is gated strictly to the running state:
+    it starts only when ``set_state('running')`` and stops for every other
+    state, so an idle/paused toolbar never repaints continuously.
+    """
     _COLORS = {
         'idle':    ('text_secondary', None),
         'running': ('success', 'success'),
@@ -259,16 +267,45 @@ class _StateDot(QWidget):
         'error':   ('error', 'error'),
     }
 
+    # Same tuning as the canvas pulse so the two read as one effect.
+    _PULSE_INTERVAL_MS = 33          # ~30 fps
+    _PULSE_PHASE_STEP = 0.22         # radians per tick
+    _GLOW_BASE_ALPHA = 70            # resting alpha of the glow ring
+    _GLOW_PULSE_DEPTH = 0.45         # fraction of base alpha swung by the sine
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._state = 'idle'
+        self._pulse_phase = 0.0
         self.setFixedSize(QSize(8, 8))
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         theme_manager.theme_changed.connect(self.update)
 
+        self._pulse_timer = QTimer(self)  # parented -> no leak
+        self._pulse_timer.setInterval(self._PULSE_INTERVAL_MS)
+        self._pulse_timer.timeout.connect(self._on_pulse_tick)
+
     def set_state(self, s: str):
         self._state = s if s in self._COLORS else 'idle'
+        # Gate the pulse timer strictly to the running state.
+        if self._state == 'running':
+            if not self._pulse_timer.isActive():
+                self._pulse_timer.start()
+        elif self._pulse_timer.isActive():
+            self._pulse_timer.stop()
+            self._pulse_phase = 0.0
         self.update()
+
+    def _on_pulse_tick(self):
+        self._pulse_phase = (self._pulse_phase + self._PULSE_PHASE_STEP) % (2 * math.pi)
+        self.update()
+
+    def _glow_alpha(self) -> int:
+        """Glow-ring alpha for the current phase (flat base when not pulsing)."""
+        if not self._pulse_timer.isActive():
+            return self._GLOW_BASE_ALPHA
+        pulse = 1.0 + self._GLOW_PULSE_DEPTH * math.sin(self._pulse_phase)
+        return max(0, min(255, int(round(self._GLOW_BASE_ALPHA * pulse))))
 
     def paintEvent(self, _ev):
         col_key, glow_key = self._COLORS[self._state]
@@ -277,7 +314,7 @@ class _StateDot(QWidget):
         p.setRenderHint(QPainter.Antialiasing, True)
         # Soft glow ring for active states
         if glow_key:
-            glow = QColor(col); glow.setAlpha(70)
+            glow = QColor(col); glow.setAlpha(self._glow_alpha())
             p.setBrush(glow); p.setPen(Qt.NoPen)
             p.drawEllipse(0, 0, 8, 8)
             p.setBrush(col)

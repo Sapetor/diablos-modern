@@ -121,6 +121,15 @@ class ModernStyles:
             background-color: @background_tertiary;
             border-color: @border_hover;
         }
+        /* Keyboard-focus ring for the transport cluster — 2px accent border,
+           distinct from the 1px @border_hover hover edge, for a11y. */
+        QToolButton#TransportPlay:focus,
+        QToolButton#TransportPause:focus,
+        QToolButton#TransportStop:focus,
+        QToolButton#TransportStep:focus {
+            border: 2px solid @border_focus;
+            border-radius: @radius_md;
+        }
         QToolButton#TransportPlay:disabled,
         QToolButton#TransportPause:disabled,
         QToolButton#TransportStop:disabled,
@@ -195,6 +204,13 @@ class ModernStyles:
         QPushButton#CommandPaletteBtn:hover {
             background-color: @background_tertiary;
             border-color: @border_hover;
+            color: @text_primary;
+        }
+        /* Keyboard-focus ring — 2px accent border, distinct from the 1px
+           @border_hover hover edge, so the palette pill is visible on tab. */
+        QPushButton#CommandPaletteBtn:focus {
+            border: 2px solid @border_focus;
+            border-radius: @radius_md;
             color: @text_primary;
         }
         """
@@ -328,6 +344,12 @@ class ModernStyles:
         }
         QPushButton:hover { background-color: @background_tertiary; border-color: @border_hover; }
         QPushButton:pressed { background-color: @accent_pressed; color: white; }
+        /* Keyboard-focus ring — a 2px accent border (distinct from the 1px
+           @border_hover hover edge) so tab-navigation is visible for a11y. */
+        QPushButton:focus {
+            border: 2px solid @border_focus;
+            border-radius: @radius_md;
+        }
         QPushButton:default {
             background-color: @accent_primary;
             color: white;

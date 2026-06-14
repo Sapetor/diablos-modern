@@ -17,6 +17,22 @@ logger = logging.getLogger(__name__)
 class ConnectionRenderer:
     """Stateless renderer for connection lines."""
 
+    # Optional ``callable(base_alpha) -> int`` set by the owning canvas to its
+    # ``glow_pulse_alpha``. When present, the active/selected connection's outer
+    # glow breathes with the canvas animation phase; otherwise it uses the flat
+    # base alpha so the renderer stays usable standalone. Class default keeps
+    # every instance safe to read without an __init__.
+    pulse_alpha = None
+
+    # Base alpha of the selected-connection outer glow (the value modulated by
+    # the canvas phase while a simulation/connection drag keeps the timer live).
+    _ACTIVE_GLOW_BASE_ALPHA = 40
+
+    def _glow_alpha(self, base_alpha: int) -> int:
+        """Resolve a glow alpha, applying the canvas pulse callable if set."""
+        fn = self.pulse_alpha
+        return fn(base_alpha) if callable(fn) else base_alpha
+
     # ── Live-state V1: port-value chips ────────────────────────────
 
     def draw_port_value_chips(self, painter: QPainter, blocks) -> None:
@@ -140,9 +156,10 @@ class ConnectionRenderer:
 
             # Draw subtle glow/shadow for selected connections
             if is_selected:
-                # Draw outer glow
+                # Draw outer glow — alpha gently pulses with the canvas phase
+                # while the animation timer runs (stable alpha when idle).
                 glow_color = QColor(active_connection_color)
-                glow_color.setAlpha(40)
+                glow_color.setAlpha(self._glow_alpha(self._ACTIVE_GLOW_BASE_ALPHA))
                 glow_pen = QPen(glow_color, line_width + 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
                 painter.setPen(glow_pen)
                 painter.setBrush(Qt.NoBrush)

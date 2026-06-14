@@ -3,8 +3,9 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
 import logging
+import math
 from PyQt5.QtWidgets import QWidget, QApplication, QToolTip
-from PyQt5.QtCore import Qt, QPoint, QRect, pyqtSignal
+from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor
 
 # Import DSim and helper modules
@@ -41,6 +42,12 @@ logger = logging.getLogger(__name__)
 
 class ModernCanvas(QWidget):
     """Modern canvas widget for DiaBloS block diagram editing."""
+
+    # Idle-OFF animation tuning. ~30 fps keeps the pulse smooth without flooding
+    # the event loop; the phase advances by ANIM_PHASE_STEP radians per tick so
+    # one full sine cycle lasts a little under a second (gentle, not frantic).
+    _ANIM_INTERVAL_MS = 33          # ~30 fps
+    _ANIM_PHASE_STEP = 0.22         # radians advanced per tick
 
     # Signals
     block_selected = pyqtSignal(object)  # Emitted when a block is selected
@@ -110,6 +117,22 @@ class ModernCanvas(QWidget):
         self.block_renderer = BlockRenderer()
         self.connection_renderer = ConnectionRenderer()
         self.canvas_renderer = CanvasRenderer()
+
+        # Idle-OFF animation: a single ~30fps timer drives subtle glow pulses on
+        # the hovered port / active wire / running simulation. It stays STOPPED
+        # while the canvas is idle so large diagrams never repaint continuously
+        # (see _evaluate_animation_state). The phase is a monotonic float fed
+        # through sin() by renderers via glow_pulse_alpha().
+        self._animation_phase = 0.0
+        self._animation_timer = QTimer(self)  # parented -> no leak on destroy
+        self._animation_timer.setInterval(self._ANIM_INTERVAL_MS)
+        self._animation_timer.timeout.connect(self._on_animation_tick)
+        # Let the connection renderer pulse its active-wire glow via our phase.
+        self.connection_renderer.pulse_alpha = self.glow_pulse_alpha
+        # Re-evaluate the gate whenever simulation status flips (start/stop).
+        self.simulation_status_changed.connect(
+            lambda _msg: self._evaluate_animation_state()
+        )
 
         # Setup UI
         self._setup_canvas()
@@ -216,7 +239,72 @@ class ModernCanvas(QWidget):
     def is_simulation_running(self):
         """Check if simulation is running (delegates to SimulationController)."""
         return self._sim_controller.is_running()
-    
+
+    # ===== Idle-OFF glow animation =====
+
+    def _animation_should_run(self) -> bool:
+        """True while any state that warrants a live glow pulse is active.
+
+        Gated to: a hovered port, an in-progress connection drag, or a running
+        simulation. When none hold the timer is stopped so an idle diagram —
+        however large — never repaints continuously.
+        """
+        return bool(
+            self.hovered_port is not None
+            or self.line_creation_state
+            or self.is_simulation_running()
+        )
+
+    def _evaluate_animation_state(self):
+        """Start/stop the animation timer to match the current gate.
+
+        Called from the hover/connection state setters and on simulation status
+        changes. Idempotent: starting an already-running timer (or stopping an
+        already-stopped one) is a no-op, so it is cheap to call on every hover
+        transition. On the idle edge it issues one final repaint so the pulse
+        settles back to its resting alpha instead of freezing mid-cycle.
+        """
+        # The property setters that call us can, in principle, fire before the
+        # timer is constructed in __init__; tolerate that gracefully.
+        timer = getattr(self, '_animation_timer', None)
+        if timer is None:
+            return
+        try:
+            should_run = self._animation_should_run()
+            active = timer.isActive()
+            if should_run and not active:
+                timer.start()
+            elif not should_run and active:
+                timer.stop()
+                self._animation_phase = 0.0  # rest at the resting alpha
+                self.update()  # final repaint so the glow settles, not freezes
+        except Exception as e:
+            # Animation is purely cosmetic; never let a gate hiccup break input.
+            logger.debug(f"Animation state evaluation failed: {e}")
+
+    def _on_animation_tick(self):
+        """Advance the sine phase one step and request a repaint."""
+        # Wrap to keep the float bounded over long-running sessions.
+        self._animation_phase = (self._animation_phase + self._ANIM_PHASE_STEP) % (2 * math.pi)
+        self.update()
+
+    @property
+    def animation_phase(self) -> float:
+        """Current monotonic sine phase (radians) for renderers to read."""
+        return self._animation_phase
+
+    def glow_pulse_alpha(self, base_alpha: int, depth: float = 0.4) -> int:
+        """Modulate ``base_alpha`` by the canvas phase for a gentle pulse.
+
+        Renderers call this to make a hovered-port / active-wire glow breathe
+        while the animation timer runs. ``depth`` is the fraction of ``base_alpha``
+        swung by the sine (0 = no pulse). When the timer is idle the phase is 0,
+        so sin(0)=0 yields exactly ``base_alpha`` — a stable, non-pulsing glow.
+        Result is clamped to the valid 0..255 alpha range.
+        """
+        pulse = 1.0 + depth * math.sin(self._animation_phase)
+        return max(0, min(255, int(round(base_alpha * pulse))))
+
     def paintEvent(self, event):
         """Paint the canvas with blocks, connections, and other elements."""
         painter = QPainter()
@@ -276,8 +364,13 @@ class ModernCanvas(QWidget):
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
                 self.canvas_renderer.draw_selection_rect(painter, self.selection_rect_start, self.selection_rect_end)
 
-            # Draw hover effects
-            self.canvas_renderer.draw_hover_effects(painter, self.hovered_port, self.hovered_block, self.hovered_line)
+            # Draw hover effects. Pass our glow_pulse_alpha so the renderer can
+            # gently pulse the hovered-port glow while the animation timer runs
+            # (it resolves to a stable alpha when idle).
+            self.canvas_renderer.draw_hover_effects(
+                painter, self.hovered_port, self.hovered_block, self.hovered_line,
+                pulse_alpha=self.glow_pulse_alpha,
+            )
 
             # Draw validation error indicators
             if self.show_validation_errors:
@@ -1447,6 +1540,9 @@ class ModernCanvas(QWidget):
     @hovered_port.setter
     def hovered_port(self, value):
         self.canvas_state.hover.port = value
+        # Drive the idle-OFF glow timer: starts on the first hover, stops when
+        # the port (and other gated states) clear.
+        self._evaluate_animation_state()
 
     @property
     def hovered_line(self):
@@ -1530,6 +1626,9 @@ class ModernCanvas(QWidget):
     @line_creation_state.setter
     def line_creation_state(self, value):
         self.canvas_state.connection.creation_state = value
+        # A connection drag is one of the gated states; (re)evaluate the timer
+        # when it begins ('start') or clears (None).
+        self._evaluate_animation_state()
 
     @property
     def line_start_block(self):
