@@ -42,7 +42,10 @@ class BreadcrumbBar(QWidget):
             # Separator (except for first item)
             if i > 0:
                 sep = QLabel(">")
-                sep.setStyleSheet("color: #888; font-weight: bold; margin: 0 4px;")
+                sep.setStyleSheet(
+                    f"color: {theme_manager.get_color('text_disabled').name()}; "
+                    "font-weight: bold; margin: 0 4px;"
+                )
                 self.layout.addWidget(sep)
 
             # Button

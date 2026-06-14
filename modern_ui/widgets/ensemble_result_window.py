@@ -38,6 +38,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+from modern_ui.themes.theme_manager import theme_manager, TYPE
+
 from lib.analysis.monte_carlo import OUTCOME_METRICS
 
 
@@ -86,7 +88,10 @@ class EnsembleResultWindow(QWidget):
         if n_ok <= 0 or not self._signal_names:
             empty = QLabel("No successful runs to display.")
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet("color: #555; font-size: 13px; padding: 48px;")
+            empty.setStyleSheet(
+                f"color: {theme_manager.get_color('text_disabled').name()}; "
+                f"font-size: {TYPE['body_strong']}pt; padding: 48px;"
+            )
             layout.addWidget(empty, 1)
             self.combo = None
             self.view_combo = None

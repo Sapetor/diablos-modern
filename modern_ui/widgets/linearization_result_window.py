@@ -40,6 +40,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
+from modern_ui.themes.theme_manager import theme_manager, TYPE
+
 
 class LinearizationResultWindow(QWidget):
     """Tabbed window presenting a linearization/analysis result.
@@ -92,7 +94,10 @@ class LinearizationResultWindow(QWidget):
         label = QLabel(str(msg))
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignCenter)
-        label.setStyleSheet("color: #b00020; font-size: 13px; padding: 24px;")
+        label.setStyleSheet(
+            f"color: {theme_manager.get_color('error').name()}; "
+            f"font-size: {TYPE['body_strong']}pt; padding: 24px;"
+        )
         layout.addWidget(label)
 
     # -------------------------------------------------------------- pole-zero
@@ -166,7 +171,10 @@ class LinearizationResultWindow(QWidget):
             )
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
-            label.setStyleSheet("color: #555; font-size: 13px; padding: 24px;")
+            label.setStyleSheet(
+                f"color: {theme_manager.get_color('text_disabled').name()}; "
+                f"font-size: {TYPE['body_strong']}pt; padding: 24px;"
+            )
             box.addWidget(label)
             return container
 
@@ -207,7 +215,10 @@ class LinearizationResultWindow(QWidget):
             )
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
-            label.setStyleSheet("color: #555; font-size: 13px; padding: 24px;")
+            label.setStyleSheet(
+                f"color: {theme_manager.get_color('text_disabled').name()}; "
+                f"font-size: {TYPE['body_strong']}pt; padding: 24px;"
+            )
             box.addWidget(label)
             return container
 

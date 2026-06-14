@@ -181,7 +181,7 @@ class VariableEditor(QWidget):
     def clear_editor(self):
         self.editor.clear()
         self.status_label.setText("Cleared")
-        self.status_label.setStyleSheet("color: #666;")
+        self.status_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
 
     def load_script(self):
         """Load a Python script from a file."""
@@ -201,12 +201,12 @@ class VariableEditor(QWidget):
                     content = f.read()
                 self.editor.setPlainText(content)
                 self.status_label.setText(f"Loaded {os.path.basename(filename)}")
-                self.status_label.setStyleSheet("color: #666;")
+                self.status_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
                 logger.info(f"Loaded script from {filename}")
             except Exception as e:
                 logger.error(f"Error loading script: {e}")
                 self.status_label.setText(f"Error loading file: {str(e)}")
-                self.status_label.setStyleSheet("color: red;")
+                self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()};")
 
     def toggle_float(self, checked):
         """Toggle floating state of the parent dock widget."""
@@ -242,7 +242,7 @@ class VariableEditor(QWidget):
         except SyntaxError as e:
             logger.error(f"Error parsing workspace code: {e}")
             self.status_label.setText(f"⚠ Syntax error: {str(e)}")
-            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; font-weight: bold;")
             return
 
         new_vars = {}
@@ -273,7 +273,7 @@ class VariableEditor(QWidget):
         except SafeEvalError as e:
             logger.error(f"Error updating workspace: {e}")
             self.status_label.setText(f"⚠ Error: {str(e)}")
-            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; font-weight: bold;")
             return
 
         # Update the workspace manager
@@ -288,7 +288,7 @@ class VariableEditor(QWidget):
 
         # Update status inline
         self.status_label.setText(f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list)>3 else ''}")
-        self.status_label.setStyleSheet("color: green; font-weight: bold;")
+        self.status_label.setStyleSheet(f"color: {theme_manager.get_color('success').name()}; font-weight: bold;")
 
     def set_text(self, text):
         self.editor.setPlainText(text)

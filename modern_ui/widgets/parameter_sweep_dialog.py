@@ -23,6 +23,8 @@ from PyQt5.QtWidgets import (
     QComboBox, QSpinBox, QDoubleSpinBox, QDialogButtonBox,
 )
 
+from modern_ui.themes.theme_manager import theme_manager
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +110,7 @@ class ParameterSweepDialog(QDialog):
 
         if not self._blocks:
             warn = QLabel("No block exposes a numeric scalar parameter to sweep.")
-            warn.setStyleSheet("color: #a33; padding: 4px;")
+            warn.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; padding: 4px;")
             warn.setWordWrap(True)
             layout.addWidget(warn)
 

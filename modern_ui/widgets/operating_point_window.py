@@ -30,6 +30,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+from modern_ui.themes.theme_manager import theme_manager, TYPE
+
 
 class OperatingPointWindow(QWidget):
     """Window presenting an operating-point (trim) result."""
@@ -53,8 +55,8 @@ class OperatingPointWindow(QWidget):
         header = QLabel(summary)
         header.setWordWrap(True)
         ok = self.result.get("success")
-        color = "#0a7d28" if ok else "#b06a00"
-        header.setStyleSheet(f"color: {color}; font-size: 12px; padding: 4px;")
+        color = theme_manager.get_color('success' if ok else 'warning').name()
+        header.setStyleSheet(f"color: {color}; font-size: {TYPE['body']}pt; padding: 4px;")
         layout.addWidget(header)
 
         # State table.
@@ -90,7 +92,10 @@ class OperatingPointWindow(QWidget):
         label = QLabel(str(msg))
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignCenter)
-        label.setStyleSheet("color: #b00020; font-size: 13px; padding: 24px;")
+        label.setStyleSheet(
+            f"color: {theme_manager.get_color('error').name()}; "
+            f"font-size: {TYPE['body_strong']}pt; padding: 24px;"
+        )
         layout.addWidget(label)
 
     # ----------------------------------------------------------------- helpers
