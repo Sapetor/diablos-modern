@@ -30,14 +30,104 @@ Changes vs v2:
 """
 
 from enum import Enum
-from typing import Dict, Any
-from PyQt5.QtGui import QColor
+from typing import Dict, Any, Optional
+from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtCore import QObject, pyqtSignal
 
 
 class ThemeType(Enum):
     DARK = "dark"
     LIGHT = "light"
+
+
+# ---------------------------------------------------------------------------
+# Design tokens — the non-color primitives (spacing, radius, typography,
+# elevation) that color tokens alone don't cover. Keeping them here, beside
+# the color dicts, means the whole UI shares one rhythm and a single edit
+# retunes it. Spacing/radius/type are also surfaced through
+# get_qss_variables() as @space_* / @radius_* / @font_* so QSS can reference
+# them instead of hand-typed pixel literals.
+# ---------------------------------------------------------------------------
+
+# 4px-based spacing scale (pixels).
+SPACE: Dict[str, int] = {"xs": 2, "sm": 4, "md": 8, "lg": 12, "xl": 16, "2xl": 24}
+
+# Corner radii (pixels). `pill` is an arbitrarily large value for fully-rounded
+# ends (status pills, toggles).
+RADIUS: Dict[str, int] = {"sm": 4, "md": 6, "lg": 8, "pill": 999}
+
+# Typographic scale in points (QFont.setPointSize). Six named roles.
+TYPE: Dict[str, int] = {
+    "caption": 8,        # muted hints, kbd glyphs
+    "body": 9,           # default UI text
+    "body_strong": 10,   # emphasized body / main-window base
+    "subtitle": 11,      # secondary headings
+    "title": 12,         # panel titles
+    "heading": 14,       # window / dialog headings
+}
+
+# Font weights on the CSS 100–900 scale (mapped to Qt5's 0–99 enum by helpers).
+WEIGHT: Dict[str, int] = {"regular": 400, "medium": 500, "semibold": 600, "bold": 700}
+
+# Font stacks: the first installed family wins, the rest are cross-platform
+# (macOS / Windows / Linux) graceful fallbacks.
+UI_FONT_STACK = [
+    "Inter", "Segoe UI", "-apple-system", "Roboto", "Helvetica Neue", "Arial", "sans-serif",
+]
+MONO_FONT_STACK = [
+    "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", "Courier New", "monospace",
+]
+
+# Soft-elevation tokens: blur radius, vertical offset, and shadow alpha (0–255).
+# Consumed in a later phase by QGraphicsDropShadowEffect on floating surfaces
+# (command palette, toasts, panels, dialogs); defined here so the scale is
+# shared and tunable in one place.
+ELEVATION: Dict[str, Dict[str, int]] = {
+    "e1": {"blur": 8,  "offset": 1, "alpha": 40},
+    "e2": {"blur": 16, "offset": 3, "alpha": 56},
+    "e3": {"blur": 28, "offset": 6, "alpha": 72},
+}
+
+
+def _qt5_weight(css_weight: int) -> int:
+    """Map a CSS font-weight (400/500/600/700) to the Qt5 QFont 0–99 enum.
+
+    PyQt5 ships Qt5, whose QFont.setWeight expects the legacy 0–99 scale, not
+    the CSS 100–900 scale Qt6 adopted. Unknown values fall back to Normal.
+    """
+    return {
+        400: QFont.Normal,    # 50
+        500: QFont.Medium,    # 57
+        600: QFont.DemiBold,  # 63
+        700: QFont.Bold,      # 75
+    }.get(css_weight, QFont.Normal)
+
+
+def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
+    """Build a QFont from the canonical UI sans stack.
+
+    Args:
+        size: point size (e.g. ``TYPE['body']``). Left at the Qt default if None.
+        weight: a CSS weight from ``WEIGHT`` (400/500/600/700). Default if None.
+    """
+    f = QFont(UI_FONT_STACK[0])
+    f.setFamilies(UI_FONT_STACK)
+    if size is not None:
+        f.setPointSize(size)
+    if weight is not None:
+        f.setWeight(_qt5_weight(weight))
+    return f
+
+
+def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
+    """Build a QFont from the canonical monospace stack (kbd hints, time readout)."""
+    f = QFont(MONO_FONT_STACK[0])
+    f.setFamilies(MONO_FONT_STACK)
+    if size is not None:
+        f.setPointSize(size)
+    if weight is not None:
+        f.setWeight(_qt5_weight(weight))
+    return f
 
 
 # ---------------------------------------------------------------------------
@@ -538,6 +628,14 @@ class ThemeManager(QObject):
         palette = PALETTES.get(self.current_palette, PALETTES[DEFAULT_PALETTE])
         for key, value in palette[theme_key].items():
             qss_vars[f"@{key}"] = value
+        # Non-color design tokens (theme-independent): @space_*, @radius_*,
+        # @font_* let QSS reference the shared scales instead of pixel literals.
+        for name, px in SPACE.items():
+            qss_vars[f"@space_{name}"] = f"{px}px"
+        for name, px in RADIUS.items():
+            qss_vars[f"@radius_{name}"] = f"{px}px"
+        for name, pt in TYPE.items():
+            qss_vars[f"@font_{name}"] = f"{pt}pt"
         return qss_vars
 
     def get_icon_size(self):
