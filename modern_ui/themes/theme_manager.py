@@ -132,6 +132,35 @@ def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> Q
     return f
 
 
+def make_shadow(level: str = "e2", color: Optional[QColor] = None) -> "QGraphicsDropShadowEffect":
+    """Build a QGraphicsDropShadowEffect from an ``ELEVATION`` token.
+
+    Floating surfaces (command palette, toasts, panels, dialogs) all draw the
+    same soft shadow from the shared elevation scale, so a single edit retunes
+    them together. The drop-down shadow has no horizontal offset; ``offset`` is
+    the vertical drop and ``blur``/``alpha`` come straight from the token.
+
+    Args:
+        level: an ``ELEVATION`` key (``e1``/``e2``/``e3``). Unknown levels fall
+            back to ``e2`` (the default surface elevation).
+        color: an explicit shadow QColor; when None, a black shadow at the
+            token's alpha is used.
+
+    Note: a QWidget holds only one QGraphicsEffect, so don't attach this to a
+    widget that already calls ``setGraphicsEffect`` (e.g. ToastNotification's
+    opacity effect).
+    """
+    from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+
+    token = ELEVATION.get(level, ELEVATION["e2"])
+    effect = QGraphicsDropShadowEffect()
+    effect.setBlurRadius(token["blur"])
+    effect.setXOffset(0)
+    effect.setYOffset(token["offset"])
+    effect.setColor(color if color is not None else QColor(0, 0, 0, token["alpha"]))
+    return effect
+
+
 # ---------------------------------------------------------------------------
 # Block-color palettes (independent of dark/light chrome)
 # Each palette defines 9 categories × 3 keys (fill, border, accent) × 2 themes.

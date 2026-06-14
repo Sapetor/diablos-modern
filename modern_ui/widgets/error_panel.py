@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QCursor
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, make_shadow
 from lib.diagram_validator import ErrorSeverity
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,10 @@ class ErrorPanel(QWidget):
 
         scroll.setWidget(self.content_widget)
         layout.addWidget(scroll)
+
+        # Soft elevation so the panel floats above the canvas. The panel itself
+        # holds no other QGraphicsEffect, so this shadow is safe to attach here.
+        self.setGraphicsEffect(make_shadow('e2'))
 
         # Initially hidden
         self.hide()

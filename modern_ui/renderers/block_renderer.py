@@ -66,17 +66,38 @@ def _category_color_key(block, suffix: str = '') -> str:
     return result
 
 
+# Soft-elevation shadow recipe. Each tuple is (offset, expand, alpha_scale) for
+# one stacked layer drawn behind the block, from the broadest/faintest layer
+# down to the tightest/strongest. Progressively larger offset+expand with
+# decreasing alpha fakes a blurred drop shadow using only plain QPainter fills
+# (no per-pixel blur), reading as modern soft elevation rather than a hard 1990s
+# offset rectangle. alpha_scale is a fraction of the theme base alpha so
+# light/dark themes keep their intended shadow strength.
+_SOFT_SHADOW_LAYERS = (
+    # (offset, expand, alpha_scale)
+    (5, 4, 0.25),
+    (4, 2, 0.45),
+    (3, 0, 0.70),
+    (2, -1, 1.00),
+)
+
+
 class BlockRenderer:
     """
     Stateless renderer for DBlock objects.
     """
+
+    # Soft-elevation shadow recipe, exposed on the class so it is easy to
+    # assert on in tests (see _draw_soft_shadow for the per-layer semantics).
+    _SOFT_SHADOW_LAYERS = _SOFT_SHADOW_LAYERS
 
     def __init__(self):
         # Tracks block_fns whose draw_icon has already raised, so the failure
         # is logged once at warning level rather than every paint frame.
         self._draw_icon_warned = set()
 
-    def draw_block(self, block, painter: Optional[QPainter], draw_name: bool = True, draw_ports: bool = True) -> None:
+    def draw_block(self, block, painter: Optional[QPainter], draw_name: bool = True,
+                   draw_ports: bool = True, hovered_port=None) -> None:
         """
         Draw a block on the canvas with modern styling, shadows, and depth.
 
@@ -85,6 +106,9 @@ class BlockRenderer:
             painter: QPainter instance for rendering
             draw_name: Whether to draw the block name/label
             draw_ports: Whether to draw the input/output port connectors
+            hovered_port: Optional (port_idx, is_output) tuple identifying a
+                port on *this* block that is currently hovered, so it can be
+                drawn larger/brighter. None when nothing on this block is hovered.
         """
         if painter is None:
             return
@@ -94,37 +118,17 @@ class BlockRenderer:
         # back to the caller, even if an exception is raised mid-paint.
         painter.save()
         try:
-            self._draw_block_body(block, painter, draw_name, draw_ports)
+            self._draw_block_body(block, painter, draw_name, draw_ports, hovered_port)
         finally:
             painter.restore()
 
-    def _draw_block_body(self, block, painter: QPainter, draw_name: bool, draw_ports: bool) -> None:
+    def _draw_block_body(self, block, painter: QPainter, draw_name: bool,
+                         draw_ports: bool, hovered_port=None) -> None:
         """Body of draw_block; runs inside a painter.save()/restore() guard."""
-        # Draw shadow for depth (offset slightly down and right)
-        shadow_offset = 3
-        shadow_color = theme_manager.get_color('block_shadow')
-        shadow_color.setAlpha(80)  # Semi-transparent shadow
-
-        painter.setBrush(shadow_color)
-        painter.setPen(Qt.NoPen)
-
-        if block.block_fn == "Gain":
-            # Shadow for triangle
-            shadow_points = QPolygonF()
-            if not block.flipped:
-                shadow_points.append(QPoint(block.left + shadow_offset, block.top + shadow_offset))
-                shadow_points.append(QPoint(block.left + block.width + shadow_offset, int(block.top + block.height / 2) + shadow_offset))
-                shadow_points.append(QPoint(block.left + shadow_offset, block.top + block.height + shadow_offset))
-            else:
-                shadow_points.append(QPoint(block.left + block.width + shadow_offset, block.top + shadow_offset))
-                shadow_points.append(QPoint(block.left + shadow_offset, int(block.top + block.height / 2) + shadow_offset))
-                shadow_points.append(QPoint(block.left + block.width + shadow_offset, block.top + block.height + shadow_offset))
-            painter.drawPolygon(shadow_points)
-        else:
-            # Shadow for rounded rectangle
-            radius = 12
-            shadow_rect = QRect(block.left + shadow_offset, block.top + shadow_offset, block.width, block.height)
-            painter.drawRoundedRect(shadow_rect, radius, radius)
+        # Draw a soft multi-layer shadow for depth. The shadow follows the block
+        # outline (triangle for Gain, rounded rect otherwise) and is built from
+        # several stacked fills with growing offset/spread and fading alpha.
+        self._draw_soft_shadow(block, painter)
 
         # Resolve colors from the *current* theme every paint. The block's
         # cached b_color is set at startup; when the user toggles dark/light
@@ -212,7 +216,7 @@ class BlockRenderer:
 
         # Draw ports
         if draw_ports:
-            self.draw_ports(block, painter)
+            self.draw_ports(block, painter, hovered_port)
             self.draw_port_labels(block, painter)
 
         if draw_name:
@@ -243,8 +247,61 @@ class BlockRenderer:
         # Draw sample rate indicator for discrete blocks
         self._draw_sample_rate_indicator(block, painter)
 
-    def draw_ports(self, block, painter: Optional[QPainter]) -> None:
-        """Draw input and output ports with modern styling."""
+    def _draw_soft_shadow(self, block, painter: QPainter) -> None:
+        """Draw a soft, multi-layer drop shadow behind the block.
+
+        Stacks the _SOFT_SHADOW_LAYERS recipe (growing offset/spread, fading
+        alpha) into a few plain fills so the result reads as soft elevation
+        without any per-pixel blur. The shadow tracks the block outline: a
+        triangle for the Gain block, a rounded rectangle otherwise. The base
+        color/alpha come from the active theme's 'block_shadow' token so
+        light/dark themes stay consistent.
+        """
+        base_shadow = theme_manager.get_color('block_shadow')
+        base_alpha = base_shadow.alpha()
+
+        painter.setPen(Qt.NoPen)
+        radius = 12
+        is_gain = block.block_fn == "Gain"
+
+        for offset, expand, alpha_scale in self._SOFT_SHADOW_LAYERS:
+            layer_color = QColor(base_shadow)
+            layer_color.setAlpha(int(base_alpha * alpha_scale))
+            painter.setBrush(layer_color)
+
+            if is_gain:
+                # Shadow for the Gain triangle, grown outward by `expand`.
+                shadow_points = QPolygonF()
+                if not block.flipped:
+                    shadow_points.append(QPoint(block.left + offset - expand, block.top + offset - expand))
+                    shadow_points.append(QPoint(block.left + block.width + offset + expand, int(block.top + block.height / 2) + offset))
+                    shadow_points.append(QPoint(block.left + offset - expand, block.top + block.height + offset + expand))
+                else:
+                    shadow_points.append(QPoint(block.left + block.width + offset + expand, block.top + offset - expand))
+                    shadow_points.append(QPoint(block.left + offset - expand, int(block.top + block.height / 2) + offset))
+                    shadow_points.append(QPoint(block.left + block.width + offset + expand, block.top + block.height + offset + expand))
+                painter.drawPolygon(shadow_points)
+            else:
+                # Shadow for the rounded rectangle, grown outward by `expand`.
+                shadow_rect = QRect(
+                    block.left + offset - expand,
+                    block.top + offset - expand,
+                    block.width + 2 * expand,
+                    block.height + 2 * expand,
+                )
+                painter.drawRoundedRect(shadow_rect, radius + expand, radius + expand)
+
+    def draw_ports(self, block, painter: Optional[QPainter], hovered_port=None) -> None:
+        """Draw input and output ports with modern styling.
+
+        Args:
+            block: The DBlock instance whose ports are drawn.
+            painter: QPainter instance for rendering.
+            hovered_port: Optional (port_idx, is_output) tuple identifying a
+                port on *this* block to emphasize (drawn larger/brighter with
+                the 'port_hover' color). None when no port on this block is
+                hovered.
+        """
         if painter is None:
             return
 
@@ -252,41 +309,66 @@ class BlockRenderer:
         port_output_color = theme_manager.get_color('port_output')
         port_draw_radius = block.port_radius - 1
 
+        # Resolve which (index, is_output) on this block is hovered, if any.
+        hover_idx, hover_is_output = self._resolve_hovered_port(hovered_port)
+
         # Input ports
-        for port_in_location in block.in_coords:
-            gradient = QRadialGradient(port_in_location.x(), port_in_location.y(), port_draw_radius)
-            gradient.setColorAt(0.0, port_input_color.lighter(130))
-            gradient.setColorAt(0.7, port_input_color)
-            gradient.setColorAt(1.0, port_input_color.darker(110))
-
-            painter.setBrush(gradient)
-            painter.setPen(QPen(port_input_color.darker(140), 2.0))
-            painter.drawEllipse(port_in_location, port_draw_radius, port_draw_radius)
-
-            # Highlight
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(255, 255, 255, 50))
-            highlight_offset = int(port_draw_radius * 0.3)
-            highlight_size = int(port_draw_radius * 0.4)
-            painter.drawEllipse(port_in_location.x() - highlight_offset, port_in_location.y() - highlight_offset, highlight_size, highlight_size)
+        for i, port_in_location in enumerate(block.in_coords):
+            is_hovered = hover_idx == i and hover_is_output is False
+            self._draw_port(painter, port_in_location, port_input_color, port_draw_radius, is_hovered)
 
         # Output ports
-        for port_out_location in block.out_coords:
-            gradient = QRadialGradient(port_out_location.x(), port_out_location.y(), port_draw_radius)
-            gradient.setColorAt(0.0, port_output_color.lighter(130))
-            gradient.setColorAt(0.7, port_output_color)
-            gradient.setColorAt(1.0, port_output_color.darker(110))
+        for i, port_out_location in enumerate(block.out_coords):
+            is_hovered = hover_idx == i and hover_is_output is True
+            self._draw_port(painter, port_out_location, port_output_color, port_draw_radius, is_hovered)
 
-            painter.setBrush(gradient)
-            painter.setPen(QPen(port_output_color.darker(140), 2.0))
-            painter.drawEllipse(port_out_location, port_draw_radius, port_draw_radius)
+    @staticmethod
+    def _resolve_hovered_port(hovered_port):
+        """Normalize a hovered_port spec to (port_idx, is_output).
 
-            # Highlight
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(255, 255, 255, 50))
-            highlight_offset = int(port_draw_radius * 0.3)
-            highlight_size = int(port_draw_radius * 0.4)
-            painter.drawEllipse(port_out_location.x() - highlight_offset, port_out_location.y() - highlight_offset, highlight_size, highlight_size)
+        Accepts the (port_idx, is_output) tuple passed down per block (or None)
+        and returns (None, None) when nothing on this block is hovered, so the
+        port loops can compare cheaply without re-validating the shape.
+        """
+        if not hovered_port:
+            return None, None
+        try:
+            port_idx, is_output = hovered_port
+        except (TypeError, ValueError):
+            return None, None
+        return port_idx, bool(is_output)
+
+    def _draw_port(self, painter: QPainter, location, port_color: QColor,
+                   port_draw_radius: int, is_hovered: bool) -> None:
+        """Draw a single port disc, emphasized when hovered.
+
+        A hovered port is drawn slightly larger and brighter using the
+        'port_hover' color so the user can see which connector they are about
+        to grab; unhovered ports keep the standard input/output gradient.
+        """
+        # A hovered port grows by ~40% and recolors to the brighter hover token.
+        if is_hovered:
+            base_color = theme_manager.get_color('port_hover')
+            radius = int(port_draw_radius * 1.4)
+        else:
+            base_color = port_color
+            radius = port_draw_radius
+
+        gradient = QRadialGradient(location.x(), location.y(), radius)
+        gradient.setColorAt(0.0, base_color.lighter(130))
+        gradient.setColorAt(0.7, base_color)
+        gradient.setColorAt(1.0, base_color.darker(110))
+
+        painter.setBrush(gradient)
+        painter.setPen(QPen(base_color.darker(140), 2.0))
+        painter.drawEllipse(location, radius, radius)
+
+        # Highlight
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(255, 255, 255, 50))
+        highlight_offset = int(radius * 0.3)
+        highlight_size = int(radius * 0.4)
+        painter.drawEllipse(location.x() - highlight_offset, location.y() - highlight_offset, highlight_size, highlight_size)
 
     def draw_port_labels(self, block, painter: Optional[QPainter], show_labels: bool = True) -> None:
         """

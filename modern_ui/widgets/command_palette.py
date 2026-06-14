@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
     QListWidgetItem, QLabel, QWidget, QFrame, QSizePolicy
 )
 
-from modern_ui.themes.theme_manager import theme_manager, get_mono_font
+from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
 
 logger = logging.getLogger(__name__)
 
@@ -177,11 +177,15 @@ class CommandPalette(QDialog):
     # -- UI ---------------------------------------------------------------
 
     def _build_ui(self):
-        # Outer rounded card with shadow approximation (1px border, dark bg)
+        # Outer rounded card lifted off the host window with a soft drop shadow
+        # (1px border + dark bg carry the edge; make_shadow gives it elevation).
         self.setFixedWidth(PALETTE_WIDTH)
 
         self._card = QFrame(self)
         self._card.setObjectName("CmdkCard")
+        # Floating overlay frame — top-level elevation from the shared scale.
+        # The card holds no other QGraphicsEffect, so the shadow is safe here.
+        self._card.setGraphicsEffect(make_shadow('e3'))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)

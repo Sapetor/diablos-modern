@@ -227,6 +227,53 @@ class DLine:
         waypoints.append(finish)
         return waypoints
 
+    def _create_bezier_path(self, start: QPoint, finish: QPoint,
+                            src_dir: int, dst_dir: int
+                            ) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
+        """
+        Build a true cubic-bezier trajectory matching the live drag preview.
+
+        Mirrors the control-point math in
+        ``CanvasRenderer.draw_temp_line``: the offset is proportional to the
+        straight-line distance between the ports (clamped to 100 px), the curve
+        leaves the source port horizontally and enters the destination port
+        horizontally. ``src_dir`` / ``dst_dir`` carry the outward stub sign for
+        each port (see ``_resolve_port_directions``), so flipped layouts curve
+        the right way; for the standard unflipped layout they are ``+1`` / ``-1``
+        and the control points reduce exactly to the preview's ``cp1`` / ``cp2``.
+
+        Args:
+            start: Starting point (output port)
+            finish: Ending point (input port)
+            src_dir: Outward horizontal stub sign for the source port (+1 / -1)
+            dst_dir: Outward horizontal stub sign for the destination port (+1 / -1)
+
+        Returns:
+            Tuple of (QPainterPath, waypoints, collision segments)
+        """
+        dx = finish.x() - start.x()
+        dy = finish.y() - start.y()
+        distance = (dx * dx + dy * dy) ** 0.5
+
+        # Control-point offset based on distance, clamped (matches the preview).
+        offset = min(distance * 0.5, 100)
+
+        # Exit the source horizontally and enter the destination horizontally.
+        # src_dir == +1 / dst_dir == -1 (the unflipped case) reproduces the
+        # preview's "+offset from start" / "-offset to end".
+        cp1 = QPoint(int(start.x() + src_dir * offset), start.y())
+        cp2 = QPoint(int(finish.x() + dst_dir * offset), finish.y())
+
+        path = QPainterPath(start)
+        path.cubicTo(cp1, cp2, finish)
+
+        # A plain two-endpoint cubic has no intermediate waypoints; the single
+        # bounding segment is enough for hover/click collision (the existing
+        # collision() routine tests against straight point-to-point segments).
+        all_points = [start, finish]
+        segments = [QRect(start, finish).normalized()]
+        return path, all_points, segments
+
     def create_trajectory(self, start: QPoint, finish: QPoint, blocks_list: List,
                          points: Optional[List[QPoint]] = None) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
         """
@@ -254,23 +301,36 @@ class DLine:
             src_dir, dst_dir = self._resolve_port_directions(blocks_list)
             is_feedback = src_dir * (finish.x() - start.x()) < 0
 
-            if is_feedback:
-                src_block = None
-                for block in blocks_list:
-                    if block.name == self.srcblock:
-                        src_block = block
-                        break
+            if not is_feedback:
+                # Forward bezier route: emit a real cubic that matches the live
+                # drag preview (see CanvasRenderer.draw_temp_line) instead of a
+                # rounded-Manhattan stair-step, so the wire does not visibly snap
+                # on mouse-release. The control points use the same offset math
+                # as the preview -- proportional to the horizontal distance and
+                # clamped -- exiting the source port horizontally and entering
+                # the destination port horizontally. src_dir/dst_dir generalise
+                # the preview's hard-coded +x/-x stubs to flipped layouts; for
+                # the standard unflipped case they are +1/-1 and this reduces to
+                # exactly the preview's cp1/cp2.
+                return self._create_bezier_path(start, finish, src_dir, dst_dir)
 
-                if src_block:
-                    p1 = QPoint(start.x() + src_dir * 20, start.y())
-                    p2 = QPoint(p1.x(), src_block.rect.bottom() + 30)
-                    p3 = QPoint(finish.x() + dst_dir * 20, p2.y())
-                    p4 = QPoint(p3.x(), finish.y())
-                    all_points = [start, p1, p2, p3, p4, finish]
-                else:  # fallback for feedback if src_block not found
-                    mid_x = int((start.x() + finish.x()) / 2)
-                    all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
-            else:
+            # Bezier feedback (route-around) layout: the wire cannot run straight
+            # to a destination that sits "behind" the source, so it drops below
+            # the source block on orthogonal stubs. These corners are rounded by
+            # the fillet loop below, exactly as before.
+            src_block = None
+            for block in blocks_list:
+                if block.name == self.srcblock:
+                    src_block = block
+                    break
+
+            if src_block:
+                p1 = QPoint(start.x() + src_dir * 20, start.y())
+                p2 = QPoint(p1.x(), src_block.rect.bottom() + 30)
+                p3 = QPoint(finish.x() + dst_dir * 20, p2.y())
+                p4 = QPoint(p3.x(), finish.y())
+                all_points = [start, p1, p2, p3, p4, finish]
+            else:  # fallback for feedback if src_block not found
                 mid_x = int((start.x() + finish.x()) / 2)
                 all_points = [start, QPoint(mid_x, start.y()), QPoint(mid_x, finish.y()), finish]
 
@@ -292,7 +352,12 @@ class DLine:
         path = QPainterPath(all_points[0])
         segments = []
 
-        # Radius for smooth corner curves (only used in bezier mode)
+        # Radius for smooth corner fillets on Manhattan-style routes. The
+        # forward bezier route returns earlier as a true cubic, so corner
+        # rounding now only ever runs for orthogonal routes, user-modified
+        # custom waypoints, and the bezier feedback (route-around) layout --
+        # all of which are genuinely orthogonal. Round those corners only when
+        # the line is not in orthogonal mode (i.e. bezier feedback / modified).
         corner_radius = 20 if self.routing_mode == "bezier" else 0
 
         for i in range(len(all_points) - 1):

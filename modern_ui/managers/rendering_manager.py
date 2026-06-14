@@ -32,7 +32,10 @@ class RenderingManager:
         if painter is None:
             return
         for block in self.dsim.blocks_list:
-            self.canvas.block_renderer.draw_block(block, painter, draw_ports=draw_ports)
+            hovered_port = self._hovered_port_for(block)
+            self.canvas.block_renderer.draw_block(
+                block, painter, draw_ports=draw_ports, hovered_port=hovered_port
+            )
             if block.selected:
                 self.canvas.block_renderer.draw_resize_handles(block, painter)
 
@@ -47,8 +50,24 @@ class RenderingManager:
     def render_ports(self, painter: QPainter) -> None:
         """Render all ports on top of lines for better visibility."""
         for block in self.dsim.blocks_list:
-            self.canvas.block_renderer.draw_ports(block, painter)
+            hovered_port = self._hovered_port_for(block)
+            self.canvas.block_renderer.draw_ports(block, painter, hovered_port)
             self.canvas.block_renderer.draw_port_labels(block, painter)
+
+    def _hovered_port_for(self, block):
+        """Return the (port_idx, is_output) hovered on `block`, or None.
+
+        The canvas tracks hover as a (block, port_idx, is_output) triple shared
+        across all blocks; the renderer only needs to know which of *this*
+        block's ports (if any) is hovered, so reduce it to the per-block pair.
+        """
+        hovered = getattr(self.canvas, 'hovered_port', None)
+        if not hovered:
+            return None
+        hover_block, port_idx, is_output = hovered
+        if hover_block is not block:
+            return None
+        return (port_idx, is_output)
 
     # ==================== Validation Visualization ====================
 

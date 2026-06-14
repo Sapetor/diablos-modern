@@ -9,7 +9,8 @@ tokens, and their exposure through ``get_qss_variables()`` /
 
 import pytest
 
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +90,53 @@ class TestFontHelpers:
         # Should not raise when called with no args.
         f = get_ui_font()
         assert isinstance(f, QFont)
+
+
+# ---------------------------------------------------------------------------
+# Drop-shadow factory
+# ---------------------------------------------------------------------------
+
+class TestMakeShadow:
+    def test_returns_drop_shadow_effect(self):
+        from modern_ui.themes.theme_manager import make_shadow
+        eff = make_shadow("e2")
+        assert isinstance(eff, QGraphicsDropShadowEffect)
+
+    @pytest.mark.parametrize("level", ["e1", "e2", "e3"])
+    def test_blur_and_offset_match_elevation_token(self, level):
+        from modern_ui.themes.theme_manager import make_shadow, ELEVATION
+        eff = make_shadow(level)
+        token = ELEVATION[level]
+        assert eff.blurRadius() == token["blur"]
+        assert eff.yOffset() == token["offset"]
+        # Drop-down shadow has no horizontal offset.
+        assert eff.xOffset() == 0
+
+    def test_default_level_is_e2(self):
+        from modern_ui.themes.theme_manager import make_shadow, ELEVATION
+        eff = make_shadow()
+        assert eff.blurRadius() == ELEVATION["e2"]["blur"]
+        assert eff.yOffset() == ELEVATION["e2"]["offset"]
+
+    def test_color_alpha_from_token_by_default(self):
+        from modern_ui.themes.theme_manager import make_shadow, ELEVATION
+        eff = make_shadow("e3")
+        col = eff.color()
+        assert (col.red(), col.green(), col.blue()) == (0, 0, 0)
+        assert col.alpha() == ELEVATION["e3"]["alpha"]
+
+    def test_explicit_color_overrides_default(self):
+        from modern_ui.themes.theme_manager import make_shadow
+        tint = QColor(10, 20, 30, 128)
+        eff = make_shadow("e2", color=tint)
+        assert eff.color() == tint
+
+    def test_unknown_level_falls_back_to_e2(self):
+        from modern_ui.themes.theme_manager import make_shadow, ELEVATION
+        eff = make_shadow("nope")
+        assert eff.blurRadius() == ELEVATION["e2"]["blur"]
+        assert eff.yOffset() == ELEVATION["e2"]["offset"]
+        assert eff.color().alpha() == ELEVATION["e2"]["alpha"]
 
 
 # ---------------------------------------------------------------------------
