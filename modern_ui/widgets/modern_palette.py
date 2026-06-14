@@ -96,7 +96,8 @@ class CompactBlockRow(QFrame):
         lay.addWidget(self.name_label, 1, Qt.AlignVCenter)
 
         self._apply_styling()
-        theme_manager.theme_changed.connect(self._on_theme_changed)
+        # Theme changes are applied centrally by the owning palette
+        # (ModernBlockPalette._on_theme_changed), not a per-row connection.
 
     def _build_tooltip(self):
         try:
@@ -266,7 +267,7 @@ class _BlockGlyphLabel(QWidget):
         self._glyph_kind = _glyph_kind_for(getattr(menu_block, 'fn_name', '') or '')
         self.setFixedSize(QSize(self.SIZE, self.SIZE))
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        theme_manager.theme_changed.connect(self.update)
+        # Repainted on theme change by the owning CompactBlockRow.
 
     def paintEvent(self, _ev):
         p = QPainter(self)
@@ -560,7 +561,7 @@ class _CategorySection(QWidget):
             self.rows.append(row)
 
         self._apply_styling()
-        theme_manager.theme_changed.connect(self._apply_styling)
+        # Restyled on theme change by ModernBlockPalette._on_theme_changed.
 
     def _apply_styling(self):
         muted = theme_manager.get_color('text_secondary').name()
@@ -596,8 +597,25 @@ class ModernBlockPalette(QWidget):
         self._setup_widget()
         self._load_blocks()
         self._apply_styling()
-        theme_manager.theme_changed.connect(self._apply_styling)
+        theme_manager.theme_changed.connect(self._on_theme_changed)
         logger.info("Modern block palette initialized (compact V1)")
+
+    def _on_theme_changed(self, *_):
+        """Single theme-change handler for the whole palette.
+
+        Restyles the palette chrome, then fans out to live children. Rows,
+        glyphs, dots and section headers no longer subscribe to
+        theme_manager.theme_changed individually: one connection here replaces
+        ~150 per-widget connections (with ~70 blocks) and removes the
+        dangling-connection lifecycle that refresh_blocks() had to clean up.
+        findChildren reflects the current tree, so dynamically added/removed
+        rows are handled automatically.
+        """
+        self._apply_styling()
+        for section in self.findChildren(_CategorySection):
+            section._apply_styling()
+        for row in self.findChildren(CompactBlockRow):
+            row._on_theme_changed()
 
     # -- Layout -------------------------------------------------------------
 
@@ -800,10 +818,10 @@ class ModernBlockPalette(QWidget):
                 item = self.blocks_layout.itemAt(i)
                 w = item.widget()
                 if w:
-                    # Detach from the layout and schedule for deletion. Deleting
-                    # the widget (and, for sections, its child rows/glyphs)
-                    # releases their theme_manager.theme_changed connections so
-                    # orphaned widgets stop receiving restyle/repaint callbacks.
+                    # Detach from the layout and schedule for deletion. Theme
+                    # restyling is now driven centrally via findChildren in
+                    # _on_theme_changed, so detached widgets (parent cleared
+                    # below) are simply excluded from the next fan-out.
                     self.blocks_layout.removeWidget(w)
                     w.setParent(None)
                     w.deleteLater()
