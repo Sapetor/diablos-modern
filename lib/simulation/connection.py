@@ -12,6 +12,27 @@ from PyQt5.QtCore import QPoint, QRect
 logger = logging.getLogger(__name__)
 
 
+def bezier_control_points(start: QPoint, finish: QPoint,
+                          src_dir: int = 1, dst_dir: int = -1) -> Tuple[QPoint, QPoint]:
+    """Cubic control points for a wire from ``start`` to ``finish``.
+
+    The single source of truth shared by the live drag preview
+    (``CanvasRenderer.draw_temp_line``) and the committed trajectory
+    (``DLine._create_bezier_path``), so the two can never desync. The offset is
+    proportional to the straight-line distance (clamped to 100 px); the curve
+    leaves the source and enters the destination horizontally. ``src_dir`` /
+    ``dst_dir`` are the outward horizontal stub signs; the defaults (+1 / -1)
+    reproduce the standard unflipped layout the preview draws.
+    """
+    dx = finish.x() - start.x()
+    dy = finish.y() - start.y()
+    distance = (dx * dx + dy * dy) ** 0.5
+    offset = min(distance * 0.5, 100)
+    cp1 = QPoint(int(start.x() + src_dir * offset), start.y())
+    cp2 = QPoint(int(finish.x() + dst_dir * offset), finish.y())
+    return cp1, cp2
+
+
 class DLine:
     """
     Represents a connection/line between two blocks.
@@ -251,18 +272,7 @@ class DLine:
         Returns:
             Tuple of (QPainterPath, waypoints, collision segments)
         """
-        dx = finish.x() - start.x()
-        dy = finish.y() - start.y()
-        distance = (dx * dx + dy * dy) ** 0.5
-
-        # Control-point offset based on distance, clamped (matches the preview).
-        offset = min(distance * 0.5, 100)
-
-        # Exit the source horizontally and enter the destination horizontally.
-        # src_dir == +1 / dst_dir == -1 (the unflipped case) reproduces the
-        # preview's "+offset from start" / "-offset to end".
-        cp1 = QPoint(int(start.x() + src_dir * offset), start.y())
-        cp2 = QPoint(int(finish.x() + dst_dir * offset), finish.y())
+        cp1, cp2 = bezier_control_points(start, finish, src_dir, dst_dir)
 
         path = QPainterPath(start)
         path.cubicTo(cp1, cp2, finish)

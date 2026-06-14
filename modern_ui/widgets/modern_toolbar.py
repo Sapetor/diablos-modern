@@ -35,7 +35,10 @@ from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt5.QtGui import (
     QIcon, QPixmap, QPainter, QColor, QPen, QBrush, QPainterPath, QPolygonF
 )
-from modern_ui.themes.theme_manager import theme_manager, get_mono_font, TYPE
+from modern_ui.themes.theme_manager import (
+    theme_manager, get_mono_font, TYPE,
+    pulse_alpha, PULSE_INTERVAL_MS, PULSE_PHASE_STEP,
+)
 
 
 # ----------------------------------------------------------------------------- 
@@ -267,9 +270,10 @@ class _StateDot(QWidget):
         'error':   ('error', 'error'),
     }
 
-    # Same tuning as the canvas pulse so the two read as one effect.
-    _PULSE_INTERVAL_MS = 33          # ~30 fps
-    _PULSE_PHASE_STEP = 0.22         # radians per tick
+    # Cadence shared with the canvas pulse (theme_manager.PULSE_*) so the two
+    # read as one effect; base alpha / depth are local to this 8px dot.
+    _PULSE_INTERVAL_MS = PULSE_INTERVAL_MS
+    _PULSE_PHASE_STEP = PULSE_PHASE_STEP
     _GLOW_BASE_ALPHA = 70            # resting alpha of the glow ring
     _GLOW_PULSE_DEPTH = 0.45         # fraction of base alpha swung by the sine
 
@@ -304,8 +308,7 @@ class _StateDot(QWidget):
         """Glow-ring alpha for the current phase (flat base when not pulsing)."""
         if not self._pulse_timer.isActive():
             return self._GLOW_BASE_ALPHA
-        pulse = 1.0 + self._GLOW_PULSE_DEPTH * math.sin(self._pulse_phase)
-        return max(0, min(255, int(round(self._GLOW_BASE_ALPHA * pulse))))
+        return pulse_alpha(self._pulse_phase, self._GLOW_BASE_ALPHA, self._GLOW_PULSE_DEPTH)
 
     def paintEvent(self, _ev):
         col_key, glow_key = self._COLORS[self._state]

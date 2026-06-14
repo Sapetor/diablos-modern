@@ -8,6 +8,7 @@ import logging
 from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QRect, QRectF
 from modern_ui.themes.theme_manager import theme_manager
+from lib.simulation.connection import bezier_control_points
 
 logger = logging.getLogger(__name__)
 
@@ -143,21 +144,11 @@ class CanvasRenderer:
             # Explicitly set no brush to prevent fill artifacts
             painter.setBrush(Qt.NoBrush)
 
-            # Draw curved Bezier preview
+            # Draw curved Bezier preview. Control points come from the shared
+            # helper so the preview and the committed wire (DLine) never desync.
             path = QPainterPath()
             path.moveTo(start)
-
-            # Calculate control points for smooth curve
-            dx = end.x() - start.x()
-            dy = end.y() - start.y()
-            distance = (dx * dx + dy * dy) ** 0.5
-
-            # Control point offset based on distance
-            offset = min(distance * 0.5, 100)
-
-            cp1 = QPoint(int(start.x() + offset), start.y())
-            cp2 = QPoint(int(end.x() - offset), end.y())
-
+            cp1, cp2 = bezier_control_points(start, end)
             path.cubicTo(cp1, cp2, end)
             painter.drawPath(path)
 

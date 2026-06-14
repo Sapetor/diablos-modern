@@ -306,29 +306,31 @@ class MenuBuilder:
         dialog = KeyboardShortcutsDialog(self.window)
         dialog.exec_()
 
-    def _open_examples_folder(self):
-        """Open the examples folder in the OS file browser."""
+    def _open_resource_in_os(self, rel_path: str, *, is_dir: bool) -> None:
+        """Open a bundled resource (folder or file) with the OS default handler.
+
+        Resolves via ``lib.app_paths.resource_path`` (the canonical bundled-asset
+        resolver) so it works in dev and under PyInstaller frozen builds alike —
+        the hand-rolled ``__file__`` walk it replaces broke in frozen mode.
+        """
         from PyQt5.QtCore import QUrl
         from PyQt5.QtGui import QDesktopServices
+        from lib.app_paths import resource_path
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        examples_dir = os.path.join(base_dir, 'examples')
-        if not os.path.isdir(examples_dir):
-            logger.warning("Examples directory not found: %s", examples_dir)
+        path = resource_path(rel_path)
+        exists = os.path.isdir(path) if is_dir else os.path.isfile(path)
+        if not exists:
+            logger.warning("Resource not found: %s", path)
             return
-        QDesktopServices.openUrl(QUrl.fromLocalFile(examples_dir))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
+    def _open_examples_folder(self):
+        """Open the examples folder in the OS file browser."""
+        self._open_resource_in_os('examples', is_dir=True)
 
     def _open_user_manual(self):
         """Open docs/USER_MANUAL.md with the OS default handler."""
-        from PyQt5.QtCore import QUrl
-        from PyQt5.QtGui import QDesktopServices
-
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        manual_path = os.path.join(base_dir, 'docs', 'USER_MANUAL.md')
-        if not os.path.isfile(manual_path):
-            logger.warning("User manual not found: %s", manual_path)
-            return
-        QDesktopServices.openUrl(QUrl.fromLocalFile(manual_path))
+        self._open_resource_in_os(os.path.join('docs', 'USER_MANUAL.md'), is_dir=False)
 
     def _show_about(self):
         from PyQt5.QtWidgets import QMessageBox

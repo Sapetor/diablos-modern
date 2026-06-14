@@ -694,13 +694,20 @@ class _CategorySection(QWidget):
         chevron = _CHEVRON_COLLAPSED if self._collapsed else _CHEVRON_EXPANDED
         self.header.setText(f"{chevron}  {self.category_name.upper()}")
 
-    def _apply_row_visibility(self):
-        """Show rows that pass the active filter, unless the section is collapsed."""
+    def _apply_row_visibility(self) -> bool:
+        """Show rows that pass the active filter, unless the section is collapsed.
+
+        Returns whether any row matches the filter (independent of collapse), so
+        ``filter`` can set section visibility from the same single pass.
+        """
         text = self._filter_text
+        any_match = False
         for r in self.rows:
             name = getattr(r.menu_block, 'fn_name', '').lower()
             matches = (not text) or (text in name)
             r.setVisible(matches and not self._collapsed)
+            any_match = any_match or matches
+        return any_match
 
     # -- Styling ------------------------------------------------------------
 
@@ -718,12 +725,7 @@ class _CategorySection(QWidget):
         active filter.
         """
         self._filter_text = text
-        any_match = False
-        for r in self.rows:
-            name = getattr(r.menu_block, 'fn_name', '').lower()
-            matches = (not text) or (text in name)
-            r.setVisible(matches and not self._collapsed)
-            any_match = any_match or matches
+        any_match = self._apply_row_visibility()
         self.setVisible(any_match)
         return any_match
 

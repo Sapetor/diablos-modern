@@ -29,6 +29,7 @@ Changes vs v2:
   * Catppuccin dark fills   #303446 (unchanged — already neutral)
 """
 
+import math
 from enum import Enum
 from typing import Dict, Any, Optional
 from PyQt5.QtGui import QColor, QFont
@@ -87,6 +88,23 @@ ELEVATION: Dict[str, Dict[str, int]] = {
     "e2": {"blur": 16, "offset": 3, "alpha": 56},
     "e3": {"blur": 28, "offset": 6, "alpha": 72},
 }
+
+# Glow-pulse animation tuning, shared by the canvas hover/active-wire glow
+# (ModernCanvas) and the toolbar running-status dot (_StateDot) so the two
+# read as one effect — change the cadence here, not in two widgets.
+PULSE_INTERVAL_MS = 33      # ~30 fps
+PULSE_PHASE_STEP = 0.22     # radians advanced per timer tick
+
+
+def pulse_alpha(phase: float, base_alpha: int, depth: float = 0.4) -> int:
+    """Modulate ``base_alpha`` by a sine ``phase`` for a gentle glow pulse.
+
+    ``depth`` is the fraction of ``base_alpha`` swung by the sine (0 = no pulse).
+    At ``phase`` 0, sin(0)=0 yields exactly ``base_alpha`` — a stable, resting
+    glow — so callers can use phase 0 as the idle value. Clamped to 0..255.
+    """
+    pulse = 1.0 + depth * math.sin(phase)
+    return max(0, min(255, int(round(base_alpha * pulse))))
 
 
 def _qt5_weight(css_weight: int) -> int:

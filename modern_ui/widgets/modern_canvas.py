@@ -20,7 +20,10 @@ if _project_root not in sys.path:
     sys.path.append(_project_root)
 
 from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
-from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE, SPACE
+from modern_ui.themes.theme_manager import (
+    theme_manager, get_ui_font, TYPE, SPACE,
+    pulse_alpha, PULSE_INTERVAL_MS, PULSE_PHASE_STEP,
+)
 from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
 from modern_ui.renderers.block_renderer import BlockRenderer
 from modern_ui.renderers.connection_renderer import ConnectionRenderer
@@ -43,11 +46,10 @@ logger = logging.getLogger(__name__)
 class ModernCanvas(QWidget):
     """Modern canvas widget for DiaBloS block diagram editing."""
 
-    # Idle-OFF animation tuning. ~30 fps keeps the pulse smooth without flooding
-    # the event loop; the phase advances by ANIM_PHASE_STEP radians per tick so
-    # one full sine cycle lasts a little under a second (gentle, not frantic).
-    _ANIM_INTERVAL_MS = 33          # ~30 fps
-    _ANIM_PHASE_STEP = 0.22         # radians advanced per tick
+    # Idle-OFF animation tuning. Cadence is shared with the toolbar status dot
+    # via theme_manager.PULSE_* so the two pulses read as one effect.
+    _ANIM_INTERVAL_MS = PULSE_INTERVAL_MS
+    _ANIM_PHASE_STEP = PULSE_PHASE_STEP
 
     # Signals
     block_selected = pyqtSignal(object)  # Emitted when a block is selected
@@ -294,16 +296,14 @@ class ModernCanvas(QWidget):
         return self._animation_phase
 
     def glow_pulse_alpha(self, base_alpha: int, depth: float = 0.4) -> int:
-        """Modulate ``base_alpha`` by the canvas phase for a gentle pulse.
+        """Modulate a hovered-port / active-wire glow by the canvas phase.
 
-        Renderers call this to make a hovered-port / active-wire glow breathe
-        while the animation timer runs. ``depth`` is the fraction of ``base_alpha``
-        swung by the sine (0 = no pulse). When the timer is idle the phase is 0,
-        so sin(0)=0 yields exactly ``base_alpha`` — a stable, non-pulsing glow.
-        Result is clamped to the valid 0..255 alpha range.
+        Renderers call this to make the glow breathe while the animation timer
+        runs; when idle the phase is 0 so it resolves to a stable ``base_alpha``.
+        Delegates to the shared ``theme_manager.pulse_alpha`` so the canvas and
+        the toolbar status dot use one pulse formula.
         """
-        pulse = 1.0 + depth * math.sin(self._animation_phase)
-        return max(0, min(255, int(round(base_alpha * pulse))))
+        return pulse_alpha(self._animation_phase, base_alpha, depth)
 
     def paintEvent(self, event):
         """Paint the canvas with blocks, connections, and other elements."""
