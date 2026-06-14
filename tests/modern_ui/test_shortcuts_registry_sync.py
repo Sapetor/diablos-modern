@@ -83,13 +83,15 @@ class TestDialogSourcedFromRegistry:
         supplement_labels |= {label for label, _ in catalogue["Help"]}
         assert supplement_labels.isdisjoint(registry_labels)
 
-    def test_toggle_tuning_panel_has_no_stale_binding(self):
-        # Regression: the dialog used to hardcode Ctrl+Shift+T here while the
-        # registry had no binding. Now it must mirror the registry (empty key).
+    def test_toggle_tuning_panel_matches_menu_binding(self):
+        # Regression: the registry briefly carried an empty key here while the
+        # menu (menu_builder) binds and displays Ctrl+Shift+T, so the dialog
+        # showed a blank key for a live shortcut. The registry must mirror the
+        # menu binding, and the dialog must surface it (no drift).
         view = dict(palette_command_groups()["View"])
-        assert view["Toggle tuning panel"] == ""
+        assert view["Toggle tuning panel"] == "Ctrl+Shift+T"
         catalogue = _groups(build_shortcut_groups())
-        assert dict(catalogue["View"])["Toggle tuning panel"] == ""
+        assert dict(catalogue["View"])["Toggle tuning panel"] == "Ctrl+Shift+T"
 
     def test_module_constant_matches_builder(self):
         # SHORTCUT_GROUPS is built from build_shortcut_groups at import time.

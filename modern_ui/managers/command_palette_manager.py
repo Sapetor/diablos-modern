@@ -47,7 +47,7 @@ _VIEW_COMMANDS: list[tuple[str, str]] = [
     ('Toggle minimap', 'Ctrl+Shift+M'),
     ('Toggle variable editor', 'Ctrl+Shift+V'),
     ('Toggle workspace variables', 'Ctrl+Shift+W'),
-    ('Toggle tuning panel', ''),
+    ('Toggle tuning panel', 'Ctrl+Shift+T'),
 ]
 
 _FILE_COMMANDS: list[tuple[str, str]] = [

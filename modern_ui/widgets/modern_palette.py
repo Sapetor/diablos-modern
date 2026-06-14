@@ -352,21 +352,29 @@ class CompactBlockRow(QFrame):
         public ``block_drag_started(object)`` signal so existing consumers fire
         without needing a real drag gesture.
         """
+        # Capture fn_name before emitting: when a canvas is wired to the public
+        # add-signal it records recents (rebuilding the palette and deleting this
+        # row), so reading ``self.menu_block`` afterward is unsafe. The
+        # palette-side record_recent below is idempotent with the canvas one
+        # (re-recording the already-most-recent block is a no-op), so this path
+        # still records exactly once whether or not a canvas is connected.
+        fn_name = getattr(self.menu_block, 'fn_name', None)
         self.block_drag_started.emit(self.menu_block, None)
         palette = self._owning_palette()
         if palette is not None:
             # Emit the public add-signal first; record_recent() rebuilds the
             # palette (deleting this row), so do it last via the captured
-            # ``palette`` after the menu_block has been handed off.
+            # ``palette`` and ``fn_name`` after the menu_block has been handed off.
             palette.block_drag_started.emit(self.menu_block)
-            palette.record_recent(getattr(self.menu_block, 'fn_name', None))
+            palette.record_recent(fn_name)
 
     def _start_drag(self, event):
-        # Resolve the palette + fn_name up front. Recording recents triggers a
-        # palette rebuild that deletes this row, so it must happen *after*
-        # drag.exec_ returns (the blocking drag loop) — and via captured locals,
-        # never by touching ``self`` post-rebuild.
-        palette = self._owning_palette()
+        # Recents are NOT recorded here: a drag cancelled with Escape or dropped
+        # outside the canvas must not leave a phantom Recent entry for a block
+        # the user never placed. Recording happens at the single real chokepoint
+        # — the canvas add path (ModernCanvas.add_block_from_palette) — so every
+        # gesture (drag-drop, Enter/activate, double-click) records exactly once
+        # per actual placement.
         fn_name = getattr(self.menu_block, 'fn_name', None)
         try:
             drag = QDrag(self)
@@ -382,12 +390,6 @@ class CompactBlockRow(QFrame):
             drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction)
         except Exception as e:
             logger.error(f"Drag start failed: {e}")
-        # Dragging a row onto the canvas is an "add from palette" gesture, so
-        # record it for the Recent section. The drop itself is handled by the
-        # canvas (out of this widget's reach); drag-start is the earliest
-        # in-palette hook that covers it.
-        if palette is not None:
-            palette.record_recent(fn_name)
 
     def _drag_pixmap(self) -> QPixmap:
         try:

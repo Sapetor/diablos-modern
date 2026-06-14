@@ -210,6 +210,14 @@ class ModernCanvas(QWidget):
                         # Emit signal
                         self.block_selected.emit(new_block)
 
+                        # Record this real placement into the palette's Recent
+                        # section. This is the single chokepoint every add path
+                        # (drag-drop, Enter/activate, double-click, quick-add)
+                        # funnels through, so a drag cancelled with Escape or
+                        # dropped outside the canvas never records a phantom
+                        # recent — only actual adds do.
+                        self._record_palette_recent(menu_block)
+
                         # Trigger repaint
                         self.update()
                     except Exception as e:
@@ -223,9 +231,30 @@ class ModernCanvas(QWidget):
                 
         except Exception as e:
             logger.error(f"Error adding block from palette: {str(e)}")
-        
+
         return None
-    
+
+    def _record_palette_recent(self, menu_block):
+        """Record a real block placement into the palette's Recent section.
+
+        Reaches the palette via the top-level window's ``block_palette`` (set in
+        LayoutManager). Fully defensive: a missing window, missing palette, or a
+        palette without record_recent is silently ignored, so adding a block
+        never fails just because the palette is absent (e.g. in tests/headless).
+        """
+        try:
+            fn_name = getattr(menu_block, 'fn_name', None)
+            if not fn_name:
+                return
+            window = self.window()
+            palette = getattr(window, 'block_palette', None) if window is not None else None
+            recorder = getattr(palette, 'record_recent', None)
+            if callable(recorder):
+                recorder(fn_name)
+        except Exception as e:
+            # Recents is a cosmetic convenience; never let it break adding a block.
+            logger.debug(f"Recording palette recent failed: {e}")
+
     def start_simulation(self):
         """Start simulation with validation (delegates to SimulationController)."""
         return self._sim_controller.start()
