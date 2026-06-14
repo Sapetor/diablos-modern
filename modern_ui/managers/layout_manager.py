@@ -151,6 +151,10 @@ class LayoutManager:
         # Modern block palette widget (Phase 2)
         window.block_palette = ModernBlockPalette(window.dsim)
         layout.addWidget(window.block_palette)
+        # Keyboard Enter on a focused palette row adds that block to the canvas.
+        # block_drag_started(object) is emitted only by the row's activate()
+        # (Enter) path; real drag-and-drop uses QDrag, so this never double-adds.
+        window.block_palette.block_drag_started.connect(window._add_block_from_palette_menu)
         return panel
 
     def create_canvas_area(self) -> QWidget:
