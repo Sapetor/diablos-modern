@@ -191,18 +191,24 @@ class TestDragManagerIntegration:
         assert mover.left == 400  # untouched
         assert canvas._alignment_guides == []
 
-    def test_grid_snap_suppresses_alignment(self, canvas):
-        canvas.snap_enabled = True  # grid snap on -> alignment deferred
+    def test_grid_snap_shows_guides_without_nudging(self, canvas):
+        # Grid snap on -> guides are pure visual feedback: they DISPLAY when a
+        # grid-aligned edge lines up with a neighbour, but the block must stay
+        # on the grid, so the alignment nudge is intentionally NOT applied.
+        canvas.snap_enabled = True
         target = _make_block(0, 100, 50, name='target')
-        mover = _make_block(1, 103, 300, name='mover')
+        mover = _make_block(1, 103, 300, name='mover')  # left edge 3px off target
         canvas.dsim.blocks_list.extend([target, mover])
         mover.selected = True
 
         canvas.start_drag(mover, QPoint(103, 300))
         canvas.drag_resize_manager.update_drag_alignment()
 
-        assert mover.left == 103  # not snapped by alignment
-        assert canvas._alignment_guides == []
+        assert mover.left == 103  # not moved -> stays grid-snapped
+        # Guide still lights up at the neighbour's shared edge (x=100).
+        assert canvas._alignment_guides
+        (x1, _), (x2, _) = canvas._alignment_guides[0]
+        assert x1 == 100 and x2 == 100
 
     def test_guides_cleared_on_finish(self, canvas):
         target = _make_block(0, 100, 50, name='target')

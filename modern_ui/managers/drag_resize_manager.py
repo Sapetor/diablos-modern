@@ -58,17 +58,22 @@ class DragResizeManager:
             logger.error(f"Error starting drag: {str(e)}")
 
     def update_drag_alignment(self):
-        """Snap the dragged block to nearby blocks and stash the active guides.
+        """Stash the active alignment guides and (when grid snap is off) nudge.
 
         Called once per drag move (after the InteractionManager has relocated
         the block to the cursor) so the snap visibly nudges the block onto a
         shared edge. Computes purely from canvas-space rects via
-        ``compute_alignment_guides``; the snap delta is applied to the dragged
-        block and to any co-selected blocks so the group moves rigidly. The
-        resulting guide lines are stashed on the canvas for ``paintEvent``.
+        ``compute_alignment_guides``; the resulting guide lines are stashed on
+        the canvas for ``paintEvent`` so they DISPLAY in every drag.
 
-        Guides are intentionally suppressed while grid snap is on (the grid
-        already quantizes positions, so the two snaps would fight each other).
+        The snap delta is only APPLIED when grid snap is OFF: there it relocates
+        the dragged block onto the shared edge and shifts any co-selected blocks
+        by the same delta so the group moves rigidly. When grid snap is ON the
+        InteractionManager has already grid-quantized the block before we run,
+        so the guides act as pure visual feedback (they light up when the
+        grid-aligned edges happen to line up with a neighbour) and we skip the
+        nudge — otherwise the two snaps would fight and could knock the block
+        off the grid.
         """
         try:
             block = self.canvas.dragging_block
@@ -76,8 +81,6 @@ class DragResizeManager:
                 return
 
             self.canvas._alignment_guides = []
-            if getattr(self.canvas, 'snap_enabled', True):
-                return
 
             moving_rect = (block.left, block.top, block.width, block.height)
             other_rects = [
@@ -96,7 +99,10 @@ class DragResizeManager:
                 moving_rect, other_rects, threshold=threshold
             )
 
-            if snap_dx or snap_dy:
+            # Apply the nudge only when grid snap is off; with grid snap on the
+            # block must stay on the grid, so the guides are feedback-only.
+            grid_snap_on = getattr(self.canvas, 'snap_enabled', True)
+            if not grid_snap_on and (snap_dx or snap_dy):
                 # Move the dragged block onto the snapped edge, then shift the
                 # rest of the selection by the same delta to stay rigid.
                 block.relocate_Block(QPoint(int(block.left + snap_dx),
