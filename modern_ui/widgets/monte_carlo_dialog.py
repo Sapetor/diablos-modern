@@ -63,6 +63,7 @@ class MonteCarloDialog(QDialog):
         self.sim_time_spin.setRange(0.0, 1_000_000.0)
         self.sim_time_spin.setDecimals(4)
         self.sim_time_spin.setSingleStep(0.1)
+        self.sim_time_spin.setSuffix(" s")
         self.sim_time_spin.setValue(default_sim_time)
 
         # Fixed step size.
@@ -70,6 +71,7 @@ class MonteCarloDialog(QDialog):
         self.sim_dt_spin.setRange(1e-9, 1_000_000.0)
         self.sim_dt_spin.setDecimals(6)
         self.sim_dt_spin.setSingleStep(0.001)
+        self.sim_dt_spin.setSuffix(" s")
         self.sim_dt_spin.setValue(default_sim_dt)
 
         self._setup_ui()

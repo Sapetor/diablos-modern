@@ -95,12 +95,14 @@ class ParameterSweepDialog(QDialog):
         self.sim_time_spin.setRange(0.0, 1_000_000.0)
         self.sim_time_spin.setDecimals(4)
         self.sim_time_spin.setSingleStep(0.1)
+        self.sim_time_spin.setSuffix(" s")
         self.sim_time_spin.setValue(self.default_sim_time)
 
         self.sim_dt_spin = QDoubleSpinBox()
         self.sim_dt_spin.setRange(1e-9, 1_000_000.0)
         self.sim_dt_spin.setDecimals(6)
         self.sim_dt_spin.setSingleStep(0.001)
+        self.sim_dt_spin.setSuffix(" s")
         self.sim_dt_spin.setValue(self.default_sim_dt)
 
         sim_form = QFormLayout()

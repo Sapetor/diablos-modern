@@ -70,6 +70,7 @@ class StatusBarManager:
 
         # Left: status pill (reused from toolbar)
         window.status_pill = _StatusPill(window)
+        window.status_pill.setToolTip("Simulation state")
         statusbar.addWidget(window.status_pill)
 
         # Hidden compatibility shim — many call sites still call status_message.setText(...)
@@ -101,10 +102,12 @@ class StatusBarManager:
 
         # File info: filename + unsaved indicator
         window.file_status = QLabel("untitled")
+        window.file_status.setToolTip("Current diagram file")
         window.file_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_primary').name()};"
         )
         window.file_unsaved_status = QLabel("")
+        window.file_unsaved_status.setToolTip("Unsaved changes indicator")
         window.file_unsaved_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_disabled').name()};"
             f" font-size: 9pt;"
@@ -116,6 +119,7 @@ class StatusBarManager:
 
         # Counts pill: blocks N · wires M · scopes K
         window.counts_status = _mono_label("blocks 0 · wires 0 · scopes 0")
+        window.counts_status.setToolTip("Blocks · wires · scopes")
         window.counts_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -123,6 +127,7 @@ class StatusBarManager:
 
         # ----- right-aligned permanent widgets -----
         window.cursor_status = _mono_label("cursor 0,0")
+        window.cursor_status.setToolTip("Cursor position (x, y)")
         window.cursor_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -131,6 +136,7 @@ class StatusBarManager:
         statusbar.addPermanentWidget(_vsep())
 
         window.zoom_status = _mono_label("zoom 100%")
+        window.zoom_status.setToolTip("Canvas zoom level")
         window.zoom_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -143,6 +149,7 @@ class StatusBarManager:
         from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
         palette_label = PALETTE_DISPLAY_NAMES.get(theme_manager.current_palette, theme_manager.current_palette).split()[0]
         window.theme_status = QLabel(f"{theme_label} · {palette_label}")
+        window.theme_status.setToolTip("Click to toggle theme (Ctrl+T)")
         window.theme_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
             f" background-color: {theme_manager.get_color('background_tertiary').name()};"

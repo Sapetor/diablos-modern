@@ -278,7 +278,57 @@ class MenuBuilder:
     def _create_help_menu(self, menubar):
         """Create Help menu."""
         help_menu = menubar.addMenu("&Help")
+
+        help_menu.addAction("&Keyboard Shortcuts\tF1", self._show_shortcuts)
+
+        # Reuse the existing Command Palette action when the window exposes it.
+        if hasattr(self.window, 'show_command_palette'):
+            help_menu.addAction("Command &Palette", self.window.show_command_palette)
+
+        help_menu.addAction("Open &Examples", self._open_examples_folder)
+        help_menu.addAction("User &Manual", self._open_user_manual)
+        help_menu.addSeparator()
         help_menu.addAction("&About", self._show_about)
+
+        # F1 opens the shortcuts dialog from anywhere in the window. Held on the
+        # window so the QShortcut isn't garbage-collected with this builder.
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtWidgets import QShortcut
+        from PyQt5.QtGui import QKeySequence
+        self.window._shortcuts_help_shortcut = QShortcut(
+            QKeySequence(Qt.Key_F1), self.window
+        )
+        self.window._shortcuts_help_shortcut.activated.connect(self._show_shortcuts)
+
+    def _show_shortcuts(self):
+        """Open the read-only keyboard-shortcuts reference dialog."""
+        from modern_ui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
+        dialog = KeyboardShortcutsDialog(self.window)
+        dialog.exec_()
+
+    def _open_examples_folder(self):
+        """Open the examples folder in the OS file browser."""
+        from PyQt5.QtCore import QUrl
+        from PyQt5.QtGui import QDesktopServices
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        examples_dir = os.path.join(base_dir, 'examples')
+        if not os.path.isdir(examples_dir):
+            logger.warning("Examples directory not found: %s", examples_dir)
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(examples_dir))
+
+    def _open_user_manual(self):
+        """Open docs/USER_MANUAL.md with the OS default handler."""
+        from PyQt5.QtCore import QUrl
+        from PyQt5.QtGui import QDesktopServices
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        manual_path = os.path.join(base_dir, 'docs', 'USER_MANUAL.md')
+        if not os.path.isfile(manual_path):
+            logger.warning("User manual not found: %s", manual_path)
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(manual_path))
 
     def _show_about(self):
         from PyQt5.QtWidgets import QMessageBox

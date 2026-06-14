@@ -19,7 +19,7 @@ if _project_root not in sys.path:
     sys.path.append(_project_root)
 
 from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
-from modern_ui.themes.theme_manager import theme_manager
+from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE, SPACE
 from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
 from modern_ui.renderers.block_renderer import BlockRenderer
 from modern_ui.renderers.connection_renderer import ConnectionRenderer
@@ -245,6 +245,13 @@ class ModernCanvas(QWidget):
             scene_rect = QRect(sx0, sy0, sw, sh)
             self.canvas_renderer.draw_grid(painter, scene_rect, sw, sh, self.grid_visible)
 
+            # Empty-canvas placeholder hint: when nothing has been placed yet
+            # and the user isn't mid-simulation, draw dim guidance on how to get
+            # started. Purely additive — drawn over the grid, under everything
+            # else, so it never collides with real diagram content.
+            if not getattr(self.dsim, 'blocks_list', []) and not self.is_simulation_running():
+                self._draw_empty_hint(painter)
+
             # Draw DSim elements in proper order: blocks -> lines -> ports
             # This ensures ports appear on top of connection lines
             self._render_blocks(painter, draw_ports=False)
@@ -308,6 +315,45 @@ class ModernCanvas(QWidget):
                     painter.end()
                 except Exception:
                     pass
+
+    @staticmethod
+    def _empty_hint_lines():
+        """Guidance lines shown on an empty canvas.
+
+        Kept as a tiny pure helper so the wording is unit-testable without a
+        live QPainter. Order is top-to-bottom as drawn.
+        """
+        return [
+            "Double-click to add a block",
+            "Drag a block from the palette",
+            "Open an example from File ▸ Examples",
+        ]
+
+    def _draw_empty_hint(self, painter):
+        """Draw centered, dim guidance text for an empty, idle canvas.
+
+        Drawn in WIDGET coordinates (the painter is reset for the duration) so
+        the hint stays centered in the viewport regardless of pan or zoom.
+        """
+        lines = self._empty_hint_lines()
+        painter.save()
+        try:
+            # Drop the scene transform so the hint is laid out against the
+            # widget viewport, then center it there.
+            painter.resetTransform()
+            painter.setPen(QPen(theme_manager.get_color('text_disabled')))
+            painter.setFont(get_ui_font(TYPE['subtitle']))
+
+            fm = painter.fontMetrics()
+            line_h = fm.height() + SPACE['sm']
+            block_h = line_h * len(lines)
+            y = (self.height() - block_h) // 2 + fm.ascent()
+            for line in lines:
+                rect = QRect(0, int(y - fm.ascent()), self.width(), line_h)
+                painter.drawText(rect, Qt.AlignHCenter | Qt.AlignTop, line)
+                y += line_h
+        finally:
+            painter.restore()
 
     # ===== Rendering Methods =====
 

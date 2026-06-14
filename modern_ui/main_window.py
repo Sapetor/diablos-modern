@@ -9,7 +9,7 @@ from typing import Any, Optional
 from PyQt5.QtWidgets import (QMainWindow, QWidget,
                              QMessageBox, QFileDialog)
 from lib.workspace import WorkspaceManager
-from PyQt5.QtCore import Qt, QTimer, QEvent
+from PyQt5.QtCore import Qt, QTimer, QEvent, QSettings
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -32,6 +32,14 @@ from modern_ui.controllers.tuning_controller import TuningController
 # Logging is configured by the application entry point (diablos_modern.py via
 # lib.logging_config). Modules only acquire a logger at import time.
 logger = logging.getLogger(__name__)
+
+# One-time first-run welcome shown via the (non-blocking) toast on first launch.
+# Extracted to module scope so it can be asserted on in tests without spinning
+# up the full window.
+FIRST_RUN_WELCOME_MESSAGE = (
+    "Welcome to DiaBloS! Drag a block from the palette to start, "
+    "open File ▸ Examples for sample diagrams, or press F1 for shortcuts."
+)
 
 
 class ModernDiaBloSWindow(QMainWindow):
@@ -160,6 +168,11 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Check for auto-save file on startup
         QTimer.singleShot(500, self._check_autosave_recovery)
+
+        # Show the one-time first-run welcome (after the window is shown so the
+        # toast positions against the real canvas rect). Deferred + non-blocking;
+        # it no-ops on every subsequent launch via QSettings.
+        QTimer.singleShot(800, self._maybe_show_first_run_welcome)
 
         # Schedule initial splitter sizing after window is shown
         # This ensures we use actual window dimensions, not screen dimensions
@@ -1049,6 +1062,28 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _cleanup_autosave(self):
         self.project_manager.cleanup_autosave()
+
+    # First-run welcome
+    def _maybe_show_first_run_welcome(self):
+        """Show a one-time, non-blocking welcome toast on the very first launch.
+
+        Gated strictly on the ``ui/first_run_done`` QSettings flag: the welcome
+        is shown once (pointing at the palette, File > Examples, and F1), then the
+        flag is set so it never shows again. Non-modal by construction (it goes
+        through ``self.toast`` and never calls ``exec_()``), and wrapped in
+        try/except so a missing/failed toast can never break startup.
+        """
+        try:
+            settings = QSettings("DiaBloS", "DiaBloS")
+            if settings.value("ui/first_run_done", False, type=bool):
+                return
+            # Set the flag first so a later toast failure still marks first run
+            # done (idempotent: we only ever want this to fire once).
+            settings.setValue("ui/first_run_done", True)
+            if hasattr(self, 'toast'):
+                self.toast.show_message(FIRST_RUN_WELCOME_MESSAGE, duration=8000)
+        except Exception as e:
+            logger.error(f"Error showing first-run welcome: {str(e)}")
 
     def load_workspace(self):
         """Load variables from a workspace file."""

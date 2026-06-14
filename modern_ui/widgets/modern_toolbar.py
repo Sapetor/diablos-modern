@@ -306,6 +306,7 @@ class _ZoomRocker(QWidget):
         self.minus_btn.setIconSize(QSize(14, 14))
         self.minus_btn.setAutoRaise(True)
         self.minus_btn.setFixedSize(QSize(22, 22))
+        self.minus_btn.setToolTip("Zoom out")
         self.minus_btn.clicked.connect(self._on_minus)
 
         self.label = QLabel("100%")
@@ -319,6 +320,7 @@ class _ZoomRocker(QWidget):
         self.plus_btn.setIconSize(QSize(14, 14))
         self.plus_btn.setAutoRaise(True)
         self.plus_btn.setFixedSize(QSize(22, 22))
+        self.plus_btn.setToolTip("Zoom in")
         self.plus_btn.clicked.connect(self._on_plus)
 
         lay.addWidget(self.minus_btn)
@@ -459,7 +461,10 @@ class ModernToolBar(QToolBar):
             a = QAction(_make_icon(kind, 18), label, self)
             if shortcut:
                 a.setShortcut(shortcut)
-            a.setToolTip(f"{tip}" + (f"  ({shortcut})" if shortcut else ""))
+            full_tip = f"{tip}" + (f"  ({shortcut})" if shortcut else "")
+            a.setToolTip(full_tip)
+            # Mirror the tooltip into the status bar on hover/focus.
+            a.setStatusTip(full_tip)
             a.triggered.connect(sig)
             return a
 
@@ -517,6 +522,7 @@ class ModernToolBar(QToolBar):
         self.cmdk_btn.setObjectName("CommandPaletteBtn")
         self.cmdk_btn.setFlat(True)
         self.cmdk_btn.setCursor(Qt.PointingHandCursor)
+        self.cmdk_btn.setToolTip("Search commands and blocks  (Ctrl+K / ⌘K)")
         self.cmdk_btn.clicked.connect(self.command_palette_requested)
         self.addWidget(self.cmdk_btn)
 
@@ -540,9 +546,11 @@ class ModernToolBar(QToolBar):
         if theme_manager.current_theme.value == "dark":
             self.theme_action.setIcon(_make_icon('sun', 18))
             self.theme_action.setToolTip("Switch to light theme")
+            self.theme_action.setStatusTip("Switch to light theme")
         else:
             self.theme_action.setIcon(_make_icon('moon', 18))
             self.theme_action.setToolTip("Switch to dark theme")
+            self.theme_action.setStatusTip("Switch to dark theme")
 
         self.transport.refresh_icons()
         self.zoom_rocker.refresh_icons()
