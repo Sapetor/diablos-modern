@@ -63,32 +63,16 @@ def update_recents(recents, fn_name, cap=_RECENT_CAP):
     return result[:max(0, int(cap))]
 
 
-def _load_favorites() -> set:
-    """Read the persisted set of favorited block fn_names (best-effort)."""
+def _load_settings_list(key) -> list:
+    """Read a QSettings string-list, normalizing the str/None round-trip quirk.
+
+    QSettings can round-trip a single-element list to a bare string and an empty
+    list to None; this coerces either back to a clean list of non-empty strings.
+    Best-effort: returns [] on any error. The single home for the favorites and
+    recents persistence quirk so it is not encoded per-key.
+    """
     try:
-        stored = ui_settings().value(_FAVORITES_KEY, [])
-        if stored is None:
-            return set()
-        # QSettings may round-trip a single-element list to a bare string.
-        if isinstance(stored, str):
-            return {stored} if stored else set()
-        return {str(s) for s in stored if s}
-    except Exception:
-        return set()
-
-
-def _save_favorites(fn_names) -> None:
-    """Persist the set of favorited block fn_names (best-effort)."""
-    try:
-        ui_settings().setValue(_FAVORITES_KEY, sorted(fn_names))
-    except Exception:
-        pass
-
-
-def _load_recents() -> list:
-    """Read the persisted recents list, newest-first (best-effort)."""
-    try:
-        stored = ui_settings().value(_RECENT_KEY, [])
+        stored = ui_settings().value(key, [])
         if stored is None:
             return []
         if isinstance(stored, str):
@@ -98,12 +82,32 @@ def _load_recents() -> list:
         return []
 
 
-def _save_recents(fn_names) -> None:
-    """Persist the recents list (best-effort)."""
+def _save_settings_list(key, values) -> None:
+    """Persist a list of strings under ``key`` (best-effort)."""
     try:
-        ui_settings().setValue(_RECENT_KEY, list(fn_names))
+        ui_settings().setValue(key, list(values))
     except Exception:
         pass
+
+
+def _load_favorites() -> set:
+    """Read the persisted set of favorited block fn_names (best-effort)."""
+    return set(_load_settings_list(_FAVORITES_KEY))
+
+
+def _save_favorites(fn_names) -> None:
+    """Persist the set of favorited block fn_names (best-effort)."""
+    _save_settings_list(_FAVORITES_KEY, sorted(fn_names))
+
+
+def _load_recents() -> list:
+    """Read the persisted recents list, newest-first (best-effort)."""
+    return _load_settings_list(_RECENT_KEY)
+
+
+def _save_recents(fn_names) -> None:
+    """Persist the recents list (best-effort)."""
+    _save_settings_list(_RECENT_KEY, fn_names)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -982,13 +986,13 @@ class ModernBlockPalette(QWidget):
 
             # fn_name -> menu_block index, so the Favorites/Recent sections can
             # resolve persisted fn_names back to live menu_block objects.
-            self._block_index = {
+            block_index = {
                 getattr(b, 'fn_name', None): b for b in menu_blocks
                 if getattr(b, 'fn_name', None)
             }
 
             # Pinned sections first (hidden when empty), then categories.
-            self._build_pinned_sections()
+            self._build_pinned_sections(block_index)
 
             categories = self._categorize_blocks(menu_blocks)
             total = 0
@@ -1005,15 +1009,14 @@ class ModernBlockPalette(QWidget):
             logger.error(f"Error loading blocks: {e}")
             self._add_placeholder()
 
-    def _build_pinned_sections(self):
+    def _build_pinned_sections(self, index):
         """Build the Favorites then Recent sections at the top of the list.
 
-        Each is hidden when it has no resolvable blocks. Persisted fn_names
+        ``index`` is the fn_name -> menu_block map from ``_load_blocks``. Each
+        section is hidden when it has no resolvable blocks; persisted fn_names
         that no longer map to a loaded block (e.g. a removed block) are skipped.
         Both are registered in ``self._sections`` so filter/collapse apply.
         """
-        index = getattr(self, '_block_index', {})
-
         fav_blocks = [index[n] for n in sorted(_load_favorites()) if n in index]
         if fav_blocks:
             fav = _PinnedSection("Favorites", fav_blocks, self.dsim.colors)
