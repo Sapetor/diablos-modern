@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget,
                              QMessageBox, QFileDialog)
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent, QSettings
+from lib.app_paths import SETTINGS_ORG, SETTINGS_APP
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -1074,7 +1075,10 @@ class ModernDiaBloSWindow(QMainWindow):
         try/except so a missing/failed toast can never break startup.
         """
         try:
-            settings = QSettings("DiaBloS", "DiaBloS")
+            # Shared org/app constants from lib.app_paths keep this in the same
+            # store as the rest of the app's UI preferences. Constructed via the
+            # module-level ``QSettings`` symbol so tests can redirect it.
+            settings = QSettings(SETTINGS_ORG, SETTINGS_APP)
             if settings.value("ui/first_run_done", False, type=bool):
                 return
             # Set the flag first so a later toast failure still marks first run

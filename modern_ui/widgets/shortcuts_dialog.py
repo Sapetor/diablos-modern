@@ -2,11 +2,13 @@
 Keyboard Shortcuts reference dialog.
 
 A read-only, themed listing of the application's keyboard shortcuts grouped by
-category (File, Edit, Simulation, View, Help). The shortcut (label, key) data is
-copied from ``CommandPaletteManager.setup`` (modern_ui/managers/
-command_palette_manager.py, the sim/view/file action tables) plus the menu
-accelerators wired up in ``MenuBuilder`` so the two stay visually in sync. The
-dialog performs no actions; it only displays the bindings.
+category (File, Edit, Simulation, View, Help). The Simulation/View groups and
+the bulk of the File group are sourced live from
+``command_palette_manager.palette_command_groups`` so the reference can never
+drift from the actual palette bindings. The remaining rows — menu-only
+accelerators (Exit), the Edit group, and Help — are not palette commands, so
+they are listed here as an explicit supplement and kept in sync with
+``MenuBuilder``. The dialog performs no actions; it only displays the bindings.
 
 Styling follows the project convention: every color comes from
 ``theme_manager.get_color(...)`` and the typographic scale from
@@ -19,53 +21,53 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+from modern_ui.managers.command_palette_manager import palette_command_groups
 from modern_ui.themes.theme_manager import (
     theme_manager, get_ui_font, get_mono_font, TYPE, WEIGHT, SPACE,
 )
 
 
-# Shortcut catalogue grouped by category. Each entry is a (label, key) pair;
-# the sim/view/file groups mirror the action tables in CommandPaletteManager.
-# An empty key string means "no default binding" and renders the key column
-# blank. Keep this in sync with MenuBuilder and CommandPaletteManager.
-SHORTCUT_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
-    ("File", [
-        ("New diagram", "Ctrl+N"),
-        ("Open diagram", "Ctrl+O"),
-        ("Save diagram", "Ctrl+S"),
-        ("Export as TikZ", ""),
-        ("Show plots", ""),
-        ("Exit", "Alt+F4"),
-    ]),
-    ("Edit", [
-        ("Undo", "Ctrl+Z"),
-        ("Redo", "Ctrl+Y"),
-        ("Select all", "Ctrl+A"),
-        ("Create subsystem", "Ctrl+G"),
-        ("Command palette", "Ctrl+P"),
-    ]),
-    ("Simulation", [
-        ("Run simulation", "F5"),
-        ("Pause simulation", "F6"),
-        ("Stop simulation", "F7"),
-        ("Step simulation", "F8"),
-        ("Toggle fast solver", ""),
-    ]),
-    ("View", [
-        ("Zoom in", "Ctrl++"),
-        ("Zoom out", "Ctrl+-"),
-        ("Fit to window", "Ctrl+0"),
-        ("Toggle theme", "Ctrl+T"),
-        ("Toggle grid", "Ctrl+Shift+G"),
-        ("Toggle minimap", "Ctrl+Shift+M"),
-        ("Toggle variable editor", "Ctrl+Shift+V"),
-        ("Toggle workspace variables", "Ctrl+Shift+W"),
-        ("Toggle tuning panel", "Ctrl+Shift+T"),
-    ]),
-    ("Help", [
-        ("Keyboard shortcuts", "F1"),
-    ]),
+# Rows that are NOT palette commands: menu-only accelerators and editor actions
+# wired up in ``MenuBuilder``. Each entry is a (label, key) pair; an empty key
+# string means "no default binding". The File supplement is appended after the
+# live File group; Edit and Help are standalone groups. Keep in sync with
+# MenuBuilder.
+_FILE_SUPPLEMENT: list[tuple[str, str]] = [
+    ("Exit", "Alt+F4"),
 ]
+_EDIT_GROUP: list[tuple[str, str]] = [
+    ("Undo", "Ctrl+Z"),
+    ("Redo", "Ctrl+Y"),
+    ("Select all", "Ctrl+A"),
+    ("Create subsystem", "Ctrl+G"),
+    ("Command palette", "Ctrl+P"),
+]
+_HELP_GROUP: list[tuple[str, str]] = [
+    ("Keyboard shortcuts", "F1"),
+]
+
+
+def build_shortcut_groups() -> list[tuple[str, list[tuple[str, str]]]]:
+    """Assemble the dialog's display catalogue: group -> [(label, key)].
+
+    The Simulation/View groups and the bulk of File come straight from the
+    command registry (``palette_command_groups``); the menu-only File
+    accelerators, the Edit group, and Help are appended as an explicit
+    supplement. Ordered File, Edit, Simulation, View, Help.
+    """
+    registry = palette_command_groups()
+    return [
+        ("File", registry["File"] + _FILE_SUPPLEMENT),
+        ("Edit", list(_EDIT_GROUP)),
+        ("Simulation", registry["Simulation"]),
+        ("View", registry["View"]),
+        ("Help", list(_HELP_GROUP)),
+    ]
+
+
+# Display catalogue grouped by category. Built once at import time from the
+# command registry plus the menu-only supplement above.
+SHORTCUT_GROUPS: list[tuple[str, list[tuple[str, str]]]] = build_shortcut_groups()
 
 
 class KeyboardShortcutsDialog(QDialog):

@@ -17,10 +17,62 @@ based path in development and is correct under PyInstaller too.
 
 import os
 import logging
+from collections import OrderedDict
 
 from lib.app_paths import resource_path
 
 logger = logging.getLogger(__name__)
+
+
+# Static (label, shortcut) tables for the action commands, grouped by the badge
+# they surface under in the palette. These are the single source of truth for
+# both the command palette (which pairs each label with a window callback in
+# ``setup``) and the keyboard-shortcuts reference dialog (which reads them via
+# ``palette_command_groups`` so it cannot drift). An empty shortcut string means
+# "no default binding".
+_SIM_COMMANDS: list[tuple[str, str]] = [
+    ('Run simulation',     'F5'),
+    ('Pause simulation',   'F6'),
+    ('Stop simulation',    'F7'),
+    ('Step simulation',    'F8'),
+    ('Toggle fast solver', ''),
+]
+
+_VIEW_COMMANDS: list[tuple[str, str]] = [
+    ('Zoom in',       'Ctrl++'),
+    ('Zoom out',      'Ctrl+-'),
+    ('Fit to window', 'Ctrl+0'),
+    ('Toggle theme',  'Ctrl+T'),
+    ('Toggle grid',   'Ctrl+Shift+G'),
+    ('Toggle minimap', 'Ctrl+Shift+M'),
+    ('Toggle variable editor', 'Ctrl+Shift+V'),
+    ('Toggle workspace variables', 'Ctrl+Shift+W'),
+    ('Toggle tuning panel', ''),
+]
+
+_FILE_COMMANDS: list[tuple[str, str]] = [
+    ('New diagram',  'Ctrl+N'),
+    ('Open diagram', 'Ctrl+O'),
+    ('Save diagram', 'Ctrl+S'),
+    ('Load workspace…', ''),
+    ('Show plots',   ''),
+    ('Export as TikZ…', ''),
+]
+
+
+def palette_command_groups() -> "OrderedDict[str, list[tuple[str, str]]]":
+    """Return the palette's action commands as group -> [(label, shortcut)].
+
+    Ordered Simulation, View, File to match the palette's build order in
+    ``CommandPaletteManager.setup``. The reference dialog consumes this so the
+    two can never drift apart. Returns copies so callers can't mutate the
+    shared tables.
+    """
+    return OrderedDict([
+        ('Simulation', list(_SIM_COMMANDS)),
+        ('View', list(_VIEW_COMMANDS)),
+        ('File', list(_FILE_COMMANDS)),
+    ])
 
 
 class CommandPaletteManager:
@@ -54,49 +106,46 @@ class CommandPaletteManager:
                     'data': {'block_type': fn_name},
                 })
 
-        # Simulation actions (SIM badge)
-        for label, kbd, cb in [
-            ('Run simulation',   'F5', window.start_simulation),
-            ('Pause simulation', 'F6', window.pause_simulation),
-            ('Stop simulation',  'F7', window.stop_simulation),
-            ('Step simulation',  'F8', window.step_simulation),
-            ('Toggle fast solver', '', lambda: window.toggle_fast_solver(not getattr(window, 'use_fast_solver', True))),
+        # Action commands (sim/view/file). Labels and shortcuts live in the
+        # module-level tables (shared with the shortcuts dialog); the callbacks
+        # are bound here against this window. Each group keeps the same order as
+        # its table so the (label, shortcut) and callback rows line up.
+        sim_callbacks = [
+            window.start_simulation,
+            window.pause_simulation,
+            window.stop_simulation,
+            window.step_simulation,
+            lambda: window.toggle_fast_solver(not getattr(window, 'use_fast_solver', True)),
+        ]
+        view_callbacks = [
+            window.zoom_in,
+            window.zoom_out,
+            window.fit_to_window,
+            window.toggle_theme,
+            window.toggle_grid,
+            window.toggle_minimap,
+            window.toggle_variable_editor,
+            window.toggle_workspace_editor,
+            window.toggle_tuning_panel,
+        ]
+        file_callbacks = [
+            window.new_diagram,
+            window.open_diagram,
+            window.save_diagram,
+            window.load_workspace,
+            window.show_plots,
+            window.export_tikz,
+        ]
+        for badge, table, callbacks in [
+            ('sim', _SIM_COMMANDS, sim_callbacks),
+            ('view', _VIEW_COMMANDS, view_callbacks),
+            ('file', _FILE_COMMANDS, file_callbacks),
         ]:
-            commands.append({
-                'name': label, 'type': 'sim', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
-
-        # View toggles (VIEW badge)
-        for label, kbd, cb in [
-            ('Zoom in',       'Ctrl++',  window.zoom_in),
-            ('Zoom out',      'Ctrl+-',  window.zoom_out),
-            ('Fit to window', 'Ctrl+0',  window.fit_to_window),
-            ('Toggle theme',  'Ctrl+T',  window.toggle_theme),
-            ('Toggle grid',   'Ctrl+Shift+G', window.toggle_grid),
-            ('Toggle minimap', 'Ctrl+Shift+M', window.toggle_minimap),
-            ('Toggle variable editor', 'Ctrl+Shift+V', window.toggle_variable_editor),
-            ('Toggle workspace variables', 'Ctrl+Shift+W', window.toggle_workspace_editor),
-            ('Toggle tuning panel', '', window.toggle_tuning_panel),
-        ]:
-            commands.append({
-                'name': label, 'type': 'view', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
-
-        # File actions
-        for label, kbd, cb in [
-            ('New diagram',  'Ctrl+N', window.new_diagram),
-            ('Open diagram', 'Ctrl+O', window.open_diagram),
-            ('Save diagram', 'Ctrl+S', window.save_diagram),
-            ('Load workspace…', '', window.load_workspace),
-            ('Show plots',   '',       window.show_plots),
-            ('Export as TikZ…', '',    window.export_tikz),
-        ]:
-            commands.append({
-                'name': label, 'type': 'file', 'shortcut': kbd,
-                'callback': cb, 'data': {},
-            })
+            for (label, kbd), cb in zip(table, callbacks):
+                commands.append({
+                    'name': label, 'type': badge, 'shortcut': kbd,
+                    'callback': cb, 'data': {},
+                })
 
         # Index examples on disk — file paths only, load on click
         try:

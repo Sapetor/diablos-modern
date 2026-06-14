@@ -12,6 +12,13 @@ Two path types:
 import os
 import sys
 
+# QSettings org/app for UI preferences. Single source of truth shared by every
+# call site (main_window.py first-run flag, modern_palette.py collapsed flags).
+# KEEP these values — they name the existing on-disk store; changing them would
+# orphan already-written settings.
+SETTINGS_ORG = "DiaBloS"
+SETTINGS_APP = "DiaBloS"
+
 
 def get_base_path() -> str:
     """Return the base path for resolving bundled resource files (read-only)."""
@@ -56,3 +63,14 @@ def user_data_path(relative_path: str) -> str:
     if parent:
         os.makedirs(parent, exist_ok=True)
     return full
+
+
+def ui_settings():
+    """Return the shared ``QSettings`` store for UI preferences.
+
+    Single accessor for the ``SETTINGS_ORG``/``SETTINGS_APP`` pair so every UI
+    call site reads and writes the same store. ``QSettings`` is imported lazily
+    to keep this module free of a Qt import at module scope.
+    """
+    from PyQt5.QtCore import QSettings
+    return QSettings(SETTINGS_ORG, SETTINGS_APP)

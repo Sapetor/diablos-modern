@@ -25,10 +25,10 @@ from PyQt5.QtCore import (
 )
 from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
 
-# QSettings org/app — matches the rest of the app (see main_window.py first-run
-# flag) so palette UI state lives in the same store as other UI preferences.
-_SETTINGS_ORG = "DiaBloS"
-_SETTINGS_APP = "DiaBloS"
+# QSettings org/app — sourced from the shared constants in lib.app_paths so
+# palette UI state lives in the same store as the rest of the app's UI
+# preferences (see main_window.py first-run flag).
+from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
 _CHEVRON_EXPANDED = "▾"
