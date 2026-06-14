@@ -12,6 +12,91 @@ from lib.simulation.connection import bezier_control_points
 
 logger = logging.getLogger(__name__)
 
+
+def compute_alignment_guides(moving_rect, other_rects, threshold=4):
+    """Compute smart-alignment snap offsets and guide lines for a dragged block.
+
+    Pure geometry helper (no Qt painting, no canvas state) so the load-bearing
+    snapping logic stays trivially unit-testable. Everything is in CANVAS
+    coordinates — the caller is responsible for converting any screen-space
+    threshold into canvas units (e.g. dividing by the zoom factor) before
+    passing it in.
+
+    For each of the moving block's three vertical edges (left / center-x /
+    right) we look for the nearest matching vertical edge among ``other_rects``
+    within ``threshold``; likewise for the three horizontal edges (top /
+    middle-y / bottom). At most ONE x-snap and ONE y-snap are chosen — whichever
+    candidate sits closest to its target — mirroring how Figma / draw.io pick a
+    single guide per axis instead of stacking several.
+
+    Args:
+        moving_rect: ``(x, y, w, h)`` of the block being dragged (top-left origin).
+        other_rects: iterable of ``(x, y, w, h)`` for every other block.
+        threshold: max distance (canvas px) at which an edge snaps.
+
+    Returns:
+        ``(snap_dx, snap_dy, guide_lines)`` where ``snap_dx``/``snap_dy`` are the
+        offsets to add to the moving block's position so the chosen edges align
+        exactly, and ``guide_lines`` is a list of ``((x1, y1), (x2, y2))``
+        segments (canvas coords) spanning the involved blocks.
+    """
+    mx, my, mw, mh = moving_rect
+
+    # Candidate edge positions on the moving block, keyed by axis role. The
+    # value is the canvas coordinate of that edge in the relevant axis.
+    moving_x_edges = {'left': mx, 'center': mx + mw / 2.0, 'right': mx + mw}
+    moving_y_edges = {'top': my, 'middle': my + mh / 2.0, 'bottom': my + mh}
+
+    # Track the single best snap per axis: (abs_distance, signed_offset, ...).
+    best_x = None  # (dist, offset, moving_edge_pos, other_rect)
+    best_y = None
+
+    for (ox, oy, ow, oh) in other_rects:
+        other_x_edges = (ox, ox + ow / 2.0, ox + ow)
+        other_y_edges = (oy, oy + oh / 2.0, oy + oh)
+
+        # X axis: compare every moving vertical edge to every other one.
+        for m_edge in moving_x_edges.values():
+            for o_edge in other_x_edges:
+                dist = abs(o_edge - m_edge)
+                if dist <= threshold and (best_x is None or dist < best_x[0]):
+                    best_x = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge),
+                              (ox, oy, ow, oh))
+
+        # Y axis: compare every moving horizontal edge to every other one.
+        for m_edge in moving_y_edges.values():
+            for o_edge in other_y_edges:
+                dist = abs(o_edge - m_edge)
+                if dist <= threshold and (best_y is None or dist < best_y[0]):
+                    best_y = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge),
+                              (ox, oy, ow, oh))
+
+    snap_dx = best_x[1] if best_x else 0.0
+    snap_dy = best_y[1] if best_y else 0.0
+
+    # Build guide lines using the SNAPPED moving rect so the line sits exactly
+    # on the shared edge. Each guide spans from the topmost to the bottommost
+    # (vertical guide) / leftmost to rightmost (horizontal guide) of the two
+    # blocks involved, so it visually connects them.
+    guide_lines = []
+    sx, sy = mx + snap_dx, my + snap_dy
+
+    if best_x is not None:
+        gx = best_x[2]
+        _, oy, _, oh = best_x[3]
+        y1 = min(sy, oy)
+        y2 = max(sy + mh, oy + oh)
+        guide_lines.append(((gx, y1), (gx, y2)))
+
+    if best_y is not None:
+        gy = best_y[2]
+        ox, _, ow, _ = best_y[3]
+        x1 = min(sx, ox)
+        x2 = max(sx + mw, ox + ow)
+        guide_lines.append(((x1, gy), (x2, gy)))
+
+    return snap_dx, snap_dy, guide_lines
+
 class CanvasRenderer:
     """Renderer for general canvas elements."""
 
@@ -117,6 +202,33 @@ class CanvasRenderer:
             painter.setPen(border_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(selection_rect)
+        finally:
+            painter.restore()
+
+    def draw_alignment_guides(self, painter: QPainter, guide_lines):
+        """Draw smart-alignment guide lines emitted by ``compute_alignment_guides``.
+
+        ``guide_lines`` is a list of ``((x1, y1), (x2, y2))`` segments in CANVAS
+        coordinates; the caller must have the painter under the same pan/zoom
+        transform as the blocks so the guides land on the shared edges. Lines
+        are a thin (1px cosmetic) accent stroke, matching the selection accent.
+        """
+        if not guide_lines:
+            return
+
+        if not painter or not painter.isActive():
+            return
+
+        painter.save()
+        try:
+            # Cosmetic pen (width 0) -> always 1 device px regardless of zoom,
+            # so the guide stays crisp and hairline at any scale.
+            pen = QPen(theme_manager.get_color('selection_rectangle'), 0, Qt.SolidLine)
+            pen.setCosmetic(True)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            for (x1, y1), (x2, y2) in guide_lines:
+                painter.drawLine(int(x1), int(y1), int(x2), int(y2))
         finally:
             painter.restore()
 

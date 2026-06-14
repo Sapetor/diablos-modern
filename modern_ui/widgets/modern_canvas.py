@@ -108,6 +108,10 @@ class ModernCanvas(QWidget):
         # against AttributeError when _finish_drag reads it before any drag.
         self.dragging_block = None
 
+        # Smart-alignment guide lines (canvas coords) active during a block
+        # drag; recomputed each move by DragResizeManager, drawn in paintEvent.
+        self._alignment_guides = []
+
         # Simulation lifecycle controller (re-emits status as our own signal)
         self._sim_controller = SimulationController(self.dsim, parent=self)
         self._sim_controller.status_changed.connect(self.simulation_status_changed)
@@ -345,7 +349,13 @@ class ModernCanvas(QWidget):
             self._render_blocks(painter, draw_ports=False)
             self._render_lines(painter)
             self._render_ports(painter)
-            
+
+            # Smart-alignment guides while dragging a block. Drawn in SCENE
+            # space (the pan/zoom transform is still active) so the hairlines
+            # land exactly on the shared block edges.
+            if self.state == State.DRAGGING and self._alignment_guides:
+                self.canvas_renderer.draw_alignment_guides(painter, self._alignment_guides)
+
             # Draw temporary connection line (with enhanced preview)
             if self.line_creation_state == 'start' and self.temp_line:
                 start_point, end_point = self.temp_line
@@ -463,7 +473,15 @@ class ModernCanvas(QWidget):
         self.rendering_manager.render_ports(painter)
 
     def _update_line_positions(self):
-        """Update line positions after block movement."""
+        """Update line positions after block movement.
+
+        During an active block drag this is the per-move hook InteractionManager
+        calls right after relocating the block, so we first let the drag manager
+        apply smart-alignment snapping (which may nudge the block onto a shared
+        edge) before the wires are recomputed against the final position.
+        """
+        if self.state == State.DRAGGING and self.dragging_block is not None:
+            self.drag_resize_manager.update_drag_alignment()
         self.connection_manager.update_line_positions()
 
     def _reroute_affected_lines(self, block_names):

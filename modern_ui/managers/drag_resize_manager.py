@@ -15,8 +15,13 @@ import logging
 from PyQt5.QtCore import Qt, QPoint, QRect
 
 from modern_ui.interactions.interaction_manager import State
+from modern_ui.renderers.canvas_renderer import compute_alignment_guides
 
 logger = logging.getLogger(__name__)
+
+# Screen-space snap tolerance for smart-alignment guides. Divided by the zoom
+# factor before use so the snap feels equally "sticky" at any zoom level.
+_ALIGNMENT_THRESHOLD_PX = 4
 
 
 class DragResizeManager:
@@ -45,9 +50,68 @@ class DragResizeManager:
                     # Store starting position
                     self.canvas.drag_start_positions[b] = (b.left, b.top)
 
+            # Smart-alignment guides are recomputed on every move; start clean.
+            self.canvas._alignment_guides = []
+
             logger.debug(f"Started dragging {len(self.canvas.drag_offsets)} block(s)")
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
+
+    def update_drag_alignment(self):
+        """Snap the dragged block to nearby blocks and stash the active guides.
+
+        Called once per drag move (after the InteractionManager has relocated
+        the block to the cursor) so the snap visibly nudges the block onto a
+        shared edge. Computes purely from canvas-space rects via
+        ``compute_alignment_guides``; the snap delta is applied to the dragged
+        block and to any co-selected blocks so the group moves rigidly. The
+        resulting guide lines are stashed on the canvas for ``paintEvent``.
+
+        Guides are intentionally suppressed while grid snap is on (the grid
+        already quantizes positions, so the two snaps would fight each other).
+        """
+        try:
+            block = self.canvas.dragging_block
+            if block is None:
+                return
+
+            self.canvas._alignment_guides = []
+            if getattr(self.canvas, 'snap_enabled', True):
+                return
+
+            moving_rect = (block.left, block.top, block.width, block.height)
+            other_rects = [
+                (b.left, b.top, b.width, b.height)
+                for b in self.canvas.dsim.blocks_list
+                if b is not block and b not in self.canvas.drag_offsets
+            ]
+            if not other_rects:
+                return
+
+            # Keep the snap tolerance constant in screen pixels across zoom.
+            zoom = self.canvas.zoom_factor or 1.0
+            threshold = _ALIGNMENT_THRESHOLD_PX / zoom
+
+            snap_dx, snap_dy, guide_lines = compute_alignment_guides(
+                moving_rect, other_rects, threshold=threshold
+            )
+
+            if snap_dx or snap_dy:
+                # Move the dragged block onto the snapped edge, then shift the
+                # rest of the selection by the same delta to stay rigid.
+                block.relocate_Block(QPoint(int(block.left + snap_dx),
+                                            int(block.top + snap_dy)))
+                if len(self.canvas.drag_offsets) > 1:
+                    for b in self.canvas.drag_offsets:
+                        if b is not block:
+                            b.relocate_Block(QPoint(int(b.left + snap_dx),
+                                                    int(b.top + snap_dy)))
+
+            self.canvas._alignment_guides = guide_lines
+        except Exception as e:
+            # Alignment is a cosmetic assist; never let it break the drag.
+            logger.debug(f"Alignment guide update failed: {e}")
+            self.canvas._alignment_guides = []
 
     def _start_resize(self, block, handle, pos):
         """Start resizing a block."""
@@ -183,6 +247,7 @@ class DragResizeManager:
                 self.canvas.dragging_block = None
                 self.canvas.drag_offset = None
                 self.canvas.drag_start_positions = {}
+                self.canvas._alignment_guides = []  # clear smart-alignment overlay
                 self.canvas._update_line_positions()
                 if moved_significantly:
                     self.canvas._reroute_affected_lines(moved_block_names)
