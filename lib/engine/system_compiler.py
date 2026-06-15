@@ -703,7 +703,11 @@ class SystemCompiler:
                 signals[b_name] = val
             return exec_switch
         
-        elif fn in ('SgProd', 'SigProduct'):
+        elif fn in ('SgProd', 'Sgprod', 'SigProduct'):
+             # 'Sgprod' covers the block_fn.title() form (block_fn 'SgProd' ->
+             # 'SgProd'.title() == 'Sgprod'); without it SgProd silently compiled
+             # to a no-op, zeroing its output in the fast solver (same .title()
+             # normalization already handled for MatrixGain/StateSpace above).
              # Logic for product
              baked_srcs = [s for s in input_sources]
              def exec_sgprod(t, y, dy_vec, signals):
