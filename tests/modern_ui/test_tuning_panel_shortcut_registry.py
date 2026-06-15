@@ -22,6 +22,8 @@ Run with:
         -p no:cacheprovider -o addopts=""
 """
 
+from __future__ import annotations  # PEP 604 `str | None` below must not be evaluated on Python 3.9 (CI)
+
 import re
 from pathlib import Path
 
