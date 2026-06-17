@@ -70,7 +70,7 @@ class RandomSourceBlock(BaseBlock):
     def params(self):
         return {
             "distribution": {"type": "choice", "default": "uniform",
-                             "choices": ["uniform", "bernoulli", "normal", "randint"],
+                             "options": ["uniform", "bernoulli", "normal", "randint"],
                              "doc": "Distribution to sample from."},
             "p": {"type": "float", "default": 0.5,
                   "doc": "Bernoulli success probability (0..1)."},

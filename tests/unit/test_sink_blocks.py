@@ -88,9 +88,11 @@ class TestScopeBlock:
 
         assert 'verify_mode' in block.params, "Scope should have verify_mode parameter"
         assert block.params['verify_mode']['default'] == 'auto', "Default should be 'auto'"
-        assert 'choices' in block.params['verify_mode'], "Should have choices"
+        spec = block.params['verify_mode']
+        opts = spec.get('options') or spec.get('choices')
+        assert opts is not None, "Should have options"
         expected_choices = ['auto', 'objective', 'comparison', 'trajectory', 'none']
-        assert block.params['verify_mode']['choices'] == expected_choices, "Should have all verification modes"
+        assert opts == expected_choices, "Should have all verification modes"
 
     def test_scope_verify_mode_passed_through(self):
         """Test verify_mode is preserved in params during execution."""

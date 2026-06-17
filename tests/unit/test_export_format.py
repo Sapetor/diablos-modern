@@ -69,7 +69,8 @@ class TestExportBlockFormatParam:
         assert 'format' in block.params, "Export should expose a 'format' param"
         spec = block.params['format']
         assert spec['default'] == 'npz', "Default must preserve npz behavior"
-        assert spec['choices'] == ['npz', 'csv', 'mat'], "Should offer npz/csv/mat"
+        opts = spec.get('options') or spec.get('choices')
+        assert opts == ['npz', 'csv', 'mat'], "Should offer npz/csv/mat"
 
     def test_default_format_is_npz(self):
         # When no format is passed in params, execute must still work and the

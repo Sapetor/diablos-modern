@@ -76,7 +76,7 @@ class NetworkChannelBlock(BaseBlock):
             "seed": {"type": "int", "default": 0,
                      "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible)."},
             "drop_mode": {"type": "choice", "default": "hold",
-                          "choices": ["hold", "zero", "nan"],
+                          "options": ["hold", "zero", "nan"],
                           "doc": "Output before any packet is delivered: hold / zero / nan."},
             "initial_value": {"type": "float", "default": 0.0,
                               "doc": "Held value before the first delivered packet."},

@@ -151,7 +151,9 @@ class TestPacketLoss:
         """The block defaults to the i.i.d. Bernoulli model."""
         block = PacketLossBlock()
         assert block.params["loss_model"]["default"] == "bernoulli"
-        assert block.params["loss_model"]["choices"] == ["bernoulli", "gilbert_elliott"]
+        spec = block.params["loss_model"]
+        opts = spec.get("options") or spec.get("choices")
+        assert opts == ["bernoulli", "gilbert_elliott"]
 
 
 def _drop_seq(deliveries):

@@ -166,7 +166,7 @@ def method_param(
             "type": "string",
             "default": default,
             "doc": doc,
-            "choices": choices
+            "options": choices
         }
     }
 
@@ -442,6 +442,6 @@ def verification_mode_param(
             "type": "string",
             "default": default,
             "doc": "Verification mode: auto, objective, comparison, trajectory, none",
-            "choices": ["auto", "objective", "comparison", "trajectory", "none"]
+            "options": ["auto", "objective", "comparison", "trajectory", "none"]
         }
     }

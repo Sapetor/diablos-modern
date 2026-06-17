@@ -64,7 +64,7 @@ class PacketLossBlock(BaseBlock):
     def params(self):
         return {
             "loss_model": {"type": "choice", "default": "bernoulli",
-                           "choices": ["bernoulli", "gilbert_elliott"],
+                           "options": ["bernoulli", "gilbert_elliott"],
                            "doc": "Loss model: 'bernoulli' (i.i.d.) or "
                                   "'gilbert_elliott' (bursty two-state Markov)."},
             "loss_prob": {"type": "float", "default": 0.1,
@@ -80,7 +80,7 @@ class PacketLossBlock(BaseBlock):
             "seed": {"type": "int", "default": 0,
                      "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible)."},
             "drop_mode": {"type": "choice", "default": "hold",
-                          "choices": ["hold", "zero", "nan"],
+                          "options": ["hold", "zero", "nan"],
                           "doc": "Output on a dropped packet: hold / zero / nan."},
             "initial_value": {"type": "float", "default": 0.0,
                               "doc": "Held value before the first delivered packet."},

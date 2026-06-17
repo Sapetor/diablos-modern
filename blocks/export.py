@@ -27,7 +27,7 @@ class ExportBlock(BaseBlock):
     def params(self):
         return {
             "str_name": {"default": "default", "type": "string"},
-            "format": {"default": "npz", "type": "choice", "choices": ["npz", "csv", "mat"]},
+            "format": {"default": "npz", "type": "choice", "options": ["npz", "csv", "mat"]},
             "_init_start_": {"default": True, "type": "bool"},
         }
 
