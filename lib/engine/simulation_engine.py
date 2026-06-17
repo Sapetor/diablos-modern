@@ -1507,9 +1507,12 @@ class SimulationEngine:
                                 out_val = field[:, i]
 
                     elif fn == 'PID':
-                         # Inputs
-                         sp = float(inputs.get(0, 0.0))
-                         meas = float(inputs.get(1, 0.0))
+                         # Inputs. PID state is scalar in the compiled engine
+                         # (dy_vec[start] is a scalar slot), so reduce vector
+                         # inputs to their first element rather than raising on
+                         # float() of a multi-element array.
+                         sp = float(np.ravel(inputs.get(0, 0.0))[0])
+                         meas = float(np.ravel(inputs.get(1, 0.0))[0])
                          e = sp - meas
                          
                          # Params
@@ -1658,16 +1661,13 @@ class SimulationEngine:
                         out_val = a * np.exp(b * x_in)
                         
                     elif fn == 'Deadband':
-                        val = float(inputs.get(0, 0.0))
+                        # Element-wise dead zone so vector signals work
+                        # (float(val) would raise on a multi-element array).
+                        val = np.asarray(inputs.get(0, 0.0), dtype=float)
                         start = float(block.params.get('start', -0.5))
                         end = float(block.params.get('end', 0.5))
-                        
-                        if val < start:
-                            out_val = val - start
-                        elif val > end:
-                            out_val = val - end
-                        else:
-                            out_val = 0.0
+                        out_val = np.where(val < start, val - start,
+                                           np.where(val > end, val - end, 0.0))
 
                     elif fn == 'Saturation':
                         val = inputs.get(0, 0.0)
@@ -1689,7 +1689,9 @@ class SimulationEngine:
                             out_val = 0.0
                             
                     elif fn == 'Switch':
-                        ctrl = float(inputs.get(0, 0.0))
+                        # Control is scalar; reduce safely (the selected input,
+                        # passed through below, may still be a vector).
+                        ctrl = float(np.ravel(inputs.get(0, 0.0))[0])
                         mode = block.params.get('mode', 'threshold')
                         n_inputs = int(block.params.get('n_inputs', 2))
                         
@@ -1815,7 +1817,8 @@ class SimulationEngine:
                             out_val = np.array(result) if result else 0.0
 
                     elif fn == 'Hysteresis':
-                        val = float(inputs.get(0, 0.0))
+                        # Relay latch state is scalar; reduce vector inputs safely.
+                        val = float(np.ravel(inputs.get(0, 0.0))[0])
                         upper = float(block.params.get('upper', 0.5))
                         lower = float(block.params.get('lower', -0.5))
                         high_val = float(block.params.get('high', 1.0))

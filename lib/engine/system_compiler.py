@@ -524,8 +524,14 @@ class SystemCompiler:
              u_max = float(params.get('u_max', np.inf))
 
              def exec_pid(t, y, dy_vec, signals):
-                 sp = signals.get(sp_src, 0.0) if sp_src else 0.0
-                 meas = signals.get(meas_src, 0.0) if meas_src else 0.0
+                 # PID state is scalar (two slots, dy_vec[start]/[start+1]), so
+                 # reduce vector inputs to their first element; this also keeps
+                 # the anti-windup comparison below scalar (a vector `e` would
+                 # make `if e > 0` ambiguous).
+                 sp_raw = signals.get(sp_src, 0.0) if sp_src else 0.0
+                 meas_raw = signals.get(meas_src, 0.0) if meas_src else 0.0
+                 sp = float(np.ravel(sp_raw)[0])
+                 meas = float(np.ravel(meas_raw)[0])
                  e = sp - meas
                  
                  # x_i, x_d
@@ -564,11 +570,11 @@ class SystemCompiler:
             start_db = float(params.get('start', -0.5))
             end_db = float(params.get('end', 0.5))
             def exec_db(t, y, dy_vec, signals):
-                val = signals.get(src, 0.0) if src else 0.0
-                if val < start_db: out = val - start_db
-                elif val > end_db: out = val - end_db
-                else: out = 0.0
-                signals[b_name] = out
+                # Element-wise dead zone (works for scalar and vector signals;
+                # a bare `if val < start` is ambiguous on a multi-element array).
+                val = np.asarray(signals.get(src, 0.0) if src else 0.0, dtype=float)
+                signals[b_name] = np.where(val < start_db, val - start_db,
+                                           np.where(val > end_db, val - end_db, 0.0))
             return exec_db
             
         elif fn == 'Exponential':
@@ -682,8 +688,12 @@ class SystemCompiler:
             threshold = float(params.get('threshold', 0.0))
             
             def exec_switch(t, y, dy_vec, signals):
-                ctrl = signals.get(ctrl_src, 0.0) if ctrl_src else 0.0
-                
+                # Control is scalar; reduce safely so a vector control signal
+                # doesn't make the comparisons below ambiguous. The selected
+                # data input is passed through unchanged (may be a vector).
+                ctrl_raw = signals.get(ctrl_src, 0.0) if ctrl_src else 0.0
+                ctrl = float(np.ravel(ctrl_raw)[0])
+
                 if mode == 'index':
                     sel = int(round(ctrl))
                 else:
