@@ -31,8 +31,8 @@ class MathFunctionBlock(BaseBlock):
                 "options": [
                     "sin", "cos", "tan", 
                     "asin", "acos", "atan", 
-                    "exp", "log", "log10", 
-                    "sqrt", "square", "sign", 
+                    "exp", "log", "log10",
+                    "sqrt", "square", "cube", "sign",
                     "abs", "ceil", "floor",
                     "reciprocal"
                 ]
