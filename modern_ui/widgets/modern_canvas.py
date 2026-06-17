@@ -5,7 +5,7 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 import logging
 import math
 from PyQt5.QtWidgets import QWidget, QApplication, QToolTip
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, QEvent, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QColor
 
 # Import DSim and helper modules
@@ -1198,6 +1198,18 @@ class ModernCanvas(QWidget):
         - Ctrl/Cmd + scroll: Zoom in/out
         """
         self.zoom_pan_manager.handle_wheel_event(event)
+
+    def event(self, event):
+        """Intercept macOS trackpad pinch-to-zoom native gestures.
+
+        PyQt5 has no dedicated nativeGestureEvent override; QNativeGestureEvent
+        is delivered here with type QEvent.NativeGesture.
+        """
+        if event.type() == QEvent.NativeGesture:
+            if self.zoom_pan_manager.handle_native_gesture(event):
+                event.accept()
+                return True
+        return super().event(event)
 
     # Drag and Drop Events
     def dragEnterEvent(self, event):
