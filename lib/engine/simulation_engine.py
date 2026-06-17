@@ -1594,24 +1594,24 @@ class SimulationEngine:
                          out_val = res
 
                     elif fn == 'Product':
-                         # Product block with configurable * and / operations
+                         # Product block with configurable * and / operations.
+                         # Operate element-wise so vector signals work: float(val)
+                         # raises on a multi-element array under numpy 2.x.
                          ops = block.params.get('ops', '**')
                          res = 1.0
                          for idx, val in sorted(inputs.items()):
                              op = ops[idx] if idx < len(ops) else '*'
+                             v = np.atleast_1d(np.asarray(val, dtype=float))
                              if op == '*':
-                                 res *= float(val)
+                                 res = res * v
                              elif op == '/':
-                                 # Mirror Product.execute(): on divide-by-zero
-                                 # keep the sign of the numerator (0/0 -> 0)
-                                 # rather than emitting an unsigned magic value.
-                                 fval = float(val)
-                                 if fval != 0:
-                                     res = res / fval
-                                 elif res == 0:
-                                     res = 0.0
-                                 else:
-                                     res = np.sign(res) * 1e308
+                                 # Mirror Product.execute(): on divide-by-zero keep
+                                 # the sign of the numerator (0/0 -> 0) instead of
+                                 # an unsigned magic value, element-wise.
+                                 with np.errstate(divide='ignore', invalid='ignore'):
+                                     res = res / v
+                                     res = np.where(np.isinf(res), np.sign(res) * 1e308, res)
+                                     res = np.where(np.isnan(res), 0.0, res)
                          out_val = res
 
                     elif fn in ('Statevariable', 'StateVariable'):
@@ -1654,7 +1654,7 @@ class SimulationEngine:
                         # y = a * exp(b * x)
                         a = float(block.params.get('a', 1.0))
                         b = float(block.params.get('b', 1.0))
-                        x_in = float(inputs.get(0, 0.0))
+                        x_in = np.asarray(inputs.get(0, 0.0), dtype=float)
                         out_val = a * np.exp(b * x_in)
                         
                     elif fn == 'Deadband':
@@ -1733,7 +1733,9 @@ class SimulationEngine:
                         out_val = mu + sigma * np.random.randn()
 
                     elif fn == 'Mathfunction':
-                        val = float(inputs.get(0, 0.0))
+                        # Keep the input as an array so vector signals work:
+                        # float(...) raises on a multi-element array (numpy 2.x).
+                        val = np.asarray(inputs.get(0, 0.0), dtype=float)
                         # Check both 'function' and 'expression' keys for backward compatibility
                         func_raw = block.params.get('function', block.params.get('expression', 'sin'))
                         func = str(func_raw).lower()
@@ -1746,19 +1748,23 @@ class SimulationEngine:
                             elif func == 'tan':
                                 out_val = np.tan(val)
                             elif func == 'asin':
-                                out_val = np.arcsin(val) if -1 <= val <= 1 else 0.0
+                                with np.errstate(invalid='ignore'):
+                                    out_val = np.where(np.abs(val) <= 1, np.arcsin(np.clip(val, -1.0, 1.0)), 0.0)
                             elif func == 'acos':
-                                out_val = np.arccos(val) if -1 <= val <= 1 else 0.0
+                                with np.errstate(invalid='ignore'):
+                                    out_val = np.where(np.abs(val) <= 1, np.arccos(np.clip(val, -1.0, 1.0)), 0.0)
                             elif func == 'atan':
                                 out_val = np.arctan(val)
                             elif func == 'exp':
                                 out_val = np.exp(val)
                             elif func == 'log':
-                                out_val = np.log(val) if val > 0 else 0.0
+                                with np.errstate(divide='ignore', invalid='ignore'):
+                                    out_val = np.where(val > 0, np.log(np.where(val > 0, val, 1.0)), 0.0)
                             elif func == 'log10':
-                                out_val = np.log10(val) if val > 0 else 0.0
+                                with np.errstate(divide='ignore', invalid='ignore'):
+                                    out_val = np.where(val > 0, np.log10(np.where(val > 0, val, 1.0)), 0.0)
                             elif func == 'sqrt':
-                                out_val = np.sqrt(val) if val >= 0 else 0.0
+                                out_val = np.where(val >= 0, np.sqrt(np.where(val >= 0, val, 0.0)), 0.0)
                             elif func == 'square':
                                 out_val = val * val
                             elif func == 'sign':
@@ -1770,12 +1776,12 @@ class SimulationEngine:
                             elif func == 'floor':
                                 out_val = np.floor(val)
                             elif func == 'reciprocal':
-                                out_val = 1.0 / val if val != 0 else 0.0
+                                out_val = np.where(val != 0, 1.0 / np.where(val != 0, val, 1.0), 0.0)
                             elif func == 'cube':
                                 out_val = val * val * val
                             else:
-                                # Python expression fallback
-                                out_val = float(safe_expr(str(func_raw), variables={"u": val, "t": t}))
+                                # Python expression fallback (vectorized: no float()).
+                                out_val = safe_expr(str(func_raw), variables={"u": val, "t": t})
                         except (ValueError, ZeroDivisionError):
                             out_val = 0.0
 
