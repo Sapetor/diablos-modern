@@ -5,7 +5,7 @@ Features modern layout, theming, and enhanced user interface.
 
 import os
 import logging
-from typing import Any, Optional
+from typing import Any
 from PyQt5.QtWidgets import (QMainWindow, QWidget,
                              QMessageBox, QFileDialog)
 from lib.workspace import WorkspaceManager
@@ -20,7 +20,7 @@ from lib.improvements import (
 )
 
 # Import modern UI components
-from modern_ui.themes.theme_manager import theme_manager, ThemeType
+from modern_ui.themes.theme_manager import theme_manager
 from modern_ui.widgets.toast_notification import ToastNotification
 from modern_ui.widgets.command_palette import CommandPalette
 from modern_ui.widgets.variable_editor import VariableEditor
@@ -633,9 +633,50 @@ class ModernDiaBloSWindow(QMainWindow):
         self.waveform_inspector_dock.raise_()
     
     def capture_screen(self):
-        """Capture screenshot."""
-        if hasattr(self.dsim, 'screenshot'):
-            self.dsim.screenshot(self)
+        """Save a PNG screenshot of the application window.
+
+        Grabs the on-screen region covering this window's frame, so native
+        window chrome and any floating result windows (Bode/Nyquist/scope)
+        overlapping it are included -- matching the project's hero screenshot.
+        Falls back to a chrome-less widget grab if the screen capture is
+        unavailable (e.g. some headless/offscreen platforms).
+        """
+        from PyQt5.QtWidgets import QApplication
+
+        default_path = os.path.join(os.getcwd(), "screenshot.png")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Screenshot", default_path, "PNG Image (*.png)"
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".png"):
+            path += ".png"
+
+        pixmap = None
+        try:
+            handle = self.windowHandle()
+            screen = handle.screen() if handle is not None else QApplication.primaryScreen()
+            if screen is not None:
+                geo = self.frameGeometry()
+                pixmap = screen.grabWindow(0, geo.x(), geo.y(), geo.width(), geo.height())
+                if pixmap.isNull():
+                    pixmap = None
+        except Exception:
+            logger.debug("Screen-region capture failed; falling back to widget grab", exc_info=True)
+
+        if pixmap is None:
+            pixmap = self.grab()  # chrome-less, but works on every platform
+
+        if pixmap.save(path, "PNG"):
+            name = os.path.basename(path)
+            if hasattr(self, 'status_message'):
+                self.status_message.setText(f"Screenshot saved: {name}")
+            if hasattr(self, 'toast'):
+                self.toast.show_message(f"\U0001F4F8 Saved {name}")
+        else:
+            logger.warning("Failed to save screenshot to %s", path)
+            if hasattr(self, 'toast'):
+                self.toast.show_message("Screenshot save failed")
     
     # View-action facades -> ViewActionsManager (see managers/view_actions_manager.py)
     def set_zoom(self, factor: float):
