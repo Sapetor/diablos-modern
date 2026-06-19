@@ -1,10 +1,12 @@
 # User dependencies for DiaBloS Modern
 # Install with: pip install -r requirements.txt
 
-numpy>=1.20.0
+# Upper bounds guard reproducibility against breaking major releases of the
+# numerically-sensitive core (the suite currently runs on numpy 2.x / scipy 1.x).
+numpy>=1.20.0,<3.0
 matplotlib>=3.3.0
 tqdm>=4.60.0
 pyqtgraph>=0.12.0
-PyQt5>=5.15.0
-scipy>=1.6.0
+PyQt5>=5.15.0,<5.16
+scipy>=1.6.0,<2.0
 Pillow>=8.0.0  # GIF animation export
