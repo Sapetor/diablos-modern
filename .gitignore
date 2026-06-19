@@ -90,6 +90,10 @@ saves/
 !docs/**/*.png
 !examples/**/*.png
 
+# run_examples_compiled.py incremental state (regenerated each run)
+scripts/.examples_compiled_results.jsonl
+scripts/.examples_compiled_current.txt
+
 # Autosave files
 *_AUTOSAVE.dat
 config/.autosave.diablos
