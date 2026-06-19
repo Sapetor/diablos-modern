@@ -1,0 +1,39 @@
+# Tooling configuration for DiaBloS Modern.
+# This project is not pip-packaged (runtime deps live in requirements*.txt and
+# packaging is handled by diablos.spec / PyInstaller); this file exists purely
+# to configure developer tooling — currently Ruff (lint + format).
+
+[tool.ruff]
+# 3.9 is the supported baseline (CI matrix + readthedocs); do not let Ruff
+# suggest 3.10+-only rewrites.
+target-version = "py39"
+line-length = 100
+extend-exclude = ["build", "dist", "archive", ".venv", ".venv-win"]
+
+[tool.ruff.lint]
+# Keep Ruff's default, high-signal rule set (E4 imports, E7 statements,
+# E9 syntax errors, F pyflakes — unused imports/vars, undefined names) and
+# silence the high-volume *stylistic* E7xx checks for now. These flag working
+# code (compound statements, math-y single-letter names) rather than bugs; a
+# one-time `ruff format` pass can retire most of them later without a flag day.
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    "E402",  # module-import-not-at-top — many intentional lazy/conditional imports
+    "E701",  # multiple-statements-on-one-line (colon)
+    "E702",  # multiple-statements-on-one-line (semicolon)
+    "E712",  # comparison to True/False — unsafe to auto-rewrite on numpy arrays
+    "E721",  # type(x) == T comparisons
+    "E731",  # lambda assignment
+    "E741",  # ambiguous variable name (l/I/O) — common in math/control code
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Unused locals (F841) are tolerated in non-shipped scripts: test bodies often
+# bind a result only to document intent, and auto-deleting the binding can drop
+# a side-effecting call. Enforced strictly in shipped code (lib/, modern_ui/,
+# blocks/).
+"tests/**" = ["F841"]
+"examples/**" = ["F841"]
+# Work-in-progress benchmark that references an unbuilt DSim(...) mock; it is
+# not collected by pytest (name does not start with test_). Tracked separately.
+"tests/benchmark_fast_solver.py" = ["F821", "F841"]
