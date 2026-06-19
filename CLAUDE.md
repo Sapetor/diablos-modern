@@ -105,7 +105,9 @@ In addition to those subdirs (and `tests/profiling/`), ~15 `test_*.py` files liv
 
 **Headless / WSL / CI**: tests construct real PyQt5 widgets, so on a display-less machine run with `QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg`. A session-scoped autouse fixture in `tests/conftest.py` (`_no_modal_dialogs`) neutralizes `QDialog`/`QMessageBox` so modal dialogs never block. On Windows/WSL the repo ships a prebuilt interpreter at `.venv-win/Scripts/python.exe` -- use it to run the suite.
 
-**CI**: `.github/workflows/ci.yml` runs the suite on a Python **3.9 + 3.12** matrix (ubuntu-latest) per push/PR. 3.9 is the baseline (matches the local/readthedocs env), so avoid 3.10+-only syntax -- code that passes locally on a newer Python can still break the 3.9 leg.
+**CI**: `.github/workflows/ci.yml` runs the suite on a Python **3.9 + 3.12** matrix (ubuntu-latest) per push/PR. 3.9 is the baseline (matches the local/readthedocs env), so avoid 3.10+-only syntax -- code that passes locally on a newer Python can still break the 3.9 leg. A separate `lint` job runs `ruff check .`.
+
+**Linting**: `ruff check .` (config in `pyproject.toml`, targets py39) is the lint gate -- run it before pushing. Ruff is the project's linter/formatter (replaces black/pylint, in `requirements-dev.txt`); the rule set keeps pyflakes + error checks and silences high-volume stylistic E7xx (see `pyproject.toml`). `ruff format` is available but not yet enforced in CI.
 
 ### Test Pattern
 

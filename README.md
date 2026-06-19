@@ -10,7 +10,11 @@ DiaBloS Modern is a PyQt5-based block-diagram simulator with a refreshed UI, MVC
 - Waveform Inspector: per-run history from scopes, run pinning, CSV export, optional on-disk persistence, step plotting for discrete signals.
 - Simulation integrity: algebraic-loop detection, diagram validation (disconnected ports, duplicate inputs, tag issues), autosave before run.
 - **Fast Solver**: Hybrid engine with compiled execution using `scipy.integrate`. Automatically accelerates supported systems (Integrator, Gain, Sum, Sine, etc.) by flattening the diagram into efficient numerical code. See [docs/FAST_SOLVER.md](docs/FAST_SOLVER.md) for details.
-- Tested: pytest suite covering diagram integrity, hidden-line routing, and execution init smoke tests.
+- **Analysis & control toolbox**: numeric linearization (Jacobian of the compiled ODE) with Bode, Nyquist, root-locus, LQR, and pole-zero / step-impulse views, plus trim / operating-point solving.
+- **Experiments**: seeded Monte Carlo ensembles and 1-D/2-D parameter sweeps that re-run a diagram headlessly and aggregate results without mutating it.
+- **PDE & optimization blocks**: 1D/2D heat, diffusion-reaction, and advection equations visualized with FieldScope (GIF/MP4 export); gradient-descent / momentum / Adam primitives.
+- **Diagram export**: render diagrams to TikZ/LaTeX for papers and slides.
+- **Tested**: ~1,900-test pytest suite (unit / integration / regression / GUI) on a Python **3.9 + 3.12** CI matrix, with a `ruff` lint gate.
 
 ## Requirements
 - Python 3.9+
@@ -44,7 +48,8 @@ python diablos_modern.py
 ```bash
 pip install -r requirements-dev.txt
 QT_QPA_PLATFORM=offscreen pytest          # run tests headlessly
-black lib/ modern_ui/ tests/             # format
+ruff check .                              # lint (config in pyproject.toml)
+ruff format .                             # format
 ```
 More detail: `docs/ARCHITECTURE.md`, `docs/DEVELOPER_GUIDE.md`, `tests/README.md`.
 
