@@ -160,20 +160,24 @@ class RateTransitionBlock(BaseBlock):
         if mode == 'Linear' and not output_only:
             last_input = params['_linear_last_input_']
             if last_input is not None:
-                last_f = float(last_input) if not isinstance(last_input, np.ndarray) else float(np.atleast_1d(last_input).flat[0])
+                # Vector-aware change detection: start a new ramp if ANY channel
+                # changed. The old scalar check only compared channel 0, so a
+                # change confined to later channels of a vector signal was missed.
+                cur_arr = np.atleast_1d(np.asarray(val, dtype=float))
+                last_arr = np.atleast_1d(np.asarray(last_input, dtype=float))
+                changed = (cur_arr.shape != last_arr.shape) or bool(np.any(np.abs(cur_arr - last_arr) > 1e-9))
 
-                # Check if input changed (new sample from upstream)
-                if abs(val_f - last_f) > 1e-9:
-                    # Input changed! Start a new ramp
-                    # Ramp from current output position to new input value
-                    # Estimate ramp duration from time since last change
+                if changed:
+                    # Input changed! Start a new ramp from the current output
+                    # position to the new input value. Estimate ramp duration
+                    # from time since last change.
                     ramp_duration = time - params['_linear_start_time_']
                     if ramp_duration < 0.001:
                         ramp_duration = 0.1  # Default if too fast
 
-                    logger.info(f"RateTransition Linear: input changed at t={time:.3f}, {last_f:.3f} -> {val_f:.3f}")
+                    logger.info(f"RateTransition Linear: input changed at t={time:.3f} -> {val_f:.3f}")
                     params['_linear_start_val_'] = params['_held_value_']  # Start from current output
-                    params['_linear_end_val_'] = val_f
+                    params['_linear_end_val_'] = val  # full vector endpoint -> ramp is element-wise
                     params['_linear_start_time_'] = time
                     params['_linear_ramp_duration_'] = ramp_duration
                     params['_linear_last_input_'] = val
