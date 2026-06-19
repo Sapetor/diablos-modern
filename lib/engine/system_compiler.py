@@ -741,12 +741,17 @@ class SystemCompiler:
                      if op == '*':
                          res *= val
                      elif op == '/':
-                         if val != 0:
-                             res = res / val
-                         else:
-                             # True division by zero -> propagate signed inf
-                             # (matches IEEE-754) instead of a magic constant.
-                             res = np.sign(res) * np.inf if res != 0 else np.nan
+                         # Element-wise so vector divisors work (`if val != 0` is
+                         # ambiguous on an array). Mirror Product.execute() / the
+                         # compiled-replay path: divide-by-zero keeps the numerator
+                         # sign as a large finite value (not inf, which would break
+                         # the ODE RHS) and 0/0 -> 0.
+                         res = np.asarray(res, dtype=float)
+                         v = np.asarray(val, dtype=float)
+                         with np.errstate(divide='ignore', invalid='ignore'):
+                             res = res / v
+                             res = np.where(np.isinf(res), np.sign(res) * 1e308, res)
+                             res = np.where(np.isnan(res), 0.0, res)
                  signals[b_name] = res
              return exec_product
 
@@ -820,7 +825,11 @@ class SystemCompiler:
              K = 1000.0
              
              def exec_ratelimiter(t, y, dy_vec, signals):
-                 u = signals.get(src, 0.0) if src else 0.0
+                 u_raw = signals.get(src, 0.0) if src else 0.0
+                 # RateLimiter has one scalar state slot; reduce a vector input to
+                 # its first element (mirrors exec_integrator / scalar exec_ss) so
+                 # dy_vec[start] = dy never receives a sequence.
+                 u = np.ravel(u_raw)[0] if np.ndim(u_raw) else u_raw
                  y_val = y[start]
                  signals[b_name] = y_val
 
@@ -1688,6 +1697,9 @@ class SystemCompiler:
                     return
 
                 pos = signals.get(_pos_src, _position) if _pos_src else _position
+                # Probe position is scalar; reduce a mis-wired vector to its first
+                # element so int(np.floor(idx_float)) below stays safe.
+                pos = float(np.ravel(pos)[0]) if np.ndim(pos) else pos
 
                 if _mode == 'absolute':
                     pos_norm = pos / _L
@@ -1835,6 +1847,10 @@ class SystemCompiler:
                 # Get positions
                 x_pos = signals.get(_x_pos_src, _x_pos) if _x_pos_src else _x_pos
                 y_pos = signals.get(_y_pos_src, _y_pos) if _y_pos_src else _y_pos
+                # Probe positions are scalar; reduce mis-wired vectors to their
+                # first element so min/max and int(np.floor(...)) below stay safe.
+                x_pos = float(np.ravel(x_pos)[0]) if np.ndim(x_pos) else x_pos
+                y_pos = float(np.ravel(y_pos)[0]) if np.ndim(y_pos) else y_pos
 
                 # Convert to normalized
                 if _mode == 'absolute':
@@ -1891,6 +1907,9 @@ class SystemCompiler:
                 Ny, Nx = field.shape
 
                 position = signals.get(_pos_src, _pos) if _pos_src else _pos
+                # Slice position is scalar; reduce a mis-wired vector to its first
+                # element so int(position * ...) below stays safe.
+                position = float(np.ravel(position)[0]) if np.ndim(position) else position
 
                 if _direction.lower() == 'x':
                     j = int(position * (Ny - 1))

@@ -1375,11 +1375,15 @@ class SimulationEngine:
                              u_val = inputs.get(0, 0.0)
                              u = np.atleast_1d(u_val).reshape(-1, 1)
                              
-                             if B.shape[1] > 0 and u.shape[0] != B.shape[1]: 
+                             if B.shape[1] > 0 and u.shape[0] != B.shape[1]:
+                                 # Reduce a mismatched signal to its first element
+                                 # (mirrors compiled-ODE exec_ss); float() of a
+                                 # multi-element array would raise under numpy 2.x.
+                                 u_scalar = float(np.ravel(u_val)[0])
                                  if B.shape[1] == 1:
-                                     u = np.array([[float(u_val)]])
+                                     u = np.array([[u_scalar]])
                                  else:
-                                     u = np.full((B.shape[1], 1), float(u_val))
+                                     u = np.full((B.shape[1], 1), u_scalar)
                              elif B.shape[1] == 0:
                                  u = np.array([[]])
 
