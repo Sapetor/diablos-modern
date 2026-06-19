@@ -116,7 +116,7 @@ class TestFieldScope2D:
             block.execute(time=t, inputs={0: field}, params=params)
 
         stored_times = params['_time_history_']
-        assert stored_times == times, f"Stored times should match input times"
+        assert stored_times == times, "Stored times should match input times"
 
         # Verify field values match times
         for i, t in enumerate(times):

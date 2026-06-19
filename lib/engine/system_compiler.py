@@ -7,9 +7,7 @@ from scipy import signal
 from lib.safe_eval import safe_literal, compile_expr, SafeEvalError
 from lib.engine.pde_helpers import (
     parse_pde_initial_condition,
-    parse_pde_2d_initial_condition,
-    get_input_source,
-    ensure_field_array
+    parse_pde_2d_initial_condition
 )
 
 logger = logging.getLogger(__name__)

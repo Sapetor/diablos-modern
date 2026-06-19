@@ -5,7 +5,7 @@ This module provides common type aliases used throughout the codebase
 for improved code readability and type checking.
 """
 
-from typing import Dict, List, Tuple, Union, Any, Optional, Callable, TypeVar
+from typing import Dict, List, Tuple, Union, Any, Callable, TypeVar
 import numpy as np
 from numpy.typing import NDArray
 

@@ -10,7 +10,7 @@ Returns None from export() when the diagram is too complex.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from lib.export.tikz_exporter import (
     _poly_to_latex,

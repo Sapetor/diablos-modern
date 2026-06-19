@@ -6,7 +6,7 @@ particularly for blocks with multiple input/output ports.
 """
 
 import pytest
-from PyQt5.QtCore import QRect, QPoint
+from PyQt5.QtCore import QRect
 
 from lib.simulation.block import DBlock
 from blocks.subsystem import Subsystem

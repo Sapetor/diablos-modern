@@ -12,11 +12,11 @@ text directly).
 """
 
 import logging
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QCursor, QFont, QKeySequence
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QCursor, QFont
 from PyQt5.QtWidgets import (
     QMenu, QAction, QActionGroup, QWidgetAction, QWidget, QHBoxLayout,
-    QLabel, QLineEdit, QFrame
+    QLabel, QLineEdit
 )
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font
@@ -37,9 +37,7 @@ def _menu_stylesheet() -> str:
     bg = theme_manager.get_color('surface_elevated').name()
     text = theme_manager.get_color('text_primary').name()
     text_dim = theme_manager.get_color('text_secondary').name()
-    accent = theme_manager.get_color('accent_primary').name()
     border = theme_manager.get_color('border_primary').name()
-    error = theme_manager.get_color('error').name()
     # 12% accent overlay — approximated via a fixed alpha-blended hex
     accent_qc = theme_manager.get_color('accent_primary')
     accent_bg = accent_qc.name()  # selection highlight uses solid accent on hover
@@ -104,7 +102,6 @@ def _build_kbd_row(menu: QMenu, label_text: str, kbd_text: str = "", *,
     text_dim = theme_manager.get_color('text_secondary').name()
     text_disabled = theme_manager.get_color('text_disabled').name()
     error = theme_manager.get_color('error').name()
-    surface = theme_manager.get_color('surface_elevated').name()
     accent = theme_manager.get_color('accent_primary').name()
     border = theme_manager.get_color('border_primary').name()
 
@@ -168,7 +165,6 @@ class _CanvasSearchWidget(QWidget):
         bg = theme_manager.get_color('surface_secondary').name()
         text = theme_manager.get_color('text_primary').name()
         border = theme_manager.get_color('border_primary').name()
-        dim = theme_manager.get_color('text_disabled').name()
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 6)
@@ -525,7 +521,7 @@ class MenuManager:
             try:
                 self.canvas._delete_line(line)
             except Exception:
-                pass
+                logger.debug("Failed to delete a connection line while removing block", exc_info=True)
         self.canvas.update()
 
     def _rename_block(self, block):
@@ -539,7 +535,7 @@ class MenuManager:
                 try:
                     main_win._on_property_changed(block.name, '_username_', block.username)
                 except Exception:
-                    pass
+                    logger.debug("Failed to propagate renamed block username to main window", exc_info=True)
             self.canvas.dsim.dirty = True
             self.canvas.update()
 

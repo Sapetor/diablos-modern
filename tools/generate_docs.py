@@ -118,9 +118,9 @@ def generate_category_page(category, blocks):
         
         # Params
         if hasattr(block, 'params') and block.params:
-            lines.append(f"#### Parameters")
-            lines.append(f"| Name | Type | Default | Description |")
-            lines.append(f"|------|------|---------|-------------|")
+            lines.append("#### Parameters")
+            lines.append("| Name | Type | Default | Description |")
+            lines.append("|------|------|---------|-------------|")
             
             for param, info in block.params.items():
                 if param.startswith('_'): continue

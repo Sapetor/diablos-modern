@@ -1,6 +1,5 @@
 """Tests for LinearSystemSolver block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
 

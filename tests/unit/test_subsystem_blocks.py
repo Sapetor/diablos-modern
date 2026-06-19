@@ -8,7 +8,7 @@ These blocks are DBlock subclasses used for hierarchical diagram organization:
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from PyQt5.QtCore import QRect
 
 

@@ -4,20 +4,15 @@ import numpy as np
 import os
 import time
 import sys
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from tqdm import tqdm
 from PyQt5.QtWidgets import QDialog
-from PyQt5.QtCore import QPoint
 from lib.workspace import WorkspaceManager
 from lib.dialogs import SimulationDialog
 import logging
 
 # Import refactored classes from new modules
-from lib.simulation.connection import DLine
 from lib.ui.button import Button
-from blocks.subsystem import Subsystem
-from blocks.inport import Inport
-from blocks.outport import Outport
 
 # Import block size configuration
 
@@ -506,7 +501,7 @@ class DSim:
             root_blocks, root_lines = self.get_root_context()
 
             # Resolve params for ALL blocks in hierarchy
-            logger.debug(f"Resolving parameters for hierarchy...")
+            logger.debug("Resolving parameters for hierarchy...")
             _t1 = time.time()
             if not self._resolve_block_params(root_blocks, workspace_manager, self.sim_dt):
                  return False
@@ -699,7 +694,7 @@ class DSim:
                 self.line_list = self.model.line_list
                 self.connections_list = self.line_list
             except Exception:
-                pass
+                logger.debug("Auto-connecting Goto/From tags failed", exc_info=True)
 
             self.max_hier = self.engine.max_hier
             self.execution_initialized = True
@@ -861,7 +856,7 @@ class DSim:
                     return False
                 # Start paused
                 self.execution_pause = True
-                logger.info(f"Simulation initialized at t=0, ready to step")
+                logger.info("Simulation initialized at t=0, ready to step")
 
             # Temporarily unpause
             self.execution_pause = False
@@ -1107,7 +1102,7 @@ class DSim:
                         if isinstance(port_def, dict):
                             dst_width = port_def.get('width', None)
                 except Exception:
-                    pass
+                    logger.debug("Could not determine destination port width for dimension check", exc_info=True)
             
             # Check for dimension mismatch (only if both specify a width)
             if src_width is not None and dst_width is not None:
@@ -1308,7 +1303,7 @@ class DSim:
         result = opt_engine.run_optimization(blocks=root_blocks)
 
         if result.get('success'):
-            logger.info(f"Optimization completed successfully!")
+            logger.info("Optimization completed successfully!")
             logger.info(f"Optimal cost: {result.get('optimal_cost')}")
             logger.info(f"Optimal parameters: {result.get('optimal_params')}")
         else:

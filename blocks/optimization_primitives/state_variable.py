@@ -8,7 +8,7 @@ Each simulation step corresponds to one optimization iteration.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from lib.safe_eval import safe_literal, SafeEvalError
+from lib.safe_eval import safe_literal
 
 logger = logging.getLogger(__name__)
 

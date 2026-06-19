@@ -309,7 +309,6 @@ class DBlock:
         # Constants for layout
         PORT_SPACING = 20  # Vertical spacing between ports
         PORT_MARGIN = 12   # Top/bottom margin
-        MIN_HEIGHT = 40    # Absolute minimum height
         
         # Calculate required height for inputs and outputs
         max_ports = max(self.in_ports, self.out_ports)

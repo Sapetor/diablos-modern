@@ -16,7 +16,7 @@ Styling follows the project convention: every color comes from
 """
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
+    QDialog, QVBoxLayout, QLabel, QFrame,
     QGridLayout, QScrollArea, QWidget, QDialogButtonBox,
 )
 from PyQt5.QtCore import Qt

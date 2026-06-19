@@ -165,7 +165,8 @@ def main():
         # Objective-C runtime before creating any windows.
         if getattr(sys, 'frozen', False) and sys.platform == 'darwin':
             try:
-                import ctypes, ctypes.util
+                import ctypes
+                import ctypes.util
                 objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('objc'))
                 objc.objc_getClass.restype = ctypes.c_void_p
                 objc.sel_registerName.restype = ctypes.c_void_p

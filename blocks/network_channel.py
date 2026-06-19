@@ -175,11 +175,9 @@ class NetworkChannelBlock(BaseBlock):
 
         # ---- Deliver: take the most-recent packet whose time has passed ---
         # Buffer is sorted by delivery_time; consume everything that is due.
-        delivered_value = None
         keep_from = 0
         for dtime_pkt, value in buffer:
             if dtime_pkt <= time + 1e-12:
-                delivered_value = value
                 params["_held_"] = value
                 params["_delivered_any_"] = True
                 keep_from += 1

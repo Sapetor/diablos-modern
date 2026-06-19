@@ -7,7 +7,7 @@ Export package - LaTeX, MathML, and Mathematica equation export utilities.
 try:
     from lib.export.latex_exporter import LaTeXExporter, MathMLExporter, MathematicaExporter
     __all__ = ['LaTeXExporter', 'MathMLExporter', 'MathematicaExporter']
-except ImportError as e:
+except ImportError:
     LaTeXExporter = None
     MathMLExporter = None
     MathematicaExporter = None

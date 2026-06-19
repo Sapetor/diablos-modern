@@ -74,7 +74,7 @@ class AppearanceManager:
             try:
                 os.remove(tmp)
             except FileNotFoundError:
-                pass
+                logger.debug("Temp preferences file already absent during cleanup", exc_info=True)
 
     # -- theme-driven restyling --------------------------------------------
 

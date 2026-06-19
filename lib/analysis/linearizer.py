@@ -519,7 +519,6 @@ class Linearizer:
 
         # Real parts
         real_parts = np.real(eigenvalues)
-        imag_parts = np.imag(eigenvalues)
 
         # Stability
         is_stable = np.all(real_parts < 0)

@@ -111,7 +111,7 @@ def test_fast_solver():
 if __name__ == "__main__":
     try:
         test_fast_solver()
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
         sys.exit(1)

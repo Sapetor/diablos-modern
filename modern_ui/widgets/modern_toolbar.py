@@ -33,7 +33,7 @@ import math
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt5.QtGui import (
-    QIcon, QPixmap, QPainter, QColor, QPen, QBrush, QPainterPath, QPolygonF
+    QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
 )
 from modern_ui.themes.theme_manager import (
     theme_manager, get_mono_font, TYPE,

@@ -3,7 +3,6 @@ Unit tests for ThemeManager block-palette system.
 """
 
 import pytest
-from unittest.mock import MagicMock
 
 
 # ---------------------------------------------------------------------------

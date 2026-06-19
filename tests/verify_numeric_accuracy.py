@@ -136,6 +136,6 @@ def run_verification():
 if __name__ == "__main__":
     try:
         run_verification()
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()

@@ -5,7 +5,6 @@ Uses SimpleNamespace mock objects to avoid Qt dependency.
 Tests are organized by component, with regression tests for known bugs.
 """
 
-import pytest
 from types import SimpleNamespace
 
 from lib.export.tikz_exporter import (

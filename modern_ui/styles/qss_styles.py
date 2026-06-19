@@ -14,9 +14,13 @@ Same public class (ModernStyles) and entry point (apply_modern_theme), but:
       QPushButton#CommandPaletteBtn
 """
 
+import logging
+
 from PyQt5.QtGui import QPalette, QColor
 
 from modern_ui.themes.theme_manager import theme_manager
+
+logger = logging.getLogger(__name__)
 
 
 class ModernStyles:
@@ -598,6 +602,6 @@ def apply_modern_theme(app):
                 if isinstance(w, QMainWindow):
                     w.setStyleSheet(qss)
             except RuntimeError:
-                pass
+                logger.debug("Skipped restyling a top-level window (likely deleted)", exc_info=True)
 
     theme_manager.theme_changed.connect(on_theme_changed)

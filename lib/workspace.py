@@ -1,7 +1,7 @@
 import logging
 import ast
 import os
-from lib.safe_eval import safe_expr, SafeEvalError
+from lib.safe_eval import safe_expr
 
 logger = logging.getLogger(__name__)
 

@@ -128,7 +128,7 @@ class SignalPlot(QWidget):
         try:
             theme_manager.theme_changed.disconnect(self._apply_theme)
         except (TypeError, RuntimeError):
-            pass
+            logger.debug("No theme_changed connection to disconnect on close", exc_info=True)
         super().closeEvent(event)
 
     # Curve palette: saturated colors with good contrast on both dark and light

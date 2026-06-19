@@ -94,7 +94,6 @@ class ExportBlock(BaseBlock):
 
         # Initialization of the saving vector
         if params.get('_init_start_', True):
-            aux_vector = np.array([inputs[0]])
             try:
                 params['vec_dim'] = len(inputs[0])
             except TypeError:

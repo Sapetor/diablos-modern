@@ -35,7 +35,7 @@ class ScopePlotter:
             try:
                 plt.close(fig)
             except Exception:
-                pass
+                logger.debug("Failed to close a tracked matplotlib figure", exc_info=True)
         self._open_figs = []
 
     def _register_figure(self, fig):
@@ -51,14 +51,14 @@ class ScopePlotter:
                 lambda event, f=fig: self._on_figure_closed(f)
             )
         except Exception:
-            pass
+            logger.debug("Failed to connect close_event handler for figure", exc_info=True)
 
     def _on_figure_closed(self, fig):
         """Drop a figure from the tracking list once its window is closed."""
         try:
             self._open_figs.remove(fig)
         except ValueError:
-            pass
+            logger.debug("Closed figure was not in the tracking list", exc_info=True)
 
     def _close_plotty(self):
         """Close the previous SignalPlot window if one exists.
@@ -72,12 +72,12 @@ class ScopePlotter:
             try:
                 self.plotty.destroyed.disconnect()
             except (TypeError, RuntimeError):
-                pass
+                logger.debug("No destroyed signal to disconnect on previous plot window", exc_info=True)
             try:
                 self.plotty.close()
                 self.plotty.deleteLater()
             except Exception:
-                pass
+                logger.debug("Failed to close/delete previous plot window", exc_info=True)
             self.plotty = None
             if hasattr(self.dsim, 'plotty'):
                 self.dsim.plotty = None
@@ -312,8 +312,6 @@ class ScopePlotter:
                 matplotlib.use('Qt5Agg')
         except Exception:
             pass  # Already using a backend
-        from matplotlib.colors import Normalize
-        import matplotlib.cm as cm
 
         params = getattr(block, 'exec_params', block.params)
 
@@ -519,7 +517,7 @@ class ScopePlotter:
             if matplotlib.get_backend() != 'Qt5Agg':
                 matplotlib.use('Qt5Agg')
         except Exception:
-            pass
+            logger.debug("Could not switch matplotlib backend to Qt5Agg", exc_info=True)
 
         params = getattr(block, 'exec_params', block.params)
 
@@ -989,7 +987,7 @@ class ScopePlotter:
                 # Sample values at key times
                 timeline = self.dsim.timeline
                 if len(timeline) > 0:
-                    print(f"\n  Sample Values:")
+                    print("\n  Sample Values:")
                     print(f"  {'Time':>8}  {'Signal 1':>12}  {'Signal 2':>12}  {'Error':>12}")
                     print(f"  {'-'*8}  {'-'*12}  {'-'*12}  {'-'*12}")
 

@@ -31,9 +31,14 @@ Changes vs v2:
 
 import math
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtCore import QObject, pyqtSignal
+
+if TYPE_CHECKING:
+    # Imported lazily at runtime inside make_shadow(); declared here only so the
+    # string return annotation resolves for type checkers and linters.
+    from PyQt5.QtWidgets import QGraphicsDropShadowEffect
 
 
 class ThemeType(Enum):

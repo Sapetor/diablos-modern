@@ -209,7 +209,6 @@ class SimulationEngine:
             
             for block in blocks_to_exec:
                 logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
-                children = {}
                 out_value = {}
 
                 # Determine whether this block can run with no upstream data.
@@ -238,7 +237,6 @@ class SimulationEngine:
                     block.computed_data = True
                     block.hierarchy = 0
                     self.update_global_list(block.name, h_value=0, h_assign=True)
-                    children = self.get_outputs(block.name)
 
                 elif block.name in self.memory_blocks:
                     # Execute memory block (output_only=True)
@@ -248,7 +246,6 @@ class SimulationEngine:
                     if out_value is False:
                          return False
 
-                    children = self.get_outputs(block.name)
                     block.computed_data = True
                     self.update_global_list(block.name, h_value=0, h_assign=True)
 
@@ -1809,7 +1806,7 @@ class SimulationEngine:
                                     if 0 <= idx < max_len:
                                         result.append(u[idx])
                                 except ValueError:
-                                    pass
+                                    logger.debug("Failed to parse demux index from spec; skipping this part", exc_info=True)
 
                         if len(result) == 1:
                             out_val = result[0]

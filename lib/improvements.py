@@ -50,7 +50,7 @@ class ValidationHelper:
     
     @staticmethod
     def validate_block_connections(blocks_list: List[Any], line_list: List[Any]) -> Tuple[bool, List[str]]:
-        logger.debug(f"ValidationHelper.validate_block_connections called.")
+        logger.debug("ValidationHelper.validate_block_connections called.")
         logger.debug(f"  blocks_list: {[b.name for b in blocks_list if hasattr(b, 'name')]}")
         logger.debug(f"  line_list: {[l.name for l in line_list if hasattr(l, 'name')]}")
         errors = []

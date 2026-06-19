@@ -1,5 +1,4 @@
 from blocks.statespace_base import StateSpaceBaseBlock
-import numpy as np
 from scipy import signal
 import logging
 

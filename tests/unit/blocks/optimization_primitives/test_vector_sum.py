@@ -1,6 +1,5 @@
 """Tests for VectorSum block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.vector_sum import VectorSumBlock
 

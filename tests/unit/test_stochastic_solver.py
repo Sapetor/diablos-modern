@@ -1,7 +1,6 @@
 """Tests for the stochastic (Noise) solver fallback in compiled simulation."""
 
 import numpy as np
-import pytest
 
 
 class TestStochasticSolverDetection:

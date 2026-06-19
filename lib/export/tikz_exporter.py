@@ -9,7 +9,7 @@ import math
 import re
 import logging
 from collections import Counter, deque
-from typing import Dict, List, Any, Optional
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 

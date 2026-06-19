@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QAbstractSpinBox, QLabel, QLineEdit, QComboBox, QCheckBox,
     QFrame, QFormLayout, QSpinBox, QDoubleSpinBox,
     QVBoxLayout, QHBoxLayout, QToolButton, QWidget,
-    QSlider, QPushButton, QSizePolicy, QApplication
+    QSlider, QPushButton, QSizePolicy
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QColor, QFont, QPalette
@@ -355,8 +355,6 @@ class PropertyEditor(QFrame):
         success = theme_manager.get_color('success').name()
         warning = theme_manager.get_color('warning').name()
         error = theme_manager.get_color('error').name()
-        border = theme_manager.get_color('border_primary').name()
-        accent = theme_manager.get_color('accent_primary').name()
 
         # ── Header
         header = QWidget()

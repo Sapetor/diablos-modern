@@ -4,7 +4,7 @@ import numpy as np
 from scipy.linalg import solve_continuous_are
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTextEdit, QGroupBox, QApplication, QFormLayout
+    QTextEdit, QGroupBox, QApplication
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -104,7 +104,7 @@ class LQRAnalyzer(BaseAnalyzer):
                     if src and src.block_fn in ("StateSpace", "DiscreteStateSpace"):
                         return src
                 except AttributeError:
-                    pass
+                    logger.debug("Could not resolve source block for LQR line; skipping", exc_info=True)
         return None
 
     def _resolve_matrix(self, value, canvas):
@@ -121,7 +121,7 @@ class LQRAnalyzer(BaseAnalyzer):
                 parsed = ast.literal_eval(value)
                 return np.atleast_2d(np.array(parsed, dtype=float))
             except (ValueError, SyntaxError):
-                pass
+                logger.debug("Matrix value is not a literal; trying workspace variable lookup", exc_info=True)
 
             # Try workspace variable
             try:
@@ -131,7 +131,7 @@ class LQRAnalyzer(BaseAnalyzer):
                 if ws_val is not None:
                     return np.atleast_2d(np.array(ws_val, dtype=float))
             except Exception:
-                pass
+                logger.debug("Workspace variable lookup for matrix value failed", exc_info=True)
 
             raise ValueError(f"Cannot parse '{value}' as matrix or workspace variable")
 

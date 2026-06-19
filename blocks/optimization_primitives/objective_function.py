@@ -8,7 +8,7 @@ Variables x1, x2, ... are mapped to components of the input vector.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from lib.safe_eval import safe_expr, SafeEvalError
+from lib.safe_eval import safe_expr
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ Orchestrates rendering of blocks, connections, and visual indicators.
 """
 
 import logging
-from typing import Optional, Set, List, Any, TYPE_CHECKING
+from typing import List, Any, TYPE_CHECKING
 from PyQt5.QtCore import QRect, QPoint, Qt
 from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QToolTip

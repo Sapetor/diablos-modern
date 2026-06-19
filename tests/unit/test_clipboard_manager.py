@@ -5,7 +5,7 @@ Unit tests for ClipboardManager - copy/paste functionality.
 import pytest
 import sys
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QRect, QPoint
 

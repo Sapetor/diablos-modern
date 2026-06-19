@@ -4,7 +4,6 @@ Integration tests that compile TikZ/blox output with pdflatex.
 Skipped automatically when pdflatex is not available.
 """
 
-import os
 import shutil
 import subprocess
 import pytest

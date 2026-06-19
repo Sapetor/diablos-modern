@@ -667,5 +667,5 @@ def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
             func_node = node.func
             if not isinstance(func_node, (ast.Name, ast.Attribute)):
                 raise SafeEvalError(
-                    f"Call callee must be a Name or np./math. attribute"
+                    "Call callee must be a Name or np./math. attribute"
                 )

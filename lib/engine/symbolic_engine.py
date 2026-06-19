@@ -23,11 +23,10 @@ logger = logging.getLogger(__name__)
 # Import SymPy (optional dependency)
 try:
     import sympy
-    from sympy import Symbol, symbols, simplify, expand, factor
-    from sympy import Matrix, eye, zeros
+    from sympy import Symbol, simplify
+    from sympy import Matrix, eye
     from sympy import latex, mathml
-    from sympy import Eq, solve, Function
-    from sympy import diff, integrate
+    from sympy import diff
     SYMPY_AVAILABLE = True
 except ImportError:
     SYMPY_AVAILABLE = False

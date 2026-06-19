@@ -1,4 +1,3 @@
-import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.param_templates import limit_params
 from blocks.input_helpers import get_vector, clip_to_limits

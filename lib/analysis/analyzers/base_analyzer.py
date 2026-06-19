@@ -3,7 +3,7 @@ import numpy as np
 import scipy.signal as signal
 from PyQt5.QtWidgets import QVBoxLayout
 import pyqtgraph as pg
-from lib.safe_eval import safe_literal, SafeEvalError
+from lib.safe_eval import safe_literal
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +226,7 @@ class BaseAnalyzer:
                 try:
                     roots.append(np.roots(coeffs))
                 except (np.linalg.LinAlgError, ValueError):
-                    pass
+                    logger.debug("Failed to compute polynomial roots for frequency range; skipping these coeffs", exc_info=True)
 
         mags = np.array([], dtype=float)
         if roots:

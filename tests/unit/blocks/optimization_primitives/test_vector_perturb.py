@@ -1,6 +1,5 @@
 """Tests for VectorPerturb block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.vector_perturb import VectorPerturbBlock
 

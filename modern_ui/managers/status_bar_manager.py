@@ -81,7 +81,7 @@ class StatusBarManager:
             try:
                 window.toolbar.set_status(text)
             except Exception:
-                pass
+                logger.debug("Failed to forward status text to toolbar", exc_info=True)
             t = (text or "").lower()
             if 'run' in t and 'paus' not in t:
                 window.status_pill.set_state('running')
@@ -163,7 +163,7 @@ class StatusBarManager:
                 lambda f: window.zoom_status.setText(f"zoom {int(round(f*100))}%")
             )
         except Exception:
-            pass
+            logger.debug("Failed to wire toolbar zoom_changed to zoom status label", exc_info=True)
 
         # Cursor pos from canvas
         try:
@@ -171,7 +171,7 @@ class StatusBarManager:
                 lambda x, y: window.cursor_status.setText(f"cursor {x},{y}")
             )
         except Exception:
-            pass
+            logger.debug("Failed to wire canvas cursor_moved to cursor status label", exc_info=True)
 
         # Periodic counts refresh (cheap; runs on the same timer that paints)
         window._counts_refresh_timer = QTimer(window)
@@ -199,7 +199,7 @@ class StatusBarManager:
                 f"blocks {len(blocks)} · wires {len(wires)} · scopes {scopes}"
             )
         except Exception:
-            pass
+            logger.debug("Failed to refresh counts pill from dsim state", exc_info=True)
 
     def refresh_file_status(self):
         """Update filename + unsaved indicator in the status bar."""
@@ -210,4 +210,4 @@ class StatusBarManager:
             window.file_status.setText(name)
             window.file_unsaved_status.setText("unsaved" if getattr(window.dsim, 'dirty', False) else "")
         except Exception:
-            pass
+            logger.debug("Failed to refresh file/unsaved status in status bar", exc_info=True)

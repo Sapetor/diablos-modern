@@ -26,9 +26,7 @@ THE FIX
    ports) — tag it hidden=True so link_goto_from cleans it up.
 """
 
-from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 

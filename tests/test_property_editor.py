@@ -1,6 +1,5 @@
 
 import sys
-import math
 import unittest
 from PyQt5.QtWidgets import QApplication, QDoubleSpinBox, QSpinBox, QCheckBox, QLineEdit, QComboBox, QLabel
 from modern_ui.widgets.property_editor import PropertyEditor, CollapsibleSection, SliderSpinBox

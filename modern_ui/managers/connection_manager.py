@@ -4,7 +4,7 @@ Handles connection/wire creation, editing, and deletion.
 """
 
 import logging
-from typing import Optional, Tuple, List, Any, TYPE_CHECKING
+from typing import Optional, Tuple, Any, TYPE_CHECKING
 from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt

@@ -15,7 +15,7 @@ Workflow:
 
 import logging
 import numpy as np
-from typing import List, Dict, Any, Tuple, Callable, Optional
+from typing import List, Dict, Tuple, Callable
 from scipy import optimize
 
 logger = logging.getLogger(__name__)
@@ -501,7 +501,7 @@ class OptimizationEngine:
             self.optimizer_block.params['_n_iterations_'] = self.n_evaluations
             self.optimizer_block.params['_converged_'] = bool(result.success)
 
-        logger.info(f"Optimization complete!")
+        logger.info("Optimization complete!")
         logger.info(f"Optimal cost: {result.fun:.6g}")
         logger.info(f"Optimal parameters: {optimal_params}")
         logger.info(f"Function evaluations: {self.n_evaluations}")

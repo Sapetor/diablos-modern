@@ -297,8 +297,6 @@ class AdvectionEquation1DBlock(BaseBlock):
         dx = L / (N - 1)
         bc_type = params.get('bc_type', 'Dirichlet')
 
-        c_inlet = as_scalar(inputs.get('c_inlet', 0.0))
-
         dc_dt = np.zeros(N)
 
         if v >= 0:

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QFileDialog, QGroupBox, QRadioButton, QButtonGroup,
     QProgressBar, QMessageBox
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal
 
 logger = logging.getLogger(__name__)
 

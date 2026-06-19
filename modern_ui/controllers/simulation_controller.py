@@ -181,7 +181,6 @@ class SimulationController(QObject):
             # Build output with verification checks
             has_output = display_values or state_values or scope_convergence
             all_checks_passed = True
-            check_results = []
 
             if has_output:
                 print("\n" + "=" * 60, flush=True)
@@ -249,7 +248,6 @@ class SimulationController(QObject):
                         first = info['first']
                         last = info['last']
                         samples = info['samples']
-                        data = info['data']
 
                         # Check convergence criteria
                         first_norm = np.linalg.norm(np.atleast_1d(first))

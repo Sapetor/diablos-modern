@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QLabel, QCheckBox, QDoubleSpinBox, QLineEdit, QPushButton,
     QFileDialog, QGroupBox, QRadioButton, QButtonGroup,
     QTextEdit, QMessageBox, QApplication, QSplitter,
-    QDialogButtonBox, QWidget, QFrame, QScrollArea, QSizePolicy
+    QDialogButtonBox, QWidget, QFrame, QScrollArea
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont

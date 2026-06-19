@@ -94,7 +94,7 @@ class ConnectionRenderer:
             try:
                 return getter(port_idx)
             except Exception:
-                pass
+                logger.debug("get_held_output raised while reading port value; falling back", exc_info=True)
         held = getattr(block, '_held_outputs', None)
         if isinstance(held, dict) and port_idx in held:
             return held[port_idx]
@@ -117,7 +117,7 @@ class ConnectionRenderer:
                     return self._format_value(val[0])
                 return f"vec[{len(val)}]"
         except Exception:
-            pass
+            logger.debug("Failed to format port value for live chip", exc_info=True)
         return ""
 
     def draw_line(self, line, painter: QPainter):

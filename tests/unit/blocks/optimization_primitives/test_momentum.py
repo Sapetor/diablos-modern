@@ -1,6 +1,5 @@
 """Tests for Momentum block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.momentum import MomentumBlock
 

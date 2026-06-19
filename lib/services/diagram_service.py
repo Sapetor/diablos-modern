@@ -5,7 +5,6 @@ import os
 import re
 import sys
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
-from PyQt5.QtCore import QSize
 
 logger = logging.getLogger(__name__)
 

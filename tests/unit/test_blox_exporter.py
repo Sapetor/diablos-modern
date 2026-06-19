@@ -4,7 +4,6 @@ Unit tests for the blox exporter.
 Uses the same SimpleNamespace mock pattern as test_tikz_exporter.py.
 """
 
-import pytest
 from types import SimpleNamespace
 
 from lib.export.blox_exporter import BloxExporter

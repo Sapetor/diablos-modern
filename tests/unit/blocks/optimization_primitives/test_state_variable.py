@@ -1,6 +1,5 @@
 """Tests for StateVariable block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.state_variable import StateVariableBlock
 

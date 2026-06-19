@@ -512,7 +512,6 @@ class TestM1ParamResolutionOrder:
         workspace-variable strings.  Register matching workspace variables.
         Call initialize_execution and verify the TranFn lands in memory_blocks.
         """
-        import numpy as np
         from lib.engine.simulation_engine import SimulationEngine
         from lib.workspace import WorkspaceManager
 

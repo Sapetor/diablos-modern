@@ -1,6 +1,5 @@
 """Tests for VectorGain block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.vector_gain import VectorGainBlock
 

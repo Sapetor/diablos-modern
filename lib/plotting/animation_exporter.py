@@ -111,8 +111,6 @@ class AnimationExporter:
         Returns:
             tuple: (fig, animation) - matplotlib figure and FuncAnimation object
         """
-        import matplotlib.pyplot as plt
-        from matplotlib.animation import FuncAnimation
 
         if self.dimension == '2d':
             return self._create_2d_animation(fps, figsize, dpi)
@@ -374,10 +372,10 @@ class AnimationExporter:
 
         # Check Pillow for GIF
         try:
-            from PIL import Image
+            from PIL import Image  # noqa: F401  -- import success is the availability probe
             available['gif'] = True
         except ImportError:
-            pass
+            logger.debug("Pillow not available; GIF export disabled", exc_info=True)
 
         # Check ffmpeg for MP4
         try:
@@ -389,6 +387,6 @@ class AnimationExporter:
             )
             available['mp4'] = result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-            pass
+            logger.debug("ffmpeg not available; MP4 export disabled", exc_info=True)
 
         return available

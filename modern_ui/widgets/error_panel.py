@@ -57,7 +57,6 @@ class ErrorItemWidget(QFrame):
 
     def _apply_styling(self):
         """Apply theme-aware styling."""
-        bg_color = theme_manager.get_color('surface_secondary')
         text_color = theme_manager.get_color('text_primary')
         border_color = theme_manager.get_color('border_primary')
 

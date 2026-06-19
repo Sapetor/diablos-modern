@@ -1,6 +1,5 @@
 """Tests for Adam block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.adam import AdamBlock
 

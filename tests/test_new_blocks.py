@@ -83,7 +83,7 @@ def test_heat_equation():
 
     T_field = result[0]
     T_avg = result[1]
-    print(f"\nAfter 10 steps:")
+    print("\nAfter 10 steps:")
     print(f"T_avg: {T_avg:.4f}")
     print(f"T_field: {np.round(T_field, 2)}")
 
@@ -131,7 +131,7 @@ def test_wave_equation():
 
     u_field = result[0]
     energy_final = result[2]
-    print(f"\nAfter 10 steps:")
+    print("\nAfter 10 steps:")
     print(f"Energy: {energy_final:.4f}")
     print(f"Max displacement: {np.max(np.abs(u_field)):.4f}")
 
@@ -187,7 +187,7 @@ def test_field_integral():
     result = block.execute(0.0, inputs, params)
     integral = result[0]
 
-    print(f"Field: constant 2.0 over [0, 1]")
+    print("Field: constant 2.0 over [0, 1]")
     print(f"Integral: {integral}")
 
     if abs(integral - 2.0) < 0.1:
@@ -295,7 +295,7 @@ def test_draw_icons():
                         icon_errors.append(f"{inst.block_name}: {e}")
                 else:
                     missing_icons.append(inst.block_name)
-        except Exception as e:
+        except Exception:
             pass
 
     if missing_icons:

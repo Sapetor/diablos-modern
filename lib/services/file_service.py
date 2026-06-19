@@ -9,7 +9,6 @@ import sys
 import logging
 from typing import Dict, Optional, Any
 from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtGui import QColor
 from PyQt5.QtCore import QRect
 
 logger = logging.getLogger(__name__)

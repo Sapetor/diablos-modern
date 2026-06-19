@@ -87,7 +87,7 @@ def _save_settings_list(key, values) -> None:
     try:
         ui_settings().setValue(key, list(values))
     except Exception:
-        pass
+        logger.debug("Failed to persist settings list for key %r", key, exc_info=True)
 
 
 def _load_favorites() -> set:
@@ -211,12 +211,11 @@ class CompactBlockRow(QFrame):
             if tip:
                 self.setToolTip(tip)
         except Exception:
-            pass
+            logger.debug("Failed to build palette item tooltip", exc_info=True)
 
     # -- Styling ------------------------------------------------------------
 
     def _apply_styling(self):
-        bg = theme_manager.get_color('palette_item_bg').name()
         bg_hover = theme_manager.get_color('palette_item_hover').name()
         text = theme_manager.get_color('text_primary').name()
         accent = theme_manager.get_color('accent_primary').name()
@@ -500,7 +499,7 @@ def _block_category_name(menu_block) -> str:
             if cat:
                 return str(cat)
         except Exception:
-            pass
+            logger.debug("Failed to read category from block class; falling back to keyword match", exc_info=True)
     name = getattr(menu_block, 'fn_name', '').lower()
     if any(k in name for k in ['sine', 'step', 'ramp', 'impulse', 'constant', 'noise', 'prbs', 'wave']):
         return 'Sources'
@@ -796,7 +795,7 @@ class _CategorySection(QWidget):
                 _collapsed_settings_key(self.category_name), self._collapsed
             )
         except Exception:
-            pass
+            logger.debug("Failed to persist collapsed state for category %r", self.category_name, exc_info=True)
 
     def toggle_collapsed(self):
         """Flip collapsed state, persist it, and update the header + rows."""
@@ -1059,7 +1058,7 @@ class ModernBlockPalette(QWidget):
                     if hasattr(inst, 'category'):
                         cat = inst.category
                 except Exception:
-                    pass
+                    logger.debug("Failed to read category from block class while grouping; falling back to keyword match", exc_info=True)
             if not cat:
                 name = getattr(b, 'fn_name', '').lower()
                 for kws, label in [

@@ -10,7 +10,7 @@ Can also be used with expressions for automatic Jacobian approximation.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from lib.safe_eval import safe_expr, SafeEvalError
+from lib.safe_eval import safe_expr
 
 logger = logging.getLogger(__name__)
 

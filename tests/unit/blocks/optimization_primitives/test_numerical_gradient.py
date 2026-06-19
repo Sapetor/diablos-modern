@@ -1,6 +1,5 @@
 """Tests for NumericalGradient block."""
 
-import pytest
 import numpy as np
 from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
 

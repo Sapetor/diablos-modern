@@ -11,7 +11,6 @@ from lib.lib import DSim
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
 from blocks.gain import GainBlock
-from blocks.gain import GainBlock
 from blocks.step import StepBlock
 from blocks.base_block import BaseBlock
 

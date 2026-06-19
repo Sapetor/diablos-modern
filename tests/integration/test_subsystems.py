@@ -262,10 +262,10 @@ class TestSubsystemEdgeCases:
 
         # Verify scope collected scaled sine values
         vector = scope_params['vector']
-        assert len(vector) == 10, f"Should have 10 samples"
+        assert len(vector) == 10, "Should have 10 samples"
 
         # Peak should be 5.0 (amplitude * gain)
-        assert max(np.abs(vector)) <= 5.0 + 0.1, f"Max should be ~5.0"
+        assert max(np.abs(vector)) <= 5.0 + 0.1, "Max should be ~5.0"
 
 
 @pytest.mark.integration

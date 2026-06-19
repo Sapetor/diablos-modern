@@ -124,7 +124,7 @@ class ProjectManager:
                 if os.path.exists(self.autosave_path):
                     os.remove(self.autosave_path)
             except OSError:
-                pass
+                logger.debug("Failed to remove corrupt auto-save file during recovery cleanup", exc_info=True)
             QMessageBox.warning(
                 self.window,
                 "Recovery Failed",

@@ -10,7 +10,7 @@ Provides export capabilities for:
 
 import logging
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -419,7 +419,6 @@ class MathematicaExporter:
             Mathematica code string
         """
         try:
-            import sympy
             from sympy.printing.mathematica import mathematica_code
             return mathematica_code(expr)
         except ImportError:

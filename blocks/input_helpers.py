@@ -17,8 +17,11 @@ Usage:
         # ... rest of execute
 """
 
+import logging
 import numpy as np
 from typing import Union, Optional, Dict, Any, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def get_scalar(
@@ -185,7 +188,7 @@ def normalize_to_shape(
     try:
         return np.broadcast_to(arr, target_shape).copy()
     except ValueError:
-        pass
+        logger.debug("Could not broadcast array to target shape; trying interpolation", exc_info=True)
 
     # Flatten and interpolate for 1D target
     if len(target_shape) == 1:

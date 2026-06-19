@@ -35,7 +35,6 @@ step under u=0, then frozen. Correct dynamics under LQR feedback drive
 x toward 0 (analytical x(12) ~ [-0.032, 0.014]).
 """
 
-import sys
 from pathlib import Path
 
 import numpy as np

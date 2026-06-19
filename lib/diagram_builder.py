@@ -311,7 +311,7 @@ def create_platoon_diagram(n_vehicles: int = 5, save_path: str = "saves/platoon.
     builder.connect(f"pos{n_vehicles}", 0, "err1", 1)
     
     # Add scope to display all positions
-    scope = builder.add_block("Scope", x=520, y=250, name="scope",
+    builder.add_block("Scope", x=520, y=250, name="scope",
                               params={"title": "Vehicle Positions"},
                               in_ports=n_vehicles, height=100)
     

@@ -84,7 +84,6 @@ class WorkspaceEditor(QWidget):
         border_color = theme_manager.get_color("border_primary").name()
         text_color = theme_manager.get_color("text_primary").name()
         table_bg = theme_manager.get_color("surface").name()
-        alt_bg = theme_manager.get_color("surface_variant").name()
         
         # Toolbar styling
         self.toolbar.setStyleSheet(f"""

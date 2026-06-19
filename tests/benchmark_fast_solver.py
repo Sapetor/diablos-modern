@@ -82,7 +82,7 @@ def run_benchmark():
     # DSim constructor is complex (Canvas, etc).
     # Let's just use engine directly or mock execution_batch logic.
     
-    logger.info(f"System: 1 Sine -> 10 Integrators -> Scope (dt=0.001, T=10.0s, Steps=10,000)")
+    logger.info("System: 1 Sine -> 10 Integrators -> Scope (dt=0.001, T=10.0s, Steps=10,000)")
     
     # 1. Fast Solver
     start_time = time.time()
@@ -127,7 +127,7 @@ def run_benchmark():
 if __name__ == "__main__":
     try:
         run_benchmark()
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
         sys.exit(1)

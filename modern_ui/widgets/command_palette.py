@@ -13,13 +13,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
 from PyQt5.QtGui import QFont, QKeyEvent
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget,
-    QListWidgetItem, QLabel, QWidget, QFrame, QSizePolicy
+    QListWidgetItem, QLabel, QWidget, QFrame
 )
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
@@ -361,7 +361,7 @@ class CommandPalette(QDialog):
             r_idx = self._recents.index(cmd.get('name', ''))
             base += max(0, 20 - r_idx)
         except ValueError:
-            pass
+            logger.debug("Command not in recents list; no recents bonus applied", exc_info=True)
         return base
 
     def _refresh(self):

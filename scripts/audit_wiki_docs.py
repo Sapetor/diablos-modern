@@ -223,7 +223,7 @@ def print_report(issues):
 
     # Summary
     total_issues = len(issues['missing_wiki_files']) + len(issues['missing_anchors'])
-    print(f"\n## Summary\n")
+    print("\n## Summary\n")
     print(f"- Total blocks scanned: {len(issues['working_links']) + total_issues}")
     print(f"- Working links: {len(issues['working_links'])}")
     print(f"- Issues found: {total_issues}")
