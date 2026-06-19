@@ -66,6 +66,7 @@ class FieldProbe2DBlock(BaseBlock):
             "position_mode": {
                 "type": "string",
                 "default": "normalized",
+                "options": ["normalized", "absolute"],
                 "doc": "Position mode: 'absolute' or 'normalized'"
             },
             "Lx": {

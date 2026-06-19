@@ -136,6 +136,26 @@ def _export():
     return ExportBlock()
 
 
+def _switch():
+    from blocks.switch import SwitchBlock
+    return SwitchBlock()
+
+
+def _field_probe():
+    from blocks.pde.field_processing import FieldProbeBlock
+    return FieldProbeBlock()
+
+
+def _field_max():
+    from blocks.pde.field_processing import FieldMaxBlock
+    return FieldMaxBlock()
+
+
+def _field_probe_2d():
+    from blocks.pde.field_processing_2d import FieldProbe2DBlock
+    return FieldProbe2DBlock()
+
+
 # Keyed by block_name so the coverage test can cross-reference the live library.
 SPECS = {
     "MathFunction": _spec(_math_function, inputs={0: np.array([0.5])}),
@@ -165,6 +185,13 @@ SPECS = {
         _from_file, params={"time_col": "t", "signal_col": "y"}, needs_csv=True,
     ),
     "Export": _spec(_export, inputs={0: np.array([1.0])}),
+    # Newly-constrained dropdowns (mode/position_mode gained explicit options).
+    "Switch": _spec(
+        _switch, inputs={0: np.array([0.0]), 1: np.array([1.0]), 2: np.array([2.0])},
+    ),
+    "FieldProbe": _spec(_field_probe, inputs={0: np.array([0.0, 1.0, 2.0, 3.0, 4.0])}),
+    "FieldMax": _spec(_field_max, inputs={0: np.array([1.0, 2.0, 3.0])}),
+    "FieldProbe2D": _spec(_field_probe_2d, inputs={0: np.ones((4, 4))}),
 }
 
 

@@ -63,6 +63,7 @@ class FieldProbeBlock(BaseBlock):
             "position_mode": {
                 "type": "string",
                 "default": "normalized",
+                "options": ["normalized", "absolute"],
                 "doc": "Position mode: 'absolute' or 'normalized'"
             },
             "L": {
@@ -279,6 +280,7 @@ class FieldMaxBlock(BaseBlock):
             "mode": {
                 "type": "string",
                 "default": "max",
+                "options": ["max", "min"],
                 "doc": "Mode: 'max' or 'min'"
             },
             "L": {

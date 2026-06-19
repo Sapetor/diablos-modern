@@ -5,13 +5,16 @@
     "max_simulation_time": 1000.0,
     "min_timestep": 1e-06,
     "max_timestep": 1.0,
-    "default_solver": "SOLVE_IVP",
+    "default_solver": "RK45",
     "available_solvers": [
-      "FWD_RECT",
-      "BWD_RECT",
-      "TUSTIN",
       "RK45",
-      "SOLVE_IVP"
+      "RK23",
+      "DOP853",
+      "Radau",
+      "BDF",
+      "LSODA",
+      "RK4",
+      "Euler"
     ]
   },
   "display": {

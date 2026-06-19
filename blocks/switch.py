@@ -43,7 +43,7 @@ class SwitchBlock(BaseBlock):
         return {
             "threshold": {"type": "float", "default": 0.0, "doc": "Control threshold (threshold mode)."},
             "n_inputs": {"type": "int", "default": 2, "doc": "Number of data inputs (>=2)."},
-            "mode": {"type": "string", "default": "threshold", "doc": "'threshold' or 'index'."},
+            "mode": {"type": "string", "default": "threshold", "options": ["threshold", "index"], "doc": "'threshold' or 'index'."},
         }
 
     @property
