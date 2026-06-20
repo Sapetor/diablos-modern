@@ -37,10 +37,11 @@ class TestKernelRegistry:
             assert get_kernel_builder(name) is KERNEL_BUILDERS[name]
 
     def test_unknown_fn_returns_none(self):
+        # Unknown fn-names get no builder and fall through to the generic no-op
+        # executor in _create_block_executor. (The legacy if/elif ladder is now
+        # empty: every compilable block is registered here.)
         assert get_kernel_builder("NotABlock") is None
-        # Not-yet-migrated blocks must fall through (None) to the legacy if/elif.
-        # Fieldslice is migrated last; update/remove once the ladder is empty.
-        assert get_kernel_builder("Fieldslice") is None
+        assert get_kernel_builder("TotallyMadeUp") is None
 
     def test_kernel_decorator_registers_all_names(self):
         @kernel("AaaTmp1", "AaaTmp2")
@@ -399,3 +400,64 @@ class TestStateKernels:
         ex(0.0, y, dy, sig)
         assert sig["rl0"] == 0.0       # output = state
         assert dy[0] == 5.0            # clip((1-0)*1000, -inf, 5) = 5
+
+
+@pytest.mark.unit
+class TestFieldKernels:
+    def test_fieldprobe_interpolates(self):
+        ex = get_kernel_builder("Fieldprobe")(_ctx_io("fp", {"position": 0.5}, ["f"]))
+        sig = {"f": np.array([0.0, 1.0, 2.0, 3.0, 4.0])}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["fp"], 2.0)   # midpoint of 0..4 grid
+
+    def test_fieldintegral_trapezoid(self):
+        ex = get_kernel_builder("Fieldintegral")(_ctx_io("fi", {"L": 1.0}, ["f"]))
+        sig = {"f": np.array([1.0, 1.0, 1.0])}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["fi"], 1.0)   # area under constant 1 over [0,1]
+
+    def test_fieldmax_value_and_aux_outputs(self):
+        ex = get_kernel_builder("Fieldmax")(_ctx_io("fm", {"mode": "max", "L": 1.0}, ["f"]))
+        sig = {"f": np.array([1.0, 5.0, 2.0])}
+        ex(0.0, None, None, sig)
+        assert sig["fm"] == 5.0
+        assert sig["fm_idx"] == 1
+        assert np.isclose(sig["fm_loc"], 0.5)
+
+    def test_fieldgradient(self):
+        ex = get_kernel_builder("Fieldgradient")(_ctx_io("fg", {"L": 1.0}, ["f"]))
+        sig = {"f": np.array([0.0, 1.0, 2.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["fg"], np.array([2.0, 2.0, 2.0]))  # slope 2 (dx=0.5)
+
+    def test_fieldlaplacian(self):
+        ex = get_kernel_builder("Fieldlaplacian")(_ctx_io("fl", {"L": 1.0}, ["f"]))
+        sig = {"f": np.array([0.0, 1.0, 4.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["fl"], np.array([8.0, 8.0, 8.0]))  # (4-2+0)/0.25
+
+    def test_fieldscope_passthrough(self):
+        ex = get_kernel_builder("Fieldscope")(_ctx_io("fs", {}, ["f"]))
+        sig = {"f": np.array([1.0, 2.0, 3.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["fs"], np.array([1.0, 2.0, 3.0]))
+
+    def test_fieldprobe2d_bilinear_center(self):
+        ex = get_kernel_builder("Fieldprobe2D")(
+            _ctx_io("fp2", {"x_position": 0.5, "y_position": 0.5}, ["f"]))
+        sig = {"f": np.array([[0.0, 2.0], [4.0, 6.0]])}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["fp2"], 3.0)   # mean of the 2x2 grid
+
+    def test_fieldscope2d_passthrough(self):
+        ex = get_kernel_builder("Fieldscope2D")(_ctx_io("fs2", {}, ["f"]))
+        sig = {"f": np.array([[1.0, 2.0], [3.0, 4.0]])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["fs2"], np.array([[1.0, 2.0], [3.0, 4.0]]))
+
+    def test_fieldslice_row(self):
+        ex = get_kernel_builder("Fieldslice")(
+            _ctx_io("fsl", {"slice_direction": "x", "slice_position": 0.0}, ["f"]))
+        sig = {"f": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["fsl"], np.array([1.0, 2.0, 3.0]))  # row j=0
