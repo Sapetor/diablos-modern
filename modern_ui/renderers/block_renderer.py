@@ -631,7 +631,10 @@ class BlockRenderer:
              path.moveTo(0.1, 0.8); path.lineTo(0.9, 0.8); path.moveTo(0.1, 0.2); path.lineTo(0.9, 0.2)
              path.moveTo(0.15, 0.5); path.quadTo(0.3, 0.2, 0.45, 0.2); path.lineTo(0.55, 0.2); path.quadTo(0.7, 0.8, 0.85, 0.8)
         elif block.block_fn == "RateLimiter":
-             path.moveTo(0.15, 0.75); path.lineTo(0.35, 0.75); path.lineTo(0.65, 0.25); path.lineTo(0.85, 0.25)
+             # draw_icon already supplies the slew-response shape; only build it
+             # here as a fallback so the same path is not stroked twice.
+             if path.isEmpty():
+                 path.moveTo(0.15, 0.75); path.lineTo(0.35, 0.75); path.lineTo(0.65, 0.25); path.lineTo(0.85, 0.25)
              path.moveTo(0.35, 0.75); path.lineTo(0.35, 0.25); path.lineTo(0.40, 0.25)
              self._draw_corner_label(block, painter, "du/dt")
         elif block.block_fn == "PID":
@@ -644,7 +647,9 @@ class BlockRenderer:
         elif block.block_fn == "External":
              path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.2); path.moveTo(0.2, 0.5); path.lineTo(0.6, 0.5)
              path.moveTo(0.2, 0.8); path.lineTo(0.8, 0.8); path.moveTo(0.2, 0.2); path.lineTo(0.2, 0.8)
-        elif block.block_fn == "Constant":
+        elif path.isEmpty() and block.block_fn == "Constant":
+             # When draw_icon supplies the flat-line "constant level" shape (the
+             # same convention as Step/Ramp/Sine), don't overlay a "K" on it.
              self._draw_centered_text(block, painter, "K", bold=True, size_delta=4)
         elif block.block_fn == "Delay":
              self._draw_centered_text(block, painter, "z⁻ⁿ", size_delta=2)
