@@ -456,17 +456,39 @@ class BlockRenderer:
                 painter.setPen(text_color)
                 painter.drawText(int(x), int(y), label)
 
+    @staticmethod
+    def _resize_handle_size():
+        """Resolve the resize-handle square size (config-driven, fallback 8px)."""
+        try:
+            from config.block_sizes import RESIZE_HANDLE_SIZE
+            return RESIZE_HANDLE_SIZE
+        except ImportError:
+            return 8
+
+    def _resize_handle_rects(self, block):
+        """Map handle name -> (x, y) top-left for the 8 resize handles.
+
+        Single source of truth shared by draw_resize_handles (rendering) and
+        get_resize_handle_at (hit-testing) so the two can never disagree.
+        """
+        half = self._resize_handle_size() // 2
+        return {
+            'top_left': (block.left - half, block.top - half),
+            'top_right': (block.left + block.width - half, block.top - half),
+            'bottom_left': (block.left - half, block.top + block.height - half),
+            'bottom_right': (block.left + block.width - half, block.top + block.height - half),
+            'top': (block.left + block.width // 2 - half, block.top - half),
+            'bottom': (block.left + block.width // 2 - half, block.top + block.height - half),
+            'left': (block.left - half, block.top + block.height // 2 - half),
+            'right': (block.left + block.width - half, block.top + block.height // 2 - half),
+        }
+
     def draw_resize_handles(self, block, painter):
         """Draw resize handles on the corners and edges of selected blocks."""
         if not block.selected:
             return
 
-        try:
-            from config.block_sizes import RESIZE_HANDLE_SIZE
-            handle_size = RESIZE_HANDLE_SIZE
-        except ImportError:
-            handle_size = 8
-
+        handle_size = self._resize_handle_size()
         handle_color = theme_manager.get_color('accent_primary')
         border_color = theme_manager.get_color('border_primary')
 
@@ -474,19 +496,7 @@ class BlockRenderer:
         painter.setPen(QPen(border_color, 1))
         painter.setBrush(handle_color)
 
-        half_handle = handle_size // 2
-        handles = {
-            'top_left': (block.left - half_handle, block.top - half_handle),
-            'top_right': (block.left + block.width - half_handle, block.top - half_handle),
-            'bottom_left': (block.left - half_handle, block.top + block.height - half_handle),
-            'bottom_right': (block.left + block.width - half_handle, block.top + block.height - half_handle),
-            'top': (block.left + block.width//2 - half_handle, block.top - half_handle),
-            'bottom': (block.left + block.width//2 - half_handle, block.top + block.height - half_handle),
-            'left': (block.left - half_handle, block.top + block.height//2 - half_handle),
-            'right': (block.left + block.width - half_handle, block.top + block.height//2 - half_handle),
-        }
-
-        for _, (x, y) in handles.items():
+        for _, (x, y) in self._resize_handle_rects(block).items():
             painter.drawRect(int(x), int(y), int(handle_size), int(handle_size))
 
         painter.restore()
@@ -505,27 +515,10 @@ class BlockRenderer:
         if not block.selected:
             return None
 
-        try:
-            from config.block_sizes import RESIZE_HANDLE_SIZE
-            handle_size = RESIZE_HANDLE_SIZE
-        except ImportError:
-            handle_size = 8
+        handle_size = self._resize_handle_size()
 
-        # Define handle positions (same as draw_resize_handles)
-        half_handle = handle_size // 2
-        handles = {
-            'top_left': (block.left - half_handle, block.top - half_handle),
-            'top_right': (block.left + block.width - half_handle, block.top - half_handle),
-            'bottom_left': (block.left - half_handle, block.top + block.height - half_handle),
-            'bottom_right': (block.left + block.width - half_handle, block.top + block.height - half_handle),
-            'top': (block.left + block.width//2 - half_handle, block.top - half_handle),
-            'bottom': (block.left + block.width//2 - half_handle, block.top + block.height - half_handle),
-            'left': (block.left - half_handle, block.top + block.height//2 - half_handle),
-            'right': (block.left + block.width - half_handle, block.top + block.height//2 - half_handle),
-        }
-
-        # Check if position is within any handle
-        for handle_name, (x, y) in handles.items():
+        # Check if position is within any handle (same geometry as the draw path)
+        for handle_name, (x, y) in self._resize_handle_rects(block).items():
             if (x <= pos.x() <= x + handle_size and
                 y <= pos.y() <= y + handle_size):
                 return handle_name
