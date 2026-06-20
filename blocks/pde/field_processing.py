@@ -464,63 +464,13 @@ class FieldScopeBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         # Store snapshot. The history is kept as a growing list and only
-        # converted to a NumPy array lazily (in plot_field / at simulation end);
-        # rebuilding the full array every step is O(T^2 * N) and was unused
+        # converted to a NumPy array lazily by the plotting path at simulation
+        # end; rebuilding the full array every step is O(T^2 * N) and was unused
         # downstream (the plotting/replay paths read '_field_history_' directly).
         params['_field_history_'].append(field.copy())
         params['_time_history_'].append(time)
 
         return {'E': False}
-
-    def plot_field(self, params, timeline=None):
-        """
-        Generate the spatiotemporal heatmap plot.
-
-        Called by the plotting system after simulation.
-        """
-        import matplotlib.pyplot as plt
-
-        history = params.get('_field_history_', [])
-        times = params.get('_time_history_', [])
-
-        if not history or len(history) == 0:
-            logger.warning("FieldScope: No data to plot")
-            return
-
-        # Convert to numpy array (lazy build of the full-history vector; this
-        # used to be rebuilt every timestep in execute(), which was O(T^2)).
-        data = np.array(history)  # Shape: (n_times, n_points)
-        params['vector'] = data
-
-        L = float(params.get('L', 1.0))
-        N = data.shape[1] if data.ndim > 1 else 1
-        colormap = params.get('colormap', 'viridis')
-        title = params.get('title', 'Field Evolution')
-
-        # Create meshgrid
-        x = np.linspace(0, L, N)
-        t = np.array(times)
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        # Plot heatmap
-        im = ax.pcolormesh(x, t, data, cmap=colormap, shading='auto')
-        ax.set_xlabel('Position x [m]')
-        ax.set_ylabel('Time t [s]')
-        ax.set_title(title)
-
-        # Colorbar
-        cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('Field Value')
-
-        plt.tight_layout()
-        plt.show()
-
-        # Close the figure so it is not left registered with pyplot's global
-        # figure manager (otherwise repeated runs accumulate figures/memory).
-        plt.close(fig)
-
-        return fig
 
 
 class FieldGradientBlock(BaseBlock):
