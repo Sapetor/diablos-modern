@@ -58,3 +58,4 @@ from lib.engine.compiler_kernels import sources  # noqa: E402,F401
 from lib.engine.compiler_kernels import math  # noqa: E402,F401
 from lib.engine.compiler_kernels import nonlinear  # noqa: E402,F401
 from lib.engine.compiler_kernels import routing  # noqa: E402,F401
+from lib.engine.compiler_kernels import state  # noqa: E402,F401

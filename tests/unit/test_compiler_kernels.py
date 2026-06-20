@@ -39,7 +39,8 @@ class TestKernelRegistry:
     def test_unknown_fn_returns_none(self):
         assert get_kernel_builder("NotABlock") is None
         # Not-yet-migrated blocks must fall through (None) to the legacy if/elif.
-        assert get_kernel_builder("Integrator") is None
+        # Fieldslice is migrated last; update/remove once the ladder is empty.
+        assert get_kernel_builder("Fieldslice") is None
 
     def test_kernel_decorator_registers_all_names(self):
         @kernel("AaaTmp1", "AaaTmp2")
@@ -336,3 +337,65 @@ class TestRoutingKernels:
         sig = {"x": 3.0}
         ex(0.0, None, None, sig)
         assert np.isclose(sig["f0"], 10.0)
+
+
+def _ctx_state(b_name, params, input_sources, state_map, block_matrices=None):
+    return BuildContext(
+        block=None, b_name=b_name, fn="?", params=params,
+        input_sources=input_sources, deps={}, state_map=state_map,
+        block_matrices=block_matrices or {},
+    )
+
+
+@pytest.mark.unit
+class TestStateKernels:
+    def test_integrator_output_and_derivative(self):
+        ex = get_kernel_builder("Integrator")(
+            _ctx_state("i0", {}, ["x"], {"i0": (0, 1)}))
+        sig = {"x": 3.0}
+        y = np.array([5.0])
+        dy = np.zeros(1)
+        ex(0.0, y, dy, sig)
+        assert sig["i0"] == 5.0       # output = state
+        assert dy[0] == 3.0           # dx/dt = input
+
+    def test_statespace_siso(self):
+        A = np.array([[-1.0]]); B = np.array([[1.0]])
+        C = np.array([[1.0]]); D = np.array([[0.0]])
+        ex = get_kernel_builder("StateSpace")(
+            _ctx_state("ss0", {}, ["x"], {"ss0": (0, 1)}, {"ss0": (A, B, C, D)}))
+        sig = {"x": 1.0}
+        y = np.array([2.0])
+        dy = np.zeros(1)
+        ex(0.0, y, dy, sig)
+        assert sig["ss0"] == 2.0       # y = C x + D u = 2
+        assert dy[0] == -1.0           # dx = A x + B u = -2 + 1 = -1
+
+    def test_statespace_no_matrices_is_noop(self):
+        ex = get_kernel_builder("StateSpace")(
+            _ctx_state("ss0", {}, ["x"], {}, {}))
+        sig = {"x": 1.0}
+        ex(0.0, np.zeros(0), np.zeros(0), sig)
+        assert "ss0" not in sig        # falls through to no-op
+
+    def test_pid_proportional(self):
+        ex = get_kernel_builder("PID")(
+            _ctx_state("pid0", {"Kp": 2.0, "Ki": 0.0, "Kd": 0.0, "N": 20.0},
+                       ["sp", "meas"], {"pid0": (0, 2)}))
+        sig = {"sp": 1.0, "meas": 0.0}
+        y = np.array([0.0, 0.0])
+        dy = np.zeros(2)
+        ex(0.0, y, dy, sig)
+        assert np.isclose(sig["pid0"], 2.0)   # Kp * e
+        assert dy[0] == 1.0                    # dx_i = e
+        assert dy[1] == 20.0                   # dx_d = N*(e - x_d)
+
+    def test_ratelimiter_clamps_rate(self):
+        ex = get_kernel_builder("RateLimiter")(
+            _ctx_state("rl0", {"rising_slew": 5.0}, ["x"], {"rl0": (0, 1)}))
+        sig = {"x": 1.0}
+        y = np.array([0.0])
+        dy = np.zeros(1)
+        ex(0.0, y, dy, sig)
+        assert sig["rl0"] == 0.0       # output = state
+        assert dy[0] == 5.0            # clip((1-0)*1000, -inf, 5) = 5
