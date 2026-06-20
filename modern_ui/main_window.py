@@ -829,11 +829,36 @@ class ModernDiaBloSWindow(QMainWindow):
         """Handle application shutdown."""
         logger.info("Modern DiaBloS closing...")
         self.stop_simulation()
+        self._cancel_experiment_workers()  # join MC/sweep threads before teardown
         self._cleanup_autosave()  # Clean up auto-save file on normal exit
         self.perf_helper.log_stats()
         event.accept()
         logger.info("Modern DiaBloS closed successfully")
-    
+
+    def _cancel_experiment_workers(self):
+        """Cancel and join any running Monte-Carlo / parameter-sweep worker
+        threads.
+
+        Without this, closing the window while an ensemble or sweep is running
+        destroys a live ``QThread`` ("QThread: Destroyed while thread is still
+        running"), which aborts the process. Both workers cancel cooperatively
+        (the flag is polled before each run), so a bounded ``wait()`` joins them.
+        """
+        for attr in ('_mc_worker', '_sweep_worker'):
+            worker = getattr(self, attr, None)
+            if worker is None:
+                continue
+            try:
+                if worker.isRunning():
+                    worker.cancel()  # cooperative stop, polled before each run
+                    if not worker.wait(10000):  # bounded join (ms)
+                        logger.warning(
+                            "%s did not stop within timeout on close.", attr)
+            except RuntimeError:
+                # Underlying C++ QThread already deleted; nothing to join.
+                pass
+            setattr(self, attr, None)
+
     # Phase 2 Signal Handlers
     def _on_block_selected(self, block):
         """Handle block selection from canvas."""
