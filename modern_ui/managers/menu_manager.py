@@ -507,8 +507,8 @@ class MenuManager:
         dsim = self.canvas.dsim
         to_remove = []
         for line in list(getattr(dsim, 'line_list', [])):
-            src = getattr(line, 'src_block', None) or getattr(line, 'srcblock', None)
-            dst = getattr(line, 'dst_block', None) or getattr(line, 'dstblock', None)
+            src = getattr(line, 'srcblock', None)
+            dst = getattr(line, 'dstblock', None)
             # Some impls use names rather than block refs
             if src is block or dst is block:
                 to_remove.append(line)
@@ -584,10 +584,10 @@ class MenuManager:
                 logger.warning(f"Tune-live failed: {e}")
 
     def _wire_label(self, line):
-        src = getattr(line, 'srcblock', '') or getattr(getattr(line, 'src_block', None), 'name', '')
-        dst = getattr(line, 'dstblock', '') or getattr(getattr(line, 'dst_block', None), 'name', '')
-        src_port = getattr(line, 'srcport', getattr(line, 'src_port', 0))
-        dst_port = getattr(line, 'dstport', getattr(line, 'dst_port', 0))
+        src = getattr(line, 'srcblock', '')
+        dst = getattr(line, 'dstblock', '')
+        src_port = getattr(line, 'srcport', 0)
+        dst_port = getattr(line, 'dstport', 0)
         return f"wire: {src}.out[{src_port}] → {dst}.in[{dst_port}]"
 
     def _find_main_window(self):
