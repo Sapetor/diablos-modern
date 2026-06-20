@@ -217,6 +217,70 @@ class TestNonlinearKernels:
         ex(0.0, None, None, sig)
         assert sig["h0"] == 0.0          # crosses lower -> low
 
+
+@pytest.mark.unit
+class TestRoutingKernels:
+    def test_mux_packs_inputs(self):
+        ex = get_kernel_builder("Mux")(_ctx_io("m0", {}, ["a", "b", "c"]))
+        sig = {"a": 1.0, "b": 2.0, "c": 3.0}
+        ex(0.0, None, None, sig)
+        assert np.array_equal(sig["m0"], np.array([1.0, 2.0, 3.0]))
+
+    def test_demux_splits_to_secondary_ports(self):
+        class _Blk:
+            out_ports = 3
+        ctx = BuildContext(
+            block=_Blk(), b_name="d0", fn="Demux",
+            params={"output_shape": 1, "_outputs_": 3},
+            input_sources=["src"], deps={}, state_map={}, block_matrices={},
+        )
+        ex = get_kernel_builder("Demux")(ctx)
+        sig = {"src": np.array([10.0, 11.0, 12.0])}
+        ex(0.0, None, None, sig)
+        assert np.array_equal(sig["d0"], np.array([10.0]))
+        assert np.array_equal(sig["d0_out1"], np.array([11.0]))
+        assert np.array_equal(sig["d0_out2"], np.array([12.0]))
+
+    def test_logicaloperator_and(self):
+        ex = get_kernel_builder("Logicaloperator")(
+            _ctx_io("l0", {"operator": "AND", "_inputs_": 2}, ["a", "b"]))
+        sig = {"a": 1.0, "b": 1.0}
+        ex(0.0, None, None, sig)
+        assert sig["l0"][0] == 1.0
+        sig = {"a": 1.0, "b": 0.0}
+        ex(0.0, None, None, sig)
+        assert sig["l0"][0] == 0.0
+
+    def test_logicaloperator_xor(self):
+        ex = get_kernel_builder("Logicaloperator")(
+            _ctx_io("l0", {"operator": "XOR", "_inputs_": 2}, ["a", "b"]))
+        sig = {"a": 1.0, "b": 0.0}
+        ex(0.0, None, None, sig)
+        assert sig["l0"][0] == 1.0
+
+    def test_sink_is_noop(self):
+        for name in ("Terminator", "Display", "Scope", "To", "From"):
+            ex = get_kernel_builder(name)(_ctx_io("s0", {}, ["x"]))
+            sig = {"x": 5.0}
+            ex(0.0, None, None, sig)
+            assert "s0" not in sig  # sinks write nothing
+
+    def test_statevariable_holds_and_updates(self):
+        ex = get_kernel_builder("StateVariable")(
+            _ctx_io("sv0", {"initial_value": "[2.0]"}, ["src"]))
+        # Each call outputs the current state, then (if time advanced past the
+        # discrete-update guard) latches src for the next read. prev_t starts at
+        # -1.0, so the first call already latches.
+        sig = {"src": 9.0}
+        ex(0.0, None, None, sig)
+        assert sig["sv0"] == 2.0           # outputs initial state, then latches 9.0
+        sig = {"src": 7.0}
+        ex(1.0, None, None, sig)
+        assert sig["sv0"] == 9.0           # outputs latched 9.0, then latches 7.0
+        sig = {"src": 7.0}
+        ex(2.0, None, None, sig)
+        assert sig["sv0"] == 7.0
+
     def test_exponential(self):
         ex = get_kernel_builder("Exponential")(_ctx_io("e0", {"a": 2.0, "b": 0.5}, ["x"]))
         sig = {"x": 4.0}
