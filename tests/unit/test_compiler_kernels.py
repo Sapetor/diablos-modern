@@ -116,3 +116,59 @@ class TestMathKernels:
         sig = {"a": 5.0, "b": 2.0, "c": 1.0}
         ex(0.0, None, None, sig)
         assert sig["s0"] == 4.0
+
+    def test_exponential(self):
+        ex = get_kernel_builder("Exponential")(_ctx_io("e0", {"a": 2.0, "b": 0.5}, ["x"]))
+        sig = {"x": 4.0}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["e0"], 2.0 * np.exp(0.5 * 4.0))
+
+    def test_abs(self):
+        ex = get_kernel_builder("Abs")(_ctx_io("a0", {}, ["x"]))
+        sig = {"x": -3.5}
+        ex(0.0, None, None, sig)
+        assert sig["a0"] == 3.5
+
+    def test_sgprod_multiplies_inputs(self):
+        ex = get_kernel_builder("SgProd")(_ctx_io("p0", {}, ["a", "b", "c"]))
+        sig = {"a": 2.0, "b": 3.0, "c": 4.0}
+        ex(0.0, None, None, sig)
+        assert sig["p0"] == 24.0
+
+    def test_product_multiply_and_divide(self):
+        ex = get_kernel_builder("Product")(_ctx_io("pr0", {"ops": "*/"}, ["a", "b"]))
+        sig = {"a": 12.0, "b": 3.0}
+        ex(0.0, None, None, sig)
+        assert np.isclose(np.asarray(sig["pr0"]).item(), 4.0)
+
+    def test_product_divide_by_zero_is_finite(self):
+        ex = get_kernel_builder("Product")(_ctx_io("pr0", {"ops": "*/"}, ["a", "b"]))
+        sig = {"a": 1.0, "b": 0.0}
+        ex(0.0, None, None, sig)
+        # divide-by-zero -> large finite (sign-preserving), never inf/nan.
+        out = np.asarray(sig["pr0"])
+        assert np.all(np.isfinite(out)) and np.all(out > 0)
+
+    def test_matrixgain_scalar(self):
+        ex = get_kernel_builder("MatrixGain")(_ctx_io("m0", {"gain": "3.0"}, ["x"]))
+        sig = {"x": 2.0}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["m0"], 6.0)
+
+    def test_matrixgain_matrix(self):
+        ex = get_kernel_builder("MatrixGain")(_ctx_io("m0", {"gain": "[[1, 2], [0, 1]]"}, ["x"]))
+        sig = {"x": np.array([1.0, 2.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["m0"], np.array([5.0, 2.0]))
+
+    def test_mathfunction_named(self):
+        ex = get_kernel_builder("Mathfunction")(_ctx_io("f0", {"function": "sqrt"}, ["x"]))
+        sig = {"x": 9.0}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["f0"], 3.0)
+
+    def test_mathfunction_expression_fallback(self):
+        ex = get_kernel_builder("Mathfunction")(_ctx_io("f0", {"function": "u*u + 1"}, ["x"]))
+        sig = {"x": 3.0}
+        ex(0.0, None, None, sig)
+        assert np.isclose(sig["f0"], 10.0)

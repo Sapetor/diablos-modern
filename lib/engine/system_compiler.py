@@ -4,7 +4,7 @@ import numpy as np
 from typing import List, Callable, Dict, Any, Tuple
 from lib.simulation.block import DBlock
 from scipy import signal
-from lib.safe_eval import safe_literal, compile_expr, SafeEvalError
+from lib.safe_eval import safe_literal, SafeEvalError
 from lib.engine.pde_helpers import (
     parse_pde_initial_condition,
     parse_pde_2d_initial_condition
@@ -228,52 +228,7 @@ class SystemCompiler:
             )
             return builder(ctx)
 
-        if fn in ('Matrixgain', 'MatrixGain'):
-            import ast as _ast
-            K_raw = params.get('gain', '1.0')
-            if isinstance(K_raw, str):
-                try:
-                    K = np.array(_ast.literal_eval(K_raw), dtype=float)
-                except (ValueError, SyntaxError):
-                    K = np.array([float(K_raw)], dtype=float)
-            else:
-                K = np.atleast_1d(np.array(K_raw, dtype=float))
-            src = input_sources[0] if input_sources else None
-
-            if K.ndim == 2:
-                def exec_mgain(t, y, dy_vec, signals):
-                    u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float).flatten()
-                    if len(u) < K.shape[1]:
-                        u = np.pad(u, (0, K.shape[1] - len(u)))
-                    elif len(u) > K.shape[1]:
-                        u = u[:K.shape[1]]
-                    signals[b_name] = K @ u
-            elif K.ndim == 1 and K.size > 1:
-                _warned = [False]
-
-                def exec_mgain(t, y, dy_vec, signals, _warned=_warned):
-                    u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float)
-                    if len(K) == len(u):
-                        signals[b_name] = K * u
-                    else:
-                        # Dimension mismatch is almost always a wiring/config
-                        # error; warn once instead of silently truncating.
-                        if not _warned[0]:
-                            logger.warning(
-                                "MatrixGain %s: vector gain length %d does not match "
-                                "input length %d; truncating to the overlapping prefix.",
-                                b_name, len(K), len(u))
-                            _warned[0] = True
-                        m = min(len(K), len(u))
-                        signals[b_name] = K[:m] * u[:m]
-            else:
-                k_scalar = float(K.flatten()[0])
-                def exec_mgain(t, y, dy_vec, signals):
-                    val = signals.get(src, 0.0) if src else 0.0
-                    signals[b_name] = np.atleast_1d(val).astype(float) * k_scalar
-            return exec_mgain
-
-        elif fn == 'Wavegenerator':
+        if fn == 'Wavegenerator':
             waveform = params.get('waveform', 'Sine')
             amp = float(params.get('amplitude', 1.0))
             freq = float(params.get('frequency', 1.0))
@@ -507,15 +462,6 @@ class SystemCompiler:
                                            np.where(val > end_db, val - end_db, 0.0))
             return exec_db
             
-        elif fn == 'Exponential':
-            src = input_sources[0] if input_sources else None
-            a = float(params.get('a', 1.0))
-            b_coef = float(params.get('b', 1.0)) # avoid local var 'b'
-            def exec_exp(t, y, dy_vec, signals):
-                x_in = signals.get(src, 0.0) if src else 0.0
-                signals[b_name] = a * np.exp(b_coef * x_in)
-            return exec_exp
-
         elif fn == 'Mux':
             # Create a list of inputs
             # Actually optimizations for lists??
@@ -643,50 +589,6 @@ class SystemCompiler:
                 signals[b_name] = val
             return exec_switch
         
-        elif fn in ('SgProd', 'Sgprod', 'SigProduct'):
-             # 'Sgprod' covers the block_fn.title() form (block_fn 'SgProd' ->
-             # 'SgProd'.title() == 'Sgprod'); without it SgProd silently compiled
-             # to a no-op, zeroing its output in the fast solver (same .title()
-             # normalization already handled for MatrixGain/StateSpace above).
-             # Logic for product
-             baked_srcs = [s for s in input_sources]
-             def exec_sgprod(t, y, dy_vec, signals):
-                 res = 1.0
-                 if baked_srcs:
-                    for src in baked_srcs:
-                        if src: res *= signals.get(src, 0.0)
-                        else: res *= 0.0 # Connected to 0
-                 else:
-                     res = 1.0 # Or 1.0 for identity
-                 signals[b_name] = res
-             return exec_sgprod
-
-        elif fn in ('Product', 'product'):
-             # Product block with configurable * and / operations
-             baked_srcs = [s for s in input_sources]
-             ops = params.get('ops', '**')
-             def exec_product(t, y, dy_vec, signals, _ops=ops, _srcs=baked_srcs):
-                 res = 1.0
-                 for i, src in enumerate(_srcs):
-                     op = _ops[i] if i < len(_ops) else '*'
-                     val = signals.get(src, 0.0) if src else 0.0
-                     if op == '*':
-                         res *= val
-                     elif op == '/':
-                         # Element-wise so vector divisors work (`if val != 0` is
-                         # ambiguous on an array). Mirror Product.execute() / the
-                         # compiled-replay path: divide-by-zero keeps the numerator
-                         # sign as a large finite value (not inf, which would break
-                         # the ODE RHS) and 0/0 -> 0.
-                         res = np.asarray(res, dtype=float)
-                         v = np.asarray(val, dtype=float)
-                         with np.errstate(divide='ignore', invalid='ignore'):
-                             res = res / v
-                             res = np.where(np.isinf(res), np.sign(res) * 1e308, res)
-                             res = np.where(np.isnan(res), 0.0, res)
-                 signals[b_name] = res
-             return exec_product
-
         elif fn in ('StateVariable', 'Statevariable'):
              # State variable for discrete optimization iterations
              # Uses closure-based state storage instead of ODE integration
@@ -714,14 +616,6 @@ class SystemCompiler:
                          _state['current'] = np.atleast_1d(signals[_src]).copy()
                      _state['prev_t'] = t
              return exec_statevariable
-
-        elif fn in ('Abs', 'Absblock'):
-             src = input_sources[0] if input_sources else None
-             def exec_abs(t, y, dy_vec, signals):
-                 val = signals.get(src, 0.0) if src else 0.0
-                 signals[b_name] = abs(val)
-             return exec_abs
-
 
         elif fn in ('Terminator', 'Display', 'Scope', 'To', 'From'):
              # Sinks or semantic tags, no runtime math for Solver
@@ -769,98 +663,6 @@ class SystemCompiler:
             def exec_noise(t, y, dy_vec, signals):
                 signals[b_name] = mu + sigma * np.random.randn()
             return exec_noise
-
-        elif fn == 'Mathfunction':
-            src = input_sources[0] if input_sources else None
-            # Check both 'function' and 'expression' keys for backward compatibility
-            func_raw = params.get('function', params.get('expression', 'sin'))
-            func = str(func_raw).lower()
-
-            # Pre-select the function to avoid string comparison at runtime
-            np_func = None
-            use_expr = False
-            if func == 'sin':
-                np_func = np.sin
-            elif func == 'cos':
-                np_func = np.cos
-            elif func == 'tan':
-                np_func = np.tan
-            elif func == 'asin':
-                np_func = np.arcsin
-            elif func == 'acos':
-                np_func = np.arccos
-            elif func == 'atan':
-                np_func = np.arctan
-            elif func == 'exp':
-                np_func = np.exp
-            elif func == 'log':
-                np_func = np.log
-            elif func == 'log10':
-                np_func = np.log10
-            elif func == 'sqrt':
-                np_func = np.sqrt
-            elif func == 'square':
-                np_func = lambda x: x * x
-            elif func == 'sign':
-                np_func = np.sign
-            elif func == 'abs':
-                np_func = np.abs
-            elif func == 'ceil':
-                np_func = np.ceil
-            elif func == 'floor':
-                np_func = np.floor
-            elif func == 'reciprocal':
-                def _reciprocal(x):
-                    if isinstance(x, np.ndarray):
-                        m = x != 0
-                        # Build the non-zero mask once and reuse it.
-                        return np.where(m, 1.0 / np.where(m, x, 1.0), 0.0)
-                    return 1.0 / x if x != 0 else 0.0
-                np_func = _reciprocal
-            elif func == 'cube':
-                np_func = lambda x: x * x * x
-            else:
-                # Python expression fallback
-                use_expr = True
-                expr_str = str(func_raw)  # Use raw string for eval
-
-            if use_expr:
-                # Compile expression once at compile time for hot-loop performance
-                _compiled_expr = compile_expr(expr_str)
-
-                # Dry-run once on a representative input so structural failures
-                # (undefined names, bad subscripts, type errors) surface at
-                # compile time as a WARNING instead of being silently swallowed
-                # to 0.0 on every step for the whole run.
-                try:
-                    _compiled_expr({"u": 1.0, "t": 0.0})
-                except Exception as _e:  # noqa: BLE001 - report any setup failure once
-                    logger.warning(
-                        "MathFunction %s: expression %r failed to evaluate on a "
-                        "sample input (%s); it will fall back to 0.0 each step.",
-                        b_name, expr_str, _e)
-
-                def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _compiled=_compiled_expr):
-                    val = signals.get(_src, 0.0) if _src else 0.0
-                    try:
-                        signals[b_name] = float(_compiled({"u": val, "t": t}))
-                    except Exception as _e:
-                        # User expression failed this step (e.g. domain/type error);
-                        # fall back to 0.0. Per-timestep hot loop -> debug level to
-                        # avoid flooding while still being diagnosable. Persistent
-                        # structural failures are already surfaced once at compile
-                        # time via the dry-run WARNING above.
-                        logger.debug("MathFunction expr eval failed for %s: %s", b_name, _e)
-                        signals[b_name] = 0.0
-                return exec_mathfunc_expr
-            else:
-                def exec_mathfunc(t, y, dy_vec, signals, _func=np_func, _src=src):
-                    val = signals.get(_src, 0.0) if _src else 0.0
-                    try:
-                        signals[b_name] = _func(val)
-                    except (ValueError, ZeroDivisionError):
-                        signals[b_name] = 0.0
-                return exec_mathfunc
 
         elif fn == 'Selector':
             src = input_sources[0] if input_sources else None
