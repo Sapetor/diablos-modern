@@ -936,7 +936,7 @@ class SystemCompiler:
 
         elif fn == 'Selector':
             src = input_sources[0] if input_sources else None
-            indices_str = str(block.params.get('indices', '0'))
+            indices_str = str(params.get('indices', '0'))
 
             # Pre-parse indices at compile time
             parsed_indices = []
@@ -985,10 +985,10 @@ class SystemCompiler:
 
         elif fn == 'Hysteresis':
             src = input_sources[0] if input_sources else None
-            upper = float(block.params.get('upper', 0.5))
-            lower = float(block.params.get('lower', -0.5))
-            high_val = float(block.params.get('high', 1.0))
-            low_val = float(block.params.get('low', 0.0))
+            upper = float(params.get('upper', 0.5))
+            lower = float(params.get('lower', -0.5))
+            high_val = float(params.get('high', 1.0))
+            low_val = float(params.get('low', 0.0))
 
             # Use mutable container for state persistence across calls
             state_holder = [low_val]  # Start with low output
@@ -1675,9 +1675,9 @@ class SystemCompiler:
         elif fn == 'Fieldprobe':
             src = input_sources[0] if input_sources else None
             pos_src = input_sources[1] if len(input_sources) > 1 else None
-            position = float(block.params.get('position', 0.5))
-            mode = block.params.get('position_mode', 'normalized')
-            L = float(block.params.get('L', 1.0))
+            position = float(params.get('position', 0.5))
+            mode = params.get('position_mode', 'normalized')
+            L = float(params.get('L', 1.0))
 
             def exec_fieldprobe(t, y, dy_vec, signals, _src=src, _pos_src=pos_src,
                                _position=position, _mode=mode, _L=L):
@@ -1711,8 +1711,8 @@ class SystemCompiler:
 
         elif fn == 'Fieldintegral':
             src = input_sources[0] if input_sources else None
-            L = float(block.params.get('L', 1.0))
-            normalize = block.params.get('normalize', False)
+            L = float(params.get('L', 1.0))
+            normalize = params.get('normalize', False)
 
             def exec_fieldintegral(t, y, dy_vec, signals, _src=src, _L=L, _norm=normalize):
                 field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
@@ -1734,8 +1734,8 @@ class SystemCompiler:
 
         elif fn == 'Fieldmax':
             src = input_sources[0] if input_sources else None
-            mode = block.params.get('mode', 'max')
-            L = float(block.params.get('L', 1.0))
+            mode = params.get('mode', 'max')
+            L = float(params.get('L', 1.0))
 
             def exec_fieldmax(t, y, dy_vec, signals, _src=src, _mode=mode, _L=L):
                 field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
@@ -1761,7 +1761,7 @@ class SystemCompiler:
 
         elif fn == 'Fieldgradient':
             src = input_sources[0] if input_sources else None
-            L = float(block.params.get('L', 1.0))
+            L = float(params.get('L', 1.0))
 
             def exec_fieldgradient(t, y, dy_vec, signals, _src=src, _L=L):
                 field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
@@ -1779,7 +1779,7 @@ class SystemCompiler:
 
         elif fn == 'Fieldlaplacian':
             src = input_sources[0] if input_sources else None
-            L = float(block.params.get('L', 1.0))
+            L = float(params.get('L', 1.0))
 
             def exec_fieldlaplacian(t, y, dy_vec, signals, _src=src, _L=L):
                 field = signals.get(_src, np.array([0.0])) if _src else np.array([0.0])
@@ -1818,11 +1818,11 @@ class SystemCompiler:
             src = input_sources[0] if input_sources else None
             x_pos_src = input_sources[1] if len(input_sources) > 1 else None
             y_pos_src = input_sources[2] if len(input_sources) > 2 else None
-            x_position = float(block.params.get('x_position', 0.5))
-            y_position = float(block.params.get('y_position', 0.5))
-            position_mode = block.params.get('position_mode', 'normalized')
-            Lx = float(block.params.get('Lx', 1.0))
-            Ly = float(block.params.get('Ly', 1.0))
+            x_position = float(params.get('x_position', 0.5))
+            y_position = float(params.get('y_position', 0.5))
+            position_mode = params.get('position_mode', 'normalized')
+            Lx = float(params.get('Lx', 1.0))
+            Ly = float(params.get('Ly', 1.0))
 
             def exec_fieldprobe2d(t, y, dy_vec, signals, _src=src,
                                   _x_pos_src=x_pos_src, _y_pos_src=y_pos_src,
@@ -1885,8 +1885,8 @@ class SystemCompiler:
         elif fn == 'Fieldslice':
             src = input_sources[0] if input_sources else None
             pos_src = input_sources[1] if len(input_sources) > 1 else None
-            slice_direction = block.params.get('slice_direction', 'x')
-            slice_position = float(block.params.get('slice_position', 0.5))
+            slice_direction = params.get('slice_direction', 'x')
+            slice_position = float(params.get('slice_position', 0.5))
 
             def exec_fieldslice(t, y, dy_vec, signals, _src=src, _pos_src=pos_src,
                                _direction=slice_direction, _pos=slice_position):
