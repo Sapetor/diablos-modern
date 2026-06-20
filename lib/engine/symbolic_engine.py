@@ -25,7 +25,7 @@ try:
     import sympy
     from sympy import Symbol, simplify
     from sympy import Matrix, eye
-    from sympy import latex, mathml
+    from sympy import latex
     from sympy import diff
     SYMPY_AVAILABLE = True
 except ImportError:
@@ -129,55 +129,6 @@ class SymbolicEngine:
             input_symbols[name] = Symbol(sym_name)
 
         return input_symbols
-
-    def trace_signal(self, start_block: str, start_port: int = 0,
-                    input_symbols: Dict[str, Symbol] = None,
-                    visited: Set[str] = None) -> Any:
-        """
-        Trace a signal backward through the diagram symbolically.
-
-        Args:
-            start_block: Block name to start from
-            start_port: Input port to trace
-            input_symbols: Map of input block names to symbols
-            visited: Set of already visited blocks (for loop detection)
-
-        Returns:
-            SymPy expression for the signal
-        """
-        if input_symbols is None:
-            input_symbols = {}
-        if visited is None:
-            visited = set()
-
-        # Check if this block is an input
-        if start_block in input_symbols:
-            return input_symbols[start_block]
-
-        # Check for loops
-        if start_block in visited:
-            # Algebraic loop - create feedback variable
-            return Symbol(f'{start_block}_fb')
-
-        visited = visited | {start_block}
-
-        # Get the block
-        block = self.block_map.get(start_block)
-        if block is None:
-            return Symbol(f'{start_block}_unknown')
-
-        # Get input connections
-        deps = self.input_map.get(start_block, {})
-
-        # Trace inputs recursively
-        input_exprs = {}
-        for port, (src_block, src_port) in deps.items():
-            input_exprs[port] = self._get_block_output(
-                src_block, src_port, input_symbols, visited
-            )
-
-        # Get symbolic output from this block
-        return self._compute_block_symbolic(block, input_exprs)
 
     def _get_block_output(self, block_name: str, port: int,
                          input_symbols: Dict[str, Symbol],
@@ -515,21 +466,6 @@ class SymbolicEngine:
         if simplified:
             expr = simplify(expr)
         return latex(expr)
-
-    def to_mathml(self, expr, simplified: bool = True) -> str:
-        """
-        Convert symbolic expression to MathML.
-
-        Args:
-            expr: SymPy expression
-            simplified: Whether to simplify first
-
-        Returns:
-            MathML string
-        """
-        if simplified:
-            expr = simplify(expr)
-        return mathml(expr)
 
     def export_equations_latex(self, equations: Dict = None,
                               filename: str = None) -> str:

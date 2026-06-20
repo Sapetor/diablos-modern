@@ -527,15 +527,6 @@ class DLine:
 
         return None
 
-    def change_color(self, color: QColor) -> None:
-        """
-        Change the line color.
-
-        Args:
-            color: New QColor for this line
-        """
-        self.color = color
-
     def set_routing_mode(self, mode: str) -> None:
         """
         Set the routing mode for this connection.
