@@ -228,17 +228,7 @@ class SystemCompiler:
             )
             return builder(ctx)
 
-        if fn == 'Gain':
-            gain = float(params.get('gain', 1.0))
-            # Optimization: If only 1 input
-            src = input_sources[0] if input_sources else None
-            
-            def exec_gain(t, y, dy_vec, signals):
-                val = signals.get(src, 0.0) if src else 0.0
-                signals[b_name] = val * gain
-            return exec_gain
-
-        elif fn in ('Matrixgain', 'MatrixGain'):
+        if fn in ('Matrixgain', 'MatrixGain'):
             import ast as _ast
             K_raw = params.get('gain', '1.0')
             if isinstance(K_raw, str):
@@ -283,26 +273,6 @@ class SystemCompiler:
                     signals[b_name] = np.atleast_1d(val).astype(float) * k_scalar
             return exec_mgain
 
-        elif fn == 'Sum':
-            signs = params.get('sign', params.get('inputs', '++'))
-            # Bake signs and sources. Iterate over the connected input ports
-            # (not just the sign string) so extra wired inputs are not silently
-            # dropped; missing sign characters default to '+'.
-            n_terms = max(len(signs), len(input_sources))
-            ops = []
-            for i in range(n_terms):
-                char = signs[i] if i < len(signs) else '+'
-                src = input_sources[i] if i < len(input_sources) else None
-                ops.append((src, 1.0 if char == '+' else -1.0))
-            
-            def exec_sum(t, y, dy_vec, signals):
-                res = 0.0
-                for src, mul in ops:
-                    val = signals.get(src, 0.0) if src else 0.0
-                    res += val * mul
-                signals[b_name] = res
-            return exec_sum
-            
         elif fn == 'Wavegenerator':
             waveform = params.get('waveform', 'Sine')
             amp = float(params.get('amplitude', 1.0))

@@ -32,7 +32,7 @@ class TestKernelRegistry:
     def test_unknown_fn_returns_none(self):
         assert get_kernel_builder("NotABlock") is None
         # Not-yet-migrated blocks must fall through (None) to the legacy if/elif.
-        assert get_kernel_builder("Gain") is None
+        assert get_kernel_builder("Integrator") is None
 
     def test_kernel_decorator_registers_all_names(self):
         @kernel("AaaTmp1", "AaaTmp2")
@@ -81,3 +81,38 @@ class TestSourceKernels:
         sig = {}
         ex(np.pi / 2, None, None, sig)
         assert np.isclose(sig["blk0"], 2.0 * 1.0 + 0.5)
+
+
+def _ctx_io(b_name, params, input_sources):
+    return BuildContext(
+        block=None, b_name=b_name, fn="?", params=params,
+        input_sources=input_sources, deps={}, state_map={}, block_matrices={},
+    )
+
+
+@pytest.mark.unit
+class TestMathKernels:
+    def test_gain_scales_input(self):
+        ex = get_kernel_builder("Gain")(_ctx_io("g0", {"gain": 3.0}, ["src"]))
+        sig = {"src": 4.0}
+        ex(0.0, None, None, sig)
+        assert sig["g0"] == 12.0
+
+    def test_gain_no_input_is_zero(self):
+        ex = get_kernel_builder("Gain")(_ctx_io("g0", {"gain": 3.0}, []))
+        sig = {}
+        ex(0.0, None, None, sig)
+        assert sig["g0"] == 0.0
+
+    def test_sum_applies_signs(self):
+        ex = get_kernel_builder("Sum")(_ctx_io("s0", {"sign": "+-"}, ["a", "b"]))
+        sig = {"a": 5.0, "b": 2.0}
+        ex(0.0, None, None, sig)
+        assert sig["s0"] == 3.0
+
+    def test_sum_extra_wired_input_defaults_plus(self):
+        # 3 wired inputs but only 2 sign chars -> 3rd defaults to '+'.
+        ex = get_kernel_builder("Sum")(_ctx_io("s0", {"sign": "+-"}, ["a", "b", "c"]))
+        sig = {"a": 5.0, "b": 2.0, "c": 1.0}
+        ex(0.0, None, None, sig)
+        assert sig["s0"] == 4.0

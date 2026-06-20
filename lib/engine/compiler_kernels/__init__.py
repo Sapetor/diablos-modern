@@ -55,3 +55,4 @@ def get_kernel_builder(fn):
 # Import family modules for their registration side effects. Keep at the bottom
 # to avoid import cycles (family modules import `kernel` from this module).
 from lib.engine.compiler_kernels import sources  # noqa: E402,F401
+from lib.engine.compiler_kernels import math  # noqa: E402,F401
