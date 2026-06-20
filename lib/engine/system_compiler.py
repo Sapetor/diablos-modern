@@ -10,6 +10,7 @@ from lib.engine.pde_helpers import (
     parse_pde_2d_initial_condition
 )
 from lib.engine.block_names import canonical_fn
+from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,18 @@ class SystemCompiler:
                 input_sources.append(None) # None means 0.0 default
 
         # --- Block Specific Closures ---
-        
+
+        # Registry-dispatched kernels (migrated families). Blocks not yet moved
+        # to lib.engine.compiler_kernels fall through to the legacy if/elif below.
+        builder = get_kernel_builder(fn)
+        if builder is not None:
+            ctx = BuildContext(
+                block=block, b_name=b_name, fn=fn, params=params,
+                input_sources=input_sources, deps=deps,
+                state_map=state_map, block_matrices=block_matrices,
+            )
+            return builder(ctx)
+
         if fn == 'Gain':
             gain = float(params.get('gain', 1.0))
             # Optimization: If only 1 input
@@ -291,29 +303,6 @@ class SystemCompiler:
                 signals[b_name] = res
             return exec_sum
             
-        elif fn == 'Constant':
-            raw_val = params.get('value', 0.0)
-            # Handle both scalar and array values
-            if isinstance(raw_val, (list, tuple)):
-                val = np.atleast_1d(raw_val)
-            elif hasattr(raw_val, '__iter__') and not isinstance(raw_val, str):
-                val = np.atleast_1d(raw_val)
-            else:
-                val = float(raw_val)
-            def exec_constant(t, y, dy_vec, signals):
-                signals[b_name] = val
-            return exec_constant
-            
-        elif fn == 'Sine':
-            amp = float(params.get('amplitude', 1.0))
-            freq = float(params.get('frequency', params.get('omega', 1.0)))
-            phase = float(params.get('phase', params.get('init_angle', 0.0)))
-            bias = float(params.get('bias', 0.0))
-
-            def exec_sine(t, y, dy_vec, signals):
-                signals[b_name] = amp * np.sin(freq * t + phase) + bias
-            return exec_sine
-
         elif fn == 'Wavegenerator':
             waveform = params.get('waveform', 'Sine')
             amp = float(params.get('amplitude', 1.0))
@@ -347,25 +336,6 @@ class SystemCompiler:
                     arg = 2 * np.pi * freq * t + phase
                     signals[b_name] = bias + amp * np.sin(arg)
                 return exec_wavegen_default
-
-        elif fn == 'Step':
-            step_t = float(params.get('delay', 0.0))
-            val = float(params.get('value', 1.0))
-            step_type = params.get('type', 'up')
-
-            if step_type == 'impulse':
-                dt = float(params.get('dtime', 0.01))
-                eps = dt * 1e-3
-                impulse_end = step_t + eps
-                impulse_height = val / eps
-
-                def exec_step(t, y, dy_vec, signals):
-                    signals[b_name] = impulse_height if step_t <= t < impulse_end else 0.0
-                return exec_step
-            else:
-                def exec_step(t, y, dy_vec, signals):
-                    signals[b_name] = val if t >= step_t else 0.0
-                return exec_step
 
         elif fn == 'Impulse':
             imp_t = float(params.get('delay', 0.0))
@@ -782,18 +752,6 @@ class SystemCompiler:
                  signals[b_name] = abs(val)
              return exec_abs
 
-        elif fn == 'Ramp':
-            slope = float(params.get('slope', 1.0))
-            delay = float(params.get('delay', 0.0))
-            def exec_ramp(t, y, dy_vec, signals):
-                if slope > 0:
-                   val = max(0.0, slope * (t - delay))
-                elif slope < 0:
-                   val = min(0.0, slope * (t - delay))
-                else:
-                   val = 0.0
-                signals[b_name] = val
-            return exec_ramp
 
         elif fn in ('Terminator', 'Display', 'Scope', 'To', 'From'):
              # Sinks or semantic tags, no runtime math for Solver
