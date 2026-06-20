@@ -13,6 +13,7 @@ from lib.simulation.connection import DLine
 from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
+from lib.engine.block_names import canonical_fn
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -1257,10 +1258,8 @@ class SimulationEngine:
                 is_feedthrough = True
                 dst_block = block_by_name.get(dst)
                 if dst_block:
-                    fn = dst_block.block_fn.title() if dst_block.block_fn else ''
-                    if fn == 'Statespace': fn = 'StateSpace'
-                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-                    
+                    fn = canonical_fn(dst_block.block_fn)
+
                     if fn == 'Integrator':
                         is_feedthrough = False
                     elif fn == 'TransferFcn':
@@ -1339,13 +1338,9 @@ class SimulationEngine:
                 # Execute blocks in topological order
                 for block in sorted_blocks:
                     b_name = block.name
-                    # Normalize function name (matches SystemCompiler logic)
-                    fn = block.block_fn.title() if block.block_fn else ''
-                    if fn == 'Statespace': fn = 'StateSpace'
-                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-                    if block.block_fn == 'PID': fn = 'PID'
-                    if fn == 'Ratelimiter': fn = 'RateLimiter'
-                    
+                    # Normalize function name (single source of truth: lib.engine.block_names)
+                    fn = canonical_fn(block.block_fn)
+
                     # Collect inputs
                     inputs = {}
                     for srcblock, src_port, dstport in inputs_by_dst.get(b_name, ()):

@@ -9,6 +9,7 @@ from lib.engine.pde_helpers import (
     parse_pde_initial_condition,
     parse_pde_2d_initial_condition
 )
+from lib.engine.block_names import canonical_fn
 
 logger = logging.getLogger(__name__)
 
@@ -176,17 +177,8 @@ class SystemCompiler:
         """
         b_name = block.name
         
-        # Normalize Function Name
-        fn = block.block_fn.title() if block.block_fn else ''
-        if fn == 'Statespace': fn = 'StateSpace'
-        if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-        if block.block_fn == 'PID': fn = 'PID'
-        if fn == 'Ratelimiter': fn = 'RateLimiter'
-        # PDE blocks normalization
-        if fn == 'Heatequation1d': fn = 'Heatequation1D'
-        if fn == 'Waveequation1d': fn = 'Waveequation1D'
-        if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
-        if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
+        # Normalize Function Name (single source of truth: lib.engine.block_names)
+        fn = canonical_fn(block.block_fn)
 
         # Use resolved params if available (exec_params), otherwise fall back to params
         # This ensures workspace variables are properly resolved
@@ -1955,18 +1947,7 @@ class SystemCompiler:
         
         for block in blocks:
             b_name = block.name
-            fn = block.block_fn.title() if block.block_fn else ''
-            
-            # Correction for CamelCase blocks if title() messed them up
-            if fn == 'Statespace': fn = 'StateSpace'
-            if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-            if block.block_fn == 'PID': fn = 'PID' # Keep uppercase
-            if fn == 'Ratelimiter': fn = 'RateLimiter'
-            # PDE blocks normalization
-            if fn == 'Heatequation1d': fn = 'Heatequation1D'
-            if fn == 'Waveequation1d': fn = 'Waveequation1D'
-            if fn == 'Advectionequation1d': fn = 'Advectionequation1D'
-            if fn == 'Diffusionreaction1d': fn = 'Diffusionreaction1D'
+            fn = canonical_fn(block.block_fn)
             
             # Use resolved params if available (exec_params), otherwise fall
             # back to raw params. exec_params is populated by
