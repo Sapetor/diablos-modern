@@ -22,6 +22,13 @@ def _ctx(b_name="blk0", **params):
     )
 
 
+def _run_at(executor, t, b_name="blk0"):
+    """Run a source executor at time t and return its scalar output."""
+    sig = {}
+    executor(t, None, None, sig)
+    return sig[b_name]
+
+
 @pytest.mark.unit
 class TestKernelRegistry:
     def test_source_family_registered(self):
@@ -81,6 +88,42 @@ class TestSourceKernels:
         sig = {}
         ex(np.pi / 2, None, None, sig)
         assert np.isclose(sig["blk0"], 2.0 * 1.0 + 0.5)
+
+    def test_wavegenerator_sine(self):
+        ex = get_kernel_builder("Wavegenerator")(
+            _ctx(waveform="Sine", amplitude=2.0, frequency=1.0, phase=0.0, bias=0.5))
+        sig = {}
+        ex(0.25, None, None, sig)  # 2*pi*1*0.25 = pi/2 -> sin = 1
+        assert np.isclose(sig["blk0"], 0.5 + 2.0 * 1.0)
+
+    def test_wavegenerator_square_sign(self):
+        ex = get_kernel_builder("Wavegenerator")(
+            _ctx(waveform="Square", amplitude=1.0, frequency=1.0, phase=0.0, bias=0.0))
+        sig = {}
+        ex(0.1, None, None, sig)   # first half period -> +1
+        assert sig["blk0"] == 1.0
+
+    def test_impulse_window(self):
+        ex = get_kernel_builder("Impulse")(_ctx(delay=1.0, value=1.0, dtime=0.01))
+        sig = {}
+        ex(0.5, None, None, sig)            # before delay -> 0
+        assert sig["blk0"] == 0.0
+        ex(1.0, None, None, sig)            # inside narrow pulse -> large height
+        assert sig["blk0"] > 0.0
+
+    def test_prbs_deterministic_from_seed(self):
+        ex = get_kernel_builder("Prbs")(_ctx(high=1.0, low=0.0, bit_time=1.0, order=3, seed=1))
+        # order=3 -> period 7; sample two whole periods and assert repetition.
+        first = [(_run_at(ex, float(t))) for t in range(7)]
+        second = [(_run_at(ex, float(t + 7))) for t in range(7)]
+        assert first == second
+        assert set(first) <= {0.0, 1.0}
+
+    def test_noise_zero_sigma_is_mu(self):
+        ex = get_kernel_builder("Noise")(_ctx(mu=3.0, sigma=0.0))
+        sig = {}
+        ex(0.0, None, None, sig)
+        assert sig["blk0"] == 3.0
 
 
 def _ctx_io(b_name, params, input_sources):

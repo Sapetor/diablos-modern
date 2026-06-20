@@ -228,93 +228,7 @@ class SystemCompiler:
             )
             return builder(ctx)
 
-        if fn == 'Wavegenerator':
-            waveform = params.get('waveform', 'Sine')
-            amp = float(params.get('amplitude', 1.0))
-            freq = float(params.get('frequency', 1.0))
-            phase = float(params.get('phase', 0.0))
-            bias = float(params.get('bias', 0.0))
-
-            if waveform == 'Sine':
-                def exec_wavegen_sine(t, y, dy_vec, signals):
-                    arg = 2 * np.pi * freq * t + phase
-                    signals[b_name] = bias + amp * np.sin(arg)
-                return exec_wavegen_sine
-            elif waveform == 'Square':
-                def exec_wavegen_square(t, y, dy_vec, signals):
-                    arg = 2 * np.pi * freq * t + phase
-                    signals[b_name] = bias + amp * signal.square(arg)
-                return exec_wavegen_square
-            elif waveform == 'Triangle':
-                def exec_wavegen_triangle(t, y, dy_vec, signals):
-                    arg = 2 * np.pi * freq * t + phase
-                    signals[b_name] = bias + amp * signal.sawtooth(arg, width=0.5)
-                return exec_wavegen_triangle
-            elif waveform == 'Sawtooth':
-                def exec_wavegen_sawtooth(t, y, dy_vec, signals):
-                    arg = 2 * np.pi * freq * t + phase
-                    signals[b_name] = bias + amp * signal.sawtooth(arg, width=1.0)
-                return exec_wavegen_sawtooth
-            else:
-                # Default to sine
-                def exec_wavegen_default(t, y, dy_vec, signals):
-                    arg = 2 * np.pi * freq * t + phase
-                    signals[b_name] = bias + amp * np.sin(arg)
-                return exec_wavegen_default
-
-        elif fn == 'Impulse':
-            imp_t = float(params.get('delay', 0.0))
-            imp_val = float(params.get('value', 1.0))
-            imp_dt = float(params.get('dtime', 0.01))
-            # Use a very narrow pulse so the response is not visibly delayed.
-            # Width = dt/1000 keeps the shift negligible while RK45 handles it.
-            eps = imp_dt * 1e-3
-            imp_end = imp_t + eps
-            imp_height = imp_val / eps
-
-            def exec_impulse(t, y, dy_vec, signals):
-                signals[b_name] = imp_height if imp_t <= t < imp_end else 0.0
-            return exec_impulse
-
-        elif fn == 'Prbs':
-            high = float(params.get('high', 1.0))
-            low = float(params.get('low', 0.0))
-            bit_time = float(params.get('bit_time', 0.1))
-            order = int(params.get('order', 7))
-            seed = int(params.get('seed', 1)) & ((1 << order) - 1)
-            if seed == 0:
-                seed = 1
-
-            # Primitive polynomial taps for left-shift Fibonacci LFSR
-            # (verified with Mathematica)
-            _primitive_taps = {
-                2: [1, 0], 3: [2, 0], 4: [3, 0], 5: [4, 2],
-                6: [5, 0], 7: [6, 5], 8: [7, 5, 4, 3], 9: [8, 4],
-                10: [9, 6], 11: [10, 8], 12: [11, 10, 9, 3], 13: [12, 11, 8, 6],
-                14: [13, 12, 10, 8], 15: [14, 13], 16: [15, 13, 12, 10], 17: [16, 13],
-                18: [17, 10], 19: [18, 17, 16, 13], 20: [19, 16], 21: [20, 18],
-                22: [21, 20], 23: [22, 17], 24: [23, 22, 21, 16],
-            }
-            taps = _primitive_taps.get(order, [1, 0])
-            mask = (1 << order) - 1
-            period = (1 << order) - 1
-
-            # Precompute full LFSR sequence (period = 2^order - 1)
-            lfsr = seed
-            sequence = np.empty(period, dtype=np.float64)
-            for i in range(period):
-                sequence[i] = high if (lfsr & 1) else low
-                feedback = 0
-                for p in taps:
-                    feedback ^= (lfsr >> p) & 1
-                lfsr = ((lfsr << 1) & mask) | feedback
-
-            def exec_prbs(t, y, dy_vec, signals):
-                bit_index = int(t / bit_time) % period
-                signals[b_name] = sequence[bit_index]
-            return exec_prbs
-
-        elif fn == 'Integrator':
+        if fn == 'Integrator':
             start, size = state_map[b_name]
             src = input_sources[0] if input_sources else None
             
@@ -655,14 +569,6 @@ class SystemCompiler:
                  dy = np.clip(rate, falling, rising)
                  dy_vec[start] = dy
              return exec_ratelimiter
-
-        elif fn == 'Noise':
-            mu = float(params.get('mu', 0.0))
-            sigma = float(params.get('sigma', 1.0))
-
-            def exec_noise(t, y, dy_vec, signals):
-                signals[b_name] = mu + sigma * np.random.randn()
-            return exec_noise
 
         elif fn == 'Selector':
             src = input_sources[0] if input_sources else None
