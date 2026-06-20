@@ -160,6 +160,63 @@ class TestMathKernels:
         ex(0.0, None, None, sig)
         assert sig["s0"] == 4.0
 
+
+@pytest.mark.unit
+class TestNonlinearKernels:
+    def test_saturation_clips(self):
+        ex = get_kernel_builder("Saturation")(_ctx_io("s0", {"min": -1.0, "max": 1.0}, ["x"]))
+        for v, expected in [(2.0, 1.0), (-2.0, -1.0), (0.3, 0.3)]:
+            sig = {"x": v}
+            ex(0.0, None, None, sig)
+            assert np.isclose(sig["s0"], expected)
+
+    def test_deadband_zero_inside_offset_outside(self):
+        ex = get_kernel_builder("Deadband")(_ctx_io("d0", {"start": -0.5, "end": 0.5}, ["x"]))
+        sig = {"x": 0.2}
+        ex(0.0, None, None, sig)
+        assert np.isclose(np.asarray(sig["d0"]).item(), 0.0)
+        sig = {"x": 1.5}
+        ex(0.0, None, None, sig)
+        assert np.isclose(np.asarray(sig["d0"]).item(), 1.0)  # 1.5 - end(0.5)
+
+    def test_switch_threshold_selects(self):
+        # ctrl >= threshold -> data input 0 (port index 1); else input 1 (port 2)
+        ex = get_kernel_builder("Switch")(
+            _ctx_io("sw0", {"mode": "threshold", "n_inputs": 2, "threshold": 0.0},
+                    ["ctrl", "a", "b"]))
+        sig = {"ctrl": 1.0, "a": 10.0, "b": 20.0}
+        ex(0.0, None, None, sig)
+        assert sig["sw0"] == 10.0
+        sig = {"ctrl": -1.0, "a": 10.0, "b": 20.0}
+        ex(0.0, None, None, sig)
+        assert sig["sw0"] == 20.0
+
+    def test_selector_index_and_range(self):
+        ex = get_kernel_builder("Selector")(_ctx_io("se0", {"indices": "1,3"}, ["x"]))
+        sig = {"x": np.array([10.0, 11.0, 12.0, 13.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["se0"], np.array([11.0, 13.0]))
+        ex = get_kernel_builder("Selector")(_ctx_io("se0", {"indices": "1:3"}, ["x"]))
+        sig = {"x": np.array([10.0, 11.0, 12.0, 13.0])}
+        ex(0.0, None, None, sig)
+        assert np.allclose(sig["se0"], np.array([11.0, 12.0]))
+
+    def test_hysteresis_latches(self):
+        ex = get_kernel_builder("Hysteresis")(
+            _ctx_io("h0", {"upper": 0.5, "lower": -0.5, "high": 1.0, "low": 0.0}, ["x"]))
+        sig = {"x": 0.0}
+        ex(0.0, None, None, sig)
+        assert sig["h0"] == 0.0          # starts low, stays in deadband
+        sig = {"x": 1.0}
+        ex(0.0, None, None, sig)
+        assert sig["h0"] == 1.0          # crosses upper -> high
+        sig = {"x": 0.0}
+        ex(0.0, None, None, sig)
+        assert sig["h0"] == 1.0          # in deadband -> retains high
+        sig = {"x": -1.0}
+        ex(0.0, None, None, sig)
+        assert sig["h0"] == 0.0          # crosses lower -> low
+
     def test_exponential(self):
         ex = get_kernel_builder("Exponential")(_ctx_io("e0", {"a": 2.0, "b": 0.5}, ["x"]))
         sig = {"x": 4.0}
