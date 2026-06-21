@@ -502,9 +502,16 @@ class SystemCompiler:
 
         # 4. Compile Execution Sequence
         execution_sequence = []
+        # Also expose a name -> executor map so the post-solve replay loop in
+        # SimulationEngine.run_compiled_simulation can reuse these same kernels
+        # for pure-function blocks instead of re-deriving each block's output
+        # math in a parallel if/elif (single source of truth for that math).
+        block_executors = {}
         for block in sorted_order:
              executor = self._create_block_executor(block, input_map, state_map, block_matrices)
              execution_sequence.append(executor)
+             block_executors[block.name] = executor
+        self.block_executors = block_executors
 
         # 5. Build pre-population list for D=0 state-block outputs ONLY.
         # D≠0 blocks execute in the middle group and are NOT pre-populated.
