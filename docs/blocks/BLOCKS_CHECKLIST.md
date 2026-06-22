@@ -309,7 +309,7 @@ Before committing:
 
 ## After Creating Block
 
-- [ ] Run app: `python main.py`
+- [ ] Run app: `python diablos_modern.py`
 - [ ] Check block appears in palette
 - [ ] Try placing block on canvas
 - [ ] Try connecting to other blocks

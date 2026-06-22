@@ -61,7 +61,7 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
 │  ├── base_block.py         (Base class for all blocks)      │
 │  ├── integrator.py         (Integrator block)               │
 │  ├── transfer_function.py  (Transfer function block)        │
-│  └── ... (18+ block types)                                  │
+│  └── ... (69 block types)                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -167,26 +167,33 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
 All blocks inherit from **BaseBlock** (`base_block.py`):
 
 ```python
-class BaseBlock:
+class BaseBlock(ABC):
+    # --- Required (abstract) members ---
     @property
-    def block_name(self): ...      # e.g., "Integrator"
+    @abstractmethod
+    def block_name(self): ...       # e.g., "Integrator"
 
     @property
-    def fn_name(self): ...          # e.g., "integrator"
+    @abstractmethod
+    def params(self): ...           # Default parameters (nested spec dict)
 
     @property
-    def category(self): ...         # e.g., "Control"
-
-    @property
+    @abstractmethod
     def inputs(self): ...           # Input port definitions
 
     @property
+    @abstractmethod
     def outputs(self): ...          # Output port definitions
 
-    @property
-    def params(self): ...           # Default parameters
-
+    @abstractmethod
     def execute(self, time, inputs, params, **kwargs): ...
+
+    # --- Optional overrides ---
+    @property
+    def category(self): ...         # e.g., "Control" (defaults to "Other")
+
+    @property
+    def fn_name(self): ...          # Only some blocks (e.g. statespace) override this
     
     def draw_icon(self, block_rect):  # Optional: custom icon
         """Return QPainterPath in 0-1 normalized coordinates, or None for fallback."""
@@ -256,6 +263,34 @@ DSim.step() - Execute timestep (called in loop)
   ↓
 Results displayed in Scope blocks
 ```
+
+### 3b. Compiled Fast-Solver Path
+
+For diagrams that pass `check_compilability()`, DiaBloS bypasses the per-timestep
+interpreter loop above and compiles the whole diagram into a single ODE solved by
+SciPy:
+
+```
+Flattening    - Flattener (lib/engine/flattener.py) expands nested
+                subsystems into a flat block list
+  ↓
+Compilation   - SystemCompiler.compile_system() (lib/engine/system_compiler.py)
+                builds a per-block executor closure for every block by dispatching
+                to the kernel registry in lib/engine/compiler_kernels/
+                (@kernel-decorated builders, one block family per module).
+                Blocks run in three groups:
+                sources → algebraic middle → strictly-proper (D=0) state blocks
+  ↓
+Solve         - the assembled derivative function is handed to
+                scipy.integrate.solve_ivp (RK45 by default)
+  ↓
+Replay        - run_compiled_simulation recomputes block outputs at each saved
+                time step to populate Scope traces
+```
+
+If compilation fails for any reason, the engine falls back to the interpreter path
+above. See [FAST_SOLVER.md](FAST_SOLVER.md) for the full rationale and the
+compiled-solver execution order.
 
 ### 4. File Save/Load Flow
 ```
@@ -361,9 +396,8 @@ def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
 
 ### Adding a New Block Type
 
-> **Note:** As of 2026-01, blocks implement their `execute()` method directly. 
-> The legacy `functions.py` is only used by some older blocks (integrator, statespace, etc.)
-> and will be fully deprecated in a future release.
+> **Note:** Blocks implement their logic directly in `execute()`. The legacy
+> `lib/functions.py` has been removed — there is no separate execution-function file.
 
 1. Create file in `blocks/` directory:
 ```python
@@ -375,10 +409,6 @@ class MyBlock(BaseBlock):
     @property
     def block_name(self):
         return "MyBlock"
-
-    @property
-    def fn_name(self):
-        return "my_block"
 
     @property
     def params(self):
@@ -395,7 +425,7 @@ class MyBlock(BaseBlock):
         input_val = inputs.get(0, 0.0)
         param1 = params.get('param1', 1.0)
         result = input_val * param1
-        return {'output': result, 'E': False}
+        return {0: result}  # outputs keyed by port index
 ```
 
 2. Restart application - block automatically discovered!

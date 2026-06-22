@@ -88,7 +88,7 @@ diablos-modern/
 │   ├── base_block.py       # Base class for all blocks
 │   ├── integrator.py       # Integrator block
 │   ├── step.py             # Step input block
-│   └── ...                 # 18+ block types
+│   └── ...                 # 69 block types
 │
 ├── lib/                     # Core library
 │   ├── models/             # Model layer (data)
@@ -102,7 +102,6 @@ diablos-modern/
 │   │   ├── connection.py   # DLine class
 │   │   └── menu_block.py   # MenuBlocks class
 │   ├── lib.py              # Main DSim controller
-│   ├── functions.py        # Block execution functions
 │   ├── dialogs.py          # UI dialogs
 │   ├── config_manager.py   # Configuration management
 │   └── improvements.py     # Utilities and helpers
@@ -160,13 +159,6 @@ class MyCustomBlock(BaseBlock):
         return "MyCustom"
 
     @property
-    def fn_name(self):
-        """
-        Unique function identifier used by the simulation engine.
-        """
-        return "my_custom"
-
-    @property
     def category(self):
         """Category for block palette organization."""
         return "Custom"  # or "Math", "Control", "Sources", etc.
@@ -215,49 +207,10 @@ class MyCustomBlock(BaseBlock):
         input1 = inputs.get(0, 0.0)
         input2 = inputs.get(1, 0.0)
         result = (input1 + input2) * gain + offset
-        return {'output': result}
-```
-
-### Step 2: Implement Execution Function
-
-Add the function to `lib/functions.py`:
-
-```python
-def my_custom(time, inputs, params, output_only=False):
-    """
-    Execute custom block logic.
-
-    Args:
-        time: Current simulation time
-        inputs: Dict mapping port numbers to input values
-        params: Block parameters dict
-        output_only: If True, return output without state update
-
-    Returns:
-        Dict with 'output' key containing result value(s)
-        or Dict with 'E': True and 'error': 'message' on error
-    """
-    try:
-        # Get input values
-        input1 = inputs.get(0, 0.0)  # Port 0
-        input2 = inputs.get(1, 0.0)  # Port 1
-
-        # Get parameters
-        gain = params.get('gain', 1.0)
-        offset = params.get('offset', 0.0)
-
-        # Compute output
-        result = (input1 + input2) * gain + offset
-
-        # Return result (single output)
-        return {'output': result}
-
-        # For multiple outputs:
-        # return {'output': [result1, result2, result3]}
-
-    except Exception as e:
-        logger.error(f"Error in my_custom: {e}")
-        return {'E': True, 'error': str(e)}
+        # Outputs are a dict keyed by integer port index (NOT a string key).
+        # For multiple outputs: return {0: out0, 1: out1}.
+        # On error, return {'E': True, 'error': 'message'}.
+        return {0: result}
 ```
 
 ### Step 2: Test Your Block
@@ -291,10 +244,6 @@ class TestMyCustomBlock:
         block = MyCustomBlock()
         assert block.block_name == "MyCustom"
 
-    def test_block_has_correct_fn_name(self):
-        block = MyCustomBlock()
-        assert block.fn_name == "my_custom"
-
     def test_execute_with_valid_inputs(self):
         block = MyCustomBlock()
         inputs = {0: 5.0, 1: 3.0}
@@ -302,7 +251,7 @@ class TestMyCustomBlock:
 
         result = block.execute(0.0, inputs, params)
 
-        assert result['output'] == 17.0  # (5+3)*2+1
+        assert result[0] == 17.0  # (5+3)*2+1
 ```
 
 ## Working with the MVC Architecture
@@ -700,7 +649,8 @@ python diablos_modern.py
 ```
 
 **Block not appearing:**
-- Check `fn_name` matches function in lib/functions.py
+- Check the block file is in `blocks/` and the class inherits `BaseBlock`
+- Run `python tools/sync_block_registry.py` (needed for frozen/packaged builds)
 - Restart application to reload blocks
 - Check console for error messages
 

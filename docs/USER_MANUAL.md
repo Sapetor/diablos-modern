@@ -4,7 +4,7 @@
 
 ### Running the Application
 ```bash
-python main.py
+python diablos_modern.py
 ```
 
 ### Interface Overview
