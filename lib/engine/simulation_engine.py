@@ -13,6 +13,7 @@ from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.block_names import canonical_fn
+from lib.engine.topo import kahn_topological_order
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -756,8 +757,6 @@ class SimulationEngine:
             tuple: (is_algebraic: bool, cycle_nodes: list) - True if loop detected,
                    with list of block names involved in the cycle
         """
-        from collections import deque
-        
         if len(uncomputed_blocks) == 0:
             return False, []
 
@@ -768,37 +767,22 @@ class SimulationEngine:
 
         # Build the graph only with uncomputed blocks
         graph = {block.name: [] for block in uncomputed_blocks}
-        in_degree = {block.name: 0 for block in uncomputed_blocks}
-
         for block in uncomputed_blocks:
             children = self.get_outputs(block.name)
             for child_info in children:
                 child_name = child_info['dstblock']
                 if child_name in uncomputed_block_names:
                     graph[block.name].append(child_name)
-                    in_degree[child_name] += 1
 
-        # Find all nodes with an in-degree of 0
-        queue = deque([name for name, degree in in_degree.items() if degree == 0])
+        # Topological sort (Kahn). Any node left in a cycle has unresolved
+        # dependencies -> a non-empty `cycle_nodes` means an algebraic loop.
+        _order, cycle_nodes = kahn_topological_order(
+            (b.name for b in uncomputed_blocks), graph)
 
-        # Perform topological sort
-        count = 0
-        while queue:
-            u = queue.popleft()
-            count += 1
-            for v in graph.get(u, []):
-                in_degree[v] -= 1
-                if in_degree[v] == 0:
-                    queue.append(v)
-
-        # If the count of visited nodes is less than the number of nodes, there is a cycle
-        if count < len(uncomputed_blocks):
-            # Find the nodes involved in the cycle
-            cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
-            
+        if cycle_nodes:
             # Check if the cycle contains any memory blocks
             has_memory_block = any(node in self.memory_blocks for node in cycle_nodes)
-            
+
             if not has_memory_block:
                 logger.error("ALGEBRAIC LOOP DETECTED")
                 logger.error(f"Blocks involved: {cycle_nodes}")
@@ -1254,16 +1238,14 @@ class SimulationEngine:
             # We "replay" the simulation using the solution to capture all signals.
             num_steps = len(sol.t)
             
-            # Replay Sort: Topological sort respecting Direct Feedthrough
-            # 1. Build Graph
-            from collections import deque
-            replay_order = []
-            in_degree = {b.name: 0 for b in current_blocks}
+            # Replay Sort: topological order respecting Direct Feedthrough.
+            # Only feedthrough edges constrain the order — a state block's output
+            # is its (already-known) state, so it does not depend on this step's
+            # inputs and need not follow its source.
             adj = {b.name: [] for b in current_blocks}
             # name -> block lookup, built once to avoid repeated linear scans
             block_by_name = {b.name: b for b in current_blocks}
 
-            # 2. Add edges only for Direct Feedthrough connections
             for line in current_lines:
                 src = line.srcblock
                 dst = line.dstblock
@@ -1287,37 +1269,17 @@ class SimulationEngine:
                          D = np.array(dst_block.params.get('D', [[0.0]]))
                          if np.all(D == 0):
                              is_feedthrough = False
-                
-                if is_feedthrough:
-                    if src in adj:
-                        adj[src].append(dst)
-                        in_degree[dst] += 1
-            
-            # 3. Kahn's Algorithm
-            # stable sort for determinism (e.g. step before sine if independent)
-            initial = sorted((b for b in current_blocks if in_degree[b.name] == 0),
-                             key=lambda b: b.name)
-            queue = deque(initial)
 
-            while queue:
-                u = queue.popleft()
-                replay_order.append(u)
+                if is_feedthrough and src in adj:
+                    adj[src].append(dst)
 
-                if u.name in adj:
-                    for v_name in adj[u.name]:
-                        in_degree[v_name] -= 1
-                        if in_degree[v_name] == 0:
-                            v_block = block_by_name.get(v_name)
-                            if v_block:
-                                queue.append(v_block)
-            
-            # If cycles remain (algebraic loops), append leftovers (best effort)
-            if len(replay_order) < len(current_blocks):
-                leftovers = [b for b in current_blocks if b not in replay_order]
-                # logger.warning(f"Replay Sort: Algebraic loop detected or sort failed. Leftovers: {[b.name for b in leftovers]}")
-                replay_order.extend(leftovers)
-                
-            sorted_blocks = replay_order
+            # Kahn's algorithm, stable on block name for determinism (e.g. step
+            # before sine if independent). Any cycle leftovers are appended in
+            # current-block order (best effort) so every block still runs.
+            order_names, leftover_names = kahn_topological_order(
+                (b.name for b in current_blocks), adj, key=lambda n: n)
+            sorted_blocks = ([block_by_name[n] for n in order_names]
+                             + [block_by_name[n] for n in leftover_names])
 
             # Precompute dst_name -> list of (srcblock, srcport, dstport) once so
             # the per-step replay does not rescan every connection for every
