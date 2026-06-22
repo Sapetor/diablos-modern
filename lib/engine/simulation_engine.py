@@ -230,67 +230,8 @@ class SimulationEngine:
             logger.info(f"Engine: Initializing execution for {len(blocks_to_exec)} blocks (flattened)")
             _te2 = _time.time()
             
-            for block in blocks_to_exec:
-                logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
-                out_value = {}
-
-                # Determine whether this block can run with no upstream data.
-                # b_type==0 by itself does NOT mean "source": Sum, MatrixGain,
-                # Demux, etc. are all b_type==0 instantaneous blocks but they
-                # do require inputs. Force-executing them here pins them to
-                # hierarchy=0 with stale input values, which freezes feedback
-                # loops in the interpreter path. Mirror the readiness check
-                # used in Loop 2 below: a block is a source only if every
-                # input port is optional (or there are none).
-                optional_inputs = set()
-                if hasattr(block, 'block_instance') and block.block_instance:
-                    if hasattr(block.block_instance, 'optional_inputs'):
-                        optional_inputs = set(block.block_instance.optional_inputs)
-                required_ports = block.in_ports - len(optional_inputs)
-                is_source = required_ports == 0
-
-                if block.b_type == 0 and is_source:
-                    # Execute source block
-                    _tblk = _time.time()
-                    out_value = self.execute_block(block)
-                    logger.debug(f"[ENGINE TIMING] execute_block({block.name}): {_time.time() - _tblk:.3f}s")
-                    if out_value is False: # execute_block handles errors and returns None/False/Dict
-                        return False
-
-                    block.computed_data = True
-                    block.hierarchy = 0
-                    self.update_global_list(block.name, h_value=0, h_assign=True)
-
-                elif block.name in self.memory_blocks:
-                    # Execute memory block (output_only=True)
-                    _tblk = _time.time()
-                    out_value = self.execute_block(block, output_only=True)
-                    logger.debug(f"[ENGINE TIMING] execute_block({block.name}, memory): {_time.time() - _tblk:.3f}s")
-                    if out_value is False:
-                         return False
-
-                    block.computed_data = True
-                    self.update_global_list(block.name, h_value=0, h_assign=True)
-
-                # Check for errors in output
-                if out_value and isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
-                    self.error_msg = out_value.get('error', 'Unknown error')
-                    logger.error(self.error_msg)
-                    return False
-
-                # Propagate outputs to children
-                if out_value:
-                    if block.b_type not in [1, 3]: # Only propagate if valid type logic applies (memory blocks propagate manually here)
-                         # Note: The original logic had custom propagation here.
-                         pass
-
-                    # We can reuse propagate_outputs but need to be careful about the specific logic used in init
-                    # Original logic manually iterated children. Let's replicate or delegate.
-                    _tprop = _time.time()
-                    self.propagate_outputs(block, out_value)
-                    _prop_time = _time.time() - _tprop
-                    if _prop_time > 0.01:
-                        logger.debug(f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s")
+            if not self._init_execute_sources(blocks_to_exec):
+                return False
 
             # Note: Memory blocks stay computed - they executed in Loop 1 and will receive
             # feedback via propagation. They don't need to re-execute in Loop 2.
@@ -300,86 +241,8 @@ class SimulationEngine:
 
             # Loop 2: Hierarchy Resolution Matrix
             _te3 = _time.time()
-            h_count = 1
-            while not self.check_global_list():
-                for block in blocks_to_exec:
-                    # Check execution readiness - account for optional inputs
-                    optional_inputs = set()
-                    if hasattr(block, 'block_instance') and block.block_instance:
-                        if hasattr(block.block_instance, 'optional_inputs'):
-                            optional_inputs = set(block.block_instance.optional_inputs)
-
-                    required_ports = block.in_ports - len(optional_inputs)
-                    can_execute = block.data_recieved >= required_ports or block.in_ports == 0
-
-                    logger.debug(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_ports})")
-
-                    if can_execute and not block.computed_data:
-                        # OUT_VALUE execute_block...
-                        out_value = self.execute_block(block)
-                        if out_value is False:
-                            return False
-                        # Check for error dict from block
-                        if isinstance(out_value, dict) and (out_value.get('E') or out_value.get('error')):
-                            self.error_msg = out_value.get('error', 'Block returned error')
-                            logger.error(f"Block {block.name} error: {self.error_msg}")
-                            return False
-                            
-                        # Memory block special output update
-                        if block.name in self.memory_blocks:
-                             if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                                block.exec_params['output'] = block.exec_params['mem']
-                        
-                        self.update_global_list(block.name, h_value=h_count, h_assign=True)
-                        block.computed_data = True
-
-                        # Sync the DBlock-level sample schedule for discrete
-                        # blocks that just performed their t=0 sample.  Without
-                        # this, the simulation loop's first should_execute()
-                        # would still see _next_execution_time=0 and run the
-                        # block at t=dt instead of waiting for t=Ts.
-                        if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                            for port, value in out_value.items():
-                                if isinstance(port, int):
-                                    block.set_held_output(port, value)
-                            block.schedule_next_execution(self.time_step)
-
-                        if block.name not in self.memory_blocks and block.b_type != 3:
-                            self.propagate_outputs(block, out_value)
-
-                        logger.debug(f"EXECUTED in LOOP {h_count}: {block.name}")
-                            
-                # Algebraic Loop Detection
-                computed_count = self.count_computed_global_list()
-                if computed_count == check_loop:
-                    uncomputed_blocks = [b for b in blocks_to_exec if not b.computed_data]
-                    if not uncomputed_blocks:
-                        break
-                        
-                    is_algebraic, cycle_nodes = self.detect_algebraic_loops(uncomputed_blocks)
-                    if is_algebraic:
-                        self.error_msg = f"Algebraic loop detected involving blocks: {cycle_nodes}"
-                        logger.error(self.error_msg)
-                        return False
-                    else:
-                        # The only legitimate stall is when the remaining
-                        # uncomputed blocks are all memory blocks (they execute
-                        # in Loop 3). Any uncomputed non-memory block would
-                        # silently never run, so surface that as a hard error.
-                        stalled_non_memory = [b.name for b in uncomputed_blocks
-                                              if b.name not in self.memory_blocks]
-                        if stalled_non_memory:
-                            self.error_msg = (
-                                f"Hierarchy resolution stalled with uncomputed "
-                                f"non-memory blocks: {stalled_non_memory}"
-                            )
-                            logger.error(self.error_msg)
-                            return False
-                        break
-                else:
-                    check_loop = computed_count
-                
-                h_count += 1
+            if not self._init_resolve_hierarchy(blocks_to_exec, check_loop):
+                return False
             logger.debug(f"[ENGINE TIMING] Loop 2 (hierarchy): {_time.time() - _te3:.3f}s")
 
             # Loop 3: Advance memory block state by one step using the inputs
@@ -391,28 +254,8 @@ class SimulationEngine:
             # blocks (b_type=2) already get their state advanced in Loop 2's
             # full execute; this loop brings memory blocks in line with that.
             # Output is NOT propagated: scope already has y[0] from Loop 1.
-            for block in blocks_to_exec:
-                if block.name in self.memory_blocks:
-                    out_value = self.execute_block(block)
-                    if out_value is False:
-                        return False
-                    if isinstance(out_value, dict) and out_value.get('E'):
-                        self.error_msg = out_value.get('error', 'State advance failed')
-                        logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
-                        return False
-                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                        block.exec_params['output'] = block.exec_params['mem']
-                    # For discrete blocks, sync the DBlock-level sample schedule
-                    # with the block-internal sample state so the simulation
-                    # loop's should_execute() agrees with the block's own
-                    # bookkeeping.  Without this, the loop would think the
-                    # block's "next sample" is still at t=0 and would call
-                    # execute every dt instead of every Ts.
-                    if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                        for port, value in out_value.items():
-                            if isinstance(port, int):
-                                block.set_held_output(port, value)
-                        block.schedule_next_execution(self.time_step)
+            if not self._init_advance_memory_state(blocks_to_exec):
+                return False
 
             # Sync hierarchies back to blocks
             self.reset_execution_data()
@@ -431,6 +274,196 @@ class SimulationEngine:
             logger.error(traceback.format_exc())
             self.error_msg = str(e)
             return False
+
+    def _init_execute_sources(self, blocks_to_exec):
+        """Loop 1 of execution init: execute the source blocks (those whose
+        every input port is optional or absent) and run the memory blocks
+        output-only, pinning each to hierarchy 0 and propagating its
+        outputs. Returns False with self.error_msg set on a block error.
+        """
+        import time as _time
+        for block in blocks_to_exec:
+            logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
+            out_value = {}
+
+            # Determine whether this block can run with no upstream data.
+            # b_type==0 by itself does NOT mean "source": Sum, MatrixGain,
+            # Demux, etc. are all b_type==0 instantaneous blocks but they
+            # do require inputs. Force-executing them here pins them to
+            # hierarchy=0 with stale input values, which freezes feedback
+            # loops in the interpreter path. Mirror the readiness check
+            # used in Loop 2 below: a block is a source only if every
+            # input port is optional (or there are none).
+            optional_inputs = set()
+            if hasattr(block, 'block_instance') and block.block_instance:
+                if hasattr(block.block_instance, 'optional_inputs'):
+                    optional_inputs = set(block.block_instance.optional_inputs)
+            required_ports = block.in_ports - len(optional_inputs)
+            is_source = required_ports == 0
+
+            if block.b_type == 0 and is_source:
+                # Execute source block
+                _tblk = _time.time()
+                out_value = self.execute_block(block)
+                logger.debug(f"[ENGINE TIMING] execute_block({block.name}): {_time.time() - _tblk:.3f}s")
+                if out_value is False: # execute_block handles errors and returns None/False/Dict
+                    return False
+
+                block.computed_data = True
+                block.hierarchy = 0
+                self.update_global_list(block.name, h_value=0, h_assign=True)
+
+            elif block.name in self.memory_blocks:
+                # Execute memory block (output_only=True)
+                _tblk = _time.time()
+                out_value = self.execute_block(block, output_only=True)
+                logger.debug(f"[ENGINE TIMING] execute_block({block.name}, memory): {_time.time() - _tblk:.3f}s")
+                if out_value is False:
+                     return False
+
+                block.computed_data = True
+                self.update_global_list(block.name, h_value=0, h_assign=True)
+
+            # Check for errors in output
+            if out_value and isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
+                self.error_msg = out_value.get('error', 'Unknown error')
+                logger.error(self.error_msg)
+                return False
+
+            # Propagate outputs to children
+            if out_value:
+                if block.b_type not in [1, 3]: # Only propagate if valid type logic applies (memory blocks propagate manually here)
+                     # Note: The original logic had custom propagation here.
+                     pass
+
+                # We can reuse propagate_outputs but need to be careful about the specific logic used in init
+                # Original logic manually iterated children. Let's replicate or delegate.
+                _tprop = _time.time()
+                self.propagate_outputs(block, out_value)
+                _prop_time = _time.time() - _tprop
+                if _prop_time > 0.01:
+                    logger.debug(f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s")
+        return True
+
+    def _init_resolve_hierarchy(self, blocks_to_exec, check_loop):
+        """Loop 2 of execution init: the hierarchy-resolution fixpoint --
+        repeatedly execute every block whose inputs are ready, assigning
+        ascending hierarchy levels, until all blocks are computed. Detects
+        algebraic loops and stalls. Returns False with self.error_msg set
+        on an algebraic loop, a stall, or a block error.
+        """
+        h_count = 1
+        while not self.check_global_list():
+            for block in blocks_to_exec:
+                # Check execution readiness - account for optional inputs
+                optional_inputs = set()
+                if hasattr(block, 'block_instance') and block.block_instance:
+                    if hasattr(block.block_instance, 'optional_inputs'):
+                        optional_inputs = set(block.block_instance.optional_inputs)
+
+                required_ports = block.in_ports - len(optional_inputs)
+                can_execute = block.data_recieved >= required_ports or block.in_ports == 0
+
+                logger.debug(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_ports})")
+
+                if can_execute and not block.computed_data:
+                    # OUT_VALUE execute_block...
+                    out_value = self.execute_block(block)
+                    if out_value is False:
+                        return False
+                    # Check for error dict from block
+                    if isinstance(out_value, dict) and (out_value.get('E') or out_value.get('error')):
+                        self.error_msg = out_value.get('error', 'Block returned error')
+                        logger.error(f"Block {block.name} error: {self.error_msg}")
+                        return False
+
+                    # Memory block special output update
+                    if block.name in self.memory_blocks:
+                         if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                            block.exec_params['output'] = block.exec_params['mem']
+
+                    self.update_global_list(block.name, h_value=h_count, h_assign=True)
+                    block.computed_data = True
+
+                    # Sync the DBlock-level sample schedule for discrete
+                    # blocks that just performed their t=0 sample.  Without
+                    # this, the simulation loop's first should_execute()
+                    # would still see _next_execution_time=0 and run the
+                    # block at t=dt instead of waiting for t=Ts.
+                    if block.effective_sample_time > 0 and isinstance(out_value, dict):
+                        for port, value in out_value.items():
+                            if isinstance(port, int):
+                                block.set_held_output(port, value)
+                        block.schedule_next_execution(self.time_step)
+
+                    if block.name not in self.memory_blocks and block.b_type != 3:
+                        self.propagate_outputs(block, out_value)
+
+                    logger.debug(f"EXECUTED in LOOP {h_count}: {block.name}")
+
+            # Algebraic Loop Detection
+            computed_count = self.count_computed_global_list()
+            if computed_count == check_loop:
+                uncomputed_blocks = [b for b in blocks_to_exec if not b.computed_data]
+                if not uncomputed_blocks:
+                    break
+
+                is_algebraic, cycle_nodes = self.detect_algebraic_loops(uncomputed_blocks)
+                if is_algebraic:
+                    self.error_msg = f"Algebraic loop detected involving blocks: {cycle_nodes}"
+                    logger.error(self.error_msg)
+                    return False
+                else:
+                    # The only legitimate stall is when the remaining
+                    # uncomputed blocks are all memory blocks (they execute
+                    # in Loop 3). Any uncomputed non-memory block would
+                    # silently never run, so surface that as a hard error.
+                    stalled_non_memory = [b.name for b in uncomputed_blocks
+                                          if b.name not in self.memory_blocks]
+                    if stalled_non_memory:
+                        self.error_msg = (
+                            f"Hierarchy resolution stalled with uncomputed "
+                            f"non-memory blocks: {stalled_non_memory}"
+                        )
+                        logger.error(self.error_msg)
+                        return False
+                    break
+            else:
+                check_loop = computed_count
+
+            h_count += 1
+        return True
+
+    def _init_advance_memory_state(self, blocks_to_exec):
+        """Loop 3 of execution init: advance each memory block state by one
+        step using the inputs resolved in Loop 2 (Loop 1 ran them
+        output-only so y[0] could feed downstream, but never advanced the
+        state). Output is not propagated. Returns False with self.error_msg
+        set on error.
+        """
+        for block in blocks_to_exec:
+            if block.name in self.memory_blocks:
+                out_value = self.execute_block(block)
+                if out_value is False:
+                    return False
+                if isinstance(out_value, dict) and out_value.get('E'):
+                    self.error_msg = out_value.get('error', 'State advance failed')
+                    logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
+                    return False
+                if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
+                    block.exec_params['output'] = block.exec_params['mem']
+                # For discrete blocks, sync the DBlock-level sample schedule
+                # with the block-internal sample state so the simulation
+                # loop's should_execute() agrees with the block's own
+                # bookkeeping.  Without this, the loop would think the
+                # block's "next sample" is still at t=0 and would call
+                # execute every dt instead of every Ts.
+                if block.effective_sample_time > 0 and isinstance(out_value, dict):
+                    for port, value in out_value.items():
+                        if isinstance(port, int):
+                            block.set_held_output(port, value)
+                    block.schedule_next_execution(self.time_step)
+        return True
 
     def update_global_list(self, block_name: str, h_value: int = 0, h_assign: bool = False, reset_computed: bool = False) -> None:
         """Update global computed list."""
