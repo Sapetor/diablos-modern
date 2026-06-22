@@ -2,6 +2,26 @@
 Pytest configuration and shared fixtures for DiaBloS tests.
 """
 
+import os
+
+# Force a headless Qt / matplotlib backend for the whole suite, unless the
+# developer explicitly opts into visible windows (DIABLOS_SHOW_WINDOWS=1).
+#
+# Why this lives here rather than in the shell command: the Windows test
+# interpreter (.venv-win/Scripts/python.exe) is launched from WSL, and WSL only
+# forwards env vars listed in WSLENV into Win32 processes. A shell-level
+# "QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg" prefix is therefore silently
+# dropped, Qt falls back to the on-screen "windows" plugin, and any widget a
+# test calls .show() on (e.g. the standalone block palette in
+# test_palette_collapse_and_keynav.py) pops up as a real window. Setting it
+# here -- before any QApplication is constructed, which is when the platform
+# plugin is selected -- makes the suite reliably headless no matter how pytest
+# is launched (CLI, IDE, CI). setdefault() still lets an explicitly-set value
+# win on platforms where the shell env does propagate.
+if not os.environ.get("DIABLOS_SHOW_WINDOWS"):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault("MPLBACKEND", "Agg")
+
 import sys
 from pathlib import Path
 
