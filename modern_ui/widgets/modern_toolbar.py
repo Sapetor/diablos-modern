@@ -179,7 +179,6 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     elif kind == 'sun':
         p.drawEllipse(QPointF(s / 2, s / 2), 2.2, 2.2)
         for i in range(8):
-            import math
             a = i * math.pi / 4
             r1, r2 = 3.4, 4.6
             line(s / 2 + math.cos(a) * r1, s / 2 + math.sin(a) * r1,
@@ -628,14 +627,3 @@ class ModernToolBar(QToolBar):
 
     def set_zoom_factor(self, factor: float):
         self.zoom_rocker.set_zoom(factor)
-
-    # Back-compat: old code referenced `zoom_slider` and `zoom_label`.
-    # Forward those attribute accesses to the rocker so nothing breaks.
-    @property
-    def zoom_slider(self):
-        # Returns the rocker for any code that calls .value() etc.
-        return self.zoom_rocker
-
-    @property
-    def zoom_label(self):
-        return self.zoom_rocker.label

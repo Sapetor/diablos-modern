@@ -252,3 +252,76 @@ class TestCompilerWorkspaceVars:
                 "literal-coefficient version (compiler misread raw params)."
             ),
         )
+
+
+@pytest.fixture
+def workspace_with_hyst_high():
+    """Install a workspace variable for the Hysteresis high output and restore."""
+    from lib.workspace import WorkspaceManager
+
+    prev_instance = WorkspaceManager._instance
+    WorkspaceManager._instance = None
+
+    wm = WorkspaceManager()
+    wm.variables = {'hyst_high': 2.0}
+
+    yield wm
+
+    WorkspaceManager._instance = prev_instance
+
+
+@pytest.mark.unit
+class TestCompilerAlgebraicBlockWorkspaceVars:
+    """Covers the *executor* branches of ``_create_block_executor`` (algebraic
+    blocks: Hysteresis/Selector/Field*), which historically read raw
+    ``block.params`` instead of the resolved ``params`` local.  A workspace-
+    variable-valued numeric param crashes the compile (``float('hyst_high')``)
+    unless the resolved ``exec_params`` are consulted."""
+
+    def test_hysteresis_workspace_var_high_matches_literal(
+        self, qapp, workspace_with_hyst_high
+    ):
+        """Constant -> Hysteresis -> Integrator.
+
+        The Hysteresis ``high`` output is supplied as a workspace variable in
+        one diagram and as a literal in the other.  Constant input (1.0) is
+        above ``upper`` so the block latches ``high``; the Integrator turns
+        that into a ``high * t`` ramp whose slope reveals the resolved value.
+        Pre-fix, the workspace-variable diagram raises ``ValueError`` inside
+        ``_create_block_executor`` (``float('hyst_high')``) and never compiles.
+        """
+        def _diagram(high_param):
+            blocks = [
+                _make_block('Constant', 0, '', 0, 1, {'value': 1.0}, b_type=0),
+                _make_block('Hysteresis', 0, '', 1, 1,
+                            {'upper': 0.5, 'lower': -0.5,
+                             'high': high_param, 'low': 0.0}),
+                _make_block('Integrator', 0, '', 1, 1, {'init_conds': 0.0}),
+            ]
+            lines = [
+                _make_line(0, 'constant0',   0, 'hysteresis0', 0),
+                _make_line(1, 'hysteresis0', 0, 'integrator0', 0),
+            ]
+            return blocks, lines
+
+        blocks_lit, lines_lit = _diagram(2.0)
+        sol_lit, state_map_lit, _ = _compile_and_solve(blocks_lit, lines_lit, t_end=5.0)
+
+        blocks_var, lines_var = _diagram('hyst_high')
+        sol_var, state_map_var, _ = _compile_and_solve(blocks_var, lines_var, t_end=5.0)
+
+        start_lit, _ = state_map_lit['integrator0']
+        start_var, _ = state_map_var['integrator0']
+        ramp_lit = sol_lit.y[start_lit, :]
+        ramp_var = sol_var.y[start_var, :]
+
+        # Slope is the resolved 'high' value (2.0): state(5.0) ~= 10.0.
+        assert abs(ramp_lit[-1] - 10.0) < 0.1
+        np.testing.assert_allclose(
+            ramp_var, ramp_lit, rtol=1e-6, atol=1e-8,
+            err_msg=(
+                "Hysteresis 'high' as a workspace variable must produce the "
+                "same trajectory as the literal value; differing (or a compile "
+                "crash) means _create_block_executor read raw block.params."
+            ),
+        )

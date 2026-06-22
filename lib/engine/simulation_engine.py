@@ -7,12 +7,13 @@ import logging
 import time as time_module
 from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
-from scipy import signal
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
+from lib.engine.block_names import canonical_fn
+from lib.engine.topo import kahn_topological_order
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,21 @@ logger = logging.getLogger(__name__)
 SCIPY_SOLVER_METHODS = ('RK45', 'RK23', 'DOP853', 'Radau', 'BDF', 'LSODA')
 # Fixed-step schemes integrated in-house (use the simulation step dt).
 FIXED_STEP_METHODS = ('Euler', 'RK4')
+
+# Canonical fn-names whose post-solve replay output is a pure function of the
+# block's inputs/params (no state reconstruction, no display-only secondary
+# outputs). For these the replay loop reuses the compiled kernel executor
+# (lib.engine.compiler_kernels via SystemCompiler.block_executors) instead of a
+# duplicated inline computation, keeping the solve and replay paths in sync.
+# State/PDE/Field blocks and Mathfunction/StateVariable are deliberately
+# excluded: their replay branches read reconstructed state, emit extra display
+# signals, or use intentionally different (e.g. domain-guarded) math.
+_KERNEL_REPLAY_FNS = frozenset({
+    'Sine', 'Constant', 'Gain', 'Sum', 'Step', 'SgProd', 'Product',
+    'Exponential', 'Deadband', 'Saturation', 'Abs', 'Absblock', 'Ramp',
+    'Switch', 'Wavegenerator', 'Noise', 'Mux',
+    'Logicaloperator', 'LogicalOperator',
+})
 
 
 def integrate_fixed_step(model_func, t_eval, y0, scheme):
@@ -741,8 +757,6 @@ class SimulationEngine:
             tuple: (is_algebraic: bool, cycle_nodes: list) - True if loop detected,
                    with list of block names involved in the cycle
         """
-        from collections import deque
-        
         if len(uncomputed_blocks) == 0:
             return False, []
 
@@ -753,37 +767,22 @@ class SimulationEngine:
 
         # Build the graph only with uncomputed blocks
         graph = {block.name: [] for block in uncomputed_blocks}
-        in_degree = {block.name: 0 for block in uncomputed_blocks}
-
         for block in uncomputed_blocks:
             children = self.get_outputs(block.name)
             for child_info in children:
                 child_name = child_info['dstblock']
                 if child_name in uncomputed_block_names:
                     graph[block.name].append(child_name)
-                    in_degree[child_name] += 1
 
-        # Find all nodes with an in-degree of 0
-        queue = deque([name for name, degree in in_degree.items() if degree == 0])
+        # Topological sort (Kahn). Any node left in a cycle has unresolved
+        # dependencies -> a non-empty `cycle_nodes` means an algebraic loop.
+        _order, cycle_nodes = kahn_topological_order(
+            (b.name for b in uncomputed_blocks), graph)
 
-        # Perform topological sort
-        count = 0
-        while queue:
-            u = queue.popleft()
-            count += 1
-            for v in graph.get(u, []):
-                in_degree[v] -= 1
-                if in_degree[v] == 0:
-                    queue.append(v)
-
-        # If the count of visited nodes is less than the number of nodes, there is a cycle
-        if count < len(uncomputed_blocks):
-            # Find the nodes involved in the cycle
-            cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
-            
+        if cycle_nodes:
             # Check if the cycle contains any memory blocks
             has_memory_block = any(node in self.memory_blocks for node in cycle_nodes)
-            
+
             if not has_memory_block:
                 logger.error("ALGEBRAIC LOOP DETECTED")
                 logger.error(f"Blocks involved: {cycle_nodes}")
@@ -1239,16 +1238,14 @@ class SimulationEngine:
             # We "replay" the simulation using the solution to capture all signals.
             num_steps = len(sol.t)
             
-            # Replay Sort: Topological sort respecting Direct Feedthrough
-            # 1. Build Graph
-            from collections import deque
-            replay_order = []
-            in_degree = {b.name: 0 for b in current_blocks}
+            # Replay Sort: topological order respecting Direct Feedthrough.
+            # Only feedthrough edges constrain the order — a state block's output
+            # is its (already-known) state, so it does not depend on this step's
+            # inputs and need not follow its source.
             adj = {b.name: [] for b in current_blocks}
             # name -> block lookup, built once to avoid repeated linear scans
             block_by_name = {b.name: b for b in current_blocks}
 
-            # 2. Add edges only for Direct Feedthrough connections
             for line in current_lines:
                 src = line.srcblock
                 dst = line.dstblock
@@ -1257,10 +1254,8 @@ class SimulationEngine:
                 is_feedthrough = True
                 dst_block = block_by_name.get(dst)
                 if dst_block:
-                    fn = dst_block.block_fn.title() if dst_block.block_fn else ''
-                    if fn == 'Statespace': fn = 'StateSpace'
-                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-                    
+                    fn = canonical_fn(dst_block.block_fn)
+
                     if fn == 'Integrator':
                         is_feedthrough = False
                     elif fn == 'TransferFcn':
@@ -1274,37 +1269,17 @@ class SimulationEngine:
                          D = np.array(dst_block.params.get('D', [[0.0]]))
                          if np.all(D == 0):
                              is_feedthrough = False
-                
-                if is_feedthrough:
-                    if src in adj:
-                        adj[src].append(dst)
-                        in_degree[dst] += 1
-            
-            # 3. Kahn's Algorithm
-            # stable sort for determinism (e.g. step before sine if independent)
-            initial = sorted((b for b in current_blocks if in_degree[b.name] == 0),
-                             key=lambda b: b.name)
-            queue = deque(initial)
 
-            while queue:
-                u = queue.popleft()
-                replay_order.append(u)
+                if is_feedthrough and src in adj:
+                    adj[src].append(dst)
 
-                if u.name in adj:
-                    for v_name in adj[u.name]:
-                        in_degree[v_name] -= 1
-                        if in_degree[v_name] == 0:
-                            v_block = block_by_name.get(v_name)
-                            if v_block:
-                                queue.append(v_block)
-            
-            # If cycles remain (algebraic loops), append leftovers (best effort)
-            if len(replay_order) < len(current_blocks):
-                leftovers = [b for b in current_blocks if b not in replay_order]
-                # logger.warning(f"Replay Sort: Algebraic loop detected or sort failed. Leftovers: {[b.name for b in leftovers]}")
-                replay_order.extend(leftovers)
-                
-            sorted_blocks = replay_order
+            # Kahn's algorithm, stable on block name for determinism (e.g. step
+            # before sine if independent). Any cycle leftovers are appended in
+            # current-block order (best effort) so every block still runs.
+            order_names, leftover_names = kahn_topological_order(
+                (b.name for b in current_blocks), adj, key=lambda n: n)
+            sorted_blocks = ([block_by_name[n] for n in order_names]
+                             + [block_by_name[n] for n in leftover_names])
 
             # Precompute dst_name -> list of (srcblock, srcport, dstport) once so
             # the per-step replay does not rescan every connection for every
@@ -1315,6 +1290,12 @@ class SimulationEngine:
                 inputs_by_dst.setdefault(line.dstblock, []).append(
                     (line.srcblock, src_port, line.dstport)
                 )
+
+            # Pure-function blocks (see _KERNEL_REPLAY_FNS) reuse their compiled
+            # kernel executor during replay instead of a duplicated inline
+            # computation. block_executors was populated by compile_system above.
+            block_executors = getattr(self.compiler, 'block_executors', {})
+            replay_dy = np.zeros(len(y0))  # scratch dy_vec; pure kernels never write it
 
             # Replay Loop
             for i in range(num_steps):
@@ -1339,13 +1320,9 @@ class SimulationEngine:
                 # Execute blocks in topological order
                 for block in sorted_blocks:
                     b_name = block.name
-                    # Normalize function name (matches SystemCompiler logic)
-                    fn = block.block_fn.title() if block.block_fn else ''
-                    if fn == 'Statespace': fn = 'StateSpace'
-                    if fn in ('Transferfcn', 'Tranfn'): fn = 'TransferFcn'
-                    if block.block_fn == 'PID': fn = 'PID'
-                    if fn == 'Ratelimiter': fn = 'RateLimiter'
-                    
+                    # Normalize function name (single source of truth: lib.engine.block_names)
+                    fn = canonical_fn(block.block_fn)
+
                     # Collect inputs
                     inputs = {}
                     for srcblock, src_port, dstport in inputs_by_dst.get(b_name, ()):
@@ -1360,8 +1337,18 @@ class SimulationEngine:
                         inputs[dstport] = val
                     
                     out_val = 0.0
-                    
-                    if fn == 'Integrator':
+
+                    executor = block_executors.get(b_name) if fn in _KERNEL_REPLAY_FNS else None
+                    if executor is not None:
+                        # Reuse the compiled kernel as the single source of truth
+                        # for this block's output math. It reads inputs from
+                        # current_signals (same {src} / {src}_out{p} keys the
+                        # replay uses) and writes the primary output to
+                        # current_signals[b_name]; pure-function kernels never
+                        # touch replay_dy.
+                        executor(t, y_step, replay_dy, current_signals)
+                        out_val = current_signals.get(b_name, out_val)
+                    elif fn == 'Integrator':
                         # Valid because Integrator state output is just the state
                         if b_name in current_states:
                              val = current_states[b_name]
@@ -1555,69 +1542,6 @@ class SimulationEngine:
                              )
                              out_val = 0.0
 
-                    elif fn == 'Sine':
-                        amp = float(block.params.get('amplitude', 1.0))
-                        freq = float(block.params.get('frequency', block.params.get('omega', 1.0)))
-                        phase = float(block.params.get('phase', block.params.get('init_angle', 0.0)))
-                        bias = float(block.params.get('bias', 0.0))
-                        out_val = amp * np.sin(freq * t + phase) + bias
-                        
-                    elif fn == 'Constant':
-                        raw_val = block.params.get('value', 0.0)
-                        if isinstance(raw_val, (list, tuple)):
-                            out_val = np.atleast_1d(raw_val)
-                        elif hasattr(raw_val, '__iter__') and not isinstance(raw_val, str):
-                            out_val = np.atleast_1d(raw_val)
-                        else:
-                            out_val = float(raw_val)
-                        
-                    elif fn == 'Gain':
-                        out_val = inputs.get(0, 0.0) * float(block.params.get('gain', 1.0))
-                        
-                    elif fn == 'Sum':
-                         signs = block.params.get('sign', block.params.get('inputs', '++'))
-                         res = 0.0
-                         for idx, char in enumerate(signs):
-                             val = inputs.get(idx, 0.0)
-                             if char == '+': res += val
-                             elif char == '-': res -= val
-                         out_val = res
-                    
-                    elif fn == 'Step':
-                        step_t = float(block.params.get('delay', 0.0))
-                        val = float(block.params.get('value', 1.0))
-                        out_val = val if t >= step_t else 0.0
-
-                    elif fn == 'SgProd':
-                         res = 1.0
-                         if inputs:
-                             for val in inputs.values():
-                                 res *= val
-                         else:
-                             res = 1.0
-                         out_val = res
-
-                    elif fn == 'Product':
-                         # Product block with configurable * and / operations.
-                         # Operate element-wise so vector signals work: float(val)
-                         # raises on a multi-element array under numpy 2.x.
-                         ops = block.params.get('ops', '**')
-                         res = 1.0
-                         for idx, val in sorted(inputs.items()):
-                             op = ops[idx] if idx < len(ops) else '*'
-                             v = np.atleast_1d(np.asarray(val, dtype=float))
-                             if op == '*':
-                                 res = res * v
-                             elif op == '/':
-                                 # Mirror Product.execute(): on divide-by-zero keep
-                                 # the sign of the numerator (0/0 -> 0) instead of
-                                 # an unsigned magic value, element-wise.
-                                 with np.errstate(divide='ignore', invalid='ignore'):
-                                     res = res / v
-                                     res = np.where(np.isinf(res), np.sign(res) * 1e308, res)
-                                     res = np.where(np.isnan(res), 0.0, res)
-                         out_val = res
-
                     elif fn in ('Statevariable', 'StateVariable'):
                          # StateVariable: manage discrete state across iterations
                          # State is stored in block.params for persistence across replay steps
@@ -1654,86 +1578,11 @@ class SimulationEngine:
                              # Preserve full vector, not just first element
                              block.params['_replay_pending_'] = np.atleast_1d(new_val).copy()
 
-                    elif fn == 'Exponential':
-                        # y = a * exp(b * x)
-                        a = float(block.params.get('a', 1.0))
-                        b = float(block.params.get('b', 1.0))
-                        x_in = np.asarray(inputs.get(0, 0.0), dtype=float)
-                        out_val = a * np.exp(b * x_in)
-                        
-                    elif fn == 'Deadband':
-                        # Element-wise dead zone so vector signals work
-                        # (float(val) would raise on a multi-element array).
-                        val = np.asarray(inputs.get(0, 0.0), dtype=float)
-                        start = float(block.params.get('start', -0.5))
-                        end = float(block.params.get('end', 0.5))
-                        out_val = np.where(val < start, val - start,
-                                           np.where(val > end, val - end, 0.0))
-
-                    elif fn == 'Saturation':
-                        val = inputs.get(0, 0.0)
-                        lower = float(block.params.get('min', -np.inf))
-                        upper = float(block.params.get('max', np.inf))
-                        out_val = np.clip(val, lower, upper)
-                        
-                    elif fn in ('Abs', 'Absblock'):
-                        out_val = np.abs(inputs.get(0, 0.0))
-                        
-                    elif fn == 'Ramp':
-                        slope = float(block.params.get('slope', 1.0))
-                        delay = float(block.params.get('delay', 0.0))
-                        if slope > 0:
-                            out_val = np.maximum(0.0, slope * (t - delay))
-                        elif slope < 0:
-                            out_val = np.minimum(0.0, slope * (t - delay))
-                        else:
-                            out_val = 0.0
-                            
-                    elif fn == 'Switch':
-                        # Control is scalar; reduce safely (the selected input,
-                        # passed through below, may still be a vector).
-                        ctrl = float(np.ravel(inputs.get(0, 0.0))[0])
-                        mode = block.params.get('mode', 'threshold')
-                        n_inputs = int(block.params.get('n_inputs', 2))
-                        
-                        if mode == 'index':
-                            sel = int(round(ctrl))
-                        else:
-                            threshold = float(block.params.get('threshold', 0.0))
-                            sel = 0 if ctrl >= threshold else 1
-                            
-                        sel = max(0, min(n_inputs - 1, sel))
-                        out_val = inputs.get(sel + 1, 0.0)
-                        
                     elif fn == 'RateLimiter':
                         if b_name in current_states:
                             out_val = current_states[b_name][0]
                         else:
                             out_val = 0.0
-
-                    elif fn == 'Wavegenerator':
-                        waveform = block.params.get('waveform', 'Sine')
-                        amp = float(block.params.get('amplitude', 1.0))
-                        freq = float(block.params.get('frequency', 1.0))
-                        phase = float(block.params.get('phase', 0.0))
-                        bias = float(block.params.get('bias', 0.0))
-                        arg = 2 * np.pi * freq * t + phase
-
-                        if waveform == 'Sine':
-                            out_val = bias + amp * np.sin(arg)
-                        elif waveform == 'Square':
-                            out_val = bias + amp * signal.square(arg)
-                        elif waveform == 'Triangle':
-                            out_val = bias + amp * signal.sawtooth(arg, width=0.5)
-                        elif waveform == 'Sawtooth':
-                            out_val = bias + amp * signal.sawtooth(arg, width=1.0)
-                        else:
-                            out_val = bias + amp * np.sin(arg)
-
-                    elif fn == 'Noise':
-                        mu = float(block.params.get('mu', 0.0))
-                        sigma = float(block.params.get('sigma', 1.0))
-                        out_val = mu + sigma * np.random.randn()
 
                     elif fn == 'Mathfunction':
                         # Keep the input as an array so vector signals work:
@@ -1838,15 +1687,6 @@ class SimulationEngine:
 
                         out_val = block.exec_params['_replay_hyst_state_']
 
-                    elif fn == 'Mux':
-                        # Collect all inputs into array
-                        vals = []
-                        port_idx = 0
-                        while port_idx in inputs:
-                            vals.append(inputs[port_idx])
-                            port_idx += 1
-                        out_val = np.array(vals) if vals else 0.0
-
                     elif fn == 'Demux':
                         # Split the vector input into N consecutive sub-vectors of
                         # length output_shape each (mirrors blocks/demux.py). Port
@@ -1863,41 +1703,6 @@ class SimulationEngine:
                         out_val = arr[0:output_shape]
                         for p in range(1, n_outputs):
                             current_signals[b_name + f'_out{p}'] = arr[p * output_shape:(p + 1) * output_shape]
-
-                    elif fn in ('Logicaloperator', 'LogicalOperator'):
-                        # Boolean logic over inputs (nonzero = True), element-wise.
-                        # Mirrors blocks/logical_operator.py exactly.
-                        op = str(block.params.get('operator', 'AND')).upper()
-                        if '_inputs_' in block.params:
-                            n_logic = int(block.params['_inputs_'])
-                        elif inputs:
-                            n_logic = max(inputs.keys()) + 1
-                        else:
-                            n_logic = 1
-                        n_logic = max(n_logic, 1)
-                        bvals = [np.atleast_1d(np.asarray(inputs.get(idx, 0.0), dtype=float)) != 0
-                                 for idx in range(n_logic)]
-                        if op == 'NOT':
-                            res = np.logical_not(bvals[0])
-                        elif op in ('AND', 'NAND'):
-                            res = bvals[0]
-                            for b in bvals[1:]:
-                                res = np.logical_and(res, b)
-                            if op == 'NAND':
-                                res = np.logical_not(res)
-                        elif op in ('OR', 'NOR'):
-                            res = bvals[0]
-                            for b in bvals[1:]:
-                                res = np.logical_or(res, b)
-                            if op == 'NOR':
-                                res = np.logical_not(res)
-                        elif op == 'XOR':
-                            res = bvals[0]
-                            for b in bvals[1:]:
-                                res = np.logical_xor(res, b)
-                        else:
-                            res = np.zeros_like(bvals[0], dtype=bool)
-                        out_val = np.atleast_1d(res).astype(float)
 
                     elif fn == 'Fieldprobe':
                         # FieldProbe: Extract value at position from field array
