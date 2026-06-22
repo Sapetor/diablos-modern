@@ -208,7 +208,7 @@ def b_type(self):
 ### Add a Simple Math Block
 1. Open BLOCKS_CHECKLIST.md → "Quick Templates" → "Minimal Block"
 2. Copy the template to `/blocks/myblock.py`
-3. Implement the 8 required properties
+3. Implement the 4 required properties (`block_name`, `params`, `inputs`, `outputs`) and `execute()`; the template's `category`/`color`/`doc` are optional
 4. Run: `python diablos_modern.py` and verify it appears in palette
 5. Write unit tests
 6. Commit

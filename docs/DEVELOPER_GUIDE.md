@@ -68,13 +68,14 @@ pytest --cov=lib --cov=modern_ui --cov-report=html
 
 ```bash
 # Install development tools
-pip install pylint black mypy
+pip install -r requirements-dev.txt
 
-# Run linter
-pylint lib/ modern_ui/
+# Lint (ruff replaces black + pylint in this project)
+ruff check .
 
-# Format code
-black lib/ modern_ui/ tests/
+# Auto-fix lint issues and format
+ruff check --fix .
+ruff format .
 
 # Type checking
 mypy lib/ modern_ui/
@@ -673,8 +674,7 @@ python diablos_modern.py
 4. **Run tests**
    ```bash
    pytest
-   black lib/ modern_ui/ tests/
-   pylint lib/ modern_ui/
+   ruff check .
    ```
 
 5. **Commit your changes**
