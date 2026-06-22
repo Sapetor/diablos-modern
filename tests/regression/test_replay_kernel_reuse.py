@@ -5,9 +5,11 @@ for pure-function blocks, instead of a parallel inline if/elif. This keeps each
 such block's output math in one place (the kernel) shared by the ODE solve and
 the replay.
 
-The allowlist of routed blocks is ``SimulationEngine._KERNEL_REPLAY_FNS``;
-state/PDE/Field blocks and the intentionally-divergent Mathfunction/StateVariable
-stay on their own replay branches.
+The allowlist of routed blocks is ``SimulationEngine._KERNEL_REPLAY_FNS``. It
+covers pure-function blocks plus the ODE-state blocks whose kernel output is
+reproducible from the replay's reconstructed state (StateSpace/TransferFcn/
+PID/RateLimiter). PDE/Field blocks, Integrator, Mathfunction, StateVariable,
+Demux and Hysteresis stay on their own replay branches (genuinely divergent).
 """
 from pathlib import Path
 
@@ -63,30 +65,36 @@ class TestReplayKernelReuse:
         for g in gains:
             assert g.name in be and callable(be[g.name])
 
-    def test_allowlist_excludes_state_pde_and_divergent_blocks(self):
-        """Guard the design decision: routing a stateful/PDE block (reads
-        reconstructed state) or an intentionally-divergent block (Mathfunction's
-        domain-guarded math, StateVariable's discrete-state mechanism, Demux's
-        secondary-port outputs) through the pure-function path would change
-        replay output. They must stay off the allowlist."""
+    def test_allowlist_excludes_genuinely_divergent_blocks(self):
+        """Guard the design decision: blocks whose replay branch genuinely
+        differs from their kernel must stay OFF the allowlist --
+        Integrator (trivial inline), PDE/Field blocks (emit display-only
+        secondary outputs), Mathfunction (domain-guarded math), StateVariable
+        (discrete pending-update state), Demux (secondary-port outputs) and
+        Hysteresis (relay state in a kernel closure the solve phase pollutes,
+        no per-run reset). Routing any of these would change replay output."""
         must_exclude = {
-            "Integrator", "StateSpace", "TransferFcn", "PID", "RateLimiter",
+            "Integrator",
             "Heatequation1D", "Waveequation1D", "Advectionequation1D",
             "Diffusionreaction1D", "Heatequation2D", "Waveequation2D",
             "Advectionequation2D", "Mathfunction", "StateVariable",
-            "Statevariable", "Demux", "Selector", "Hysteresis",
+            "Statevariable", "Demux", "Hysteresis",
             "Fieldprobe", "Fieldscope", "Fieldprobe2D", "Fieldscope2D",
             "Fieldslice",
         }
         leaked = must_exclude & _KERNEL_REPLAY_FNS
         assert not leaked, f"these must NOT be routed via the kernel path: {leaked}"
 
-    def test_allowlist_has_expected_pure_function_blocks(self):
-        """The pure-function source/algebraic blocks should be routed."""
+    def test_allowlist_has_expected_routed_blocks(self):
+        """Pure-function source/algebraic blocks AND the verified ODE-state
+        blocks (StateSpace/TransferFcn/PID/RateLimiter) plus Selector are routed
+        through the shared kernel (pinned by tests/regression/
+        test_compiled_replay_state_blocks.py)."""
         expected = {
             "Sine", "Constant", "Gain", "Sum", "Step", "Product",
             "Exponential", "Deadband", "Saturation", "Ramp", "Switch",
             "Wavegenerator", "Mux", "Logicaloperator",
+            "Selector", "StateSpace", "TransferFcn", "PID", "RateLimiter",
         }
         missing = expected - _KERNEL_REPLAY_FNS
         assert not missing, f"expected these to be routed via the kernel: {missing}"

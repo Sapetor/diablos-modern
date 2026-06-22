@@ -23,19 +23,26 @@ SCIPY_SOLVER_METHODS = ('RK45', 'RK23', 'DOP853', 'Radau', 'BDF', 'LSODA')
 # Fixed-step schemes integrated in-house (use the simulation step dt).
 FIXED_STEP_METHODS = ('Euler', 'RK4')
 
-# Canonical fn-names whose post-solve replay output is a pure function of the
-# block's inputs/params (no state reconstruction, no display-only secondary
-# outputs). For these the replay loop reuses the compiled kernel executor
-# (lib.engine.compiler_kernels via SystemCompiler.block_executors) instead of a
-# duplicated inline computation, keeping the solve and replay paths in sync.
-# State/PDE/Field blocks and Mathfunction/StateVariable are deliberately
-# excluded: their replay branches read reconstructed state, emit extra display
-# signals, or use intentionally different (e.g. domain-guarded) math.
+# Canonical fn-names whose compiled kernel executor is reused verbatim by the
+# post-solve replay loop (instead of a duplicated inline computation), so the
+# ODE solve and the replay share one source of truth for each block's output
+# math. This covers pure-function source/algebraic blocks AND the ODE-state
+# blocks whose kernel output is reproducible from the replay's reconstructed
+# state -- StateSpace/TransferFcn/PID/RateLimiter read y[start:start+size] (the
+# dispatch passes y_step) exactly as the old inline branches read
+# current_states, and for multi-separate-input StateSpace the kernel also fixes
+# a latent solve/replay divergence the broadcast inline branch had.
+# Still excluded -- their replay branches genuinely differ: PDE/Field blocks
+# (emit display-only secondary outputs), Mathfunction (domain-guarded math),
+# StateVariable (discrete pending-update state), Demux (secondary-port outputs),
+# and Hysteresis (relay state lives in a kernel closure that the out-of-order
+# solve phase pollutes and that has no per-run reset).
 _KERNEL_REPLAY_FNS = frozenset({
     'Sine', 'Constant', 'Gain', 'Sum', 'Step', 'SgProd', 'Product',
     'Exponential', 'Deadband', 'Saturation', 'Abs', 'Absblock', 'Ramp',
     'Switch', 'Wavegenerator', 'Noise', 'Mux',
     'Logicaloperator', 'LogicalOperator',
+    'Selector', 'StateSpace', 'TransferFcn', 'PID', 'RateLimiter',
 })
 
 
@@ -1354,29 +1361,6 @@ class SimulationEngine:
                              val = current_states[b_name]
                              out_val = val if val.size > 1 else val.item()
                         
-                    elif fn in ('StateSpace', 'TransferFcn'):
-                        if b_name in block_matrices and b_name in current_states:
-                             A, B, C, D = block_matrices[b_name]
-                             x = current_states[b_name].reshape(-1, 1)
-                             
-                             u_val = inputs.get(0, 0.0)
-                             u = np.atleast_1d(u_val).reshape(-1, 1)
-                             
-                             if B.shape[1] > 0 and u.shape[0] != B.shape[1]:
-                                 # Reduce a mismatched signal to its first element
-                                 # (mirrors compiled-ODE exec_ss); float() of a
-                                 # multi-element array would raise under numpy 2.x.
-                                 u_scalar = float(np.ravel(u_val)[0])
-                                 if B.shape[1] == 1:
-                                     u = np.array([[u_scalar]])
-                                 else:
-                                     u = np.full((B.shape[1], 1), u_scalar)
-                             elif B.shape[1] == 0:
-                                 u = np.array([[]])
-
-                             y_out = C @ x + D @ u
-                             out_val = y_out if y_out.size > 1 else y_out.item()
-
                     # ==================== PDE BLOCKS ====================
                     elif fn == 'Heatequation1D':
                         # HeatEquation1D: output is the temperature field (state vector)
@@ -1494,54 +1478,6 @@ class SimulationEngine:
                                 i = max(0, min(Nx_f - 1, i))
                                 out_val = field[:, i]
 
-                    elif fn == 'PID':
-                         # Inputs. PID state is scalar in the compiled engine
-                         # (dy_vec[start] is a scalar slot), so reduce vector
-                         # inputs to their first element rather than raising on
-                         # float() of a multi-element array.
-                         sp = float(np.ravel(inputs.get(0, 0.0))[0])
-                         meas = float(np.ravel(inputs.get(1, 0.0))[0])
-                         e = sp - meas
-                         
-                         # Params
-                         Kp = float(block.params.get('Kp', 1.0))
-                         Ki = float(block.params.get('Ki', 0.0))
-                         Kd = float(block.params.get('Kd', 0.0))
-                         N = float(block.params.get('N', 20.0))
-
-                         # States - guard like the other state-block branches:
-                         # if the compiler did not register the PID state (naming
-                         # mismatch), fall back to 0 instead of raising KeyError
-                         # that the broad except would swallow as a generic failure.
-                         states = current_states.get(b_name)
-                         if states is not None and np.atleast_1d(states).size >= 2:
-                             states = np.atleast_1d(states)
-                             x_i = states[0]
-                             x_d = states[1]
-
-                             # Derivatives (need for D-term calc)
-                             # d_term = Kd * dx_d
-                             # dx_d = N * (e - x_d)
-                             dx_d = N * (e - x_d)
-
-                             d_term = Kd * dx_d
-                             i_term = Ki * x_i
-                             p_term = Kp * e
-
-                             u_unsat = p_term + i_term + d_term
-
-                             # Saturation
-                             u_min = float(block.params.get('u_min', -np.inf))
-                             u_max = float(block.params.get('u_max', np.inf))
-
-                             out_val = np.clip(u_unsat, u_min, u_max)
-                         else:
-                             logger.warning(
-                                 f"PID block '{b_name}' has no registered state "
-                                 f"(expected 2 elements); outputting 0.0."
-                             )
-                             out_val = 0.0
-
                     elif fn in ('Statevariable', 'StateVariable'):
                          # StateVariable: manage discrete state across iterations
                          # State is stored in block.params for persistence across replay steps
@@ -1577,12 +1513,6 @@ class SimulationEngine:
                              new_val = inputs[0]
                              # Preserve full vector, not just first element
                              block.params['_replay_pending_'] = np.atleast_1d(new_val).copy()
-
-                    elif fn == 'RateLimiter':
-                        if b_name in current_states:
-                            out_val = current_states[b_name][0]
-                        else:
-                            out_val = 0.0
 
                     elif fn == 'Mathfunction':
                         # Keep the input as an array so vector signals work:
@@ -1636,35 +1566,6 @@ class SimulationEngine:
                                 out_val = safe_expr(str(func_raw), variables={"u": val, "t": t})
                         except (ValueError, ZeroDivisionError):
                             out_val = 0.0
-
-                    elif fn == 'Selector':
-                        val = inputs.get(0, 0.0)
-                        u = np.atleast_1d(val).flatten()
-                        indices_str = str(block.params.get('indices', '0'))
-                        max_len = len(u)
-
-                        result = []
-                        for part in indices_str.split(','):
-                            part = part.strip()
-                            if ':' in part:
-                                parts = part.split(':')
-                                start_idx = int(parts[0]) if parts[0] else 0
-                                end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else max_len
-                                result.extend(u[start_idx:min(end_idx, max_len)])
-                            else:
-                                try:
-                                    idx = int(part)
-                                    if idx < 0:
-                                        idx = max_len + idx
-                                    if 0 <= idx < max_len:
-                                        result.append(u[idx])
-                                except ValueError:
-                                    logger.debug("Failed to parse demux index from spec; skipping this part", exc_info=True)
-
-                        if len(result) == 1:
-                            out_val = result[0]
-                        else:
-                            out_val = np.array(result) if result else 0.0
 
                     elif fn == 'Hysteresis':
                         # Relay latch state is scalar; reduce vector inputs safely.
