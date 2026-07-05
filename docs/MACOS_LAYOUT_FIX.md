@@ -1,118 +1,90 @@
-# macOS Layout Fix for 13" MacBook Air
+# macOS Layout Fix for 13" Retina MacBooks
 
 ## Problem
 
-On macOS M1 MacBook Air (13" with 2560x1600 Retina display), the application window appears cramped by default with panels not fitting well. The block palette and property editor frames are slightly off.
+On a 13" M1 MacBook Air (Retina display, `devicePixelRatio = 2.0`, ~1440×900
+logical pixels), the application window opened cramped: panels did not fit well
+by default and blocks clipped in the palette.
 
-**Root Cause:**
-- 13" M1 MBA has devicePixelRatio = 2.0 (Retina)
-- Default "looks like" resolution: ~1440x900 logical pixels
-- Existing code treated all devicePixelRatio > 1.25 as "high DPI" and applied aggressive scaling
-- Total minimum width requirements exceeded comfortable layout on smaller Retina screens
+**Root cause:** the original layout code treated every display with
+`devicePixelRatio > 1.25` as generic "high DPI" and applied aggressive scaling.
+On smaller Retina screens the combined minimum-width requirements of the panels
+exceeded the available logical width.
 
-## Solution
+## Solution — centralized `PlatformConfig`
 
-Platform-specific adjustments for **macOS Retina on smaller screens** (width < 1500 logical pixels):
+Platform detection and all platform-specific UI sizing live in a single module,
+`modern_ui/platform_config.py`. A `PlatformConfig` object detects the display
+once and exposes sizing as `@property` values; UI components read those values
+instead of re-deriving platform logic.
 
-### Detection Logic
 ```python
-is_macos = platform.system() == 'Darwin'
-is_retina_small = is_macos and device_ratio >= 1.9 and logical_width < 1500
+from modern_ui.platform_config import get_platform_config
+
+config = get_platform_config()          # singleton, created on first call
+min_width = config.left_panel_min_width  # platform-specific value
 ```
 
-### Changes Made
+**`platform_config.py` is the source of truth for the numeric values.** Do not
+hard-code panel/window/palette sizes elsewhere — read them from the config so a
+change propagates to every component. The properties are grouped into window
+sizing, left panel (block palette), canvas, right panel (properties), splitter
+sizing, and palette-block metrics.
 
-**1. Window Sizing** (`_setup_window()`)
-- Use 90% of screen width (vs 85%) on macOS Retina small screens
-- More conservative minimum sizes: 1150x650 (vs 1000x700)
-- Gives more usable space on constrained displays
+### Detection
 
-**2. Left Panel** (`_create_left_panel()`)
-- Minimum width: 230px (vs 270px for other high DPI)
-- Maximum width: 330px (vs 380px)
-- Still allows 2-column block layout, more compact
+```python
+is_macos        = platform.system() == 'Darwin'
+is_retina_small = is_macos and device_ratio >= 1.9 and logical_width < 1500
+is_high_dpi     = device_ratio > 1.25
+```
 
-**3. Canvas Area** (`_create_canvas_area()`)
-- Minimum width: 650px (vs 800px for other high DPI)
-- Allows panels to fit without excessive crowding
+`is_retina_small` is the branch that fixes the 13" MacBook case; larger Retina
+displays fall through to the generic high-DPI path.
 
-**4. Property Panel** (`_create_property_panel()`)
-- No 1.3x scaling on macOS Retina small screens
-- Minimum stays at 280px (vs 364px scaled)
-- Keeps property editor usable without eating canvas space
+### Consumers
 
-**5. Splitter Sizing** (`_initialize_splitter_sizes()`)
-- Left panel: 250px (vs 300px)
-- Property panel: 23% of center width (vs 25%)
-- Minimum property width: 300px (vs 350px)
-- Gives canvas more breathing room
+- `modern_ui/main_window.py` — window sizing and the left / canvas / property
+  panel minimums and splitter ratios all read from `PlatformConfig`, replacing
+  the per-method detection blocks that previously duplicated the logic.
+- `modern_ui/widgets/modern_palette.py` — block size and palette width come from
+  `config.palette_block_size` / `config.calculate_palette_width()`, so block
+  sizing stays consistent with panel sizing.
 
-## Platform Impact
+## Platform impact
 
-### ✅ macOS 13" Retina (M1 MacBook Air)
-- Panels fit better by default
-- Less cramped initial layout
-- Still fully functional when maximized
+| Platform | Example resolution | devicePixelRatio | `is_retina_small` | Effect |
+|----------|--------------------|------------------|-------------------|--------|
+| macOS 13" MBA | 1440×900 logical | 2.0 | Yes | Compact layout applied |
+| macOS 27" iMac | 2560×1440 logical | 2.0 | No | Generic high-DPI path |
+| Windows 1080p | 1920×1080 | 1.0 | No | Standard-DPI path |
+| Ubuntu 1080p | 1920×1080 | 1.0 | No | Standard-DPI path |
 
-### ✅ Windows 1080p
-- **No changes** - devicePixelRatio typically 1.0
-- Uses existing standard DPI code paths
-- Confirmed unaffected
+Only the `is_retina_small` branch changes behavior; all other displays use the
+same paths as before.
 
-### ✅ Ubuntu 1080p
-- **No changes** - typically non-Retina or standard DPI
-- Uses existing code paths
-- Confirmed unaffected
-
-### ✅ macOS larger displays (27" iMac, etc.)
-- **No changes** - logical width > 1500
-- Uses existing high DPI code paths
-- Still benefits from generous sizing
-
-## Testing
-
-**Test Matrix:**
-| Platform | Resolution | devicePixelRatio | Uses New Code | Result |
-|----------|------------|------------------|---------------|---------|
-| macOS 13" MBA | 1440x900 logical | 2.0 | ✅ Yes | Fixed |
-| macOS 27" iMac | 2560x1440 logical | 2.0 | ❌ No | Unchanged |
-| Windows 1080p | 1920x1080 | 1.0 | ❌ No | Unchanged |
-| Ubuntu 1080p | 1920x1080 | 1.0 | ❌ No | Unchanged |
-
-## Implementation Details
-
-**Files Modified:**
-
-1. **`modern_ui/main_window.py`**
-   - Import added: `import platform`
-   - `_setup_window()` - Added macOS Retina small screen detection and sizing
-   - `_create_left_panel()` - Adjusted minimum/maximum widths
-   - `_create_canvas_area()` - Reduced minimum width
-   - `_create_property_panel()` - Removed 1.3x scaling
-   - `_initialize_splitter_sizes()` - Adjusted splitter ratios
-   - Lines changed: ~50 lines modified across 5 methods
-
-2. **`modern_ui/widgets/modern_palette.py`**
-   - `DraggableBlockWidget._setup_widget()` - Reduced block size from 100px to 95px on macOS Retina small screens
-   - Prevents block clipping in the narrower palette panel
-   - Lines changed: ~10 lines modified
-
-## Verification Commands
+## Verification
 
 ```bash
-# Check syntax
-python -m py_compile modern_ui/main_window.py
+python -m py_compile modern_ui/platform_config.py
 
-# Test import
-python -c "from modern_ui.main_window import ModernDiaBloSWindow; print('OK')"
+python -c "from PyQt5.QtWidgets import QApplication; import sys; \
+  app = QApplication(sys.argv); \
+  from modern_ui.platform_config import get_platform_config; \
+  print('is_retina_small =', get_platform_config().is_retina_small)"
 
-# Run application
 python diablos_modern.py
 ```
 
-## Future Considerations
+On a 13" M1 MacBook Air the panels fit, blocks no longer clip in the palette,
+and the window opens at a usable default size; Windows and Ubuntu 1080p layouts
+are unchanged.
 
-If issues arise on other macOS configurations:
-- Adjust threshold: `logical_width < 1500` can be tuned
-- Adjust ratio: `device_ratio >= 1.9` can be changed to 1.8 or 2.1
-- Add more granular size brackets for different screen sizes
+## Extending
+
+To support a new display class (for example 4K), add the detection flag in
+`PlatformConfig._detect_platform()` and branch on it inside the relevant sizing
+`@property`. Because every component reads the config, only that one file needs
+to change. Tunable knobs for the existing fix are the `is_retina_small`
+thresholds (`device_ratio >= 1.9`, `logical_width < 1500`) and the per-property
+return values.

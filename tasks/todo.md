@@ -138,7 +138,7 @@
 - [x] **FieldScope2D** - Interactive time slider visualization
 
 ### Previous
-- [x] All Priority 1-7 refactoring tasks (see REFACTORING_TODO.md)
+- [x] All Priority 1-7 refactoring tasks (see docs/archive/REFACTORING_TODO.md)
 - [x] StateSpaceBaseBlock consolidation
 - [x] Circular import fixes
 - [x] Canvas and MainWindow modularization
@@ -186,23 +186,68 @@ performance items with a safe fix are now **fixed** (see
 - [x] Extracted `MainWindow._init_core_managers` (constructor altitude).
 
 ### Remaining — architectural backlog (no behavior change; do with dedicated tests)
-- [ ] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
-  and `SystemCompiler` (the Robin *correctness* divergence is already fixed; this
-  is the larger merge-into-one-kernel refactor).
+- [x] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
+  and `SystemCompiler` — done 2026-07-05: shared pure ops in `lib/engine/pde_ops.py`
+  consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`
+  (compiled goldens bit-identical; `boundary_mode` kwarg where the paths
+  legitimately differ on Dirichlet handling).
 - [ ] **`lib.py` interpreter hot path**: O(blocks²) per-step re-iteration,
   duplicated multi-rate loops, `DSim` facade, engine-state re-copy.
 - [ ] **`modern_canvas` god object**; consolidate the ~18-manager layer.
 - [ ] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
   (move shared theming into `lib`), instead of function-local imports.
-- [ ] Add compiled-vs-interpreted equivalence tests for each compiled stateful
+- [x] Add compiled-vs-interpreted equivalence tests for each compiled stateful
   block (RateLimiter, PID, TransportDelay, Selector) and an all-Neumann 2D PDE
-  corner integration test.
+  corner integration test — done 2026-07-05: `tests/regression/test_equiv_*.py`.
+  Note: TransportDelay turned out not to be compilable (not in
+  `COMPILABLE_BLOCKS`; history-dependent), so its test pins the interpreter
+  fallback + analytic delayed-sine instead.
+
+### Interpreter-path bugs found by the equivalence tests (2026-07-05)
+
+Each has a strict-xfail tripwire in `tests/regression/` that will flag the
+stale marker the moment the bug is fixed. Compiled path verified correct in
+all four cases.
+
+- [ ] **RateLimiter slews at 2× the configured rate in the interpreter.**
+  It is a memory block, so the interpreter executes it twice per step
+  (output_only pass + state pass), and `RateLimiterBlock.execute`
+  (`blocks/rate_limiter.py:63`) advances `params['_prev']` on both calls.
+  Only Integrator is special-cased in `SimulationEngine.execute_block`.
+  Fix: skip the `_prev` advance when `output_only` is set (mirror the
+  Integrator guard). Tripwire: `test_equiv_ratelimiter.py` (xfail strict).
+- [ ] **Interpreter state blocks integrate at dt=0.01 regardless of sim_dt.**
+  `blocks/transfer_function.py:108`, `blocks/pid.py:125`,
+  `blocks/integrator.py:117` all fall back to `params.get('dtime', 0.01)` and
+  the actual sim_dt never reaches them (exec_params `dtime` appears to be
+  re-stamped with the 0.01 default during init). Confirmed: at sim_dt=0.002
+  the TF plant advances 0.01 s of state per step (5× too fast); divergence
+  vs compiled *grows* as dt shrinks. Tripwire: `test_equiv_pid.py`
+  (trajectory xfail; steady-state equivalence passes and is pinned).
+- [ ] **Selector comma-list indices are broken through the run pipeline.**
+  `WorkspaceManager.resolve_params` safe_expr-evaluates `"1,2"` to a tuple
+  before the block sees it: the interpreter crashes in `_parse_indices`
+  (`'tuple' object has no attribute 'split'`) and the compiled kernel
+  silently falls back to index 0. Colon-range syntax (`"1:3"`) is unaffected.
+  Fix: coerce non-string indices in `blocks/selector.py` or exempt the param
+  from safe_expr. Pinned by `test_equiv_selector.py` (uses `"1:3"`).
+- [ ] **2D PDE blocks never integrate in the interpreter** — their `execute()`
+  only reshapes the compiled-replay `state` kwarg and returns the initial
+  condition forever on the interpreter path (no Forward-Euler self-stepping
+  like the 1D blocks). Affects HeatEquation2D / WaveEquation2D /
+  AdvectionEquation2D. Fix: add params-persisted Euler stepping via the new
+  shared `lib/engine/pde_ops.py` RHS functions. Tripwire:
+  `test_equiv_pde_neumann2d.py` (xfail strict + characterization test).
+
+### CI follow-up
+- [ ] Dedicated `ruff format` commit (402 files would change), then add
+  `ruff format --check .` to the CI lint job.
 
 ---
 
 ## References
 
 - `tasks/code-quality-review-2026-06-13.md` - Full whole-app review (334 findings)
-- `docs/REFACTORING_TODO.md` - Detailed refactoring history
+- `docs/archive/REFACTORING_TODO.md` - Detailed refactoring history (archived)
 - `docs/PDE_ROADMAP.md` - Full PDE enhancement roadmap with architecture diagrams
 - `CLAUDE.md` - Project overview and recent work
