@@ -86,4 +86,5 @@ jobs:
       - name: Run test suite
         # --timeout makes an unexpected hang fail fast (signal method can
         # interrupt blocking C calls); the job timeout-minutes is the hard cap.
-        run: pytest tests/ --timeout=120 --timeout-method=signal
+        # Coverage is reported (term-missing) but not gated on a threshold.
+        run: pytest tests/ --timeout=120 --timeout-method=signal --cov=lib --cov=blocks --cov=modern_ui --cov-report=term-missing
