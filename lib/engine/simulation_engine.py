@@ -1332,6 +1332,13 @@ class SimulationEngine:
         """Return a copy of the most recent compiled-solver diagnostics."""
         return dict(self.last_solver_diagnostics)
 
+    def format_last_solver_diagnostics(self) -> str:
+        """One-line summary of the most recent compiled run, or '' when none
+        was recorded (e.g. the interpreter path ran)."""
+        if not self.last_solver_diagnostics:
+            return ''
+        return self._format_solver_diagnostics_for_log(self.last_solver_diagnostics)
+
     @staticmethod
     def _solver_attr(sol, name, default=None):
         return getattr(sol, name, default)

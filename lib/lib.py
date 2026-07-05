@@ -223,6 +223,12 @@ class DSim:
         return self.engine.get_solver_diagnostics()
 
     @property
+    def last_solver_diagnostics_summary(self):
+        """One-line summary of the most recent compiled run, or '' when the last
+        run used the interpreter path (which records no compiled diagnostics)."""
+        return self.engine.format_last_solver_diagnostics()
+
+    @property
     def execution_time_start(self):
         """Execution start time - shared with engine."""
         return self.engine.execution_time_start
@@ -393,6 +399,9 @@ class DSim:
         self.atol = 1e-12
         self.plot_trange = 100
         self.dynamic_plot = False
+
+        # The compiled RHS cached for the old diagram no longer applies.
+        self.engine.clear_compile_cache()
 
 
     ##### DIAGRAM EXECUTION #####
@@ -598,6 +607,9 @@ class DSim:
     def execution_batch(self) -> None:
         """Run the entire simulation as fast as possible."""
         _tb0 = time.time()
+        # Drop any diagnostics from a previous run so the interpreter path (which
+        # records none) never surfaces a stale compiled-solver summary.
+        self.engine.last_solver_diagnostics = {}
         # FAST SOLVER CHECK
         # Check if fast solver is enabled (default True if attr missing)
         use_fast = getattr(self, 'use_fast_solver', True)

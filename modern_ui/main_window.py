@@ -669,13 +669,32 @@ class ModernDiaBloSWindow(QMainWindow):
             self.status_message.setText(status)
             logger.info(f"Simulation status: {status}")
 
-            if "finished" in status.lower() or "stopped" in status.lower() or "failed" in status.lower():
+            lowered = status.lower()
+            if "finished" in lowered or "stopped" in lowered or "failed" in lowered:
                 self.toolbar.set_simulation_state(False, False)
-            elif "started" in status.lower() or "running" in status.lower():
+                if "finished" in lowered:
+                    self._report_solver_diagnostics(status)
+            elif "started" in lowered or "running" in lowered:
                 self.toolbar.set_simulation_state(True, False)
-            
+
         except Exception as e:
             logger.error(f"Error handling simulation status change: {str(e)}")
+
+    def _report_solver_diagnostics(self, status):
+        """Surface the compiled-solver one-line diagnostics once a run finishes.
+
+        No-op when the interpreter path ran (no diagnostics recorded), so the
+        status bar keeps the plain finished message.
+        """
+        try:
+            summary = self.dsim.last_solver_diagnostics_summary
+        except Exception:
+            logger.debug("Could not read solver diagnostics", exc_info=True)
+            return
+        if not summary:
+            return
+        self.status_message.setText(f"{status}  |  {summary}")
+        logger.info("Solver diagnostics: %s", summary)
 
     def show_error(self, message):
         """Show an error message to the user."""
