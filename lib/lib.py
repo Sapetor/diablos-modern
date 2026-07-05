@@ -218,6 +218,11 @@ class DSim:
         self.engine.error_msg = value
 
     @property
+    def last_solver_diagnostics(self):
+        """Most recent compiled-solver diagnostics - shared with engine."""
+        return self.engine.get_solver_diagnostics()
+
+    @property
     def execution_time_start(self):
         """Execution start time - shared with engine."""
         return self.engine.execution_time_start
@@ -1563,7 +1568,6 @@ class DSim:
         Delegates to ScopePlotter.
         """
         self.scope_plotter.dynamic_pyqtPlotScope(step)
-
 
 
 

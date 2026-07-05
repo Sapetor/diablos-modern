@@ -4,6 +4,7 @@ Handles simulation initialization, execution loops, and diagram analysis.
 """
 
 import logging
+import hashlib
 import time as time_module
 from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
@@ -22,6 +23,44 @@ logger = logging.getLogger(__name__)
 SCIPY_SOLVER_METHODS = ('RK45', 'RK23', 'DOP853', 'Radau', 'BDF', 'LSODA')
 # Fixed-step schemes integrated in-house (use the simulation step dt).
 FIXED_STEP_METHODS = ('Euler', 'RK4')
+
+# Runtime/history keys that must not invalidate the compiled-system cache.
+# The compiler only needs user-facing/resolved parameters and port metadata;
+# these values are written during interpreted initialization or post-solve
+# replay and would otherwise make every repeat run look structurally new.
+_COMPILE_CACHE_ALLOWED_INTERNAL_KEYS = frozenset({'_inputs_', '_outputs_'})
+_COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset({
+    '_source_params_fingerprint',
+    '_init_start_',
+    '_rng',
+    '_prev',
+    '_x_',
+    '_held_output_',
+    '_held_value_',
+    '_last_value_',
+    '_last_time_',
+    '_next_sample_time_',
+    '_current_value_',
+    '_sample_index_',
+    '_time_buffer_',
+    '_value_buffer_',
+    '_vector_buf',
+    '_vector_len',
+    '_field_history_',
+    '_field_history_2d_',
+    '_time_history_',
+    '_replay_state_',
+    '_replay_pending_',
+    '_replay_hyst_state_',
+    'vector',
+    'vec_dim',
+    'vec_labels',
+    'mem',
+    'mem_list',
+    'mem_len',
+    'output',
+    'aux',
+})
 
 # Canonical fn-names whose compiled kernel executor is reused verbatim by the
 # post-solve replay loop (instead of a duplicated inline computation), so the
@@ -142,6 +181,15 @@ class SimulationEngine:
         # System Compiler
         self.compiler = SystemCompiler()
         self.flattener = Flattener()
+
+        # Compiled-system cache and diagnostics. The cache is intentionally
+        # one-entry: the common hot path is rerunning the current topology after
+        # scalar tweaks, and a single slot avoids unbounded closure retention.
+        self._compiled_system_cache_key = None
+        self._compiled_system_cache_value = None
+        self.compile_cache_hits: int = 0
+        self.compile_cache_misses: int = 0
+        self.last_solver_diagnostics: Dict[str, Any] = {}
         
         # Active execution lists (may differ from model if flattened)
         self.active_blocks_list = []
@@ -489,7 +537,9 @@ class SimulationEngine:
         stays consistent.
         """
         cached = getattr(block, 'exec_params', None)
-        if cached and cached.get('dtime') == dt:
+        params_fp = self._source_params_fingerprint(block.params)
+        cached_fp = cached.get('_source_params_fingerprint') if cached else None
+        if cached and cached.get('dtime') == dt and cached_fp == params_fp:
             return
         if workspace_manager is None:
             workspace_manager = WorkspaceManager()
@@ -497,6 +547,7 @@ class SimulationEngine:
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
         block.exec_params['dtime'] = dt
+        block.exec_params['_source_params_fingerprint'] = params_fp
 
     def execute_block(self, block: DBlock, output_only: bool = False) -> Union[Dict[int, Any], bool]:
         """
@@ -1162,6 +1213,189 @@ class SimulationEngine:
         """Check if the system can be compiled."""
         return self.compiler.check_compilability(blocks)
 
+    @classmethod
+    def _normalize_cache_value(cls, value):
+        """Convert parameter values to stable, hashable cache-key fragments."""
+        if isinstance(value, np.ndarray):
+            arr = np.asarray(value)
+            if arr.dtype == object:
+                return (
+                    'ndarray-object',
+                    tuple(arr.shape),
+                    tuple(cls._normalize_cache_value(x) for x in arr.ravel().tolist()),
+                )
+            contiguous = np.ascontiguousarray(arr)
+            digest = hashlib.blake2b(contiguous.tobytes(), digest_size=16).hexdigest()
+            return ('ndarray', tuple(contiguous.shape), str(contiguous.dtype), digest)
+        if isinstance(value, np.generic):
+            return cls._normalize_cache_value(value.item())
+        if isinstance(value, float):
+            if np.isnan(value):
+                return ('float', 'nan')
+            if np.isinf(value):
+                return ('float', 'inf' if value > 0 else '-inf')
+            return value
+        if isinstance(value, dict):
+            return tuple(
+                (str(k), cls._normalize_cache_value(v))
+                for k, v in sorted(value.items(), key=lambda item: str(item[0]))
+            )
+        if isinstance(value, (list, tuple)):
+            return tuple(cls._normalize_cache_value(v) for v in value)
+        if isinstance(value, set):
+            return tuple(sorted(
+                (cls._normalize_cache_value(v) for v in value),
+                key=repr,
+            ))
+        try:
+            hash(value)
+            return value
+        except TypeError:
+            return (value.__class__.__name__, repr(value))
+
+    @classmethod
+    def _compile_param_items(cls, params):
+        """Return cache-relevant parameter items, excluding runtime history."""
+        items = []
+        for key, value in sorted((params or {}).items(), key=lambda item: str(item[0])):
+            key_s = str(key)
+            if key_s in _COMPILE_CACHE_IGNORED_PARAM_KEYS:
+                continue
+            if key_s.startswith('_') and key_s not in _COMPILE_CACHE_ALLOWED_INTERNAL_KEYS:
+                continue
+            items.append((key_s, cls._normalize_cache_value(value)))
+        return tuple(items)
+
+    @classmethod
+    def _source_params_fingerprint(cls, params):
+        """Fingerprint raw block params for exec_params stale-cache detection."""
+        return cls._compile_param_items(params)
+
+    def _compiled_system_fingerprint(self, blocks, sorted_blocks, lines, dt):
+        """Build a conservative cache key for compile_system outputs."""
+        block_fp = []
+        for block in blocks:
+            block_fp.append((
+                getattr(block, 'name', ''),
+                getattr(block, 'block_fn', ''),
+                canonical_fn(getattr(block, 'block_fn', '')),
+                int(getattr(block, 'in_ports', 0) or 0),
+                int(getattr(block, 'out_ports', 0) or 0),
+                int(getattr(block, 'b_type', 0) or 0),
+                int(getattr(block, 'hierarchy', -1)),
+                float(getattr(block, 'effective_sample_time', -1.0)),
+                self._compile_param_items(getattr(block, 'params', {})),
+                self._compile_param_items(getattr(block, 'exec_params', {}) or {}),
+            ))
+
+        line_fp = tuple(
+            (
+                getattr(line, 'srcblock', None),
+                int(getattr(line, 'srcport', 0) or 0),
+                getattr(line, 'dstblock', None),
+                int(getattr(line, 'dstport', 0) or 0),
+                bool(getattr(line, 'hidden', False)),
+            )
+            for line in lines
+        )
+        order_fp = tuple(getattr(block, 'name', '') for block in sorted_blocks)
+        return (float(dt), tuple(block_fp), order_fp, line_fp)
+
+    def clear_compile_cache(self) -> None:
+        """Drop the cached compiled RHS, state map, and replay executors."""
+        self._compiled_system_cache_key = None
+        self._compiled_system_cache_value = None
+
+    def _compile_system_cached(self, blocks, sorted_blocks, lines, dt):
+        """Compile the current diagram, reusing the previous compile on a hit."""
+        key = self._compiled_system_fingerprint(blocks, sorted_blocks, lines, dt)
+        if key == self._compiled_system_cache_key and self._compiled_system_cache_value:
+            self.compile_cache_hits += 1
+            model_func, y0, state_map, block_matrices, block_executors = (
+                self._compiled_system_cache_value
+            )
+            self.compiler.block_executors = block_executors
+            return model_func, y0.copy(), state_map, block_matrices, True
+
+        self.compile_cache_misses += 1
+        model_func, y0, state_map, block_matrices = self.compiler.compile_system(
+            blocks, sorted_blocks, lines
+        )
+        block_executors = dict(getattr(self.compiler, 'block_executors', {}))
+        self._compiled_system_cache_key = key
+        self._compiled_system_cache_value = (
+            model_func, y0.copy(), state_map, block_matrices, block_executors
+        )
+        return model_func, y0.copy(), state_map, block_matrices, False
+
+    def get_solver_diagnostics(self) -> Dict[str, Any]:
+        """Return a copy of the most recent compiled-solver diagnostics."""
+        return dict(self.last_solver_diagnostics)
+
+    @staticmethod
+    def _solver_attr(sol, name, default=None):
+        return getattr(sol, name, default)
+
+    def _record_solver_diagnostics(self, *, sol, success, method_requested,
+                                   method_used, backend, t_span, dt, rtol, atol,
+                                   n_states, n_blocks, n_lines, compile_cache_hit,
+                                   compile_time, solve_time, replay_time,
+                                   total_time, fallback_reason=None,
+                                   failure_stage=None, output_range=None) -> None:
+        """Store a compact, UI/log-friendly summary of the compiled run."""
+        times = getattr(sol, 't', None)
+        n_time_points = 0 if times is None else len(times)
+        diagnostics = {
+            'success': bool(success),
+            'failure_stage': failure_stage,
+            'message': str(self._solver_attr(sol, 'message', '') or ''),
+            'status': self._solver_attr(sol, 'status', None),
+            'backend': backend,
+            'method_requested': method_requested,
+            'method_used': method_used,
+            'fallback_reason': fallback_reason,
+            'rtol': rtol,
+            'atol': atol,
+            't_start': float(t_span[0]),
+            't_end': float(t_span[1]),
+            'dt': float(dt),
+            'n_states': int(n_states),
+            'n_blocks': int(n_blocks),
+            'n_lines': int(n_lines),
+            'n_time_points': int(n_time_points),
+            'n_output_steps': max(0, int(n_time_points) - 1),
+            'nfev': self._solver_attr(sol, 'nfev', None),
+            'njev': self._solver_attr(sol, 'njev', None),
+            'nlu': self._solver_attr(sol, 'nlu', None),
+            'compile_cache_hit': bool(compile_cache_hit),
+            'compile_cache_hits_total': int(self.compile_cache_hits),
+            'compile_cache_misses_total': int(self.compile_cache_misses),
+            'compile_wall_time': float(compile_time),
+            'solve_wall_time': float(solve_time),
+            'replay_wall_time': float(replay_time),
+            'total_wall_time': float(total_time),
+            'output_range': output_range,
+        }
+        self.last_solver_diagnostics = diagnostics
+
+    @staticmethod
+    def _format_solver_diagnostics_for_log(diagnostics: Dict[str, Any]) -> str:
+        cache = 'hit' if diagnostics.get('compile_cache_hit') else 'miss'
+        nfev = diagnostics.get('nfev')
+        nfev_text = 'n/a' if nfev is None else str(nfev)
+        return (
+            f"method={diagnostics.get('method_used')} "
+            f"backend={diagnostics.get('backend')} "
+            f"states={diagnostics.get('n_states')} "
+            f"points={diagnostics.get('n_time_points')} "
+            f"nfev={nfev_text} "
+            f"cache={cache} "
+            f"compile={diagnostics.get('compile_wall_time', 0.0):.4f}s "
+            f"solve={diagnostics.get('solve_wall_time', 0.0):.4f}s "
+            f"replay={diagnostics.get('replay_wall_time', 0.0):.4f}s "
+            f"total={diagnostics.get('total_wall_time', 0.0):.4f}s"
+        )
+
     def _replay_compiled_signals(self, sol, current_blocks, current_lines,
                                  state_map, block_matrices):
         """Re-evaluate every block at each saved solver time so Scope /
@@ -1699,6 +1933,19 @@ class SimulationEngine:
         """
         Run the simulation using the compiled fast solver.
         """
+        run_start = time_module.perf_counter()
+        compile_time = 0.0
+        solve_time = 0.0
+        replay_time = 0.0
+        compile_cache_hit = False
+        method_requested = getattr(self, 'solver_method', 'RK45') or 'RK45'
+        method_used = method_requested
+        backend = None
+        fallback_reason = None
+        rtol = getattr(self, 'rtol', 1e-9)
+        atol = getattr(self, 'atol', 1e-12)
+        self.last_solver_diagnostics = {}
+
         try:
             from scipy.integrate import solve_ivp
             from lib.workspace import WorkspaceManager
@@ -1709,6 +1956,12 @@ class SimulationEngine:
                 # Not yet initialized - do it now
                 if not self.initialize_execution(blocks, lines):
                     logger.error("Failed to initialize execution (algebraic loop or error).")
+                    self.last_solver_diagnostics = {
+                        'success': False,
+                        'failure_stage': 'initialize',
+                        'message': self.error_msg,
+                        'total_wall_time': time_module.perf_counter() - run_start,
+                    }
                     return False
             else:
                 logger.debug("Engine already initialized, skipping redundant initialization")
@@ -1728,13 +1981,23 @@ class SimulationEngine:
             # Final check on flattened system
             if not self.compiler.check_compilability(current_blocks):
                 logger.error("Flattened system contains uncompilable blocks.")
+                self.last_solver_diagnostics = {
+                    'success': False,
+                    'failure_stage': 'compilability',
+                    'message': "Flattened system contains uncompilable blocks.",
+                    'total_wall_time': time_module.perf_counter() - run_start,
+                }
                 return False
 
             # Topological sort via hierarchy
             sorted_blocks = sorted(current_blocks, key=lambda b: b.hierarchy)
 
             logger.info("Compiling system...")
-            model_func, y0, state_map, block_matrices = self.compiler.compile_system(current_blocks, sorted_blocks, current_lines)
+            compile_start = time_module.perf_counter()
+            model_func, y0, state_map, block_matrices, compile_cache_hit = (
+                self._compile_system_cached(current_blocks, sorted_blocks, current_lines, dt)
+            )
+            compile_time = time_module.perf_counter() - compile_start
             
             logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
             t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
@@ -1744,20 +2007,25 @@ class SimulationEngine:
             
             # Lightweight container matching scipy solve_ivp result interface
             class _SolverResult:
-                __slots__ = ('t', 'y', 'success', 'message')
+                __slots__ = ('t', 'y', 'success', 'message', 'status',
+                             'nfev', 'njev', 'nlu')
 
+            solve_start = time_module.perf_counter()
             if len(y0) == 0:
                 # Purely algebraic system
+                backend = 'algebraic'
                 sol = _SolverResult()
                 sol.t = t_eval
                 sol.y = np.zeros((0, len(t_eval)))
                 sol.success = True
                 sol.message = "Algebraic system computed successfully"
+                sol.status = 0
+                sol.nfev = 0
+                sol.njev = 0
+                sol.nlu = 0
                 logger.info("System is algebraic (0 states). Skipping solver.")
             else:
-                method = getattr(self, 'solver_method', 'RK45') or 'RK45'
-                rtol = getattr(self, 'rtol', 1e-9)
-                atol = getattr(self, 'atol', 1e-12)
+                method = method_requested
 
                 # Stochastic blocks force a fixed step: adaptive solvers evaluate
                 # the RHS multiple times per step, seeing different random values
@@ -1774,9 +2042,11 @@ class SimulationEngine:
                         f"Stochastic source detected — overriding '{method}' "
                         f"with fixed-step Euler"
                     )
+                    fallback_reason = f"stochastic source forced fixed-step Euler from {method}"
                     method = 'Euler'
 
                 if method in FIXED_STEP_METHODS:
+                    backend = 'fixed_step'
                     scheme = 'rk4' if method == 'RK4' else 'euler'
                     y_history = integrate_fixed_step(model_func, t_eval, y0, scheme)
                     sol = _SolverResult()
@@ -1784,18 +2054,37 @@ class SimulationEngine:
                     sol.y = y_history
                     sol.success = True
                     sol.message = f"Fixed-step {method}"
+                    sol.status = 0
+                    evals_per_step = 4 if method == 'RK4' else 1
+                    sol.nfev = max(0, len(t_eval) - 1) * evals_per_step
+                    sol.njev = 0
+                    sol.nlu = 0
                 else:
                     if method not in SCIPY_SOLVER_METHODS:
                         logger.warning(
                             f"Unknown solver '{method}', falling back to RK45"
                         )
+                        fallback_reason = f"unknown solver '{method}' fell back to RK45"
                         method = 'RK45'
+                    backend = 'scipy'
                     logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
                     sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval,
                                     method=method, rtol=rtol, atol=atol)
+                method_used = method
+            solve_time = time_module.perf_counter() - solve_start
             
             if not sol.success:
                 logger.error(f"Solver failed: {sol.message}")
+                self._record_solver_diagnostics(
+                    sol=sol, success=False, method_requested=method_requested,
+                    method_used=method_used, backend=backend, t_span=t_span, dt=dt,
+                    rtol=rtol, atol=atol, n_states=len(y0),
+                    n_blocks=len(current_blocks), n_lines=len(current_lines),
+                    compile_cache_hit=compile_cache_hit, compile_time=compile_time,
+                    solve_time=solve_time, replay_time=0.0,
+                    total_time=time_module.perf_counter() - run_start,
+                    fallback_reason=fallback_reason, failure_stage='solve',
+                )
                 return False
                 
             logger.info("Simulation finished. Processing results...")
@@ -1804,11 +2093,36 @@ class SimulationEngine:
             self.outs = sol.y
             self.timeline = sol.t
             
+            output_range = None
             if sol.y.size > 0:
-                logger.info(f"Solver output range: min={np.min(sol.y):.6f}, max={np.max(sol.y):.6f}")
+                output_range = {
+                    'min': float(np.min(sol.y)),
+                    'max': float(np.max(sol.y)),
+                }
+                logger.info(
+                    f"Solver output range: min={output_range['min']:.6f}, "
+                    f"max={output_range['max']:.6f}"
+                )
 
+            replay_start = time_module.perf_counter()
             self._replay_compiled_signals(
                 sol, current_blocks, current_lines, state_map, block_matrices)
+            replay_time = time_module.perf_counter() - replay_start
+
+            self._record_solver_diagnostics(
+                sol=sol, success=True, method_requested=method_requested,
+                method_used=method_used, backend=backend, t_span=t_span, dt=dt,
+                rtol=rtol, atol=atol, n_states=len(y0),
+                n_blocks=len(current_blocks), n_lines=len(current_lines),
+                compile_cache_hit=compile_cache_hit, compile_time=compile_time,
+                solve_time=solve_time, replay_time=replay_time,
+                total_time=time_module.perf_counter() - run_start,
+                fallback_reason=fallback_reason, output_range=output_range,
+            )
+            logger.info(
+                "Compiled solver diagnostics: %s",
+                self._format_solver_diagnostics_for_log(self.last_solver_diagnostics),
+            )
             
             return True
             
@@ -1818,4 +2132,17 @@ class SimulationEngine:
             # an internal bug (KeyError, shape mismatch, ...) apart from a
             # solver failure, instead of only seeing a generic False.
             self.error_msg = f"Compiled simulation failed: {type(e).__name__}: {e}"
+            self.last_solver_diagnostics = {
+                'success': False,
+                'failure_stage': 'exception',
+                'message': self.error_msg,
+                'method_requested': method_requested,
+                'method_used': method_used,
+                'backend': backend,
+                'compile_cache_hit': bool(compile_cache_hit),
+                'compile_wall_time': float(compile_time),
+                'solve_wall_time': float(solve_time),
+                'replay_wall_time': float(replay_time),
+                'total_wall_time': time_module.perf_counter() - run_start,
+            }
             return False

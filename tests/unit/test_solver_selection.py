@@ -132,6 +132,63 @@ class _MockModel:
         pass
 
 
+def _constant_integrator_scope(method="RK45", value=2.0):
+    """Build a valid Constant -> Integrator -> Scope compiled test diagram."""
+    from PyQt5.QtCore import QRect, QPoint
+    from blocks.constant import ConstantBlock
+    from blocks.integrator import IntegratorBlock
+    from blocks.scope import ScopeBlock
+    from lib.engine.simulation_engine import SimulationEngine
+    from lib.simulation.block import DBlock
+    from lib.simulation.connection import DLine
+
+    def _defaults(block):
+        return {
+            k: v["default"] if isinstance(v, dict) and "default" in v else v
+            for k, v in block.params.items()
+        }
+
+    model = _MockModel()
+    const_block = ConstantBlock()
+    const = DBlock("Constant", "C1", coords=QRect(0, 0, 50, 50), color="blue",
+                   in_ports=0, out_ports=1, b_type=const_block.b_type,
+                   params=_defaults(const_block), block_class=ConstantBlock,
+                   category=const_block.category)
+    const.params["value"] = value
+    const.hierarchy = 0
+
+    integrator_block = IntegratorBlock()
+    integ = DBlock("Integrator", "I1", coords=QRect(100, 0, 50, 50), color="green",
+                   in_ports=1, out_ports=1, b_type=integrator_block.b_type,
+                   params=_defaults(integrator_block), block_class=IntegratorBlock,
+                   category=integrator_block.category)
+    integ.params["init_conds"] = 0.0
+    integ.hierarchy = 1
+
+    scope_block = ScopeBlock()
+    scope = DBlock("Scope", "S1", coords=QRect(200, 0, 50, 50), color="red",
+                   in_ports=1, out_ports=0, b_type=scope_block.b_type,
+                   params=_defaults(scope_block), block_class=ScopeBlock,
+                   category=scope_block.category)
+    scope.params["labels"] = "output"
+    scope.hierarchy = 2
+
+    lines = [
+        DLine(sid=0, srcblock=const.name, srcport=0,
+              dstblock=integ.name, dstport=0,
+              points=[QPoint(0, 0), QPoint(1, 1)]),
+        DLine(sid=1, srcblock=integ.name, srcport=0,
+              dstblock=scope.name, dstport=0,
+              points=[QPoint(1, 1), QPoint(2, 2)]),
+    ]
+    model.blocks_list = [const, integ, scope]
+    model.line_list = lines
+
+    engine = SimulationEngine(model)
+    engine.solver_method = method
+    return engine, const, integ, scope, lines
+
+
 @pytest.mark.unit
 class TestCompiledSolverEndToEnd:
     """
@@ -180,3 +237,97 @@ class TestCompiledSolverEndToEnd:
         # Unknown solver names degrade gracefully to RK45 rather than crashing.
         final = self._run(qapp, "NOPE")
         assert np.isclose(final, 10.0, atol=1e-2)
+
+
+@pytest.mark.unit
+class TestCompiledSolverDiagnosticsAndCache:
+    def _run(self, engine, lines, t_end=1.0, dt=0.1):
+        ok = engine.run_compiled_simulation(
+            engine.model.blocks_list, lines, (0.0, t_end), dt
+        )
+        assert ok, engine.error_msg
+        return engine.get_solver_diagnostics()
+
+    def test_scipy_solver_diagnostics_are_recorded(self, qapp):
+        engine, _const, _integ, _scope, lines = _constant_integrator_scope("RK45")
+
+        diag = self._run(engine, lines, t_end=1.0, dt=0.1)
+
+        assert diag["success"] is True
+        assert diag["backend"] == "scipy"
+        assert diag["method_requested"] == "RK45"
+        assert diag["method_used"] == "RK45"
+        assert diag["n_states"] == 1
+        assert diag["n_blocks"] == 3
+        assert diag["n_lines"] == 2
+        assert diag["n_time_points"] == 11
+        assert diag["n_output_steps"] == 10
+        assert diag["nfev"] > 0
+        assert diag["compile_cache_hit"] is False
+        assert diag["compile_cache_misses_total"] == 1
+        assert diag["compile_wall_time"] >= 0.0
+        assert diag["solve_wall_time"] >= 0.0
+        assert diag["replay_wall_time"] >= 0.0
+        assert diag["total_wall_time"] >= diag["solve_wall_time"]
+        assert diag["output_range"]["max"] > 0.0
+
+    def test_fixed_step_diagnostics_include_estimated_rhs_evals(self, qapp):
+        engine, _const, _integ, _scope, lines = _constant_integrator_scope("RK4")
+
+        diag = self._run(engine, lines, t_end=1.0, dt=0.1)
+
+        assert diag["backend"] == "fixed_step"
+        assert diag["method_used"] == "RK4"
+        assert diag["nfev"] == 40  # 10 output steps * 4 RK stages
+        assert diag["status"] == 0
+
+    def test_unknown_solver_fallback_is_reported(self, qapp):
+        engine, _const, _integ, _scope, lines = _constant_integrator_scope("NOPE")
+
+        diag = self._run(engine, lines, t_end=1.0, dt=0.1)
+
+        assert diag["backend"] == "scipy"
+        assert diag["method_requested"] == "NOPE"
+        assert diag["method_used"] == "RK45"
+        assert "unknown solver" in diag["fallback_reason"]
+
+    def test_repeat_run_reuses_compiled_system_cache(self, qapp, monkeypatch):
+        engine, _const, _integ, _scope, lines = _constant_integrator_scope("RK45")
+        calls = {"n": 0}
+        original = engine.compiler.compile_system
+
+        def counting_compile(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(engine.compiler, "compile_system", counting_compile)
+
+        first = self._run(engine, lines, t_end=1.0, dt=0.1)
+        second = self._run(engine, lines, t_end=1.0, dt=0.1)
+
+        assert calls["n"] == 1
+        assert first["compile_cache_hit"] is False
+        assert second["compile_cache_hit"] is True
+        assert second["compile_cache_hits_total"] == 1
+        assert second["compile_cache_misses_total"] == 1
+
+    def test_parameter_change_invalidates_compiled_system_cache(self, qapp, monkeypatch):
+        engine, const, _integ, _scope, lines = _constant_integrator_scope("RK45", value=2.0)
+        calls = {"n": 0}
+        original = engine.compiler.compile_system
+
+        def counting_compile(*args, **kwargs):
+            calls["n"] += 1
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(engine.compiler, "compile_system", counting_compile)
+
+        first = self._run(engine, lines, t_end=1.0, dt=0.1)
+        const.params["value"] = 3.0
+        second = self._run(engine, lines, t_end=1.0, dt=0.1)
+
+        assert calls["n"] == 2
+        assert first["compile_cache_hit"] is False
+        assert second["compile_cache_hit"] is False
+        assert second["compile_cache_misses_total"] == 2
+        assert np.isclose(float(engine.outs[:, -1].ravel()[0]), 3.0, atol=1e-2)
