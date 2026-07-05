@@ -20,6 +20,7 @@ from blocks.pde._compat import as_scalar
 from blocks.param_templates import (
     advection_velocity_param, domain_params_1d, init_flag_param
 )
+from lib.engine.pde_ops import advection_rhs_1d
 
 logger = logging.getLogger(__name__)
 
@@ -193,81 +194,20 @@ class AdvectionEquation1DBlock(BaseBlock):
         # Get inputs
         c_inlet = as_scalar(inputs.get(0, 0.0))
 
-        # Compute spatial derivative using second-order upwind scheme
-        # This reduces numerical diffusion compared to first-order upwind
-        dc_dt = np.zeros(N)
-
-        if v >= 0:
-            # Positive velocity: second-order backward difference (upwind from left)
-            # Interior points: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
-            for i in range(2, N):
-                dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
-                dc_dt[i] = -v * dc_dx
-            # First interior point: first-order fallback
-            if N > 1:
-                dc_dx = (c[1] - c[0]) / dx
-                dc_dt[1] = -v * dc_dx
-
-            # Left boundary (inlet)
-            if bc_type == 'Dirichlet':
-                dc_dt[0] = 0.0  # Fixed by inlet
-            elif bc_type == 'Periodic':
-                dc_dx = (3*c[0] - 4*c[N-1] + c[N-2]) / (2*dx)
-                dc_dt[0] = -v * dc_dx
-        else:
-            # Negative velocity: second-order forward difference (upwind from right)
-            # Interior points: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
-            for i in range(N-2):
-                dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
-                dc_dt[i] = -v * dc_dx
-            # Last interior point: first-order fallback
-            if N > 1:
-                dc_dx = (c[N-1] - c[N-2]) / dx
-                dc_dt[N-2] = -v * dc_dx
-
-            # Right boundary (inlet for negative velocity)
-            if bc_type == 'Dirichlet':
-                dc_dt[N-1] = 0.0
-            elif bc_type == 'Periodic':
-                dc_dx = (-3*c[N-1] + 4*c[0] - c[1]) / (2*dx)
-                dc_dt[N-1] = -v * dc_dx
-
-        # Apply inlet BC
+        # Apply inlet BC directly; the shared operator holds dc/dt = 0 at the
+        # Dirichlet inlet so RK4 keeps it fixed at c_inlet across all stages.
         if bc_type == 'Dirichlet':
             if v >= 0:
                 c[0] = c_inlet
             else:
                 c[N-1] = c_inlet
 
-        # RK4 time integration for better accuracy
+        # RK4 time integration for better accuracy, using the shared spatial
+        # operator ('hold' mode: dc/dt = 0 at the Dirichlet inlet node).
         def compute_rhs(c_state):
             """Compute dc/dt for given state."""
-            rhs = np.zeros(N)
-            if v >= 0:
-                for i in range(2, N):
-                    dc_dx = (3*c_state[i] - 4*c_state[i-1] + c_state[i-2]) / (2*dx)
-                    rhs[i] = -v * dc_dx
-                if N > 1:
-                    dc_dx = (c_state[1] - c_state[0]) / dx
-                    rhs[1] = -v * dc_dx
-                if bc_type == 'Dirichlet':
-                    rhs[0] = 0.0
-                elif bc_type == 'Periodic':
-                    dc_dx = (3*c_state[0] - 4*c_state[N-1] + c_state[N-2]) / (2*dx)
-                    rhs[0] = -v * dc_dx
-            else:
-                for i in range(N-2):
-                    dc_dx = (-3*c_state[i] + 4*c_state[i+1] - c_state[i+2]) / (2*dx)
-                    rhs[i] = -v * dc_dx
-                if N > 1:
-                    dc_dx = (c_state[N-1] - c_state[N-2]) / dx
-                    rhs[N-2] = -v * dc_dx
-                if bc_type == 'Dirichlet':
-                    rhs[N-1] = 0.0
-                elif bc_type == 'Periodic':
-                    dc_dx = (-3*c_state[N-1] + 4*c_state[0] - c_state[1]) / (2*dx)
-                    rhs[N-1] = -v * dc_dx
-            return rhs
+            return advection_rhs_1d(c_state, v, dx, c_inlet, bc_type,
+                                    boundary_mode='hold')
 
         # RK4 stages
         k1 = compute_rhs(c)
@@ -297,38 +237,9 @@ class AdvectionEquation1DBlock(BaseBlock):
         dx = L / (N - 1)
         bc_type = params.get('bc_type', 'Dirichlet')
 
-        dc_dt = np.zeros(N)
-
-        if v >= 0:
-            # Second-order backward difference
-            for i in range(2, N):
-                dc_dx = (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)
-                dc_dt[i] = -v * dc_dx
-            if N > 1:
-                dc_dx = (c[1] - c[0]) / dx
-                dc_dt[1] = -v * dc_dx
-
-            if bc_type == 'Dirichlet':
-                dc_dt[0] = 0.0
-            elif bc_type == 'Periodic':
-                dc_dx = (3*c[0] - 4*c[N-1] + c[N-2]) / (2*dx)
-                dc_dt[0] = -v * dc_dx
-        else:
-            # Second-order forward difference
-            for i in range(N-2):
-                dc_dx = (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)
-                dc_dt[i] = -v * dc_dx
-            if N > 1:
-                dc_dx = (c[N-1] - c[N-2]) / dx
-                dc_dt[N-2] = -v * dc_dx
-
-            if bc_type == 'Dirichlet':
-                dc_dt[N-1] = 0.0
-            elif bc_type == 'Periodic':
-                dc_dx = (-3*c[N-1] + 4*c[0] - c[1]) / (2*dx)
-                dc_dt[N-1] = -v * dc_dx
-
-        return dc_dt
+        # 'hold' mode: dc/dt = 0 at the Dirichlet inlet (the ODE solver holds
+        # the boundary value via the initial condition / apply_boundary_conditions).
+        return advection_rhs_1d(c, v, dx, 0.0, bc_type, boundary_mode='hold')
 
     def apply_boundary_conditions(self, c, params, inputs):
         """Apply inlet boundary condition."""

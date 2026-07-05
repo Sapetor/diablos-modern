@@ -28,6 +28,7 @@ from blocks.param_templates import (
     wave_speed_param, domain_params_2d, init_flag_param
 )
 from lib.engine.pde_helpers import bc_params_2d
+from lib.engine.pde_ops import wave_rhs_2d
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +273,6 @@ class WaveEquation2DBlock(BaseBlock):
 
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)
-        c_sq = c * c
 
         # Get boundary conditions
         bc_left = float(inputs.get(1, 0.0)) if inputs.get(1) is not None else 0.0
@@ -302,75 +302,11 @@ class WaveEquation2DBlock(BaseBlock):
         u = state[:N].reshape((Ny, Nx))
         v = state[N:].reshape((Ny, Nx))
 
-        # Derivatives
-        du_dt = v.copy()  # du/dt = v
-        dv_dt = np.zeros((Ny, Nx))  # dv/dt = c²∇²u - damping*v + f
-
-        # Interior points: 5-point stencil
-        for j in range(1, Ny - 1):
-            for i in range(1, Nx - 1):
-                d2udx2 = (u[j, i+1] - 2*u[j, i] + u[j, i-1]) / (dx * dx)
-                d2udy2 = (u[j+1, i] - 2*u[j, i] + u[j-1, i]) / (dy * dy)
-
-                # Force at this point
-                if isinstance(force, np.ndarray):
-                    f = force[j, i]
-                else:
-                    f = force
-
-                dv_dt[j, i] = c_sq * (d2udx2 + d2udy2) - damping * v[j, i] + f
-
-        # Boundary conditions using penalty method for Dirichlet
-        penalty = 1000.0
-
-        # Left boundary (i=0)
-        if bc_type_left == 'Dirichlet':
-            for j in range(Ny):
-                du_dt[j, 0] = penalty * (bc_left - u[j, 0])
-                dv_dt[j, 0] = 0.0
-        else:  # Neumann
-            for j in range(1, Ny - 1):
-                # Ghost node approach for ∂u/∂x = bc_left at i=0
-                d2udx2 = (2*u[j, 1] - 2*u[j, 0] - 2*dx*bc_left) / (dx * dx)
-                d2udy2 = (u[j+1, 0] - 2*u[j, 0] + u[j-1, 0]) / (dy * dy)
-                f = force[j, 0] if isinstance(force, np.ndarray) else force
-                dv_dt[j, 0] = c_sq * (d2udx2 + d2udy2) - damping * v[j, 0] + f
-
-        # Right boundary (i=Nx-1)
-        if bc_type_right == 'Dirichlet':
-            for j in range(Ny):
-                du_dt[j, Nx-1] = penalty * (bc_right - u[j, Nx-1])
-                dv_dt[j, Nx-1] = 0.0
-        else:  # Neumann
-            for j in range(1, Ny - 1):
-                d2udx2 = (2*u[j, Nx-2] - 2*u[j, Nx-1] + 2*dx*bc_right) / (dx * dx)
-                d2udy2 = (u[j+1, Nx-1] - 2*u[j, Nx-1] + u[j-1, Nx-1]) / (dy * dy)
-                f = force[j, Nx-1] if isinstance(force, np.ndarray) else force
-                dv_dt[j, Nx-1] = c_sq * (d2udx2 + d2udy2) - damping * v[j, Nx-1] + f
-
-        # Bottom boundary (j=0)
-        if bc_type_bottom == 'Dirichlet':
-            for i in range(Nx):
-                du_dt[0, i] = penalty * (bc_bottom - u[0, i])
-                dv_dt[0, i] = 0.0
-        else:  # Neumann
-            for i in range(1, Nx - 1):
-                d2udx2 = (u[0, i+1] - 2*u[0, i] + u[0, i-1]) / (dx * dx)
-                d2udy2 = (2*u[1, i] - 2*u[0, i] - 2*dy*bc_bottom) / (dy * dy)
-                f = force[0, i] if isinstance(force, np.ndarray) else force
-                dv_dt[0, i] = c_sq * (d2udx2 + d2udy2) - damping * v[0, i] + f
-
-        # Top boundary (j=Ny-1)
-        if bc_type_top == 'Dirichlet':
-            for i in range(Nx):
-                du_dt[Ny-1, i] = penalty * (bc_top - u[Ny-1, i])
-                dv_dt[Ny-1, i] = 0.0
-        else:  # Neumann
-            for i in range(1, Nx - 1):
-                d2udx2 = (u[Ny-1, i+1] - 2*u[Ny-1, i] + u[Ny-1, i-1]) / (dx * dx)
-                d2udy2 = (2*u[Ny-2, i] - 2*u[Ny-1, i] + 2*dy*bc_top) / (dy * dy)
-                f = force[Ny-1, i] if isinstance(force, np.ndarray) else force
-                dv_dt[Ny-1, i] = c_sq * (d2udx2 + d2udy2) - damping * v[Ny-1, i] + f
+        # Spatial discretisation + BC math is single-sourced in lib.engine.pde_ops.
+        du_dt, dv_dt = wave_rhs_2d(
+            u, v, c, damping, dx, dy, force,
+            bc_type_left, bc_type_right, bc_type_bottom, bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         # Return flattened derivatives [du_dt, dv_dt]
         return np.concatenate([du_dt.flatten(), dv_dt.flatten()])

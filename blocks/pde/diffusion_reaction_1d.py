@@ -24,6 +24,7 @@ from blocks.param_templates import (
     diffusivity_param, domain_params_1d, init_flag_param
 )
 from lib.engine.pde_helpers import bc_params_1d
+from lib.engine.pde_ops import diffusion_reaction_rhs_1d, robin_boundary_value
 
 logger = logging.getLogger(__name__)
 
@@ -222,42 +223,29 @@ class DiffusionReaction1DBlock(BaseBlock):
             if len(source) != N:
                 source = np.full(N, source[0] if len(source) > 0 else 0.0)
 
-        # Compute derivative
-        dc_dt = np.zeros(N)
-
-        # Interior nodes
-        for i in range(1, N-1):
-            d2c_dx2 = (c[i+1] - 2*c[i] + c[i-1]) / (dx * dx)
-            reaction = k * np.power(max(c[i], 0), n)
-            dc_dt[i] = D * d2c_dx2 - reaction + source[i]
-
-        # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Neumann')
 
+        # Compute derivative from the pre-update field. The interpreter holds
+        # Dirichlet/Robin nodes (dc/dt = 0) and sets their field value directly.
+        dc_dt = diffusion_reaction_rhs_1d(
+            c, D, k, n, dx, source,
+            bc_type_left, bc_left, bc_type_right, bc_right,
+            boundary_mode='hold')
+
+        # Direct-set Dirichlet/Robin boundary values (after the RHS has seen the
+        # originals) so the Euler step keeps them fixed.
         if bc_type_left == 'Dirichlet':
             c[0] = bc_left
-            dc_dt[0] = 0.0
-        elif bc_type_left == 'Neumann':
-            d2c_dx2 = (2*c[1] - 2*c[0] - 2*dx*bc_left) / (dx * dx)
-            reaction = k * np.power(max(c[0], 0), n)
-            dc_dt[0] = D * d2c_dx2 - reaction + source[0]
         elif bc_type_left == 'Robin':
             h = params.get('h_mass_transfer', 1.0)
-            c[0] = (D * c[1] / dx + h * bc_left) / (D / dx + h)
-            dc_dt[0] = 0.0
+            c[0] = robin_boundary_value(c[1], bc_left, h, D, dx)
 
         if bc_type_right == 'Dirichlet':
             c[N-1] = bc_right
-            dc_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            d2c_dx2 = (2*c[N-2] - 2*c[N-1] + 2*dx*bc_right) / (dx * dx)
-            reaction = k * np.power(max(c[N-1], 0), n)
-            dc_dt[N-1] = D * d2c_dx2 - reaction + source[N-1]
         elif bc_type_right == 'Robin':
             h = params.get('h_mass_transfer', 1.0)
-            c[N-1] = (D * c[N-2] / dx + h * bc_right) / (D / dx + h)
-            dc_dt[N-1] = 0.0
+            c[N-1] = robin_boundary_value(c[N-2], bc_right, h, D, dx)
 
         # Forward Euler update
         c_new = c + dc_dt * dtime
@@ -296,37 +284,13 @@ class DiffusionReaction1DBlock(BaseBlock):
             if len(source) != N:
                 source = np.full(N, source[0] if len(source) > 0 else 0.0)
 
-        dc_dt = np.zeros(N)
-
-        # Interior nodes
-        for i in range(1, N-1):
-            d2c_dx2 = (c[i+1] - 2*c[i] + c[i-1]) / (dx * dx)
-            reaction = k * np.power(max(c[i], 0), n)
-            dc_dt[i] = D * d2c_dx2 - reaction + source[i]
-
-        # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Neumann')
 
-        if bc_type_left == 'Dirichlet':
-            dc_dt[0] = 0.0
-        elif bc_type_left == 'Neumann':
-            d2c_dx2 = (2*c[1] - 2*c[0] - 2*dx*bc_left) / (dx * dx)
-            reaction = k * np.power(max(c[0], 0), n)
-            dc_dt[0] = D * d2c_dx2 - reaction + source[0]
-        elif bc_type_left == 'Robin':
-            dc_dt[0] = 0.0
-
-        if bc_type_right == 'Dirichlet':
-            dc_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            d2c_dx2 = (2*c[N-2] - 2*c[N-1] + 2*dx*bc_right) / (dx * dx)
-            reaction = k * np.power(max(c[N-1], 0), n)
-            dc_dt[N-1] = D * d2c_dx2 - reaction + source[N-1]
-        elif bc_type_right == 'Robin':
-            dc_dt[N-1] = 0.0
-
-        return dc_dt
+        return diffusion_reaction_rhs_1d(
+            c, D, k, n, dx, source,
+            bc_type_left, bc_left, bc_type_right, bc_right,
+            boundary_mode='hold')
 
     def apply_boundary_conditions(self, c, params, inputs):
         """Apply boundary conditions."""
@@ -346,12 +310,12 @@ class DiffusionReaction1DBlock(BaseBlock):
             c_mod[0] = bc_left
         elif bc_type_left == 'Robin':
             h = params.get('h_mass_transfer', 1.0)
-            c_mod[0] = (D * c[1] / dx + h * bc_left) / (D / dx + h)
+            c_mod[0] = robin_boundary_value(c[1], bc_left, h, D, dx)
 
         if bc_type_right == 'Dirichlet':
             c_mod[N-1] = bc_right
         elif bc_type_right == 'Robin':
             h = params.get('h_mass_transfer', 1.0)
-            c_mod[N-1] = (D * c[N-2] / dx + h * bc_right) / (D / dx + h)
+            c_mod[N-1] = robin_boundary_value(c[N-2], bc_right, h, D, dx)
 
         return c_mod

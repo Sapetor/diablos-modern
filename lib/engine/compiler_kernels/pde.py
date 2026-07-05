@@ -11,29 +11,11 @@ unpacked from the BuildContext at the top).
 import numpy as np
 
 from lib.engine.compiler_kernels import kernel
-
-
-def _fill_neumann_corners(arr, ny, nx, left_open, right_open, bottom_open, top_open):
-    """Assign 2D-PDE corner derivatives for the all-Neumann case.
-
-    The Neumann edge loops use range(1, N-1) and skip the endpoints, so a corner
-    is left unset only when BOTH its adjacent edges are "open" (Neumann) -- a
-    Dirichlet/Outflow edge already covers corners via its full-range loop. For
-    such corners, approximate the derivative as the mean of the two edge
-    neighbors so they evolve instead of staying frozen at the initial value.
-    The ``*_open`` flags are computed by the caller per its own BC convention
-    (heat/wave: ``!= 'Dirichlet'``; advection: ``== 'Neumann'``).
-    """
-    if ny < 3 or nx < 3:
-        return
-    if left_open and bottom_open:
-        arr[0, 0] = 0.5 * (arr[0, 1] + arr[1, 0])
-    if right_open and bottom_open:
-        arr[0, nx - 1] = 0.5 * (arr[0, nx - 2] + arr[1, nx - 1])
-    if left_open and top_open:
-        arr[ny - 1, 0] = 0.5 * (arr[ny - 1, 1] + arr[ny - 2, 0])
-    if right_open and top_open:
-        arr[ny - 1, nx - 1] = 0.5 * (arr[ny - 1, nx - 2] + arr[ny - 2, nx - 1])
+from lib.engine.pde_ops import (
+    advection_rhs_1d, advection_rhs_2d,
+    diffusion_reaction_rhs_1d,
+    heat_rhs_1d, heat_rhs_2d, wave_rhs_1d, wave_rhs_2d,
+)
 
 
 @kernel("Heatequation1D")
@@ -77,43 +59,14 @@ def build_heatequation1d(ctx):
             if len(q_src) != _N:
                 q_src = np.full(_N, q_src[0] if len(q_src) > 0 else 0.0)
 
-        dT_dt = np.zeros(_N)
-        dx_sq = _dx * _dx
-
-        # Interior nodes: central difference (vectorized; identical to the
-        # per-node stencil but avoids the Python loop in the ODE RHS).
-        dT_dt[1:-1] = _alpha * (T[2:] - 2 * T[1:-1] + T[:-2]) / dx_sq + q_src[1:-1]
-
-        # Left boundary
-        if _bc_type_left == 'Dirichlet':
-            # Force boundary to match input value using penalty method
-            dT_dt[0] = 1000.0 * (bc_left_val - T[0])
-        elif _bc_type_left == 'Neumann':
-            d2T_dx2 = (2*T[1] - 2*T[0] - 2*_dx*bc_left_val) / dx_sq
-            dT_dt[0] = _alpha * d2T_dx2 + q_src[0]
-        elif _bc_type_left == 'Robin':
-            # Convective Robin BC (-k dT/dx = h (T - T_inf)). Drive the
-            # boundary node toward the Robin-consistent value -- the same
-            # relation blocks/pde/heat_equation_1d.py solves algebraically
-            # -- via the penalty method, instead of forcing T_inf as a
-            # Dirichlet value (which was the wrong physics and diverged
-            # from the interpreted path).
-            t0_robin = (_k * T[1] / _dx + _h_left * bc_left_val) / (_k / _dx + _h_left)
-            dT_dt[0] = 1000.0 * (t0_robin - T[0])
-
-        # Right boundary
-        if _bc_type_right == 'Dirichlet':
-            # Force boundary to match input value using penalty method
-            dT_dt[_N-1] = 1000.0 * (bc_right_val - T[_N-1])
-        elif _bc_type_right == 'Neumann':
-            d2T_dx2 = (2*T[_N-2] - 2*T[_N-1] + 2*_dx*bc_right_val) / dx_sq
-            dT_dt[_N-1] = _alpha * d2T_dx2 + q_src[_N-1]
-        elif _bc_type_right == 'Robin':
-            # Convective Robin BC, mirror of the left boundary: drive the
-            # node toward the Robin-consistent value rather than forcing
-            # the ambient temperature as a Dirichlet value.
-            tN_robin = (_k * T[_N-2] / _dx + _h_right * bc_right_val) / (_k / _dx + _h_right)
-            dT_dt[_N-1] = 1000.0 * (tN_robin - T[_N-1])
+        # Spatial discretisation + boundary conditions are single-sourced in
+        # lib.engine.pde_ops. The compiled path integrates the boundary nodes as
+        # stiff ODEs, so it uses the 'penalty' boundary mode (Robin/Dirichlet
+        # nodes are driven toward their prescribed / Robin-consistent value).
+        dT_dt = heat_rhs_1d(
+            T, _alpha, _dx, q_src,
+            _bc_type_left, bc_left_val, _bc_type_right, bc_right_val,
+            _h_left, _h_right, _k, boundary_mode='penalty')
 
         # Output: temperature field and average
         signals[b_name] = T
@@ -161,30 +114,11 @@ def build_waveequation1d(ctx):
             if len(force) != _N:
                 force = np.full(_N, force[0] if len(force) > 0 else 0.0)
 
-        c_sq = _c * _c
-        dx_sq = _dx * _dx
-
-        du_dt = v.copy()
-        dv_dt = np.zeros(_N)
-
-        # Interior (vectorized; identical to the per-node stencil)
-        dv_dt[1:-1] = (c_sq * (u[2:] - 2 * u[1:-1] + u[:-2]) / dx_sq
-                       - _damping * v[1:-1] + force[1:-1])
-
-        # Boundaries
-        if _bc_type_left == 'Dirichlet':
-            du_dt[0] = 0.0
-            dv_dt[0] = 0.0
-        elif _bc_type_left == 'Neumann':
-            d2u_dx2 = (2*u[1] - 2*u[0] - 2*_dx*bc_left) / dx_sq
-            dv_dt[0] = c_sq * d2u_dx2 - _damping * v[0] + force[0]
-
-        if _bc_type_right == 'Dirichlet':
-            du_dt[_N-1] = 0.0
-            dv_dt[_N-1] = 0.0
-        elif _bc_type_right == 'Neumann':
-            d2u_dx2 = (2*u[_N-2] - 2*u[_N-1] + 2*_dx*bc_right) / dx_sq
-            dv_dt[_N-1] = c_sq * d2u_dx2 - _damping * v[_N-1] + force[_N-1]
+        # Spatial discretisation + boundary conditions single-sourced in
+        # lib.engine.pde_ops (shared with the interpreter block).
+        du_dt, dv_dt = wave_rhs_1d(
+            u, v, _c, _damping, _dx, force,
+            _bc_type_left, bc_left, _bc_type_right, bc_right)
 
         signals[b_name] = u
         signals[b_name + '_v'] = v
@@ -216,34 +150,8 @@ def build_advectionequation1d(ctx):
 
         c_inlet = signals.get(_inlet_key, 0.0) if _inlet_key else 0.0
 
-        dc_dt = np.zeros(_N)
-
-        if _v >= 0:
-            # Second-order backward difference (upwind) - reduces numerical diffusion
-            # Interior: (3*c[i] - 4*c[i-1] + c[i-2]) / (2*dx)  (vectorized)
-            dc_dt[2:] = -_v * (3 * c[2:] - 4 * c[1:-1] + c[:-2]) / (2 * _dx)
-            # First interior point: first-order fallback
-            if _N > 1:
-                dc_dx = (c[1] - c[0]) / _dx
-                dc_dt[1] = -_v * dc_dx
-            if _bc_type == 'Dirichlet':
-                dc_dt[0] = 1000.0 * (c_inlet - c[0])  # Penalty method for inlet BC
-            elif _bc_type == 'Periodic':
-                dc_dx = (3*c[0] - 4*c[_N-1] + c[_N-2]) / (2*_dx)
-                dc_dt[0] = -_v * dc_dx
-        else:
-            # Second-order forward difference (upwind)
-            # Interior: (-3*c[i] + 4*c[i+1] - c[i+2]) / (2*dx)  (vectorized)
-            dc_dt[:-2] = -_v * (-3 * c[:-2] + 4 * c[1:-1] - c[2:]) / (2 * _dx)
-            # Last interior point: first-order fallback
-            if _N > 1:
-                dc_dx = (c[_N-1] - c[_N-2]) / _dx
-                dc_dt[_N-2] = -_v * dc_dx
-            if _bc_type == 'Dirichlet':
-                dc_dt[_N-1] = 1000.0 * (c_inlet - c[_N-1])  # Penalty method for outlet BC
-            elif _bc_type == 'Periodic':
-                dc_dx = (-3*c[_N-1] + 4*c[0] - c[1]) / (2*_dx)
-                dc_dt[_N-1] = -_v * dc_dx
+        dc_dt = advection_rhs_1d(c, _v, _dx, c_inlet, _bc_type,
+                                 boundary_mode='penalty')
 
         signals[b_name] = c
         signals[b_name + '_total'] = np.sum(c) * _dx
@@ -289,29 +197,13 @@ def build_diffusionreaction1d(ctx):
             if len(source) != _N:
                 source = np.full(_N, source[0] if len(source) > 0 else 0.0)
 
-        dc_dt = np.zeros(_N)
-        dx_sq = _dx * _dx
-
-        # Interior (vectorized; identical to the per-node stencil).
-        # np.maximum matches the per-element max(c[i], 0) reaction clamp.
-        d2c_dx2 = (c[2:] - 2 * c[1:-1] + c[:-2]) / dx_sq
-        reaction = _k * np.power(np.maximum(c[1:-1], 0.0), _n)
-        dc_dt[1:-1] = _D * d2c_dx2 - reaction + source[1:-1]
-
-        # Boundaries - use penalty method for Dirichlet to force value
-        if _bc_type_left == 'Dirichlet':
-            dc_dt[0] = 1000.0 * (bc_left - c[0])  # Force c[0] → bc_left
-        elif _bc_type_left == 'Neumann':
-            d2c_dx2 = (2*c[1] - 2*c[0] - 2*_dx*bc_left) / dx_sq
-            reaction = _k * np.power(max(c[0], 0), _n)
-            dc_dt[0] = _D * d2c_dx2 - reaction + source[0]
-
-        if _bc_type_right == 'Dirichlet':
-            dc_dt[_N-1] = 1000.0 * (bc_right - c[_N-1])  # Force c[N-1] → bc_right
-        elif _bc_type_right == 'Neumann':
-            d2c_dx2 = (2*c[_N-2] - 2*c[_N-1] + 2*_dx*bc_right) / dx_sq
-            reaction = _k * np.power(max(c[_N-1], 0), _n)
-            dc_dt[_N-1] = _D * d2c_dx2 - reaction + source[_N-1]
+        # Spatial discretisation + boundary conditions single-sourced in
+        # lib.engine.pde_ops. The compiled path integrates the boundary nodes as
+        # stiff ODEs, so Dirichlet uses the 'penalty' boundary mode.
+        dc_dt = diffusion_reaction_rhs_1d(
+            c, _D, _k, _n, _dx, source,
+            _bc_type_left, bc_left, _bc_type_right, bc_right,
+            boundary_mode='penalty')
 
         signals[b_name] = c
         signals[b_name + '_total'] = np.sum(c) * _dx
@@ -366,63 +258,12 @@ def build_heatequation2d(ctx):
         if isinstance(q_src, np.ndarray):
             q_src = float(q_src.flat[0]) if q_src.size > 0 else 0.0
 
-        dT_dt = np.zeros((_Ny, _Nx))
-        dx_sq = _dx * _dx
-        dy_sq = _dy * _dy
-        penalty = 1000.0
-
-        # Interior nodes: 5-point stencil (vectorized; identical per-node math)
-        dT_dt[1:-1, 1:-1] = _alpha * (
-            (T[1:-1, 2:] - 2 * T[1:-1, 1:-1] + T[1:-1, :-2]) / dx_sq
-            + (T[2:, 1:-1] - 2 * T[1:-1, 1:-1] + T[:-2, 1:-1]) / dy_sq
-        ) + q_src
-
-        # Left boundary (i=0)
-        if _bc_type_left == 'Dirichlet':
-            for j in range(_Ny):
-                dT_dt[j, 0] = penalty * (bc_left - T[j, 0])
-        else:  # Neumann
-            for j in range(1, _Ny - 1):
-                d2Tdx2 = (2*T[j, 1] - 2*T[j, 0] - 2*_dx*bc_left) / dx_sq
-                d2Tdy2 = (T[j+1, 0] - 2*T[j, 0] + T[j-1, 0]) / dy_sq
-                dT_dt[j, 0] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
-
-        # Right boundary (i=Nx-1)
-        if _bc_type_right == 'Dirichlet':
-            for j in range(_Ny):
-                dT_dt[j, _Nx-1] = penalty * (bc_right - T[j, _Nx-1])
-        else:  # Neumann
-            for j in range(1, _Ny - 1):
-                d2Tdx2 = (2*T[j, _Nx-2] - 2*T[j, _Nx-1] + 2*_dx*bc_right) / dx_sq
-                d2Tdy2 = (T[j+1, _Nx-1] - 2*T[j, _Nx-1] + T[j-1, _Nx-1]) / dy_sq
-                dT_dt[j, _Nx-1] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
-
-        # Bottom boundary (j=0)
-        if _bc_type_bottom == 'Dirichlet':
-            for i in range(_Nx):
-                dT_dt[0, i] = penalty * (bc_bottom - T[0, i])
-        else:  # Neumann
-            for i in range(1, _Nx - 1):
-                d2Tdx2 = (T[0, i+1] - 2*T[0, i] + T[0, i-1]) / dx_sq
-                d2Tdy2 = (2*T[1, i] - 2*T[0, i] - 2*_dy*bc_bottom) / dy_sq
-                dT_dt[0, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
-
-        # Top boundary (j=Ny-1)
-        if _bc_type_top == 'Dirichlet':
-            for i in range(_Nx):
-                dT_dt[_Ny-1, i] = penalty * (bc_top - T[_Ny-1, i])
-        else:  # Neumann
-            for i in range(1, _Nx - 1):
-                d2Tdx2 = (T[_Ny-1, i+1] - 2*T[_Ny-1, i] + T[_Ny-1, i-1]) / dx_sq
-                d2Tdy2 = (2*T[_Ny-2, i] - 2*T[_Ny-1, i] + 2*_dy*bc_top) / dy_sq
-                dT_dt[_Ny-1, i] = _alpha * (d2Tdx2 + d2Tdy2) + q_src
-
-        # Fill the all-Neumann corners (skipped by the Neumann edge loops)
-        # from their edge neighbors. Dirichlet edges already cover corners.
-        _fill_neumann_corners(
-            dT_dt, _Ny, _Nx,
-            _bc_type_left != 'Dirichlet', _bc_type_right != 'Dirichlet',
-            _bc_type_bottom != 'Dirichlet', _bc_type_top != 'Dirichlet')
+        # Spatial discretisation + boundary conditions single-sourced in
+        # lib.engine.pde_ops (shared with the interpreter block).
+        dT_dt = heat_rhs_2d(
+            T, _alpha, _dx, _dy, q_src,
+            _bc_type_left, _bc_type_right, _bc_type_bottom, _bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         # Output: temperature field (2D), average, max
         signals[b_name] = T
@@ -460,7 +301,7 @@ def build_waveequation2d(ctx):
     bc_t_key = input_sources[4] if len(input_sources) > 4 else None
 
     def exec_wave2d(t, y, dy_vec, signals,
-                    _start=start, _Nx=Nx, _Ny=Ny, _c_sq=c_wave*c_wave,
+                    _start=start, _Nx=Nx, _Ny=Ny, _c=c_wave, _c_sq=c_wave*c_wave,
                     _damping=damping, _dx=dx, _dy=dy,
                     _bc_type_left=bc_type_left, _bc_type_right=bc_type_right,
                     _bc_type_bottom=bc_type_bottom, _bc_type_top=bc_type_top,
@@ -491,73 +332,12 @@ def build_waveequation2d(ctx):
                 except ValueError:
                     force = float(np.atleast_1d(force).flat[0])
 
-        du_dt = v.copy()
-        dv_dt = np.zeros((_Ny, _Nx))
-        dx_sq = _dx * _dx
-        dy_sq = _dy * _dy
-        penalty = 1000.0
-
-        # Interior: 5-point stencil (vectorized; identical per-node math)
-        _f_int = force[1:-1, 1:-1] if isinstance(force, np.ndarray) else force
-        dv_dt[1:-1, 1:-1] = (_c_sq * (
-            (u[1:-1, 2:] - 2 * u[1:-1, 1:-1] + u[1:-1, :-2]) / dx_sq
-            + (u[2:, 1:-1] - 2 * u[1:-1, 1:-1] + u[:-2, 1:-1]) / dy_sq)
-            - _damping * v[1:-1, 1:-1] + _f_int)
-
-        # Left boundary (i=0)
-        if _bc_type_left == 'Dirichlet':
-            for j in range(_Ny):
-                du_dt[j, 0] = penalty * (bc_left - u[j, 0])
-                dv_dt[j, 0] = 0.0
-        else:
-            for j in range(1, _Ny - 1):
-                d2udx2 = (2*u[j, 1] - 2*u[j, 0] - 2*_dx*bc_left) / dx_sq
-                d2udy2 = (u[j+1, 0] - 2*u[j, 0] + u[j-1, 0]) / dy_sq
-                f = force[j, 0] if isinstance(force, np.ndarray) else force
-                dv_dt[j, 0] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, 0] + f
-
-        # Right boundary (i=Nx-1)
-        if _bc_type_right == 'Dirichlet':
-            for j in range(_Ny):
-                du_dt[j, _Nx-1] = penalty * (bc_right - u[j, _Nx-1])
-                dv_dt[j, _Nx-1] = 0.0
-        else:
-            for j in range(1, _Ny - 1):
-                d2udx2 = (2*u[j, _Nx-2] - 2*u[j, _Nx-1] + 2*_dx*bc_right) / dx_sq
-                d2udy2 = (u[j+1, _Nx-1] - 2*u[j, _Nx-1] + u[j-1, _Nx-1]) / dy_sq
-                f = force[j, _Nx-1] if isinstance(force, np.ndarray) else force
-                dv_dt[j, _Nx-1] = _c_sq * (d2udx2 + d2udy2) - _damping * v[j, _Nx-1] + f
-
-        # Bottom boundary (j=0)
-        if _bc_type_bottom == 'Dirichlet':
-            for i in range(_Nx):
-                du_dt[0, i] = penalty * (bc_bottom - u[0, i])
-                dv_dt[0, i] = 0.0
-        else:
-            for i in range(1, _Nx - 1):
-                d2udx2 = (u[0, i+1] - 2*u[0, i] + u[0, i-1]) / dx_sq
-                d2udy2 = (2*u[1, i] - 2*u[0, i] - 2*_dy*bc_bottom) / dy_sq
-                f = force[0, i] if isinstance(force, np.ndarray) else force
-                dv_dt[0, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[0, i] + f
-
-        # Top boundary (j=Ny-1)
-        if _bc_type_top == 'Dirichlet':
-            for i in range(_Nx):
-                du_dt[_Ny-1, i] = penalty * (bc_top - u[_Ny-1, i])
-                dv_dt[_Ny-1, i] = 0.0
-        else:
-            for i in range(1, _Nx - 1):
-                d2udx2 = (u[_Ny-1, i+1] - 2*u[_Ny-1, i] + u[_Ny-1, i-1]) / dx_sq
-                d2udy2 = (2*u[_Ny-2, i] - 2*u[_Ny-1, i] + 2*_dy*bc_top) / dy_sq
-                f = force[_Ny-1, i] if isinstance(force, np.ndarray) else force
-                dv_dt[_Ny-1, i] = _c_sq * (d2udx2 + d2udy2) - _damping * v[_Ny-1, i] + f
-
-        # Fill the all-Neumann corners of dv_dt from their edge neighbors
-        # (du_dt corners are already correct via du_dt = v.copy()).
-        _fill_neumann_corners(
-            dv_dt, _Ny, _Nx,
-            _bc_type_left != 'Dirichlet', _bc_type_right != 'Dirichlet',
-            _bc_type_bottom != 'Dirichlet', _bc_type_top != 'Dirichlet')
+        # Spatial discretisation + boundary conditions single-sourced in
+        # lib.engine.pde_ops (shared with the interpreter block).
+        du_dt, dv_dt = wave_rhs_2d(
+            u, v, _c, _damping, _dx, _dy, force,
+            _bc_type_left, _bc_type_right, _bc_type_bottom, _bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         signals[b_name] = u
         signals[b_name + '_v'] = v
@@ -630,103 +410,10 @@ def build_advectionequation2d(ctx):
                 except ValueError:
                     source = float(np.atleast_1d(source).flat[0])
 
-        dc_dt = np.zeros((_Ny, _Nx))
-        dx_sq = _dx * _dx
-        dy_sq = _dy * _dy
-        penalty = 1000.0
-
-        # Interior: upwind advection + central diffusion (vectorized;
-        # _vx/_vy are constants so the upwind branch is hoisted out).
-        _ci = c[1:-1, 1:-1]
-        if _vx >= 0:
-            _dc_dx = (_ci - c[1:-1, :-2]) / _dx
-        else:
-            _dc_dx = (c[1:-1, 2:] - _ci) / _dx
-        if _vy >= 0:
-            _dc_dy = (_ci - c[:-2, 1:-1]) / _dy
-        else:
-            _dc_dy = (c[2:, 1:-1] - _ci) / _dy
-        _d2c_dx2 = (c[1:-1, 2:] - 2 * _ci + c[1:-1, :-2]) / dx_sq
-        _d2c_dy2 = (c[2:, 1:-1] - 2 * _ci + c[:-2, 1:-1]) / dy_sq
-        _S_int = source[1:-1, 1:-1] if isinstance(source, np.ndarray) else source
-        dc_dt[1:-1, 1:-1] = (-_vx * _dc_dx - _vy * _dc_dy
-                             + _D * (_d2c_dx2 + _d2c_dy2) + _S_int)
-
-        # Left boundary (i=0)
-        if _bc_type_left == 'Dirichlet':
-            for j in range(_Ny):
-                dc_dt[j, 0] = penalty * (bc_left - c[j, 0])
-        elif _bc_type_left == 'Neumann':
-            # NOTE: the prescribed-gradient (bc_*) is applied to the
-            # advective term (dc_dx) only. The diffusive Laplacian here
-            # uses a zero-gradient ghost-node form and intentionally
-            # ignores bc_* — i.e. advection Neumann diffusion is treated
-            # as zero-gradient, unlike Heat2D's flux-carrying ghost node.
-            for j in range(1, _Ny - 1):
-                dc_dx = bc_left if _vx >= 0 else (c[j, 1] - c[j, 0]) / _dx
-                dc_dy = (c[j, 0] - c[j-1, 0]) / _dy if _vy >= 0 else (c[j+1, 0] - c[j, 0]) / _dy
-                d2c_dx2 = (c[j, 1] - c[j, 0]) / dx_sq * 2
-                d2c_dy2 = (c[j+1, 0] - 2*c[j, 0] + c[j-1, 0]) / dy_sq
-                S = source[j, 0] if isinstance(source, np.ndarray) else source
-                dc_dt[j, 0] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for j in range(_Ny):
-                dc_dt[j, 0] = dc_dt[j, 1] if _Nx > 1 else 0.0
-
-        # Right boundary (i=Nx-1)
-        if _bc_type_right == 'Dirichlet':
-            for j in range(_Ny):
-                dc_dt[j, _Nx-1] = penalty * (bc_right - c[j, _Nx-1])
-        elif _bc_type_right == 'Neumann':
-            for j in range(1, _Ny - 1):
-                dc_dx = (c[j, _Nx-1] - c[j, _Nx-2]) / _dx if _vx >= 0 else bc_right
-                dc_dy = (c[j, _Nx-1] - c[j-1, _Nx-1]) / _dy if _vy >= 0 else (c[j+1, _Nx-1] - c[j, _Nx-1]) / _dy
-                d2c_dx2 = (c[j, _Nx-2] - c[j, _Nx-1]) / dx_sq * 2
-                d2c_dy2 = (c[j+1, _Nx-1] - 2*c[j, _Nx-1] + c[j-1, _Nx-1]) / dy_sq
-                S = source[j, _Nx-1] if isinstance(source, np.ndarray) else source
-                dc_dt[j, _Nx-1] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for j in range(_Ny):
-                dc_dt[j, _Nx-1] = dc_dt[j, _Nx-2] if _Nx > 1 else 0.0
-
-        # Bottom boundary (j=0)
-        if _bc_type_bottom == 'Dirichlet':
-            for i in range(_Nx):
-                dc_dt[0, i] = penalty * (bc_bottom - c[0, i])
-        elif _bc_type_bottom == 'Neumann':
-            for i in range(1, _Nx - 1):
-                dc_dx = (c[0, i] - c[0, i-1]) / _dx if _vx >= 0 else (c[0, i+1] - c[0, i]) / _dx
-                dc_dy = bc_bottom if _vy >= 0 else (c[1, i] - c[0, i]) / _dy
-                d2c_dx2 = (c[0, i+1] - 2*c[0, i] + c[0, i-1]) / dx_sq
-                d2c_dy2 = (c[1, i] - c[0, i]) / dy_sq * 2
-                S = source[0, i] if isinstance(source, np.ndarray) else source
-                dc_dt[0, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for i in range(_Nx):
-                dc_dt[0, i] = dc_dt[1, i] if _Ny > 1 else 0.0
-
-        # Top boundary (j=Ny-1)
-        if _bc_type_top == 'Dirichlet':
-            for i in range(_Nx):
-                dc_dt[_Ny-1, i] = penalty * (bc_top - c[_Ny-1, i])
-        elif _bc_type_top == 'Neumann':
-            for i in range(1, _Nx - 1):
-                dc_dx = (c[_Ny-1, i] - c[_Ny-1, i-1]) / _dx if _vx >= 0 else (c[_Ny-1, i+1] - c[_Ny-1, i]) / _dx
-                dc_dy = (c[_Ny-1, i] - c[_Ny-2, i]) / _dy if _vy >= 0 else bc_top
-                d2c_dx2 = (c[_Ny-1, i+1] - 2*c[_Ny-1, i] + c[_Ny-1, i-1]) / dx_sq
-                d2c_dy2 = (c[_Ny-2, i] - c[_Ny-1, i]) / dy_sq * 2
-                S = source[_Ny-1, i] if isinstance(source, np.ndarray) else source
-                dc_dt[_Ny-1, i] = -_vx * dc_dx - _vy * dc_dy + _D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for i in range(_Nx):
-                dc_dt[_Ny-1, i] = dc_dt[_Ny-2, i] if _Ny > 1 else 0.0
-
-        # Fill the all-Neumann corners from their edge neighbors. Dirichlet
-        # and Outflow edges already cover corners via their full-range loops.
-        _fill_neumann_corners(
-            dc_dt, _Ny, _Nx,
-            _bc_type_left == 'Neumann', _bc_type_right == 'Neumann',
-            _bc_type_bottom == 'Neumann', _bc_type_top == 'Neumann')
+        dc_dt = advection_rhs_2d(
+            c, _vx, _vy, _D, _dx, _dy, source,
+            _bc_type_left, _bc_type_right, _bc_type_bottom, _bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         signals[b_name] = c
         signals[b_name + '_avg'] = np.mean(c)

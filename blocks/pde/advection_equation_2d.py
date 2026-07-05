@@ -20,6 +20,7 @@ State indexing: c[i,j] -> state[k] where k = i + j*Nx (row-major)
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from lib.engine.pde_ops import advection_rhs_2d
 
 logger = logging.getLogger(__name__)
 
@@ -295,170 +296,12 @@ class AdvectionEquation2DBlock(BaseBlock):
             else:
                 source = float(source.flat[0])
 
-        # Reshape state to 2D
+        # Reshape state to 2D and delegate the spatial discretisation + BCs to
+        # the shared operator (single source of truth with the compiled path).
         c = state.reshape((Ny, Nx))
-        dc_dt = np.zeros((Ny, Nx))
-
-        # Interior points: upwind for advection, central for diffusion
-        for j in range(1, Ny - 1):
-            for i in range(1, Nx - 1):
-                # Upwind scheme for advection
-                if vx >= 0:
-                    dc_dx = (c[j, i] - c[j, i-1]) / dx  # backward
-                else:
-                    dc_dx = (c[j, i+1] - c[j, i]) / dx  # forward
-
-                if vy >= 0:
-                    dc_dy = (c[j, i] - c[j-1, i]) / dy  # backward
-                else:
-                    dc_dy = (c[j+1, i] - c[j, i]) / dy  # forward
-
-                # Central differences for diffusion (Laplacian)
-                d2c_dx2 = (c[j, i+1] - 2*c[j, i] + c[j, i-1]) / (dx * dx)
-                d2c_dy2 = (c[j+1, i] - 2*c[j, i] + c[j-1, i]) / (dy * dy)
-
-                # Source at this point
-                if isinstance(source, np.ndarray):
-                    S = source[j, i]
-                else:
-                    S = source
-
-                # dc/dt = -vx*dc/dx - vy*dc/dy + D*laplacian + source
-                dc_dt[j, i] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
-
-        # Boundary conditions using penalty method for Dirichlet
-        penalty = 1000.0
-
-        # Edge passes below fill only the edge-interior (excluding the four
-        # corners); corners are resolved last so that outflow copies never
-        # read a neighbor derivative that has not been computed yet.
-
-        # Left boundary (i=0)
-        if bc_type_left == 'Dirichlet':
-            for j in range(1, Ny - 1):
-                dc_dt[j, 0] = penalty * (bc_left - c[j, 0])
-        elif bc_type_left == 'Neumann':
-            for j in range(1, Ny - 1):
-                # Use one-sided difference
-                if vx >= 0:
-                    dc_dx = bc_left  # prescribed gradient
-                else:
-                    dc_dx = (c[j, 1] - c[j, 0]) / dx
-                if vy >= 0:
-                    dc_dy = (c[j, 0] - c[j-1, 0]) / dy
-                else:
-                    dc_dy = (c[j+1, 0] - c[j, 0]) / dy
-                d2c_dx2 = (c[j, 1] - c[j, 0]) / (dx * dx) * 2  # one-sided
-                d2c_dy2 = (c[j+1, 0] - 2*c[j, 0] + c[j-1, 0]) / (dy * dy)
-                S = source[j, 0] if isinstance(source, np.ndarray) else source
-                dc_dt[j, 0] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for j in range(1, Ny - 1):
-                dc_dt[j, 0] = dc_dt[j, 1] if Nx > 1 else 0.0
-
-        # Right boundary (i=Nx-1)
-        if bc_type_right == 'Dirichlet':
-            for j in range(1, Ny - 1):
-                dc_dt[j, Nx-1] = penalty * (bc_right - c[j, Nx-1])
-        elif bc_type_right == 'Neumann':
-            for j in range(1, Ny - 1):
-                if vx >= 0:
-                    dc_dx = (c[j, Nx-1] - c[j, Nx-2]) / dx
-                else:
-                    dc_dx = bc_right  # prescribed gradient
-                if vy >= 0:
-                    dc_dy = (c[j, Nx-1] - c[j-1, Nx-1]) / dy
-                else:
-                    dc_dy = (c[j+1, Nx-1] - c[j, Nx-1]) / dy
-                d2c_dx2 = (c[j, Nx-2] - c[j, Nx-1]) / (dx * dx) * 2
-                d2c_dy2 = (c[j+1, Nx-1] - 2*c[j, Nx-1] + c[j-1, Nx-1]) / (dy * dy)
-                S = source[j, Nx-1] if isinstance(source, np.ndarray) else source
-                dc_dt[j, Nx-1] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for j in range(1, Ny - 1):
-                dc_dt[j, Nx-1] = dc_dt[j, Nx-2] if Nx > 1 else 0.0
-
-        # Bottom boundary (j=0)
-        if bc_type_bottom == 'Dirichlet':
-            for i in range(1, Nx - 1):
-                dc_dt[0, i] = penalty * (bc_bottom - c[0, i])
-        elif bc_type_bottom == 'Neumann':
-            for i in range(1, Nx - 1):
-                if vx >= 0:
-                    dc_dx = (c[0, i] - c[0, i-1]) / dx
-                else:
-                    dc_dx = (c[0, i+1] - c[0, i]) / dx
-                if vy >= 0:
-                    dc_dy = bc_bottom
-                else:
-                    dc_dy = (c[1, i] - c[0, i]) / dy
-                d2c_dx2 = (c[0, i+1] - 2*c[0, i] + c[0, i-1]) / (dx * dx)
-                d2c_dy2 = (c[1, i] - c[0, i]) / (dy * dy) * 2
-                S = source[0, i] if isinstance(source, np.ndarray) else source
-                dc_dt[0, i] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for i in range(1, Nx - 1):
-                dc_dt[0, i] = dc_dt[1, i] if Ny > 1 else 0.0
-
-        # Top boundary (j=Ny-1)
-        if bc_type_top == 'Dirichlet':
-            for i in range(1, Nx - 1):
-                dc_dt[Ny-1, i] = penalty * (bc_top - c[Ny-1, i])
-        elif bc_type_top == 'Neumann':
-            for i in range(1, Nx - 1):
-                if vx >= 0:
-                    dc_dx = (c[Ny-1, i] - c[Ny-1, i-1]) / dx
-                else:
-                    dc_dx = (c[Ny-1, i+1] - c[Ny-1, i]) / dx
-                if vy >= 0:
-                    dc_dy = (c[Ny-1, i] - c[Ny-2, i]) / dy
-                else:
-                    dc_dy = bc_top
-                d2c_dx2 = (c[Ny-1, i+1] - 2*c[Ny-1, i] + c[Ny-1, i-1]) / (dx * dx)
-                d2c_dy2 = (c[Ny-2, i] - c[Ny-1, i]) / (dy * dy) * 2
-                S = source[Ny-1, i] if isinstance(source, np.ndarray) else source
-                dc_dt[Ny-1, i] = -vx * dc_dx - vy * dc_dy + D * (d2c_dx2 + d2c_dy2) + S
-        else:  # Outflow
-            for i in range(1, Nx - 1):
-                dc_dt[Ny-1, i] = dc_dt[Ny-2, i] if Ny > 1 else 0.0
-
-        # Corner resolution (after all four edge passes). Each corner lies on
-        # two edges; the vertical-edge (bottom/top) BC takes precedence over the
-        # horizontal-edge (left/right) BC unless the vertical edge is Neumann, in
-        # which case the horizontal edge governs. Outflow corners copy the
-        # edge-normal interior neighbor, which is now guaranteed to be computed.
-        def _corner_dc_dt(j, i, v_type, v_bc, v_neighbor, h_type, h_bc, h_neighbor):
-            # v_* describes the bottom/top (vertical) edge; h_* the left/right.
-            if v_type == 'Dirichlet':
-                return penalty * (v_bc - c[j, i])
-            if v_type == 'Outflow':
-                return dc_dt[v_neighbor] if Ny > 1 else 0.0
-            # v_type == 'Neumann': defer to the horizontal edge.
-            if h_type == 'Dirichlet':
-                return penalty * (h_bc - c[j, i])
-            if h_type == 'Outflow':
-                return dc_dt[h_neighbor] if Nx > 1 else 0.0
-            return 0.0  # both edges Neumann -> leave corner unforced
-
-        # Bottom-left (0, 0): vertical=bottom, horizontal=left
-        dc_dt[0, 0] = _corner_dc_dt(
-            0, 0,
-            bc_type_bottom, bc_bottom, (1, 0),
-            bc_type_left, bc_left, (0, 1))
-        # Bottom-right (0, Nx-1): vertical=bottom, horizontal=right
-        dc_dt[0, Nx-1] = _corner_dc_dt(
-            0, Nx-1,
-            bc_type_bottom, bc_bottom, (1, Nx-1),
-            bc_type_right, bc_right, (0, Nx-2))
-        # Top-left (Ny-1, 0): vertical=top, horizontal=left
-        dc_dt[Ny-1, 0] = _corner_dc_dt(
-            Ny-1, 0,
-            bc_type_top, bc_top, (Ny-2, 0),
-            bc_type_left, bc_left, (Ny-1, 1))
-        # Top-right (Ny-1, Nx-1): vertical=top, horizontal=right
-        dc_dt[Ny-1, Nx-1] = _corner_dc_dt(
-            Ny-1, Nx-1,
-            bc_type_top, bc_top, (Ny-2, Nx-1),
-            bc_type_right, bc_right, (Ny-1, Nx-2))
+        dc_dt = advection_rhs_2d(
+            c, vx, vy, D, dx, dy, source,
+            bc_type_left, bc_type_right, bc_type_bottom, bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         return dc_dt.flatten()

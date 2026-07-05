@@ -22,6 +22,7 @@ from blocks.param_templates import (
     diffusivity_param, domain_params_2d, init_flag_param, pde_2d_init_temp_param
 )
 from lib.engine.pde_helpers import bc_params_2d
+from lib.engine.pde_ops import heat_rhs_2d
 
 logger = logging.getLogger(__name__)
 
@@ -232,70 +233,12 @@ class HeatEquation2DBlock(BaseBlock):
             else:
                 q_src = float(q_src.flat[0])
 
-        # Reshape state to 2D
+        # Reshape state to 2D. Spatial discretisation + boundary conditions are
+        # single-sourced in lib.engine.pde_ops (shared with the compiled kernel).
         T = state.reshape((Ny, Nx))
-        dT_dt = np.zeros((Ny, Nx))
-
-        # Interior points: 5-point stencil
-        for j in range(1, Ny - 1):
-            for i in range(1, Nx - 1):
-                d2Tdx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / (dx * dx)
-                d2Tdy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / (dy * dy)
-
-                # Heat source at this point
-                if isinstance(q_src, np.ndarray):
-                    q = q_src[j, i]
-                else:
-                    q = q_src
-
-                dT_dt[j, i] = alpha * (d2Tdx2 + d2Tdy2) + q
-
-        # Boundary conditions using penalty method
-        penalty = 1000.0
-
-        # Left boundary (i=0)
-        if bc_type_left == 'Dirichlet':
-            for j in range(Ny):
-                dT_dt[j, 0] = penalty * (bc_left - T[j, 0])
-        else:  # Neumann
-            for j in range(1, Ny - 1):
-                # Ghost node approach: T[-1,j] = T[1,j] - 2*dx*flux
-                d2Tdx2 = (2*T[j, 1] - 2*T[j, 0] - 2*dx*bc_left) / (dx * dx)
-                d2Tdy2 = (T[j+1, 0] - 2*T[j, 0] + T[j-1, 0]) / (dy * dy)
-                q = q_src[j, 0] if isinstance(q_src, np.ndarray) else q_src
-                dT_dt[j, 0] = alpha * (d2Tdx2 + d2Tdy2) + q
-
-        # Right boundary (i=Nx-1)
-        if bc_type_right == 'Dirichlet':
-            for j in range(Ny):
-                dT_dt[j, Nx-1] = penalty * (bc_right - T[j, Nx-1])
-        else:  # Neumann
-            for j in range(1, Ny - 1):
-                d2Tdx2 = (2*T[j, Nx-2] - 2*T[j, Nx-1] + 2*dx*bc_right) / (dx * dx)
-                d2Tdy2 = (T[j+1, Nx-1] - 2*T[j, Nx-1] + T[j-1, Nx-1]) / (dy * dy)
-                q = q_src[j, Nx-1] if isinstance(q_src, np.ndarray) else q_src
-                dT_dt[j, Nx-1] = alpha * (d2Tdx2 + d2Tdy2) + q
-
-        # Bottom boundary (j=0)
-        if bc_type_bottom == 'Dirichlet':
-            for i in range(Nx):
-                dT_dt[0, i] = penalty * (bc_bottom - T[0, i])
-        else:  # Neumann
-            for i in range(1, Nx - 1):
-                d2Tdx2 = (T[0, i+1] - 2*T[0, i] + T[0, i-1]) / (dx * dx)
-                d2Tdy2 = (2*T[1, i] - 2*T[0, i] - 2*dy*bc_bottom) / (dy * dy)
-                q = q_src[0, i] if isinstance(q_src, np.ndarray) else q_src
-                dT_dt[0, i] = alpha * (d2Tdx2 + d2Tdy2) + q
-
-        # Top boundary (j=Ny-1)
-        if bc_type_top == 'Dirichlet':
-            for i in range(Nx):
-                dT_dt[Ny-1, i] = penalty * (bc_top - T[Ny-1, i])
-        else:  # Neumann
-            for i in range(1, Nx - 1):
-                d2Tdx2 = (T[Ny-1, i+1] - 2*T[Ny-1, i] + T[Ny-1, i-1]) / (dx * dx)
-                d2Tdy2 = (2*T[Ny-2, i] - 2*T[Ny-1, i] + 2*dy*bc_top) / (dy * dy)
-                q = q_src[Ny-1, i] if isinstance(q_src, np.ndarray) else q_src
-                dT_dt[Ny-1, i] = alpha * (d2Tdx2 + d2Tdy2) + q
+        dT_dt = heat_rhs_2d(
+            T, alpha, dx, dy, q_src,
+            bc_type_left, bc_type_right, bc_type_bottom, bc_type_top,
+            bc_left, bc_right, bc_bottom, bc_top)
 
         return dT_dt.flatten()

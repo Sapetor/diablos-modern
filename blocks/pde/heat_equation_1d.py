@@ -21,6 +21,7 @@ from blocks.param_templates import (
     diffusivity_param, domain_params_1d, init_flag_param, robin_bc_params
 )
 from lib.engine.pde_helpers import bc_params_1d
+from lib.engine.pde_ops import heat_rhs_1d, robin_boundary_value
 
 logger = logging.getLogger(__name__)
 
@@ -214,50 +215,34 @@ class HeatEquation1DBlock(BaseBlock):
                     q_src = np.interp(np.linspace(0, 1, N),
                                       np.linspace(0, 1, len(q_src)), q_src)
 
-        # Compute spatial derivative (∇²T) using central differences
-        dT_dt = np.zeros(N)
-
-        # Interior nodes: central difference
-        for i in range(1, N-1):
-            d2T_dx2 = (T[i+1] - 2*T[i] + T[i-1]) / (dx * dx)
-            dT_dt[i] = alpha * d2T_dx2 + q_src[i]
-
-        # Apply boundary conditions
+        # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Dirichlet')
+        h_left = float(params.get('h_left', 10.0))
+        h_right = float(params.get('h_right', 10.0))
+        k = float(params.get('k_thermal', 1.0))
 
-        # Left boundary (i=0)
+        # Spatial discretisation + boundary derivatives are single-sourced in
+        # lib.engine.pde_ops. The interpreter integrates Dirichlet/Robin nodes
+        # algebraically (it overwrites the field value below), so it uses the
+        # 'hold' boundary mode: dT/dt = 0 at those nodes, ghost-node flux at
+        # Neumann nodes. dT_dt is computed from the pre-update field T.
+        dT_dt = heat_rhs_1d(
+            T, alpha, dx, q_src,
+            bc_type_left, bc_left_val, bc_type_right, bc_right_val,
+            h_left, h_right, k, boundary_mode='hold')
+
+        # Set Dirichlet/Robin boundary values directly on the field (dT_dt is 0
+        # there, so the Forward Euler step below leaves them at these values).
         if bc_type_left == 'Dirichlet':
             T[0] = bc_left_val
-            dT_dt[0] = 0.0
-        elif bc_type_left == 'Neumann':
-            # Ghost node: T[-1] = T[1] - 2*dx*bc_left_val
-            # ∂²T/∂x² at i=0: (T[1] - 2*T[0] + T[-1]) / dx²
-            #                = (2*T[1] - 2*T[0] - 2*dx*bc_left_val) / dx²
-            d2T_dx2 = (2*T[1] - 2*T[0] - 2*dx*bc_left_val) / (dx * dx)
-            dT_dt[0] = alpha * d2T_dx2 + q_src[0]
         elif bc_type_left == 'Robin':
-            # -k * ∂T/∂x = h * (T - T_inf) at x=0
-            h = params.get('h_left', 10.0)
-            k = params.get('k_thermal', 1.0)
-            # Forward difference: ∂T/∂x ≈ (T[1] - T[0]) / dx
-            # Robin: T[0] = (k*T[1]/dx + h*bc_left_val) / (k/dx + h)
-            T[0] = (k * T[1] / dx + h * bc_left_val) / (k / dx + h)
-            dT_dt[0] = 0.0
+            T[0] = robin_boundary_value(T[1], bc_left_val, h_left, k, dx)
 
-        # Right boundary (i=N-1)
         if bc_type_right == 'Dirichlet':
             T[N-1] = bc_right_val
-            dT_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            # Ghost node approach
-            d2T_dx2 = (2*T[N-2] - 2*T[N-1] + 2*dx*bc_right_val) / (dx * dx)
-            dT_dt[N-1] = alpha * d2T_dx2 + q_src[N-1]
         elif bc_type_right == 'Robin':
-            h = params.get('h_right', 10.0)
-            k = params.get('k_thermal', 1.0)
-            T[N-1] = (k * T[N-2] / dx + h * bc_right_val) / (k / dx + h)
-            dT_dt[N-1] = 0.0
+            T[N-1] = robin_boundary_value(T[N-2], bc_right_val, h_right, k, dx)
 
         # Forward Euler time step (simple, for interpreter mode).
         # FTCS is only stable for dtime <= dx^2 / (2*alpha); beyond that the
@@ -316,37 +301,18 @@ class HeatEquation1DBlock(BaseBlock):
             if len(q_src) != N:
                 q_src = np.full(N, q_src[0] if len(q_src) > 0 else 0.0)
 
-        # Initialize derivatives
-        dT_dt = np.zeros(N)
-
-        # Interior nodes
-        for i in range(1, N-1):
-            d2T_dx2 = (T[i+1] - 2*T[i] + T[i-1]) / (dx * dx)
-            dT_dt[i] = alpha * d2T_dx2 + q_src[i]
-
-        # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Dirichlet')
+        h_left = float(params.get('h_left', 10.0))
+        h_right = float(params.get('h_right', 10.0))
+        k = float(params.get('k_thermal', 1.0))
 
-        # Left boundary
-        if bc_type_left == 'Dirichlet':
-            dT_dt[0] = 0.0  # Fixed value, no change
-        elif bc_type_left == 'Neumann':
-            d2T_dx2 = (2*T[1] - 2*T[0] - 2*dx*bc_left_val) / (dx * dx)
-            dT_dt[0] = alpha * d2T_dx2 + q_src[0]
-        elif bc_type_left == 'Robin':
-            dT_dt[0] = 0.0  # Algebraically determined
-
-        # Right boundary
-        if bc_type_right == 'Dirichlet':
-            dT_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            d2T_dx2 = (2*T[N-2] - 2*T[N-1] + 2*dx*bc_right_val) / (dx * dx)
-            dT_dt[N-1] = alpha * d2T_dx2 + q_src[N-1]
-        elif bc_type_right == 'Robin':
-            dT_dt[N-1] = 0.0
-
-        return dT_dt
+        # 'hold' boundary mode: Dirichlet/Robin nodes are algebraically
+        # determined (dT/dt = 0), Neumann nodes use the ghost-node flux.
+        return heat_rhs_1d(
+            T, alpha, dx, q_src,
+            bc_type_left, bc_left_val, bc_type_right, bc_right_val,
+            h_left, h_right, k, boundary_mode='hold')
 
     def apply_boundary_conditions(self, T, params, inputs):
         """
@@ -372,13 +338,13 @@ class HeatEquation1DBlock(BaseBlock):
         elif bc_type_left == 'Robin':
             h = params.get('h_left', 10.0)
             k = params.get('k_thermal', 1.0)
-            T_mod[0] = (k * T[1] / dx + h * bc_left_val) / (k / dx + h)
+            T_mod[0] = robin_boundary_value(T[1], bc_left_val, h, k, dx)
 
         if bc_type_right == 'Dirichlet':
             T_mod[N-1] = bc_right_val
         elif bc_type_right == 'Robin':
             h = params.get('h_right', 10.0)
             k = params.get('k_thermal', 1.0)
-            T_mod[N-1] = (k * T[N-2] / dx + h * bc_right_val) / (k / dx + h)
+            T_mod[N-1] = robin_boundary_value(T[N-2], bc_right_val, h, k, dx)
 
         return T_mod

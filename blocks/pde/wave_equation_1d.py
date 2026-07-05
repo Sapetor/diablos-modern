@@ -25,6 +25,7 @@ from blocks.param_templates import (
     wave_speed_param, domain_params_1d, init_flag_param
 )
 from lib.engine.pde_helpers import bc_params_1d
+from lib.engine.pde_ops import wave_rhs_1d
 
 logger = logging.getLogger(__name__)
 
@@ -235,38 +236,24 @@ class WaveEquation1DBlock(BaseBlock):
             if len(force) != N:
                 force = np.full(N, force[0] if len(force) > 0 else 0.0)
 
-        # Compute derivatives
-        du_dt = v.copy()
-        dv_dt = np.zeros(N)
-
-        c_sq = c * c
-
-        # Interior nodes
-        for i in range(1, N-1):
-            d2u_dx2 = (u[i+1] - 2*u[i] + u[i-1]) / (dx * dx)
-            dv_dt[i] = c_sq * d2u_dx2 - damping * v[i] + force[i]
-
         # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Dirichlet')
 
+        # Spatial discretisation + BC math is single-sourced in
+        # lib.engine.pde_ops. Compute the RHS from the pre-update field, then
+        # overwrite Dirichlet field values directly (the interpreter's 'hold'
+        # convention) before the Forward-Euler step.
+        du_dt, dv_dt = wave_rhs_1d(
+            u, v, c, damping, dx, force,
+            bc_type_left, bc_left, bc_type_right, bc_right)
+
         if bc_type_left == 'Dirichlet':
             u[0] = bc_left
             v[0] = 0.0
-            du_dt[0] = 0.0
-            dv_dt[0] = 0.0
-        elif bc_type_left == 'Neumann':
-            d2u_dx2 = (2*u[1] - 2*u[0] - 2*dx*bc_left) / (dx * dx)
-            dv_dt[0] = c_sq * d2u_dx2 - damping * v[0] + force[0]
-
         if bc_type_right == 'Dirichlet':
             u[N-1] = bc_right
             v[N-1] = 0.0
-            du_dt[N-1] = 0.0
-            dv_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            d2u_dx2 = (2*u[N-2] - 2*u[N-1] + 2*dx*bc_right) / (dx * dx)
-            dv_dt[N-1] = c_sq * d2u_dx2 - damping * v[N-1] + force[N-1]
 
         # Forward Euler update
         u_new = u + du_dt * dtime
@@ -329,34 +316,12 @@ class WaveEquation1DBlock(BaseBlock):
             if len(force) != N:
                 force = np.full(N, force[0] if len(force) > 0 else 0.0)
 
-        c_sq = c * c
-
-        # du/dt = v
-        du_dt = v.copy()
-
-        # dv/dt = c²∇²u - damping*v + force
-        dv_dt = np.zeros(N)
-
-        for i in range(1, N-1):
-            d2u_dx2 = (u[i+1] - 2*u[i] + u[i-1]) / (dx * dx)
-            dv_dt[i] = c_sq * d2u_dx2 - damping * v[i] + force[i]
-
-        # Boundary conditions
         bc_type_left = params.get('bc_type_left', 'Dirichlet')
         bc_type_right = params.get('bc_type_right', 'Dirichlet')
 
-        if bc_type_left == 'Dirichlet':
-            du_dt[0] = 0.0
-            dv_dt[0] = 0.0
-        elif bc_type_left == 'Neumann':
-            d2u_dx2 = (2*u[1] - 2*u[0] - 2*dx*bc_left) / (dx * dx)
-            dv_dt[0] = c_sq * d2u_dx2 - damping * v[0] + force[0]
-
-        if bc_type_right == 'Dirichlet':
-            du_dt[N-1] = 0.0
-            dv_dt[N-1] = 0.0
-        elif bc_type_right == 'Neumann':
-            d2u_dx2 = (2*u[N-2] - 2*u[N-1] + 2*dx*bc_right) / (dx * dx)
-            dv_dt[N-1] = c_sq * d2u_dx2 - damping * v[N-1] + force[N-1]
+        # Spatial discretisation + BC math is single-sourced in lib.engine.pde_ops.
+        du_dt, dv_dt = wave_rhs_1d(
+            u, v, c, damping, dx, force,
+            bc_type_left, bc_left, bc_type_right, bc_right)
 
         return np.concatenate([du_dt, dv_dt])
