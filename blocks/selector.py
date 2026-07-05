@@ -2,6 +2,24 @@ import numpy as np
 from blocks.base_block import BaseBlock
 
 
+def normalize_indices_str(raw):
+    """Coerce a resolved ``indices`` param back to a parseable string.
+
+    WorkspaceManager.resolve_params runs every string param through safe_expr,
+    which evaluates a comma list like ``"1,2"`` into a tuple ``(1, 2)`` and a
+    bare ``"0"`` into the int ``0`` before the block ever sees it. Both the
+    interpreter (``_parse_indices``) and the compiled kernel expect a string, so
+    normalize any non-string form back to a comma-joined index list. Colon-range
+    syntax like ``"1:3"`` is not a valid Python expression, so safe_expr leaves
+    it as a string and it passes through unchanged.
+    """
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, (list, tuple, np.ndarray)):
+        return ",".join(str(int(i)) for i in np.asarray(raw).flatten())
+    return str(int(raw))
+
+
 class SelectorBlock(BaseBlock):
     """
     Selects specific elements from a vector signal.
@@ -80,9 +98,9 @@ class SelectorBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         # Get input vector
         u = np.atleast_1d(inputs.get(0, 0)).flatten()
-        
-        indices_str = params.get("indices", "0")
-        
+
+        indices_str = normalize_indices_str(params.get("indices", "0"))
+
         try:
             # Parse indices
             indices = self._parse_indices(indices_str, len(u))

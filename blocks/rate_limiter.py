@@ -61,8 +61,13 @@ class RateLimiterBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        # Output-only path: no input → return last held output without mutating _prev.
-        if 0 not in inputs:
+        # Return the last held output without advancing the slew state on either
+        # the output-only pass or when no input is present. RateLimiter is a
+        # memory block (lib/engine/memory_blocks.py), so the engine calls
+        # execute() twice per step -- an output_only pass to feed downstream and
+        # a state-updating pass. Advancing _prev on both would double the
+        # effective slew rate; only the state pass may step.
+        if kwargs.get('output_only', False) or 0 not in inputs:
             held = params.get('_prev', np.atleast_1d(0.0))
             return {0: np.atleast_1d(held)}
 

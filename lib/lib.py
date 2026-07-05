@@ -695,6 +695,18 @@ class DSim:
             if not self._resolve_block_params(root_blocks, workspace_manager, sim_dt):
                 return (False, self.error_msg or "Parameter resolution failed")
 
+            # Sync sim params to the engine before init. Without this the engine
+            # keeps its default sim_dt (0.01) and re-stamps every block's
+            # exec_params['dtime'] with it during initialize_execution, so
+            # interpreter state blocks (TransferFunction, PID, Integrator)
+            # discretize/integrate at 0.01 regardless of the requested sim_dt.
+            self.engine.update_sim_params(
+                sim_time, sim_dt,
+                solver_method=self.solver_method,
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+
             # Initialize engine
             if not self.engine.initialize_execution(root_blocks, root_lines):
                 return (False, self.engine.error_msg or "Engine init failed")

@@ -9,25 +9,19 @@ at the configured slew rate (1.0 units/s) and reach 1.0 at t=1.5, then hold.
 Both engines are run over the same diagram and the two Scope trajectories are
 compared at the interpreter's sample times (identical dt, so index-aligned).
 
-STATUS: xfail(strict) -- the two paths genuinely diverge.
+STATUS: passing -- the two paths agree within tolerance.
 
-  The COMPILED path is correct: its kernel integrates dy/dt = clip((u-y)*K,
-  -falling, rising) once per RHS evaluation, so the output ramps at exactly the
-  configured slew rate (reaches 1.0 at t=1.5).
+  The COMPILED path integrates dy/dt = clip((u-y)*K, -falling, rising) once per
+  RHS evaluation, so the output ramps at exactly the configured slew rate
+  (reaches 1.0 at t=1.5).
 
-  The INTERPRETED path ramps at ~2x the configured slew rate (reaches 1.0 at
-  t=1.0), violating the documented slew limit. RateLimiter is registered as a
-  memory block (lib/engine/memory_blocks.py), so the interpreter executes it
-  twice per step: an output_only pass (simulation_engine.execute_block, which
-  only special-cases Integrator via next_add_in_memory=False) and a
-  state-updating pass. RateLimiterBlock.execute ignores the output_only kwarg
-  and advances params['_prev'] by ~rising*dt on BOTH calls, doubling the slew
-  per output step.
-
-When the interpreter double-advance is fixed, the remaining difference is only
-the compiled kernel's documented stiff-chase approximation (~1e-3 near the ramp
-top), well within the tolerance below, so this test will XPASS and the strict
-marker will flag the stale xfail for removal.
+  The INTERPRETED path previously ramped at ~2x the configured slew rate: as a
+  memory block (lib/engine/memory_blocks.py) it runs execute() twice per step
+  (an output_only pass plus a state-updating pass), and RateLimiterBlock.execute
+  advanced params['_prev'] on both. It now returns the held output without
+  advancing on the output_only pass, so it steps once per step and matches the
+  compiled kernel to within the compiled path's stiff-chase approximation
+  (~1e-3 near the ramp top), well inside the tolerance below.
 """
 
 import json
@@ -41,9 +35,7 @@ SIM_TIME = 3.0
 SIM_DT = 0.01
 
 # Loose tolerance appropriate for RK45-vs-fixed-step plus the compiled kernel's
-# documented stiff-chase approximation. The current interpreter double-advance
-# produces a max|delta| of ~0.5 (the two ramps differ by a factor of two), far
-# outside this band, which is why the assertion currently fails.
+# documented stiff-chase approximation (~1e-3 near the ramp top).
 RTOL = 1e-2
 ATOL = 1e-2
 
@@ -138,15 +130,6 @@ def _run(diagram_path: str, use_fast: bool):
 
 
 @pytest.mark.regression
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Interpreted RateLimiter ramps at ~2x the configured slew rate: as a "
-        "memory block it runs execute() twice per step (output_only + state "
-        "update) and advances params['_prev'] on both, while the compiled "
-        "kernel integrates the slew limit once and is correct."
-    ),
-)
 def test_ratelimiter_compiled_matches_interpreted(qapp, tmp_path):
     diagram_path = _write_diagram(tmp_path)
 

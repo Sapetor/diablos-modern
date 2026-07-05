@@ -25,18 +25,18 @@ reference and the interpreter is the inaccurate one):
     closed-loop response to machine precision (pure-P loop: (2/3)(1-e^{-3t});
     PI+integrator loop: 1+(t-1)e^{-t}).
   * The interpreter diverges by ~0.26 (abs) in the transient of the full PID
-    loop at the default dt=0.01, and -- critically -- the divergence *grows* as
-    dt shrinks (anti-convergent), rather than shrinking. Root cause: interpreter
-    state/memory blocks (TranFn, Integrator, PID) discretize/integrate using
-    ``params.get('dtime', 0.01)`` and end up using dtime=0.01 regardless of the
-    actual sim_dt, so they advance internal state at 0.01 s per step for any
-    timestep. The interpreter is therefore self-consistent *only* at sim_dt=0.01.
-  * Even at sim_dt=0.01 (where that dtime issue is masked) the transient still
-    differs by up to ~0.26 because of (a) the one-sample feedback delay inherent
-    to the interpreter's memory-block loop vs the compiled path's algebraic loop
-    resolution, and (b) the derivative-kick handling on the step (discrete
-    filtered finite-difference vs the compiled continuous filtered-derivative
-    state). Both are transient-only; the steady state agrees.
+    loop at the default dt=0.01. A separate dtime-clobber bug (the engine
+    re-stamped every block's exec_params['dtime'] with its default 0.01 during
+    run_tuning_simulation, so interpreter state blocks integrated at 0.01 s per
+    step regardless of sim_dt) has since been fixed by syncing engine.sim_dt
+    before initialize_execution, so the interpreter is no longer pinned to
+    dt=0.01. This test runs at dt=0.01, where that clobber was masked anyway.
+  * At sim_dt=0.01 the transient still differs by up to ~0.26 because of (a) the
+    one-sample feedback delay inherent to the interpreter's memory-block loop vs
+    the compiled path's algebraic loop resolution, and (b) the derivative-kick
+    handling on the step (discrete filtered finite-difference vs the compiled
+    continuous filtered-derivative state). Both are transient-only; the steady
+    state agrees. These structural differences keep the trajectory xfail.
 """
 import numpy as np
 import pytest
@@ -153,11 +153,11 @@ class TestPIDCompiledVsInterpreted:
             "Interpreter and compiled paths diverge in the transient of a PID "
             "feedback loop (max ~0.26 abs, RMS ~0.12 at dt=0.01). The compiled "
             "path matches the analytic continuous closed-loop response to machine "
-            "precision; the interpreter is the inaccurate one, from (1) state "
-            "blocks discretizing at a fixed dtime=0.01 regardless of sim_dt, "
-            "(2) the one-sample feedback delay of the memory-block loop, and "
-            "(3) discrete derivative-kick handling on the step. See module "
-            "docstring for the full analysis."
+            "precision; the interpreter is the inaccurate one, from (1) the "
+            "one-sample feedback delay of the memory-block loop and (2) discrete "
+            "derivative-kick handling on the step. (A third cause -- state blocks "
+            "pinned to dtime=0.01 regardless of sim_dt -- has been fixed, but is "
+            "masked at this test's dt=0.01 anyway.) See module docstring."
         ),
     )
     def test_pid_loop_trajectory_equivalence(self, qapp):

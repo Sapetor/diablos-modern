@@ -172,27 +172,48 @@ class HeatEquation2DBlock(BaseBlock):
         return Nx * Ny
 
     def execute(self, time, inputs, params, **kwargs):
-        """Compute temperature field (for non-compiled execution)."""
+        """Compute temperature field (for non-compiled execution).
+
+        Two callers: the compiled replay supplies the already-integrated field
+        via the ``state`` kwarg (just reshape it); pure interpreter mode gets no
+        ``state`` and must advance the field itself. The 1D PDE blocks
+        self-integrate with Forward Euler and persist their field in ``params``;
+        the 2D blocks now do the same, so the interpreter no longer leaves the
+        field frozen at its initial condition.
+        """
         Nx = int(params.get('Nx', 20))
         Ny = int(params.get('Ny', 20))
 
-        # Get current state
         state = kwargs.get('state', None)
         if state is None:
-            # Use get_initial_state to handle string init_temp values
-            state = self.get_initial_state(params)
+            state = self._interp_step(time, inputs, params)
 
-        # Reshape to 2D for output
-        T_field = state.reshape((Ny, Nx))
-        T_avg = float(np.mean(T_field))
-        T_max = float(np.max(T_field))
-
+        T_field = np.asarray(state, dtype=float).reshape((Ny, Nx))
         return {
             0: T_field,
-            1: T_avg,
-            2: T_max,
-            'E': False
+            1: float(np.mean(T_field)),
+            2: float(np.max(T_field)),
+            'E': False,
         }
+
+    def _interp_step(self, time, inputs, params):
+        """Return the current interpreter-mode field, then advance and persist it
+        by one Forward-Euler step for the next call. The first call returns the
+        initial condition unstepped so the field is sample-aligned with the
+        compiled path (which records the IC at t=0). FTCS is only stable for
+        dtime <= min(dx,dy)^2 / (4*alpha); beyond that the explicit update
+        diverges -- use the compiled solver for stiff / fine grids."""
+        if params.get('_init_start_', True):
+            params['_interp_state_'] = self.get_initial_state(params)
+            params['_init_start_'] = False
+            return params['_interp_state_']
+
+        state = np.asarray(params['_interp_state_'], dtype=float)
+        dtime = float(params.get('dtime', 0.01))
+        dstate = self.compute_derivatives(time, state, inputs, params)
+        state = state + np.asarray(dstate, dtype=float) * dtime
+        params['_interp_state_'] = state
+        return state
 
     def compute_derivatives(self, time, state, inputs, params):
         """

@@ -203,41 +203,39 @@ performance items with a safe fix are now **fixed** (see
   `COMPILABLE_BLOCKS`; history-dependent), so its test pins the interpreter
   fallback + analytic delayed-sine instead.
 
-### Interpreter-path bugs found by the equivalence tests (2026-07-05)
+### Interpreter-path bugs found by the equivalence tests — all fixed 2026-07-05
 
-Each has a strict-xfail tripwire in `tests/regression/` that will flag the
-stale marker the moment the bug is fixed. Compiled path verified correct in
-all four cases.
+Found via the strict-xfail tripwires; compiled path was verified correct in
+every case, so each fix corrected the interpreter to match.
 
-- [ ] **RateLimiter slews at 2× the configured rate in the interpreter.**
-  It is a memory block, so the interpreter executes it twice per step
-  (output_only pass + state pass), and `RateLimiterBlock.execute`
-  (`blocks/rate_limiter.py:63`) advances `params['_prev']` on both calls.
-  Only Integrator is special-cased in `SimulationEngine.execute_block`.
-  Fix: skip the `_prev` advance when `output_only` is set (mirror the
-  Integrator guard). Tripwire: `test_equiv_ratelimiter.py` (xfail strict).
-- [ ] **Interpreter state blocks integrate at dt=0.01 regardless of sim_dt.**
-  `blocks/transfer_function.py:108`, `blocks/pid.py:125`,
-  `blocks/integrator.py:117` all fall back to `params.get('dtime', 0.01)` and
-  the actual sim_dt never reaches them (exec_params `dtime` appears to be
-  re-stamped with the 0.01 default during init). Confirmed: at sim_dt=0.002
-  the TF plant advances 0.01 s of state per step (5× too fast); divergence
-  vs compiled *grows* as dt shrinks. Tripwire: `test_equiv_pid.py`
-  (trajectory xfail; steady-state equivalence passes and is pinned).
-- [ ] **Selector comma-list indices are broken through the run pipeline.**
-  `WorkspaceManager.resolve_params` safe_expr-evaluates `"1,2"` to a tuple
-  before the block sees it: the interpreter crashes in `_parse_indices`
-  (`'tuple' object has no attribute 'split'`) and the compiled kernel
-  silently falls back to index 0. Colon-range syntax (`"1:3"`) is unaffected.
-  Fix: coerce non-string indices in `blocks/selector.py` or exempt the param
-  from safe_expr. Pinned by `test_equiv_selector.py` (uses `"1:3"`).
-- [ ] **2D PDE blocks never integrate in the interpreter** — their `execute()`
-  only reshapes the compiled-replay `state` kwarg and returns the initial
-  condition forever on the interpreter path (no Forward-Euler self-stepping
-  like the 1D blocks). Affects HeatEquation2D / WaveEquation2D /
-  AdvectionEquation2D. Fix: add params-persisted Euler stepping via the new
-  shared `lib/engine/pde_ops.py` RHS functions. Tripwire:
-  `test_equiv_pde_neumann2d.py` (xfail strict + characterization test).
+- [x] **RateLimiter slewed at 2× the configured rate in the interpreter.**
+  As a memory block it runs `execute()` twice per step (output_only + state
+  pass) and advanced `params['_prev']` on both. Fixed by returning the held
+  output without advancing on the output_only pass
+  (`blocks/rate_limiter.py`). `test_equiv_ratelimiter.py` now passes.
+- [x] **Interpreter state blocks integrated at dt=0.01 regardless of sim_dt.**
+  `run_tuning_simulation` never synced `engine.sim_dt`, so
+  `initialize_execution` re-stamped every block's `exec_params['dtime']` with
+  the engine's default 0.01. Fixed by calling `engine.update_sim_params`
+  before `initialize_execution` in `run_tuning_simulation` (`lib/lib.py`);
+  the interactive path already did this. TF/PID/Integrator now discretize at
+  the real sim_dt. (The PID trajectory `test_equiv_pid.py` xfail remains —
+  its residual divergence is the memory-block feedback delay + derivative
+  kick, not dtime, and it runs at dt=0.01 where the clobber was masked.)
+- [x] **Selector comma-list indices were broken through the run pipeline.**
+  `WorkspaceManager.resolve_params` safe_expr-evaluated `"1,2"` to a tuple:
+  the interpreter crashed in `_parse_indices` and the compiled kernel
+  silently fell back to index 0. Fixed with `normalize_indices_str`
+  (`blocks/selector.py`), used by both the block and the compiled kernel
+  (`lib/engine/compiler_kernels/nonlinear.py`). Locked in by
+  `tests/unit/test_selector_comma_indices.py`.
+- [x] **2D PDE blocks never integrated in the interpreter.** Their
+  `execute()` only reshaped the compiled-replay `state` kwarg and returned
+  the IC forever. Fixed by adding params-persisted Forward-Euler stepping
+  (`_interp_step`, output-then-step so samples align with the compiled path)
+  to HeatEquation2D / WaveEquation2D / AdvectionEquation2D, reusing each
+  block's `compute_derivatives` (single-sourced through `pde_ops`).
+  `test_equiv_pde_neumann2d.py` now passes (both paths track within 1e-2).
 
 ### CI follow-up
 - [ ] Dedicated `ruff format` commit (402 files would change), then add

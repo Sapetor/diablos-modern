@@ -11,19 +11,13 @@ The two execution paths are:
   * compiled  -- ``SystemCompiler`` + ``solve_ivp`` (RK45), and
   * interpreter -- the ``block.execute()`` time-step loop.
 
-FINDING (see ``test_compiled_matches_interpreted`` below): the two paths do NOT
-agree for the 2D PDE families, and this is not a tolerance question. Unlike the
-1D PDE blocks -- whose ``execute()`` self-integrates with Forward Euler and
-persists state in ``params`` (e.g. ``blocks/pde/heat_equation_1d.py`` stores
-``params['T']`` and steps every call) -- the 2D blocks' ``execute()`` only
-reshapes a compiled-solver-supplied ``state`` kwarg
-(``blocks/pde/heat_equation_2d.py:173-194``). The interpreter never passes
-``state`` and the block never advances or stores its own field, so under the
-interpreter the 2D temperature field stays frozen at the initial condition for
-the whole run. The compiled path integrates it normally. The equivalence
-assertion is therefore marked ``xfail`` until the 2D PDE blocks grow an
-interpreter integration path; ``test_divergence_characterization`` pins the
-current behaviour so a fix (or a regression in either path) is noticed.
+The 2D PDE blocks now self-integrate on the interpreter path (Forward Euler,
+state persisted in ``params['_interp_state_']``, mirroring the 1D PDE blocks),
+so the two paths agree within the loose scheme tolerance below. Previously the
+2D blocks' ``execute()`` only reshaped a compiled-solver-supplied ``state``
+kwarg, which the interpreter never passes, so the field stayed frozen at the
+initial condition; ``test_divergence_characterization`` now pins the corrected
+behaviour (interpreter evolves, both paths track) so a regression is noticed.
 """
 import json
 
@@ -182,24 +176,15 @@ def test_both_paths_execute(both_paths):
     assert c.shape[1] == 2  # T_avg, T_max
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "HeatEquation2D has no interpreter-mode time integration: its execute() "
-        "only reshapes a compiled-solver-supplied 'state' kwarg "
-        "(blocks/pde/heat_equation_2d.py:173-194), which the interpreter never "
-        "passes, so the 2D field stays frozen at the initial condition. The 1D "
-        "PDE blocks self-integrate via Forward Euler in execute(); the 2D blocks "
-        "do not. Compiled and interpreted trajectories cannot match until the 2D "
-        "PDE blocks gain an interpreter integration path."
-    ),
-)
 def test_compiled_matches_interpreted(both_paths):
-    """Compiled (RK45) vs interpreted trajectories at the interpreter's samples.
+    """Compiled (RK45) vs interpreted (Forward Euler) trajectories at the
+    interpreter's samples.
 
-    Loose tolerances (rtol=1e-2, atol=1e-3) would comfortably absorb the
-    RK45-vs-fixed-step scheme difference; the mismatch here is structural (the
-    interpreter never integrates the 2D field), not numerical.
+    Loose tolerances (rtol=1e-2, atol=1e-3) absorb the RK45-vs-fixed-step scheme
+    difference. Both paths use the single-sourced spatial operator
+    (lib.engine.pde_ops.heat_rhs_2d); they differ only in the time integrator,
+    and the interpreter's first sample is the unstepped initial condition so the
+    two are sample-aligned.
     """
     compiled, interpreted = both_paths
     c, i = compiled["scope2"], interpreted["scope2"]
@@ -208,24 +193,22 @@ def test_compiled_matches_interpreted(both_paths):
 
 
 def test_divergence_characterization(both_paths):
-    """Pin the current divergent behaviour so a fix/regression is noticed.
+    """Pin the corrected behaviour so a regression in either path is noticed.
 
-    If the 2D PDE interpreter gap is ever closed (or either path regresses),
-    one of these assertions -- and the xfail above -- will flip, flagging that
-    this file needs updating.
+    All-Neumann diffusion smooths the sinusoidal bump, so the peak temperature
+    (col 1) decays well below its initial value on BOTH paths now that the
+    interpreter integrates the 2D field (it used to stay frozen at the IC).
     """
     compiled, interpreted = both_paths
     c, i = compiled["scope2"], interpreted["scope2"]
 
-    # Interpreter: the 2D field is frozen at the IC, so every sample equals the
-    # first for both T_avg (col 0) and T_max (col 1).
-    assert np.allclose(i, i[0], atol=1e-9), (
-        "interpreter is no longer frozen at the initial condition -- the 2D PDE "
-        "block may have gained an interpreter integration path"
+    # Interpreter now evolves: the peak temperature decays like the compiled one.
+    assert i[-1, 1] < i[0, 1] - 0.1, (
+        "interpreter 2D field is not decaying -- the interpreter integration "
+        "path (blocks/pde/heat_equation_2d.py _interp_step) may have regressed"
     )
 
-    # Compiled: all-Neumann diffusion smooths the sinusoidal bump, so the peak
-    # temperature (col 1) decays well below its initial value.
+    # Compiled: same qualitative decay.
     assert c[-1, 1] < c[0, 1] - 0.1, (
         "compiled path no longer integrates the 2D heat PDE as expected"
     )

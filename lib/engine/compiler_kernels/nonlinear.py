@@ -9,6 +9,7 @@ import logging
 
 import numpy as np
 
+from blocks.selector import normalize_indices_str
 from lib.engine.compiler_kernels import kernel
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ def build_selector(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    indices_str = str(params.get('indices', '0'))
+    indices_str = normalize_indices_str(params.get('indices', '0'))
 
     # Pre-parse indices at compile time
     parsed_indices = []

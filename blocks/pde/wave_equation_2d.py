@@ -225,25 +225,27 @@ class WaveEquation2DBlock(BaseBlock):
         return 2 * Nx * Ny
 
     def execute(self, time, inputs, params, **kwargs):
-        """Compute displacement and velocity fields (for non-compiled execution)."""
+        """Compute displacement and velocity fields (for non-compiled execution).
+
+        The compiled replay supplies the integrated [u, v] state via the
+        ``state`` kwarg; pure interpreter mode gets none and advances the state
+        itself with Forward Euler, persisting it in ``params`` (the 1D PDE
+        blocks do the same). Without this the interpreter left the field frozen
+        at its initial condition.
+        """
         Nx = int(params.get('Nx', 20))
         Ny = int(params.get('Ny', 20))
 
-        # Get current state
         state = kwargs.get('state', None)
         if state is None:
-            state = self.get_initial_state(params)
+            state = self._interp_step(time, inputs, params)
+        state = np.asarray(state, dtype=float)
 
         # Split state into u and v
         N = Nx * Ny
-        u_flat = state[:N]
-        v_flat = state[N:]
+        u_field = state[:N].reshape((Ny, Nx))
+        v_field = state[N:].reshape((Ny, Nx))
 
-        # Reshape to 2D for output
-        u_field = u_flat.reshape((Ny, Nx))
-        v_field = v_flat.reshape((Ny, Nx))
-
-        # Compute energy
         energy = self._compute_energy(u_field, v_field, params)
 
         return {
@@ -252,6 +254,22 @@ class WaveEquation2DBlock(BaseBlock):
             2: energy,
             'E': False
         }
+
+    def _interp_step(self, time, inputs, params):
+        """Return the current interpreter-mode [u, v] state, then advance and
+        persist it by one Forward-Euler step. The first call returns the initial
+        condition unstepped so samples align with the compiled path."""
+        if params.get('_init_start_', True):
+            params['_interp_state_'] = self.get_initial_state(params)
+            params['_init_start_'] = False
+            return params['_interp_state_']
+
+        state = np.asarray(params['_interp_state_'], dtype=float)
+        dtime = float(params.get('dtime', 0.01))
+        dstate = self.compute_derivatives(time, state, inputs, params)
+        state = state + np.asarray(dstate, dtype=float) * dtime
+        params['_interp_state_'] = state
+        return state
 
     def compute_derivatives(self, time, state, inputs, params):
         """
