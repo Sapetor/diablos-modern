@@ -241,6 +241,28 @@ every case, so each fix corrected the interpreter to match.
 - [ ] Dedicated `ruff format` commit (402 files would change), then add
   `ruff format --check .` to the CI lint job.
 
+### Foundation hardening from the external review (2026-07-05)
+
+- [x] **Headless CLI** (`lib/cli.py`): `python diablos_modern.py run
+  diagram.diablos -o out.csv [--time --dt --solver interpreter]` runs a diagram
+  without the GUI and exports Scope traces to CSV/NPZ. Defaults to the compiled
+  path. Tests: `tests/integration/test_cli.py`.
+- [x] **Analytic-solution regressions** for the compiled path
+  (`tests/regression/test_analytic_solutions.py`): Integrator ramp, first-order
+  lag step response, 1D heat eigenmode decay — each asserted against the closed
+  form, so a kernel regression fails with a physical meaning.
+- [x] **Documented the two-engine semantics contract** in
+  `docs/ARCHITECTURE.md` (§3c): compiled = accurate source of truth, interpreter
+  = fixed-step/full-coverage; the by-design differences (transient vs steady
+  state, feedback delay, memory-block two-pass rule, PDE self-integration).
+- [x] **safe_eval audit**: `lib/safe_eval.py` is an allowlist AST interpreter
+  (no eval/exec/`__import__`, allocation guard, bounded array ctors); verified it
+  blocks dunder traversal, lambdas, comprehensions, and arbitrary builtins.
+  Combined with the `external.py` stub, the review's "remove eval()" concern is
+  already addressed — no fix needed. Residual: `resolve_params` eval-ing every
+  string param is a correctness footgun (it caused the Selector tuple bug),
+  mitigated per-block via `normalize_indices_str`; a general opt-out is deferred.
+
 ---
 
 ## References

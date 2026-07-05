@@ -244,4 +244,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # Headless subcommands (e.g. `run`) dispatch to the CLI before any GUI is
+    # built, so agents/CI can simulate a diagram without a display.
+    if len(sys.argv) > 1 and sys.argv[1] == "run":
+        from lib.cli import main as cli_main
+        sys.exit(cli_main(sys.argv[1:]))
     sys.exit(main())

@@ -292,6 +292,52 @@ If compilation fails for any reason, the engine falls back to the interpreter pa
 above. See [FAST_SOLVER.md](FAST_SOLVER.md) for the full rationale and the
 compiled-solver execution order.
 
+### 3c. Compiled vs interpreter semantics
+
+DiaBloS has **two simulation engines** with deliberately different numerics, and
+it matters which one a result came from. Treat the **compiled path as the source
+of truth**: it integrates the continuous ODE with an adaptive scipy solver
+(RK45 by default) and is validated against closed-form analytic solutions in
+`tests/regression/test_analytic_solutions.py`. The interpreter is a fixed-step,
+per-block loop that trades accuracy for the ability to run *any* block
+(including blocks with no compiled kernel).
+
+They are **not** expected to be bit-identical, and for state-heavy diagrams they
+legitimately diverge. `tests/regression/test_equiv_*.py` pins where the two agree
+and characterizes where they do not. The known, by-design differences:
+
+| Aspect | Compiled path | Interpreter path |
+| --- | --- | --- |
+| Time integration | Adaptive RK45 over each step (`solve_ivp`) | Single fixed-step update per `sim_dt` (Forward Euler for PDEs; per-block discretization for LTI blocks) |
+| Algebraic loops | Resolved by pre-populating D=0 state blocks and ordering sources → algebraic → strictly-proper | One-sample feedback delay through the memory-block loop |
+| Coverage | Only blocks with a `@kernel` builder (`check_compilability()` gates it); non-compilable diagrams fall back | Every block, via `block.execute()` |
+| Determinism | Byte-deterministic across runs (golden-master friendly) | Depends on step size; convergent as `sim_dt → 0` |
+
+Consequences worth knowing when reading or comparing traces:
+
+- **Transients differ, steady states agree.** A closed loop (e.g. PID + plant)
+  reaches the same steady state on both paths, but the transient can differ by
+  O(0.1) on an O(1) signal because of the feedback-delay and derivative-kick
+  differences above. Do not assert tight trajectory equality across paths.
+- **Step size reaches the blocks.** Interpreter state blocks discretize at the
+  actual `sim_dt`. (This relies on `engine.sim_dt` being synced before
+  `initialize_execution`; `run_tuning_simulation` and `execution_init` both do
+  this via `update_sim_params` — a past bug pinned them to the default 0.01.)
+- **Memory blocks run twice per step.** The interpreter executes memory blocks
+  (Integrator, RateLimiter, PID, …) with `output_only=True` to feed downstream
+  consumers, then again to advance state. A block's `execute()` **must not**
+  advance state on the `output_only` pass.
+- **PDE blocks self-integrate in the interpreter.** 1D and 2D PDE blocks step
+  their own field with Forward Euler and persist it in `params`
+  (`_interp_step` / `params['T']`), reusing the same spatial operators as the
+  compiled kernels (`lib/engine/pde_ops.py`). FTCS stability limits apply; use
+  the compiled solver for stiff or fine grids.
+
+For a headless run of either engine, `lib/cli.py`
+(`python diablos_modern.py run diagram.diablos -o out.csv [--solver interpreter]`)
+loads a diagram, simulates it, and exports the Scope traces to CSV/NPZ without
+the GUI. It defaults to the compiled path.
+
 ### 4. File Save/Load Flow
 ```
 Save:
