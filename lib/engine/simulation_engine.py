@@ -193,6 +193,9 @@ class SimulationEngine:
 
         # Execution tracking
         self.global_computed_list: List[Dict[str, Any]] = []
+        # Lazy name->entry index over global_computed_list (see _global_list_index)
+        self._gcl_index: Dict[str, Dict[str, Any]] = {}
+        self._gcl_index_source: Optional[List[Dict[str, Any]]] = None
         self.timeline: np.ndarray = np.array([0.0])
         self.outs: List[Any] = []
         self.memory_blocks: set = set()
@@ -564,6 +567,15 @@ class SimulationEngine:
                     block.schedule_next_execution(self.time_step)
         return True
 
+    def _global_list_index(self) -> Dict[str, Dict[str, Any]]:
+        """Name -> entry index over global_computed_list, rebuilt whenever the
+        list object is replaced (init paths assign a fresh list; per-step code
+        only mutates entries in place, so identity tracking is sufficient)."""
+        if self._gcl_index_source is not self.global_computed_list:
+            self._gcl_index = {g["name"]: g for g in self.global_computed_list}
+            self._gcl_index_source = self.global_computed_list
+        return self._gcl_index
+
     def update_global_list(
         self,
         block_name: str,
@@ -572,16 +584,11 @@ class SimulationEngine:
         reset_computed: bool = False,
     ) -> None:
         """Update global computed list."""
-        for g_block in self.global_computed_list:
-            if g_block["name"] == block_name:
-                if reset_computed:
-                    g_block["computed_data"] = False
-                else:
-                    g_block["computed_data"] = True
-
-                if h_assign:
-                    g_block["hierarchy"] = h_value
-                break
+        g_block = self._global_list_index().get(block_name)
+        if g_block is not None:
+            g_block["computed_data"] = not reset_computed
+            if h_assign:
+                g_block["hierarchy"] = h_value
 
     def _resolve_block_params(
         self, block: DBlock, dt: float, workspace_manager: Optional[WorkspaceManager] = None

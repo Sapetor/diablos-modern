@@ -149,6 +149,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-07-05 | Interpreter hot-path cleanup: deduplicated `execution_loop`/`execution_loop_headless` into `DSim._interpreter_step(interactive)`; `SimulationEngine.update_global_list` now O(1) via identity-tracked name index; `max_hier`/`rk45_len`/`rk_counter` became engine property bridges (re-copy blocks in `execution_init`/`run_tuning_simulation` deleted). Repo-wide `ruff format` sweep (414 files) + `ruff format --check` in CI (ruff pinned 0.15.18); E701/E702 ignores retired. |
 | 2026-06-13 | Added **1-D/2-D Lookup Table** + **FromFile** blocks: `blocks/lookup_table.py` (`LookupTable1D` via `interp1d`, `LookupTable2D` via `RegularGridInterpolator`; linear/nearest interp, clip/linear extrapolation; tables parsed with `safe_literal`); `blocks/from_file.py` (`FromFile` source replays CSV/NPZ/MAT/TXT time-series with linear/zoh/nearest interp and hold/loop end-behavior; data cached in `params`, reloaded on `_init_start_`/path change). New shared loader `lib/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`); `data_fit._load_data` refactored to delegate to it (DRY). Both blocks run on the interpreter path. Tests: `test_lookup_table.py` (16), `test_from_file.py` (13), `test_timeseries_loader.py` (10). |
 | 2026-06-13 | Added **Find Operating Point (Trim)** (Analysis menu): `AnalysisController.find_trim()` solves `f(0,y)=0` on the compiled ODE RHS via `Linearizer.find_operating_point`; `modern_ui/widgets/operating_point_window.py` shows the equilibrium state table with copy-to-clipboard (handles no-states / uncompilable cleanly). Synchronous on the UI thread (mirrors Linearize & Analyze). Tests: `test_operating_point_window.py` (5), `test_analysis_controller.py::TestFindTrim` (3). |
 | 2026-06-13 | Added **Step / Impulse response** to Linearize & Analyze: `AnalysisController._assemble` now computes `step_response`/`impulse_response` (scipy.signal) whenever a SISO transfer function is available; `LinearizationResultWindow` gained **Step** and **Impulse** tabs (show a hint when no I/O is designated). Contract extended in both docstrings + `_empty_result`. Tests: `test_analysis_controller.py::TestStepImpulseResponse` (2), `test_linearization_result_window.py` updated (3→5 tabs). |
@@ -191,8 +192,18 @@ performance items with a safe fix are now **fixed** (see
   consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`
   (compiled goldens bit-identical; `boundary_mode` kwarg where the paths
   legitimately differ on Dirichlet handling).
-- [ ] **`lib.py` interpreter hot path**: O(blocks²) per-step re-iteration,
-  duplicated multi-rate loops, `DSim` facade, engine-state re-copy.
+- [x] **`lib.py` interpreter hot path** — partial, 2026-07-05: the two
+  near-verbatim per-step loops (`execution_loop` / `execution_loop_headless`)
+  are now one shared `DSim._interpreter_step(interactive)` (UI side effects
+  gated, numerics identical); `update_global_list`'s per-execution O(blocks)
+  name scan replaced with an identity-tracked dict index; the
+  `max_hier`/`rk45_len`/`rk_counter` engine→DSim re-copies replaced with
+  property bridges (engine is the single owner). NOT done (deliberate): the
+  hierarchy fixpoint re-scan itself (worst-case O(blocks²) readiness checks
+  per step, each block still executes once) — replacing it with a precomputed
+  topological order would change discrete/memory-block ordering semantics and
+  needs its own design + tests; the `DSim` facade stays (its delegation is
+  the intended MVC bridge).
 - [ ] **`modern_canvas` god object**; consolidate the ~18-manager layer.
 - [ ] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
   (move shared theming into `lib`), instead of function-local imports.

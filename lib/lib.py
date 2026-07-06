@@ -245,6 +245,33 @@ class DSim:
     def memory_blocks(self, value):
         self.engine.memory_blocks = value
 
+    @property
+    def max_hier(self):
+        """Maximum block hierarchy level - shared with engine."""
+        return self.engine.max_hier
+
+    @max_hier.setter
+    def max_hier(self, value):
+        self.engine.max_hier = value
+
+    @property
+    def rk45_len(self):
+        """Whether any integrator uses RK45 sub-stepping - shared with engine."""
+        return self.engine.rk45_len
+
+    @rk45_len.setter
+    def rk45_len(self, value):
+        self.engine.rk45_len = value
+
+    @property
+    def rk_counter(self):
+        """RK45 sub-step counter - shared with engine."""
+        return self.engine.rk_counter
+
+    @rk_counter.setter
+    def rk_counter(self, value):
+        self.engine.rk_counter = value
+
     def main_buttons_init(self):
         """
         :purpose: Creates a button list with all the basic functions available
@@ -588,13 +615,9 @@ class DSim:
         # initialized the engine with root_blocks/root_lines; a second call here would
         # only double the initialization overhead, so it is intentionally omitted.
 
-        # Retrieve state from engine
-        self.max_hier = self.engine.max_hier
-        self.rk45_len = self.engine.rk45_len
-        self.rk_counter = self.engine.rk_counter
-        self.execution_time_start = self.engine.execution_time_start
-        self.execution_initialized = self.engine.execution_initialized
-
+        # max_hier / rk45_len / rk_counter / execution_time_start /
+        # execution_initialized are property bridges onto the engine, which
+        # owns them — no re-copy needed here.
         self.rk_counter += 1
 
         # Enable the plot button if there is at least one scope
@@ -729,7 +752,6 @@ class DSim:
             except Exception:
                 logger.debug("Auto-connecting Goto/From tags failed", exc_info=True)
 
-            self.max_hier = self.engine.max_hier
             self.execution_initialized = True
             self.rk_counter += 1
 
@@ -763,6 +785,18 @@ class DSim:
 
     def execution_loop_headless(self):
         """Stripped-down execution loop for tuning (no progress bar, no plots)."""
+        self._interpreter_step(interactive=False)
+
+    def _interpreter_step(self, interactive):
+        """
+        Advance the interpreter simulation by exactly one time step.
+
+        Shared core of execution_loop (interactive GUI path) and
+        execution_loop_headless (tuning / CLI / ensemble path). The numerical
+        stepping is identical on both paths; `interactive` only gates the UI
+        side effects: progress bar updates, live plotting, and the end-of-run
+        export / run-history / scope-plot sequence.
+        """
         try:
             if self.execution_pause:
                 return
@@ -773,180 +807,17 @@ class DSim:
                 self.rk_counter %= 4
                 if self.rk_counter in [1, 3]:
                     self.time_step += self.sim_dt / 2
+                    if interactive:
+                        self.pbar.update(1 / 2)
                 elif self.rk_counter == 0:
                     self.time_step += self.sim_dt
+                    if interactive:
+                        self.pbar.update(1)
                     self._timeline_list.append(self.time_step)
             else:
                 self.time_step += self.sim_dt
-                self._timeline_list.append(self.time_step)
-
-            current_blocks = (
-                self.engine.active_blocks_list
-                if self.engine.active_blocks_list
-                else self.blocks_list
-            )
-
-            for block in current_blocks:
-                try:
-                    if block.name in self.memory_blocks:
-                        if not block.should_execute(self.time_step):
-                            if block.b_type != 3:
-                                held = {p: block.get_held_output(p) for p in range(block.out_ports)}
-                                self.engine.propagate_outputs(block, held)
-                            continue
-                        out_value = self.engine.execute_block(block, output_only=True)
-                        if out_value is None or ("E" in out_value and out_value["E"]):
-                            self.execution_failed(
-                                out_value.get("error", "Unknown") if out_value else "None"
-                            )
-                            return
-                        # set_held_output / schedule_next_execution are handled
-                        # by the hierarchy loop's state-updating execute below.
-                        self.engine.propagate_outputs(block, out_value)
-
-                    if self.rk45_len and self.rk_counter != 0:
-                        block.params["_skip_"] = True
-                except Exception as e:
-                    logger.error(f"Error executing block {block.name}: {str(e)}")
-                    self.execution_failed(f"Error executing block {block.name}: {e}")
-                    return
-
-            # See execution_loop() for the rationale behind both inner (within-level)
-            # and outer (cross-level) re-iteration. Same logic applies here.
-            while True:
-                outer_progressed = False
-                for hier in range(self.max_hier + 1):
-                    while True:
-                        progressed = False
-                        for block in current_blocks:
-                            optional_inputs = set()
-                            if hasattr(block, "block_instance") and block.block_instance:
-                                if hasattr(block.block_instance, "optional_inputs"):
-                                    optional_inputs = set(block.block_instance.optional_inputs)
-                            required_ports = block.in_ports - len(optional_inputs)
-                            has_enough = (
-                                block.data_recieved >= required_ports or block.in_ports == 0
-                            )
-
-                            if block.hierarchy == hier and has_enough and not block.computed_data:
-                                progressed = True
-                                outer_progressed = True
-                                if not block.should_execute(self.time_step):
-                                    self.engine.update_global_list(block.name, h_value=0)
-                                    block.computed_data = True
-                                    if block.name not in self.memory_blocks and block.b_type != 3:
-                                        held = {
-                                            p: block.get_held_output(p)
-                                            for p in range(block.out_ports)
-                                        }
-                                        self.engine.propagate_outputs(block, held)
-                                    continue
-
-                                out_value = self.engine.execute_block(block)
-                                if block.name in self.memory_blocks:
-                                    if (
-                                        block.block_fn == "Integrator"
-                                        and "mem" in block.exec_params
-                                    ):
-                                        block.exec_params["output"] = block.exec_params["mem"]
-
-                                if out_value is None or ("E" in out_value and out_value["E"]):
-                                    self.execution_failed(
-                                        out_value.get("error", "Unknown") if out_value else "None"
-                                    )
-                                    return
-
-                                if block.effective_sample_time > 0:
-                                    for port, value in out_value.items():
-                                        if isinstance(port, int):
-                                            block.set_held_output(port, value)
-                                    block.schedule_next_execution(self.time_step)
-
-                                self.engine.update_global_list(block.name, h_value=0)
-                                block.computed_data = True
-                                if block.name not in self.memory_blocks and block.b_type != 3:
-                                    self.engine.propagate_outputs(block, out_value)
-
-                        if not progressed:
-                            break
-
-                if not outer_progressed:
-                    break
-
-            if self.time_step > self.execution_time:
-                self.timeline = np.array(self._timeline_list)
-                self.execution_initialized = False
-                self.reset_memblocks()
-
-            self.rk_counter += 1
-
-        except Exception as e:
-            logger.error(f"Headless loop error: {e}")
-            self.execution_failed(str(e))
-
-    def single_step(self) -> bool:
-        """
-        Execute exactly one timestep of the simulation.
-        Used for step-by-step debugging when simulation is paused.
-
-        If simulation is not initialized, it will be initialized first
-        (starting from t=0) in paused state.
-
-        Returns:
-            bool: True if step was executed, False on error
-        """
-        try:
-            # If not initialized, initialize first (allows stepping from start)
-            if not self.execution_initialized:
-                logger.info("Initializing simulation for step-by-step mode...")
-                success = self.execution_init()
-                if not success:
-                    logger.error("Failed to initialize simulation for stepping")
-                    return False
-                # Start paused
-                self.execution_pause = True
-                logger.info("Simulation initialized at t=0, ready to step")
-
-            # Temporarily unpause
-            self.execution_pause = False
-
-            # Execute one step
-            self.execution_loop()
-
-            # Re-pause (single-step always pauses after)
-            self.execution_pause = True
-
-            logger.debug(f"Single step executed: t={self.time_step:.4f}s")
-            return True
-
-        except Exception as e:
-            logger.error(f"Error during single step: {str(e)}")
-            self.execution_pause = True
-            return False
-
-    def execution_loop(self):
-        """
-        :purpose: Continues with the execution sequence in loop until time runs out or an special event stops it.
-        :description: This is the second stage of the network simulation. Here the reading of the complete graph will be done cyclically until the time is up, the user indicates that it is finished (by pressing Stop) or simply until one of the blocks gives error. At the end, the data saved in blocks like 'Scope' and 'External_data', will be exported to other libraries to perform their functions.
-        """
-        try:
-            if self.execution_pause:
-                return
-
-            self.reset_execution_data()
-
-            if self.rk45_len:
-                self.rk_counter %= 4
-                if self.rk_counter in [1, 3]:
-                    self.time_step += self.sim_dt / 2
-                    self.pbar.update(1 / 2)
-                elif self.rk_counter == 0:
-                    self.time_step += self.sim_dt
+                if interactive:
                     self.pbar.update(1)
-                    self._timeline_list.append(self.time_step)
-            else:
-                self.time_step += self.sim_dt
-                self.pbar.update(1)
                 self._timeline_list.append(self.time_step)
 
             # Use the active list from engine (flattened if needed)
@@ -1087,33 +958,36 @@ class DSim:
                 if not outer_progressed:
                     break
 
-            # The dynamic plot function is called to save the new data, if active
-            self.dynamic_pyqtPlotScope(step=1)
+            if interactive:
+                # The dynamic plot function is called to save the new data, if active
+                self.dynamic_pyqtPlotScope(step=1)
 
             # It is checked if the total simulation (execution) time has been exceeded to end the loop
             if self.time_step > self.execution_time:  # seconds
                 self.timeline = np.array(self._timeline_list)  # Convert list to numpy array
                 self.execution_initialized = False  # The execution loop is terminated
-                self.pbar.close()  # The progress bar ends
+                if interactive:
+                    self.pbar.close()  # The progress bar ends
 
-                # Export
-                self.export_data()
+                    # Export
+                    self.export_data()
 
-                # Record run history for inspector
-                try:
-                    self._record_run_history()
-                except Exception as e:
-                    logger.warning(f"Could not record run history: {e}")
+                    # Record run history for inspector
+                    try:
+                        self._record_run_history()
+                    except Exception as e:
+                        logger.warning(f"Could not record run history: {e}")
 
-                # Scope
-                if not self.dynamic_plot:
-                    logger.debug("Calling pyqtPlotScope...")
-                    self.pyqtPlotScope()
-                    logger.debug("pyqtPlotScope call finished.")
+                    # Scope
+                    if not self.dynamic_plot:
+                        logger.debug("Calling pyqtPlotScope...")
+                        self.pyqtPlotScope()
+                        logger.debug("pyqtPlotScope call finished.")
 
                 # Resets the initialization of the blocks with special initial executions
                 self.reset_memblocks()
-                logger.debug("*****EXECUTION DONE*****")
+                if interactive:
+                    logger.debug("*****EXECUTION DONE*****")
 
             self.rk_counter += 1
 
@@ -1123,6 +997,53 @@ class DSim:
             logger.error(f"Error during execution loop: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             self.execution_failed(f"Error during execution loop: {e}")
+
+    def single_step(self) -> bool:
+        """
+        Execute exactly one timestep of the simulation.
+        Used for step-by-step debugging when simulation is paused.
+
+        If simulation is not initialized, it will be initialized first
+        (starting from t=0) in paused state.
+
+        Returns:
+            bool: True if step was executed, False on error
+        """
+        try:
+            # If not initialized, initialize first (allows stepping from start)
+            if not self.execution_initialized:
+                logger.info("Initializing simulation for step-by-step mode...")
+                success = self.execution_init()
+                if not success:
+                    logger.error("Failed to initialize simulation for stepping")
+                    return False
+                # Start paused
+                self.execution_pause = True
+                logger.info("Simulation initialized at t=0, ready to step")
+
+            # Temporarily unpause
+            self.execution_pause = False
+
+            # Execute one step
+            self.execution_loop()
+
+            # Re-pause (single-step always pauses after)
+            self.execution_pause = True
+
+            logger.debug(f"Single step executed: t={self.time_step:.4f}s")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error during single step: {str(e)}")
+            self.execution_pause = True
+            return False
+
+    def execution_loop(self):
+        """
+        :purpose: Continues with the execution sequence in loop until time runs out or an special event stops it.
+        :description: This is the second stage of the network simulation. Here the reading of the complete graph will be done cyclically until the time is up, the user indicates that it is finished (by pressing Stop) or simply until one of the blocks gives error. At the end, the data saved in blocks like 'Scope' and 'External_data', will be exported to other libraries to perform their functions.
+        """
+        self._interpreter_step(interactive=True)
 
     def execution_failed(self, msg=""):
         """
