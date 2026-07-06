@@ -13,14 +13,14 @@ extend-exclude = ["build", "dist", "archive", ".venv", ".venv-win"]
 [tool.ruff.lint]
 # Keep Ruff's default, high-signal rule set (E4 imports, E7 statements,
 # E9 syntax errors, F pyflakes — unused imports/vars, undefined names) and
-# silence the high-volume *stylistic* E7xx checks for now. These flag working
-# code (compound statements, math-y single-letter names) rather than bugs; a
-# one-time `ruff format` pass can retire most of them later without a flag day.
+# silence the remaining *stylistic* E7xx checks that flag working code
+# (numpy comparisons, math-y single-letter names) rather than bugs. The
+# 2026-07 repo-wide `ruff format` pass retired E701/E702 (compound
+# statements) — the formatter now guarantees them, and `ruff format --check`
+# is enforced in CI.
 select = ["E4", "E7", "E9", "F"]
 ignore = [
     "E402",  # module-import-not-at-top — many intentional lazy/conditional imports
-    "E701",  # multiple-statements-on-one-line (colon)
-    "E702",  # multiple-statements-on-one-line (semicolon)
     "E712",  # comparison to True/False — unsafe to auto-rewrite on numpy arrays
     "E721",  # type(x) == T comparisons
     "E731",  # lambda assignment

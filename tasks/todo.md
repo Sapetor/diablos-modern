@@ -238,8 +238,10 @@ every case, so each fix corrected the interpreter to match.
   `test_equiv_pde_neumann2d.py` now passes (both paths track within 1e-2).
 
 ### CI follow-up
-- [ ] Dedicated `ruff format` commit (402 files would change), then add
-  `ruff format --check .` to the CI lint job.
+- [x] Dedicated `ruff format` commit (414 files), then add
+  `ruff format --check .` to the CI lint job — done 2026-07-05. Ruff pinned
+  to 0.15.18 in the lint job (bump the pin together with a reformat);
+  E701/E702 ignores retired from `pyproject.toml` (formatter guarantees them).
 
 ### Foundation hardening from the external review (2026-07-05)
 

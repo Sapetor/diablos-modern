@@ -26,11 +26,17 @@ jobs:
           python-version: "3.12"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned: `ruff format --check` output can shift between formatter
+        # style releases; bump the pin together with a repo-wide reformat.
+        run: pip install ruff==0.15.18
 
       - name: Lint
         # Config (rule selection, ignores, py39 target) lives in pyproject.toml.
         run: ruff check .
+
+      - name: Format check
+        # The repo was fully `ruff format`-ed in 2026-07; keep it that way.
+        run: ruff format --check .
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
