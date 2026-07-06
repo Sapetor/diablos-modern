@@ -4,10 +4,13 @@ Handles connection/wire creation, editing, and deletion.
 """
 
 import logging
+import types
 from typing import Optional, Tuple, Any, TYPE_CHECKING
 from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt
+
+from lib.improvements import ValidationHelper
 
 if TYPE_CHECKING:
     from modern_ui.widgets.modern_canvas import ModernCanvas
@@ -78,6 +81,91 @@ class ConnectionManager:
         except Exception as e:
             logger.error(f"Error in handle_port_click: {str(e)}")
 
+    # ==================== Connection Validation ====================
+
+    def validate_connection(
+        self, start_block: Any, start_port: int, end_block: Any, end_port: int
+    ) -> Tuple[bool, list]:
+        """Validate a proposed connection between two blocks.
+
+        Returns (is_valid, validation_errors).
+        """
+        try:
+            validation_errors = []
+
+            # Basic validation checks
+            if start_block == end_block:
+                validation_errors.append("Cannot connect a block to itself")
+
+            # BodeMag and RootLocus connections logic
+            allowed_bode_blocks = [
+                "TranFn",
+                "DiscreteTranFn",
+                "StateSpace",
+                "DiscreteStateSpace",
+                "PID",
+            ]
+
+            if (
+                end_block.block_fn in ["BodeMag", "BodePhase", "Nyquist"]
+                and start_block.block_fn not in allowed_bode_blocks
+            ):
+                validation_errors.append(
+                    f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}"
+                )
+
+            if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
+                validation_errors.append(
+                    "RootLocus block can only be connected to a Transfer Function."
+                )
+
+            # Check if the destination input port is already connected.
+            # An exact-duplicate connection (same src+srcport+dst+dstport) is a
+            # strict subset of this case, so a single pass over the destination
+            # port covers both without emitting two overlapping messages.
+            existing_lines = getattr(self.dsim, "line_list", [])
+            end_name = getattr(end_block, "name", "")
+            for line in existing_lines:
+                if hasattr(line, "dstblock") and hasattr(line, "dstport"):
+                    if line.dstblock == end_name and line.dstport == end_port:
+                        validation_errors.append("Input port already connected")
+                        break
+
+            # Use ValidationHelper if available
+            try:
+                all_blocks = getattr(self.dsim, "blocks_list", [])
+                all_lines = getattr(self.dsim, "line_list", [])
+                # Create a temporary line list for validation
+                temp_lines = list(all_lines)
+                # Add our proposed connection for validation
+                temp_line = types.SimpleNamespace(
+                    srcblock=getattr(start_block, "name", ""),
+                    srcport=start_port,
+                    dstblock=getattr(end_block, "name", ""),
+                    dstport=end_port,
+                )
+                temp_lines.append(temp_line)
+
+                is_valid, helper_errors = ValidationHelper.validate_block_connections(
+                    all_blocks, temp_lines
+                )
+                if not is_valid:
+                    validation_errors.extend(helper_errors)
+            except AttributeError as e:
+                # Helper genuinely unavailable (method missing) — expected on
+                # builds without the extended validator; keep it quiet.
+                logger.debug(f"ValidationHelper not available: {str(e)}")
+            except Exception as e:
+                # The helper exists but raised while validating: that's a real
+                # bug in the validator, not an absent feature. Surface it so a
+                # broken validator isn't mistaken for a passing connection.
+                logger.warning(f"ValidationHelper execution failed: {str(e)}")
+
+            return len(validation_errors) == 0, validation_errors
+        except Exception as e:
+            logger.error(f"Error validating connection: {str(e)}")
+            return False, [f"Validation error: {str(e)}"]
+
     # ==================== Line Creation ====================
 
     def finish_line_creation(self, end_block: Any, end_port: int) -> None:
@@ -102,7 +190,7 @@ class ConnectionManager:
 
                 if start_coords and end_coords:
                     # Validate connection before creating
-                    is_valid, validation_errors = self.canvas._validate_connection(
+                    is_valid, validation_errors = self.validate_connection(
                         self.canvas.line_start_block,
                         self.canvas.line_start_port,
                         end_block,

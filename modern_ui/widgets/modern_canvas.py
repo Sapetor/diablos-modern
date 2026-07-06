@@ -11,7 +11,6 @@ from PyQt5.QtGui import QPainter, QPen
 # Import DSim and helper modules
 import sys
 import os
-import types
 
 # Add project root to path (idempotent check)
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -1259,82 +1258,10 @@ class ModernCanvas(QWidget):
             return None
 
     def _validate_connection(self, start_block, start_port, end_block, end_port):
-        """Validate a connection between two blocks."""
-        try:
-            validation_errors = []
-
-            # Basic validation checks
-            if start_block == end_block:
-                validation_errors.append("Cannot connect a block to itself")
-
-            # BodeMag and RootLocus connections logic
-            allowed_bode_blocks = [
-                "TranFn",
-                "DiscreteTranFn",
-                "StateSpace",
-                "DiscreteStateSpace",
-                "PID",
-            ]
-
-            if (
-                end_block.block_fn in ["BodeMag", "BodePhase", "Nyquist"]
-                and start_block.block_fn not in allowed_bode_blocks
-            ):
-                validation_errors.append(
-                    f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}"
-                )
-
-            if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
-                validation_errors.append(
-                    "RootLocus block can only be connected to a Transfer Function."
-                )
-
-            # Check if the destination input port is already connected.
-            # An exact-duplicate connection (same src+srcport+dst+dstport) is a
-            # strict subset of this case, so a single pass over the destination
-            # port covers both without emitting two overlapping messages.
-            existing_lines = getattr(self.dsim, "line_list", [])
-            end_name = getattr(end_block, "name", "")
-            for line in existing_lines:
-                if hasattr(line, "dstblock") and hasattr(line, "dstport"):
-                    if line.dstblock == end_name and line.dstport == end_port:
-                        validation_errors.append("Input port already connected")
-                        break
-
-            # Use ValidationHelper if available
-            try:
-                all_blocks = getattr(self.dsim, "blocks_list", [])
-                all_lines = getattr(self.dsim, "line_list", [])
-                # Create a temporary line list for validation
-                temp_lines = list(all_lines)
-                # Add our proposed connection for validation
-                temp_line = types.SimpleNamespace(
-                    srcblock=getattr(start_block, "name", ""),
-                    srcport=start_port,
-                    dstblock=getattr(end_block, "name", ""),
-                    dstport=end_port,
-                )
-                temp_lines.append(temp_line)
-
-                is_valid, helper_errors = ValidationHelper.validate_block_connections(
-                    all_blocks, temp_lines
-                )
-                if not is_valid:
-                    validation_errors.extend(helper_errors)
-            except AttributeError as e:
-                # Helper genuinely unavailable (method missing) — expected on
-                # builds without the extended validator; keep it quiet.
-                logger.debug(f"ValidationHelper not available: {str(e)}")
-            except Exception as e:
-                # The helper exists but raised while validating: that's a real
-                # bug in the validator, not an absent feature. Surface it so a
-                # broken validator isn't mistaken for a passing connection.
-                logger.warning(f"ValidationHelper execution failed: {str(e)}")
-
-            return len(validation_errors) == 0, validation_errors
-        except Exception as e:
-            logger.error(f"Error validating connection: {str(e)}")
-            return False, [f"Validation error: {str(e)}"]
+        """Validate a connection between two blocks. Delegates to ConnectionManager."""
+        return self.connection_manager.validate_connection(
+            start_block, start_port, end_block, end_port
+        )
 
     # Analysis Methods
     def generate_bode_plot(self, block):
