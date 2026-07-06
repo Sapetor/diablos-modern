@@ -21,7 +21,7 @@ class TestSubsystemPatterns:
         from blocks.gain import GainBlock
 
         gain = GainBlock()
-        params = {'gain': 1.0}
+        params = {"gain": 1.0}
 
         # Simulate pass-through behavior
         input_val = 42.0
@@ -37,9 +37,9 @@ class TestSubsystemPatterns:
         gain2 = GainBlock()
         gain3 = GainBlock()
 
-        params1 = {'gain': 2.0}
-        params2 = {'gain': 3.0}
-        params3 = {'gain': 4.0}
+        params1 = {"gain": 2.0}
+        params2 = {"gain": 3.0}
+        params3 = {"gain": 4.0}
 
         # Signal flow: input → gain1 → gain2 → gain3 → output
         value = np.array([1.0])
@@ -54,7 +54,7 @@ class TestSubsystemPatterns:
         from blocks.sum import SumBlock
 
         sum_block = SumBlock()
-        params = {'sign': '+++', '_init_start_': True}
+        params = {"sign": "+++", "_init_start_": True}
 
         # Three inputs combined
         result = sum_block.execute(time=0.0, inputs={0: 10.0, 1: 20.0, 2: 30.0}, params=params)
@@ -70,15 +70,17 @@ class TestSubsystemPatterns:
         gain2 = GainBlock()
         sum_block = SumBlock()
 
-        gain1_params = {'gain': 2.0}
-        gain2_params = {'gain': 3.0}
-        sum_params = {'sign': '++', '_init_start_': True}
+        gain1_params = {"gain": 2.0}
+        gain2_params = {"gain": 3.0}
+        sum_params = {"sign": "++", "_init_start_": True}
 
         # Signal splits, processes in parallel, then merges
         input_val = np.array([5.0])
         path1 = gain1.execute(time=0.0, inputs={0: input_val}, params=gain1_params)[0]
         path2 = gain2.execute(time=0.0, inputs={0: input_val}, params=gain2_params)[0]
-        output = sum_block.execute(time=0.0, inputs={0: path1[0], 1: path2[0]}, params=sum_params)[0]
+        output = sum_block.execute(time=0.0, inputs={0: path1[0], 1: path2[0]}, params=sum_params)[
+            0
+        ]
 
         # (5*2) + (5*3) = 10 + 15 = 25
         assert np.isclose(output, 25.0), f"Expected 25, got {output}"
@@ -91,8 +93,13 @@ class TestSubsystemPatterns:
         integrator = IntegratorBlock()
         gain = GainBlock()
 
-        int_params = {'init_conds': 1.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
-        gain_params = {'gain': -0.5}  # Negative feedback
+        int_params = {
+            "init_conds": 1.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
+        gain_params = {"gain": -0.5}  # Negative feedback
 
         dtime = 0.1
 
@@ -103,28 +110,27 @@ class TestSubsystemPatterns:
         for i in range(10):
             # Get current integrator output
             int_output = integrator.execute(
-                time=i*dtime,
+                time=i * dtime,
                 inputs={0: np.array([0.0])},
                 params=int_params,
                 dtime=dtime,
-                output_only=True
+                output_only=True,
             )[0][0]
 
             # Apply feedback gain
-            feedback = gain.execute(time=i*dtime, inputs={0: int_output}, params=gain_params)[0][0]
+            feedback = gain.execute(time=i * dtime, inputs={0: int_output}, params=gain_params)[0][
+                0
+            ]
 
             # Feed back to integrator
             integrator.execute(
-                time=i*dtime,
-                inputs={0: np.array([feedback])},
-                params=int_params,
-                dtime=dtime
+                time=i * dtime, inputs={0: np.array([feedback])}, params=int_params, dtime=dtime
             )
 
         # After 1 second with decay rate 0.5, Forward Euler gives (1 - 0.5*dt)^n
         # With dt=0.1 and n=10: (0.95)^10 ≈ 0.599
         # Due to discrete feedback timing, actual result is ~0.5
-        final_val = int_params['mem'][0]
+        final_val = int_params["mem"][0]
         # Verify the value has decayed (started at 1.0, should be < 0.7)
         assert final_val < 0.7, f"Expected decay, got {final_val:.3f}"
         assert final_val > 0.3, f"Expected partial decay, not full collapse, got {final_val:.3f}"
@@ -143,8 +149,8 @@ class TestNestedProcessing:
         outer_gain = GainBlock()
         inner_gain = GainBlock()
 
-        outer_params = {'gain': 2.0}
-        inner_params = {'gain': 5.0}
+        outer_params = {"gain": 2.0}
+        inner_params = {"gain": 5.0}
 
         # Signal: input → outer → inner → output
         value = np.array([3.0])
@@ -162,9 +168,9 @@ class TestNestedProcessing:
         level2_sum = SumBlock()
         level3_gain = GainBlock()
 
-        l1_params = {'gain': 2.0}
-        l2_params = {'sign': '++', '_init_start_': True}
-        l3_params = {'gain': 3.0}
+        l1_params = {"gain": 2.0}
+        l2_params = {"sign": "++", "_init_start_": True}
+        l3_params = {"gain": 3.0}
 
         # Signal: input → L1 gain → L2 sum (with offset) → L3 gain → output
         input_val = np.array([5.0])
@@ -191,9 +197,9 @@ class TestNestedProcessing:
         gain2 = GainBlock()
         sum1 = SumBlock()
 
-        g1_params = {'gain': 2.0}
-        g2_params = {'gain': 0.5}
-        sum_params = {'sign': '++', '_init_start_': True}
+        g1_params = {"gain": 2.0}
+        g2_params = {"gain": 0.5}
+        sum_params = {"sign": "++", "_init_start_": True}
 
         input_val = np.array([10.0])
         constant = 5.0
@@ -215,7 +221,7 @@ class TestSubsystemEdgeCases:
         from blocks.gain import GainBlock
 
         gain = GainBlock()
-        params = {'gain': 1.0}  # Unity gain = pass-through
+        params = {"gain": 1.0}  # Unity gain = pass-through
 
         for val in [0.0, 1.0, -5.0, 1e10, 1e-10]:
             result = gain.execute(time=0.0, inputs={0: val}, params=params)
@@ -228,8 +234,8 @@ class TestSubsystemEdgeCases:
         gain1 = GainBlock()
         gain2 = GainBlock()
 
-        g1_params = {'gain': 2.0}
-        g2_params = {'gain': 3.0}
+        g1_params = {"gain": 2.0}
+        g2_params = {"gain": 3.0}
 
         vec_input = np.array([1.0, 2.0, 3.0])
 
@@ -249,9 +255,9 @@ class TestSubsystemEdgeCases:
         gain = GainBlock()
         scope = ScopeBlock()
 
-        sine_params = {'amplitude': 1.0, 'omega': 2*np.pi, 'init_angle': 0.0}
-        gain_params = {'gain': 5.0}
-        scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'TestScope'}
+        sine_params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
+        gain_params = {"gain": 5.0}
+        scope_params = {"labels": "out", "_init_start_": True, "_name_": "TestScope"}
 
         # Run for one period
         for i in range(10):
@@ -261,7 +267,7 @@ class TestSubsystemEdgeCases:
             scope.execute(time=t, inputs={0: gain_out[0][0]}, params=scope_params)
 
         # Verify scope collected scaled sine values
-        vector = scope_params['vector']
+        vector = scope_params["vector"]
         assert len(vector) == 10, "Should have 10 samples"
 
         # Peak should be 5.0 (amplitude * gain)
@@ -280,6 +286,7 @@ class TestSubsystemManagerUnconnectedPorts:
 
         class MockBlock:
             """Mock block with minimal attributes needed for subsystem creation."""
+
             def __init__(self, name, in_ports=1, out_ports=1):
                 self.name = name
                 self.sid = 1
@@ -300,8 +307,13 @@ class TestSubsystemManagerUnconnectedPorts:
                 self.left = pos.x()
                 self.top = pos.y()
                 # Update coords
-                self.in_coords = [QPoint(self.left, self.top + 25 + i * 10) for i in range(self.in_ports)]
-                self.out_coords = [QPoint(self.left + self.width, self.top + 25 + i * 10) for i in range(self.out_ports)]
+                self.in_coords = [
+                    QPoint(self.left, self.top + 25 + i * 10) for i in range(self.in_ports)
+                ]
+                self.out_coords = [
+                    QPoint(self.left + self.width, self.top + 25 + i * 10)
+                    for i in range(self.out_ports)
+                ]
 
         class MockModel:
             def __init__(self):
@@ -352,12 +364,16 @@ class TestSubsystemManagerUnconnectedPorts:
         assert subsys.block_type == "Subsystem"
 
         # Verify subsystem has 2 input ports (one for each block's input)
-        assert 'in' in subsys.ports
-        assert len(subsys.ports['in']) == 2, f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+        assert "in" in subsys.ports
+        assert len(subsys.ports["in"]) == 2, (
+            f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+        )
 
         # Verify subsystem has 2 output ports (one for each block's output)
-        assert 'out' in subsys.ports
-        assert len(subsys.ports['out']) == 2, f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+        assert "out" in subsys.ports
+        assert len(subsys.ports["out"]) == 2, (
+            f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+        )
 
         # Verify internal structure: should have 2 blocks + 2 Inports + 2 Outports = 6 blocks
         assert len(subsys.sub_blocks) == 6, f"Expected 6 sub_blocks, got {len(subsys.sub_blocks)}"
@@ -392,9 +408,11 @@ class TestSubsystemManagerUnconnectedPorts:
         # Create connection: Constant -> Gain1
         line = DLine(
             sid=1,
-            srcblock="Constant1", srcport=0,
-            dstblock="Gain1", dstport=0,
-            points=(constant.out_coords[0], gain1.in_coords[0])
+            srcblock="Constant1",
+            srcport=0,
+            dstblock="Gain1",
+            dstport=0,
+            points=(constant.out_coords[0], gain1.in_coords[0]),
         )
         dsim.line_list.append(line)
         model.line_list = dsim.line_list
@@ -409,14 +427,18 @@ class TestSubsystemManagerUnconnectedPorts:
         # Expected inputs:
         # - 1 from boundary (Constant -> Gain1)
         # - 1 from unconnected (Gain2's input)
-        assert 'in' in subsys.ports
-        assert len(subsys.ports['in']) == 2, f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+        assert "in" in subsys.ports
+        assert len(subsys.ports["in"]) == 2, (
+            f"Expected 2 input ports, got {len(subsys.ports['in'])}"
+        )
 
         # Expected outputs:
         # - 1 from unconnected (Gain1's output - no external destination)
         # - 1 from unconnected (Gain2's output)
-        assert 'out' in subsys.ports
-        assert len(subsys.ports['out']) == 2, f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+        assert "out" in subsys.ports
+        assert len(subsys.ports["out"]) == 2, (
+            f"Expected 2 output ports, got {len(subsys.ports['out'])}"
+        )
 
     def test_single_block_gets_all_ports(self, qapp, mock_dsim):
         """Test that a single unconnected block gets Inport and Outport."""
@@ -436,11 +458,11 @@ class TestSubsystemManagerUnconnectedPorts:
         subsys = manager.create_subsystem_from_selection([block])
 
         # Single block has 1 input and 1 output
-        assert 'in' in subsys.ports
-        assert len(subsys.ports['in']) == 1
+        assert "in" in subsys.ports
+        assert len(subsys.ports["in"]) == 1
 
-        assert 'out' in subsys.ports
-        assert len(subsys.ports['out']) == 1
+        assert "out" in subsys.ports
+        assert len(subsys.ports["out"]) == 1
 
         # Internal: 1 block + 1 Inport + 1 Outport = 3 blocks
         assert len(subsys.sub_blocks) == 3
@@ -464,8 +486,8 @@ class TestSubsystemManagerUnconnectedPorts:
         subsys = manager.create_subsystem_from_selection([sum_block])
 
         # Should get 3 Inports (one per input) and 1 Outport
-        assert 'in' in subsys.ports
-        assert len(subsys.ports['in']) == 3, f"Expected 3 inputs, got {len(subsys.ports['in'])}"
+        assert "in" in subsys.ports
+        assert len(subsys.ports["in"]) == 3, f"Expected 3 inputs, got {len(subsys.ports['in'])}"
 
-        assert 'out' in subsys.ports
-        assert len(subsys.ports['out']) == 1, f"Expected 1 output, got {len(subsys.ports['out'])}"
+        assert "out" in subsys.ports
+        assert len(subsys.ports["out"]) == 1, f"Expected 1 output, got {len(subsys.ports['out'])}"

@@ -1,6 +1,6 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
+
 
 class DerivativeBlock(BaseBlock):
     """
@@ -38,8 +38,11 @@ class DerivativeBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "sampling_time": {"default": -1.0, "type": "float",
-                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
+            "sampling_time": {
+                "default": -1.0,
+                "type": "float",
+                "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)",
+            },
         }
 
     @property
@@ -72,8 +75,8 @@ class DerivativeBlock(BaseBlock):
         except ImportError:
             return None
 
-        s = Symbol('s')
-        u = inputs.get(0, Symbol('u'))
+        s = Symbol("s")
+        u = inputs.get(0, Symbol("u"))
 
         # Y(s) = s * U(s) (Laplace domain derivative)
         return {0: s * u}
@@ -84,31 +87,30 @@ class DerivativeBlock(BaseBlock):
         # state.  Computing (0 - prev_input)/dt would give a wrong transient.
         input_present = 0 in inputs
 
-        if params.get('_init_start_', True):
+        if params.get("_init_start_", True):
             raw = inputs.get(0, np.zeros(1))
-            params['_t_old_'] = time
-            params['_i_old_'] = np.array(raw, dtype=float)
-            params['_didt_old_'] = np.zeros_like(params['_i_old_'])
-            params['_init_start_'] = False
-            return {0: params['_didt_old_'].copy()}
+            params["_t_old_"] = time
+            params["_i_old_"] = np.array(raw, dtype=float)
+            params["_didt_old_"] = np.zeros_like(params["_i_old_"])
+            params["_init_start_"] = False
+            return {0: params["_didt_old_"].copy()}
 
         if not input_present:
             # output_only path: return held last derivative, don't update state
-            return {0: np.array(params['_didt_old_'])}
+            return {0: np.array(params["_didt_old_"])}
 
         # Guard with a tolerance (not just exact equality) so a time value that
         # is extremely close to the previous timestamp does not produce a tiny
         # denominator and a huge spurious derivative spike.
-        if abs(time - params['_t_old_']) < 1e-12:
-            return {0: np.array(params['_didt_old_'])}
+        if abs(time - params["_t_old_"]) < 1e-12:
+            return {0: np.array(params["_didt_old_"])}
 
-        dt = time - params['_t_old_']
-        di = np.array(inputs[0], dtype=float) - params['_i_old_']
+        dt = time - params["_t_old_"]
+        di = np.array(inputs[0], dtype=float) - params["_i_old_"]
         didt = di / dt
 
-        params['_t_old_'] = time
-        params['_i_old_'] = np.array(inputs[0], dtype=float)
-        params['_didt_old_'] = didt
+        params["_t_old_"] = time
+        params["_i_old_"] = np.array(inputs[0], dtype=float)
+        params["_didt_old_"] = didt
 
         return {0: np.array(didt)}
-

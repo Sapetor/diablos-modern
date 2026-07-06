@@ -30,6 +30,7 @@ from modern_ui.themes.theme_manager import get_ui_font, TYPE
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -46,6 +47,7 @@ def _restore_screen_geometry(window):
 # _setup_window
 # ---------------------------------------------------------------------------
 
+
 class TestSetupWindow:
     def test_title_objectname_font(self, window):
         window._setup_window()
@@ -54,14 +56,14 @@ class TestSetupWindow:
         # The base font now comes from the canonical UI stack (get_ui_font),
         # not a hardcoded "Segoe UI" that was wrong on macOS/Linux.
         assert window.font().family() == get_ui_font().family()
-        assert window.font().pointSize() == TYPE['body_strong']
+        assert window.font().pointSize() == TYPE["body_strong"]
 
     def test_fallback_sizing_when_no_screen_geometry(self, window, monkeypatch):
         captured = {}
-        monkeypatch.setattr(window, "setMinimumSize",
-                            lambda w, h: captured.__setitem__("min", (w, h)))
-        monkeypatch.setattr(window, "resize",
-                            lambda w, h: captured.__setitem__("resize", (w, h)))
+        monkeypatch.setattr(
+            window, "setMinimumSize", lambda w, h: captured.__setitem__("min", (w, h))
+        )
+        monkeypatch.setattr(window, "resize", lambda w, h: captured.__setitem__("resize", (w, h)))
         window.screen_geometry = None
         window._setup_window()
         assert captured["min"] == (1200, 800)
@@ -69,10 +71,10 @@ class TestSetupWindow:
 
     def test_screen_geometry_sizing_math(self, window, monkeypatch):
         captured = {}
-        monkeypatch.setattr(window, "setMinimumSize",
-                            lambda w, h: captured.__setitem__("min", (w, h)))
-        monkeypatch.setattr(window, "resize",
-                            lambda w, h: captured.__setitem__("resize", (w, h)))
+        monkeypatch.setattr(
+            window, "setMinimumSize", lambda w, h: captured.__setitem__("min", (w, h))
+        )
+        monkeypatch.setattr(window, "resize", lambda w, h: captured.__setitem__("resize", (w, h)))
         window.screen_geometry = QRect(0, 0, 3000, 2000)
         window._setup_window()
 
@@ -92,11 +94,13 @@ class TestSetupWindow:
 # _setup_menubar
 # ---------------------------------------------------------------------------
 
+
 class TestSetupMenubar:
     def test_delegates_to_menu_builder(self, window, monkeypatch):
         called = {}
-        monkeypatch.setattr(window.menu_builder, "setup_menubar",
-                            lambda: called.setdefault("built", True))
+        monkeypatch.setattr(
+            window.menu_builder, "setup_menubar", lambda: called.setdefault("built", True)
+        )
         window._setup_menubar()
         assert called.get("built") is True
 
@@ -104,6 +108,7 @@ class TestSetupMenubar:
 # ---------------------------------------------------------------------------
 # _setup_toolbar
 # ---------------------------------------------------------------------------
+
 
 class TestSetupToolbar:
     def test_toolbar_exists_and_type(self, window):
@@ -114,7 +119,8 @@ class TestSetupToolbar:
         # itself -- a Qt connection captures the bound method at connect time,
         # so patching window.show_command_palette afterwards would not affect it.
         called = {}
-        monkeypatch.setattr(window.command_palette, "show_palette",
-                            lambda: called.setdefault("shown", True))
+        monkeypatch.setattr(
+            window.command_palette, "show_palette", lambda: called.setdefault("shown", True)
+        )
         window.toolbar.command_palette_requested.emit()
         assert called.get("shown") is True

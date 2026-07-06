@@ -21,11 +21,9 @@ N = 5
 # ===== Individual Vehicle Dynamics (Continuous) =====
 # State: [position, velocity]
 # Double integrator: x_dot = [0 1; 0 0]*x + [0; 1]*u
-A_cont = [[0, 1], 
-          [0, 0]]
+A_cont = [[0, 1], [0, 0]]
 
-B_cont = [[0], 
-          [1]]
+B_cont = [[0], [1]]
 
 C_cont = [[1, 0]]  # Output is position
 
@@ -35,8 +33,8 @@ D_cont = [[0]]
 # Each vehicle uses PD control: u = -Kp*(x_i - x_{i-1}) - Kd*(v_i - v_{i-1})
 # Simplified: u = -K * (my_state - neighbor_state)
 
-Kp = 1.0   # Position gain
-Kd = 2.0   # Velocity/damping gain
+Kp = 1.0  # Position gain
+Kd = 2.0  # Velocity/damping gain
 K = [[Kp, Kd]]  # Controller gain matrix
 
 # ===== Coupling Weight =====
@@ -48,11 +46,9 @@ eta = 0.8
 # For double integrator with Ts:
 # Ad = [1, Ts; 0, 1]
 # Bd = [0.5*Ts^2; Ts]
-A_disc = [[1, Ts], 
-          [0, 1]]
+A_disc = [[1, Ts], [0, 1]]
 
-B_disc = [[0.5 * Ts**2], 
-          [Ts]]
+B_disc = [[0.5 * Ts**2], [Ts]]
 
 C_disc = [[1, 0]]
 D_disc = [[0]]

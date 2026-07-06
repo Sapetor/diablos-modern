@@ -1,4 +1,3 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
@@ -11,7 +10,7 @@ class GainBlock(BaseBlock):
     """
     A block that scales an input by a factor.
     Supports scalar, vector, and matrix gains for MIMO systems.
-    
+
     - Scalar gain: y = K * u (element-wise)
     - Vector gain: y = K * u (element-wise, same length required)
     - Matrix gain: y = K @ u (matrix-vector multiplication)
@@ -47,7 +46,7 @@ class GainBlock(BaseBlock):
             "gain": {
                 "type": "matrix",
                 "default": 1.0,
-                "doc": "Gain value: scalar, vector, or matrix. Matrix uses y = K @ u."
+                "doc": "Gain value: scalar, vector, or matrix. Matrix uses y = K @ u.",
             }
         }
 
@@ -90,10 +89,10 @@ class GainBlock(BaseBlock):
             return None
 
         # Get input symbol
-        u = inputs.get(0, Symbol('u'))
+        u = inputs.get(0, Symbol("u"))
 
         # Get gain - can be scalar, vector, or matrix
-        K_raw = params.get('gain', 1.0)
+        K_raw = params.get("gain", 1.0)
 
         if isinstance(K_raw, (int, float)):
             K = Float(K_raw)
@@ -101,6 +100,7 @@ class GainBlock(BaseBlock):
         elif isinstance(K_raw, str):
             try:
                 import numpy as np
+
                 K_arr = np.array(safe_literal(K_raw), dtype=float)
                 if K_arr.ndim == 0 or K_arr.size == 1:
                     return {0: Float(float(K_arr.flatten()[0])) * u}
@@ -111,10 +111,11 @@ class GainBlock(BaseBlock):
                     # Vector gain - element-wise (return as scalar for simplicity)
                     return {0: Float(float(K_arr[0])) * u}
             except Exception:
-                K_sym = Symbol('K')
+                K_sym = Symbol("K")
                 return {0: K_sym * u}
         else:
             import numpy as np
+
             K_arr = np.atleast_1d(K_raw)
             if K_arr.size == 1:
                 return {0: Float(float(K_arr.flatten()[0])) * u}
@@ -128,7 +129,8 @@ class GainBlock(BaseBlock):
         """Return symbolic parameter for equation extraction."""
         try:
             from sympy import Symbol
-            return {'K': Symbol('K')}
+
+            return {"K": Symbol("K")}
         except ImportError:
             return {}
 
@@ -136,10 +138,10 @@ class GainBlock(BaseBlock):
         try:
             # Get input as numpy array
             u = np.atleast_1d(inputs.get(0, 0)).astype(float)
-            
+
             # Get gain parameter
-            K_raw = params.get('gain', 1.0)
-            
+            K_raw = params.get("gain", 1.0)
+
             # Parse gain - handle string representation of matrices
             if isinstance(K_raw, str):
                 try:
@@ -148,7 +150,7 @@ class GainBlock(BaseBlock):
                     K = np.array([float(K_raw)], dtype=float)
             else:
                 K = np.atleast_1d(K_raw).astype(float)
-            
+
             # Determine operation based on gain shape
             if K.ndim == 2:
                 # Matrix gain: y = K @ u
@@ -158,7 +160,7 @@ class GainBlock(BaseBlock):
                     if len(u) < K.shape[1]:
                         u = np.pad(u, (0, K.shape[1] - len(u)))
                     else:
-                        u = u[:K.shape[1]]
+                        u = u[: K.shape[1]]
                 y = K @ u
             elif K.ndim == 1 and len(K) > 1:
                 # Vector gain: element-wise multiplication
@@ -172,13 +174,12 @@ class GainBlock(BaseBlock):
                         f"match input length {len(u)}"
                     )
                     logger.error(msg)
-                    return {'E': True, 'error': msg}
+                    return {"E": True, "error": msg}
             else:
                 # Scalar gain: simple multiplication
                 y = K.flatten()[0] * u
-            
+
             return {0: y}
         except (ValueError, TypeError) as e:
             logger.error(f"Gain block error: {str(e)}")
-            return {'E': True, 'error': str(e)}
-
+            return {"E": True, "error": str(e)}

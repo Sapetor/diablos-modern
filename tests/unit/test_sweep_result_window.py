@@ -26,7 +26,10 @@ def _sweep_1d(n=4, L=20, nsig=1):
         metrics = {m: fn(traces) for m, fn in OUTCOME_METRICS.items()}
         signals[f"S{s}"] = {"traces": traces, "metrics": metrics}
     return {
-        "mode": "1d", "n_points": n, "n_ok": n, "timeline": t,
+        "mode": "1d",
+        "n_points": n,
+        "n_ok": n,
+        "timeline": t,
         "axis": {"block": "G", "param": "gain", "values": vals},
         "signals": signals,
     }
@@ -40,7 +43,9 @@ def _sweep_2d(nx=2, ny=3, nsig=1):
         Z = np.outer(xv, yv) + s
         signals[f"S{s}"] = {"metrics": {m: Z.copy() for m in OUTCOME_METRICS}}
     return {
-        "mode": "2d", "n_points": nx * ny, "n_ok": nx * ny,
+        "mode": "2d",
+        "n_points": nx * ny,
+        "n_ok": nx * ny,
         "timeline": np.linspace(0.0, 1.0, 10),
         "axis_x": {"block": "C", "param": "value", "values": xv},
         "axis_y": {"block": "G", "param": "gain", "values": yv},

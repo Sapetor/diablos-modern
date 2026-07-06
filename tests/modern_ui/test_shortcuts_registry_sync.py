@@ -74,9 +74,7 @@ class TestDialogSourcedFromRegistry:
     def test_supplement_rows_are_not_palette_commands(self):
         # Exit / Edit / Help rows must not collide with registry labels.
         registry = palette_command_groups()
-        registry_labels = {
-            label for entries in registry.values() for label, _ in entries
-        }
+        registry_labels = {label for entries in registry.values() for label, _ in entries}
         catalogue = _groups(build_shortcut_groups())
         supplement_labels = {label for label, _ in _FILE_SUPPLEMENT}
         supplement_labels |= {label for label, _ in catalogue["Edit"]}
@@ -107,6 +105,6 @@ class TestDialogRendersRegistryRows:
             sim = dict(palette_command_groups()["Simulation"])
             assert sim["Run simulation"] in texts  # F5
             view = dict(palette_command_groups()["View"])
-            assert view["Toggle theme"] in texts   # Ctrl+T
+            assert view["Toggle theme"] in texts  # Ctrl+T
         finally:
             dialog.close()

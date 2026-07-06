@@ -52,11 +52,18 @@ class IntegratorBlock(BaseBlock):
         return {
             **init_conds_param(default=0.0, doc="Initial condition value"),
             **method_param(INTEGRATOR_METHODS, default="SOLVE_IVP", doc="Integration method"),
-            **method_param(SOLVE_IVP_METHODS, default="RK45", param_name="ivp_method",
-                           doc="scipy ODE solver used when Method is SOLVE_IVP"),
+            **method_param(
+                SOLVE_IVP_METHODS,
+                default="RK45",
+                param_name="ivp_method",
+                doc="scipy ODE solver used when Method is SOLVE_IVP",
+            ),
             **init_flag_param(),
-            "sampling_time": {"default": -1.0, "type": "float",
-                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
+            "sampling_time": {
+                "default": -1.0,
+                "type": "float",
+                "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)",
+            },
         }
 
     @property
@@ -103,8 +110,8 @@ class IntegratorBlock(BaseBlock):
         except ImportError:
             return None
 
-        s = Symbol('s')
-        u = inputs.get(0, Symbol('u'))
+        s = Symbol("s")
+        u = inputs.get(0, Symbol("u"))
 
         # Y(s) = U(s) / s (Laplace domain integrator)
         return {0: u / s}
@@ -113,93 +120,96 @@ class IntegratorBlock(BaseBlock):
         """
         Integrator block with multiple integration methods.
         """
-        output_only = kwargs.get('output_only', False)
-        dtime = kwargs.get('dtime', params.get('dtime', 0.01))
+        output_only = kwargs.get("output_only", False)
+        dtime = kwargs.get("dtime", params.get("dtime", 0.01))
 
         # Initialization
         init_mgr = InitStateManager(params)
         if init_mgr.needs_init():
-            params['dtime'] = dtime
-            params['mem'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
-            params['output'] = np.atleast_1d(np.array(params['init_conds'], dtype=float))
-            params['mem_list'] = [np.zeros_like(params['mem'])]
-            params['mem_len'] = 5.0
+            params["dtime"] = dtime
+            params["mem"] = np.atleast_1d(np.array(params["init_conds"], dtype=float))
+            params["output"] = np.atleast_1d(np.array(params["init_conds"], dtype=float))
+            params["mem_list"] = [np.zeros_like(params["mem"])]
+            params["mem_len"] = 5.0
             init_mgr.mark_initialized()
-            params['aux'] = np.zeros_like(params['mem'])
+            params["aux"] = np.zeros_like(params["mem"])
 
-            if params['method'] == 'RK45':
-                params['nb_loop'] = 0
-                params['RK45_Klist'] = [0, 0, 0, 0]
+            if params["method"] == "RK45":
+                params["nb_loop"] = 0
+                params["RK45_Klist"] = [0, 0, 0, 0]
 
         if output_only:
-            result = {0: params.get('output', params['mem']), 'E': False}
+            result = {0: params.get("output", params["mem"]), "E": False}
             return result
-        
+
         # Check input dimensions
         if isinstance(inputs.get(0), (float, int)):
             inputs[0] = np.atleast_1d(inputs[0])
-        
-        if params['mem'].shape != inputs.get(0, params['mem']).shape:
-            if params['mem'].size == 1:
-                logger.warning(f"Expanding initial conditions for {params['_name_']} to match input dimensions.")
-                params['mem'] = np.full(inputs[0].shape, params['mem'].item())
+
+        if params["mem"].shape != inputs.get(0, params["mem"]).shape:
+            if params["mem"].size == 1:
+                logger.warning(
+                    f"Expanding initial conditions for {params['_name_']} to match input dimensions."
+                )
+                params["mem"] = np.full(inputs[0].shape, params["mem"].item())
             else:
                 logger.error(f"Dimension Error in initial conditions in {params['_name_']}")
                 init_mgr.reset()
-                return {'E': True, 'error': f"Dimension mismatch in {params['_name_']}"}
+                return {"E": True, "error": f"Dimension mismatch in {params['_name_']}"}
 
         # Integration by method
-        if params['method'] == 'FWD_EULER':
-            params['mem'] += params['dtime'] * inputs[0]
-        elif params['method'] == 'BWD_EULER':
-            params['mem'] += params['dtime'] * params['mem_list'][-1]
-        elif params['method'] == 'TUSTIN':
-            params['mem'] += 0.5*params['dtime'] * (inputs[0] + params['mem_list'][-1])
-        elif params['method'] == 'RK45':
-            K_list = params['RK45_Klist']
-            K_list[params['nb_loop']] = params['dtime'] * np.array(inputs[0], dtype=float)
-            params['RK45_Klist'] = K_list
+        if params["method"] == "FWD_EULER":
+            params["mem"] += params["dtime"] * inputs[0]
+        elif params["method"] == "BWD_EULER":
+            params["mem"] += params["dtime"] * params["mem_list"][-1]
+        elif params["method"] == "TUSTIN":
+            params["mem"] += 0.5 * params["dtime"] * (inputs[0] + params["mem_list"][-1])
+        elif params["method"] == "RK45":
+            K_list = params["RK45_Klist"]
+            K_list[params["nb_loop"]] = params["dtime"] * np.array(inputs[0], dtype=float)
+            params["RK45_Klist"] = K_list
             K1, K2, K3, K4 = K_list
 
-            if params['nb_loop'] == 0:
-                params['nb_loop'] += 1
-                params['aux'] = params['mem'] + 0.5 * K1
-                return {'E': False}
-            elif params['nb_loop'] == 1:
-                params['nb_loop'] += 1
-                params['aux'] = params['mem'] + 0.5 * K2
-                return {'E': False}
-            elif params['nb_loop'] == 2:
-                params['nb_loop'] += 1
-                params['aux'] = params['mem'] + K3
-                return {'E': False}
-            elif params['nb_loop'] == 3:
-                params['nb_loop'] = 0
-                params['mem'] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
-        elif params['method'] == 'SOLVE_IVP':
-            mem_shape = params['mem'].shape
-            y0 = np.atleast_1d(params['mem']).flatten()
+            if params["nb_loop"] == 0:
+                params["nb_loop"] += 1
+                params["aux"] = params["mem"] + 0.5 * K1
+                return {"E": False}
+            elif params["nb_loop"] == 1:
+                params["nb_loop"] += 1
+                params["aux"] = params["mem"] + 0.5 * K2
+                return {"E": False}
+            elif params["nb_loop"] == 2:
+                params["nb_loop"] += 1
+                params["aux"] = params["mem"] + K3
+                return {"E": False}
+            elif params["nb_loop"] == 3:
+                params["nb_loop"] = 0
+                params["mem"] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
+        elif params["method"] == "SOLVE_IVP":
+            mem_shape = params["mem"].shape
+            y0 = np.atleast_1d(params["mem"]).flatten()
 
             # Input is constant over the step, so dy/dt = u. Pass u through
             # solve_ivp's args to a module-level RHS instead of rebuilding a
             # closure each call, and honor the configured ODE method (defaults
             # to scipy's own default, RK45, so results are unchanged).
             u = np.atleast_1d(inputs[0]).flatten()
-            ivp_method = params.get('ivp_method', 'RK45')
+            ivp_method = params.get("ivp_method", "RK45")
 
-            sol = solve_ivp(_ivp_constant_rhs, [time, time + dtime], y0,
-                            method=ivp_method, args=(u,))
-            params['mem'] = sol.y[:, -1].reshape(mem_shape)
-            return {0: params['mem'], 'E': False}
+            sol = solve_ivp(
+                _ivp_constant_rhs, [time, time + dtime], y0, method=ivp_method, args=(u,)
+            )
+            params["mem"] = sol.y[:, -1].reshape(mem_shape)
+            return {0: params["mem"], "E": False}
         else:
             logger.error(f"Unknown integration method {params['method']} in {params['_name_']}")
-            return {'E': True, 'error': f"Unknown method: {params['method']}"}
+            return {"E": True, "error": f"Unknown method: {params['method']}"}
 
-        aux_list = params['mem_list']
+        aux_list = params["mem_list"]
         aux_list.append(inputs[0])
-        if len(aux_list) > params['mem_len']:
-            aux_list = aux_list[-int(params['mem_len']):]
-        params['mem_list'] = aux_list
+        if len(aux_list) > params["mem_len"]:
+            aux_list = aux_list[-int(params["mem_len"]) :]
+        params["mem_list"] = aux_list
 
-        result = {0: params['mem'], 'E': False}
+        result = {0: params["mem"], "E": False}
         return result

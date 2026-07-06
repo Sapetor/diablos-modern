@@ -87,7 +87,7 @@ class ZoomPanManager:
         # Adjust pan so the same world point stays under the anchor
         self.pan_offset = QPoint(
             int(screen_pos.x() - world_anchor.x() * new_factor),
-            int(screen_pos.y() - world_anchor.y() * new_factor)
+            int(screen_pos.y() - world_anchor.y() * new_factor),
         )
         self.canvas.pan_offset = self.pan_offset
         self.canvas.update()
@@ -132,7 +132,7 @@ class ZoomPanManager:
 
         self.pan_offset = QPoint(
             int(canvas_center_x - bbox_center_x * target_zoom),
-            int(canvas_center_y - bbox_center_y * target_zoom)
+            int(canvas_center_y - bbox_center_y * target_zoom),
         )
         self.canvas.pan_offset = self.pan_offset
 
@@ -195,10 +195,7 @@ class ZoomPanManager:
 
             # Scale the delta for smoother scrolling
             scroll_sensitivity = 0.5
-            pan_delta = QPoint(
-                int(delta_x * scroll_sensitivity),
-                int(delta_y * scroll_sensitivity)
-            )
+            pan_delta = QPoint(int(delta_x * scroll_sensitivity), int(delta_y * scroll_sensitivity))
 
             # Apply panning offset
             self.pan_offset += pan_delta

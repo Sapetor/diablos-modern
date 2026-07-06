@@ -1,4 +1,3 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock

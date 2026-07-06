@@ -45,9 +45,7 @@ def _column_from_rows(rows, col):
         idx = int(col)
         return np.array([float(list(row.values())[idx]) for row in rows], dtype=float)
     if col not in rows[0]:
-        raise TimeseriesLoadError(
-            f"Column '{col}' not found (available: {sorted(rows[0].keys())})"
-        )
+        raise TimeseriesLoadError(f"Column '{col}' not found (available: {sorted(rows[0].keys())})")
     return np.array([float(row.get(col, 0.0)) for row in rows], dtype=float)
 
 
@@ -65,9 +63,7 @@ def _column_from_mapping(mapping, col, default_key):
         return _as_1d(mapping[col])
     if default_key in mapping:
         return _as_1d(mapping[default_key])
-    raise TimeseriesLoadError(
-        f"Column '{col}' not found (available: {sorted(keys)})"
-    )
+    raise TimeseriesLoadError(f"Column '{col}' not found (available: {sorted(keys)})")
 
 
 def load_timeseries(data_file, time_col="t", signal_col="y"):
@@ -103,6 +99,7 @@ def load_timeseries(data_file, time_col="t", signal_col="y"):
 
         elif lower.endswith(".mat"):
             from scipy.io import loadmat
+
             mapping = loadmat(data_file)
             t_data = _column_from_mapping(mapping, time_col, "t")
             y_data = _column_from_mapping(mapping, signal_col, "y")
@@ -133,15 +130,12 @@ def load_timeseries(data_file, time_col="t", signal_col="y"):
     except FileNotFoundError as exc:
         raise TimeseriesLoadError(f"File not found: {data_file}") from exc
     except Exception as exc:  # malformed file, bad index, etc.
-        raise TimeseriesLoadError(
-            f"Failed to load '{data_file}': {exc}"
-        ) from exc
+        raise TimeseriesLoadError(f"Failed to load '{data_file}': {exc}") from exc
 
     if t_data.size == 0 or y_data.size == 0:
         raise TimeseriesLoadError("Loaded data is empty")
     if t_data.size != y_data.size:
         raise TimeseriesLoadError(
-            f"time column ({t_data.size}) and signal column ({y_data.size}) "
-            "have different lengths"
+            f"time column ({t_data.size}) and signal column ({y_data.size}) have different lengths"
         )
     return t_data, y_data

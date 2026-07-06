@@ -65,23 +65,43 @@ class NetworkChannelBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "loss_prob": {"type": "float", "default": 0.1,
-                          "doc": "Probability (0..1) that a packet is dropped."},
-            "min_delay": {"type": "float", "default": 0.0,
-                          "doc": "Minimum per-packet transport delay (s)."},
-            "max_delay": {"type": "float", "default": 0.1,
-                          "doc": "Maximum per-packet transport delay (s)."},
-            "sample_time": {"type": "float", "default": 0.0,
-                            "doc": "Channel sample period (s). 0 = every step (use dtime)."},
-            "seed": {"type": "int", "default": 0,
-                     "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible)."},
-            "drop_mode": {"type": "choice", "default": "hold",
-                          "options": ["hold", "zero", "nan"],
-                          "doc": "Output before any packet is delivered: hold / zero / nan."},
-            "initial_value": {"type": "float", "default": 0.0,
-                              "doc": "Held value before the first delivered packet."},
-            "_init_start_": {"type": "bool", "default": True,
-                             "doc": "Internal init flag."},
+            "loss_prob": {
+                "type": "float",
+                "default": 0.1,
+                "doc": "Probability (0..1) that a packet is dropped.",
+            },
+            "min_delay": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Minimum per-packet transport delay (s).",
+            },
+            "max_delay": {
+                "type": "float",
+                "default": 0.1,
+                "doc": "Maximum per-packet transport delay (s).",
+            },
+            "sample_time": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Channel sample period (s). 0 = every step (use dtime).",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible).",
+            },
+            "drop_mode": {
+                "type": "choice",
+                "default": "hold",
+                "options": ["hold", "zero", "nan"],
+                "doc": "Output before any packet is delivered: hold / zero / nan.",
+            },
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Held value before the first delivered packet.",
+            },
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
 
     @property
@@ -95,6 +115,7 @@ class NetworkChannelBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw a 'lossy + delayed pulse' icon (two nodes, one dropped) in 0-1 coords."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # transmit node
         path.addEllipse(0.08, 0.42, 0.16, 0.16)

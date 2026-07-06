@@ -10,7 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 # Generic type variable for blocks
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Block-related types
 BlockParams = Dict[str, Any]

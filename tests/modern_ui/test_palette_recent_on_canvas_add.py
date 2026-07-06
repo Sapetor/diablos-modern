@@ -31,11 +31,14 @@ from PyQt5.QtWidgets import QMainWindow
 
 from modern_ui.widgets import modern_palette as mp
 from modern_ui.widgets.modern_palette import (
-    ModernBlockPalette, CompactBlockRow, _PinnedSection,
+    ModernBlockPalette,
+    CompactBlockRow,
+    _PinnedSection,
 )
 
 
 # -- Qt fixtures -----------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _qt(qapp):
@@ -60,6 +63,7 @@ def _isolated_settings(tmp_path, monkeypatch):
 
 def _make_dsim():
     from lib.lib import DSim
+
     dsim = DSim()
     init = getattr(dsim, "menu_blocks_init", None)
     if callable(init):
@@ -95,6 +99,7 @@ def palette():
 
 # -- Bug fix: a cancelled / off-canvas drag records nothing ----------------
 
+
 def test_cancelled_drag_does_not_record_recent(palette, monkeypatch):
     """_start_drag must not touch recents — only a real add does."""
     assert _recent_section(palette) is None  # nothing recorded yet
@@ -107,6 +112,7 @@ def test_cancelled_drag_does_not_record_recent(palette, monkeypatch):
     # drag that was cancelled (Escape) or dropped outside the canvas: exec_
     # returns without the canvas drop path ever running.
     from PyQt5.QtGui import QDrag
+
     monkeypatch.setattr(QDrag, "exec_", lambda *a, **k: 0)
 
     row._start_drag(None)
@@ -117,6 +123,7 @@ def test_cancelled_drag_does_not_record_recent(palette, monkeypatch):
 
 
 # -- Wiring: a real canvas add records into the palette's Recent -----------
+
 
 @pytest.fixture
 def wired(palette):
@@ -158,8 +165,8 @@ def test_canvas_add_records_recent_once(wired):
     # The palette was rebuilt by record_recent; re-query the live Recent section.
     names = _recent_names(canvas.window().block_palette)
     assert names, "Recent section should appear after a real add"
-    assert names[0] == target            # newest-first
-    assert names.count(target) == 1      # recorded exactly once
+    assert names[0] == target  # newest-first
+    assert names.count(target) == 1  # recorded exactly once
 
 
 def test_canvas_add_records_each_distinct_block_newest_first(wired):
@@ -194,7 +201,8 @@ def test_add_calls_record_palette_recent_once_per_add(wired, monkeypatch):
 
     calls = []
     monkeypatch.setattr(
-        type(canvas), "_record_palette_recent",
+        type(canvas),
+        "_record_palette_recent",
         lambda self, menu_block: calls.append(menu_block),
     )
 
@@ -203,6 +211,7 @@ def test_add_calls_record_palette_recent_once_per_add(wired, monkeypatch):
 
 
 # -- Helper is defensive: never breaks adding a block ----------------------
+
 
 def test_record_palette_recent_no_window_is_silent(qapp):
     """A detached canvas (top-level window has no block_palette) must not raise."""

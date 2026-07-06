@@ -30,6 +30,7 @@ runs every string param through ``safe_expr`` before the interpreter sees it, an
 comma list diverges for an unrelated reason. ``"1:3"`` is not a valid expression,
 so it survives as a string in both paths. See the report notes for this session.
 """
+
 import json
 
 import numpy as np
@@ -48,43 +49,80 @@ ATOL = 5e-2
 
 def _block(block_fn, fn_name, name, left, top, in_ports, out_ports, params, w=50, h=50):
     return {
-        "block_fn": block_fn, "sid": 0, "name": name, "username": name,
-        "coords_left": left, "coords_top": top, "coords_width": w, "coords_height": h,
-        "coords_height_base": h, "in_ports": in_ports, "out_ports": out_ports,
-        "dragging": False, "selected": False, "b_color": "#888888", "b_type": 2,
-        "io_edit": "none", "fn_name": fn_name, "params": params,
-        "external": False, "flipped": False,
+        "block_fn": block_fn,
+        "sid": 0,
+        "name": name,
+        "username": name,
+        "coords_left": left,
+        "coords_top": top,
+        "coords_width": w,
+        "coords_height": h,
+        "coords_height_base": h,
+        "in_ports": in_ports,
+        "out_ports": out_ports,
+        "dragging": False,
+        "selected": False,
+        "b_color": "#888888",
+        "b_type": 2,
+        "io_edit": "none",
+        "fn_name": fn_name,
+        "params": params,
+        "external": False,
+        "flipped": False,
     }
 
 
 def _line(sid, src, sp, dst, dp):
     return {
-        "name": "L%d" % sid, "sid": sid, "srcblock": src, "srcport": sp,
-        "dstblock": dst, "dstport": dp, "points": [[0, 0], [1, 1]],
-        "cptr": 0, "selected": False,
+        "name": "L%d" % sid,
+        "sid": sid,
+        "srcblock": src,
+        "srcport": sp,
+        "dstblock": dst,
+        "dstport": dp,
+        "points": [[0, 0], [1, 1]],
+        "cptr": 0,
+        "selected": False,
     }
 
 
 def _diagram_dict():
     return {
         "sim_data": {
-            "wind_width": 1280, "wind_height": 770, "fps": 60,
-            "sim_time": SIM_TIME, "sim_dt": SIM_DT, "sim_trange": 100,
+            "wind_width": 1280,
+            "wind_height": 770,
+            "fps": 60,
+            "sim_time": SIM_TIME,
+            "sim_dt": SIM_DT,
+            "sim_trange": 100,
         },
         "blocks_data": [
-            _block("Sine", "sine", "sine0", 50, 50, 0, 1,
-                   {"amplitude": 2.0, "omega": 3.0, "init_angle": 0.0}),
+            _block(
+                "Sine",
+                "sine",
+                "sine0",
+                50,
+                50,
+                0,
+                1,
+                {"amplitude": 2.0, "omega": 3.0, "init_angle": 0.0},
+            ),
             # FWD_EULER (not the default SOLVE_IVP/RK45) so the interpreter records
             # one scope sample per dt, aligning its grid with the compiled output.
-            _block("Integrator", "integrator", "integrator0", 180, 50, 1, 1,
-                   {"init_conds": 0.0, "method": "FWD_EULER"}),
-            _block("Constant", "constant", "constant0", 50, 200, 0, 1,
-                   {"value": 5.0}),
+            _block(
+                "Integrator",
+                "integrator",
+                "integrator0",
+                180,
+                50,
+                1,
+                1,
+                {"init_conds": 0.0, "method": "FWD_EULER"},
+            ),
+            _block("Constant", "constant", "constant0", 50, 200, 0, 1, {"value": 5.0}),
             _block("Mux", "mux", "mux0", 320, 80, 3, 1, {}, h=80),
-            _block("Selector", "selector", "selector0", 460, 90, 1, 1,
-                   {"indices": "1:3"}),
-            _block("Scope", "scope", "scope0", 600, 90, 1, 0,
-                   {"labels": "integ,const"}),
+            _block("Selector", "selector", "selector0", 460, 90, 1, 1, {"indices": "1:3"}),
+            _block("Scope", "scope", "scope0", 600, 90, 1, 0, {"labels": "integ,const"}),
         ],
         "lines_data": [
             _line(0, "sine0", 0, "integrator0", 0),
@@ -108,9 +146,7 @@ def _scope_traces(dsim):
         vec = params.get("vector")
         if vec is None:
             continue
-        traces[b.name] = np.asarray(vec, dtype=float).reshape(
-            -1, params.get("vec_dim", 1)
-        )
+        traces[b.name] = np.asarray(vec, dtype=float).reshape(-1, params.get("vec_dim", 1))
     return traces
 
 

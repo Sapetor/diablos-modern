@@ -95,21 +95,24 @@ class TestRandomSource:
 
     def test_sample_time_holds_between_samples(self):
         """With sample_time>dtime the value is held between sample instants."""
-        params = _fresh_params(distribution="uniform", low=0.0, high=1.0,
-                               seed=42, sample_time=0.5)
+        params = _fresh_params(distribution="uniform", low=0.0, high=1.0, seed=42, sample_time=0.5)
         block = RandomSourceBlock()
         dtime = 0.1
-        v0 = float(np.atleast_1d(
-            block.execute(time=0.0, inputs={}, params=params, dtime=dtime)[0])[0])
+        v0 = float(
+            np.atleast_1d(block.execute(time=0.0, inputs={}, params=params, dtime=dtime)[0])[0]
+        )
         # t = 0.1 .. 0.4 should all repeat the t=0 sample.
         for k in range(1, 5):
-            vk = float(np.atleast_1d(
-                block.execute(time=k * dtime, inputs={}, params=params,
-                              dtime=dtime)[0])[0])
+            vk = float(
+                np.atleast_1d(
+                    block.execute(time=k * dtime, inputs={}, params=params, dtime=dtime)[0]
+                )[0]
+            )
             assert vk == v0
         # t = 0.5 is a new sample instant -> a fresh draw is allowed (may differ).
-        v5 = float(np.atleast_1d(
-            block.execute(time=0.5, inputs={}, params=params, dtime=dtime)[0])[0])
+        v5 = float(
+            np.atleast_1d(block.execute(time=0.5, inputs={}, params=params, dtime=dtime)[0])[0]
+        )
         # still within range regardless
         assert 0.0 <= v5 <= 1.0
 

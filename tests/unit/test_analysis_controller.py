@@ -24,6 +24,7 @@ def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
         from lib.block_loader import load_blocks
+
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
             try:
@@ -35,7 +36,7 @@ def _params(block_type, **overrides):
     out = {}
     if inst is not None:
         for k, v in inst.params.items():
-            out[k] = v['default'] if isinstance(v, dict) and 'default' in v else v
+            out[k] = v["default"] if isinstance(v, dict) and "default" in v else v
     out.update(overrides)
     return out
 
@@ -243,8 +244,7 @@ class TestFindTrim:
         assert res["residual_norm"] is not None
         assert res["residual_norm"] < 1e-6
         # operating_point is keyed by block name and reusable.
-        assert any(np.isclose(v, 2.0, atol=1e-6)
-                   for v in res["operating_point"].values())
+        assert any(np.isclose(v, 2.0, atol=1e-6) for v in res["operating_point"].values())
         assert isinstance(res["summary"], str) and res["summary"].strip()
 
     def test_no_states_reports_cleanly(self, qapp, tmp_path):

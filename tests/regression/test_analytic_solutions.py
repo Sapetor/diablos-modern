@@ -11,6 +11,7 @@ a clear physical meaning, not just a trace diff.
   * First-order lag 1/(s+1), unit step:    y(t) = 1 - e^{-t}
   * 1D heat eigenmode, homogeneous BCs:     amplitude ~ e^{-alpha (pi/L)^2 t}
 """
+
 import json
 
 import numpy as np
@@ -40,67 +41,122 @@ def _run_compiled(diagram, tmp_path):
     ok, err = dsim.run_tuning_simulation(sim["sim_time"], sim["sim_dt"])
     assert ok, f"compiled run failed: {err}"
 
-    assert dsim.engine.check_compilability(dsim.blocks_list), \
+    assert dsim.engine.check_compilability(dsim.blocks_list), (
         "diagram must be compilable so the compiled kernels actually run"
+    )
     return harvest_scope_signals(dsim)
 
 
 def _blk(fn, sid, name, x, params, in_ports, out_ports, b_type, io):
-    return {"block_fn": fn, "sid": sid, "username": name,
-            "coords_left": x, "coords_top": 200, "coords_width": 60,
-            "coords_height": 50, "coords_height_base": 50, "in_ports": in_ports,
-            "out_ports": out_ports, "dragging": False, "selected": False,
-            "b_color": "#333333", "b_type": b_type, "io_edit": io,
-            "fn_name": fn.lower(), "params": params,
-            "external": False, "flipped": False}
+    return {
+        "block_fn": fn,
+        "sid": sid,
+        "username": name,
+        "coords_left": x,
+        "coords_top": 200,
+        "coords_width": 60,
+        "coords_height": 50,
+        "coords_height_base": 50,
+        "in_ports": in_ports,
+        "out_ports": out_ports,
+        "dragging": False,
+        "selected": False,
+        "b_color": "#333333",
+        "b_type": b_type,
+        "io_edit": io,
+        "fn_name": fn.lower(),
+        "params": params,
+        "external": False,
+        "flipped": False,
+    }
 
 
 def _line(sid, srcblock, srcport, dstblock, dstport):
-    return {"name": f"L{sid}", "sid": sid, "srcblock": srcblock, "srcport": srcport,
-            "dstblock": dstblock, "dstport": dstport,
-            "points": [[0, 0], [1, 1]], "cptr": 0, "selected": False}
+    return {
+        "name": f"L{sid}",
+        "sid": sid,
+        "srcblock": srcblock,
+        "srcport": srcport,
+        "dstblock": dstblock,
+        "dstport": dstport,
+        "points": [[0, 0], [1, 1]],
+        "cptr": 0,
+        "selected": False,
+    }
 
 
 def _diagram(blocks, lines, sim_time, sim_dt):
-    return {"sim_data": {"wind_width": 1280, "wind_height": 770, "fps": 60,
-                         "sim_time": sim_time, "sim_dt": sim_dt, "sim_trange": 100000},
-            "blocks_data": blocks, "lines_data": lines, "version": "2.0"}
+    return {
+        "sim_data": {
+            "wind_width": 1280,
+            "wind_height": 770,
+            "fps": 60,
+            "sim_time": sim_time,
+            "sim_dt": sim_dt,
+            "sim_trange": 100000,
+        },
+        "blocks_data": blocks,
+        "lines_data": lines,
+        "version": "2.0",
+    }
 
 
 def test_integrator_of_constant_is_a_ramp(qapp, tmp_path):
     """Integrator(y0=0) of a constant c=2 gives y(t) = 2t."""
     c = 2.0
     diagram = _diagram(
-        [_blk("Constant", 0, "c", 50, {"value": c}, 0, 1, 0, "none"),
-         _blk("Integrator", 1, "int", 200,
-              {"init_conds": 0.0, "method": "SOLVE_IVP", "ivp_method": "RK45"},
-              1, 1, 1, "none"),
-         _blk("Scope", 2, "y", 350, {"labels": "y"}, 1, 0, 3, "in")],
-        [_line(0, "constant0", 0, "integrator1", 0),
-         _line(1, "integrator1", 0, "scope2", 0)],
-        sim_time=2.0, sim_dt=0.02)
+        [
+            _blk("Constant", 0, "c", 50, {"value": c}, 0, 1, 0, "none"),
+            _blk(
+                "Integrator",
+                1,
+                "int",
+                200,
+                {"init_conds": 0.0, "method": "SOLVE_IVP", "ivp_method": "RK45"},
+                1,
+                1,
+                1,
+                "none",
+            ),
+            _blk("Scope", 2, "y", 350, {"labels": "y"}, 1, 0, 3, "in"),
+        ],
+        [_line(0, "constant0", 0, "integrator1", 0), _line(1, "integrator1", 0, "scope2", 0)],
+        sim_time=2.0,
+        sim_dt=0.02,
+    )
 
     res = _run_compiled(diagram, tmp_path)
     y = next(iter(res["signals"].values()))
-    t = res["timeline"][:len(y)]
+    t = res["timeline"][: len(y)]
     assert np.allclose(y, c * t, rtol=1e-4, atol=1e-4)
 
 
 def test_first_order_lag_step_response(qapp, tmp_path):
     """Unit step into 1/(s+1) gives y(t) = 1 - e^{-t}."""
     diagram = _diagram(
-        [_blk("Step", 0, "u", 50, {"value": 1.0, "delay": 0.0, "type": "up"},
-              0, 1, 0, "none"),
-         _blk("TranFn", 1, "G", 200, {"numerator": [1.0], "denominator": [1.0, 1.0]},
-              1, 1, 1, "none"),
-         _blk("Scope", 2, "y", 350, {"labels": "y"}, 1, 0, 3, "in")],
-        [_line(0, "step0", 0, "tranfn1", 0),
-         _line(1, "tranfn1", 0, "scope2", 0)],
-        sim_time=5.0, sim_dt=0.01)
+        [
+            _blk("Step", 0, "u", 50, {"value": 1.0, "delay": 0.0, "type": "up"}, 0, 1, 0, "none"),
+            _blk(
+                "TranFn",
+                1,
+                "G",
+                200,
+                {"numerator": [1.0], "denominator": [1.0, 1.0]},
+                1,
+                1,
+                1,
+                "none",
+            ),
+            _blk("Scope", 2, "y", 350, {"labels": "y"}, 1, 0, 3, "in"),
+        ],
+        [_line(0, "step0", 0, "tranfn1", 0), _line(1, "tranfn1", 0, "scope2", 0)],
+        sim_time=5.0,
+        sim_dt=0.01,
+    )
 
     res = _run_compiled(diagram, tmp_path)
     y = next(iter(res["signals"].values()))
-    t = res["timeline"][:len(y)]
+    t = res["timeline"][: len(y)]
     assert np.allclose(y, 1.0 - np.exp(-t), rtol=1e-3, atol=2e-3)
 
 
@@ -116,24 +172,44 @@ def test_heat_1d_eigenmode_decays_exponentially(qapp, tmp_path):
     alpha, L, N = 0.2, 1.0, 41
     # Homogeneous Dirichlet: feed 0 to q_src (port 0) and both BC ports (1, 2).
     diagram = _diagram(
-        [_blk("Constant", 0, "zero", 50, {"value": 0.0}, 0, 1, 0, "none"),
-         _blk("HeatEquation1D", 1, "heat", 200,
-              {"alpha": alpha, "L": L, "N": N, "init_conds": "sin",
-               "bc_type_left": "Dirichlet", "bc_type_right": "Dirichlet"},
-              3, 2, 1, "none"),
-         _blk("Scope", 2, "Tavg", 400, {"labels": "T_avg"}, 1, 0, 3, "in"),
-         _blk("Scope", 3, "Tfield", 400, {"labels": "T_field"}, 1, 0, 3, "in")],
-        [_line(0, "constant0", 0, "heatequation1d1", 0),
-         _line(1, "constant0", 0, "heatequation1d1", 1),
-         _line(2, "constant0", 0, "heatequation1d1", 2),
-         _line(3, "heatequation1d1", 0, "scope3", 0),
-         _line(4, "heatequation1d1", 1, "scope2", 0)],
-        sim_time=0.5, sim_dt=0.001)
+        [
+            _blk("Constant", 0, "zero", 50, {"value": 0.0}, 0, 1, 0, "none"),
+            _blk(
+                "HeatEquation1D",
+                1,
+                "heat",
+                200,
+                {
+                    "alpha": alpha,
+                    "L": L,
+                    "N": N,
+                    "init_conds": "sin",
+                    "bc_type_left": "Dirichlet",
+                    "bc_type_right": "Dirichlet",
+                },
+                3,
+                2,
+                1,
+                "none",
+            ),
+            _blk("Scope", 2, "Tavg", 400, {"labels": "T_avg"}, 1, 0, 3, "in"),
+            _blk("Scope", 3, "Tfield", 400, {"labels": "T_field"}, 1, 0, 3, "in"),
+        ],
+        [
+            _line(0, "constant0", 0, "heatequation1d1", 0),
+            _line(1, "constant0", 0, "heatequation1d1", 1),
+            _line(2, "constant0", 0, "heatequation1d1", 2),
+            _line(3, "heatequation1d1", 0, "scope3", 0),
+            _line(4, "heatequation1d1", 1, "scope2", 0),
+        ],
+        sim_time=0.5,
+        sim_dt=0.001,
+    )
 
     res = _run_compiled(diagram, tmp_path)
     tavg = res["signals"]["T_avg"]
-    t = res["timeline"][:len(tavg)]
-    tavg = tavg[:len(t)]
+    t = res["timeline"][: len(tavg)]
+    tavg = tavg[: len(t)]
 
     rate = alpha * (np.pi / L) ** 2
     analytic = tavg[0] * np.exp(-rate * t)

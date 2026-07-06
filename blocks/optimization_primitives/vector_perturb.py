@@ -53,16 +53,8 @@ class VectorPerturbBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "index": {
-                "type": "int",
-                "default": 0,
-                "doc": "Which component to perturb (0-indexed)"
-            },
-            "epsilon": {
-                "type": "float",
-                "default": 1e-6,
-                "doc": "Perturbation size"
-            },
+            "index": {"type": "int", "default": 0, "doc": "Which component to perturb (0-indexed)"},
+            "epsilon": {"type": "float", "default": 1e-6, "doc": "Perturbation size"},
         }
 
     @property
@@ -76,17 +68,19 @@ class VectorPerturbBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0])).copy().astype(float)
-            index = int(params.get('index', 0))
-            epsilon = float(params.get('epsilon', 1e-6))
+            index = int(params.get("index", 0))
+            epsilon = float(params.get("epsilon", 1e-6))
 
             # Ensure index is within bounds
             if 0 <= index < len(x):
                 x[index] += epsilon
             else:
-                logger.warning(f"VectorPerturb: index {index} out of bounds for vector of length {len(x)}")
+                logger.warning(
+                    f"VectorPerturb: index {index} out of bounds for vector of length {len(x)}"
+                )
 
-            return {0: x, 'E': False}
+            return {0: x, "E": False}
 
         except Exception as e:
             logger.error(f"VectorPerturb error: {e}")
-            return {0: np.array([0.0]), 'E': True, 'error': str(e)}
+            return {0: np.array([0.0]), "E": True, "error": str(e)}

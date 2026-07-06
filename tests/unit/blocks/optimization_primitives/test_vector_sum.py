@@ -19,18 +19,18 @@ class TestVectorSumBlock:
 
     def test_addition(self):
         """Test vector addition."""
-        params = {'signs': '++'}
+        params = {"signs": "++"}
         x1 = np.array([1.0, 2.0])
         x2 = np.array([3.0, 4.0])
 
         result = self.block.execute(0.0, {0: x1, 1: x2}, params)
 
         np.testing.assert_array_equal(result[0], [4.0, 6.0])
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_subtraction(self):
         """Test vector subtraction (gradient descent update)."""
-        params = {'signs': '+-'}
+        params = {"signs": "+-"}
         x = np.array([10.0, 10.0])
         update = np.array([1.0, 2.0])
 
@@ -40,7 +40,7 @@ class TestVectorSumBlock:
 
     def test_three_inputs(self):
         """Test with three inputs."""
-        params = {'signs': '++-'}
+        params = {"signs": "++-"}
         x1 = np.array([1.0, 2.0])
         x2 = np.array([3.0, 4.0])
         x3 = np.array([0.5, 0.5])
@@ -52,7 +52,7 @@ class TestVectorSumBlock:
 
     def test_negative_first(self):
         """Test starting with negative sign."""
-        params = {'signs': '-+'}
+        params = {"signs": "-+"}
         x1 = np.array([1.0, 2.0])
         x2 = np.array([3.0, 4.0])
 
@@ -63,17 +63,17 @@ class TestVectorSumBlock:
 
     def test_dynamic_inputs(self):
         """Test that inputs are dynamically generated based on signs."""
-        params = {'signs': '+++'}
+        params = {"signs": "+++"}
         inputs = self.block.get_inputs(params)
 
         assert len(inputs) == 3
-        assert inputs[0]['name'] == 'x1'
-        assert inputs[1]['name'] == 'x2'
-        assert inputs[2]['name'] == 'x3'
+        assert inputs[0]["name"] == "x1"
+        assert inputs[1]["name"] == "x2"
+        assert inputs[2]["name"] == "x3"
 
     def test_single_input(self):
         """Test with single input (passthrough)."""
-        params = {'signs': '+'}
+        params = {"signs": "+"}
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -82,7 +82,7 @@ class TestVectorSumBlock:
 
     def test_gradient_descent_step(self):
         """Test typical gradient descent step: x_new = x - alpha*grad."""
-        params = {'signs': '+-'}
+        params = {"signs": "+-"}
         x = np.array([5.0, 5.0])
         alpha_grad = np.array([1.0, 1.0])  # alpha * gradient
 

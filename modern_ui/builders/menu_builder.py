@@ -1,4 +1,3 @@
-
 import os
 import logging
 
@@ -6,9 +5,10 @@ from PyQt5.QtWidgets import QAction, QActionGroup
 
 logger = logging.getLogger(__name__)
 
+
 class MenuBuilder:
     """Builder for MainWindow menus."""
-    
+
     def __init__(self, main_window):
         self.window = main_window
 
@@ -36,7 +36,7 @@ class MenuBuilder:
     def _create_file_menu(self, menubar):
         """Create File menu."""
         file_menu = menubar.addMenu("&File")
-        
+
         # Standard actions
         file_menu.addAction("&New\tCtrl+N", self.window.new_diagram)
         file_menu.addAction("&Open\tCtrl+O", self.window.open_diagram)
@@ -51,7 +51,7 @@ class MenuBuilder:
 
         # Recent Files
         self.window.recent_files_menu = file_menu.addMenu("Recent Files")
-        if hasattr(self.window, '_update_recent_files_menu'):
+        if hasattr(self.window, "_update_recent_files_menu"):
             self.window._update_recent_files_menu()
 
         # Examples
@@ -66,13 +66,12 @@ class MenuBuilder:
     def _populate_examples_menu(self, menu):
         """Populate examples submenu. Filenames shown without extension."""
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        examples_dir = os.path.join(base_dir, 'examples')
+        examples_dir = os.path.join(base_dir, "examples")
 
         if os.path.exists(examples_dir):
             try:
                 files = sorted(
-                    f for f in os.listdir(examples_dir)
-                    if f.endswith(('.json', '.dat', '.diablos'))
+                    f for f in os.listdir(examples_dir) if f.endswith((".json", ".dat", ".diablos"))
                 )
             except OSError as exc:
                 logger.warning("Could not read examples directory %s: %s", examples_dir, exc)
@@ -82,7 +81,7 @@ class MenuBuilder:
                 menu.addAction("No examples found").setEnabled(False)
                 return
             for f in files:
-                display = os.path.splitext(f)[0].replace('_', ' ')
+                display = os.path.splitext(f)[0].replace("_", " ")
                 action = menu.addAction(display)
                 action.triggered.connect(
                     lambda checked, fname=f: self.window.open_example(
@@ -95,33 +94,37 @@ class MenuBuilder:
     def _create_edit_menu(self, menubar):
         """Create Edit menu."""
         edit_menu = menubar.addMenu("&Edit")
-        if hasattr(self.window, 'undo_action'):
+        if hasattr(self.window, "undo_action"):
             edit_menu.addAction("&Undo\tCtrl+Z", self.window.undo_action)
-        if hasattr(self.window, 'redo_action'):
+        if hasattr(self.window, "redo_action"):
             edit_menu.addAction("&Redo\tCtrl+Y", self.window.redo_action)
-            
+
         edit_menu.addSeparator()
-        
+
         # Check if select_all is implemented, otherwise define it or skip
-        if hasattr(self.window, 'select_all'):
+        if hasattr(self.window, "select_all"):
             edit_menu.addAction("Select &All\tCtrl+A", self.window.select_all)
-        elif hasattr(self.window, 'canvas') and hasattr(self.window.canvas, '_select_all_blocks'):
+        elif hasattr(self.window, "canvas") and hasattr(self.window.canvas, "_select_all_blocks"):
             # Fallback if method missing in window
             edit_menu.addAction("Select &All\tCtrl+A", self.window.canvas._select_all_blocks)
-            
+
         edit_menu.addSeparator()
 
         # Create Subsystem
-        if hasattr(self.window, 'create_subsystem'):
-             action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.create_subsystem)
-             action.setShortcut("Ctrl+G")
-        elif hasattr(self.window, 'canvas') and hasattr(self.window.canvas, '_create_subsystem_trigger'):
-             action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.canvas._create_subsystem_trigger)
-             action.setShortcut("Ctrl+G")
+        if hasattr(self.window, "create_subsystem"):
+            action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.create_subsystem)
+            action.setShortcut("Ctrl+G")
+        elif hasattr(self.window, "canvas") and hasattr(
+            self.window.canvas, "_create_subsystem_trigger"
+        ):
+            action = edit_menu.addAction(
+                "Create &Subsystem\tCtrl+G", self.window.canvas._create_subsystem_trigger
+            )
+            action.setShortcut("Ctrl+G")
 
         edit_menu.addSeparator()
-        
-        if hasattr(self.window, 'show_command_palette'):
+
+        if hasattr(self.window, "show_command_palette"):
             edit_menu.addAction("Command &Palette\tCtrl+P", self.window.show_command_palette)
 
     def _create_simulation_menu(self, menubar):
@@ -131,46 +134,50 @@ class MenuBuilder:
         sim_menu.addAction("&Pause\tF6", self.window.pause_simulation)
         sim_menu.addAction("&Stop\tF7", self.window.stop_simulation)
         sim_menu.addSeparator()
-        
+
         # Fast Solver Toggle
         fast_solver = sim_menu.addAction("Enable Fast Solver (Experimental)")
         fast_solver.setCheckable(True)
         # Default to True, but check DSim state if possible (MainWindow usually holds this state)
         # We'll assume MainWindow has 'use_fast_solver' attribute initialized to True
-        is_fast = getattr(self.window, 'use_fast_solver', True)
+        is_fast = getattr(self.window, "use_fast_solver", True)
         fast_solver.setChecked(is_fast)
         fast_solver.triggered.connect(self.window.toggle_fast_solver)
         self.window.fast_solver_action = fast_solver
-        
+
         sim_menu.addSeparator()
         sim_menu.addAction("Show &Plots", self.window.show_plots)
 
     def _create_view_menu(self, menubar):
         """Create View menu."""
         view_menu = menubar.addMenu("&View")
-        
+
         # Zoom controls
         # Delegate to window methods if they exist, or lambdas
-        if hasattr(self.window, 'zoom_in'):
-             view_menu.addAction("&Zoom In\tCtrl++", self.window.zoom_in)
+        if hasattr(self.window, "zoom_in"):
+            view_menu.addAction("&Zoom In\tCtrl++", self.window.zoom_in)
         else:
-             view_menu.addAction("&Zoom In\tCtrl++", lambda: self.window.set_zoom(self.window.zoom_level * 1.2))
+            view_menu.addAction(
+                "&Zoom In\tCtrl++", lambda: self.window.set_zoom(self.window.zoom_level * 1.2)
+            )
 
-        if hasattr(self.window, 'zoom_out'):
-             view_menu.addAction("Zoom &Out\tCtrl+-", self.window.zoom_out)
+        if hasattr(self.window, "zoom_out"):
+            view_menu.addAction("Zoom &Out\tCtrl+-", self.window.zoom_out)
         else:
-             view_menu.addAction("Zoom &Out\tCtrl+-", lambda: self.window.set_zoom(self.window.zoom_level / 1.2))
-             
-        if hasattr(self.window, 'fit_to_window'):
+            view_menu.addAction(
+                "Zoom &Out\tCtrl+-", lambda: self.window.set_zoom(self.window.zoom_level / 1.2)
+            )
+
+        if hasattr(self.window, "fit_to_window"):
             view_menu.addAction("&Fit to Window\tCtrl+0", self.window.fit_to_window)
-        
+
         view_menu.addSeparator()
 
         # Grid toggle
-        if hasattr(self.window, 'toggle_grid'):
+        if hasattr(self.window, "toggle_grid"):
             action = view_menu.addAction("Show &Grid\tCtrl+Shift+G", self.window.toggle_grid)
             action.setCheckable(True)
-            action.setChecked(getattr(self.window, 'show_grid', True)) # default True
+            action.setChecked(getattr(self.window, "show_grid", True))  # default True
             action.setShortcut("Ctrl+Shift+G")
             self.window.grid_toggle_action = action
 
@@ -181,10 +188,12 @@ class MenuBuilder:
         # V1 — port-value chips (default ON)
         chips_action = QAction("Output value chips", self.window, checkable=True)
         chips_action.setChecked(True)
+
         def _toggle_chips(checked):
-            if hasattr(self.window, 'canvas'):
+            if hasattr(self.window, "canvas"):
                 self.window.canvas.show_live_chips = bool(checked)
                 self.window.canvas.update()
+
         chips_action.triggered.connect(_toggle_chips)
         live_menu.addAction(chips_action)
         self.window.live_chips_action = chips_action
@@ -194,14 +203,13 @@ class MenuBuilder:
 
         # Block palette submenu
         from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
+
         palette_menu = view_menu.addMenu("Block &Palette")
         palette_group = QActionGroup(self.window)
         palette_group.setExclusive(True)
         for key, display in PALETTE_DISPLAY_NAMES.items():
             action = QAction(display, self.window, checkable=True)
-            action.triggered.connect(
-                lambda checked, k=key: self.window._set_palette(k)
-            )
+            action.triggered.connect(lambda checked, k=key: self.window._set_palette(k))
             palette_group.addAction(action)
             palette_menu.addAction(action)
             if key == theme_manager.current_palette:
@@ -216,41 +224,47 @@ class MenuBuilder:
         self.window.solid_fills_action = solid_fills_action
 
         view_menu.addSeparator()
-        
+
         # Variable Editor toggle
-        if hasattr(self.window, 'toggle_variable_editor'):
-             action = view_menu.addAction("Show/Hide Variable &Editor\tCtrl+Shift+V", self.window.toggle_variable_editor)
-             action.setCheckable(True)
-             action.setChecked(False)
-             action.setShortcut("Ctrl+Shift+V")
-             self.window.variable_editor_action = action
-             
+        if hasattr(self.window, "toggle_variable_editor"):
+            action = view_menu.addAction(
+                "Show/Hide Variable &Editor\tCtrl+Shift+V", self.window.toggle_variable_editor
+            )
+            action.setCheckable(True)
+            action.setChecked(False)
+            action.setShortcut("Ctrl+Shift+V")
+            self.window.variable_editor_action = action
+
         # Workspace Editor toggle
-        if hasattr(self.window, 'toggle_workspace_editor'):
-             action = view_menu.addAction("Workspace &Variables\tCtrl+Shift+W", self.window.toggle_workspace_editor)
-             action.setCheckable(True)
-             action.setChecked(False)
-             action.setShortcut("Ctrl+Shift+W")
-             self.window.workspace_editor_action = action
+        if hasattr(self.window, "toggle_workspace_editor"):
+            action = view_menu.addAction(
+                "Workspace &Variables\tCtrl+Shift+W", self.window.toggle_workspace_editor
+            )
+            action.setCheckable(True)
+            action.setChecked(False)
+            action.setShortcut("Ctrl+Shift+W")
+            self.window.workspace_editor_action = action
 
         # Minimap toggle
-        if hasattr(self.window, 'toggle_minimap'):
-             action = view_menu.addAction("&Minimap\tCtrl+Shift+M", self.window.toggle_minimap)
-             action.setCheckable(True)
-             action.setChecked(False)
-             action.setShortcut("Ctrl+Shift+M")
-             self.window.minimap_action = action
+        if hasattr(self.window, "toggle_minimap"):
+            action = view_menu.addAction("&Minimap\tCtrl+Shift+M", self.window.toggle_minimap)
+            action.setCheckable(True)
+            action.setChecked(False)
+            action.setShortcut("Ctrl+Shift+M")
+            self.window.minimap_action = action
 
         # Parameter Tuning Panel toggle
-        if hasattr(self.window, 'toggle_tuning_panel'):
-             action = view_menu.addAction("Parameter &Tuning Panel\tCtrl+Shift+T", self.window.toggle_tuning_panel)
-             action.setCheckable(True)
-             action.setChecked(False)
-             action.setShortcut("Ctrl+Shift+T")
-             self.window.tuning_panel_action = action
+        if hasattr(self.window, "toggle_tuning_panel"):
+            action = view_menu.addAction(
+                "Parameter &Tuning Panel\tCtrl+Shift+T", self.window.toggle_tuning_panel
+            )
+            action.setCheckable(True)
+            action.setChecked(False)
+            action.setShortcut("Ctrl+Shift+T")
+            self.window.tuning_panel_action = action
 
         view_menu.addSeparator()
-        
+
         # UI Scale
         scaling_menu = view_menu.addMenu("UI Scale")
         scaling_menu.addAction("100%").triggered.connect(lambda: self.window._set_scaling(1.0))
@@ -258,19 +272,19 @@ class MenuBuilder:
         scaling_menu.addAction("150%").triggered.connect(lambda: self.window._set_scaling(1.5))
 
         view_menu.addSeparator()
-        
+
         # Routing Menu
         routing_menu = view_menu.addMenu("Default Connection Routing")
-        
+
         bezier = routing_menu.addAction("Bezier (Curved)")
         bezier.setCheckable(True)
-        bezier.setChecked(True) # Assuming default
+        bezier.setChecked(True)  # Assuming default
         bezier.triggered.connect(lambda: self.window._set_default_routing_mode("bezier"))
-        
+
         ortho = routing_menu.addAction("Orthogonal (Manhattan)")
         ortho.setCheckable(True)
         ortho.triggered.connect(lambda: self.window._set_default_routing_mode("orthogonal"))
-        
+
         # Store actions in window for exclusive checking logic if needed
         self.window.bezier_routing_action = bezier
         self.window.orthogonal_routing_action = ortho
@@ -282,7 +296,7 @@ class MenuBuilder:
         help_menu.addAction("&Keyboard Shortcuts\tF1", self._show_shortcuts)
 
         # Reuse the existing Command Palette action when the window exposes it.
-        if hasattr(self.window, 'show_command_palette'):
+        if hasattr(self.window, "show_command_palette"):
             help_menu.addAction("Command &Palette", self.window.show_command_palette)
 
         help_menu.addAction("Open &Examples", self._open_examples_folder)
@@ -295,14 +309,14 @@ class MenuBuilder:
         from PyQt5.QtCore import Qt
         from PyQt5.QtWidgets import QShortcut
         from PyQt5.QtGui import QKeySequence
-        self.window._shortcuts_help_shortcut = QShortcut(
-            QKeySequence(Qt.Key_F1), self.window
-        )
+
+        self.window._shortcuts_help_shortcut = QShortcut(QKeySequence(Qt.Key_F1), self.window)
         self.window._shortcuts_help_shortcut.activated.connect(self._show_shortcuts)
 
     def _show_shortcuts(self):
         """Open the read-only keyboard-shortcuts reference dialog."""
         from modern_ui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
+
         dialog = KeyboardShortcutsDialog(self.window)
         dialog.exec_()
 
@@ -326,15 +340,19 @@ class MenuBuilder:
 
     def _open_examples_folder(self):
         """Open the examples folder in the OS file browser."""
-        self._open_resource_in_os('examples', is_dir=True)
+        self._open_resource_in_os("examples", is_dir=True)
 
     def _open_user_manual(self):
         """Open docs/USER_MANUAL.md with the OS default handler."""
-        self._open_resource_in_os(os.path.join('docs', 'USER_MANUAL.md'), is_dir=False)
+        self._open_resource_in_os(os.path.join("docs", "USER_MANUAL.md"), is_dir=False)
 
     def _show_about(self):
         from PyQt5.QtWidgets import QMessageBox
-        QMessageBox.about(self.window, "About Modern DiaBloS",
-                          "Modern DiaBloS - Diagram Block System\n\n"
-                          "Phase 2 Refactoring\n"
-                          "A modern control system simulation environment.")
+
+        QMessageBox.about(
+            self.window,
+            "About Modern DiaBloS",
+            "Modern DiaBloS - Diagram Block System\n\n"
+            "Phase 2 Refactoring\n"
+            "A modern control system simulation environment.",
+        )

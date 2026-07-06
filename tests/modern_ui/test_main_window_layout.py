@@ -34,6 +34,7 @@ from modern_ui.platform_config import get_platform_config
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -43,13 +44,23 @@ def window(qapp):
 # attribute surface
 # ---------------------------------------------------------------------------
 
+
 class TestLayoutAttributes:
     def test_panels_and_splitters_exist(self, window):
-        for attr in ("left_panel", "canvas_area", "property_panel",
-                     "main_splitter", "center_splitter",
-                     "_center_splitter_for_init", "block_palette", "canvas",
-                     "breadcrumb_bar", "error_panel", "property_editor",
-                     "_prop_scroll_viewport"):
+        for attr in (
+            "left_panel",
+            "canvas_area",
+            "property_panel",
+            "main_splitter",
+            "center_splitter",
+            "_center_splitter_for_init",
+            "block_palette",
+            "canvas",
+            "breadcrumb_bar",
+            "error_panel",
+            "property_editor",
+            "_prop_scroll_viewport",
+        ):
             assert hasattr(window, attr), f"missing layout attribute: {attr}"
 
     def test_central_widget_set(self, window):
@@ -65,6 +76,7 @@ class TestLayoutAttributes:
 # ---------------------------------------------------------------------------
 # splitter hierarchy
 # ---------------------------------------------------------------------------
+
 
 class TestSplitterHierarchy:
     def test_main_splitter_holds_left_and_center(self, window):
@@ -95,6 +107,7 @@ class TestSplitterHierarchy:
 # _initialize_splitter_sizes
 # ---------------------------------------------------------------------------
 
+
 class TestInitializeSplitterSizes:
     """Characterize the sizing *computation* by capturing the requested
     setSizes() values. (The post-layout sizes() are mediated by Qt's layout
@@ -103,10 +116,12 @@ class TestInitializeSplitterSizes:
 
     def test_requested_sizes_math(self, window, monkeypatch):
         captured = {}
-        monkeypatch.setattr(window.main_splitter, "setSizes",
-                            lambda s: captured.__setitem__("main", list(s)))
-        monkeypatch.setattr(window.center_splitter, "setSizes",
-                            lambda s: captured.__setitem__("center", list(s)))
+        monkeypatch.setattr(
+            window.main_splitter, "setSizes", lambda s: captured.__setitem__("main", list(s))
+        )
+        monkeypatch.setattr(
+            window.center_splitter, "setSizes", lambda s: captured.__setitem__("center", list(s))
+        )
 
         window._initialize_splitter_sizes()
         config = get_platform_config()
@@ -132,11 +147,13 @@ class TestInitializeSplitterSizes:
 # signal wiring done in _create_canvas_area
 # ---------------------------------------------------------------------------
 
+
 class TestCanvasSignalWiring:
     def test_command_palette_requested_opens_palette(self, window, monkeypatch):
         called = {}
-        monkeypatch.setattr(window.command_palette, "show_palette",
-                            lambda: called.setdefault("shown", True))
+        monkeypatch.setattr(
+            window.command_palette, "show_palette", lambda: called.setdefault("shown", True)
+        )
         # Signal was connected to window.show_command_palette in _create_canvas_area.
         window.canvas.command_palette_requested.emit()
         assert called.get("shown") is True

@@ -17,7 +17,12 @@ replaces the plot and ``plot`` / ``combo`` / ``metric_combo`` are ``None``.
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QStackedWidget,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QStackedWidget,
 )
 from PyQt5.QtCore import Qt, QRectF
 
@@ -45,9 +50,7 @@ class SweepResultWindow(QWidget):
         signals = self.result.get("signals") or {}
         self._signal_names = list(signals.keys())
 
-        header = QLabel(
-            f"Parameter Sweep ({self.mode.upper()}): "
-            f"{n_ok}/{n_points} successful runs")
+        header = QLabel(f"Parameter Sweep ({self.mode.upper()}): {n_ok}/{n_points} successful runs")
         header.setStyleSheet("font-size: 14px; font-weight: bold; padding: 6px;")
         layout.addWidget(header)
         self.header_label = header
@@ -204,9 +207,13 @@ class SweepResultWindow(QWidget):
         if not np.any(mask):
             return
         self.metric_plot.plot(
-            x[mask], y[mask],
+            x[mask],
+            y[mask],
             pen=pg.mkPen((30, 90, 200), width=2),
-            symbol="o", symbolSize=6, symbolBrush=(200, 30, 30))
+            symbol="o",
+            symbolSize=6,
+            symbolBrush=(200, 30, 30),
+        )
 
     # ------------------------------------------------------------------- 2-D
     def _build_2d(self, layout):
@@ -214,7 +221,8 @@ class SweepResultWindow(QWidget):
 
         self.plot = self._make_plot(
             self.result.get("axis_x", {}).get("param", "x"),
-            self.result.get("axis_y", {}).get("param", "y"))
+            self.result.get("axis_y", {}).get("param", "y"),
+        )
         self.img = pg.ImageItem()
         self.plot.addItem(self.img)
         try:
@@ -246,9 +254,7 @@ class SweepResultWindow(QWidget):
         if xv.size and yv.size:
             xmin, xmax = float(xv.min()), float(xv.max())
             ymin, ymax = float(yv.min()), float(yv.max())
-            self.img.setRect(QRectF(
-                xmin, ymin,
-                (xmax - xmin) or 1.0, (ymax - ymin) or 1.0))
+            self.img.setRect(QRectF(xmin, ymin, (xmax - xmin) or 1.0, (ymax - ymin) or 1.0))
 
         finite = Z[np.isfinite(Z)]
         if finite.size:

@@ -24,6 +24,7 @@ import pytest
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -33,7 +34,8 @@ class TestReportSolverDiagnostics:
     def test_finished_appends_summary(self, window, monkeypatch):
         summary = "method=RK45 backend=scipy states=2 points=101 nfev=57 cache=miss"
         monkeypatch.setattr(
-            type(window.dsim), "last_solver_diagnostics_summary",
+            type(window.dsim),
+            "last_solver_diagnostics_summary",
             property(lambda self: summary),
         )
         window._on_simulation_status_changed("Simulation finished [Fast (Compiled)]")
@@ -44,7 +46,8 @@ class TestReportSolverDiagnostics:
     def test_finished_without_diagnostics_keeps_plain_message(self, window, monkeypatch):
         # Interpreter path records no diagnostics -> empty summary.
         monkeypatch.setattr(
-            type(window.dsim), "last_solver_diagnostics_summary",
+            type(window.dsim),
+            "last_solver_diagnostics_summary",
             property(lambda self: ""),
         )
         status = "Simulation finished [Standard (Interpreter)]"
@@ -54,8 +57,10 @@ class TestReportSolverDiagnostics:
     def test_diagnostics_read_failure_is_swallowed(self, window, monkeypatch):
         def _boom(self):
             raise RuntimeError("engine gone")
+
         monkeypatch.setattr(
-            type(window.dsim), "last_solver_diagnostics_summary",
+            type(window.dsim),
+            "last_solver_diagnostics_summary",
             property(_boom),
         )
         status = "Simulation finished [Fast (Compiled)]"
@@ -69,8 +74,10 @@ class TestReportSolverDiagnostics:
         def _count(self):
             called["n"] += 1
             return "should-not-appear"
+
         monkeypatch.setattr(
-            type(window.dsim), "last_solver_diagnostics_summary",
+            type(window.dsim),
+            "last_solver_diagnostics_summary",
             property(_count),
         )
         window._on_simulation_status_changed("Simulation stopped")

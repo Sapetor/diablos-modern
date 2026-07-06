@@ -66,10 +66,7 @@ class MinimapWidget(QWidget):
         return (
             self.width(),
             self.height(),
-            tuple(
-                (b.left, b.top, b.width, b.height)
-                for b in self.dsim.blocks_list
-            ),
+            tuple((b.left, b.top, b.width, b.height) for b in self.dsim.blocks_list),
         )
 
     def _ensure_bounds_cache(self):
@@ -78,9 +75,7 @@ class MinimapWidget(QWidget):
         fingerprint = self._compute_geometry_fingerprint()
         if fingerprint != self._geometry_fingerprint:
             self._diagram_bounds = self._calculate_diagram_bounds()
-            self._scale, self._offset = self._calculate_scale_and_offset(
-                self._diagram_bounds
-            )
+            self._scale, self._offset = self._calculate_scale_and_offset(self._diagram_bounds)
             self._geometry_fingerprint = fingerprint
 
     def _calculate_diagram_bounds(self):
@@ -100,7 +95,7 @@ class MinimapWidget(QWidget):
             min_x - padding,
             min_y - padding,
             (max_x - min_x) + 2 * padding,
-            (max_y - min_y) + 2 * padding
+            (max_y - min_y) + 2 * padding,
         )
 
     def _calculate_scale_and_offset(self, diagram_bounds):
@@ -127,11 +122,11 @@ class MinimapWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Background
-        bg_color = theme_manager.get_color('surface_secondary')
+        bg_color = theme_manager.get_color("surface_secondary")
         painter.fillRect(self.rect(), bg_color)
 
         # Border
-        border_color = theme_manager.get_color('border_primary')
+        border_color = theme_manager.get_color("border_primary")
         painter.setPen(QPen(border_color, 1))
         painter.drawRect(self.rect().adjusted(0, 0, -1, -1))
 
@@ -162,26 +157,30 @@ class MinimapWidget(QWidget):
         for block in self.dsim.blocks_list:
             # Block fill color
             if block.selected:
-                fill_color = theme_manager.get_color('accent_primary')
+                fill_color = theme_manager.get_color("accent_primary")
             else:
-                fill_color = QColor(block.b_color) if hasattr(block, 'b_color') else theme_manager.get_color('block_default')
+                fill_color = (
+                    QColor(block.b_color)
+                    if hasattr(block, "b_color")
+                    else theme_manager.get_color("block_default")
+                )
 
             # Draw block rectangle
             painter.setBrush(QBrush(fill_color))
-            painter.setPen(QPen(theme_manager.get_color('border_primary'), 1 / self._scale))
+            painter.setPen(QPen(theme_manager.get_color("border_primary"), 1 / self._scale))
             painter.drawRect(block.left, block.top, block.width, block.height)
 
     def _draw_connections(self, painter):
         """Draw simplified connection lines."""
-        line_color = theme_manager.get_color('connection_default')
+        line_color = theme_manager.get_color("connection_default")
         painter.setPen(QPen(line_color, 1 / self._scale))
         painter.setBrush(Qt.NoBrush)
 
         for line in self.dsim.line_list:
-            if getattr(line, 'hidden', False):
+            if getattr(line, "hidden", False):
                 continue
 
-            if hasattr(line, 'points') and len(line.points) >= 2:
+            if hasattr(line, "points") and len(line.points) >= 2:
                 # Draw simplified line (just start to end)
                 start = line.points[0]
                 end = line.points[-1]
@@ -216,11 +215,11 @@ class MinimapWidget(QWidget):
         mini_height = viewport_height * self._scale
 
         # Draw viewport rectangle
-        viewport_color = theme_manager.get_color('accent_primary')
+        viewport_color = theme_manager.get_color("accent_primary")
         viewport_color.setAlpha(100)
 
         painter.setBrush(QBrush(viewport_color))
-        painter.setPen(QPen(theme_manager.get_color('accent_primary'), 2))
+        painter.setPen(QPen(theme_manager.get_color("accent_primary"), 2))
         painter.drawRect(QRectF(mini_left, mini_top, mini_width, mini_height))
 
     def mousePressEvent(self, event):

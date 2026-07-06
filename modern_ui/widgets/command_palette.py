@@ -18,8 +18,16 @@ from typing import Any, Dict, List
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
 from PyQt5.QtGui import QFont, QKeyEvent
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QVBoxLayout, QHBoxLayout, QLineEdit, QListWidget,
-    QListWidgetItem, QLabel, QWidget, QFrame
+    QApplication,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QLabel,
+    QWidget,
+    QFrame,
 )
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
@@ -35,14 +43,14 @@ BADGE_W = 50
 
 # Map command 'type' -> short category badge text
 TYPE_BADGE = {
-    'block':   'BLOCK',
-    'action':  'ACTION',
-    'sim':     'SIM',
-    'view':    'VIEW',
-    'file':    'FILE',
-    'recent':  'FILE',
-    'setting': 'SET',
-    'help':    'HELP',
+    "block": "BLOCK",
+    "action": "ACTION",
+    "sim": "SIM",
+    "view": "VIEW",
+    "file": "FILE",
+    "recent": "FILE",
+    "setting": "SET",
+    "help": "HELP",
 }
 
 
@@ -87,23 +95,23 @@ class _PaletteRow(QWidget):
         self.setObjectName("PaletteRow")
         self._cmd = cmd
 
-        self._text = theme_manager.get_color('text_primary').name()
-        self._text_dim = theme_manager.get_color('text_secondary').name()
-        self._border = theme_manager.get_color('border_primary').name()
+        self._text = theme_manager.get_color("text_primary").name()
+        self._text_dim = theme_manager.get_color("text_secondary").name()
+        self._border = theme_manager.get_color("border_primary").name()
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(12, 6, 12, 6)
         lay.setSpacing(12)
 
         # Icon column — simple glyph or category dot
-        icon_lbl = QLabel(self._glyph_for_type(cmd.get('type', 'action')))
+        icon_lbl = QLabel(self._glyph_for_type(cmd.get("type", "action")))
         icon_lbl.setFixedWidth(ICON_COL_W)
         icon_lbl.setAlignment(Qt.AlignCenter)
         icon_lbl.setStyleSheet(f"color: {self._text_dim}; font-size: 13pt;")
         lay.addWidget(icon_lbl)
 
         # Label
-        label = QLabel(cmd.get('name', ''))
+        label = QLabel(cmd.get("name", ""))
         label.setStyleSheet(f"color: {self._text};")
         lf = label.font()
         lf.setPointSize(11)
@@ -111,7 +119,7 @@ class _PaletteRow(QWidget):
         lay.addWidget(label, 1)
 
         # Category badge
-        badge_text = TYPE_BADGE.get(cmd.get('type', ''), '')
+        badge_text = TYPE_BADGE.get(cmd.get("type", ""), "")
         if badge_text:
             badge = QLabel(badge_text)
             badge.setFont(_mono(8))
@@ -125,7 +133,7 @@ class _PaletteRow(QWidget):
             lay.addWidget(badge)
 
         # Shortcut hint (optional)
-        kbd = cmd.get('shortcut') or cmd.get('data', {}).get('shortcut')
+        kbd = cmd.get("shortcut") or cmd.get("data", {}).get("shortcut")
         if kbd:
             kbd_lbl = QLabel(kbd)
             kbd_lbl.setFont(_mono(8))
@@ -141,15 +149,15 @@ class _PaletteRow(QWidget):
     def _glyph_for_type(self, t: str) -> str:
         # ASCII-only glyphs to stay font-independent
         return {
-            'block':   '+',
-            'action':  '>',
-            'sim':     '▶',
-            'view':    '☰',
-            'file':    '◰',
-            'recent':  '◷',
-            'setting': '⚙',
-            'help':    '?',
-        }.get(t, '•')
+            "block": "+",
+            "action": ">",
+            "sim": "▶",
+            "view": "☰",
+            "file": "◰",
+            "recent": "◷",
+            "setting": "⚙",
+            "help": "?",
+        }.get(t, "•")
 
 
 class CommandPalette(QDialog):
@@ -185,7 +193,7 @@ class CommandPalette(QDialog):
         self._card.setObjectName("CmdkCard")
         # Floating overlay frame — top-level elevation from the shared scale.
         # The card holds no other QGraphicsEffect, so the shadow is safe here.
-        self._card.setGraphicsEffect(make_shadow('e3'))
+        self._card.setGraphicsEffect(make_shadow("e3"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
@@ -232,7 +240,9 @@ class CommandPalette(QDialog):
         v.addWidget(head)
 
         # Divider
-        div1 = QFrame(); div1.setFrameShape(QFrame.HLine); div1.setObjectName("CmdkDivider")
+        div1 = QFrame()
+        div1.setFrameShape(QFrame.HLine)
+        div1.setObjectName("CmdkDivider")
         v.addWidget(div1)
 
         # Results list (custom rows)
@@ -247,7 +257,9 @@ class CommandPalette(QDialog):
         v.addWidget(self.list)
 
         # Divider 2
-        div2 = QFrame(); div2.setFrameShape(QFrame.HLine); div2.setObjectName("CmdkDivider")
+        div2 = QFrame()
+        div2.setFrameShape(QFrame.HLine)
+        div2.setObjectName("CmdkDivider")
         v.addWidget(div2)
 
         # Footer
@@ -264,11 +276,11 @@ class CommandPalette(QDialog):
         v.addWidget(foot)
 
     def _apply_theme(self):
-        bg = theme_manager.get_color('surface_elevated')
-        border = theme_manager.get_color('border_primary').name()
-        text = theme_manager.get_color('text_primary').name()
-        text_dim = theme_manager.get_color('text_secondary').name()
-        accent = theme_manager.get_color('accent_primary').name()
+        bg = theme_manager.get_color("surface_elevated")
+        border = theme_manager.get_color("border_primary").name()
+        text = theme_manager.get_color("text_primary").name()
+        text_dim = theme_manager.get_color("text_secondary").name()
+        accent = theme_manager.get_color("accent_primary").name()
 
         bg_rgba = f"rgba({bg.red()}, {bg.green()}, {bg.blue()}, 245)"
 
@@ -303,10 +315,10 @@ class CommandPalette(QDialog):
             }}
         """)
 
-        if hasattr(self, '_foot_text'):
+        if hasattr(self, "_foot_text"):
             self._foot_text.setStyleSheet(f"color: {text_dim};")
             self._foot_count.setStyleSheet(f"color: {text_dim};")
-        if hasattr(self, 'search'):
+        if hasattr(self, "search"):
             self.search.setStyleSheet(
                 f"QLineEdit {{ border: 0; background: transparent; color: {text}; }}"
             )
@@ -315,7 +327,7 @@ class CommandPalette(QDialog):
 
     def set_commands(self, commands: List[Dict[str, Any]]):
         # Drop placeholder/example commands without a callback to avoid no-op rows
-        self._commands = [c for c in commands if c.get('callback')]
+        self._commands = [c for c in commands if c.get("callback")]
         self._refresh()
 
     def show_palette(self):
@@ -335,13 +347,13 @@ class CommandPalette(QDialog):
 
     def _score(self, cmd: Dict[str, Any], query: str) -> int:
         """Simple fuzzy-ish score: substring + alias hits, recents bonus."""
-        q = (query or '').strip().lower()
+        q = (query or "").strip().lower()
         if not q:
             base = 100
         else:
-            name = (cmd.get('name', '') or '').lower()
-            desc = (cmd.get('description', '') or '').lower()
-            aliases = ' '.join(cmd.get('aliases', [])).lower()
+            name = (cmd.get("name", "") or "").lower()
+            desc = (cmd.get("description", "") or "").lower()
+            aliases = " ".join(cmd.get("aliases", [])).lower()
             hay = f"{name} {desc} {aliases}"
             if q in name:
                 base = 80 - name.find(q)  # earlier match scores higher
@@ -358,14 +370,14 @@ class CommandPalette(QDialog):
                 base = 10
         # Recents bonus
         try:
-            r_idx = self._recents.index(cmd.get('name', ''))
+            r_idx = self._recents.index(cmd.get("name", ""))
             base += max(0, 20 - r_idx)
         except ValueError:
             logger.debug("Command not in recents list; no recents bonus applied", exc_info=True)
         return base
 
     def _refresh(self):
-        q = self.search.text() if hasattr(self, 'search') else ''
+        q = self.search.text() if hasattr(self, "search") else ""
         scored = []
         for cmd in self._commands:
             s = self._score(cmd, q)
@@ -400,25 +412,25 @@ class CommandPalette(QDialog):
 
     def _execute(self, cmd: Dict[str, Any]):
         # Bump in recents
-        name = cmd.get('name', '')
+        name = cmd.get("name", "")
         if name:
             self._recents = [name] + [n for n in self._recents if n != name]
             _save_recents(self._recents)
 
-        cb = cmd.get('callback')
+        cb = cmd.get("callback")
         if callable(cb):
             try:
                 cb()
             except Exception as e:
                 logger.exception("Command palette callback failed: %s", e)
-        self.command_selected.emit(cmd.get('type', 'action'), cmd.get('data', {}))
+        self.command_selected.emit(cmd.get("type", "action"), cmd.get("data", {}))
         self.close()
 
     # -- Positioning / events --------------------------------------------
 
     def _position_top(self):
         parent = self.parent()
-        if parent and hasattr(parent, 'geometry'):
+        if parent and hasattr(parent, "geometry"):
             geo = parent.frameGeometry()
             x = geo.x() + (geo.width() - self.width()) // 2
             y = geo.y() + max(80, geo.height() // 8)
@@ -426,6 +438,7 @@ class CommandPalette(QDialog):
             return
         # Fallback: center on cursor's screen
         from PyQt5.QtGui import QCursor
+
         screen = QApplication.desktop().availableGeometry(QCursor.pos())
         x = screen.x() + (screen.width() - self.width()) // 2
         y = screen.y() + max(80, screen.height() // 8)
@@ -448,13 +461,17 @@ class CommandPalette(QDialog):
         if obj is self.search and event.type() == event.KeyPress:
             key = event.key()
             if key == Qt.Key_Down:
-                self._move_selection(+1); return True
+                self._move_selection(+1)
+                return True
             if key == Qt.Key_Up:
-                self._move_selection(-1); return True
+                self._move_selection(-1)
+                return True
             if key in (Qt.Key_Return, Qt.Key_Enter):
-                self._run_selected(); return True
+                self._run_selected()
+                return True
             if key == Qt.Key_Escape:
-                self.close(); return True
+                self.close()
+                return True
         return super().eventFilter(obj, event)
 
     def _move_selection(self, delta: int):

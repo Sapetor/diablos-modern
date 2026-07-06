@@ -21,6 +21,7 @@ def palette():
     try:
         from lib.lib import DSim
         from modern_ui.widgets.modern_palette import ModernBlockPalette
+
         dsim = DSim()
         init = getattr(dsim, "menu_blocks_init", None)
         if callable(init):
@@ -36,6 +37,7 @@ def palette():
 
 def _rows(pal):
     from modern_ui.widgets.modern_palette import CompactBlockRow
+
     return pal.findChildren(CompactBlockRow)
 
 
@@ -48,6 +50,7 @@ class TestCentralizedThemeRestyle:
 
     def test_toggle_theme_does_not_raise(self, palette):
         from modern_ui.themes.theme_manager import theme_manager
+
         start = theme_manager.current_theme
         try:
             theme_manager.toggle_theme()
@@ -61,9 +64,7 @@ class TestCentralizedThemeRestyle:
         called = []
         row = rows[0]
         orig = row._on_theme_changed
-        monkeypatch.setattr(
-            row, "_on_theme_changed", lambda *a: (called.append(True), orig())[1]
-        )
+        monkeypatch.setattr(row, "_on_theme_changed", lambda *a: (called.append(True), orig())[1])
         palette._on_theme_changed()
         assert called, "palette fan-out did not reach the row"
 
@@ -72,6 +73,7 @@ class TestCentralizedThemeRestyle:
         # more; the central handler drives them. We assert the marker methods
         # the handler relies on still exist on freshly built children.
         from modern_ui.widgets.modern_palette import CompactBlockRow, _CategorySection
+
         rows = palette.findChildren(CompactBlockRow)
         secs = palette.findChildren(_CategorySection)
         assert rows and secs

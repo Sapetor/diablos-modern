@@ -12,40 +12,36 @@ DEFAULT_BLOCK_SIZE = (100, 80)
 # Format: 'BlockFunctionName': (width, height)
 BLOCK_SIZES = {
     # Math operations - can be smaller
-    'Sum': (60, 50),
-    'Product': (60, 50),
-    'Gain': (70, 50),
-    'Abs': (60, 50),
-    'Sqrt': (60, 50),
-
+    "Sum": (60, 50),
+    "Product": (60, 50),
+    "Gain": (70, 50),
+    "Abs": (60, 50),
+    "Sqrt": (60, 50),
     # Sources - medium size
-    'Step': (80, 60),
-    'Ramp': (80, 60),
-    'Sine': (80, 60),
-    'Constant': (70, 50),
-
+    "Step": (80, 60),
+    "Ramp": (80, 60),
+    "Sine": (80, 60),
+    "Constant": (70, 50),
     # Control blocks - standard size
-    'Integrator': (90, 70),
-    'Derivative': (90, 70),
-    'PID': (100, 80),
-    'TranFn': (110, 80),
-    'DiscreteTranFn': (110, 80),
-    'StateSpace': (120, 90),
-    'DiscreteStateSpace': (120, 90),
-    'ZeroOrderHold': (90, 70),
-
+    "Integrator": (90, 70),
+    "Derivative": (90, 70),
+    "PID": (100, 80),
+    "TranFn": (110, 80),
+    "DiscreteTranFn": (110, 80),
+    "StateSpace": (120, 90),
+    "DiscreteStateSpace": (120, 90),
+    "ZeroOrderHold": (90, 70),
     # Sinks - wider for labels/displays
-    'Scope': (100, 80),
-    'Display': (90, 70),
-    'Export': (90, 70),
-    'Term': (80, 60),
-
+    "Scope": (100, 80),
+    "Display": (90, 70),
+    "Export": (90, 70),
+    "Term": (80, 60),
     # Routing - compact
-    'Mux': (70, 60),
-    'Demux': (70, 60),
-    'Switch': (90, 90),
-    'Goto': (70, 60),
-    'From': (70, 60),
+    "Mux": (70, 60),
+    "Demux": (70, 60),
+    "Switch": (90, 90),
+    "Goto": (70, 60),
+    "From": (70, 60),
 }
 
 # Minimum block size to prevent blocks from becoming too small

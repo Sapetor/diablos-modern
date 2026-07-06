@@ -28,6 +28,7 @@ class DragResizeManager:
     """
     Manages the block drag and resize interactions for the canvas.
     """
+
     def __init__(self, canvas):
         self.canvas = canvas
 
@@ -101,17 +102,15 @@ class DragResizeManager:
 
             # Apply the nudge only when grid snap is off; with grid snap on the
             # block must stay on the grid, so the guides are feedback-only.
-            grid_snap_on = getattr(self.canvas, 'snap_enabled', True)
+            grid_snap_on = getattr(self.canvas, "snap_enabled", True)
             if not grid_snap_on and (snap_dx or snap_dy):
                 # Move the dragged block onto the snapped edge, then shift the
                 # rest of the selection by the same delta to stay rigid.
-                block.relocate_Block(QPoint(int(block.left + snap_dx),
-                                            int(block.top + snap_dy)))
+                block.relocate_Block(QPoint(int(block.left + snap_dx), int(block.top + snap_dy)))
                 if len(self.canvas.drag_offsets) > 1:
                     for b in self.canvas.drag_offsets:
                         if b is not block:
-                            b.relocate_Block(QPoint(int(b.left + snap_dx),
-                                                    int(b.top + snap_dy)))
+                            b.relocate_Block(QPoint(int(b.left + snap_dx), int(b.top + snap_dy)))
 
             self.canvas._alignment_guides = guide_lines
         except Exception as e:
@@ -152,21 +151,22 @@ class DragResizeManager:
             new_width = start_rect.width()
             new_height = start_rect.height()
 
-            if 'left' in handle:
+            if "left" in handle:
                 new_left = start_rect.left() + delta_x
                 new_width = start_rect.width() - delta_x
-            elif 'right' in handle:
+            elif "right" in handle:
                 new_width = start_rect.width() + delta_x
 
-            if 'top' in handle:
+            if "top" in handle:
                 new_top = start_rect.top() + delta_y
                 new_height = start_rect.height() - delta_y
-            elif 'bottom' in handle:
+            elif "bottom" in handle:
                 new_height = start_rect.height() + delta_y
 
             # Apply minimum size constraints
             try:
                 from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
+
                 min_width = MIN_BLOCK_WIDTH
                 min_height = MIN_BLOCK_HEIGHT
             except ImportError:
@@ -174,7 +174,7 @@ class DragResizeManager:
                 min_height = 40
 
             # Also check block's port-based minimum height (for multi-port blocks)
-            if hasattr(block, 'calculate_min_size'):
+            if hasattr(block, "calculate_min_size"):
                 port_min_height = block.calculate_min_size()
                 min_height = max(min_height, port_min_height)
 
@@ -184,12 +184,12 @@ class DragResizeManager:
 
             # Ensure minimum size
             if new_width < min_width:
-                if 'left' in handle:
+                if "left" in handle:
                     new_left = start_rect.right() - min_width
                 new_width = min_width
 
             if new_height < min_height:
-                if 'top' in handle:
+                if "top" in handle:
                     new_top = start_rect.bottom() - min_height
                 new_height = min_height
 
@@ -200,14 +200,14 @@ class DragResizeManager:
             else:
                 # Restore appropriate resize cursor
                 cursor_map = {
-                    'top_left': Qt.SizeFDiagCursor,
-                    'top_right': Qt.SizeBDiagCursor,
-                    'bottom_left': Qt.SizeBDiagCursor,
-                    'bottom_right': Qt.SizeFDiagCursor,
-                    'top': Qt.SizeVerCursor,
-                    'bottom': Qt.SizeVerCursor,
-                    'left': Qt.SizeHorCursor,
-                    'right': Qt.SizeHorCursor,
+                    "top_left": Qt.SizeFDiagCursor,
+                    "top_right": Qt.SizeBDiagCursor,
+                    "bottom_left": Qt.SizeBDiagCursor,
+                    "bottom_right": Qt.SizeFDiagCursor,
+                    "top": Qt.SizeVerCursor,
+                    "bottom": Qt.SizeVerCursor,
+                    "left": Qt.SizeHorCursor,
+                    "right": Qt.SizeHorCursor,
                 }
                 self.canvas.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
                 self.canvas.resize_at_limit = False
@@ -229,7 +229,9 @@ class DragResizeManager:
         """Finish dragging operation."""
         try:
             if self.canvas.dragging_block:
-                logger.debug(f"Finished dragging block: {getattr(self.canvas.dragging_block, 'fn_name', 'Unknown')}")
+                logger.debug(
+                    f"Finished dragging block: {getattr(self.canvas.dragging_block, 'fn_name', 'Unknown')}"
+                )
 
                 # Only push undo if blocks actually moved significantly (threshold: 5 pixels)
                 moved_significantly = False
@@ -265,7 +267,9 @@ class DragResizeManager:
         """Finish resizing operation."""
         try:
             if self.canvas.resizing_block and self.canvas.resize_start_rect:
-                logger.debug(f"Finished resizing block: {getattr(self.canvas.resizing_block, 'fn_name', 'Unknown')}")
+                logger.debug(
+                    f"Finished resizing block: {getattr(self.canvas.resizing_block, 'fn_name', 'Unknown')}"
+                )
 
                 # Only push undo if block actually resized significantly (threshold: 5 pixels)
                 block = self.canvas.resizing_block
@@ -273,12 +277,14 @@ class DragResizeManager:
                 resize_threshold = 5  # pixels
 
                 # Check if size or position changed significantly
-                size_change = (abs(block.width - start_rect.width()) +
-                              abs(block.height - start_rect.height()))
-                pos_change = (abs(block.left - start_rect.left()) +
-                             abs(block.top - start_rect.top()))
+                size_change = abs(block.width - start_rect.width()) + abs(
+                    block.height - start_rect.height()
+                )
+                pos_change = abs(block.left - start_rect.left()) + abs(block.top - start_rect.top())
 
-                resized_significantly = size_change >= resize_threshold or pos_change >= resize_threshold
+                resized_significantly = (
+                    size_change >= resize_threshold or pos_change >= resize_threshold
+                )
                 if resized_significantly:
                     self.canvas._push_undo("Resize")
                 else:

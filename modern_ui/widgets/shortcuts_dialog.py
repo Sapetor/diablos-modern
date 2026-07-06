@@ -16,14 +16,25 @@ Styling follows the project convention: every color comes from
 """
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QFrame,
-    QGridLayout, QScrollArea, QWidget, QDialogButtonBox,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
+    QFrame,
+    QGridLayout,
+    QScrollArea,
+    QWidget,
+    QDialogButtonBox,
 )
 from PyQt5.QtCore import Qt
 
 from modern_ui.managers.command_palette_manager import palette_command_groups
 from modern_ui.themes.theme_manager import (
-    theme_manager, get_ui_font, get_mono_font, TYPE, WEIGHT, SPACE,
+    theme_manager,
+    get_ui_font,
+    get_mono_font,
+    TYPE,
+    WEIGHT,
+    SPACE,
 )
 
 
@@ -90,9 +101,7 @@ class KeyboardShortcutsDialog(QDialog):
 
         heading = QLabel("Keyboard Shortcuts")
         heading.setFont(get_ui_font(TYPE["heading"], WEIGHT["semibold"]))
-        heading.setStyleSheet(
-            f"color: {theme_manager.get_color('text_primary').name()};"
-        )
+        heading.setStyleSheet(f"color: {theme_manager.get_color('text_primary').name()};")
         layout.addWidget(heading)
 
         # Scrollable body so a long catalogue stays usable on small screens.
@@ -126,9 +135,7 @@ class KeyboardShortcutsDialog(QDialog):
 
         title_label = QLabel(title)
         title_label.setFont(get_ui_font(TYPE["subtitle"], WEIGHT["semibold"]))
-        title_label.setStyleSheet(
-            f"color: {theme_manager.get_color('accent_primary').name()};"
-        )
+        title_label.setStyleSheet(f"color: {theme_manager.get_color('accent_primary').name()};")
         col.addWidget(title_label)
 
         grid = QGridLayout()
@@ -147,9 +154,7 @@ class KeyboardShortcutsDialog(QDialog):
         """Action description in the left column."""
         label = QLabel(text)
         label.setFont(get_ui_font(TYPE["body"], WEIGHT["regular"]))
-        label.setStyleSheet(
-            f"color: {theme_manager.get_color('text_primary').name()};"
-        )
+        label.setStyleSheet(f"color: {theme_manager.get_color('text_primary').name()};")
         return label
 
     def _make_key(self, key: str) -> QLabel:
@@ -157,8 +162,6 @@ class KeyboardShortcutsDialog(QDialog):
         kbd = QLabel(key or "—")
         kbd.setFont(get_mono_font(TYPE["caption"], WEIGHT["medium"]))
         kbd.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        token = 'text_secondary' if key else 'text_disabled'
-        kbd.setStyleSheet(
-            f"color: {theme_manager.get_color(token).name()};"
-        )
+        token = "text_secondary" if key else "text_disabled"
+        kbd.setStyleSheet(f"color: {theme_manager.get_color(token).name()};")
         return kbd

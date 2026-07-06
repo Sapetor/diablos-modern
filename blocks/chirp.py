@@ -1,4 +1,3 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
 from scipy import signal
@@ -56,14 +55,14 @@ class ChirpBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "f0": {"type": "float", "default": 0.0,
-                   "doc": "Start frequency in Hz (at t=0)."},
-            "f1": {"type": "float", "default": 10.0,
-                   "doc": "End frequency in Hz (at t=t1)."},
-            "t1": {"type": "float", "default": 10.0,
-                   "doc": "Time at which the frequency reaches f1 (s)."},
-            "amplitude": {"type": "float", "default": 1.0,
-                          "doc": "Peak amplitude of the signal."},
+            "f0": {"type": "float", "default": 0.0, "doc": "Start frequency in Hz (at t=0)."},
+            "f1": {"type": "float", "default": 10.0, "doc": "End frequency in Hz (at t=t1)."},
+            "t1": {
+                "type": "float",
+                "default": 10.0,
+                "doc": "Time at which the frequency reaches f1 (s).",
+            },
+            "amplitude": {"type": "float", "default": 1.0, "doc": "Peak amplitude of the signal."},
             "method": {
                 "type": "choice",
                 "default": "linear",
@@ -83,6 +82,7 @@ class ChirpBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw a swept-sine (increasing frequency) icon in 0-1 coords."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         path.moveTo(0.1, 0.5)
         path.quadTo(0.20, 0.15, 0.30, 0.5)
@@ -101,7 +101,5 @@ class ChirpBlock(BaseBlock):
 
         # phi=-90 deg makes the chirp a sine (value 0 at t=0) rather than the
         # scipy default cosine, matching amplitude*sin(0)=0 at t=0.
-        value = signal.chirp(
-            t=time, f0=f0, t1=t1, f1=f1, method=method, phi=-90.0
-        )
+        value = signal.chirp(t=time, f0=f0, t1=t1, f1=f1, method=method, phi=-90.0)
         return {0: np.array(amplitude * value, dtype=float)}

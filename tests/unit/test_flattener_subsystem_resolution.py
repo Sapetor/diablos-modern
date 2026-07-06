@@ -24,8 +24,17 @@ from lib.simulation.connection import DLine
 def _make_gain(name, sid):
     """Create a minimal gain-like primitive block used as internal logic."""
     g = DBlock(
-        "Gain", sid, QRect(0, 0, 50, 50), None,
-        1, 1, 2, 'both', "gain_fn", {'val': 1}, False,
+        "Gain",
+        sid,
+        QRect(0, 0, 50, 50),
+        None,
+        1,
+        1,
+        2,
+        "both",
+        "gain_fn",
+        {"val": 1},
+        False,
     )
     g.name = name
     return g
@@ -34,8 +43,17 @@ def _make_gain(name, sid):
 def _make_const(name, sid):
     """Create a minimal source primitive block."""
     c = DBlock(
-        "Constant", sid, QRect(0, 0, 50, 50), None,
-        0, 1, 0, 'output', "const_fn", {'val': 1}, False,
+        "Constant",
+        sid,
+        QRect(0, 0, 50, 50),
+        None,
+        0,
+        1,
+        0,
+        "output",
+        "const_fn",
+        {"val": 1},
+        False,
     )
     c.name = name
     return c
@@ -44,8 +62,17 @@ def _make_const(name, sid):
 def _make_sink(name, sid):
     """Create a minimal sink primitive block."""
     s = DBlock(
-        "Scope", sid, QRect(0, 0, 50, 50), None,
-        1, 0, 2, 'input', "scope_fn", {}, False,
+        "Scope",
+        sid,
+        QRect(0, 0, 50, 50),
+        None,
+        1,
+        0,
+        2,
+        "input",
+        "scope_fn",
+        {},
+        False,
     )
     s.name = name
     return s
@@ -82,10 +109,12 @@ class TestFlattenerSubsystemResolution:
         outport.sid = 2
 
         subsys.sub_blocks.extend([inport, gain, outport])
-        subsys.sub_lines.extend([
-            DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
-            DLine(2, "Gain1", 0, "Out1", 0, [(0, 0), (10, 10)]),
-        ])
+        subsys.sub_lines.extend(
+            [
+                DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
+                DLine(2, "Gain1", 0, "Out1", 0, [(0, 0), (10, 10)]),
+            ]
+        )
 
         # Top level: Const -> Sub1 -> Scope
         const = _make_const("Const1", 4)
@@ -144,10 +173,12 @@ class TestFlattenerSubsystemResolution:
         outport.sid = 2
 
         subsys.sub_blocks.extend([inport, gain, outport])
-        subsys.sub_lines.extend([
-            DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
-            DLine(2, "Gain1", 0, "y_out", 0, [(0, 0), (10, 10)]),
-        ])
+        subsys.sub_lines.extend(
+            [
+                DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
+                DLine(2, "Gain1", 0, "y_out", 0, [(0, 0), (10, 10)]),
+            ]
+        )
 
         # Top level: Const -> Sub1 -> Scope (drives through Sub1 output 0)
         const = _make_const("Const1", 4)
@@ -177,7 +208,7 @@ class TestFlattenerSubsystemResolution:
         subsys.name = "Sub1"
         subsys.sid = 1
         # Authoritative map: external output port 0 -> internal 'y_out'
-        subsys.ports_map = {'output': {0: 'y_out'}, 'input': {0: 'In1'}}
+        subsys.ports_map = {"output": {0: "y_out"}, "input": {0: "In1"}}
 
         inport = Inport("In1")
         inport.name = "In1"
@@ -190,10 +221,12 @@ class TestFlattenerSubsystemResolution:
         outport.sid = 2
 
         subsys.sub_blocks.extend([inport, gain, outport])
-        subsys.sub_lines.extend([
-            DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
-            DLine(2, "Gain1", 0, "y_out", 0, [(0, 0), (10, 10)]),
-        ])
+        subsys.sub_lines.extend(
+            [
+                DLine(1, "In1", 0, "Gain1", 0, [(0, 0), (10, 10)]),
+                DLine(2, "Gain1", 0, "y_out", 0, [(0, 0), (10, 10)]),
+            ]
+        )
 
         const = _make_const("Const1", 4)
         scope = _make_sink("Scope1", 5)

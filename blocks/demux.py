@@ -4,6 +4,7 @@ from blocks.base_block import BaseBlock
 
 logger = logging.getLogger(__name__)
 
+
 class DemuxBlock(BaseBlock):
     """
     A block that splits an input vector into multiple outputs.
@@ -34,7 +35,7 @@ class DemuxBlock(BaseBlock):
 
     @property
     def io_editable(self):
-        return 'output'
+        return "output"
 
     @property
     def params(self):
@@ -53,9 +54,11 @@ class DemuxBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw demultiplexer icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Input
-        path.moveTo(0.2, 0.5); path.lineTo(0.4, 0.5)
+        path.moveTo(0.2, 0.5)
+        path.lineTo(0.4, 0.5)
         # Main body (rectangle)
         path.moveTo(0.4, 0.2)
         path.lineTo(0.4, 0.8)
@@ -63,28 +66,38 @@ class DemuxBlock(BaseBlock):
         path.lineTo(0.8, 0.2)
         path.lineTo(0.4, 0.2)
         # Output lines
-        path.moveTo(0.8, 0.3); path.lineTo(1.0, 0.3)
-        path.moveTo(0.8, 0.7); path.lineTo(1.0, 0.7)
+        path.moveTo(0.8, 0.3)
+        path.lineTo(1.0, 0.3)
+        path.moveTo(0.8, 0.7)
+        path.lineTo(1.0, 0.7)
         return path
 
     def execute(self, time, inputs, params, **kwargs):
         try:
             input_array = np.atleast_1d(np.array(inputs[0], dtype=float)).flatten()
-            output_shape = int(params['output_shape'])
+            output_shape = int(params["output_shape"])
             n_elements = len(input_array)
-            n_outputs = int(params.get('_outputs_', len(self.outputs)))
+            n_outputs = int(params.get("_outputs_", len(self.outputs)))
         except (ValueError, TypeError):
-            return {'E': True, 'error': 'Invalid input type in demux block. Expected numeric.'}
+            return {"E": True, "error": "Invalid input type in demux block. Expected numeric."}
 
         if output_shape < 1:
-            return {'E': True, 'error': f"Output shape must be >= 1 in {params.get('_name_', 'Demux')}"}
+            return {
+                "E": True,
+                "error": f"Output shape must be >= 1 in {params.get('_name_', 'Demux')}",
+            }
 
         # Check input dimensions
         if n_elements / output_shape < n_outputs:
-            return {'E': True, 'error': f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}"}
+            return {
+                "E": True,
+                "error": f"Not enough inputs or wrong output shape in {params.get('_name_', 'Demux')}",
+            }
 
         elif n_elements / output_shape > n_outputs:
-            logger.warning(f"More elements in vector than expected outputs. Truncating. Block: {params.get('_name_', 'Demux')}")
+            logger.warning(
+                f"More elements in vector than expected outputs. Truncating. Block: {params.get('_name_', 'Demux')}"
+            )
 
         try:
             outputs = {}
@@ -94,5 +107,4 @@ class DemuxBlock(BaseBlock):
                 outputs[i] = input_array[start:end]
             return outputs
         except (ValueError, TypeError):
-            return {'E': True, 'error': 'Invalid input type in demux block. Expected numeric.'}
-
+            return {"E": True, "error": "Invalid input type in demux block. Expected numeric."}

@@ -150,36 +150,70 @@ def _constant_integrator_scope(method="RK45", value=2.0):
 
     model = _MockModel()
     const_block = ConstantBlock()
-    const = DBlock("Constant", "C1", coords=QRect(0, 0, 50, 50), color="blue",
-                   in_ports=0, out_ports=1, b_type=const_block.b_type,
-                   params=_defaults(const_block), block_class=ConstantBlock,
-                   category=const_block.category)
+    const = DBlock(
+        "Constant",
+        "C1",
+        coords=QRect(0, 0, 50, 50),
+        color="blue",
+        in_ports=0,
+        out_ports=1,
+        b_type=const_block.b_type,
+        params=_defaults(const_block),
+        block_class=ConstantBlock,
+        category=const_block.category,
+    )
     const.params["value"] = value
     const.hierarchy = 0
 
     integrator_block = IntegratorBlock()
-    integ = DBlock("Integrator", "I1", coords=QRect(100, 0, 50, 50), color="green",
-                   in_ports=1, out_ports=1, b_type=integrator_block.b_type,
-                   params=_defaults(integrator_block), block_class=IntegratorBlock,
-                   category=integrator_block.category)
+    integ = DBlock(
+        "Integrator",
+        "I1",
+        coords=QRect(100, 0, 50, 50),
+        color="green",
+        in_ports=1,
+        out_ports=1,
+        b_type=integrator_block.b_type,
+        params=_defaults(integrator_block),
+        block_class=IntegratorBlock,
+        category=integrator_block.category,
+    )
     integ.params["init_conds"] = 0.0
     integ.hierarchy = 1
 
     scope_block = ScopeBlock()
-    scope = DBlock("Scope", "S1", coords=QRect(200, 0, 50, 50), color="red",
-                   in_ports=1, out_ports=0, b_type=scope_block.b_type,
-                   params=_defaults(scope_block), block_class=ScopeBlock,
-                   category=scope_block.category)
+    scope = DBlock(
+        "Scope",
+        "S1",
+        coords=QRect(200, 0, 50, 50),
+        color="red",
+        in_ports=1,
+        out_ports=0,
+        b_type=scope_block.b_type,
+        params=_defaults(scope_block),
+        block_class=ScopeBlock,
+        category=scope_block.category,
+    )
     scope.params["labels"] = "output"
     scope.hierarchy = 2
 
     lines = [
-        DLine(sid=0, srcblock=const.name, srcport=0,
-              dstblock=integ.name, dstport=0,
-              points=[QPoint(0, 0), QPoint(1, 1)]),
-        DLine(sid=1, srcblock=integ.name, srcport=0,
-              dstblock=scope.name, dstport=0,
-              points=[QPoint(1, 1), QPoint(2, 2)]),
+        DLine(
+            sid=0,
+            srcblock=const.name,
+            srcport=0,
+            dstblock=integ.name,
+            dstport=0,
+            points=[QPoint(0, 0), QPoint(1, 1)],
+        ),
+        DLine(
+            sid=1,
+            srcblock=integ.name,
+            srcport=0,
+            dstblock=scope.name,
+            dstport=0,
+            points=[QPoint(1, 1), QPoint(2, 2)],
+        ),
     ]
     model.blocks_list = [const, integ, scope]
     model.line_list = lines
@@ -215,9 +249,14 @@ class TestCompiledSolverEndToEnd:
         integ.params["init_conds"] = 0.0
         integ.hierarchy = 1
 
-        line = DLine(sid=0, srcblock=const.name, srcport=0,
-                     dstblock=integ.name, dstport=0,
-                     points=[QPoint(0, 0), QPoint(1, 1)])
+        line = DLine(
+            sid=0,
+            srcblock=const.name,
+            srcport=0,
+            dstblock=integ.name,
+            dstport=0,
+            points=[QPoint(0, 0), QPoint(1, 1)],
+        )
         model.blocks_list = [const, integ]
         model.line_list = [line]
 
@@ -242,9 +281,7 @@ class TestCompiledSolverEndToEnd:
 @pytest.mark.unit
 class TestCompiledSolverDiagnosticsAndCache:
     def _run(self, engine, lines, t_end=1.0, dt=0.1):
-        ok = engine.run_compiled_simulation(
-            engine.model.blocks_list, lines, (0.0, t_end), dt
-        )
+        ok = engine.run_compiled_simulation(engine.model.blocks_list, lines, (0.0, t_end), dt)
         assert ok, engine.error_msg
         return engine.get_solver_diagnostics()
 

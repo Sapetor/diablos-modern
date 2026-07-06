@@ -63,9 +63,7 @@ class TestDBlockSampleTime:
         assert sample_block.get_held_output(0) == 5.0
 
         sample_block.set_held_output(1, np.array([1.0, 2.0]))
-        np.testing.assert_array_equal(
-            sample_block.get_held_output(1), np.array([1.0, 2.0])
-        )
+        np.testing.assert_array_equal(sample_block.get_held_output(1), np.array([1.0, 2.0]))
 
         # Non-existent port returns 0.0
         assert sample_block.get_held_output(99) == 0.0

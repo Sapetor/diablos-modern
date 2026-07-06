@@ -15,8 +15,14 @@ import logging
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QCursor, QFont
 from PyQt5.QtWidgets import (
-    QMenu, QAction, QActionGroup, QWidgetAction, QWidget, QHBoxLayout,
-    QLabel, QLineEdit
+    QMenu,
+    QAction,
+    QActionGroup,
+    QWidgetAction,
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
 )
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font
@@ -28,18 +34,19 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mono_font(size: int = 9) -> QFont:
     return get_mono_font(size)
 
 
 def _menu_stylesheet() -> str:
     """Style matching the cmdk / handoff dark theme. Reads from theme_manager."""
-    bg = theme_manager.get_color('surface_elevated').name()
-    text = theme_manager.get_color('text_primary').name()
-    text_dim = theme_manager.get_color('text_secondary').name()
-    border = theme_manager.get_color('border_primary').name()
+    bg = theme_manager.get_color("surface_elevated").name()
+    text = theme_manager.get_color("text_primary").name()
+    text_dim = theme_manager.get_color("text_secondary").name()
+    border = theme_manager.get_color("border_primary").name()
     # 12% accent overlay — approximated via a fixed alpha-blended hex
-    accent_qc = theme_manager.get_color('accent_primary')
+    accent_qc = theme_manager.get_color("accent_primary")
     accent_bg = accent_qc.name()  # selection highlight uses solid accent on hover
 
     return f"""
@@ -74,7 +81,7 @@ def _menu_stylesheet() -> str:
 
 def _build_header_action(menu: QMenu, text: str) -> QAction:
     """Create a disabled, eyebrow-style header action ('CAPS', dim color)."""
-    dim = theme_manager.get_color('text_secondary').name()
+    dim = theme_manager.get_color("text_secondary").name()
     label = QLabel(text.upper())
     f = label.font()
     f.setPointSize(8)
@@ -89,21 +96,28 @@ def _build_header_action(menu: QMenu, text: str) -> QAction:
     return wa
 
 
-def _build_kbd_row(menu: QMenu, label_text: str, kbd_text: str = "", *,
-                   danger: bool = False, dim: bool = False,
-                   on_trigger=None, enabled: bool = True) -> QAction:
+def _build_kbd_row(
+    menu: QMenu,
+    label_text: str,
+    kbd_text: str = "",
+    *,
+    danger: bool = False,
+    dim: bool = False,
+    on_trigger=None,
+    enabled: bool = True,
+) -> QAction:
     """Build a menu row with right-aligned monospace kbd hint.
 
     QSS can't style portions of text within QMenu::item; we use a QWidgetAction
     with a custom widget. Hover/selection highlight is approximated via stylesheet
     on the host widget.
     """
-    text_primary = theme_manager.get_color('text_primary').name()
-    text_dim = theme_manager.get_color('text_secondary').name()
-    text_disabled = theme_manager.get_color('text_disabled').name()
-    error = theme_manager.get_color('error').name()
-    accent = theme_manager.get_color('accent_primary').name()
-    border = theme_manager.get_color('border_primary').name()
+    text_primary = theme_manager.get_color("text_primary").name()
+    text_dim = theme_manager.get_color("text_secondary").name()
+    text_disabled = theme_manager.get_color("text_disabled").name()
+    error = theme_manager.get_color("error").name()
+    accent = theme_manager.get_color("accent_primary").name()
+    border = theme_manager.get_color("border_primary").name()
 
     fg = error if danger else (text_disabled if dim else text_primary)
 
@@ -149,6 +163,7 @@ def _build_kbd_row(menu: QMenu, label_text: str, kbd_text: str = "", *,
 # Canvas search QWidgetAction
 # ---------------------------------------------------------------------------
 
+
 class _CanvasSearchWidget(QWidget):
     """Inline search input for the empty-canvas context menu.
 
@@ -162,9 +177,9 @@ class _CanvasSearchWidget(QWidget):
         self._all_blocks = all_blocks  # list of menu_block objects
         self._top_match = None
 
-        bg = theme_manager.get_color('surface_secondary').name()
-        text = theme_manager.get_color('text_primary').name()
-        border = theme_manager.get_color('border_primary').name()
+        bg = theme_manager.get_color("surface_secondary").name()
+        text = theme_manager.get_color("text_primary").name()
+        border = theme_manager.get_color("border_primary").name()
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 6)
@@ -180,9 +195,9 @@ class _CanvasSearchWidget(QWidget):
                 padding: 4px 9px 4px 9px;
                 color: {text};
                 font-size: 11pt;
-                selection-background-color: {theme_manager.get_color('accent_primary').name()};
+                selection-background-color: {theme_manager.get_color("accent_primary").name()};
             }}
-            QLineEdit:focus {{ border-color: {theme_manager.get_color('accent_primary').name()}; }}
+            QLineEdit:focus {{ border-color: {theme_manager.get_color("accent_primary").name()}; }}
         """)
         self.edit.textChanged.connect(self._on_text_changed)
         self.edit.returnPressed.connect(self._on_return)
@@ -195,8 +210,8 @@ class _CanvasSearchWidget(QWidget):
             self._top_match = None
             return
         for mb in self._all_blocks:
-            fn = (getattr(mb, 'fn_name', '') or '').lower()
-            bf = (getattr(mb, 'block_fn', '') or '').lower()
+            fn = (getattr(mb, "fn_name", "") or "").lower()
+            bf = (getattr(mb, "block_fn", "") or "").lower()
             if text in fn or text in bf:
                 self._top_match = mb
                 return
@@ -217,6 +232,7 @@ class _CanvasSearchWidget(QWidget):
 # ---------------------------------------------------------------------------
 # Main MenuManager
 # ---------------------------------------------------------------------------
+
 
 class MenuManager:
     """Builds and shows right-click context menus for the canvas.
@@ -259,52 +275,62 @@ class MenuManager:
         multi = len(selected) > 1
 
         # Header — block name (disabled)
-        block_label = getattr(block, 'username', None) or getattr(block, 'name', 'block')
+        block_label = getattr(block, "username", None) or getattr(block, "name", "block")
         if multi:
             _build_header_action(menu, f"{len(selected)} blocks selected")
         else:
             _build_header_action(menu, str(block_label))
 
         # Edit / Tune
-        _build_kbd_row(menu, "Edit parameters…", "Enter",
-                       on_trigger=lambda: self.canvas._show_block_properties(block))
+        _build_kbd_row(
+            menu,
+            "Edit parameters…",
+            "Enter",
+            on_trigger=lambda: self.canvas._show_block_properties(block),
+        )
         # "Tune live" — pin first tunable param to tuning panel if available
         first_tunable = self._first_tunable(block)
         if first_tunable is not None:
-            _build_kbd_row(menu, "Tune live", "T",
-                           on_trigger=lambda: self._tune_live(block, first_tunable))
+            _build_kbd_row(
+                menu, "Tune live", "T", on_trigger=lambda: self._tune_live(block, first_tunable)
+            )
 
         menu.addSeparator()
 
         # Copy / Duplicate / Flip / Rename
         _build_kbd_row(menu, "Copy", "Ctrl+C", on_trigger=self.canvas._copy_selected_blocks)
-        _build_kbd_row(menu, "Duplicate", "Ctrl+D",
-                       on_trigger=lambda: self.canvas._duplicate_block(block))
+        _build_kbd_row(
+            menu, "Duplicate", "Ctrl+D", on_trigger=lambda: self.canvas._duplicate_block(block)
+        )
         _build_kbd_row(menu, "Cut", "Ctrl+X", on_trigger=self.canvas._cut_selected_blocks)
-        if hasattr(self.canvas, 'flip_selected_blocks'):
-            _build_kbd_row(menu, "Flip horizontal", "F",
-                           on_trigger=self.canvas.flip_selected_blocks)
-        _build_kbd_row(menu, "Rename…", "F2",
-                       on_trigger=lambda: self._rename_block(block))
+        if hasattr(self.canvas, "flip_selected_blocks"):
+            _build_kbd_row(
+                menu, "Flip horizontal", "F", on_trigger=self.canvas.flip_selected_blocks
+            )
+        _build_kbd_row(menu, "Rename…", "F2", on_trigger=lambda: self._rename_block(block))
 
         menu.addSeparator()
 
         # Detach wires
         if not multi:
-            _build_kbd_row(menu, "Detach all wires", "",
-                           on_trigger=lambda: self._detach_wires(block))
+            _build_kbd_row(
+                menu, "Detach all wires", "", on_trigger=lambda: self._detach_wires(block)
+            )
 
         # Wrap-in-subsystem (when >=1 selected)
-        if hasattr(self.canvas, '_create_subsystem_trigger'):
+        if hasattr(self.canvas, "_create_subsystem_trigger"):
             menu.addSeparator()
-            _build_kbd_row(menu, "Wrap in subsystem", "Ctrl+G",
-                           on_trigger=self.canvas._create_subsystem_trigger)
+            _build_kbd_row(
+                menu,
+                "Wrap in subsystem",
+                "Ctrl+G",
+                on_trigger=self.canvas._create_subsystem_trigger,
+            )
 
         # Port editing (variable-port blocks only)
-        if getattr(block, 'io_edit', 'none') not in ('none', False, None):
+        if getattr(block, "io_edit", "none") not in ("none", False, None):
             menu.addSeparator()
-            _build_kbd_row(menu, "Edit ports…", "",
-                           on_trigger=lambda: self._edit_ports(block))
+            _build_kbd_row(menu, "Edit ports…", "", on_trigger=lambda: self._edit_ports(block))
 
         # Multi-select alignment submenu
         if multi:
@@ -312,22 +338,26 @@ class MenuManager:
             align_menu = menu.addMenu("Align && Distribute")
             align_menu.setStyleSheet(_menu_stylesheet())
             for label, cb_name in [
-                ("Align Left",    'align_left'),
-                ("Align Right",   'align_right'),
-                ("Align Center (H)", 'align_center_horizontal'),
-                ("Align Top",     'align_top'),
-                ("Align Bottom",  'align_bottom'),
-                ("Align Center (V)", 'align_center_vertical'),
+                ("Align Left", "align_left"),
+                ("Align Right", "align_right"),
+                ("Align Center (H)", "align_center_horizontal"),
+                ("Align Top", "align_top"),
+                ("Align Bottom", "align_bottom"),
+                ("Align Center (V)", "align_center_vertical"),
             ]:
                 if hasattr(self.canvas, cb_name):
                     a = align_menu.addAction(label)
                     a.triggered.connect(getattr(self.canvas, cb_name))
             if len(selected) >= 3:
                 align_menu.addSeparator()
-                if hasattr(self.canvas, 'distribute_horizontal'):
-                    align_menu.addAction("Distribute Horizontally").triggered.connect(self.canvas.distribute_horizontal)
-                if hasattr(self.canvas, 'distribute_vertical'):
-                    align_menu.addAction("Distribute Vertically").triggered.connect(self.canvas.distribute_vertical)
+                if hasattr(self.canvas, "distribute_horizontal"):
+                    align_menu.addAction("Distribute Horizontally").triggered.connect(
+                        self.canvas.distribute_horizontal
+                    )
+                if hasattr(self.canvas, "distribute_vertical"):
+                    align_menu.addAction("Distribute Vertically").triggered.connect(
+                        self.canvas.distribute_vertical
+                    )
 
         # Tunable params submenu (existing UX kept under "Add to Tuning")
         tunables = self._tunable_params(block)
@@ -344,32 +374,50 @@ class MenuManager:
                     )
 
         # Block-fn specific analysis actions
-        if hasattr(block, 'block_fn'):
-            if block.block_fn == 'BodeMag':
+        if hasattr(block, "block_fn"):
+            if block.block_fn == "BodeMag":
                 menu.addSeparator()
-                _build_kbd_row(menu, "Generate Bode magnitude plot", "",
-                               on_trigger=lambda: self.canvas.generate_bode_plot(block))
-            elif block.block_fn == 'BodePhase':
+                _build_kbd_row(
+                    menu,
+                    "Generate Bode magnitude plot",
+                    "",
+                    on_trigger=lambda: self.canvas.generate_bode_plot(block),
+                )
+            elif block.block_fn == "BodePhase":
                 menu.addSeparator()
-                _build_kbd_row(menu, "Generate Bode phase plot", "",
-                               on_trigger=lambda: self.canvas.generate_bode_phase_plot(block))
-            elif block.block_fn == 'RootLocus':
+                _build_kbd_row(
+                    menu,
+                    "Generate Bode phase plot",
+                    "",
+                    on_trigger=lambda: self.canvas.generate_bode_phase_plot(block),
+                )
+            elif block.block_fn == "RootLocus":
                 menu.addSeparator()
-                _build_kbd_row(menu, "Generate root-locus plot", "",
-                               on_trigger=lambda: self.canvas.generate_root_locus(block))
-            elif block.block_fn == 'Nyquist':
+                _build_kbd_row(
+                    menu,
+                    "Generate root-locus plot",
+                    "",
+                    on_trigger=lambda: self.canvas.generate_root_locus(block),
+                )
+            elif block.block_fn == "Nyquist":
                 menu.addSeparator()
-                _build_kbd_row(menu, "Generate Nyquist plot", "",
-                               on_trigger=lambda: self.canvas.generate_nyquist_plot(block))
-            elif block.block_fn == 'LQR' and hasattr(self.canvas, 'compute_lqr'):
+                _build_kbd_row(
+                    menu,
+                    "Generate Nyquist plot",
+                    "",
+                    on_trigger=lambda: self.canvas.generate_nyquist_plot(block),
+                )
+            elif block.block_fn == "LQR" and hasattr(self.canvas, "compute_lqr"):
                 menu.addSeparator()
-                _build_kbd_row(menu, "Compute LQR gain", "",
-                               on_trigger=lambda: self.canvas.compute_lqr(block))
+                _build_kbd_row(
+                    menu, "Compute LQR gain", "", on_trigger=lambda: self.canvas.compute_lqr(block)
+                )
 
         # Delete (danger)
         menu.addSeparator()
-        _build_kbd_row(menu, "Delete", "Del", danger=True,
-                       on_trigger=self.canvas.remove_selected_items)
+        _build_kbd_row(
+            menu, "Delete", "Del", danger=True, on_trigger=self.canvas.remove_selected_items
+        )
 
         menu.exec_(QCursor.pos())
 
@@ -380,7 +428,7 @@ class MenuManager:
         menu.setStyleSheet(_menu_stylesheet())
 
         # Inline search at the top
-        all_blocks = list(getattr(self.canvas.dsim, 'menu_blocks', []))
+        all_blocks = list(getattr(self.canvas.dsim, "menu_blocks", []))
         if all_blocks:
             search = _CanvasSearchWidget(
                 on_add=lambda mb, p=pos: self._quick_add(mb, p),
@@ -395,17 +443,21 @@ class MenuManager:
             menu.addSeparator()
 
         # Paste / paste-in-place
-        has_clipboard = bool(getattr(self.canvas, 'clipboard_blocks', []))
-        _build_kbd_row(menu, "Paste", "Ctrl+V",
-                       enabled=has_clipboard,
-                       on_trigger=lambda: self.canvas._paste_blocks(pos))
+        has_clipboard = bool(getattr(self.canvas, "clipboard_blocks", []))
+        _build_kbd_row(
+            menu,
+            "Paste",
+            "Ctrl+V",
+            enabled=has_clipboard,
+            on_trigger=lambda: self.canvas._paste_blocks(pos),
+        )
 
         menu.addSeparator()
 
         # Quick-add: 5 commonly-used blocks (best-effort match by fn_name)
-        quick_names = ('sine', 'step', 'sum', 'gain', 'scope')
+        quick_names = ("sine", "step", "sum", "gain", "scope")
         # Build a map fn_name(lower) -> menu_block
-        by_fn = {(getattr(mb, 'fn_name', '') or '').lower(): mb for mb in all_blocks}
+        by_fn = {(getattr(mb, "fn_name", "") or "").lower(): mb for mb in all_blocks}
         added_any = False
         if any(name in by_fn for name in quick_names):
             _build_header_action(menu, "Add commonly used")
@@ -416,7 +468,7 @@ class MenuManager:
             added_any = True
             _build_kbd_row(
                 menu,
-                getattr(mb, 'block_fn', name).lower(),
+                getattr(mb, "block_fn", name).lower(),
                 "add here",
                 on_trigger=lambda b=mb, p=pos: self._quick_add(b, p),
             )
@@ -424,24 +476,24 @@ class MenuManager:
             menu.addSeparator()
 
         # View toggles
-        _build_kbd_row(menu, "Toggle grid", "",
-                       on_trigger=lambda: self._toggle_grid())
-        if hasattr(self.canvas, 'zoom_to_fit'):
-            _build_kbd_row(menu, "Fit view", "Ctrl+0",
-                           on_trigger=self.canvas.zoom_to_fit)
+        _build_kbd_row(menu, "Toggle grid", "", on_trigger=lambda: self._toggle_grid())
+        if hasattr(self.canvas, "zoom_to_fit"):
+            _build_kbd_row(menu, "Fit view", "Ctrl+0", on_trigger=self.canvas.zoom_to_fit)
 
         menu.addSeparator()
 
         # Select-all / clear / auto-route (preserve old features)
-        _build_kbd_row(menu, "Select all", "Ctrl+A",
-                       on_trigger=self.canvas._select_all_blocks)
-        _build_kbd_row(menu, "Clear selection", "Esc",
-                       on_trigger=self.canvas._clear_selections)
-        has_lines = bool(getattr(self.canvas.dsim, 'line_list', []))
-        if has_lines and hasattr(self.canvas, 'auto_route_lines'):
-            _build_kbd_row(menu, "Auto-route wires", "",
-                           enabled=has_lines,
-                           on_trigger=self.canvas.auto_route_lines)
+        _build_kbd_row(menu, "Select all", "Ctrl+A", on_trigger=self.canvas._select_all_blocks)
+        _build_kbd_row(menu, "Clear selection", "Esc", on_trigger=self.canvas._clear_selections)
+        has_lines = bool(getattr(self.canvas.dsim, "line_list", []))
+        if has_lines and hasattr(self.canvas, "auto_route_lines"):
+            _build_kbd_row(
+                menu,
+                "Auto-route wires",
+                "",
+                enabled=has_lines,
+                on_trigger=self.canvas.auto_route_lines,
+            )
 
         menu.exec_(QCursor.pos())
 
@@ -452,7 +504,9 @@ class MenuManager:
         menu.setStyleSheet(_menu_stylesheet())
 
         if not line.selected:
-            self.canvas._clear_line_selections() if hasattr(self.canvas, '_clear_line_selections') else None
+            self.canvas._clear_line_selections() if hasattr(
+                self.canvas, "_clear_line_selections"
+            ) else None
             line.selected = True
             self.canvas.update()
 
@@ -460,37 +514,49 @@ class MenuManager:
         header = self._wire_label(line)
         _build_header_action(menu, header)
 
-        _build_kbd_row(menu, "Edit label…", "",
-                       on_trigger=lambda: self.canvas._edit_connection_label(line))
+        _build_kbd_row(
+            menu, "Edit label…", "", on_trigger=lambda: self.canvas._edit_connection_label(line)
+        )
 
         menu.addSeparator()
 
         # Routing radio group
-        cur_mode = getattr(line, 'routing_mode', 'bezier')
+        cur_mode = getattr(line, "routing_mode", "bezier")
         route_menu = menu.addMenu("Routing")
         route_menu.setStyleSheet(_menu_stylesheet())
         rg = QActionGroup(route_menu)
         rg.setExclusive(True)
         for mode_key, label in [
-            ('bezier',     'Bezier (curved)'),
-            ('orthogonal', 'Orthogonal (Manhattan)'),
+            ("bezier", "Bezier (curved)"),
+            ("orthogonal", "Orthogonal (Manhattan)"),
         ]:
             a = route_menu.addAction(label)
             a.setCheckable(True)
             a.setChecked(cur_mode == mode_key)
             a.triggered.connect(
-                lambda checked=False, m=mode_key, l=line: self.canvas._set_connection_routing_mode(l, m)
+                lambda checked=False, m=mode_key, l=line: self.canvas._set_connection_routing_mode(
+                    l, m
+                )
             )
             rg.addAction(a)
 
-        if hasattr(self.canvas, '_highlight_connection_path'):
+        if hasattr(self.canvas, "_highlight_connection_path"):
             menu.addSeparator()
-            _build_kbd_row(menu, "Highlight path", "",
-                           on_trigger=lambda: self.canvas._highlight_connection_path(line))
+            _build_kbd_row(
+                menu,
+                "Highlight path",
+                "",
+                on_trigger=lambda: self.canvas._highlight_connection_path(line),
+            )
 
         menu.addSeparator()
-        _build_kbd_row(menu, "Delete wire", "Del", danger=True,
-                       on_trigger=lambda: self.canvas._delete_line(line))
+        _build_kbd_row(
+            menu,
+            "Delete wire",
+            "Del",
+            danger=True,
+            on_trigger=lambda: self.canvas._delete_line(line),
+        )
 
         menu.exec_(QCursor.pos())
 
@@ -506,36 +572,43 @@ class MenuManager:
         """Remove all wires connected to this block."""
         dsim = self.canvas.dsim
         to_remove = []
-        for line in list(getattr(dsim, 'line_list', [])):
-            src = getattr(line, 'srcblock', None)
-            dst = getattr(line, 'dstblock', None)
+        for line in list(getattr(dsim, "line_list", [])):
+            src = getattr(line, "srcblock", None)
+            dst = getattr(line, "dstblock", None)
             # Some impls use names rather than block refs
             if src is block or dst is block:
                 to_remove.append(line)
             else:
-                src_name = getattr(line, 'srcblock', None)
-                dst_name = getattr(line, 'dstblock', None)
-                if src_name == getattr(block, 'name', None) or dst_name == getattr(block, 'name', None):
+                src_name = getattr(line, "srcblock", None)
+                dst_name = getattr(line, "dstblock", None)
+                if src_name == getattr(block, "name", None) or dst_name == getattr(
+                    block, "name", None
+                ):
                     to_remove.append(line)
         for line in to_remove:
             try:
                 self.canvas._delete_line(line)
             except Exception:
-                logger.debug("Failed to delete a connection line while removing block", exc_info=True)
+                logger.debug(
+                    "Failed to delete a connection line while removing block", exc_info=True
+                )
         self.canvas.update()
 
     def _rename_block(self, block):
         from PyQt5.QtWidgets import QInputDialog
-        current = getattr(block, 'username', None) or getattr(block, 'name', '')
+
+        current = getattr(block, "username", None) or getattr(block, "name", "")
         new_name, ok = QInputDialog.getText(self.canvas, "Rename block", "New name:", text=current)
         if ok and new_name.strip():
             block.username = new_name.strip()
             main_win = self._find_main_window()
             if main_win is not None:
                 try:
-                    main_win._on_property_changed(block.name, '_username_', block.username)
+                    main_win._on_property_changed(block.name, "_username_", block.username)
                 except Exception:
-                    logger.debug("Failed to propagate renamed block username to main window", exc_info=True)
+                    logger.debug(
+                        "Failed to propagate renamed block username to main window", exc_info=True
+                    )
             self.canvas.dsim.dirty = True
             self.canvas.update()
 
@@ -547,9 +620,9 @@ class MenuManager:
 
     def _toggle_grid(self):
         main_win = self._find_main_window()
-        if main_win is not None and hasattr(main_win, 'toggle_grid'):
+        if main_win is not None and hasattr(main_win, "toggle_grid"):
             main_win.toggle_grid()
-        elif hasattr(self.canvas, 'toggle_grid'):
+        elif hasattr(self.canvas, "toggle_grid"):
             self.canvas.toggle_grid()
 
     def _first_tunable(self, block):
@@ -559,9 +632,9 @@ class MenuManager:
     def _tunable_params(self, block):
         """Return list of (param_name, value) for scalar / list-of-scalar params."""
         out = []
-        params = getattr(block, 'params', {}) or {}
+        params = getattr(block, "params", {}) or {}
         for k, v in params.items():
-            if k.startswith('_'):
+            if k.startswith("_"):
                 continue
             if isinstance(v, bool):
                 continue
@@ -575,23 +648,23 @@ class MenuManager:
 
     def _tune_live(self, block, param_name):
         main_win = self._find_main_window()
-        if main_win is not None and hasattr(main_win, '_add_to_tuning'):
+        if main_win is not None and hasattr(main_win, "_add_to_tuning"):
             try:
                 main_win._add_to_tuning(block, param_name)
-                if hasattr(main_win, 'tuning_panel'):
+                if hasattr(main_win, "tuning_panel"):
                     main_win.tuning_panel.show()
             except Exception as e:
                 logger.warning(f"Tune-live failed: {e}")
 
     def _wire_label(self, line):
-        src = getattr(line, 'srcblock', '')
-        dst = getattr(line, 'dstblock', '')
-        src_port = getattr(line, 'srcport', 0)
-        dst_port = getattr(line, 'dstport', 0)
+        src = getattr(line, "srcblock", "")
+        dst = getattr(line, "dstblock", "")
+        src_port = getattr(line, "srcport", 0)
+        dst_port = getattr(line, "dstport", 0)
         return f"wire: {src}.out[{src_port}] → {dst}.in[{dst_port}]"
 
     def _find_main_window(self):
         w = self.canvas.parent()
-        while w is not None and not hasattr(w, '_add_to_tuning'):
+        while w is not None and not hasattr(w, "_add_to_tuning"):
             w = w.parent()
         return w

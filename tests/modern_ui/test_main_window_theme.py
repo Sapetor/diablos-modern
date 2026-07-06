@@ -40,6 +40,7 @@ from modern_ui.themes.theme_manager import theme_manager, ThemeType
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -61,9 +62,7 @@ def _restore_theme_state():
         theme_manager.solid_fills,
     )
     yield
-    (theme_manager.current_theme,
-     theme_manager.current_palette,
-     theme_manager.solid_fills) = saved
+    (theme_manager.current_theme, theme_manager.current_palette, theme_manager.solid_fills) = saved
 
 
 def _prefs_path(cfg_dir):
@@ -78,6 +77,7 @@ def _read_prefs(cfg_dir):
 # ---------------------------------------------------------------------------
 # _save_user_preferences
 # ---------------------------------------------------------------------------
+
 
 class TestSaveUserPreferences:
     def test_writes_current_theme_state(self, window, cfg_dir):
@@ -115,6 +115,7 @@ class TestSaveUserPreferences:
 # toggle / set actions mutate theme_manager AND persist
 # ---------------------------------------------------------------------------
 
+
 class TestToggleAndSet:
     def test_toggle_theme_flips_and_persists(self, window, cfg_dir):
         theme_manager.set_theme(ThemeType.DARK)
@@ -142,6 +143,7 @@ class TestToggleAndSet:
 # ---------------------------------------------------------------------------
 # restyle methods run cleanly and apply non-empty stylesheets
 # ---------------------------------------------------------------------------
+
 
 class TestRestyle:
     def test_update_statusbar_colors_applies_stylesheet(self, window):

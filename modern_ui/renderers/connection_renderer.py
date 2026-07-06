@@ -14,6 +14,7 @@ from modern_ui.themes.theme_manager import theme_manager, get_ui_font, get_mono_
 
 logger = logging.getLogger(__name__)
 
+
 class ConnectionRenderer:
     """Stateless renderer for connection lines."""
 
@@ -45,16 +46,17 @@ class ConnectionRenderer:
         if not painter or not painter.isActive():
             return
         try:
-            chip_bg = theme_manager.get_color('surface_elevated')
-            success = theme_manager.get_color('success')
-            border = QColor(success); border.setAlpha(90)
+            chip_bg = theme_manager.get_color("surface_elevated")
+            success = theme_manager.get_color("success")
+            border = QColor(success)
+            border.setAlpha(90)
 
-            font = get_mono_font(TYPE['caption'])
+            font = get_mono_font(TYPE["caption"])
             painter.setFont(font)
             fm = QFontMetrics(font)
 
             for block in blocks:
-                coords = getattr(block, 'out_coords', None)
+                coords = getattr(block, "out_coords", None)
                 if not coords:
                     continue
                 for port_idx, p in enumerate(coords):
@@ -65,8 +67,11 @@ class ConnectionRenderer:
                     if not text:
                         continue
 
-                    text_w = (fm.horizontalAdvance(text) if hasattr(fm, 'horizontalAdvance')
-                              else fm.width(text))
+                    text_w = (
+                        fm.horizontalAdvance(text)
+                        if hasattr(fm, "horizontalAdvance")
+                        else fm.width(text)
+                    )
                     text_h = fm.height()
                     pad_x, pad_y = 6, 2
                     chip_w = text_w + 2 * pad_x
@@ -89,13 +94,15 @@ class ConnectionRenderer:
 
     def _port_value(self, block, port_idx: int):
         # Try the canonical API first
-        getter = getattr(block, 'get_held_output', None)
+        getter = getattr(block, "get_held_output", None)
         if callable(getter):
             try:
                 return getter(port_idx)
             except Exception:
-                logger.debug("get_held_output raised while reading port value; falling back", exc_info=True)
-        held = getattr(block, '_held_outputs', None)
+                logger.debug(
+                    "get_held_output raised while reading port value; falling back", exc_info=True
+                )
+        held = getattr(block, "_held_outputs", None)
         if isinstance(held, dict) and port_idx in held:
             return held[port_idx]
         return None
@@ -123,14 +130,14 @@ class ConnectionRenderer:
     def draw_line(self, line, painter: QPainter):
         """
         Draw the connection line with smooth Bezier curves and modern styling.
-        
+
         Args:
             line: DLine object containing path and properties
             painter: QPainter instance
         """
         if not painter or not painter.isActive():
             return
-            
+
         if not line.path or line.path.isEmpty():
             return
 
@@ -142,16 +149,16 @@ class ConnectionRenderer:
             painter.setRenderHint(QPainter.Antialiasing, True)
 
             # Use theme_manager for connection colors
-            default_connection_color = theme_manager.get_color('connection_default')
-            active_connection_color = theme_manager.get_color('connection_active')
+            default_connection_color = theme_manager.get_color("connection_default")
+            active_connection_color = theme_manager.get_color("connection_active")
 
             # Determine line color and width based on selection state and signal width
             # Note: selected_segment logic handled below for specific highlighting
             is_selected = line.selected and line.selected_segment == -1
             pen_color = active_connection_color if is_selected else default_connection_color
-            
+
             # Base line width - thicker for vector signals (MIMO indicator)
-            base_width = 2.0 if getattr(line, 'signal_width', 1) <= 1 else 3.5
+            base_width = 2.0 if getattr(line, "signal_width", 1) <= 1 else 3.5
             line_width = base_width + 0.5 if is_selected else base_width
 
             # Draw subtle glow/shadow for selected connections
@@ -167,7 +174,7 @@ class ConnectionRenderer:
 
             # Determine line style based on signal type
             # Discrete signals use dashed lines
-            is_discrete = getattr(line, 'discrete_signal', False)
+            is_discrete = getattr(line, "discrete_signal", False)
             line_style = Qt.DashLine if is_discrete else Qt.SolidLine
 
             # Draw main connection line
@@ -193,7 +200,9 @@ class ConnectionRenderer:
                     painter.drawLine(p1, p2)
 
                     # Draw segment highlight
-                    highlight_pen = QPen(active_connection_color, 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                    highlight_pen = QPen(
+                        active_connection_color, 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin
+                    )
                     painter.setPen(highlight_pen)
                     painter.drawLine(p1, p2)
 
@@ -205,11 +214,15 @@ class ConnectionRenderer:
                     painter.drawEllipse(point, 4, 4)
 
             # Draw connection label if present
-            if getattr(line, 'label', ''):
+            if getattr(line, "label", ""):
                 self._draw_label(line, painter)
 
             # Draw arrowhead
-            self._draw_arrowhead(line, painter, active_connection_color if line.selected else default_connection_color)
+            self._draw_arrowhead(
+                line,
+                painter,
+                active_connection_color if line.selected else default_connection_color,
+            )
 
         finally:
             # Restore painter state
@@ -225,13 +238,17 @@ class ConnectionRenderer:
         label_pos = line.points[mid_index]
 
         # Draw label background (canonical UI stack instead of fixed Arial)
-        font = get_ui_font(TYPE['body'])
+        font = get_ui_font(TYPE["body"])
         painter.setFont(font)
 
         metrics = QFontMetrics(font)
         text = str(line.label)
         # Qt5.9 compatibility: use width() as fallback
-        text_width = metrics.horizontalAdvance(text) if hasattr(metrics, "horizontalAdvance") else metrics.width(text)
+        text_width = (
+            metrics.horizontalAdvance(text)
+            if hasattr(metrics, "horizontalAdvance")
+            else metrics.width(text)
+        )
         text_height = metrics.height()
 
         # Background rectangle
@@ -240,18 +257,18 @@ class ConnectionRenderer:
             label_pos.x() - text_width // 2 - padding,
             label_pos.y() - text_height // 2 - padding,
             text_width + 2 * padding,
-            text_height + 2 * padding
+            text_height + 2 * padding,
         )
 
         # Draw semi-transparent background
-        bg_color = theme_manager.get_color('canvas_background')
+        bg_color = theme_manager.get_color("canvas_background")
         bg_color.setAlpha(230)
         painter.setBrush(bg_color)
-        painter.setPen(QPen(theme_manager.get_color('border_primary'), 1))
+        painter.setPen(QPen(theme_manager.get_color("border_primary"), 1))
         painter.drawRoundedRect(bg_rect, 3, 3)
 
         # Draw text
-        text_color = theme_manager.get_color('text_primary')
+        text_color = theme_manager.get_color("text_primary")
         painter.setPen(text_color)
         painter.drawText(bg_rect, Qt.AlignCenter, text)
 
@@ -259,7 +276,7 @@ class ConnectionRenderer:
         """Draw arrowhead at the end of the line."""
         if not line.path or line.path.isEmpty():
             return
-            
+
         arrow_size = 10
 
         end_point = line.path.pointAtPercent(1.0)
@@ -274,8 +291,14 @@ class ConnectionRenderer:
         angle = math.atan2(dy, dx)  # Angle in radians
 
         # Arrowhead points
-        arrow_p1 = end_point + QPoint(int(-arrow_size * math.cos(angle - math.pi / 6)), int(-arrow_size * math.sin(angle - math.pi / 6)))
-        arrow_p2 = end_point + QPoint(int(-arrow_size * math.cos(angle + math.pi / 6)), int(-arrow_size * math.sin(angle + math.pi / 6)))
+        arrow_p1 = end_point + QPoint(
+            int(-arrow_size * math.cos(angle - math.pi / 6)),
+            int(-arrow_size * math.sin(angle - math.pi / 6)),
+        )
+        arrow_p2 = end_point + QPoint(
+            int(-arrow_size * math.cos(angle + math.pi / 6)),
+            int(-arrow_size * math.sin(angle + math.pi / 6)),
+        )
 
         arrow_polygon = QPolygonF([end_point, arrow_p1, arrow_p2])
 

@@ -14,23 +14,23 @@ def canvas_with_tranfn(qapp):
     dsim = MagicMock()
 
     menu_entry = MagicMock()
-    menu_entry.block_fn = 'TranFn'
+    menu_entry.block_fn = "TranFn"
     menu_entry.block_class = TransferFunctionBlock
     dsim.menu_blocks = [menu_entry]
 
     block = DBlock(
-        block_fn='TranFn',
+        block_fn="TranFn",
         sid=0,
         coords=QRect(100, 100, 110, 80),
-        color='#4CAF50',
+        color="#4CAF50",
         in_ports=1,
         out_ports=1,
         b_type=2,
         io_edit=True,
-        fn_name='transfer_function',
-        params={'numerator': '[1]', 'denominator': '[1, 1]'},
+        fn_name="transfer_function",
+        params={"numerator": "[1]", "denominator": "[1, 1]"},
         external=False,
-        username='',
+        username="",
         block_class=TransferFunctionBlock,
         colors=None,
     )

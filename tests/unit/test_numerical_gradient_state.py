@@ -19,8 +19,9 @@ class TestNumericalGradientState:
         from blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
+
         block = NumericalGradientBlock()
-        assert not hasattr(block, '_cached_dimension'), (
+        assert not hasattr(block, "_cached_dimension"), (
             "Block must not hold mutable runtime state on self; use params."
         )
 
@@ -29,9 +30,10 @@ class TestNumericalGradientState:
         from blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
+
         block = NumericalGradientBlock()
         epsilon = 1e-3
-        params = {'dimension': 2, 'epsilon': epsilon, 'method': 'forward'}
+        params = {"dimension": 2, "epsilon": epsilon, "method": "forward"}
         # Simulate f(x)=1.0, f(x+eps*e0)=1.0+0.5*eps, f(x+eps*e1)=1.0-2.0*eps
         inputs = {
             0: np.array([1.0]),
@@ -39,7 +41,7 @@ class TestNumericalGradientState:
             2: np.array([1.0 - 2.0 * epsilon]),
         }
         result = block.execute(time=0.0, inputs=inputs, params=params)
-        assert result['E'] is False
+        assert result["E"] is False
         np.testing.assert_allclose(result[0], np.array([0.5, -2.0]), rtol=1e-6)
 
     def test_central_difference_basic(self):
@@ -47,18 +49,19 @@ class TestNumericalGradientState:
         from blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
+
         block = NumericalGradientBlock()
         epsilon = 1e-3
-        params = {'dimension': 2, 'epsilon': epsilon, 'method': 'central'}
+        params = {"dimension": 2, "epsilon": epsilon, "method": "central"}
         inputs = {
             0: np.array([1.0]),
-            1: np.array([1.0 + 0.5 * epsilon]),   # f_plus_0
-            2: np.array([1.0 - 2.0 * epsilon]),   # f_plus_1
-            3: np.array([1.0 - 0.5 * epsilon]),   # f_minus_0
-            4: np.array([1.0 + 2.0 * epsilon]),   # f_minus_1
+            1: np.array([1.0 + 0.5 * epsilon]),  # f_plus_0
+            2: np.array([1.0 - 2.0 * epsilon]),  # f_plus_1
+            3: np.array([1.0 - 0.5 * epsilon]),  # f_minus_0
+            4: np.array([1.0 + 2.0 * epsilon]),  # f_minus_1
         }
         result = block.execute(time=0.0, inputs=inputs, params=params)
-        assert result['E'] is False
+        assert result["E"] is False
         np.testing.assert_allclose(result[0], np.array([0.5, -2.0]), rtol=1e-6)
 
     def test_dimension_change_across_calls(self):
@@ -67,11 +70,12 @@ class TestNumericalGradientState:
         from blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
+
         block = NumericalGradientBlock()
         epsilon = 1e-3
 
         # First call: dimension=2
-        params1 = {'dimension': 2, 'epsilon': epsilon, 'method': 'forward'}
+        params1 = {"dimension": 2, "epsilon": epsilon, "method": "forward"}
         inputs1 = {
             0: np.array([0.0]),
             1: np.array([1.0 * epsilon]),
@@ -82,7 +86,7 @@ class TestNumericalGradientState:
         np.testing.assert_allclose(result1[0], [1.0, 2.0], rtol=1e-6)
 
         # Second call with a different dimension: block must adapt, not cache.
-        params2 = {'dimension': 3, 'epsilon': epsilon, 'method': 'forward'}
+        params2 = {"dimension": 3, "epsilon": epsilon, "method": "forward"}
         inputs2 = {
             0: np.array([0.0]),
             1: np.array([3.0 * epsilon]),
@@ -98,9 +102,10 @@ class TestNumericalGradientState:
         from blocks.optimization_primitives.numerical_gradient import (
             NumericalGradientBlock,
         )
+
         block = NumericalGradientBlock()
         # epsilon='not a number' forces a float() conversion error inside execute.
-        params = {'dimension': 2, 'epsilon': 'bad', 'method': 'forward'}
+        params = {"dimension": 2, "epsilon": "bad", "method": "forward"}
         result = block.execute(time=0.0, inputs={0: np.array([1.0])}, params=params)
-        assert result['E'] is True
+        assert result["E"] is True
         assert result[0].shape == (2,)

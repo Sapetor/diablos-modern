@@ -20,9 +20,7 @@ import logging
 import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.pde._compat import as_scalar
-from blocks.param_templates import (
-    diffusivity_param, domain_params_1d, init_flag_param
-)
+from blocks.param_templates import diffusivity_param, domain_params_1d, init_flag_param
 from lib.engine.pde_helpers import bc_params_1d
 from lib.engine.pde_ops import diffusion_reaction_rhs_1d, robin_boundary_value
 
@@ -76,28 +74,16 @@ class DiffusionReaction1DBlock(BaseBlock):
     def params(self):
         return {
             **diffusivity_param(default=0.01, param_name="D", doc="Diffusion coefficient [m²/s]"),
-            "k": {
-                "type": "float",
-                "default": 0.1,
-                "doc": "Reaction rate constant"
-            },
-            "n": {
-                "type": "int",
-                "default": 1,
-                "doc": "Reaction order (1 or 2)"
-            },
+            "k": {"type": "float", "default": 0.1, "doc": "Reaction rate constant"},
+            "n": {"type": "int", "default": 1, "doc": "Reaction order (1 or 2)"},
             **domain_params_1d(default_length=1.0, default_nodes=30),
             **bc_params_1d(left_default="Dirichlet", right_default="Neumann", include_robin=False),
             "h_mass_transfer": {
                 "type": "float",
                 "default": 1.0,
-                "doc": "Mass transfer coefficient for Robin BC"
+                "doc": "Mass transfer coefficient for Robin BC",
             },
-            "init_conds": {
-                "type": "list",
-                "default": [1.0],
-                "doc": "Initial concentration"
-            },
+            "init_conds": {"type": "list", "default": [1.0], "doc": "Initial concentration"},
             **init_flag_param(),
         }
 
@@ -130,6 +116,7 @@ class DiffusionReaction1DBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw diffusion-reaction icon - spreading profile with reaction."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw spreading Gaussian profile
         path.moveTo(0.1, 0.75)
@@ -143,23 +130,23 @@ class DiffusionReaction1DBlock(BaseBlock):
 
     def get_num_states(self, params):
         """Return number of states (= number of spatial nodes)."""
-        return int(params.get('N', 30))
+        return int(params.get("N", 30))
 
     def get_initial_conditions(self, params):
         """Return initial condition vector."""
-        N = int(params.get('N', 30))
-        L = float(params.get('L', 1.0))
-        ic = params.get('init_conds', [1.0])
+        N = int(params.get("N", 30))
+        L = float(params.get("L", 1.0))
+        ic = params.get("init_conds", [1.0])
 
         x = np.linspace(0, L, N)
 
         if isinstance(ic, str):
-            if ic.lower() == 'uniform':
+            if ic.lower() == "uniform":
                 c0 = np.ones(N)
-            elif ic.lower() == 'gaussian':
-                c0 = np.exp(-50 * (x - L/2)**2)
-            elif ic.lower() == 'linear':
-                c0 = 1 - x/L
+            elif ic.lower() == "gaussian":
+                c0 = np.exp(-50 * (x - L / 2) ** 2)
+            elif ic.lower() == "linear":
+                c0 = 1 - x / L
             else:
                 c0 = np.ones(N)
         elif isinstance(ic, (int, float)):
@@ -177,38 +164,38 @@ class DiffusionReaction1DBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute the diffusion-reaction equation block."""
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
         # Initialization
-        if params.get('_init_start_', True):
-            N = max(2, int(params.get('N', 30)))
-            params['N'] = N
-            L = float(params.get('L', 1.0))
-            params['c'] = self.get_initial_conditions(params)
-            params['_init_start_'] = False
-            params['dx'] = L / (N - 1)
+        if params.get("_init_start_", True):
+            N = max(2, int(params.get("N", 30)))
+            params["N"] = N
+            L = float(params.get("L", 1.0))
+            params["c"] = self.get_initial_conditions(params)
+            params["_init_start_"] = False
+            params["dx"] = L / (N - 1)
 
-        N = int(params.get('N', 30))
+        N = int(params.get("N", 30))
 
         if output_only:
-            c = params.get('c', np.zeros(N))
-            dx = params.get('dx', 1.0 / (N - 1))
-            k = float(params.get('k', 0.1))
-            n = int(params.get('n', 1))
+            c = params.get("c", np.zeros(N))
+            dx = params.get("dx", 1.0 / (N - 1))
+            k = float(params.get("k", 0.1))
+            n = int(params.get("n", 1))
             c_total = np.sum(c) * dx
             reaction_rate = np.sum(k * np.power(np.maximum(c, 0), n)) * dx
-            return {0: c, 1: c_total, 2: reaction_rate, 'E': False}
+            return {0: c, 1: c_total, 2: reaction_rate, "E": False}
 
         # Get parameters
-        D = float(params.get('D', 0.01))
-        k = float(params.get('k', 0.1))
-        n = int(params.get('n', 1))
-        L = float(params.get('L', 1.0))
-        dx = params.get('dx', L / (N - 1))
-        dtime = float(params.get('dtime', 0.01))
+        D = float(params.get("D", 0.01))
+        k = float(params.get("k", 0.1))
+        n = int(params.get("n", 1))
+        L = float(params.get("L", 1.0))
+        dx = params.get("dx", L / (N - 1))
+        dtime = float(params.get("dtime", 0.01))
 
         # Get current state
-        c = params.get('c', np.zeros(N))
+        c = params.get("c", np.zeros(N))
 
         # Get inputs
         source = inputs.get(0, 0.0)
@@ -223,29 +210,38 @@ class DiffusionReaction1DBlock(BaseBlock):
             if len(source) != N:
                 source = np.full(N, source[0] if len(source) > 0 else 0.0)
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Neumann')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Neumann")
 
         # Compute derivative from the pre-update field. The interpreter holds
         # Dirichlet/Robin nodes (dc/dt = 0) and sets their field value directly.
         dc_dt = diffusion_reaction_rhs_1d(
-            c, D, k, n, dx, source,
-            bc_type_left, bc_left, bc_type_right, bc_right,
-            boundary_mode='hold')
+            c,
+            D,
+            k,
+            n,
+            dx,
+            source,
+            bc_type_left,
+            bc_left,
+            bc_type_right,
+            bc_right,
+            boundary_mode="hold",
+        )
 
         # Direct-set Dirichlet/Robin boundary values (after the RHS has seen the
         # originals) so the Euler step keeps them fixed.
-        if bc_type_left == 'Dirichlet':
+        if bc_type_left == "Dirichlet":
             c[0] = bc_left
-        elif bc_type_left == 'Robin':
-            h = params.get('h_mass_transfer', 1.0)
+        elif bc_type_left == "Robin":
+            h = params.get("h_mass_transfer", 1.0)
             c[0] = robin_boundary_value(c[1], bc_left, h, D, dx)
 
-        if bc_type_right == 'Dirichlet':
-            c[N-1] = bc_right
-        elif bc_type_right == 'Robin':
-            h = params.get('h_mass_transfer', 1.0)
-            c[N-1] = robin_boundary_value(c[N-2], bc_right, h, D, dx)
+        if bc_type_right == "Dirichlet":
+            c[N - 1] = bc_right
+        elif bc_type_right == "Robin":
+            h = params.get("h_mass_transfer", 1.0)
+            c[N - 1] = robin_boundary_value(c[N - 2], bc_right, h, D, dx)
 
         # Forward Euler update
         c_new = c + dc_dt * dtime
@@ -253,12 +249,12 @@ class DiffusionReaction1DBlock(BaseBlock):
         # Ensure non-negativity
         c_new = np.maximum(c_new, 0.0)
 
-        params['c'] = c_new
+        params["c"] = c_new
 
         c_total = np.sum(c_new) * dx
         reaction_rate = np.sum(k * np.power(np.maximum(c_new, 0), n)) * dx
 
-        return {0: c_new, 1: c_total, 2: reaction_rate, 'E': False}
+        return {0: c_new, 1: c_total, 2: reaction_rate, "E": False}
 
     def compute_derivatives(self, time, state, inputs, params):
         """
@@ -266,16 +262,16 @@ class DiffusionReaction1DBlock(BaseBlock):
         blocks: (self, time, state, inputs, params).
         """
         c = state
-        N = int(params.get('N', 30))
-        D = float(params.get('D', 0.01))
-        k = float(params.get('k', 0.1))
-        n = int(params.get('n', 1))
-        L = float(params.get('L', 1.0))
+        N = int(params.get("N", 30))
+        D = float(params.get("D", 0.01))
+        k = float(params.get("k", 0.1))
+        n = int(params.get("n", 1))
+        L = float(params.get("L", 1.0))
         dx = L / (N - 1)
 
-        source = inputs.get('source', 0.0)
-        bc_left = as_scalar(inputs.get('bc_left', 0.0))
-        bc_right = as_scalar(inputs.get('bc_right', 0.0))
+        source = inputs.get("source", 0.0)
+        bc_left = as_scalar(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar(inputs.get("bc_right", 0.0))
 
         if isinstance(source, (int, float)):
             source = np.full(N, float(source))
@@ -284,38 +280,47 @@ class DiffusionReaction1DBlock(BaseBlock):
             if len(source) != N:
                 source = np.full(N, source[0] if len(source) > 0 else 0.0)
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Neumann')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Neumann")
 
         return diffusion_reaction_rhs_1d(
-            c, D, k, n, dx, source,
-            bc_type_left, bc_left, bc_type_right, bc_right,
-            boundary_mode='hold')
+            c,
+            D,
+            k,
+            n,
+            dx,
+            source,
+            bc_type_left,
+            bc_left,
+            bc_type_right,
+            bc_right,
+            boundary_mode="hold",
+        )
 
     def apply_boundary_conditions(self, c, params, inputs):
         """Apply boundary conditions."""
         N = len(c)
-        L = float(params.get('L', 1.0))
-        D = float(params.get('D', 0.01))
+        L = float(params.get("L", 1.0))
+        D = float(params.get("D", 0.01))
         dx = L / (N - 1)
 
-        bc_left = as_scalar(inputs.get('bc_left', 0.0))
-        bc_right = as_scalar(inputs.get('bc_right', 0.0))
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Neumann')
+        bc_left = as_scalar(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar(inputs.get("bc_right", 0.0))
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Neumann")
 
         c_mod = c.copy()
 
-        if bc_type_left == 'Dirichlet':
+        if bc_type_left == "Dirichlet":
             c_mod[0] = bc_left
-        elif bc_type_left == 'Robin':
-            h = params.get('h_mass_transfer', 1.0)
+        elif bc_type_left == "Robin":
+            h = params.get("h_mass_transfer", 1.0)
             c_mod[0] = robin_boundary_value(c[1], bc_left, h, D, dx)
 
-        if bc_type_right == 'Dirichlet':
-            c_mod[N-1] = bc_right
-        elif bc_type_right == 'Robin':
-            h = params.get('h_mass_transfer', 1.0)
-            c_mod[N-1] = robin_boundary_value(c[N-2], bc_right, h, D, dx)
+        if bc_type_right == "Dirichlet":
+            c_mod[N - 1] = bc_right
+        elif bc_type_right == "Robin":
+            h = params.get("h_mass_transfer", 1.0)
+            c_mod[N - 1] = robin_boundary_value(c[N - 2], bc_right, h, D, dx)
 
         return c_mod

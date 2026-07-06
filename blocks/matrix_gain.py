@@ -1,4 +1,3 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
@@ -51,11 +50,7 @@ class MatrixGainBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "gain": {
-                "type": "string",
-                "default": "1.0",
-                "doc": "Gain: scalar, vector, or matrix."
-            }
+            "gain": {"type": "string", "default": "1.0", "doc": "Gain: scalar, vector, or matrix."}
         }
 
     @property
@@ -78,7 +73,7 @@ class MatrixGainBlock(BaseBlock):
         try:
             u = np.atleast_1d(inputs.get(0, 0)).astype(float)
 
-            K_raw = params.get('gain', '1.0')
+            K_raw = params.get("gain", "1.0")
 
             if isinstance(K_raw, str):
                 try:
@@ -94,7 +89,7 @@ class MatrixGainBlock(BaseBlock):
                     if len(u) < K.shape[1]:
                         u = np.pad(u, (0, K.shape[1] - len(u)))
                     else:
-                        u = u[:K.shape[1]]
+                        u = u[: K.shape[1]]
                 y = K @ u
             elif K.ndim == 1 and len(K) > 1:
                 # Vector gain (len(K) > 1 is guaranteed by the guard above).
@@ -110,4 +105,4 @@ class MatrixGainBlock(BaseBlock):
             return {0: y}
         except (ValueError, TypeError) as e:
             logger.error(f"MatrixGain block error: {str(e)}")
-            return {'E': True, 'error': str(e)}
+            return {"E": True, "error": str(e)}

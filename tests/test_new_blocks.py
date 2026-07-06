@@ -13,6 +13,7 @@ sys.path.insert(0, project_root)
 
 import numpy as np
 
+
 def test_block_loading():
     """Test that all new blocks can be loaded and instantiated."""
     print("=== Test 1: Block Loading ===")
@@ -28,14 +29,14 @@ def test_block_loading():
     for b in blocks:
         try:
             inst = b()
-            cat = getattr(inst, 'category', 'Unknown')
+            cat = getattr(inst, "category", "Unknown")
             name = inst.block_name
-            if cat == 'PDE':
+            if cat == "PDE":
                 pde_blocks.append(name)
-            elif cat == 'Optimization':
+            elif cat == "Optimization":
                 opt_blocks.append(name)
         except Exception as e:
-            errors.append(f'{b.__name__}: {e}')
+            errors.append(f"{b.__name__}: {e}")
 
     print(f"\nPDE blocks ({len(pde_blocks)}): {pde_blocks}")
     print(f"Optimization blocks ({len(opt_blocks)}): {opt_blocks}")
@@ -55,14 +56,14 @@ def test_heat_equation():
 
     block = HeatEquation1DBlock()
     params = {
-        'alpha': 0.1,
-        'L': 1.0,
-        'N': 10,
-        'bc_type_left': 'Dirichlet',
-        'bc_type_right': 'Dirichlet',
-        'init_conds': [0.0],
-        '_init_start_': True,
-        'dtime': 0.01,
+        "alpha": 0.1,
+        "L": 1.0,
+        "N": 10,
+        "bc_type_left": "Dirichlet",
+        "bc_type_right": "Dirichlet",
+        "init_conds": [0.0],
+        "_init_start_": True,
+        "dtime": 0.01,
     }
 
     # Execute with boundary conditions
@@ -79,7 +80,7 @@ def test_heat_equation():
 
     # Run a few steps
     for i in range(10):
-        result = block.execute(0.01 * (i+1), inputs, params)
+        result = block.execute(0.01 * (i + 1), inputs, params)
 
     T_field = result[0]
     T_avg = result[1]
@@ -103,16 +104,16 @@ def test_wave_equation():
 
     block = WaveEquation1DBlock()
     params = {
-        'c': 1.0,
-        'damping': 0.0,
-        'L': 1.0,
-        'N': 20,
-        'bc_type_left': 'Dirichlet',
-        'bc_type_right': 'Dirichlet',
-        'init_displacement': 'gaussian',
-        'init_velocity': [0.0],
-        '_init_start_': True,
-        'dtime': 0.01,
+        "c": 1.0,
+        "damping": 0.0,
+        "L": 1.0,
+        "N": 20,
+        "bc_type_left": "Dirichlet",
+        "bc_type_right": "Dirichlet",
+        "init_displacement": "gaussian",
+        "init_velocity": [0.0],
+        "_init_start_": True,
+        "dtime": 0.01,
     }
 
     inputs = {0: 0.0, 1: 0.0, 2: 0.0}  # force=0, bc_left=0, bc_right=0
@@ -127,7 +128,7 @@ def test_wave_equation():
 
     # Run a few steps
     for i in range(10):
-        result = block.execute(0.01 * (i+1), inputs, params)
+        result = block.execute(0.01 * (i + 1), inputs, params)
 
     u_field = result[0]
     energy_final = result[2]
@@ -146,9 +147,9 @@ def test_field_probe():
 
     block = FieldProbeBlock()
     params = {
-        'position': 0.5,
-        'position_mode': 'normalized',
-        'L': 1.0,
+        "position": 0.5,
+        "position_mode": "normalized",
+        "L": 1.0,
     }
 
     # Create a linear field: f(x) = x
@@ -176,8 +177,8 @@ def test_field_integral():
 
     block = FieldIntegralBlock()
     params = {
-        'L': 1.0,
-        'normalize': False,
+        "L": 1.0,
+        "normalize": False,
     }
 
     # Constant field f(x) = 2, integral should be 2*L = 2
@@ -205,12 +206,12 @@ def test_parameter_block():
 
     block = ParameterBlock()
     params = {
-        'name': 'Kp',
-        'value': 2.5,
-        'lower': 0.0,
-        'upper': 10.0,
-        'scale': 'linear',
-        'fixed': False,
+        "name": "Kp",
+        "value": 2.5,
+        "lower": 0.0,
+        "upper": 10.0,
+        "scale": "linear",
+        "fixed": False,
     }
 
     result = block.execute(0.0, {}, params)
@@ -222,7 +223,7 @@ def test_parameter_block():
     info = block.get_optimization_info(params)
     print(f"Optimization info: {info}")
 
-    if value == 2.5 and info['name'] == 'Kp':
+    if value == 2.5 and info["name"] == "Kp":
         print("\n[PASS] Parameter block works!")
         return True
     else:
@@ -237,22 +238,22 @@ def test_cost_function():
 
     block = CostFunctionBlock()
     params = {
-        'cost_type': 'ISE',
-        'target': 0.0,
-        'weight': 1.0,
-        '_init_start_': True,
+        "cost_type": "ISE",
+        "target": 0.0,
+        "weight": 1.0,
+        "_init_start_": True,
     }
 
     # Simulate error signal over time
     errors = [1.0, 0.8, 0.5, 0.3, 0.1]
     dt = 0.1
-    params['dtime'] = dt
+    params["dtime"] = dt
 
     for i, err in enumerate(errors):
         inputs = {0: err}
         result = block.execute(i * dt, inputs, params)
 
-    final_cost = params.get('_accumulated_cost_', 0)
+    final_cost = params.get("_accumulated_cost_", 0)
     print(f"Errors: {errors}")
     print(f"Accumulated ISE cost: {final_cost:.4f}")
 
@@ -276,6 +277,7 @@ def test_draw_icons():
         return True
 
     from lib.block_loader import load_blocks
+
     blocks = load_blocks()
 
     missing_icons = []
@@ -284,9 +286,9 @@ def test_draw_icons():
     for b in blocks:
         try:
             inst = b()
-            cat = getattr(inst, 'category', 'Unknown')
-            if cat in ['PDE', 'Optimization']:
-                if hasattr(inst, 'draw_icon'):
+            cat = getattr(inst, "category", "Unknown")
+            if cat in ["PDE", "Optimization"]:
+                if hasattr(inst, "draw_icon"):
                     try:
                         path = inst.draw_icon(None)
                         if path is not None and not isinstance(path, QPainterPath):

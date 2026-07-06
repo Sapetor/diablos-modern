@@ -2,4 +2,4 @@
 
 from lib.managers.subsystem_manager import SubsystemManager
 
-__all__ = ['SubsystemManager']
+__all__ = ["SubsystemManager"]

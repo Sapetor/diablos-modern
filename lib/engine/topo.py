@@ -5,6 +5,7 @@ all connections) and ``run_compiled_simulation``'s replay pass (ordering blocks
 by direct feedthrough before recomputing their outputs) ran their own copy of
 Kahn's algorithm. This is the single implementation they both call.
 """
+
 from collections import deque
 
 

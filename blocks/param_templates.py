@@ -36,20 +36,14 @@ def init_flag_param(name: str = "_init_start_") -> ParamDict:
     Returns:
         Parameter dict with the init flag definition
     """
-    return {
-        name: {
-            "type": "bool",
-            "default": True,
-            "doc": "Internal: initialization flag"
-        }
-    }
+    return {name: {"type": "bool", "default": True, "doc": "Internal: initialization flag"}}
 
 
 def init_conds_param(
     default: float = 0.0,
     param_name: str = "init_conds",
     param_type: str = "float",
-    doc: str = "Initial condition value"
+    doc: str = "Initial condition value",
 ) -> ParamDict:
     """
     Create an initial conditions parameter.
@@ -63,13 +57,7 @@ def init_conds_param(
     Returns:
         Parameter dict with init_conds definition
     """
-    return {
-        param_name: {
-            "type": param_type,
-            "default": default,
-            "doc": doc
-        }
-    }
+    return {param_name: {"type": param_type, "default": default, "doc": doc}}
 
 
 def limit_params(
@@ -78,7 +66,7 @@ def limit_params(
     min_name: str = "min",
     max_name: str = "max",
     min_doc: str = "Lower limit",
-    max_doc: str = "Upper limit"
+    max_doc: str = "Upper limit",
 ) -> ParamDict:
     """
     Create min/max limit parameters.
@@ -97,23 +85,12 @@ def limit_params(
         Parameter dict with min/max definitions
     """
     return {
-        min_name: {
-            "type": "float",
-            "default": default_min,
-            "doc": min_doc
-        },
-        max_name: {
-            "type": "float",
-            "default": default_max,
-            "doc": max_doc
-        }
+        min_name: {"type": "float", "default": default_min, "doc": min_doc},
+        max_name: {"type": "float", "default": default_max, "doc": max_doc},
     }
 
 
-def slew_rate_params(
-    default_rising: float = np.inf,
-    default_falling: float = np.inf
-) -> ParamDict:
+def slew_rate_params(default_rising: float = np.inf, default_falling: float = np.inf) -> ParamDict:
     """
     Create slew rate parameters for RateLimiter blocks.
 
@@ -128,21 +105,18 @@ def slew_rate_params(
         "rising_slew": {
             "type": "float",
             "default": default_rising,
-            "doc": "Max positive slope (units/sec)"
+            "doc": "Max positive slope (units/sec)",
         },
         "falling_slew": {
             "type": "float",
             "default": default_falling,
-            "doc": "Max negative slope magnitude (units/sec)"
-        }
+            "doc": "Max negative slope magnitude (units/sec)",
+        },
     }
 
 
 def method_param(
-    choices: List[str],
-    default: str,
-    param_name: str = "method",
-    doc: Optional[str] = None
+    choices: List[str], default: str, param_name: str = "method", doc: Optional[str] = None
 ) -> ParamDict:
     """
     Create a method selection parameter.
@@ -161,21 +135,14 @@ def method_param(
     if doc is None:
         doc = f"Method: {', '.join(choices)}"
 
-    return {
-        param_name: {
-            "type": "string",
-            "default": default,
-            "doc": doc,
-            "options": choices
-        }
-    }
+    return {param_name: {"type": "string", "default": default, "doc": doc, "options": choices}}
 
 
 def domain_params_1d(
     default_length: float = 1.0,
     default_nodes: int = 20,
     length_name: str = "L",
-    nodes_name: str = "N"
+    nodes_name: str = "N",
 ) -> ParamDict:
     """
     Create 1D spatial domain parameters.
@@ -192,24 +159,13 @@ def domain_params_1d(
         Parameter dict with L and N definitions
     """
     return {
-        length_name: {
-            "type": "float",
-            "default": default_length,
-            "doc": "Domain length [m]"
-        },
-        nodes_name: {
-            "type": "int",
-            "default": default_nodes,
-            "doc": "Number of spatial nodes"
-        }
+        length_name: {"type": "float", "default": default_length, "doc": "Domain length [m]"},
+        nodes_name: {"type": "int", "default": default_nodes, "doc": "Number of spatial nodes"},
     }
 
 
 def domain_params_2d(
-    default_lx: float = 1.0,
-    default_ly: float = 1.0,
-    default_nx: int = 20,
-    default_ny: int = 20
+    default_lx: float = 1.0, default_ly: float = 1.0, default_nx: int = 20, default_ny: int = 20
 ) -> ParamDict:
     """
     Create 2D spatial domain parameters.
@@ -226,33 +182,15 @@ def domain_params_2d(
         Parameter dict with Lx, Ly, Nx, Ny definitions
     """
     return {
-        "Lx": {
-            "type": "float",
-            "default": default_lx,
-            "doc": "Domain length in x [m]"
-        },
-        "Ly": {
-            "type": "float",
-            "default": default_ly,
-            "doc": "Domain length in y [m]"
-        },
-        "Nx": {
-            "type": "int",
-            "default": default_nx,
-            "doc": "Number of nodes in x direction"
-        },
-        "Ny": {
-            "type": "int",
-            "default": default_ny,
-            "doc": "Number of nodes in y direction"
-        }
+        "Lx": {"type": "float", "default": default_lx, "doc": "Domain length in x [m]"},
+        "Ly": {"type": "float", "default": default_ly, "doc": "Domain length in y [m]"},
+        "Nx": {"type": "int", "default": default_nx, "doc": "Number of nodes in x direction"},
+        "Ny": {"type": "int", "default": default_ny, "doc": "Number of nodes in y direction"},
     }
 
 
 def diffusivity_param(
-    default: float = 1.0,
-    param_name: str = "alpha",
-    doc: str = "Thermal diffusivity [m²/s]"
+    default: float = 1.0, param_name: str = "alpha", doc: str = "Thermal diffusivity [m²/s]"
 ) -> ParamDict:
     """
     Create a diffusivity parameter.
@@ -265,19 +203,11 @@ def diffusivity_param(
     Returns:
         Parameter dict with diffusivity definition
     """
-    return {
-        param_name: {
-            "type": "float",
-            "default": default,
-            "doc": doc
-        }
-    }
+    return {param_name: {"type": "float", "default": default, "doc": doc}}
 
 
 def wave_speed_param(
-    default: float = 1.0,
-    param_name: str = "c",
-    doc: str = "Wave propagation speed [m/s]"
+    default: float = 1.0, param_name: str = "c", doc: str = "Wave propagation speed [m/s]"
 ) -> ParamDict:
     """
     Create a wave speed parameter.
@@ -290,19 +220,11 @@ def wave_speed_param(
     Returns:
         Parameter dict with wave speed definition
     """
-    return {
-        param_name: {
-            "type": "float",
-            "default": default,
-            "doc": doc
-        }
-    }
+    return {param_name: {"type": "float", "default": default, "doc": doc}}
 
 
 def advection_velocity_param(
-    default: float = 1.0,
-    param_name: str = "v",
-    doc: str = "Advection velocity [m/s]"
+    default: float = 1.0, param_name: str = "v", doc: str = "Advection velocity [m/s]"
 ) -> ParamDict:
     """
     Create an advection velocity parameter.
@@ -315,19 +237,11 @@ def advection_velocity_param(
     Returns:
         Parameter dict with velocity definition
     """
-    return {
-        param_name: {
-            "type": "float",
-            "default": default,
-            "doc": doc
-        }
-    }
+    return {param_name: {"type": "float", "default": default, "doc": doc}}
 
 
 def robin_bc_params(
-    default_h_left: float = 10.0,
-    default_h_right: float = 10.0,
-    default_k: float = 1.0
+    default_h_left: float = 10.0, default_h_right: float = 10.0, default_k: float = 1.0
 ) -> ParamDict:
     """
     Create Robin boundary condition parameters for 1D.
@@ -346,25 +260,25 @@ def robin_bc_params(
         "h_left": {
             "type": "float",
             "default": default_h_left,
-            "doc": "Left Robin coefficient (heat transfer coeff)"
+            "doc": "Left Robin coefficient (heat transfer coeff)",
         },
         "h_right": {
             "type": "float",
             "default": default_h_right,
-            "doc": "Right Robin coefficient (heat transfer coeff)"
+            "doc": "Right Robin coefficient (heat transfer coeff)",
         },
         "k_thermal": {
             "type": "float",
             "default": default_k,
-            "doc": "Thermal conductivity for Robin BC [W/(m·K)]"
-        }
+            "doc": "Thermal conductivity for Robin BC [W/(m·K)]",
+        },
     }
 
 
 def pde_init_conds_param(
     default: str = "0.0",
     param_name: str = "init_conds",
-    doc: str = "Initial conditions (scalar, list, or named pattern)"
+    doc: str = "Initial conditions (scalar, list, or named pattern)",
 ) -> ParamDict:
     """
     Create PDE initial conditions parameter.
@@ -382,16 +296,15 @@ def pde_init_conds_param(
     return {
         param_name: {
             "type": "list",
-            "default": [float(default)] if default.replace('.', '').replace('-', '').isdigit() else default,
-            "doc": doc
+            "default": [float(default)]
+            if default.replace(".", "").replace("-", "").isdigit()
+            else default,
+            "doc": doc,
         }
     }
 
 
-def pde_2d_init_temp_param(
-    default: str = "0.0",
-    default_amplitude: float = 1.0
-) -> ParamDict:
+def pde_2d_init_temp_param(default: str = "0.0", default_amplitude: float = 1.0) -> ParamDict:
     """
     Create 2D PDE initial temperature parameters.
 
@@ -406,20 +319,17 @@ def pde_2d_init_temp_param(
         "init_temp": {
             "type": "string",
             "default": default,
-            "doc": "Initial temperature: number, 'sinusoidal', 'gaussian', or 'hot_spot'"
+            "doc": "Initial temperature: number, 'sinusoidal', 'gaussian', or 'hot_spot'",
         },
         "init_amplitude": {
             "type": "float",
             "default": default_amplitude,
-            "doc": "Amplitude for non-uniform initial conditions"
-        }
+            "doc": "Amplitude for non-uniform initial conditions",
+        },
     }
 
 
-def verification_mode_param(
-    default: str = "auto",
-    param_name: str = "verify_mode"
-) -> ParamDict:
+def verification_mode_param(default: str = "auto", param_name: str = "verify_mode") -> ParamDict:
     """
     Create a verification mode parameter for Scope blocks.
 
@@ -442,6 +352,6 @@ def verification_mode_param(
             "type": "string",
             "default": default,
             "doc": "Verification mode: auto, objective, comparison, trajectory, none",
-            "options": ["auto", "objective", "comparison", "trajectory", "none"]
+            "options": ["auto", "objective", "comparison", "trajectory", "none"],
         }
     }

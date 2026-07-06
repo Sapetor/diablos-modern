@@ -1,4 +1,3 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
 
@@ -58,6 +57,7 @@ class ImpulseBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw impulse icon: vertical spike with arrow."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Baseline
         path.moveTo(0.1, 0.8)
@@ -76,25 +76,28 @@ class ImpulseBlock(BaseBlock):
         # solver step. Guessing a fallback (e.g. 0.01) silently rescales the
         # Dirac approximation to value*(dt_real/0.01), so require a real dt from
         # the engine and fail loudly if it is missing instead of fabricating one.
-        dt = kwargs.get('dtime', params.get('dtime', None))
+        dt = kwargs.get("dtime", params.get("dtime", None))
         if dt is None:
-            return {0: np.atleast_1d(np.array(0.0, dtype=float)), 'E': True,
-                    'error': 'Impulse requires the simulation step (dtime) to '
-                             'scale value/dt; none was supplied by the engine.'}
+            return {
+                0: np.atleast_1d(np.array(0.0, dtype=float)),
+                "E": True,
+                "error": "Impulse requires the simulation step (dtime) to "
+                "scale value/dt; none was supplied by the engine.",
+            }
         dt = float(dt)
-        delay = float(params.get('delay', 0.0))
-        value = float(params.get('value', 1.0))
+        delay = float(params.get("delay", 0.0))
+        value = float(params.get("value", 1.0))
 
-        if params.get('_init_start_', True):
-            params['_impulse_fired'] = False
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_impulse_fired"] = False
+            params["_init_start_"] = False
 
         # Half-open right-edge convention: the impulse fires on the first sample
         # at or after `delay` (time >= delay). When `delay` falls between grid
         # points the spike therefore lands up to one dt late. This matches the
         # Step block's 'impulse' branch (step.py) so the two stay consistent.
-        if not params.get('_impulse_fired', False) and time >= delay:
-            params['_impulse_fired'] = True
-            return {0: np.atleast_1d(np.array(value / dt, dtype=float)), 'E': False}
+        if not params.get("_impulse_fired", False) and time >= delay:
+            params["_impulse_fired"] = True
+            return {0: np.atleast_1d(np.array(value / dt, dtype=float)), "E": False}
 
-        return {0: np.atleast_1d(np.array(0.0, dtype=float)), 'E': False}
+        return {0: np.atleast_1d(np.array(0.0, dtype=float)), "E": False}

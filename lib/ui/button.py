@@ -11,7 +11,7 @@ class Button:
 
     def __init__(self, name, coords, active=True):
         self.name = name
-        self.text = name.strip('_')  # Remove underscores for display
+        self.text = name.strip("_")  # Remove underscores for display
         self.collision = QRect(*coords) if isinstance(coords, tuple) else coords
         self.pressed = False
         self.active = active

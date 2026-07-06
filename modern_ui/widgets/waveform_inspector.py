@@ -1,8 +1,17 @@
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QPushButton, QLabel, QSlider, QFileDialog, QMessageBox, QCheckBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QLabel,
+    QSlider,
+    QFileDialog,
+    QMessageBox,
+    QCheckBox,
 )
 from PyQt5.QtCore import Qt
 
@@ -75,7 +84,9 @@ class WaveformInspector(QWidget):
         self.plot = pg.PlotWidget(title="Scopes")
         self.plot.showGrid(x=True, y=True)
         self.plot.addLegend()
-        self.vline = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen(color='r', style=Qt.DashLine))
+        self.vline = pg.InfiniteLine(
+            angle=90, movable=True, pen=pg.mkPen(color="r", style=Qt.DashLine)
+        )
         self.plot.addItem(self.vline)
         self.vline.sigPositionChanged.connect(self._update_readout)
         self.curves = []
@@ -87,7 +98,9 @@ class WaveformInspector(QWidget):
         slider_row.addWidget(QLabel("Scrub"))
         self.scrub = QSlider(Qt.Horizontal)
         self.scrub.setMinimum(0)
-        self.scrub.setMaximum(len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0)
+        self.scrub.setMaximum(
+            len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0
+        )
         self.scrub.valueChanged.connect(self._on_scrub)
         slider_row.addWidget(self.scrub, 1)
         self.readout = QLabel("t = -, values = -")
@@ -155,7 +168,9 @@ class WaveformInspector(QWidget):
     def _update_scrub_max(self):
         if hasattr(self, "scrub"):
             self.scrub.blockSignals(True)
-            self.scrub.setMaximum(len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0)
+            self.scrub.setMaximum(
+                len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0
+            )
             self.scrub.setValue(0)
             self.scrub.blockSignals(False)
 
@@ -175,9 +190,9 @@ class WaveformInspector(QWidget):
             if step_mode and len(x) == len(y):
                 x = np.append(x, x[-1] + (x[-1] - x[-2] if len(x) > 1 else 1.0))
             elif len(x) > len(y):
-                x = x[:len(y)]
+                x = x[: len(y)]
             elif len(x) < len(y):
-                y = y[:len(x)]
+                y = y[: len(x)]
             # Color offset per run
             pen = pg.intColor(tr.get("run_idx", 0), hues=max(len(self.run_history), 8))
             curve = self.plot.plot(x, y, stepMode=step_mode, pen=pen, name=tr["name"])
@@ -240,7 +255,11 @@ class WaveformInspector(QWidget):
             # Resolve each trace against its own run timeline; the shared
             # self.timeline is the longest run's, so a cursor past a shorter
             # run's data must read "n/a" rather than clamp to its last sample.
-            run = self.run_history[tr["run_idx"]] if 0 <= tr.get("run_idx", -1) < len(self.run_history) else None
+            run = (
+                self.run_history[tr["run_idx"]]
+                if 0 <= tr.get("run_idx", -1) < len(self.run_history)
+                else None
+            )
             run_timeline = run["timeline"] if run is not None else None
             if run_timeline is not None and len(run_timeline):
                 tr_idx = int(np.searchsorted(run_timeline, t, side="left"))
@@ -251,7 +270,9 @@ class WaveformInspector(QWidget):
                 vals.append(f"{tr['name']}: n/a")
             else:
                 vals.append(f"{tr['name']}: {y[tr_idx]:.4g}")
-        self.readout.setText(f"t = {self.timeline[idx]:.4g}, " + ("; ".join(vals) if vals else "no active traces"))
+        self.readout.setText(
+            f"t = {self.timeline[idx]:.4g}, " + ("; ".join(vals) if vals else "no active traces")
+        )
         self.scrub.blockSignals(True)
         self.scrub.setValue(idx)
         self.scrub.blockSignals(False)
@@ -263,7 +284,9 @@ class WaveformInspector(QWidget):
         if self.timeline is None or not len(self.timeline):
             QMessageBox.warning(self, "No Data", "No data to export.")
             return
-        filepath, _ = QFileDialog.getSaveFileName(self, "Export CSV", "waveforms.csv", "CSV Files (*.csv)")
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Export CSV", "waveforms.csv", "CSV Files (*.csv)"
+        )
         if not filepath:
             return
         # Build matrix with selected traces
@@ -286,6 +309,6 @@ class WaveformInspector(QWidget):
             header.append(self.traces[i]["name"])
         try:
             mat = np.column_stack(data_cols)
-            np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments='')
+            np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments="")
         except (ValueError, OSError) as exc:
             QMessageBox.warning(self, "Export Failed", f"Could not export CSV:\n{exc}")

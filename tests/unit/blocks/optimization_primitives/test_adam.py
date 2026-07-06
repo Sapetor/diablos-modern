@@ -21,11 +21,11 @@ class TestAdamBlock:
     def test_first_step(self):
         """Test first Adam step."""
         params = {
-            'alpha': 0.001,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
+            "alpha": 0.001,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-8,
+            "_init_start_": True,
         }
         grad = np.array([1.0, 1.0])
 
@@ -40,17 +40,11 @@ class TestAdamBlock:
 
         expected = -0.001 * np.ones(2)
         np.testing.assert_array_almost_equal(result[0], expected, decimal=5)
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_update_direction(self):
         """Test that update is in opposite direction of gradient."""
-        params = {
-            'alpha': 0.1,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta1": 0.9, "beta2": 0.999, "epsilon": 1e-8, "_init_start_": True}
         grad = np.array([5.0, -3.0])
 
         result = self.block.execute(0.0, {0: grad}, params)
@@ -61,20 +55,14 @@ class TestAdamBlock:
 
     def test_adaptive_learning(self):
         """Test that Adam adapts to gradient magnitude."""
-        params = {
-            'alpha': 0.1,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta1": 0.9, "beta2": 0.999, "epsilon": 1e-8, "_init_start_": True}
 
         # Large gradient - should get scaled down
         large_grad = np.array([100.0, 100.0])
         result1 = self.block.execute(0.0, {0: large_grad}, params)
 
         # Reset
-        params['_init_start_'] = True
+        params["_init_start_"] = True
 
         # Small gradient - relative update should be similar
         small_grad = np.array([1.0, 1.0])
@@ -88,11 +76,11 @@ class TestAdamBlock:
     def test_bias_correction(self):
         """Test that bias correction works properly."""
         params = {
-            'alpha': 0.001,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
+            "alpha": 0.001,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-8,
+            "_init_start_": True,
         }
         grad = np.array([1.0])
 
@@ -107,19 +95,19 @@ class TestAdamBlock:
 
     def test_default_parameters(self):
         """Test default parameters match standard Adam."""
-        assert self.block.params['alpha']['default'] == 0.001
-        assert self.block.params['beta1']['default'] == 0.9
-        assert self.block.params['beta2']['default'] == 0.999
-        assert self.block.params['epsilon']['default'] == 1e-8
+        assert self.block.params["alpha"]["default"] == 0.001
+        assert self.block.params["beta1"]["default"] == 0.9
+        assert self.block.params["beta2"]["default"] == 0.999
+        assert self.block.params["epsilon"]["default"] == 1e-8
 
     def test_zero_gradient(self):
         """Test with zero gradient."""
         params = {
-            'alpha': 0.001,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
+            "alpha": 0.001,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-8,
+            "_init_start_": True,
         }
         grad = np.array([0.0, 0.0])
 
@@ -129,13 +117,7 @@ class TestAdamBlock:
 
     def test_multiple_iterations(self):
         """Test convergence behavior over multiple iterations."""
-        params = {
-            'alpha': 0.1,
-            'beta1': 0.9,
-            'beta2': 0.999,
-            'epsilon': 1e-8,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta1": 0.9, "beta2": 0.999, "epsilon": 1e-8, "_init_start_": True}
 
         # Constant gradient - simulate optimization
         grad = np.array([2.0, 2.0])

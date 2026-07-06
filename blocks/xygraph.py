@@ -50,10 +50,7 @@ class XYGraphBlock(BaseBlock):
 
     @property
     def inputs(self):
-        return [
-            {"name": "x", "type": "any"},
-            {"name": "y", "type": "any"}
-        ]
+        return [{"name": "x", "type": "any"}, {"name": "y", "type": "any"}]
 
     @property
     def outputs(self):
@@ -67,6 +64,7 @@ class XYGraphBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw XY graph icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Axes
         path.moveTo(0.15, 0.85)
@@ -85,14 +83,14 @@ class XYGraphBlock(BaseBlock):
             params["_x_data_"] = []
             params["_y_data_"] = []
             params["_init_start_"] = False
-        
+
         # Get input values
         x_val = float(np.atleast_1d(inputs.get(0, 0))[0])
         y_val = float(np.atleast_1d(inputs.get(1, 0))[0])
-        
+
         # Store data points
         params["_x_data_"].append(x_val)
         params["_y_data_"].append(y_val)
-        
+
         # No output needed for sink
         return {0: np.array([0.0])}

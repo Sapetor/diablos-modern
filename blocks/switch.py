@@ -41,9 +41,18 @@ class SwitchBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "threshold": {"type": "float", "default": 0.0, "doc": "Control threshold (threshold mode)."},
+            "threshold": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Control threshold (threshold mode).",
+            },
             "n_inputs": {"type": "int", "default": 2, "doc": "Number of data inputs (>=2)."},
-            "mode": {"type": "string", "default": "threshold", "options": ["threshold", "index"], "doc": "'threshold' or 'index'."},
+            "mode": {
+                "type": "string",
+                "default": "threshold",
+                "options": ["threshold", "index"],
+                "doc": "'threshold' or 'index'.",
+            },
         }
 
     @property
@@ -69,26 +78,32 @@ class SwitchBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw switch selector icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Control arrow from top
         path.moveTo(0.5, 0.10)
         path.lineTo(0.5, 0.35)
-        path.moveTo(0.47, 0.30); path.lineTo(0.5, 0.35); path.lineTo(0.53, 0.30)
+        path.moveTo(0.47, 0.30)
+        path.lineTo(0.5, 0.35)
+        path.lineTo(0.53, 0.30)
         # Selector box
         path.moveTo(0.30, 0.35)
         path.lineTo(0.70, 0.35)
         path.lineTo(0.70, 0.75)
         path.lineTo(0.30, 0.75)
         path.lineTo(0.30, 0.35)
-        # Data inputs  
-        path.moveTo(0.30, 0.45); path.lineTo(0.45, 0.45)
-        path.moveTo(0.30, 0.65); path.lineTo(0.45, 0.65)
+        # Data inputs
+        path.moveTo(0.30, 0.45)
+        path.lineTo(0.45, 0.45)
+        path.moveTo(0.30, 0.65)
+        path.lineTo(0.45, 0.65)
         # Selected path
         path.moveTo(0.45, 0.45)
         path.lineTo(0.55, 0.55)
         path.lineTo(0.70, 0.55)
         # Output
-        path.moveTo(0.70, 0.55); path.lineTo(0.90, 0.55)
+        path.moveTo(0.70, 0.55)
+        path.lineTo(0.90, 0.55)
         return path
 
     def execute(self, time, inputs, params, **kwargs):
@@ -106,4 +121,3 @@ class SwitchBlock(BaseBlock):
         if isinstance(out, (float, int)):
             out = np.atleast_1d(out)
         return {0: np.array(out, dtype=float)}
-

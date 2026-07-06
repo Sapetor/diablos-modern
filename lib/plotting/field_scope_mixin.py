@@ -10,6 +10,7 @@ through the shared instance.
 Covers FieldScope (1D heatmap / slider), FieldScope2D (animated heatmap), and
 AgentScope (multi-agent 2D scatter animation), plus the animation Export dialog.
 """
+
 import logging
 
 import numpy as np
@@ -35,25 +36,28 @@ class _FieldScopeRenderMixin:
         """
         import matplotlib
         import matplotlib.pyplot as plt
+
         # Try to set Qt5 backend if not already set
         try:
-            if matplotlib.get_backend() != 'Qt5Agg':
-                matplotlib.use('Qt5Agg')
+            if matplotlib.get_backend() != "Qt5Agg":
+                matplotlib.use("Qt5Agg")
         except Exception:
             pass  # Already using a backend
 
-        params = getattr(block, 'exec_params', block.params)
+        params = getattr(block, "exec_params", block.params)
 
         # Get stored field history
-        field_history = params.get('_field_history_', None)
-        time_history = params.get('_time_history_', None)
+        field_history = params.get("_field_history_", None)
+        time_history = params.get("_time_history_", None)
 
-        logger.info(f"FieldScope {block.name}: Starting plot, field_history type={type(field_history)}, time_history type={type(time_history)}")
+        logger.info(
+            f"FieldScope {block.name}: Starting plot, field_history type={type(field_history)}, time_history type={type(time_history)}"
+        )
 
         # Check for valid data (handle both list and numpy array)
         has_field_data = field_history is not None and (
-            (hasattr(field_history, '__len__') and len(field_history) >= 2) or
-            (hasattr(field_history, 'shape') and field_history.shape[0] >= 2)
+            (hasattr(field_history, "__len__") and len(field_history) >= 2)
+            or (hasattr(field_history, "shape") and field_history.shape[0] >= 2)
         )
         if not has_field_data:
             logger.warning(f"FieldScope {block.name}: No field data to plot")
@@ -63,32 +67,38 @@ class _FieldScopeRenderMixin:
         try:
             field_data = np.array(field_history)  # Shape: (n_times, n_nodes)
             time_data = np.array(time_history) if time_history is not None else None
-            logger.info(f"FieldScope {block.name}: field_data shape={field_data.shape}, time_data shape={time_data.shape if time_data is not None else 'None'}")
+            logger.info(
+                f"FieldScope {block.name}: field_data shape={field_data.shape}, time_data shape={time_data.shape if time_data is not None else 'None'}"
+            )
         except Exception as e:
             logger.error(f"FieldScope {block.name}: Error converting data: {e}")
             return
 
         if field_data.ndim != 2:
-            logger.warning(f"FieldScope {block.name}: Expected 2D field data, got {field_data.ndim}D")
+            logger.warning(
+                f"FieldScope {block.name}: Expected 2D field data, got {field_data.ndim}D"
+            )
             return
 
         n_times, n_nodes = field_data.shape
 
         # Get spatial parameters
-        L = float(params.get('L', 1.0))
+        L = float(params.get("L", 1.0))
         x_positions = np.linspace(0, L, n_nodes)
 
         # Get plot configuration
-        title = params.get('title', 'Field Evolution')
-        colormap = params.get('colormap', 'viridis')
-        display_mode = params.get('display_mode', 'heatmap')
-        clim_min = params.get('clim_min', None)
-        clim_max = params.get('clim_max', None)
+        title = params.get("title", "Field Evolution")
+        colormap = params.get("colormap", "viridis")
+        display_mode = params.get("display_mode", "heatmap")
+        clim_min = params.get("clim_min", None)
+        clim_max = params.get("clim_max", None)
 
         # Check display mode
-        if display_mode == 'slider':
+        if display_mode == "slider":
             # Animated line plot with time slider
-            self._plot_field_scope_slider(block, field_data, time_data, x_positions, L, title, colormap)
+            self._plot_field_scope_slider(
+                block, field_data, time_data, x_positions, L, title, colormap
+            )
             return
 
         # Default: heatmap mode
@@ -114,27 +124,31 @@ class _FieldScopeRenderMixin:
         if clim_max is None:
             clim_max = np.max(field_data)
 
-        logger.info(f"FieldScope {block.name}: Plotting extent={extent}, clim=[{clim_min}, {clim_max}]")
+        logger.info(
+            f"FieldScope {block.name}: Plotting extent={extent}, clim=[{clim_min}, {clim_max}]"
+        )
 
         # Plot the field data
         # Note: imshow expects data as [rows, cols] where rows=y, cols=x
         # Our data is [time, space], so we need origin='lower' to have time increase upward
-        im = ax.imshow(field_data,
-                       aspect='auto',
-                       origin='lower',
-                       extent=extent,
-                       cmap=colormap,
-                       vmin=clim_min,
-                       vmax=clim_max,
-                       interpolation='bilinear')
+        im = ax.imshow(
+            field_data,
+            aspect="auto",
+            origin="lower",
+            extent=extent,
+            cmap=colormap,
+            vmin=clim_min,
+            vmax=clim_max,
+            interpolation="bilinear",
+        )
 
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('Field Value')
+        cbar.set_label("Field Value")
 
         # Labels and title
-        ax.set_xlabel('Position (x)')
-        ax.set_ylabel('Time (t)')
+        ax.set_xlabel("Position (x)")
+        ax.set_ylabel("Time (t)")
         ax.set_title(f"{title} ({block.name})")
 
         plt.tight_layout()
@@ -146,7 +160,9 @@ class _FieldScopeRenderMixin:
 
         logger.info(f"FieldScope {block.name}: Plot displayed successfully")
 
-    def _plot_field_scope_slider(self, block, field_data, time_data, x_positions, L, title, colormap):
+    def _plot_field_scope_slider(
+        self, block, field_data, time_data, x_positions, L, title, colormap
+    ):
         """
         Plot 1D field evolution as animated line plot with time slider.
 
@@ -173,24 +189,19 @@ class _FieldScopeRenderMixin:
         initial_time = time_data[0] if time_data is not None else 0.0
 
         # Plot initial field profile
-        line, = ax.plot(x_positions, field_data[0], 'b-', linewidth=2)
+        (line,) = ax.plot(x_positions, field_data[0], "b-", linewidth=2)
 
         ax.set_xlim(0, L)
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel('Position x')
-        ax.set_ylabel('Field Value')
+        ax.set_xlabel("Position x")
+        ax.set_ylabel("Field Value")
         ax.grid(True, alpha=0.3)
         title_text = ax.set_title(f"{title} at t={initial_time:.3f}s ({block.name})")
 
         # Add time slider
         ax_slider = plt.axes([0.2, 0.02, 0.6, 0.03])
         time_slider = Slider(
-            ax=ax_slider,
-            label='Time',
-            valmin=0,
-            valmax=n_times - 1,
-            valinit=0,
-            valstep=1
+            ax=ax_slider, label="Time", valmin=0, valmax=n_times - 1, valinit=0, valstep=1
         )
 
         def update(val):
@@ -207,20 +218,17 @@ class _FieldScopeRenderMixin:
 
         # Add Export button
         from matplotlib.widgets import Button
+
         ax_export = plt.axes([0.85, 0.02, 0.1, 0.03])
-        export_btn = Button(ax_export, 'Export')
+        export_btn = Button(ax_export, "Export")
 
         def on_export_clicked(event):
             self._show_export_dialog(
                 block,
                 field_data,
                 time_data,
-                params={
-                    'L': L,
-                    'colormap': colormap,
-                    'title': title
-                },
-                dimension='1d'
+                params={"L": L, "colormap": colormap, "title": title},
+                dimension="1d",
             )
 
         export_btn.on_clicked(on_export_clicked)
@@ -242,24 +250,25 @@ class _FieldScopeRenderMixin:
         import matplotlib
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider
+
         try:
-            if matplotlib.get_backend() != 'Qt5Agg':
-                matplotlib.use('Qt5Agg')
+            if matplotlib.get_backend() != "Qt5Agg":
+                matplotlib.use("Qt5Agg")
         except Exception:
             logger.debug("Could not switch matplotlib backend to Qt5Agg", exc_info=True)
 
-        params = getattr(block, 'exec_params', block.params)
+        params = getattr(block, "exec_params", block.params)
 
         # Get stored field history
-        field_history = params.get('_field_history_2d_', None)
-        time_history = params.get('_time_history_', None)
+        field_history = params.get("_field_history_2d_", None)
+        time_history = params.get("_time_history_", None)
 
         logger.info(f"FieldScope2D {block.name}: Starting plot")
 
         # Check for valid data
         has_field_data = field_history is not None and (
-            (hasattr(field_history, '__len__') and len(field_history) >= 1) or
-            (hasattr(field_history, 'shape') and field_history.shape[0] >= 1)
+            (hasattr(field_history, "__len__") and len(field_history) >= 1)
+            or (hasattr(field_history, "shape") and field_history.shape[0] >= 1)
         )
         if not has_field_data:
             logger.warning(f"FieldScope2D {block.name}: No field data to plot")
@@ -275,20 +284,22 @@ class _FieldScopeRenderMixin:
             return
 
         if field_data.ndim != 3:
-            logger.warning(f"FieldScope2D {block.name}: Expected 3D field data, got {field_data.ndim}D")
+            logger.warning(
+                f"FieldScope2D {block.name}: Expected 3D field data, got {field_data.ndim}D"
+            )
             return
 
         n_times, Ny, Nx = field_data.shape
 
         # Get spatial parameters
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
 
         # Get plot configuration
-        title = params.get('title', '2D Field')
-        colormap = params.get('colormap', 'viridis')
-        clim_min = params.get('clim_min', None)
-        clim_max = params.get('clim_max', None)
+        title = params.get("title", "2D Field")
+        colormap = params.get("colormap", "viridis")
+        clim_min = params.get("clim_min", None)
+        clim_max = params.get("clim_max", None)
 
         # Set color limits from full data range for consistent colorbar
         if clim_min is None:
@@ -307,33 +318,30 @@ class _FieldScopeRenderMixin:
 
         # Plot the field data
         extent = [0, Lx, 0, Ly]
-        im = ax.imshow(initial_field,
-                       aspect='equal',
-                       origin='lower',
-                       extent=extent,
-                       cmap=colormap,
-                       vmin=clim_min,
-                       vmax=clim_max,
-                       interpolation='bilinear')
+        im = ax.imshow(
+            initial_field,
+            aspect="equal",
+            origin="lower",
+            extent=extent,
+            cmap=colormap,
+            vmin=clim_min,
+            vmax=clim_max,
+            interpolation="bilinear",
+        )
 
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('Field Value')
+        cbar.set_label("Field Value")
 
         # Labels and title
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
         title_text = ax.set_title(f"{title} at t={initial_time:.3f} ({block.name})")
 
         # Add time slider
         ax_slider = plt.axes([0.2, 0.02, 0.6, 0.03])
         time_slider = Slider(
-            ax=ax_slider,
-            label='Frame',
-            valmin=0,
-            valmax=n_times - 1,
-            valinit=0,
-            valstep=1
+            ax=ax_slider, label="Frame", valmin=0, valmax=n_times - 1, valinit=0, valstep=1
         )
 
         def update(val):
@@ -350,8 +358,9 @@ class _FieldScopeRenderMixin:
 
         # Add Export button
         from matplotlib.widgets import Button
+
         ax_export = plt.axes([0.85, 0.02, 0.1, 0.03])
-        export_btn = Button(ax_export, 'Export')
+        export_btn = Button(ax_export, "Export")
 
         def on_export_clicked(event):
             self._show_export_dialog(
@@ -359,14 +368,14 @@ class _FieldScopeRenderMixin:
                 field_data,
                 time_data,
                 params={
-                    'Lx': Lx,
-                    'Ly': Ly,
-                    'colormap': colormap,
-                    'title': title,
-                    'clim_min': clim_min,
-                    'clim_max': clim_max
+                    "Lx": Lx,
+                    "Ly": Ly,
+                    "colormap": colormap,
+                    "title": title,
+                    "clim_min": clim_min,
+                    "clim_max": clim_max,
                 },
-                dimension='2d'
+                dimension="2d",
             )
 
         export_btn.on_clicked(on_export_clicked)
@@ -389,16 +398,16 @@ class _FieldScopeRenderMixin:
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider, Button
 
-        params = getattr(block, 'exec_params', block.params)
-        history = params.get('_pos_history_', None)
-        time_history = params.get('_time_history_', None)
+        params = getattr(block, "exec_params", block.params)
+        history = params.get("_pos_history_", None)
+        time_history = params.get("_time_history_", None)
 
         if history is None or len(history) < 2:
             logger.warning(f"AgentScope {block.name}: no data")
             return
 
         try:
-            n_agents = int(params.get('n_agents', 0))
+            n_agents = int(params.get("n_agents", 0))
             history_arr = np.asarray(history, dtype=float)
             if n_agents <= 0:
                 n_agents = history_arr.shape[1] // 2
@@ -409,11 +418,15 @@ class _FieldScopeRenderMixin:
             return
 
         n_times = positions.shape[0]
-        time_data = np.asarray(time_history, dtype=float) if time_history is not None else np.arange(n_times)
+        time_data = (
+            np.asarray(time_history, dtype=float)
+            if time_history is not None
+            else np.arange(n_times)
+        )
 
-        title = params.get('title', 'Agent trajectories')
-        show_trails = bool(params.get('show_trails', True))
-        trail_length = int(params.get('trail_length', 0) or 0)
+        title = params.get("title", "Agent trajectories")
+        show_trails = bool(params.get("show_trails", True))
+        trail_length = int(params.get("trail_length", 0) or 0)
 
         x_min, x_max = float(np.min(positions[..., 0])), float(np.max(positions[..., 0]))
         y_min, y_max = float(np.min(positions[..., 1])), float(np.max(positions[..., 1]))
@@ -425,32 +438,44 @@ class _FieldScopeRenderMixin:
         plt.subplots_adjust(bottom=0.18)
         ax.set_xlim(x_min - pad_x, x_max + pad_x)
         ax.set_ylim(y_min - pad_y, y_max + pad_y)
-        ax.set_aspect('equal', adjustable='box')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
         ax.grid(True, alpha=0.3)
         title_text = ax.set_title(f"{title}  t={time_data[0]:.3f}s ({block.name})")
 
-        cmap = plt.get_cmap('tab10')
+        cmap = plt.get_cmap("tab10")
         colors = [cmap(i % 10) for i in range(n_agents)]
 
         trail_lines = []
         if show_trails:
             for i in range(n_agents):
-                line, = ax.plot([], [], '-', color=colors[i], linewidth=1.5, alpha=0.6)
+                (line,) = ax.plot([], [], "-", color=colors[i], linewidth=1.5, alpha=0.6)
                 trail_lines.append(line)
 
-        scatter = ax.scatter(positions[0, :, 0], positions[0, :, 1],
-                             c=colors, s=80, edgecolors='black', zorder=3)
-        labels = [ax.annotate(str(i + 1),
-                              (positions[0, i, 0], positions[0, i, 1]),
-                              fontsize=9, ha='center', va='center', zorder=4)
-                  for i in range(n_agents)]
+        scatter = ax.scatter(
+            positions[0, :, 0], positions[0, :, 1], c=colors, s=80, edgecolors="black", zorder=3
+        )
+        labels = [
+            ax.annotate(
+                str(i + 1),
+                (positions[0, i, 0], positions[0, i, 1]),
+                fontsize=9,
+                ha="center",
+                va="center",
+                zorder=4,
+            )
+            for i in range(n_agents)
+        ]
 
         ax_slider = plt.axes([0.2, 0.05, 0.55, 0.03])
         time_slider = Slider(
-            ax=ax_slider, label='Time',
-            valmin=0, valmax=n_times - 1, valinit=0, valstep=1,
+            ax=ax_slider,
+            label="Time",
+            valmin=0,
+            valmax=n_times - 1,
+            valinit=0,
+            valstep=1,
         )
 
         def update(_val):
@@ -461,8 +486,9 @@ class _FieldScopeRenderMixin:
             if show_trails:
                 start = 0 if trail_length <= 0 else max(0, frame - trail_length)
                 for i in range(n_agents):
-                    trail_lines[i].set_data(positions[start:frame + 1, i, 0],
-                                            positions[start:frame + 1, i, 1])
+                    trail_lines[i].set_data(
+                        positions[start : frame + 1, i, 0], positions[start : frame + 1, i, 1]
+                    )
             title_text.set_text(f"{title}  t={time_data[frame]:.3f}s ({block.name})")
             fig.canvas.draw_idle()
 
@@ -470,17 +496,19 @@ class _FieldScopeRenderMixin:
         fig._time_slider = time_slider
 
         ax_export = plt.axes([0.82, 0.05, 0.12, 0.03])
-        export_btn = Button(ax_export, 'Export')
+        export_btn = Button(ax_export, "Export")
 
         def on_export_clicked(_event):
             self._show_export_dialog(
-                block, positions, time_data,
+                block,
+                positions,
+                time_data,
                 params={
-                    'title': title,
-                    'show_trails': show_trails,
-                    'trail_length': trail_length,
+                    "title": title,
+                    "show_trails": show_trails,
+                    "trail_length": trail_length,
                 },
-                dimension='agents',
+                dimension="agents",
             )
 
         export_btn.on_clicked(on_export_clicked)
@@ -489,7 +517,9 @@ class _FieldScopeRenderMixin:
         plt.show(block=False)
         fig.canvas.draw()
         fig.canvas.flush_events()
-        logger.info(f"AgentScope {block.name}: animation displayed ({n_times} frames, {n_agents} agents)")
+        logger.info(
+            f"AgentScope {block.name}: animation displayed ({n_times} frames, {n_agents} agents)"
+        )
 
     def _show_export_dialog(self, block, field_data, time_data, params, dimension):
         """
@@ -508,10 +538,7 @@ class _FieldScopeRenderMixin:
 
             # Create exporter
             exporter = AnimationExporter(
-                field_data=field_data,
-                time_data=time_data,
-                params=params,
-                dimension=dimension
+                field_data=field_data, time_data=time_data, params=params, dimension=dimension
             )
 
             # Get or create QApplication (needed for dialog)
@@ -521,10 +548,7 @@ class _FieldScopeRenderMixin:
                 return
 
             # Show dialog
-            dialog = AnimationExportDialog(
-                exporter=exporter,
-                block_name=block.name
-            )
+            dialog = AnimationExportDialog(exporter=exporter, block_name=block.name)
             dialog.exec_()
 
         except ImportError as e:
@@ -532,4 +556,5 @@ class _FieldScopeRenderMixin:
         except Exception as e:
             logger.error(f"Failed to show export dialog: {e}")
             import traceback
+
             logger.error(traceback.format_exc())

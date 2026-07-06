@@ -41,21 +41,19 @@ def _build_step_dtf_scope(num, den, sampling_time, sim_time=1.0, sim_dt=0.1):
     dsim = DSim()
     # The headless harness pokes ``buttons_list[6].active`` after init —
     # provide a stub so we can run without the GUI buttons attached.
-    dsim.buttons_list = [type('B', (), {'active': False})() for _ in range(20)]
+    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
 
     menu_by_fn = {b.fn_name: b for b in dsim.menu_blocks}
-    step = dsim.add_block(menu_by_fn['step'], QPoint(100, 100))
-    dtf = dsim.add_block(menu_by_fn['discrete_transfer_function'], QPoint(300, 100))
-    scope = dsim.add_block(menu_by_fn['scope'], QPoint(500, 100))
+    step = dsim.add_block(menu_by_fn["step"], QPoint(100, 100))
+    dtf = dsim.add_block(menu_by_fn["discrete_transfer_function"], QPoint(300, 100))
+    scope = dsim.add_block(menu_by_fn["scope"], QPoint(500, 100))
 
-    dtf.params['numerator'] = num
-    dtf.params['denominator'] = den
-    dtf.params['sampling_time'] = sampling_time
+    dtf.params["numerator"] = num
+    dtf.params["denominator"] = den
+    dtf.params["sampling_time"] = sampling_time
 
-    dsim.add_line((step.name, 0, step.out_coords[0]),
-                  (dtf.name, 0, dtf.in_coords[0]))
-    dsim.add_line((dtf.name, 0, dtf.out_coords[0]),
-                  (scope.name, 0, scope.in_coords[0]))
+    dsim.add_line((step.name, 0, step.out_coords[0]), (dtf.name, 0, dtf.in_coords[0]))
+    dsim.add_line((dtf.name, 0, dtf.out_coords[0]), (scope.name, 0, scope.in_coords[0]))
 
     dsim.sim_time = sim_time
     dsim.sim_dt = sim_dt
@@ -66,7 +64,7 @@ def _build_step_dtf_scope(num, den, sampling_time, sim_time=1.0, sim_dt=0.1):
     while dsim.time_step <= dsim.sim_time:
         dsim.execution_loop_headless()
 
-    return dtf, np.asarray(scope.exec_params['vector']).flatten()
+    return dtf, np.asarray(scope.exec_params["vector"]).flatten()
 
 
 @pytest.mark.regression
@@ -74,14 +72,14 @@ class TestDiscreteTfSamplingBug:
     def test_strictly_proper_with_sampling_advances_state(self, qapp):
         """``H(z) = 1/(z-0.5)`` with Ts=0.2 must produce a non-zero step response."""
         dtf, vec = _build_step_dtf_scope(
-            num=[1.0], den=[1.0, -0.5], sampling_time=0.2,
+            num=[1.0],
+            den=[1.0, -0.5],
+            sampling_time=0.2,
         )
 
         # The state must actually advance — bug symptom was x stuck at 0.
-        x_final = np.asarray(dtf.exec_params['_x_']).flatten()
-        assert np.any(np.abs(x_final) > 1e-9), (
-            f"Discrete TF state never advanced: x={x_final}"
-        )
+        x_final = np.asarray(dtf.exec_params["_x_"]).flatten()
+        assert np.any(np.abs(x_final) > 1e-9), f"Discrete TF state never advanced: x={x_final}"
 
         # The scope vector must contain non-zero samples — bug symptom was
         # ``[0, 0, 0, ...]`` for the entire run.
@@ -103,7 +101,9 @@ class TestDiscreteTfSamplingBug:
         update with u=1).
         """
         _, vec = _build_step_dtf_scope(
-            num=[1.0], den=[1.0, -0.5], sampling_time=-1.0,
+            num=[1.0],
+            den=[1.0, -0.5],
+            sampling_time=-1.0,
         )
         # Initial output is zero (zero state, D=0).
         assert vec[0] == pytest.approx(0.0, abs=1e-9)
@@ -117,7 +117,9 @@ class TestDiscreteTfSamplingBug:
         """Regression guard: the proper (D!=0) sampling path was already
         correct and must stay that way."""
         _, vec = _build_step_dtf_scope(
-            num=[1.0, 0.0], den=[1.0, -0.5], sampling_time=0.2,
+            num=[1.0, 0.0],
+            den=[1.0, -0.5],
+            sampling_time=0.2,
         )
         # First held value is the D-feedthrough at t=0.
         assert vec[0] == pytest.approx(1.0, abs=1e-9)

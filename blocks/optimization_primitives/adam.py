@@ -61,26 +61,10 @@ class AdamBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "alpha": {
-                "type": "float",
-                "default": 0.001,
-                "doc": "Learning rate"
-            },
-            "beta1": {
-                "type": "float",
-                "default": 0.9,
-                "doc": "First moment decay"
-            },
-            "beta2": {
-                "type": "float",
-                "default": 0.999,
-                "doc": "Second moment decay"
-            },
-            "epsilon": {
-                "type": "float",
-                "default": 1e-8,
-                "doc": "Numerical stability constant"
-            },
+            "alpha": {"type": "float", "default": 0.001, "doc": "Learning rate"},
+            "beta1": {"type": "float", "default": 0.9, "doc": "First moment decay"},
+            "beta2": {"type": "float", "default": 0.999, "doc": "Second moment decay"},
+            "epsilon": {"type": "float", "default": 1e-8, "doc": "Numerical stability constant"},
         }
 
     @property
@@ -95,52 +79,52 @@ class AdamBlock(BaseBlock):
         try:
             # Output-only path: no gradient input → return last update without mutating moments.
             if 0 not in inputs:
-                held = params.get('_last_update_', np.array([0.0]))
-                return {0: np.atleast_1d(held), 'E': False}
+                held = params.get("_last_update_", np.array([0.0]))
+                return {0: np.atleast_1d(held), "E": False}
 
             grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
-            alpha = float(params.get('alpha', 0.001))
-            beta1 = float(params.get('beta1', 0.9))
-            beta2 = float(params.get('beta2', 0.999))
-            epsilon = float(params.get('epsilon', 1e-8))
+            alpha = float(params.get("alpha", 0.001))
+            beta1 = float(params.get("beta1", 0.9))
+            beta2 = float(params.get("beta2", 0.999))
+            epsilon = float(params.get("epsilon", 1e-8))
 
             # Initialize moments on first call
-            if params.get('_init_start_', True):
-                params['_m_'] = np.zeros_like(grad)  # First moment
-                params['_v_'] = np.zeros_like(grad)  # Second moment
-                params['_t_'] = 0  # Time step
-                params['_init_start_'] = False
+            if params.get("_init_start_", True):
+                params["_m_"] = np.zeros_like(grad)  # First moment
+                params["_v_"] = np.zeros_like(grad)  # Second moment
+                params["_t_"] = 0  # Time step
+                params["_init_start_"] = False
 
             # Handle dimension change
-            m = params['_m_']
-            v = params['_v_']
+            m = params["_m_"]
+            v = params["_v_"]
             if len(m) != len(grad):
                 m = np.zeros_like(grad)
                 v = np.zeros_like(grad)
-                params['_t_'] = 0
+                params["_t_"] = 0
 
             # Increment time step
-            params['_t_'] += 1
-            t = params['_t_']
+            params["_t_"] += 1
+            t = params["_t_"]
 
             # Update biased first moment estimate
             m = beta1 * m + (1 - beta1) * grad
-            params['_m_'] = m
+            params["_m_"] = m
 
             # Update biased second raw moment estimate
-            v = beta2 * v + (1 - beta2) * (grad ** 2)
-            params['_v_'] = v
+            v = beta2 * v + (1 - beta2) * (grad**2)
+            params["_v_"] = v
 
             # Compute bias-corrected estimates
-            m_hat = m / (1 - beta1 ** t)
-            v_hat = v / (1 - beta2 ** t)
+            m_hat = m / (1 - beta1**t)
+            v_hat = v / (1 - beta2**t)
 
             # Compute update
             update = -alpha * m_hat / (np.sqrt(v_hat) + epsilon)
 
-            params['_last_update_'] = update
-            return {0: update, 'E': False}
+            params["_last_update_"] = update
+            return {0: update, "E": False}
 
         except Exception as e:
             logger.error(f"Adam error: {e}")
-            return {0: np.array([0.0]), 'E': True, 'error': str(e)}
+            return {0: np.array([0.0]), "E": True, "error": str(e)}

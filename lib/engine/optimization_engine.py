@@ -63,17 +63,17 @@ class OptimizationEngine:
         self.optimizer_block = None
 
         for block in blocks:
-            block_type = getattr(block, 'block_fn', '')
+            block_type = getattr(block, "block_fn", "")
 
-            if block_type == 'Parameter':
+            if block_type == "Parameter":
                 self.parameter_blocks.append(block)
-            elif block_type == 'CostFunction':
+            elif block_type == "CostFunction":
                 self.cost_function_blocks.append(block)
-            elif block_type == 'Constraint':
+            elif block_type == "Constraint":
                 self.constraint_blocks.append(block)
-            elif block_type == 'DataFit':
+            elif block_type == "DataFit":
                 self.data_fit_blocks.append(block)
-            elif block_type == 'Optimizer':
+            elif block_type == "Optimizer":
                 self.optimizer_block = block
 
         if self.optimizer_block is None:
@@ -84,11 +84,13 @@ class OptimizationEngine:
             logger.warning("No Parameter blocks found in diagram")
             return False
 
-        logger.info(f"Found optimization setup: "
-                   f"{len(self.parameter_blocks)} parameters, "
-                   f"{len(self.cost_function_blocks)} cost functions, "
-                   f"{len(self.constraint_blocks)} constraints, "
-                   f"{len(self.data_fit_blocks)} data fits")
+        logger.info(
+            f"Found optimization setup: "
+            f"{len(self.parameter_blocks)} parameters, "
+            f"{len(self.cost_function_blocks)} cost functions, "
+            f"{len(self.constraint_blocks)} constraints, "
+            f"{len(self.data_fit_blocks)} data fits"
+        )
 
         return True
 
@@ -102,38 +104,39 @@ class OptimizationEngine:
         params_info = []
 
         for block in self.parameter_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 info = block.block_instance.get_optimization_info(block.params)
             else:
                 info = {
-                    'name': block.params.get('name', block.name),
-                    'value': float(block.params.get('value', 1.0)),
-                    'lower': float(block.params.get('lower', 0.0)),
-                    'upper': float(block.params.get('upper', 10.0)),
-                    'scale': block.params.get('scale', 'linear'),
-                    'fixed': block.params.get('fixed', False),
+                    "name": block.params.get("name", block.name),
+                    "value": float(block.params.get("value", 1.0)),
+                    "lower": float(block.params.get("lower", 0.0)),
+                    "upper": float(block.params.get("upper", 10.0)),
+                    "scale": block.params.get("scale", "linear"),
+                    "fixed": block.params.get("fixed", False),
                 }
 
-            if not info['fixed']:
+            if not info["fixed"]:
                 # Guard against degenerate bounds: a non-positive range would
                 # make np.clip in the transforms collapse every value onto a
                 # single bound. Fall back to a sensible default span so the
                 # parameter remains tunable.
-                lower = float(info.get('lower', 0.0))
-                upper = float(info.get('upper', 10.0))
+                lower = float(info.get("lower", 0.0))
+                upper = float(info.get("upper", 10.0))
                 if not (lower < upper):
                     logger.warning(
                         f"Parameter '{info['name']}' has degenerate bounds "
                         f"(lower={lower}, upper={upper}); expanding range "
-                        f"around current value to keep it tunable")
-                    value = float(info.get('value', lower))
+                        f"around current value to keep it tunable"
+                    )
+                    value = float(info.get("value", lower))
                     span = max(abs(value), 1.0)
                     lower = value - span
                     upper = value + span
-                info['lower'] = lower
-                info['upper'] = upper
+                info["lower"] = lower
+                info["upper"] = upper
 
-                info['block'] = block
+                info["block"] = block
                 params_info.append(info)
 
         return params_info
@@ -147,38 +150,38 @@ class OptimizationEngine:
             params_info: Parameter info list
         """
         for i, info in enumerate(params_info):
-            block = info['block']
+            block = info["block"]
 
             # Transform from optimizer space to physical space
             value = self._transform_from_optimizer(x[i], info)
 
             # Set the value
-            block.params['value'] = float(value)
-            if hasattr(block, 'exec_params'):
-                block.exec_params['value'] = float(value)
+            block.params["value"] = float(value)
+            if hasattr(block, "exec_params"):
+                block.exec_params["value"] = float(value)
 
     def _transform_to_optimizer(self, value: float, info: Dict) -> float:
         """Transform physical value to optimizer space."""
-        scale = info.get('scale', 'linear')
-        lower = info.get('lower', 0.0)
-        upper = info.get('upper', 10.0)
+        scale = info.get("scale", "linear")
+        lower = info.get("lower", 0.0)
+        upper = info.get("upper", 10.0)
 
-        if scale == 'log':
+        if scale == "log":
             return np.log(max(value, 1e-10))
-        elif scale == 'normalized':
+        elif scale == "normalized":
             return (value - lower) / (upper - lower) if upper > lower else 0.5
         else:
             return value
 
     def _transform_from_optimizer(self, opt_value: float, info: Dict) -> float:
         """Transform optimizer value to physical space."""
-        scale = info.get('scale', 'linear')
-        lower = info.get('lower', 0.0)
-        upper = info.get('upper', 10.0)
+        scale = info.get("scale", "linear")
+        lower = info.get("lower", 0.0)
+        upper = info.get("upper", 10.0)
 
-        if scale == 'log':
+        if scale == "log":
             value = np.exp(opt_value)
-        elif scale == 'normalized':
+        elif scale == "normalized":
             value = lower + opt_value * (upper - lower)
         else:
             value = opt_value
@@ -188,23 +191,23 @@ class OptimizationEngine:
     def reset_blocks(self):
         """Reset all optimization blocks for a new simulation."""
         for block in self.cost_function_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 block.block_instance.reset(block.params)
             else:
-                block.params['_accumulated_cost_'] = 0.0
-                block.params['_init_start_'] = True
+                block.params["_accumulated_cost_"] = 0.0
+                block.params["_init_start_"] = True
 
         for block in self.constraint_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 block.block_instance.reset(block.params)
             else:
-                block.params['_init_start_'] = True
+                block.params["_init_start_"] = True
 
         for block in self.data_fit_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 block.block_instance.reset(block.params)
             else:
-                block.params['_init_start_'] = True
+                block.params["_init_start_"] = True
 
     def compute_cost(self) -> float:
         """
@@ -216,17 +219,17 @@ class OptimizationEngine:
         total_cost = 0.0
 
         for block in self.cost_function_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 cost = block.block_instance.get_final_cost(block.params)
             else:
-                weight = float(block.params.get('weight', 1.0))
-                accumulated = block.params.get('_accumulated_cost_', 0.0)
+                weight = float(block.params.get("weight", 1.0))
+                accumulated = block.params.get("_accumulated_cost_", 0.0)
                 cost = accumulated * weight
 
             total_cost += cost
 
         for block in self.data_fit_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 cost = block.block_instance.get_final_error(block.params)
             else:
                 cost = 0.0
@@ -245,11 +248,11 @@ class OptimizationEngine:
         constraints = []
 
         for block in self.constraint_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 ctype, value = block.block_instance.get_constraint_value(block.params)
             else:
                 # Default constraint computation
-                ctype = 'ineq'
+                ctype = "ineq"
                 value = 0.0
 
             constraints.append((ctype, value))
@@ -266,12 +269,12 @@ class OptimizationEngine:
         penalty = 0.0
 
         for block in self.constraint_blocks:
-            if hasattr(block, 'block_instance') and block.block_instance:
+            if hasattr(block, "block_instance") and block.block_instance:
                 penalty += block.block_instance.get_penalty(block.params)
             else:
-                penalty_weight = float(block.params.get('penalty_weight', 1000.0))
-                violation = block.params.get('_violation_', 0.0)
-                penalty += penalty_weight * violation ** 2
+                penalty_weight = float(block.params.get("penalty_weight", 1000.0))
+                violation = block.params.get("_violation_", 0.0)
+                penalty += penalty_weight * violation**2
 
         return penalty
 
@@ -286,12 +289,12 @@ class OptimizationEngine:
         Returns:
             Objective function f(x) -> cost
         """
-        verbose = config.get('verbose', True)
-        use_penalty = config.get('use_penalty', False)
+        verbose = config.get("verbose", True)
+        use_penalty = config.get("use_penalty", False)
         # Cap history growth: for differential_evolution or long runs the
         # per-evaluation records (including x.copy()) accumulate without bound.
         # max_history <= 0 disables recording entirely.
-        max_history = int(config.get('max_history', 10000))
+        max_history = int(config.get("max_history", 10000))
 
         def objective(x):
             self.n_evaluations += 1
@@ -333,16 +336,22 @@ class OptimizationEngine:
 
             # Log progress
             if verbose and self.n_evaluations % 10 == 0:
-                param_str = ", ".join([f"{info['name']}={self._transform_from_optimizer(x[i], info):.4g}"
-                                      for i, info in enumerate(params_info)])
+                param_str = ", ".join(
+                    [
+                        f"{info['name']}={self._transform_from_optimizer(x[i], info):.4g}"
+                        for i, info in enumerate(params_info)
+                    ]
+                )
                 logger.info(f"Eval {self.n_evaluations}: cost={cost:.6g} ({param_str})")
 
             if max_history > 0 and len(self.history) < max_history:
-                self.history.append({
-                    'n': self.n_evaluations,
-                    'x': x.copy(),
-                    'cost': cost,
-                })
+                self.history.append(
+                    {
+                        "n": self.n_evaluations,
+                        "x": x.copy(),
+                        "cost": cost,
+                    }
+                )
 
             return cost
 
@@ -358,12 +367,12 @@ class OptimizationEngine:
         scipy_constraints = []
 
         for index, block in enumerate(self.constraint_blocks):
-            constraint_type = block.params.get('type', '<=')
+            constraint_type = block.params.get("type", "<=")
 
-            if constraint_type == '==':
-                scipy_type = 'eq'
+            if constraint_type == "==":
+                scipy_type = "eq"
             else:
-                scipy_type = 'ineq'
+                scipy_type = "ineq"
 
             def make_constraint_func(constraint_index):
                 def constraint_func(x):
@@ -375,12 +384,15 @@ class OptimizationEngine:
                     if constraint_index < len(constraints):
                         return constraints[constraint_index][1]
                     return 0.0
+
                 return constraint_func
 
-            scipy_constraints.append({
-                'type': scipy_type,
-                'fun': make_constraint_func(index),
-            })
+            scipy_constraints.append(
+                {
+                    "type": scipy_type,
+                    "fun": make_constraint_func(index),
+                }
+            )
 
         return scipy_constraints
 
@@ -398,23 +410,25 @@ class OptimizationEngine:
             blocks = self.dsim.blocks_list
 
         if not self.find_optimization_blocks(blocks):
-            return {'success': False, 'message': 'Missing optimization blocks'}
+            return {"success": False, "message": "Missing optimization blocks"}
 
         # Get parameter info
         params_info = self.get_parameter_info()
 
         if len(params_info) == 0:
-            return {'success': False, 'message': 'No tunable parameters'}
+            return {"success": False, "message": "No tunable parameters"}
 
         # Get optimizer configuration
-        if hasattr(self.optimizer_block, 'block_instance') and self.optimizer_block.block_instance:
-            config = self.optimizer_block.block_instance.get_optimizer_config(self.optimizer_block.params)
+        if hasattr(self.optimizer_block, "block_instance") and self.optimizer_block.block_instance:
+            config = self.optimizer_block.block_instance.get_optimizer_config(
+                self.optimizer_block.params
+            )
         else:
             config = {
-                'method': self.optimizer_block.params.get('method', 'L-BFGS-B'),
-                'max_iter': int(self.optimizer_block.params.get('max_iter', 100)),
-                'tol': float(self.optimizer_block.params.get('tol', 1e-6)),
-                'verbose': self.optimizer_block.params.get('verbose', True),
+                "method": self.optimizer_block.params.get("method", "L-BFGS-B"),
+                "max_iter": int(self.optimizer_block.params.get("max_iter", 100)),
+                "tol": float(self.optimizer_block.params.get("tol", 1e-6)),
+                "verbose": self.optimizer_block.params.get("verbose", True),
             }
 
         # Initialize
@@ -423,32 +437,30 @@ class OptimizationEngine:
         self.history = []
 
         # Initial guess
-        x0 = np.array([self._transform_to_optimizer(info['value'], info)
-                      for info in params_info])
+        x0 = np.array([self._transform_to_optimizer(info["value"], info) for info in params_info])
 
         # Bounds
         bounds = []
         for info in params_info:
-            if info['scale'] == 'normalized':
+            if info["scale"] == "normalized":
                 bounds.append((0.0, 1.0))
-            elif info['scale'] == 'log':
-                bounds.append((np.log(max(info['lower'], 1e-10)),
-                              np.log(info['upper'])))
+            elif info["scale"] == "log":
+                bounds.append((np.log(max(info["lower"], 1e-10)), np.log(info["upper"])))
             else:
-                bounds.append((info['lower'], info['upper']))
+                bounds.append((info["lower"], info["upper"]))
 
         # Create objective
         objective = self.create_objective(params_info, config)
 
         # Run optimization
-        method = config.get('method', 'L-BFGS-B')
+        method = config.get("method", "L-BFGS-B")
 
         logger.info(f"Starting optimization with {method}")
         logger.info(f"Parameters: {[info['name'] for info in params_info]}")
         logger.info(f"Initial values: {[info['value'] for info in params_info]}")
 
         try:
-            if method.lower() == 'differential_evolution':
+            if method.lower() == "differential_evolution":
                 # Note: DE's `tol` is a *relative* population-convergence
                 # tolerance, which differs semantically from minimize's `tol`
                 # (gradient/step tolerance). The shared `tol` config therefore
@@ -458,12 +470,12 @@ class OptimizationEngine:
                     objective,
                     bounds,
                     x0=x0,
-                    maxiter=config.get('max_iter', 100),
-                    tol=config.get('tol', 1e-6),
-                    popsize=config.get('popsize', 15),
-                    mutation=config.get('mutation', 0.8),
-                    recombination=config.get('recombination', 0.7),
-                    disp=config.get('verbose', True),
+                    maxiter=config.get("max_iter", 100),
+                    tol=config.get("tol", 1e-6),
+                    popsize=config.get("popsize", 15),
+                    mutation=config.get("mutation", 0.8),
+                    recombination=config.get("recombination", 0.7),
+                    disp=config.get("verbose", True),
                 )
             else:
                 result = optimize.minimize(
@@ -472,34 +484,34 @@ class OptimizationEngine:
                     method=method,
                     bounds=bounds,
                     options={
-                        'maxiter': config.get('max_iter', 100),
-                        'disp': config.get('verbose', True),
+                        "maxiter": config.get("max_iter", 100),
+                        "disp": config.get("verbose", True),
                     },
-                    tol=config.get('tol', 1e-6),
+                    tol=config.get("tol", 1e-6),
                 )
 
         except Exception as e:
             logger.error(f"Optimization failed: {e}")
-            return {'success': False, 'message': str(e)}
+            return {"success": False, "message": str(e)}
 
         # Extract optimal parameters
         optimal_params = {}
         for i, info in enumerate(params_info):
             value = self._transform_from_optimizer(result.x[i], info)
-            optimal_params[info['name']] = value
+            optimal_params[info["name"]] = value
 
             # Write back to block
-            info['block'].params['value'] = float(value)
-            if hasattr(info['block'], 'exec_params'):
-                info['block'].exec_params['value'] = float(value)
+            info["block"].params["value"] = float(value)
+            if hasattr(info["block"], "exec_params"):
+                info["block"].exec_params["value"] = float(value)
 
         # Store results in optimizer block
-        if hasattr(self.optimizer_block, 'block_instance') and self.optimizer_block.block_instance:
+        if hasattr(self.optimizer_block, "block_instance") and self.optimizer_block.block_instance:
             self.optimizer_block.block_instance.store_results(self.optimizer_block.params, result)
         else:
-            self.optimizer_block.params['_optimal_cost_'] = float(result.fun)
-            self.optimizer_block.params['_n_iterations_'] = self.n_evaluations
-            self.optimizer_block.params['_converged_'] = bool(result.success)
+            self.optimizer_block.params["_optimal_cost_"] = float(result.fun)
+            self.optimizer_block.params["_n_iterations_"] = self.n_evaluations
+            self.optimizer_block.params["_converged_"] = bool(result.success)
 
         logger.info("Optimization complete!")
         logger.info(f"Optimal cost: {result.fun:.6g}")
@@ -508,10 +520,10 @@ class OptimizationEngine:
         logger.info(f"Converged: {result.success}")
 
         return {
-            'success': result.success,
-            'optimal_cost': float(result.fun),
-            'optimal_params': optimal_params,
-            'n_evaluations': self.n_evaluations,
-            'history': self.history,
-            'message': result.message if hasattr(result, 'message') else '',
+            "success": result.success,
+            "optimal_cost": float(result.fun),
+            "optimal_params": optimal_params,
+            "n_evaluations": self.n_evaluations,
+            "history": self.history,
+            "message": result.message if hasattr(result, "message") else "",
         }

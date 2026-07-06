@@ -6,7 +6,8 @@ Export package - LaTeX, MathML, and Mathematica equation export utilities.
 # but full functionality requires SymPy
 try:
     from lib.export.latex_exporter import LaTeXExporter, MathMLExporter, MathematicaExporter
-    __all__ = ['LaTeXExporter', 'MathMLExporter', 'MathematicaExporter']
+
+    __all__ = ["LaTeXExporter", "MathMLExporter", "MathematicaExporter"]
 except ImportError:
     LaTeXExporter = None
     MathMLExporter = None

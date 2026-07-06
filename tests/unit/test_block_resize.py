@@ -16,10 +16,11 @@ from blocks.subsystem import Subsystem
 def sample_colors():
     """Provide sample color palette for tests."""
     from PyQt5.QtGui import QColor
+
     return {
-        'black': QColor(0, 0, 0),
-        'red': QColor(255, 0, 0),
-        'blue': QColor(0, 0, 255),
+        "black": QColor(0, 0, 0),
+        "red": QColor(255, 0, 0),
+        "blue": QColor(0, 0, 255),
     }
 
 
@@ -27,18 +28,18 @@ def sample_colors():
 def multi_port_block(qapp, sample_colors):
     """Create a block with multiple input and output ports."""
     block = DBlock(
-        block_fn='MultiPort',
+        block_fn="MultiPort",
         sid=0,
         coords=QRect(100, 100, 100, 100),
-        color='red',
+        color="red",
         in_ports=3,
         out_ports=2,
         b_type=2,
-        io_edit='none',
-        fn_name='multiport',
+        io_edit="none",
+        fn_name="multiport",
         params={},
         external=False,
-        colors=sample_colors
+        colors=sample_colors,
     )
     return block
 
@@ -47,20 +48,17 @@ def multi_port_block(qapp, sample_colors):
 def subsystem_block(qapp):
     """Create a subsystem with multiple ports."""
     subsys = Subsystem(
-        block_name="TestSubsystem",
-        sid=1,
-        coords=(100, 100, 120, 100),
-        color="lightgray"
+        block_name="TestSubsystem", sid=1, coords=(100, 100, 120, 100), color="lightgray"
     )
     # Add port definitions like when created from selection
     subsys.ports = {
-        'in': [
-            {'pos': (0, 33), 'type': 'input', 'name': '1'},
-            {'pos': (0, 66), 'type': 'input', 'name': '2'},
+        "in": [
+            {"pos": (0, 33), "type": "input", "name": "1"},
+            {"pos": (0, 66), "type": "input", "name": "2"},
         ],
-        'out': [
-            {'pos': (120, 50), 'type': 'output', 'name': '1'},
-        ]
+        "out": [
+            {"pos": (120, 50), "type": "output", "name": "1"},
+        ],
     }
     subsys.in_ports = 2
     subsys.out_ports = 1
@@ -114,18 +112,18 @@ class TestMultiPortMinimumHeight:
     def test_single_port_no_special_minimum(self, qapp, sample_colors):
         """Single-port blocks should use base height as minimum."""
         block = DBlock(
-            block_fn='SinglePort',
+            block_fn="SinglePort",
             sid=0,
             coords=QRect(0, 0, 100, 80),
-            color='red',
+            color="red",
             in_ports=1,
             out_ports=1,
             b_type=2,
-            io_edit='none',
-            fn_name='singleport',
+            io_edit="none",
+            fn_name="singleport",
             params={},
             external=False,
-            colors=sample_colors
+            colors=sample_colors,
         )
 
         min_height = block.calculate_min_size()
@@ -192,23 +190,17 @@ class TestSubsystemPortScaling:
         original_height = subsys.height
 
         # Get original port proportions
-        original_ratios = [
-            (c.y() - subsys.top) / original_height
-            for c in subsys.in_coords
-        ]
+        original_ratios = [(c.y() - subsys.top) / original_height for c in subsys.in_coords]
 
         # Resize to new height
         subsys.resize_Block(120, 200)
 
         # Port proportions should be maintained (evenly distributed)
-        new_ratios = [
-            (c.y() - subsys.top) / subsys.height
-            for c in subsys.in_coords
-        ]
+        new_ratios = [(c.y() - subsys.top) / subsys.height for c in subsys.in_coords]
 
         # With 2 ports, should be at 1/3 and 2/3
-        assert abs(new_ratios[0] - 1/3) < 0.01
-        assert abs(new_ratios[1] - 2/3) < 0.01
+        assert abs(new_ratios[0] - 1 / 3) < 0.01
+        assert abs(new_ratios[1] - 2 / 3) < 0.01
 
     @pytest.mark.unit
     def test_subsystem_stored_positions_updated(self, subsystem_block):
@@ -218,9 +210,9 @@ class TestSubsystemPortScaling:
         subsys.resize_Block(120, 150)
 
         # Check that stored positions match calculated positions
-        for i, port_def in enumerate(subsys.ports['in']):
-            stored_y = port_def['pos'][1]
-            expected_y = subsys.height * (i + 1) / (len(subsys.ports['in']) + 1)
+        for i, port_def in enumerate(subsys.ports["in"]):
+            stored_y = port_def["pos"][1]
+            expected_y = subsys.height * (i + 1) / (len(subsys.ports["in"]) + 1)
             assert abs(stored_y - expected_y) < 0.01
 
     @pytest.mark.unit
@@ -251,5 +243,6 @@ class TestPortGridSnapping:
         actual_relative_y = block.in_coords[0].y() - block.top
 
         # If grid snapping was on, this would be 20 or 30, not 24
-        assert actual_relative_y == expected_relative_y, \
+        assert actual_relative_y == expected_relative_y, (
             f"Expected {expected_relative_y}, got {actual_relative_y} (grid snapping may be on)"
+        )

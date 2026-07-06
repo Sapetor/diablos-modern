@@ -17,13 +17,13 @@ MARGIN = 15
 
 def load_diagram(filepath: Path) -> Dict[str, Any]:
     """Load a DiaBloS diagram JSON file."""
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         return json.load(f)
 
 
 def save_diagram(filepath: Path, data: Dict[str, Any]) -> None:
     """Save a DiaBloS diagram JSON file."""
-    with open(filepath, 'w') as f:
+    with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
 
@@ -33,10 +33,10 @@ def get_block_bbox(block: Dict[str, Any]) -> Tuple[float, float, float, float]:
 
     Returns: (left, right, top, bottom)
     """
-    left = block['coords_left'] - MARGIN
-    right = block['coords_left'] + block['coords_width'] + MARGIN
-    top = block['coords_top'] - MARGIN
-    bottom = block['coords_top'] + block['coords_height'] + MARGIN
+    left = block["coords_left"] - MARGIN
+    right = block["coords_left"] + block["coords_width"] + MARGIN
+    top = block["coords_top"] - MARGIN
+    bottom = block["coords_top"] + block["coords_height"] + MARGIN
     return left, right, top, bottom
 
 
@@ -47,8 +47,9 @@ def point_in_bbox(p: Tuple[float, float], bbox: Tuple[float, float, float, float
     return left < x < right and top < y < bottom
 
 
-def segment_intersects_bbox(p1: Tuple[float, float], p2: Tuple[float, float],
-                            bbox: Tuple[float, float, float, float]) -> bool:
+def segment_intersects_bbox(
+    p1: Tuple[float, float], p2: Tuple[float, float], bbox: Tuple[float, float, float, float]
+) -> bool:
     """
     Check if line segment from p1 to p2 intersects the bounding box.
 
@@ -115,14 +116,16 @@ def segment_intersects_bbox(p1: Tuple[float, float], p2: Tuple[float, float],
     return False
 
 
-def find_overlapping_blocks(line: Dict[str, Any], blocks: List[Dict[str, Any]]) -> List[Tuple[int, Dict[str, Any]]]:
+def find_overlapping_blocks(
+    line: Dict[str, Any], blocks: List[Dict[str, Any]]
+) -> List[Tuple[int, Dict[str, Any]]]:
     """
     Find all blocks that the line segments pass through.
 
     Returns: List of (segment_index, block) tuples
     """
     overlaps = []
-    points = line['points']
+    points = line["points"]
 
     for i in range(len(points) - 1):
         p1 = tuple(points[i])
@@ -130,7 +133,7 @@ def find_overlapping_blocks(line: Dict[str, Any], blocks: List[Dict[str, Any]]) 
 
         for block in blocks:
             # Skip blocks that are the source or destination
-            if block['username'] == line['srcblock'] or block['username'] == line['dstblock']:
+            if block["username"] == line["srcblock"] or block["username"] == line["dstblock"]:
                 continue
 
             bbox = get_block_bbox(block)
@@ -140,9 +143,14 @@ def find_overlapping_blocks(line: Dict[str, Any], blocks: List[Dict[str, Any]]) 
     return overlaps
 
 
-def route_around_block(p1: Tuple[float, float], p2: Tuple[float, float],
-                       block: Dict[str, Any], all_blocks: List[Dict[str, Any]],
-                       src_block: str, dst_block: str) -> List[Tuple[float, float]]:
+def route_around_block(
+    p1: Tuple[float, float],
+    p2: Tuple[float, float],
+    block: Dict[str, Any],
+    all_blocks: List[Dict[str, Any]],
+    src_block: str,
+    dst_block: str,
+) -> List[Tuple[float, float]]:
     """
     Create waypoints to route around a block using a simple rectangular path.
     Tries multiple routing options and picks one that doesn't create new overlaps.
@@ -181,7 +189,7 @@ def route_around_block(p1: Tuple[float, float], p2: Tuple[float, float],
             seg_p1 = route[i]
             seg_p2 = route[i + 1]
             for b in all_blocks:
-                if b['username'] == src_block or b['username'] == dst_block:
+                if b["username"] == src_block or b["username"] == dst_block:
                     continue
                 bbox = get_block_bbox(b)
                 if segment_intersects_bbox(seg_p1, seg_p2, bbox):
@@ -192,9 +200,9 @@ def route_around_block(p1: Tuple[float, float], p2: Tuple[float, float],
         """Calculate total route length."""
         total = 0.0
         for i in range(len(route) - 1):
-            dx = route[i+1][0] - route[i][0]
-            dy = route[i+1][1] - route[i][1]
-            total += (dx*dx + dy*dy) ** 0.5
+            dx = route[i + 1][0] - route[i][0]
+            dy = route[i + 1][1] - route[i][1]
+            total += (dx * dx + dy * dy) ** 0.5
         return total
 
     # Score each candidate: prefer fewer overlaps, then shorter length
@@ -231,7 +239,7 @@ def fix_line(line: Dict[str, Any], blocks: List[Dict[str, Any]]) -> Tuple[bool, 
         segments_to_fix[seg_idx].append(block)
 
     # Build new points list by processing each segment
-    points = line['points']
+    points = line["points"]
     new_points = [points[0]]  # Start with first point
 
     for i in range(len(points) - 1):
@@ -241,7 +249,9 @@ def fix_line(line: Dict[str, Any], blocks: List[Dict[str, Any]]) -> Tuple[bool, 
         if i in segments_to_fix:
             # This segment needs fixing - fix based on first overlapping block
             block = segments_to_fix[i][0]
-            waypoints = route_around_block(p1, p2, block, blocks, line['srcblock'], line['dstblock'])
+            waypoints = route_around_block(
+                p1, p2, block, blocks, line["srcblock"], line["dstblock"]
+            )
 
             # Add intermediate waypoints (skip first point as it's already in new_points)
             new_points.extend(waypoints[1:])
@@ -251,7 +261,7 @@ def fix_line(line: Dict[str, Any], blocks: List[Dict[str, Any]]) -> Tuple[bool, 
 
     # Create new line dict
     new_line = line.copy()
-    new_line['points'] = new_points
+    new_line["points"] = new_points
 
     return True, new_line
 
@@ -264,8 +274,8 @@ def fix_diagram(filepath: Path, dry_run: bool = False) -> Tuple[int, int]:
         (total_overlaps_found, lines_modified)
     """
     data = load_diagram(filepath)
-    blocks = data.get('blocks_data', [])
-    lines = data.get('lines_data', [])
+    blocks = data.get("blocks_data", [])
+    lines = data.get("lines_data", [])
 
     total_overlaps = 0
     lines_modified = 0
@@ -291,7 +301,7 @@ def fix_diagram(filepath: Path, dry_run: bool = False) -> Tuple[int, int]:
             new_lines.append(line)
 
     if not dry_run and lines_modified > 0:
-        data['lines_data'] = new_lines
+        data["lines_data"] = new_lines
         save_diagram(filepath, data)
 
     return total_overlaps, lines_modified
@@ -300,8 +310,8 @@ def fix_diagram(filepath: Path, dry_run: bool = False) -> Tuple[int, int]:
 def report_overlaps(filepath: Path) -> None:
     """Print detailed report of all overlaps in a diagram."""
     data = load_diagram(filepath)
-    blocks = data.get('blocks_data', [])
-    lines = data.get('lines_data', [])
+    blocks = data.get("blocks_data", [])
+    lines = data.get("lines_data", [])
 
     print(f"\n=== {filepath.name} ===")
 
@@ -310,24 +320,26 @@ def report_overlaps(filepath: Path) -> None:
         if overlaps:
             print(f"  Line {line['sid']}: {line['srcblock']} -> {line['dstblock']}")
             for seg_idx, block in overlaps:
-                pts = line['points']
+                pts = line["points"]
                 p1, p2 = pts[seg_idx], pts[seg_idx + 1]
-                print(f"    Seg {seg_idx} [{p1[0]},{p1[1]}]->[{p2[0]},{p2[1]}] overlaps '{block['username']}' " +
-                      f"(x:{block['coords_left']}-{block['coords_left']+block['coords_width']}, " +
-                      f"y:{block['coords_top']}-{block['coords_top']+block['coords_height']})")
+                print(
+                    f"    Seg {seg_idx} [{p1[0]},{p1[1]}]->[{p2[0]},{p2[1]}] overlaps '{block['username']}' "
+                    + f"(x:{block['coords_left']}-{block['coords_left'] + block['coords_width']}, "
+                    + f"y:{block['coords_top']}-{block['coords_top'] + block['coords_height']})"
+                )
 
 
 def main():
     """Main entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Fix line-block overlaps in DiaBloS diagrams')
-    parser.add_argument('files', nargs='*', help='Diagram files to fix (default: all in examples/)')
-    parser.add_argument('--dry-run', action='store_true', help='Only report issues without fixing')
-    parser.add_argument('--examples-dir', default='examples', help='Directory containing examples')
-    parser.add_argument('--max-passes', type=int, default=5, help='Maximum fix passes per file')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Show detailed overlap info')
-    parser.add_argument('--report', action='store_true', help='Show detailed overlap report')
+    parser = argparse.ArgumentParser(description="Fix line-block overlaps in DiaBloS diagrams")
+    parser.add_argument("files", nargs="*", help="Diagram files to fix (default: all in examples/)")
+    parser.add_argument("--dry-run", action="store_true", help="Only report issues without fixing")
+    parser.add_argument("--examples-dir", default="examples", help="Directory containing examples")
+    parser.add_argument("--max-passes", type=int, default=5, help="Maximum fix passes per file")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed overlap info")
+    parser.add_argument("--report", action="store_true", help="Show detailed overlap report")
 
     args = parser.parse_args()
 
@@ -341,7 +353,7 @@ def main():
             print(f"Error: Directory '{examples_dir}' not found")
             return 1
 
-        files = sorted(examples_dir.glob('*.diablos'))
+        files = sorted(examples_dir.glob("*.diablos"))
 
     if not files:
         print("No .diablos files found")
@@ -352,8 +364,8 @@ def main():
         for filepath in files:
             try:
                 data = load_diagram(filepath)
-                blocks = data.get('blocks_data', [])
-                lines = data.get('lines_data', [])
+                blocks = data.get("blocks_data", [])
+                lines = data.get("lines_data", [])
                 total = sum(len(find_overlapping_blocks(line, blocks)) for line in lines)
                 if total > 0:
                     report_overlaps(filepath)
@@ -375,7 +387,9 @@ def main():
                 if overlaps > 0:
                     total_issues += overlaps
                     total_fixed += modified
-                    print(f"  {filepath.name}: {overlaps} overlaps detected, would fix {modified} lines")
+                    print(
+                        f"  {filepath.name}: {overlaps} overlaps detected, would fix {modified} lines"
+                    )
             else:
                 # Multi-pass fixing
                 initial_overlaps, _ = fix_diagram(filepath, dry_run=True)
@@ -390,7 +404,7 @@ def main():
                 # Check final state
                 final_overlaps, _ = fix_diagram(filepath, dry_run=True)
                 total_issues += initial_overlaps
-                total_fixed += (initial_overlaps - final_overlaps)
+                total_fixed += initial_overlaps - final_overlaps
 
                 if args.verbose or final_overlaps > 0:
                     print(f"  {filepath.name}: {initial_overlaps} -> {final_overlaps} overlaps")
@@ -408,5 +422,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

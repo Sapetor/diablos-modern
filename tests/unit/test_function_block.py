@@ -69,7 +69,9 @@ class TestFunctionBlockSingleInput:
     def test_input_count_inferred_when_no_inputs_param(self):
         # Direct unit calls may omit the engine-managed '_inputs_' key.
         block = FunctionBlock()
-        result = block.execute(time=0.0, inputs={0: np.array([5.0])}, params={"expression": "u[0] * 2"})
+        result = block.execute(
+            time=0.0, inputs={0: np.array([5.0])}, params={"expression": "u[0] * 2"}
+        )
         assert np.isclose(result[0][0], 10.0)
 
 
@@ -78,19 +80,25 @@ class TestFunctionBlockMultiInput:
     def test_sum_two_inputs_zero_indexed(self):
         block = FunctionBlock()
         params = {"expression": "u[0] + u[1]", "_inputs_": 2}
-        result = block.execute(time=0.0, inputs={0: np.array([1.0]), 1: np.array([2.0])}, params=params)
+        result = block.execute(
+            time=0.0, inputs={0: np.array([1.0]), 1: np.array([2.0])}, params=params
+        )
         assert np.isclose(result[0][0], 3.0)
 
     def test_product_one_indexed_aliases(self):
         block = FunctionBlock()
         params = {"expression": "u1 * u2", "_inputs_": 2}
-        result = block.execute(time=0.0, inputs={0: np.array([2.0]), 1: np.array([3.0])}, params=params)
+        result = block.execute(
+            time=0.0, inputs={0: np.array([2.0]), 1: np.array([3.0])}, params=params
+        )
         assert np.isclose(result[0][0], 6.0)
 
     def test_nonlinear_two_input(self):
         block = FunctionBlock()
         params = {"expression": "sin(u[0]) + u[1]**2", "_inputs_": 2}
-        result = block.execute(time=0.0, inputs={0: np.array([0.0]), 1: np.array([3.0])}, params=params)
+        result = block.execute(
+            time=0.0, inputs={0: np.array([0.0]), 1: np.array([3.0])}, params=params
+        )
         assert np.isclose(result[0][0], 9.0)
 
     def test_missing_input_defaults_to_zero(self):

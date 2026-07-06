@@ -44,10 +44,12 @@ from types import SimpleNamespace
 # Fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def engine(qapp, simulation_model):
     """SimulationEngine with empty model — uses shared conftest fixtures."""
     from lib.engine.simulation_engine import SimulationEngine
+
     return SimulationEngine(simulation_model)
 
 
@@ -85,14 +87,13 @@ def _make_stub(block_fn: str, extra_params: dict = None) -> SimpleNamespace:
         block_fn=block_fn,
         params=params,
         exec_params={},
-        b_type=2,           # regular block
-        block_class=None,   # disable the block_class instantiation path
+        b_type=2,  # regular block
+        block_class=None,  # disable the block_class instantiation path
     )
 
 
 @pytest.mark.regression
 class TestMemoryBlockClassification:
-
     @pytest.mark.parametrize("block_fn", UNCONDITIONAL_STATEFUL_BLOCK_FNS)
     def test_stateful_block_classified_as_memory(self, engine, block_fn):
         """Every unconditionally-stateful block must land in engine.memory_blocks."""
@@ -112,23 +113,28 @@ class TestMemoryBlockClassification:
 
     def test_tranfn_strictly_proper_is_memory(self, engine):
         """TranFn with len(den) > len(num) must be classified as memory."""
-        stub = _make_stub("TranFn", extra_params={
-            "numerator": [1.0],
-            "denominator": [1.0, 1.0],
-        })
+        stub = _make_stub(
+            "TranFn",
+            extra_params={
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         engine.active_blocks_list = [stub]
         engine.identify_memory_blocks()
         assert stub.name in engine.memory_blocks, (
-            "TranFn strictly-proper (len(den) > len(num)) was not classified "
-            "as a memory block."
+            "TranFn strictly-proper (len(den) > len(num)) was not classified as a memory block."
         )
 
     def test_tranfn_non_strictly_proper_not_memory(self, engine):
         """TranFn with len(den) == len(num) must NOT be classified as memory."""
-        stub = _make_stub("TranFn", extra_params={
-            "numerator": [1.0, 2.0],
-            "denominator": [1.0, 1.0],
-        })
+        stub = _make_stub(
+            "TranFn",
+            extra_params={
+                "numerator": [1.0, 2.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         engine.active_blocks_list = [stub]
         engine.identify_memory_blocks()
         assert stub.name not in engine.memory_blocks, (
@@ -141,10 +147,13 @@ class TestMemoryBlockClassification:
 
     def test_discrete_tranfn_strictly_proper_is_memory(self, engine):
         """Strictly-proper DiscreteTranFn (len(den) > len(num)) must be memory."""
-        stub = _make_stub("DiscreteTranFn", extra_params={
-            "numerator": [1.0],
-            "denominator": [1.0, 1.0],
-        })
+        stub = _make_stub(
+            "DiscreteTranFn",
+            extra_params={
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         engine.active_blocks_list = [stub]
         engine.identify_memory_blocks()
         assert stub.name in engine.memory_blocks, (
@@ -158,10 +167,13 @@ class TestMemoryBlockClassification:
         engine to call execute with output_only=True (u forced to 0), which
         gives the wrong initial output when the real input is non-zero.
         """
-        stub = _make_stub("DiscreteTranFn", extra_params={
-            "numerator": [1.0, 0.5],
-            "denominator": [1.0, 0.2],
-        })
+        stub = _make_stub(
+            "DiscreteTranFn",
+            extra_params={
+                "numerator": [1.0, 0.5],
+                "denominator": [1.0, 0.2],
+            },
+        )
         engine.active_blocks_list = [stub]
         engine.identify_memory_blocks()
         assert stub.name not in engine.memory_blocks, (
@@ -201,15 +213,13 @@ class TestMemoryBlockClassification:
         engine.active_blocks_list = stubs
         engine.identify_memory_blocks()
         missed = [s.block_fn for s in stubs if s.name not in engine.memory_blocks]
-        assert not missed, (
-            f"The following stateful blocks were NOT classified as memory: "
-            f"{missed}"
-        )
+        assert not missed, f"The following stateful blocks were NOT classified as memory: {missed}"
 
 
 # ---------------------------------------------------------------------------
 # Audit priority #7: empty-inputs safety for hardened Control blocks
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 class TestHardenedBlockEmptyInputs:
@@ -222,6 +232,7 @@ class TestHardenedBlockEmptyInputs:
         """PID with empty inputs returns current integral (should be ~0 on first call)."""
         import numpy as np
         from blocks.pid import PIDBlock
+
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         result = block.execute(time=0.1, inputs={}, params=params, dtime=0.01)
@@ -235,12 +246,14 @@ class TestHardenedBlockEmptyInputs:
         """PID output_only after one normal step returns the held integral, not a crash."""
         import numpy as np
         from blocks.pid import PIDBlock
+
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         params["Ki"] = 1.0
         # Normal step: setpoint=1, measurement=0 → error=1, integral accumulates
-        block.execute(time=0.0, inputs={0: np.array([1.0]), 1: np.array([0.0])},
-                      params=params, dtime=0.01)
+        block.execute(
+            time=0.0, inputs={0: np.array([1.0]), 1: np.array([0.0])}, params=params, dtime=0.01
+        )
         # output_only step: empty inputs — must not crash
         result = block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
         assert isinstance(result, dict)
@@ -250,6 +263,7 @@ class TestHardenedBlockEmptyInputs:
         """Hysteresis with empty inputs returns the held _state (low by default)."""
         import numpy as np
         from blocks.hysteresis import HysteresisBlock
+
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         result = block.execute(time=0.0, inputs={}, params=params)
@@ -262,6 +276,7 @@ class TestHardenedBlockEmptyInputs:
         """Hysteresis output_only after a switch returns the switched state."""
         import numpy as np
         from blocks.hysteresis import HysteresisBlock
+
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         # Drive input above upper threshold → state switches to high
@@ -275,6 +290,7 @@ class TestHardenedBlockEmptyInputs:
         """Deriv with empty inputs on first call returns zeros (no crash)."""
         import numpy as np
         from blocks.derivative import DerivativeBlock
+
         block = DerivativeBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         params["_init_start_"] = True
@@ -287,6 +303,7 @@ class TestHardenedBlockEmptyInputs:
         """Deriv output_only after a normal step returns the last computed didt."""
         import numpy as np
         from blocks.derivative import DerivativeBlock
+
         block = DerivativeBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         params["_init_start_"] = True
@@ -308,29 +325,30 @@ class TestHardenedBlockEmptyInputs:
         is computed from corrupted state."""
         import numpy as np
         from blocks.pid import PIDBlock
+
         block = PIDBlock()
         params = {k: v["default"] for k, v in block.params.items()}
-        params['Kp'] = 1.0
-        params['Ki'] = 0.5
-        params['Kd'] = 1.0  # nonzero — exposes the bug
+        params["Kp"] = 1.0
+        params["Ki"] = 0.5
+        params["Kd"] = 1.0  # nonzero — exposes the bug
 
         # Run a real step with setpoint=1, measurement=0 → error=1
         real_inputs = {0: np.array([1.0]), 1: np.array([0.0])}
         block.execute(time=0.0, inputs=real_inputs, params=params, dtime=0.01)
 
         # Capture state after real step
-        prev_e_after_real = params.get('_prev_e')
-        d_state_after_real = params.get('_d_state')
+        prev_e_after_real = params.get("_prev_e")
+        d_state_after_real = params.get("_d_state")
 
         # Now simulate Loop 1 output_only call (empty inputs)
         block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
 
         # State must be unchanged
-        assert params.get('_prev_e') == prev_e_after_real, (
+        assert params.get("_prev_e") == prev_e_after_real, (
             f"_prev_e was corrupted by output_only call: "
             f"{prev_e_after_real} -> {params.get('_prev_e')}"
         )
-        assert params.get('_d_state') == d_state_after_real, (
+        assert params.get("_d_state") == d_state_after_real, (
             f"_d_state was corrupted: {d_state_after_real} -> {params.get('_d_state')}"
         )
 
@@ -339,19 +357,20 @@ class TestHardenedBlockEmptyInputs:
         must not spuriously trigger a transition. Empty inputs → return current state."""
         import numpy as np
         from blocks.hysteresis import HysteresisBlock
+
         block = HysteresisBlock()
         params = {k: v["default"] for k, v in block.params.items()}
         # Configure so 0.0 input would naively cross the upper threshold
-        params['upper'] = -0.05
-        params['lower'] = -0.5
-        params['low'] = 0.0
-        params['high'] = 1.0
-        params['_state'] = 0.0   # currently in low state
-        params['_init_start_'] = False  # already initialized
+        params["upper"] = -0.05
+        params["lower"] = -0.5
+        params["low"] = 0.0
+        params["high"] = 1.0
+        params["_state"] = 0.0  # currently in low state
+        params["_init_start_"] = False  # already initialized
 
         # Output-only call with empty inputs — must NOT flip to high
         result = block.execute(time=0.0, inputs={}, params=params, dtime=0.01)
-        assert params['_state'] == 0.0, "Hysteresis state was spuriously flipped"
+        assert params["_state"] == 0.0, "Hysteresis state was spuriously flipped"
         assert float(np.ravel(result[0])[0]) == pytest.approx(0.0), (
             "Hysteresis output_only must return current state, not flip"
         )
@@ -360,43 +379,43 @@ class TestHardenedBlockEmptyInputs:
         """Adam with empty inputs must not increment _t_ or mutate _m_/_v_."""
         import numpy as np
         from blocks.optimization_primitives.adam import AdamBlock
+
         block = AdamBlock()
-        params = {k: v["default"] if isinstance(v, dict) else v
-                  for k, v in block.params.items()}
+        params = {k: v["default"] if isinstance(v, dict) else v for k, v in block.params.items()}
 
         # Run a real step
         grad = np.array([1.0, 0.5])
         block.execute(time=0.0, inputs={0: grad}, params=params)
 
-        m_after_real = params['_m_'].copy()
-        v_after_real = params['_v_'].copy()
-        t_after_real = params['_t_']
+        m_after_real = params["_m_"].copy()
+        v_after_real = params["_v_"].copy()
+        t_after_real = params["_t_"]
 
         # Output-only call
         block.execute(time=0.01, inputs={}, params=params)
 
-        assert np.allclose(params['_m_'], m_after_real), "_m_ was corrupted by output_only call"
-        assert np.allclose(params['_v_'], v_after_real), "_v_ was corrupted by output_only call"
-        assert params['_t_'] == t_after_real, "_t_ was incremented by output_only call"
+        assert np.allclose(params["_m_"], m_after_real), "_m_ was corrupted by output_only call"
+        assert np.allclose(params["_v_"], v_after_real), "_v_ was corrupted by output_only call"
+        assert params["_t_"] == t_after_real, "_t_ was incremented by output_only call"
 
     def test_momentum_output_only_does_not_corrupt_velocity(self):
         """Momentum with empty inputs must not mutate _velocity_."""
         import numpy as np
         from blocks.optimization_primitives.momentum import MomentumBlock
+
         block = MomentumBlock()
-        params = {k: v["default"] if isinstance(v, dict) else v
-                  for k, v in block.params.items()}
+        params = {k: v["default"] if isinstance(v, dict) else v for k, v in block.params.items()}
 
         # Run a real step
         grad = np.array([1.0, 0.5])
         block.execute(time=0.0, inputs={0: grad}, params=params)
 
-        velocity_after_real = params['_velocity_'].copy()
+        velocity_after_real = params["_velocity_"].copy()
 
         # Output-only call
         block.execute(time=0.01, inputs={}, params=params)
 
-        assert np.allclose(params['_velocity_'], velocity_after_real), (
+        assert np.allclose(params["_velocity_"], velocity_after_real), (
             "_velocity_ was corrupted by output_only call"
         )
 
@@ -404,19 +423,19 @@ class TestHardenedBlockEmptyInputs:
         """RateLimiter with empty inputs must not overwrite _prev."""
         import numpy as np
         from blocks.rate_limiter import RateLimiterBlock
+
         block = RateLimiterBlock()
-        params = {k: (v["default"] if isinstance(v, dict) else v)
-                  for k, v in block.params.items()}
+        params = {k: (v["default"] if isinstance(v, dict) else v) for k, v in block.params.items()}
 
         # Run a real step to initialize
         block.execute(time=0.0, inputs={0: np.array([2.0])}, params=params, dtime=0.01)
 
-        prev_after_real = np.array(params['_prev']).copy()
+        prev_after_real = np.array(params["_prev"]).copy()
 
         # Output-only call with empty inputs
         block.execute(time=0.01, inputs={}, params=params, dtime=0.01)
 
-        assert np.allclose(params['_prev'], prev_after_real), (
+        assert np.allclose(params["_prev"], prev_after_real), (
             "_prev was corrupted by output_only call"
         )
 
@@ -424,6 +443,7 @@ class TestHardenedBlockEmptyInputs:
 # ---------------------------------------------------------------------------
 # M1: identify_memory_blocks must read resolved (exec_params) arrays
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 class TestM1ParamResolutionOrder:
@@ -468,6 +488,7 @@ class TestM1ParamResolutionOrder:
     def test_statespace_uses_resolved_exec_params(self, engine):
         """StateSpace classification uses resolved D matrix from exec_params."""
         import numpy as np
+
         stub = SimpleNamespace(
             name="ss__ws",
             block_fn="StateSpace",
@@ -501,8 +522,7 @@ class TestM1ParamResolutionOrder:
         engine.active_blocks_list = [stub]
         engine.identify_memory_blocks()
         assert stub.name in engine.memory_blocks, (
-            "DiscreteTranFn with strictly-proper EXEC params was not "
-            "classified as memory."
+            "DiscreteTranFn with strictly-proper EXEC params was not classified as memory."
         )
 
     def test_initialize_execution_resolves_before_identify(self, qapp, simulation_model):
@@ -563,7 +583,7 @@ class TestM1ParamResolutionOrder:
             for block in engine.active_blocks_list:
                 block.exec_params = wsm.resolve_params(block.params)
                 block.exec_params.update(
-                    {k: v for k, v in block.params.items() if k.startswith('_')}
+                    {k: v for k, v in block.params.items() if k.startswith("_")}
                 )
                 block.exec_params["dtime"] = engine.sim_dt
 

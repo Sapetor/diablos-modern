@@ -21,7 +21,7 @@ class RenderingManager:
     Extracted from ModernCanvas to reduce file size and improve maintainability.
     """
 
-    def __init__(self, canvas: 'ModernCanvas'):
+    def __init__(self, canvas: "ModernCanvas"):
         self.canvas = canvas
         self.dsim = canvas.dsim
 
@@ -61,7 +61,7 @@ class RenderingManager:
         across all blocks; the renderer only needs to know which of *this*
         block's ports (if any) is hovered, so reduce it to the per-block pair.
         """
-        hovered = getattr(self.canvas, 'hovered_port', None)
+        hovered = getattr(self.canvas, "hovered_port", None)
         if not hovered:
             return None
         hover_block, port_idx, is_output = hovered
@@ -104,7 +104,9 @@ class RenderingManager:
         self.canvas.show_validation_errors = False
         self.canvas.update()
 
-    def draw_block_error_indicator(self, painter: QPainter, block: Any, is_error: bool = True) -> None:
+    def draw_block_error_indicator(
+        self, painter: QPainter, block: Any, is_error: bool = True
+    ) -> None:
         """Draw error/warning indicator on a specific block."""
         try:
             # Choose color based on severity
@@ -125,7 +127,7 @@ class RenderingManager:
                 block.left - padding,
                 block.top - padding,
                 block.width + 2 * padding,
-                block.height + 2 * padding
+                block.height + 2 * padding,
             )
             painter.drawRoundedRect(error_rect, 10, 10)
 
@@ -145,8 +147,7 @@ class RenderingManager:
             painter.setPen(QPen(QColor(255, 255, 255), 2))
             # Vertical line
             painter.drawLine(
-                icon_x + icon_size // 2, icon_y + 3,
-                icon_x + icon_size // 2, icon_y + icon_size - 6
+                icon_x + icon_size // 2, icon_y + 3, icon_x + icon_size // 2, icon_y + icon_size - 6
             )
             # Dot
             painter.drawPoint(icon_x + icon_size // 2, icon_y + icon_size - 3)
@@ -209,8 +210,10 @@ class RenderingManager:
 
                     # Include block documentation excerpt if available
                     if block.doc:
-                        doc_lines = block.doc.split('\n')
-                        short_doc = doc_lines[0][:60] + '...' if len(doc_lines[0]) > 60 else doc_lines[0]
+                        doc_lines = block.doc.split("\n")
+                        short_doc = (
+                            doc_lines[0][:60] + "..." if len(doc_lines[0]) > 60 else doc_lines[0]
+                        )
                         tooltip = f"{tooltip}\n{short_doc}"
 
                     QToolTip.showText(self.canvas.mapToGlobal(pos), tooltip, self.canvas)
@@ -255,13 +258,13 @@ class RenderingManager:
     def set_resize_cursor(self, handle: str) -> None:
         """Set the appropriate cursor for a resize handle."""
         cursor_map = {
-            'top_left': Qt.SizeFDiagCursor,
-            'top_right': Qt.SizeBDiagCursor,
-            'bottom_left': Qt.SizeBDiagCursor,
-            'bottom_right': Qt.SizeFDiagCursor,
-            'top': Qt.SizeVerCursor,
-            'bottom': Qt.SizeVerCursor,
-            'left': Qt.SizeHorCursor,
-            'right': Qt.SizeHorCursor,
+            "top_left": Qt.SizeFDiagCursor,
+            "top_right": Qt.SizeBDiagCursor,
+            "bottom_left": Qt.SizeBDiagCursor,
+            "bottom_right": Qt.SizeFDiagCursor,
+            "top": Qt.SizeVerCursor,
+            "bottom": Qt.SizeVerCursor,
+            "left": Qt.SizeHorCursor,
+            "right": Qt.SizeHorCursor,
         }
         self.canvas.setCursor(cursor_map.get(handle, Qt.ArrowCursor))

@@ -48,9 +48,7 @@ class TestButtonFocusRing:
         css = ModernStyles.get_button_style()
         blocks = _focus_blocks(css)
         # The ring is a 2px border — wider than the 1px hover edge.
-        assert any("2px solid" in b for b in blocks), (
-            "focus ring is not a 2px solid border"
-        )
+        assert any("2px solid" in b for b in blocks), "focus ring is not a 2px solid border"
 
     def test_transport_buttons_have_focus_rule(self):
         from modern_ui.styles.qss_styles import ModernStyles

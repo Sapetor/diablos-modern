@@ -76,9 +76,7 @@ def _no_modal_dialogs():
     for meth, default in static_defaults.items():
         if hasattr(QMessageBox, meth):
             originals[(QMessageBox, meth)] = getattr(QMessageBox, meth)
-            setattr(QMessageBox, meth, staticmethod(
-                (lambda _d: (lambda *a, **k: _d))(default)
-            ))
+            setattr(QMessageBox, meth, staticmethod((lambda _d: lambda *a, **k: _d)(default)))
 
     yield
 
@@ -100,11 +98,11 @@ def qapp():
 def sample_colors():
     """Provide sample color palette for tests."""
     return {
-        'black': QColor(0, 0, 0),
-        'red': QColor(255, 0, 0),
-        'blue': QColor(0, 0, 255),
-        'green': QColor(0, 255, 0),
-        'magenta': QColor(255, 0, 255),
+        "black": QColor(0, 0, 0),
+        "red": QColor(255, 0, 0),
+        "blue": QColor(0, 0, 255),
+        "green": QColor(0, 255, 0),
+        "magenta": QColor(255, 0, 255),
     }
 
 
@@ -124,6 +122,7 @@ def sample_position():
 def simulation_model(qapp, sample_colors):
     """Create a SimulationModel instance for testing."""
     from lib.models.simulation_model import SimulationModel
+
     model = SimulationModel()
     return model
 
@@ -132,6 +131,7 @@ def simulation_model(qapp, sample_colors):
 def simulation_engine(qapp, simulation_model):
     """Create a SimulationEngine instance for testing."""
     from lib.engine.simulation_engine import SimulationEngine
+
     engine = SimulationEngine(simulation_model)
     return engine
 
@@ -140,6 +140,7 @@ def simulation_engine(qapp, simulation_model):
 def file_service(qapp, simulation_model):
     """Create a FileService instance for testing."""
     from lib.services.file_service import FileService
+
     service = FileService(simulation_model)
     return service
 
@@ -148,19 +149,20 @@ def file_service(qapp, simulation_model):
 def sample_block(qapp, sample_block_rect, sample_colors):
     """Create a sample DBlock for testing."""
     from lib.simulation.block import DBlock
+
     block = DBlock(
-        block_fn='TestBlock',
+        block_fn="TestBlock",
         sid=0,
         coords=sample_block_rect,
-        color='red',
+        color="red",
         in_ports=1,
         out_ports=1,
         b_type=2,
-        io_edit='none',
-        fn_name='testblock',
-        params={'gain': 1.0},
+        io_edit="none",
+        fn_name="testblock",
+        params={"gain": 1.0},
         external=False,
-        colors=sample_colors
+        colors=sample_colors,
     )
     return block
 
@@ -173,11 +175,11 @@ def sample_line(qapp):
 
     line = DLine(
         sid=0,
-        srcblock='block1',
+        srcblock="block1",
         srcport=0,
-        dstblock='block2',
+        dstblock="block2",
         dstport=0,
-        points=[QPoint(100, 100), QPoint(200, 200)]
+        points=[QPoint(100, 100), QPoint(200, 200)],
     )
     return line
 

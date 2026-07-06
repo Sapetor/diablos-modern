@@ -1,10 +1,10 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
 from lib.safe_eval import safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
+
 
 class MathFunctionBlock(BaseBlock):
     def __init__(self):
@@ -29,13 +29,24 @@ class MathFunctionBlock(BaseBlock):
                 "default": "sin",
                 "type": "choice",
                 "options": [
-                    "sin", "cos", "tan", 
-                    "asin", "acos", "atan", 
-                    "exp", "log", "log10",
-                    "sqrt", "square", "cube", "sign",
-                    "abs", "ceil", "floor",
-                    "reciprocal"
-                ]
+                    "sin",
+                    "cos",
+                    "tan",
+                    "asin",
+                    "acos",
+                    "atan",
+                    "exp",
+                    "log",
+                    "log10",
+                    "sqrt",
+                    "square",
+                    "cube",
+                    "sign",
+                    "abs",
+                    "ceil",
+                    "floor",
+                    "reciprocal",
+                ],
             }
         }
 
@@ -67,7 +78,7 @@ Select the function via the block parameters."""
         func = params.get("function", params.get("expression", "sin"))
         # Ensure function name is lowercase for comparison
         func = str(func).lower()
-        
+
         try:
             u = np.asarray(u, dtype=float)
             if func == "sin":
@@ -104,7 +115,7 @@ Select the function via the block parameters."""
                 return {0: np.where(u != 0, 1.0 / np.where(u != 0, u, 1.0), 0.0)}
             elif func == "cube":
                 return {0: u * u * u}
-            
+
             # Python Syntax Fallback
             # Try to evaluate as a Python expression
             # Context: u (input), t (time), np (numpy), and standard math functions

@@ -20,11 +20,15 @@ from PyQt5.QtCore import QSettings
 
 from modern_ui.widgets import modern_palette as mp
 from modern_ui.widgets.modern_palette import (
-    ModernBlockPalette, CompactBlockRow, _PinnedSection, update_recents,
+    ModernBlockPalette,
+    CompactBlockRow,
+    _PinnedSection,
+    update_recents,
 )
 
 
 # -- Pure helper -----------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestUpdateRecents:
@@ -52,6 +56,7 @@ class TestUpdateRecents:
 
 # -- Qt fixtures -----------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _qt(qapp):
     return qapp
@@ -77,6 +82,7 @@ def _isolated_settings(tmp_path, monkeypatch):
 
 def _make_palette():
     from lib.lib import DSim
+
     dsim = DSim()
     init = getattr(dsim, "menu_blocks_init", None)
     if callable(init):
@@ -108,6 +114,7 @@ def _fn_names_in_section(section):
 
 
 # -- Favorites persistence -------------------------------------------------
+
 
 def test_pin_persists_across_rebuild(palette):
     # No favorites yet → no Favorites section.
@@ -155,6 +162,7 @@ def test_unpin_removes_section_when_empty(palette):
 
 
 # -- Recent maintenance ----------------------------------------------------
+
 
 def test_record_recent_adds_section_newest_first(palette):
     assert _pinned_section(palette, "Recent") is None

@@ -43,8 +43,10 @@ def ensure_qapp():
     alive) first or the interpreter fast-fails under offscreen Qt."""
     global _QAPP
     from PyQt5.QtWidgets import QApplication
+
     _QAPP = QApplication.instance() or QApplication(sys.argv)
     return _QAPP
+
 
 # Cap runtime per example so the replay loop is exercised but stays fast.
 MAX_SIM_TIME = 0.5  # seconds of sim time (clamped from the file's sim_time)
@@ -109,9 +111,9 @@ def run_one(example_file):
 
         # Record block fn coverage from the raw file (flat, pre-flatten).
         try:
-            result["block_fns"] = sorted({
-                b.get("block_fn", "") for b in data.get("blocks_data", [])
-            } - {""})
+            result["block_fns"] = sorted(
+                {b.get("block_fn", "") for b in data.get("blocks_data", [])} - {""}
+            )
         except Exception:
             pass
 
@@ -142,7 +144,11 @@ def run_one(example_file):
         if not ok:
             result["status"] = "FAIL"
             result["exc_type"] = "InitError"
-            result["message"] = dsim.error_msg or getattr(dsim.engine, "error_msg", "") or "initialize_execution returned False"
+            result["message"] = (
+                dsim.error_msg
+                or getattr(dsim.engine, "error_msg", "")
+                or "initialize_execution returned False"
+            )
             return result
 
         # Match the live path: reset data, identify memory blocks.
@@ -162,9 +168,7 @@ def run_one(example_file):
 
         result["solver"] = "Compiled"
         t_span = (0.0, sim_time)
-        success = dsim.engine.run_compiled_simulation(
-            flat_blocks, flat_lines, t_span, sim_dt
-        )
+        success = dsim.engine.run_compiled_simulation(flat_blocks, flat_lines, t_span, sim_dt)
 
         try:
             result["n_states"] = int(getattr(dsim.engine, "outs", []).shape[0])
@@ -209,6 +213,7 @@ MARKER_PATH = REPO / "scripts" / ".examples_compiled_current.txt"
 
 def _append_result(rec):
     import os
+
     rec.pop("_tb", None)
     with open(RESULTS_PATH, "a") as fh:
         fh.write(json.dumps(rec) + "\n")
@@ -233,6 +238,7 @@ def _load_results():
 
 def _set_marker(name):
     import os
+
     with open(MARKER_PATH, "w") as fh:
         fh.write(name)
         fh.flush()
@@ -258,13 +264,19 @@ def run_loop():
     if MARKER_PATH.exists():
         crashed = MARKER_PATH.read_text().strip()
         if crashed and crashed not in done:
-            _append_result({
-                "name": crashed, "status": "FAIL",
-                "exc_type": "HardCrash(native fast-fail)",
-                "message": "interpreter died mid-example (native crash, no Python traceback)",
-                "signature": "", "block": "", "solver": "", "n_states": None,
-                "block_fns": [],
-            })
+            _append_result(
+                {
+                    "name": crashed,
+                    "status": "FAIL",
+                    "exc_type": "HardCrash(native fast-fail)",
+                    "message": "interpreter died mid-example (native crash, no Python traceback)",
+                    "signature": "",
+                    "block": "",
+                    "solver": "",
+                    "n_states": None,
+                    "block_fns": [],
+                }
+            )
             done.add(crashed)
         _clear_marker()
 
@@ -312,9 +324,7 @@ def summarize():
             }
             for r in failed
         ],
-        "skipped": [
-            {"name": r["name"], "message": r["message"]} for r in skipped
-        ],
+        "skipped": [{"name": r["name"], "message": r["message"]} for r in skipped],
         "passed_names": [r["name"] for r in passed],
         "block_fn_coverage": sorted(all_fns),
     }
@@ -330,6 +340,7 @@ def _single_child(name, out_path):
     crash (QPixmap-before-QGuiApplication, SIGABRT, fast-fail) on one example
     cannot take down the whole run."""
     import os
+
     ensure_qapp()  # QApplication first — before any block import constructs a QPixmap
     rec = run_one(EXAMPLES_DIR / name)
     rec.pop("_tb", None)
@@ -355,16 +366,15 @@ def orchestrate():
     for f in files:
         if f.name in done:
             continue
-        tmp = tempfile.NamedTemporaryFile(
-            prefix="diablos_ex_", suffix=".json", delete=False
-        )
+        tmp = tempfile.NamedTemporaryFile(prefix="diablos_ex_", suffix=".json", delete=False)
         tmp.close()
         rec = None
         try:
             proc = subprocess.run(
-                [sys.executable, str(Path(__file__).resolve()),
-                 "--single", f.name, tmp.name],
-                capture_output=True, text=True, timeout=120,
+                [sys.executable, str(Path(__file__).resolve()), "--single", f.name, tmp.name],
+                capture_output=True,
+                text=True,
+                timeout=120,
             )
             rc, err = proc.returncode, (proc.stderr or "")
         except subprocess.TimeoutExpired:
@@ -379,14 +389,19 @@ def orchestrate():
             Path(tmp.name).unlink(missing_ok=True)
 
         if rec is None:
-            err_tail = [l for l in err.strip().splitlines()
-                        if "Symbolic features" not in l]
+            err_tail = [l for l in err.strip().splitlines() if "Symbolic features" not in l]
             rec = {
-                "name": f.name, "status": "FAIL",
+                "name": f.name,
+                "status": "FAIL",
                 "exc_type": f"HardCrash(exit={rc})",
-                "message": ("child crashed natively before writing result; "
-                            f"stderr: {err_tail[-1] if err_tail else ''}")[:400],
-                "signature": "", "block": "", "solver": "", "n_states": None,
+                "message": (
+                    "child crashed natively before writing result; "
+                    f"stderr: {err_tail[-1] if err_tail else ''}"
+                )[:400],
+                "signature": "",
+                "block": "",
+                "solver": "",
+                "n_states": None,
                 "block_fns": [],
             }
         _append_result(rec)

@@ -40,46 +40,91 @@ def file_service_with_lines(qapp, tmp_path):
     # Minimal model with the relevant attributes.
     blocks = [
         SimpleNamespace(
-            name="step__0", block_fn="Step", username="src", sid=0,
-            left=0, top=0, width=50, height=40, height_base=40,
-            in_ports=0, out_ports=1, dragging=False, selected=False,
+            name="step__0",
+            block_fn="Step",
+            username="src",
+            sid=0,
+            left=0,
+            top=0,
+            width=50,
+            height=40,
+            height_base=40,
+            in_ports=0,
+            out_ports=1,
+            dragging=False,
+            selected=False,
             b_color=SimpleNamespace(name=lambda: "#000000"),
-            b_type=0, io_edit="none", fn_name="step",
+            b_type=0,
+            io_edit="none",
+            fn_name="step",
             saving_params=lambda: {},
-            external=False, flipped=False, sub_blocks=[], sub_lines=[],
-            ports={}, ports_map={},
+            external=False,
+            flipped=False,
+            sub_blocks=[],
+            sub_lines=[],
+            ports={},
+            ports_map={},
         ),
         SimpleNamespace(
-            name="goto__1", block_fn="Goto", username="g", sid=1,
-            left=100, top=0, width=50, height=40, height_base=40,
-            in_ports=1, out_ports=0, dragging=False, selected=False,
+            name="goto__1",
+            block_fn="Goto",
+            username="g",
+            sid=1,
+            left=100,
+            top=0,
+            width=50,
+            height=40,
+            height_base=40,
+            in_ports=1,
+            out_ports=0,
+            dragging=False,
+            selected=False,
             b_color=SimpleNamespace(name=lambda: "#000000"),
-            b_type=2, io_edit="none", fn_name="goto",
+            b_type=2,
+            io_edit="none",
+            fn_name="goto",
             saving_params=lambda: {"tag": "A"},
-            external=False, flipped=False,
+            external=False,
+            flipped=False,
         ),
         SimpleNamespace(
-            name="from__2", block_fn="From", username="f", sid=2,
-            left=200, top=0, width=50, height=40, height_base=40,
-            in_ports=0, out_ports=1, dragging=False, selected=False,
+            name="from__2",
+            block_fn="From",
+            username="f",
+            sid=2,
+            left=200,
+            top=0,
+            width=50,
+            height=40,
+            height_base=40,
+            in_ports=0,
+            out_ports=1,
+            dragging=False,
+            selected=False,
             b_color=SimpleNamespace(name=lambda: "#000000"),
-            b_type=2, io_edit="none", fn_name="from_block",
+            b_type=2,
+            io_edit="none",
+            fn_name="from_block",
             saving_params=lambda: {"tag": "A"},
-            external=False, flipped=False,
+            external=False,
+            flipped=False,
         ),
     ]
 
     from PyQt5.QtCore import QPoint
-    real_line = DLine(0, "step__0", 0, "goto__1", 0,
-                      [QPoint(50, 0), QPoint(100, 0)])
-    virtual_line = DLine(1, "step__0", 0, "from__2", 0,
-                         [QPoint(50, 0), QPoint(200, 0)],
-                         hidden=True)
+
+    real_line = DLine(0, "step__0", 0, "goto__1", 0, [QPoint(50, 0), QPoint(100, 0)])
+    virtual_line = DLine(
+        1, "step__0", 0, "from__2", 0, [QPoint(50, 0), QPoint(200, 0)], hidden=True
+    )
     lines = [real_line, virtual_line]
 
     model = SimpleNamespace(
-        blocks_list=blocks, line_list=lines, dirty=True,
-        update_lines=lambda: None, link_goto_from=lambda: None,
+        blocks_list=blocks,
+        line_list=lines,
+        dirty=True,
+        update_lines=lambda: None,
+        link_goto_from=lambda: None,
     )
 
     fs = FileService(model)
@@ -88,7 +133,6 @@ def file_service_with_lines(qapp, tmp_path):
 
 @pytest.mark.regression
 class TestVirtualLineNotPersisted:
-
     def test_serialize_filters_hidden_lines(self, file_service_with_lines):
         """serialize() must skip lines with hidden=True."""
         fs, model, real_line, virtual_line = file_service_with_lines
@@ -96,19 +140,16 @@ class TestVirtualLineNotPersisted:
         data = fs.serialize(sim_params={"sim_time": 1.0, "sim_dt": 0.01})
 
         line_sids = {ln["sid"] for ln in data["lines_data"]}
-        assert real_line.sid in line_sids, (
-            "Visible line must be serialized."
-        )
+        assert real_line.sid in line_sids, "Visible line must be serialized."
         assert virtual_line.sid not in line_sids, (
             "Hidden virtual line must NOT be serialized — it gets re-created "
             "by link_goto_from at runtime."
         )
 
-    def test_save_to_file_and_reload_omits_virtual_line(
-        self, file_service_with_lines, tmp_path
-    ):
+    def test_save_to_file_and_reload_omits_virtual_line(self, file_service_with_lines, tmp_path):
         """End-to-end: write to disk, read raw JSON, ensure virtual line gone."""
         import json
+
         fs, model, _, virtual_line = file_service_with_lines
         path = tmp_path / "test.diablos"
 
@@ -120,13 +161,9 @@ class TestVirtualLineNotPersisted:
 
         # No line in the saved file should target the From block (it's the
         # virtual-line signature).
-        from_dst_lines = [
-            ln for ln in raw["lines_data"]
-            if ln["dstblock"] == "from__2"
-        ]
+        from_dst_lines = [ln for ln in raw["lines_data"] if ln["dstblock"] == "from__2"]
         assert not from_dst_lines, (
-            f"Expected no lines targeting From block on disk, found "
-            f"{from_dst_lines}"
+            f"Expected no lines targeting From block on disk, found {from_dst_lines}"
         )
 
     def test_subsystem_sub_lines_also_filtered(self, qapp):
@@ -135,26 +172,40 @@ class TestVirtualLineNotPersisted:
         from lib.simulation.connection import DLine
         from PyQt5.QtCore import QPoint
 
-        hidden_sub = DLine(0, "a", 0, "from_inside", 0,
-                           [QPoint(0, 0), QPoint(10, 10)], hidden=True)
-        visible_sub = DLine(1, "a", 0, "b", 0,
-                            [QPoint(0, 0), QPoint(10, 10)])
+        hidden_sub = DLine(0, "a", 0, "from_inside", 0, [QPoint(0, 0), QPoint(10, 10)], hidden=True)
+        visible_sub = DLine(1, "a", 0, "b", 0, [QPoint(0, 0), QPoint(10, 10)])
 
         subsystem = SimpleNamespace(
-            name="sub__0", block_fn="Subsystem", username="s", sid=0,
-            left=0, top=0, width=50, height=40, height_base=40,
-            in_ports=1, out_ports=1, dragging=False, selected=False,
+            name="sub__0",
+            block_fn="Subsystem",
+            username="s",
+            sid=0,
+            left=0,
+            top=0,
+            width=50,
+            height=40,
+            height_base=40,
+            in_ports=1,
+            out_ports=1,
+            dragging=False,
+            selected=False,
             b_color=SimpleNamespace(name=lambda: "#000000"),
-            b_type=2, io_edit="none", fn_name="subsystem",
+            b_type=2,
+            io_edit="none",
+            fn_name="subsystem",
             saving_params=lambda: {},
-            external=False, flipped=False,
+            external=False,
+            flipped=False,
             sub_blocks=[],
             sub_lines=[hidden_sub, visible_sub],
-            ports={}, ports_map={},
+            ports={},
+            ports_map={},
         )
 
         model = SimpleNamespace(
-            blocks_list=[subsystem], line_list=[], dirty=False,
+            blocks_list=[subsystem],
+            line_list=[],
+            dirty=False,
             update_lines=lambda: None,
         )
         fs = FileService(model)
@@ -162,9 +213,7 @@ class TestVirtualLineNotPersisted:
 
         sub_sids = {ln["sid"] for ln in block_dict["sub_lines"]}
         assert visible_sub.sid in sub_sids
-        assert hidden_sub.sid not in sub_sids, (
-            "Hidden line in sub_lines must NOT be persisted."
-        )
+        assert hidden_sub.sid not in sub_sids, "Hidden line in sub_lines must NOT be persisted."
 
 
 @pytest.mark.regression
@@ -187,64 +236,103 @@ class TestLegacyGhostLineMigration:
         # Pre-fix-shaped JSON: virtual line stored as ordinary line.
         legacy = {
             "sim_data": {
-                "wind_width": 1280, "wind_height": 770, "fps": 60,
-                "sim_time": 1.0, "sim_dt": 0.01, "sim_trange": 100,
+                "wind_width": 1280,
+                "wind_height": 770,
+                "fps": 60,
+                "sim_time": 1.0,
+                "sim_dt": 0.01,
+                "sim_trange": 100,
             },
             "blocks_data": [
                 {
-                    "block_fn": "Step", "sid": 0, "username": "src",
-                    "coords_left": 50, "coords_top": 200,
-                    "coords_width": 50, "coords_height": 40,
+                    "block_fn": "Step",
+                    "sid": 0,
+                    "username": "src",
+                    "coords_left": 50,
+                    "coords_top": 200,
+                    "coords_width": 50,
+                    "coords_height": 40,
                     "coords_height_base": 40,
-                    "in_ports": 0, "out_ports": 1,
-                    "dragging": False, "selected": False,
-                    "b_color": "#000000", "b_type": 0,
-                    "io_edit": "none", "fn_name": "step",
+                    "in_ports": 0,
+                    "out_ports": 1,
+                    "dragging": False,
+                    "selected": False,
+                    "b_color": "#000000",
+                    "b_type": 0,
+                    "io_edit": "none",
+                    "fn_name": "step",
                     "params": {"value": 1.0, "delay": 0.0, "type": "up"},
-                    "external": False, "flipped": False,
+                    "external": False,
+                    "flipped": False,
                 },
                 {
-                    "block_fn": "Goto", "sid": 1, "username": "g",
-                    "coords_left": 200, "coords_top": 200,
-                    "coords_width": 50, "coords_height": 40,
+                    "block_fn": "Goto",
+                    "sid": 1,
+                    "username": "g",
+                    "coords_left": 200,
+                    "coords_top": 200,
+                    "coords_width": 50,
+                    "coords_height": 40,
                     "coords_height_base": 40,
-                    "in_ports": 1, "out_ports": 0,
-                    "dragging": False, "selected": False,
-                    "b_color": "#000000", "b_type": 2,
-                    "io_edit": "none", "fn_name": "goto",
+                    "in_ports": 1,
+                    "out_ports": 0,
+                    "dragging": False,
+                    "selected": False,
+                    "b_color": "#000000",
+                    "b_type": 2,
+                    "io_edit": "none",
+                    "fn_name": "goto",
                     "params": {"tag": "A"},
-                    "external": False, "flipped": False,
+                    "external": False,
+                    "flipped": False,
                 },
                 {
-                    "block_fn": "From", "sid": 2, "username": "f",
-                    "coords_left": 400, "coords_top": 200,
-                    "coords_width": 50, "coords_height": 40,
+                    "block_fn": "From",
+                    "sid": 2,
+                    "username": "f",
+                    "coords_left": 400,
+                    "coords_top": 200,
+                    "coords_width": 50,
+                    "coords_height": 40,
                     "coords_height_base": 40,
-                    "in_ports": 0, "out_ports": 1,
-                    "dragging": False, "selected": False,
-                    "b_color": "#000000", "b_type": 2,
-                    "io_edit": "none", "fn_name": "from_block",
+                    "in_ports": 0,
+                    "out_ports": 1,
+                    "dragging": False,
+                    "selected": False,
+                    "b_color": "#000000",
+                    "b_type": 2,
+                    "io_edit": "none",
+                    "fn_name": "from_block",
                     "params": {"tag": "A"},
-                    "external": False, "flipped": False,
+                    "external": False,
+                    "flipped": False,
                 },
             ],
             "lines_data": [
                 # Real line: Step → Goto
                 {
-                    "name": "line0", "sid": 0,
-                    "srcblock": "step0", "srcport": 0,
-                    "dstblock": "goto1", "dstport": 0,
+                    "name": "line0",
+                    "sid": 0,
+                    "srcblock": "step0",
+                    "srcport": 0,
+                    "dstblock": "goto1",
+                    "dstport": 0,
                     "points": [[100, 220], [200, 220]],
-                    "cptr": 0, "selected": False,
+                    "cptr": 0,
+                    "selected": False,
                 },
                 # Ghost virtual line: Step → From (this is the bug
                 # signature — From has no real input ports).
                 {
-                    "name": "line1", "sid": 1,
-                    "srcblock": "step0", "srcport": 0,
-                    "dstblock": "from2", "dstport": 0,
+                    "name": "line1",
+                    "sid": 1,
+                    "srcblock": "step0",
+                    "srcport": 0,
+                    "dstblock": "from2",
+                    "dstport": 0,
                     "points": [[100, 220], [400, 220]],
-                    "cptr": 0, "selected": False,
+                    "cptr": 0,
+                    "selected": False,
                 },
             ],
             "version": "2.0",
@@ -260,10 +348,7 @@ class TestLegacyGhostLineMigration:
             data = dsim.file_service.load(filepath=str(path))
             dsim.file_service.apply_loaded_data(data)
 
-            from_lines = [
-                ln for ln in dsim.model.line_list
-                if ln.dstblock == "from2"
-            ]
+            from_lines = [ln for ln in dsim.model.line_list if ln.dstblock == "from2"]
             assert from_lines, "Test setup: expected a line targeting From."
             for ln in from_lines:
                 assert ln.hidden, (
@@ -272,10 +357,7 @@ class TestLegacyGhostLineMigration:
                 )
 
             # The real Step→Goto line must NOT be tagged hidden.
-            goto_lines = [
-                ln for ln in dsim.model.line_list
-                if ln.dstblock == "goto1"
-            ]
+            goto_lines = [ln for ln in dsim.model.line_list if ln.dstblock == "goto1"]
             assert goto_lines, "Test setup: expected a line targeting Goto."
             for ln in goto_lines:
                 assert not ln.hidden, (
@@ -296,30 +378,47 @@ class TestLegacyGhostLineMigration:
 
         legacy = {
             "sim_data": {
-                "wind_width": 1280, "wind_height": 770, "fps": 60,
-                "sim_time": 1.0, "sim_dt": 0.01, "sim_trange": 100,
+                "wind_width": 1280,
+                "wind_height": 770,
+                "fps": 60,
+                "sim_time": 1.0,
+                "sim_dt": 0.01,
+                "sim_trange": 100,
             },
             "blocks_data": [
                 {
-                    "block_fn": "From", "sid": 0, "username": "f",
-                    "coords_left": 0, "coords_top": 0,
-                    "coords_width": 50, "coords_height": 40,
+                    "block_fn": "From",
+                    "sid": 0,
+                    "username": "f",
+                    "coords_left": 0,
+                    "coords_top": 0,
+                    "coords_width": 50,
+                    "coords_height": 40,
                     "coords_height_base": 40,
-                    "in_ports": 0, "out_ports": 1,
-                    "dragging": False, "selected": False,
-                    "b_color": "#000000", "b_type": 2,
-                    "io_edit": "none", "fn_name": "from_block",
+                    "in_ports": 0,
+                    "out_ports": 1,
+                    "dragging": False,
+                    "selected": False,
+                    "b_color": "#000000",
+                    "b_type": 2,
+                    "io_edit": "none",
+                    "fn_name": "from_block",
                     "params": {"tag": "A"},
-                    "external": False, "flipped": False,
+                    "external": False,
+                    "flipped": False,
                 },
             ],
             "lines_data": [
                 {
-                    "name": "line0", "sid": 0,
-                    "srcblock": "anywhere", "srcport": 0,
-                    "dstblock": "from0", "dstport": 0,
+                    "name": "line0",
+                    "sid": 0,
+                    "srcblock": "anywhere",
+                    "srcport": 0,
+                    "dstblock": "from0",
+                    "dstport": 0,
                     "points": [[0, 0], [50, 0]],
-                    "cptr": 0, "selected": False,
+                    "cptr": 0,
+                    "selected": False,
                 },
             ],
             "version": "2.0",
@@ -338,12 +437,9 @@ class TestLegacyGhostLineMigration:
 
             # Re-serialize — ghost line should be filtered out by the
             # serialize-time guard since the legacy migration tagged it.
-            out_data = dsim.file_service.serialize(
-                sim_params={"sim_time": 1.0, "sim_dt": 0.01}
-            )
+            out_data = dsim.file_service.serialize(sim_params={"sim_time": 1.0, "sim_dt": 0.01})
             assert out_data["lines_data"] == [], (
-                f"Expected no lines after round-trip; got "
-                f"{out_data['lines_data']}"
+                f"Expected no lines after round-trip; got {out_data['lines_data']}"
             )
         finally:
             WorkspaceManager._instance = prev

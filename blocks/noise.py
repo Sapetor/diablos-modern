@@ -1,6 +1,6 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
+
 
 class NoiseBlock(BaseBlock):
     """
@@ -41,8 +41,16 @@ class NoiseBlock(BaseBlock):
     def params(self):
         return {
             "mu": {"type": "float", "default": 0.0, "doc": "The mean of the noise."},
-            "sigma": {"type": "float", "default": 1.0, "doc": "The standard deviation of the noise."},
-            "seed": {"type": "int", "default": 0, "doc": "Random seed for reproducibility (0 = random)."},
+            "sigma": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "The standard deviation of the noise.",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "Random seed for reproducibility (0 = random).",
+            },
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
 
@@ -57,6 +65,7 @@ class NoiseBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw noise/random signal icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         path.moveTo(0.1, 0.5)
         path.lineTo(0.2, 0.3)
@@ -76,8 +85,7 @@ class NoiseBlock(BaseBlock):
             params["_rng"] = np.random.default_rng(seed if seed != 0 else None)
             params["_init_start_"] = False
 
-        sigma = float(params['sigma'])
-        mu = float(params['mu'])
+        sigma = float(params["sigma"])
+        mu = float(params["mu"])
         rng = params["_rng"]
         return {0: np.array(sigma * rng.standard_normal() + mu, dtype=float)}
-

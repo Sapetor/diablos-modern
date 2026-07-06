@@ -48,7 +48,11 @@ class PRBSBlock(BaseBlock):
             "high": {"type": "float", "default": 1.0, "doc": "Value for logic high."},
             "low": {"type": "float", "default": 0.0, "doc": "Value for logic low."},
             "bit_time": {"type": "float", "default": 0.1, "doc": "Seconds each bit is held."},
-            "order": {"type": "int", "default": 7, "doc": "LFSR order (sequence length 2^order-1)."},
+            "order": {
+                "type": "int",
+                "default": 7,
+                "doc": "LFSR order (sequence length 2^order-1).",
+            },
             "seed": {"type": "int", "default": 1, "doc": "Non‑zero initial LFSR state."},
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
@@ -64,6 +68,7 @@ class PRBSBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw PRBS pulse train icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Irregular pulse train
         path.moveTo(0.1, 0.7)
@@ -147,6 +152,8 @@ class PRBSBlock(BaseBlock):
             params["_current_bit"] = lfsr & 1
             params["_next_flip"] += bit_time
 
-        params["_current"] = float(params["high"]) if params["_current_bit"] else float(params["low"])
+        params["_current"] = (
+            float(params["high"]) if params["_current_bit"] else float(params["low"])
+        )
 
         return {0: np.atleast_1d(params["_current"])}

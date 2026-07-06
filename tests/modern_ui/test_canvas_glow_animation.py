@@ -61,6 +61,7 @@ class _StubPortBlock:
 # Timer gating — the load-bearing behaviour
 # ---------------------------------------------------------------------------
 
+
 class TestAnimationTimerGating:
     def test_idle_canvas_timer_inactive(self, canvas):
         # Freshly built, nothing hovered / dragging / running: must be OFF so an
@@ -78,7 +79,7 @@ class TestAnimationTimerGating:
         assert not canvas._animation_timer.isActive()
 
     def test_connection_drag_starts_and_clearing_stops(self, canvas):
-        canvas.line_creation_state = 'start'
+        canvas.line_creation_state = "start"
         assert canvas._animation_timer.isActive()
 
         canvas.line_creation_state = None
@@ -86,21 +87,21 @@ class TestAnimationTimerGating:
 
     def test_running_simulation_starts_and_stopping_stops(self, canvas, monkeypatch):
         # Drive the gate the way the simulation_status_changed slot does.
-        running = {'v': True}
-        monkeypatch.setattr(canvas, 'is_simulation_running', lambda: running['v'])
+        running = {"v": True}
+        monkeypatch.setattr(canvas, "is_simulation_running", lambda: running["v"])
 
         canvas._evaluate_animation_state()
         assert canvas._animation_timer.isActive()
 
-        running['v'] = False
+        running["v"] = False
         canvas._evaluate_animation_state()
         assert not canvas._animation_timer.isActive()
 
     def test_timer_stays_on_until_all_states_clear(self, canvas, monkeypatch):
         # Overlapping gated states: clearing one must not stop the pulse while
         # another still holds.
-        running = {'v': True}
-        monkeypatch.setattr(canvas, 'is_simulation_running', lambda: running['v'])
+        running = {"v": True}
+        monkeypatch.setattr(canvas, "is_simulation_running", lambda: running["v"])
         canvas._evaluate_animation_state()
         canvas.hovered_port = (_StubPortBlock(), 0, True)
         assert canvas._animation_timer.isActive()
@@ -108,7 +109,7 @@ class TestAnimationTimerGating:
         canvas.hovered_port = None  # sim still running
         assert canvas._animation_timer.isActive()
 
-        running['v'] = False
+        running["v"] = False
         canvas._evaluate_animation_state()  # now everything clear
         assert not canvas._animation_timer.isActive()
 
@@ -124,6 +125,7 @@ class TestAnimationTimerGating:
 # ---------------------------------------------------------------------------
 # Phase + alpha modulation
 # ---------------------------------------------------------------------------
+
 
 class TestPhaseAndPulseAlpha:
     def test_phase_starts_at_zero(self, canvas):
@@ -159,6 +161,7 @@ class TestPhaseAndPulseAlpha:
 # ---------------------------------------------------------------------------
 # Renderer hooks accept the pulse callable
 # ---------------------------------------------------------------------------
+
 
 class TestRendererPulseHooks:
     def _painter(self):
@@ -206,6 +209,7 @@ class TestRendererPulseHooks:
 # Toolbar status-dot pulse — gated strictly to 'running'
 # ---------------------------------------------------------------------------
 
+
 class TestStatusDotPulseGating:
     def test_idle_dot_pulse_inactive(self, qapp):
         dot = _StateDot()
@@ -213,14 +217,14 @@ class TestStatusDotPulseGating:
 
     def test_running_starts_pulse(self, qapp):
         dot = _StateDot()
-        dot.set_state('running')
+        dot.set_state("running")
         assert dot._pulse_timer.isActive()
 
     def test_non_running_states_stop_pulse(self, qapp):
         dot = _StateDot()
-        dot.set_state('running')
+        dot.set_state("running")
         assert dot._pulse_timer.isActive()
-        for s in ('paused', 'error', 'idle'):
+        for s in ("paused", "error", "idle"):
             dot.set_state(s)
             assert not dot._pulse_timer.isActive(), s
 
@@ -230,7 +234,7 @@ class TestStatusDotPulseGating:
         dot._pulse_phase = math.pi / 2
         assert dot._glow_alpha() == _StateDot._GLOW_BASE_ALPHA
         # Running -> phase-modulated, clamped to byte range.
-        dot.set_state('running')
+        dot.set_state("running")
         dot._pulse_phase = math.pi / 2
         assert 0 <= dot._glow_alpha() <= 255
         assert dot._glow_alpha() >= _StateDot._GLOW_BASE_ALPHA

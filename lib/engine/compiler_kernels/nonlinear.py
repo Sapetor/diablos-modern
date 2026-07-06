@@ -5,6 +5,7 @@ verbatim extractions of the corresponding branches from
 ``SystemCompiler._create_block_executor``; only the shared locals are unpacked
 from the BuildContext at the top.
 """
+
 import logging
 
 import numpy as np
@@ -21,12 +22,13 @@ def build_saturation(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    lower = float(params.get('min', -np.inf))
-    upper = float(params.get('max', np.inf))
+    lower = float(params.get("min", -np.inf))
+    upper = float(params.get("max", np.inf))
 
     def exec_sat(t, y, dy_vec, signals):
         val = signals.get(src, 0.0) if src else 0.0
         signals[b_name] = np.clip(val, lower, upper)
+
     return exec_sat
 
 
@@ -36,15 +38,17 @@ def build_deadband(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    start_db = float(params.get('start', -0.5))
-    end_db = float(params.get('end', 0.5))
+    start_db = float(params.get("start", -0.5))
+    end_db = float(params.get("end", 0.5))
 
     def exec_db(t, y, dy_vec, signals):
         # Element-wise dead zone (works for scalar and vector signals;
         # a bare `if val < start` is ambiguous on a multi-element array).
         val = np.asarray(signals.get(src, 0.0) if src else 0.0, dtype=float)
-        signals[b_name] = np.where(val < start_db, val - start_db,
-                                   np.where(val > end_db, val - end_db, 0.0))
+        signals[b_name] = np.where(
+            val < start_db, val - start_db, np.where(val > end_db, val - end_db, 0.0)
+        )
+
     return exec_db
 
 
@@ -54,9 +58,9 @@ def build_switch(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     ctrl_src = input_sources[0] if input_sources else None
-    mode = params.get('mode', 'threshold')
-    n_inputs = int(params.get('n_inputs', 2))
-    threshold = float(params.get('threshold', 0.0))
+    mode = params.get("mode", "threshold")
+    n_inputs = int(params.get("n_inputs", 2))
+    threshold = float(params.get("threshold", 0.0))
 
     def exec_switch(t, y, dy_vec, signals):
         # Control is scalar; reduce safely so a vector control signal
@@ -65,7 +69,7 @@ def build_switch(ctx):
         ctrl_raw = signals.get(ctrl_src, 0.0) if ctrl_src else 0.0
         ctrl = float(np.ravel(ctrl_raw)[0])
 
-        if mode == 'index':
+        if mode == "index":
             sel = int(round(ctrl))
         else:
             sel = 0 if ctrl >= threshold else 1
@@ -82,6 +86,7 @@ def build_switch(ctx):
         else:
             val = 0.0
         signals[b_name] = val
+
     return exec_switch
 
 
@@ -91,28 +96,28 @@ def build_selector(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    indices_str = normalize_indices_str(params.get('indices', '0'))
+    indices_str = normalize_indices_str(params.get("indices", "0"))
 
     # Pre-parse indices at compile time
     parsed_indices = []
-    for part in indices_str.split(','):
+    for part in indices_str.split(","):
         part = part.strip()
-        if ':' in part:
-            parts = part.split(':')
+        if ":" in part:
+            parts = part.split(":")
             try:
                 start_idx = int(parts[0]) if parts[0] else 0
                 end_idx = int(parts[1]) if len(parts) > 1 and parts[1] else None
             except ValueError:
                 logger.warning(
-                    "Selector %s: malformed range '%s'; defaulting to full range.",
-                    b_name, part)
+                    "Selector %s: malformed range '%s'; defaulting to full range.", b_name, part
+                )
                 start_idx, end_idx = 0, None
-            parsed_indices.append(('range', start_idx, end_idx))
+            parsed_indices.append(("range", start_idx, end_idx))
         else:
             try:
-                parsed_indices.append(('idx', int(part)))
+                parsed_indices.append(("idx", int(part)))
             except ValueError:
-                parsed_indices.append(('idx', 0))
+                parsed_indices.append(("idx", 0))
 
     def exec_selector(t, y, dy_vec, signals, _indices=parsed_indices):
         val = signals.get(src, 0.0) if src else 0.0
@@ -121,10 +126,10 @@ def build_selector(ctx):
 
         result = []
         for item in _indices:
-            if item[0] == 'range':
+            if item[0] == "range":
                 start_i, end_i = item[1], item[2]
                 end_i = end_i if end_i is not None else max_len
-                result.extend(u[start_i:min(end_i, max_len)])
+                result.extend(u[start_i : min(end_i, max_len)])
             else:
                 idx = item[1]
                 if idx < 0:
@@ -136,6 +141,7 @@ def build_selector(ctx):
             signals[b_name] = result[0]
         else:
             signals[b_name] = np.array(result) if result else 0.0
+
     return exec_selector
 
 
@@ -145,10 +151,10 @@ def build_hysteresis(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    upper = float(params.get('upper', 0.5))
-    lower = float(params.get('lower', -0.5))
-    high_val = float(params.get('high', 1.0))
-    low_val = float(params.get('low', 0.0))
+    upper = float(params.get("upper", 0.5))
+    lower = float(params.get("lower", -0.5))
+    high_val = float(params.get("high", 1.0))
+    low_val = float(params.get("low", 0.0))
 
     # Use mutable container for state persistence across calls
     state_holder = [low_val]  # Start with low output
@@ -156,7 +162,7 @@ def build_hysteresis(ctx):
     def exec_hysteresis(t, y, dy_vec, signals, _state=state_holder):
         val = signals.get(src, 0.0) if src else 0.0
         # Extract scalar if needed
-        if hasattr(val, '__len__'):
+        if hasattr(val, "__len__"):
             val = float(np.atleast_1d(val)[0])
 
         if val >= upper:
@@ -166,4 +172,5 @@ def build_hysteresis(ctx):
         # else: retain previous state
 
         signals[b_name] = _state[0]
+
     return exec_hysteresis

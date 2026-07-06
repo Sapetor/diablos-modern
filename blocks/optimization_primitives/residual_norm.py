@@ -57,7 +57,7 @@ class ResidualNormBlock(BaseBlock):
                 "type": "choice",
                 "default": "2",
                 "options": ["1", "2", "inf"],
-                "doc": "Norm type: 1 (Manhattan), 2 (Euclidean), inf (max)"
+                "doc": "Norm type: 1 (Manhattan), 2 (Euclidean), inf (max)",
             },
         }
 
@@ -72,7 +72,7 @@ class ResidualNormBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             F = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
-            norm_type = params.get('norm_type', '2')
+            norm_type = params.get("norm_type", "2")
 
             if norm_type == "1":
                 norm = np.linalg.norm(F, ord=1)
@@ -83,8 +83,8 @@ class ResidualNormBlock(BaseBlock):
             else:
                 norm = np.linalg.norm(F, ord=2)
 
-            return {0: float(norm), 'E': False}
+            return {0: float(norm), "E": False}
 
         except Exception as e:
             logger.error(f"ResidualNorm error: {e}")
-            return {0: 0.0, 'E': True, 'error': str(e)}
+            return {0: 0.0, "E": True, "error": str(e)}

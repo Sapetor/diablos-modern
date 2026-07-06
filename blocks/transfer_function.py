@@ -37,8 +37,11 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
             "numerator": {"default": [1.0], "type": "list"},
             "denominator": {"default": [1.0, 1.0], "type": "list"},
             "_init_start_": {"default": True, "type": "bool"},
-            "sampling_time": {"default": -1.0, "type": "float",
-                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
+            "sampling_time": {
+                "default": -1.0,
+                "type": "float",
+                "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)",
+            },
         }
 
     @property
@@ -67,12 +70,12 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
         except ImportError:
             return None
 
-        s = Symbol('s')
-        u = inputs.get(0, Symbol('u'))
+        s = Symbol("s")
+        u = inputs.get(0, Symbol("u"))
 
         # Get numerator and denominator coefficients
-        num = params.get('numerator', [1.0])
-        den = params.get('denominator', [1.0, 1.0])
+        num = params.get("numerator", [1.0])
+        den = params.get("denominator", [1.0, 1.0])
 
         # Ensure they are lists
         if not isinstance(num, (list, tuple)):
@@ -91,37 +94,37 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute continuous transfer function (discretized for simulation)."""
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
-        if params.get('_init_start_', True):
-            params['_init_start_'] = False
-            num = np.array(params['numerator'], dtype=float)
-            den = np.array(params['denominator'], dtype=float)
+        if params.get("_init_start_", True):
+            params["_init_start_"] = False
+            num = np.array(params["numerator"], dtype=float)
+            den = np.array(params["denominator"], dtype=float)
 
             # Convert transfer function to state-space
             try:
                 A, B, C, D = signal.tf2ss(num, den)
             except Exception as e:
-                return {'E': True, 'error': f'Failed to convert TF to SS: {e}'}
+                return {"E": True, "error": f"Failed to convert TF to SS: {e}"}
 
             # Discretize
-            dtime = kwargs.get('dtime', params.get('dtime', 0.01))
+            dtime = kwargs.get("dtime", params.get("dtime", 0.01))
             try:
                 Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime)
             except Exception as e:
-                return {'E': True, 'error': f'Failed to discretize system: {e}'}
+                return {"E": True, "error": f"Failed to discretize system: {e}"}
 
-            params['_Ad_'] = Ad
-            params['_Bd_'] = Bd
-            params['_Cd_'] = Cd
-            params['_Dd_'] = Dd
+            params["_Ad_"] = Ad
+            params["_Bd_"] = Bd
+            params["_Cd_"] = Cd
+            params["_Dd_"] = Dd
 
             # Initialize state vector
             n = Ad.shape[0]
-            params['_x_'] = self._initialize_state_vector(n, params.get('init_conds', [0.0]))
-            params['_n_states_'] = n
-            params['_n_inputs_'] = 1
-            params['_n_outputs_'] = 1
+            params["_x_"] = self._initialize_state_vector(n, params.get("init_conds", [0.0]))
+            params["_n_states_"] = n
+            params["_n_inputs_"] = 1
+            params["_n_outputs_"] = 1
 
         # Get input (SISO block, scalar input)
         u = 0.0
@@ -129,19 +132,19 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
             u = inputs.get(0, 0.0)
 
         # Compute output: y = Cx + Du
-        x = params['_x_']
+        x = params["_x_"]
         try:
-            y = params['_Cd_'] @ x + params['_Dd_'] * u
+            y = params["_Cd_"] @ x + params["_Dd_"] * u
         except ValueError as e:
             logger.error(f"Error in transfer function: {e}")
-            return {'E': True, 'error': f"Matrix multiplication error: {e}"}
+            return {"E": True, "error": f"Matrix multiplication error: {e}"}
 
         # Update state: x[k+1] = Ax + Bu
         if not output_only:
             try:
-                params['_x_'] = params['_Ad_'] @ x + params['_Bd_'] * u
+                params["_x_"] = params["_Ad_"] @ x + params["_Bd_"] * u
             except ValueError as e:
                 logger.error(f"Error in transfer function state update: {e}")
-                return {'E': True, 'error': f"State update error: {e}"}
+                return {"E": True, "error": f"State update error: {e}"}
 
-        return {0: y.item(), 'E': False}
+        return {0: y.item(), "E": False}

@@ -102,7 +102,13 @@ def test_execution_init_runs_without_algebraic_loop(monkeypatch, qapp):
         b_type=0,
         io_edit="none",
         fn_name="step",
-        params={"value": 1.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
+        params={
+            "value": 1.0,
+            "delay": 0.0,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        },
         external=False,
         colors=sim.colors,
         block_class=StepBlock,
@@ -162,7 +168,14 @@ def test_execution_init_runs_without_algebraic_loop(monkeypatch, qapp):
         DLine(0, step.name, 0, summation.name, 0, [step.out_coords[0], summation.in_coords[0]])
     )
     sim.line_list.append(
-        DLine(1, summation.name, 0, integrator.name, 0, [summation.out_coords[0], integrator.in_coords[0]])
+        DLine(
+            1,
+            summation.name,
+            0,
+            integrator.name,
+            0,
+            [summation.out_coords[0], integrator.in_coords[0]],
+        )
     )
     sim.line_list.append(
         DLine(2, integrator.name, 0, scope.name, 0, [integrator.out_coords[0], scope.in_coords[0]])
@@ -198,7 +211,13 @@ def test_goto_from_multiple_targets_and_hidden_lines(monkeypatch, qapp):
         b_type=0,
         io_edit="none",
         fn_name="step",
-        params={"value": 1.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
+        params={
+            "value": 1.0,
+            "delay": 0.0,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        },
         external=False,
         colors=sim.colors,
         block_class=StepBlock,
@@ -277,21 +296,61 @@ def test_duplicate_destination_port_rejected(qapp):
     sim = DSim()
 
     src_a = DBlock(
-        block_fn="Step", sid=0, coords=QRect(0, 0, 100, 80), color="blue",
-        in_ports=0, out_ports=1, b_type=0, io_edit="none", fn_name="step",
-        params={"value": 1.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
-        external=False, colors=sim.colors, block_class=StepBlock,
+        block_fn="Step",
+        sid=0,
+        coords=QRect(0, 0, 100, 80),
+        color="blue",
+        in_ports=0,
+        out_ports=1,
+        b_type=0,
+        io_edit="none",
+        fn_name="step",
+        params={
+            "value": 1.0,
+            "delay": 0.0,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        },
+        external=False,
+        colors=sim.colors,
+        block_class=StepBlock,
     )
     src_b = DBlock(
-        block_fn="Step", sid=1, coords=QRect(0, 120, 100, 80), color="blue",
-        in_ports=0, out_ports=1, b_type=0, io_edit="none", fn_name="step",
-        params={"value": 2.0, "delay": 0.0, "type": "up", "pulse_start_up": True, "_init_start_": True},
-        external=False, colors=sim.colors, block_class=StepBlock,
+        block_fn="Step",
+        sid=1,
+        coords=QRect(0, 120, 100, 80),
+        color="blue",
+        in_ports=0,
+        out_ports=1,
+        b_type=0,
+        io_edit="none",
+        fn_name="step",
+        params={
+            "value": 2.0,
+            "delay": 0.0,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        },
+        external=False,
+        colors=sim.colors,
+        block_class=StepBlock,
     )
     summation = DBlock(
-        block_fn="Sum", sid=2, coords=QRect(250, 60, 100, 80), color="lime_green",
-        in_ports=2, out_ports=1, b_type=2, io_edit="none", fn_name="sum",
-        params={"sign": "++"}, external=False, colors=sim.colors, block_class=SumBlock,
+        block_fn="Sum",
+        sid=2,
+        coords=QRect(250, 60, 100, 80),
+        color="lime_green",
+        in_ports=2,
+        out_ports=1,
+        b_type=2,
+        io_edit="none",
+        fn_name="sum",
+        params={"sign": "++"},
+        external=False,
+        colors=sim.colors,
+        block_class=SumBlock,
     )
 
     sim.blocks_list.extend([src_a, src_b, summation])
@@ -315,9 +374,7 @@ def test_hidden_lines_not_clickable(qapp):
     canvas = ModernCanvas(sim)
 
     # Add a hidden line crossing the origin
-    sim.line_list.append(
-        DLine(0, "a", 0, "b", 0, points=[(0, 0), (20, 0)], hidden=True)
-    )
+    sim.line_list.append(DLine(0, "a", 0, "b", 0, points=[(0, 0), (20, 0)], hidden=True))
 
     line, hit = canvas._get_clicked_line(QPoint(1, 0))
     assert line is None

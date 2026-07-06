@@ -40,9 +40,21 @@ class TransportDelayBlock(BaseBlock):
     def params(self):
         return {
             "delay_time": {"type": "float", "default": 0.1, "doc": "Delay time τ in seconds."},
-            "initial_value": {"type": "float", "default": 0.0, "doc": "Output before delay time elapses."},
-            "_time_buffer_": {"type": "list", "default": [], "doc": "Internal time history (do not edit)."},
-            "_value_buffer_": {"type": "list", "default": [], "doc": "Internal value history (do not edit)."},
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Output before delay time elapses.",
+            },
+            "_time_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal time history (do not edit).",
+            },
+            "_value_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal value history (do not edit).",
+            },
             "_init_start_": {"type": "bool", "default": True, "doc": "Initialization flag."},
         }
 
@@ -57,13 +69,13 @@ class TransportDelayBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         delay_time = max(0.0, float(params.get("delay_time", 0.1)))
         initial_value = float(params.get("initial_value", 0.0))
-        
+
         # Initialize buffers on first call
         if params.get("_init_start_", True):
             params["_time_buffer_"] = deque()
             params["_value_buffer_"] = deque()
             params["_init_start_"] = False
-        
+
         time_buffer = params["_time_buffer_"]
         value_buffer = params["_value_buffer_"]
 
@@ -97,22 +109,22 @@ class TransportDelayBlock(BaseBlock):
         while len(time_buffer) > 2 and time_buffer[0] < prune_time:
             time_buffer.popleft()
             value_buffer.popleft()
-        
+
         params["_time_buffer_"] = time_buffer
         params["_value_buffer_"] = value_buffer
-        
+
         return {0: output}
-    
+
     def _interpolate(self, time_buffer, value_buffer, target_time, initial_value):
         """Linear interpolation to get value at target_time."""
         # If target time is before first recorded sample
         if target_time <= time_buffer[0]:
             return np.atleast_1d(initial_value)
-        
+
         # If target time is after last recorded sample (shouldn't happen normally)
         if target_time >= time_buffer[-1]:
             return value_buffer[-1].copy()
-        
+
         # Find bracketing indices using binary search (O(log n))
         i = bisect.bisect_right(time_buffer, target_time) - 1
         i = max(0, min(i, len(time_buffer) - 2))

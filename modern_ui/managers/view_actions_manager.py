@@ -25,20 +25,20 @@ class ViewActionsManager:
     def set_zoom(self, factor: float):
         """Set zoom factor."""
         window = self.window
-        if hasattr(window, 'canvas'):
+        if hasattr(window, "canvas"):
             window.canvas.set_zoom(factor)
             window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
 
     def zoom_in(self):
         window = self.window
-        if hasattr(window, 'canvas'):
+        if hasattr(window, "canvas"):
             window.canvas.zoom_in()
             window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
             window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
 
     def zoom_out(self):
         window = self.window
-        if hasattr(window, 'canvas'):
+        if hasattr(window, "canvas"):
             window.canvas.zoom_out()
             window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
             window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
@@ -46,7 +46,7 @@ class ViewActionsManager:
     def toggle_grid(self):
         """Toggle grid visibility."""
         window = self.window
-        if hasattr(window, 'canvas'):
+        if hasattr(window, "canvas"):
             window.canvas.toggle_grid()
             window.grid_toggle_action.setChecked(window.canvas.grid_visible)
             status = "shown" if window.canvas.grid_visible else "hidden"
@@ -57,19 +57,19 @@ class ViewActionsManager:
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
         window = self.window
-        if hasattr(window, 'minimap_dock'):
+        if hasattr(window, "minimap_dock"):
             visible = not window.minimap_dock.isVisible()
             window.minimap_dock.setVisible(visible)
             if visible:
                 # Refresh minimap when shown
                 window.minimap.refresh()
-            if hasattr(window, 'minimap_action'):
+            if hasattr(window, "minimap_action"):
                 window.minimap_action.setChecked(visible)
 
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
         window = self.window
-        if not hasattr(window, 'canvas'):
+        if not hasattr(window, "canvas"):
             return
 
         from PyQt5.QtCore import QPoint
@@ -81,8 +81,8 @@ class ViewActionsManager:
             return
 
         # Calculate bounding box of all blocks
-        min_x = min_y = float('inf')
-        max_x = max_y = float('-inf')
+        min_x = min_y = float("inf")
+        max_x = max_y = float("-inf")
 
         for block in blocks:
             min_x = min(min_x, block.left)

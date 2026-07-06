@@ -8,6 +8,7 @@ block_matrices) and the derivative function still live in
 shared locals (including ``state_map`` and ``block_matrices``) are unpacked from
 the BuildContext at the top.
 """
+
 import numpy as np
 
 from lib.engine.compiler_kernels import kernel
@@ -39,6 +40,7 @@ def build_integrator(ctx):
             # For now scalar broadcast if missing logic
             val = signals.get(src, 0.0) if src else 0.0
             dy_vec[start : start + size] = np.atleast_1d(val).flatten()
+
     return exec_integrator
 
 
@@ -65,10 +67,11 @@ def build_statespace(ctx):
                 # is an error, so reduce to a scalar here.
                 u = np.ravel(u_val)[0] if np.ndim(u_val) else u_val
                 x_s = y[start]
-                dx = A[0,0]*x_s + B[0,0]*u
-                y_out = C[0,0]*x_s + D[0,0]*u
+                dx = A[0, 0] * x_s + B[0, 0] * u
+                y_out = C[0, 0] * x_s + D[0, 0] * u
                 signals[b_name] = y_out
                 dy_vec[start] = dx
+
             return exec_ss
         elif n_inputs == 1:
             # Multi-state, single input
@@ -80,6 +83,7 @@ def build_statespace(ctx):
                 y_out = C @ x + D @ u
                 signals[b_name] = y_out.item() if y_out.size == 1 else y_out.flatten()
                 dy_vec[start : start + size] = dx.flatten()
+
             return exec_ss
         else:
             # Multi-input: assemble u vector from all input ports
@@ -103,12 +107,14 @@ def build_statespace(ctx):
                 y_out = C @ x + D @ u
                 signals[b_name] = y_out.item() if y_out.size == 1 else y_out.flatten()
                 dy_vec[start : start + size] = dx.flatten()
+
             return exec_ss
 
     # No matrices were built for this block (e.g. compilation produced none):
     # mirror the legacy fall-through to the generic no-op executor.
     def exec_noop(t, y, dy_vec, signals):
         pass
+
     return exec_noop
 
 
@@ -119,15 +125,15 @@ def build_pid(ctx):
     input_sources = ctx.input_sources
     state_map = ctx.state_map
     start, size = state_map[b_name]
-    sp_src = input_sources[0] if len(input_sources)>0 else None
-    meas_src = input_sources[1] if len(input_sources)>1 else None
+    sp_src = input_sources[0] if len(input_sources) > 0 else None
+    meas_src = input_sources[1] if len(input_sources) > 1 else None
 
-    Kp = float(params.get('Kp', 1.0))
-    Ki = float(params.get('Ki', 0.0))
-    Kd = float(params.get('Kd', 0.0))
-    N = float(params.get('N', 20.0))
-    u_min = float(params.get('u_min', -np.inf))
-    u_max = float(params.get('u_max', np.inf))
+    Kp = float(params.get("Kp", 1.0))
+    Ki = float(params.get("Ki", 0.0))
+    Kd = float(params.get("Kd", 0.0))
+    N = float(params.get("N", 20.0))
+    u_min = float(params.get("u_min", -np.inf))
+    u_max = float(params.get("u_max", np.inf))
 
     def exec_pid(t, y, dy_vec, signals):
         # PID state is scalar (two slots, dy_vec[start]/[start+1]), so
@@ -159,7 +165,8 @@ def build_pid(ctx):
             dx_i = 0.0
 
         dy_vec[start] = dx_i
-        dy_vec[start+1] = dx_d
+        dy_vec[start + 1] = dx_d
+
     return exec_pid
 
 
@@ -173,8 +180,8 @@ def build_ratelimiter(ctx):
     src = input_sources[0] if input_sources else None
     # Match the interpreted RateLimiterBlock param keys
     # (rising_slew/falling_slew, default infinite, magnitude-only).
-    rising = abs(float(params.get('rising_slew', np.inf)))
-    falling = -abs(float(params.get('falling_slew', np.inf)))
+    rising = abs(float(params.get("rising_slew", np.inf)))
+    falling = -abs(float(params.get("falling_slew", np.inf)))
     # Compiled approximation: the interpreted block applies exact
     # per-step slew clamping, but inside a continuous ODE RHS we model
     # the limiter as a stiff first-order chase dy = clip((u-y)*K, ...).
@@ -199,4 +206,5 @@ def build_ratelimiter(ctx):
         # Clamp rate
         dy = np.clip(rate, falling, rising)
         dy_vec[start] = dy
+
     return exec_ratelimiter

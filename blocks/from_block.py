@@ -37,7 +37,11 @@ class FromBlock(BaseBlock):
     def params(self):
         return {
             "tag": {"type": "string", "default": "A", "doc": "Tag name to link Goto/From."},
-            "signal_name": {"type": "string", "default": "", "doc": "Optional label; defaults to tag when empty."}
+            "signal_name": {
+                "type": "string",
+                "default": "",
+                "doc": "Optional label; defaults to tag when empty.",
+            },
         }
 
     @property
@@ -59,4 +63,3 @@ class FromBlock(BaseBlock):
         # ("any" port) is preserved. The bare-int 0 default only applies when the
         # virtual routing line is absent (an unconnected/dangling From tag).
         return {0: inputs.get(0, 0)}
-

@@ -42,12 +42,19 @@ class PIDBlock(BaseBlock):
             "Kp": {"type": "float", "default": 1.0, "doc": "Proportional gain."},
             "Ki": {"type": "float", "default": 0.0, "doc": "Integral gain."},
             "Kd": {"type": "float", "default": 0.0, "doc": "Derivative gain."},
-            "N": {"type": "float", "default": 20.0, "doc": "Derivative filter coefficient (higher = less smoothing)."},
+            "N": {
+                "type": "float",
+                "default": 20.0,
+                "doc": "Derivative filter coefficient (higher = less smoothing).",
+            },
             "u_min": {"type": "float", "default": -np.inf, "doc": "Output lower limit."},
             "u_max": {"type": "float", "default": np.inf, "doc": "Output upper limit."},
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
-            "sampling_time": {"type": "float", "default": -1.0,
-                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)."},
+            "sampling_time": {
+                "type": "float",
+                "default": -1.0,
+                "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete).",
+            },
         }
 
     @property
@@ -80,17 +87,17 @@ class PIDBlock(BaseBlock):
         except ImportError:
             return None
 
-        s = Symbol('s')
+        s = Symbol("s")
 
         # Get gains
-        Kp = float(params.get('Kp', 1.0))
-        Ki = float(params.get('Ki', 0.0))
-        Kd = float(params.get('Kd', 0.0))
-        N = float(params.get('N', 20.0))
+        Kp = float(params.get("Kp", 1.0))
+        Ki = float(params.get("Ki", 0.0))
+        Kd = float(params.get("Kd", 0.0))
+        N = float(params.get("N", 20.0))
 
         # Get input symbols (setpoint and measurement)
-        sp = inputs.get(0, Symbol('sp'))
-        meas = inputs.get(1, Symbol('meas'))
+        sp = inputs.get(0, Symbol("sp"))
+        meas = inputs.get(1, Symbol("meas"))
         e = sp - meas  # error = setpoint - measurement
 
         # PID transfer function: C(s) = Kp + Ki/s + Kd*N*s/(s + N)
@@ -107,10 +114,11 @@ class PIDBlock(BaseBlock):
         """Return symbolic parameters for equation extraction."""
         try:
             from sympy import Symbol
+
             return {
-                'Kp': Symbol('K_p'),
-                'Ki': Symbol('K_i'),
-                'Kd': Symbol('K_d'),
+                "Kp": Symbol("K_p"),
+                "Ki": Symbol("K_i"),
+                "Kd": Symbol("K_d"),
             }
         except ImportError:
             return {}
@@ -120,7 +128,7 @@ class PIDBlock(BaseBlock):
         # in Loop 1), return the last computed output without mutating state. The
         # PID's actual integration happens in the normal Loop 2 execute call.
         if 0 not in inputs or 1 not in inputs:
-            return {0: np.atleast_1d(params.get('_last_output_', 0.0))}
+            return {0: np.atleast_1d(params.get("_last_output_", 0.0))}
 
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
         sp = float(np.atleast_1d(inputs.get(0, 0.0))[0])
@@ -161,5 +169,7 @@ class PIDBlock(BaseBlock):
             if Ki != 0:
                 params["_int"] = (u_max - Kp * e - Kd * params["_d_state"]) / Ki
 
-        params['_last_output_'] = float(np.asarray(u).flatten()[0]) if hasattr(u, 'flatten') else float(u)
+        params["_last_output_"] = (
+            float(np.asarray(u).flatten()[0]) if hasattr(u, "flatten") else float(u)
+        )
         return {0: np.atleast_1d(u)}

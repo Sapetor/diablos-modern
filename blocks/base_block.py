@@ -61,7 +61,9 @@ class BaseBlock(ABC):
         pass
 
     @abstractmethod
-    def execute(self, time: float, inputs: BlockInputs, params: BlockParams, **kwargs: Any) -> BlockResult:
+    def execute(
+        self, time: float, inputs: BlockInputs, params: BlockParams, **kwargs: Any
+    ) -> BlockResult:
         """
         The core simulation function for the block.
 
@@ -102,7 +104,7 @@ class BaseBlock(ABC):
             True if inputs must be connected, False otherwise.
         """
         # Default: blocks require inputs unless they're Sources
-        return getattr(self, 'category', 'Other') not in ['Sources']
+        return getattr(self, "category", "Other") not in ["Sources"]
 
     @property
     def requires_outputs(self) -> bool:
@@ -116,7 +118,7 @@ class BaseBlock(ABC):
             True if outputs must be connected, False otherwise.
         """
         # Default: blocks require outputs unless they're Sinks or Other
-        return getattr(self, 'category', 'Other') not in ['Sinks', 'Other']
+        return getattr(self, "category", "Other") not in ["Sinks", "Other"]
 
     @property
     def io_editable(self) -> Optional[str]:

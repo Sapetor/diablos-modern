@@ -62,22 +62,22 @@ class RootFinderBlock(BaseBlock):
             "expressions": {
                 "type": "string",
                 "default": "x1**2 + x2 - 1, x1 + x2**2 - 1",
-                "doc": "Comma-separated F expressions"
+                "doc": "Comma-separated F expressions",
             },
             "variables": {
                 "type": "string",
                 "default": "x1,x2",
-                "doc": "Comma-separated variable names"
+                "doc": "Comma-separated variable names",
             },
             "epsilon": {
                 "type": "float",
                 "default": 1e-6,
-                "doc": "Perturbation for numerical Jacobian"
+                "doc": "Perturbation for numerical Jacobian",
             },
             "damping": {
                 "type": "float",
                 "default": 1.0,
-                "doc": "Damping factor (0 < damping <= 1)"
+                "doc": "Damping factor (0 < damping <= 1)",
             },
         }
 
@@ -119,10 +119,12 @@ class RootFinderBlock(BaseBlock):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0, 0.0])).astype(float)
 
-            expressions = [e.strip() for e in params.get('expressions', 'x1**2+x2-1,x1+x2**2-1').split(',')]
-            variables = [v.strip() for v in params.get('variables', 'x1,x2').split(',')]
-            epsilon = float(params.get('epsilon', 1e-6))
-            damping = float(params.get('damping', 1.0))
+            expressions = [
+                e.strip() for e in params.get("expressions", "x1**2+x2-1,x1+x2**2-1").split(",")
+            ]
+            variables = [v.strip() for v in params.get("variables", "x1,x2").split(",")]
+            epsilon = float(params.get("epsilon", 1e-6))
+            damping = float(params.get("damping", 1.0))
 
             # Ensure x has correct dimension
             if len(x) < len(variables):
@@ -144,8 +146,8 @@ class RootFinderBlock(BaseBlock):
             # Apply damping
             x_next = x + damping * delta
 
-            return {0: x_next, 'E': False}
+            return {0: x_next, "E": False}
 
         except Exception as e:
             logger.error(f"RootFinder error: {e}")
-            return {0: np.atleast_1d(inputs.get(0, [0.0])), 'E': True, 'error': str(e)}
+            return {0: np.atleast_1d(inputs.get(0, [0.0])), "E": True, "error": str(e)}

@@ -55,7 +55,7 @@ class OperatingPointWindow(QWidget):
         header = QLabel(summary)
         header.setWordWrap(True)
         ok = self.result.get("success")
-        color = theme_manager.get_color('success' if ok else 'warning').name()
+        color = theme_manager.get_color("success" if ok else "warning").name()
         header.setStyleSheet(f"color: {color}; font-size: {TYPE['body']}pt; padding: 4px;")
         layout.addWidget(header)
 
@@ -103,8 +103,7 @@ class OperatingPointWindow(QWidget):
         """Copy the operating point as a Python dict literal {name: value}."""
         op = self.result.get("operating_point") or {}
         if not op:
-            op = {st.get("name"): st.get("value")
-                  for st in (self.result.get("states") or [])}
+            op = {st.get("name"): st.get("value") for st in (self.result.get("states") or [])}
         items = []
         for k, v in op.items():
             if isinstance(v, (list, tuple)):

@@ -18,6 +18,7 @@ def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
         from lib.block_loader import load_blocks
+
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
             try:
@@ -29,7 +30,7 @@ def _params(block_type, **overrides):
     out = {}
     if inst is not None:
         for k, v in inst.params.items():
-            out[k] = v['default'] if isinstance(v, dict) and 'default' in v else v
+            out[k] = v["default"] if isinstance(v, dict) and "default" in v else v
     out.update(overrides)
     return out
 
@@ -37,6 +38,7 @@ def _params(block_type, **overrides):
 def _load(builder, tmp_path, name):
     from lib.lib import DSim
     from lib.workspace import WorkspaceManager
+
     path = tmp_path / name
     builder.save(str(path))
     WorkspaceManager._instance = None
@@ -69,8 +71,11 @@ class TestParameterSweepWorker:
     def test_run_emits_progress_and_finished(self, qapp, tmp_path):
         dsim = _const_gain_scope(tmp_path, "sw_worker.diablos")
         gain = _name_of(dsim, "Gain")
-        sel = {"axes": [{"block": gain, "param": "gain", "values": [0.0, 1.0, 2.0, 3.0]}],
-               "sim_time": 0.3, "sim_dt": 0.05}
+        sel = {
+            "axes": [{"block": gain, "param": "gain", "values": [0.0, 1.0, 2.0, 3.0]}],
+            "sim_time": 0.3,
+            "sim_dt": 0.05,
+        }
         worker = ParameterSweepWorker(dsim, sel)
 
         progress, results = [], []
@@ -86,8 +91,11 @@ class TestParameterSweepWorker:
     def test_cancel_before_run_yields_empty_grid(self, qapp, tmp_path):
         dsim = _const_gain_scope(tmp_path, "sw_worker_cancel.diablos")
         gain = _name_of(dsim, "Gain")
-        sel = {"axes": [{"block": gain, "param": "gain", "values": [0.0, 1.0, 2.0]}],
-               "sim_time": 0.3, "sim_dt": 0.05}
+        sel = {
+            "axes": [{"block": gain, "param": "gain", "values": [0.0, 1.0, 2.0]}],
+            "sim_time": 0.3,
+            "sim_dt": 0.05,
+        }
         worker = ParameterSweepWorker(dsim, sel)
         worker.cancel()
 

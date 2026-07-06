@@ -58,101 +58,121 @@ def _spec(factory, *, inputs=None, params=None, time=0.5, dtime=0.01, needs_csv=
 
 def _math_function():
     from blocks.math_function import MathFunctionBlock
+
     return MathFunctionBlock()
 
 
 def _logical():
     from blocks.logical_operator import LogicalOperatorBlock
+
     return LogicalOperatorBlock()
 
 
 def _relational():
     from blocks.relational_operator import RelationalOperatorBlock
+
     return RelationalOperatorBlock()
 
 
 def _compare():
     from blocks.compare_to_constant import CompareToConstantBlock
+
     return CompareToConstantBlock()
 
 
 def _chirp():
     from blocks.chirp import ChirpBlock
+
     return ChirpBlock()
 
 
 def _wave():
     from blocks.wave_generator import WaveGeneratorBlock
+
     return WaveGeneratorBlock()
 
 
 def _random_source():
     from blocks.random_source import RandomSourceBlock
+
     return RandomSourceBlock()
 
 
 def _packet_loss():
     from blocks.packet_loss import PacketLossBlock
+
     return PacketLossBlock()
 
 
 def _network_channel():
     from blocks.network_channel import NetworkChannelBlock
+
     return NetworkChannelBlock()
 
 
 def _residual_norm():
     from blocks.optimization_primitives.residual_norm import ResidualNormBlock
+
     return ResidualNormBlock()
 
 
 def _numerical_gradient():
     from blocks.optimization_primitives.numerical_gradient import NumericalGradientBlock
+
     return NumericalGradientBlock()
 
 
 def _linear_solver():
     from blocks.optimization_primitives.linear_system_solver import LinearSystemSolverBlock
+
     return LinearSystemSolverBlock()
 
 
 def _lookup_1d():
     from blocks.lookup_table import LookupTable1DBlock
+
     return LookupTable1DBlock()
 
 
 def _lookup_2d():
     from blocks.lookup_table import LookupTable2DBlock
+
     return LookupTable2DBlock()
 
 
 def _from_file():
     from blocks.from_file import FromFileBlock
+
     return FromFileBlock()
 
 
 def _export():
     from blocks.export import ExportBlock
+
     return ExportBlock()
 
 
 def _switch():
     from blocks.switch import SwitchBlock
+
     return SwitchBlock()
 
 
 def _field_probe():
     from blocks.pde.field_processing import FieldProbeBlock
+
     return FieldProbeBlock()
 
 
 def _field_max():
     from blocks.pde.field_processing import FieldMaxBlock
+
     return FieldMaxBlock()
 
 
 def _field_probe_2d():
     from blocks.pde.field_processing_2d import FieldProbe2DBlock
+
     return FieldProbe2DBlock()
 
 
@@ -182,12 +202,15 @@ SPECS = {
     "LookupTable1D": _spec(_lookup_1d, inputs={0: np.array([1.5])}),
     "LookupTable2D": _spec(_lookup_2d, inputs={0: np.array([1.0]), 1: np.array([0.5])}),
     "FromFile": _spec(
-        _from_file, params={"time_col": "t", "signal_col": "y"}, needs_csv=True,
+        _from_file,
+        params={"time_col": "t", "signal_col": "y"},
+        needs_csv=True,
     ),
     "Export": _spec(_export, inputs={0: np.array([1.0])}),
     # Newly-constrained dropdowns (mode/position_mode gained explicit options).
     "Switch": _spec(
-        _switch, inputs={0: np.array([0.0]), 1: np.array([1.0]), 2: np.array([2.0])},
+        _switch,
+        inputs={0: np.array([0.0]), 1: np.array([1.0]), 2: np.array([2.0])},
     ),
     "FieldProbe": _spec(_field_probe, inputs={0: np.array([0.0, 1.0, 2.0, 3.0, 4.0])}),
     "FieldMax": _spec(_field_max, inputs={0: np.array([1.0, 2.0, 3.0])}),
@@ -199,14 +222,19 @@ SPECS = {
 # Stateful / complex blocks whose dropdown values are already exercised by
 # dedicated tests; a single-step execute() would be a poor (or misleading) probe.
 ALLOWLIST = {
-    ("Integrator", "method"):
-        "stateful ODE block; methods covered by tests/integration + tests/test_blocks.py",
-    ("Integrator", "ivp_method"):
-        "solve_ivp method selector; covered by integration/solver tests",
-    ("RateTransition", "transition_mode"):
-        "stateful sampled-data block; covered by tests/unit/test_multirate.py",
-    ("Scope", "verify_mode"):
-        "GUI sink verification mode (no signal dispatch); covered by tests/unit/test_sink_blocks.py",
+    (
+        "Integrator",
+        "method",
+    ): "stateful ODE block; methods covered by tests/integration + tests/test_blocks.py",
+    ("Integrator", "ivp_method"): "solve_ivp method selector; covered by integration/solver tests",
+    (
+        "RateTransition",
+        "transition_mode",
+    ): "stateful sampled-data block; covered by tests/unit/test_multirate.py",
+    (
+        "Scope",
+        "verify_mode",
+    ): "GUI sink verification mode (no signal dispatch); covered by tests/unit/test_sink_blocks.py",
 }
 
 

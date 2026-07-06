@@ -1,8 +1,16 @@
-
 import sys
 import unittest
-from PyQt5.QtWidgets import QApplication, QDoubleSpinBox, QSpinBox, QCheckBox, QLineEdit, QComboBox, QLabel
+from PyQt5.QtWidgets import (
+    QApplication,
+    QDoubleSpinBox,
+    QSpinBox,
+    QCheckBox,
+    QLineEdit,
+    QComboBox,
+    QLabel,
+)
 from modern_ui.widgets.property_editor import PropertyEditor, CollapsibleSection, SliderSpinBox
+
 
 # Mock Block class (minimal)
 class MockBlock:
@@ -11,10 +19,12 @@ class MockBlock:
         self.params = params
         self.username = name
 
+
 # Mock Block with full metadata (simulates a real DBlock)
 class MockBlockWithMeta:
-    def __init__(self, name, params, block_instance=None, block_fn=None,
-                 category=None, color=None, doc=None):
+    def __init__(
+        self, name, params, block_instance=None, block_fn=None, category=None, color=None, doc=None
+    ):
         self.name = name
         self.params = params
         self.username = name
@@ -24,8 +34,10 @@ class MockBlockWithMeta:
         self.color = color
         self.doc = doc
 
+
 class MockBlockInstance:
     """Simulates a block class instance with metadata-rich params."""
+
     def __init__(self, params_meta, inputs=None, outputs=None):
         self._params = params_meta
         self._inputs = inputs or [{"name": "in", "type": "any"}]
@@ -80,13 +92,16 @@ class TestPropertyEditor(unittest.TestCase):
         block = MockBlock("Mux", {"inputs": [1, 2, 3]})
         self.editor.set_block(block)
         line_edits = self.editor.findChildren(QLineEdit)
-        self.assertGreaterEqual(len(line_edits), 2, "Expected at least 2 QLineEdits (Name + inputs)")
+        self.assertGreaterEqual(
+            len(line_edits), 2, "Expected at least 2 QLineEdits (Name + inputs)"
+        )
         le = line_edits[1]
         self.assertEqual(le.text(), "[1, 2, 3]")
 
 
 class TestGenericChoices(unittest.TestCase):
     """Test #1: Generic choices support via param metadata."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -101,14 +116,16 @@ class TestGenericChoices(unittest.TestCase):
         """Any param with 'choices' metadata should produce a QComboBox."""
         meta = {
             "verify_mode": {
-                "type": "string", "default": "auto",
+                "type": "string",
+                "default": "auto",
                 "choices": ["auto", "objective", "comparison", "trajectory", "none"],
-                "doc": "Verification mode"
+                "doc": "Verification mode",
             }
         }
         inst = MockBlockInstance(meta)
-        block = MockBlockWithMeta("Scope1", {"verify_mode": "auto"},
-                                  block_instance=inst, block_fn="Scope")
+        block = MockBlockWithMeta(
+            "Scope1", {"verify_mode": "auto"}, block_instance=inst, block_fn="Scope"
+        )
         self.editor.set_block(block)
         cb = self.editor.findChild(QComboBox)
         self.assertIsNotNone(cb, "Expected QComboBox for param with choices")
@@ -119,14 +136,16 @@ class TestGenericChoices(unittest.TestCase):
         """The 'method' param should still get a QComboBox."""
         meta = {
             "method": {
-                "type": "string", "default": "SOLVE_IVP",
+                "type": "string",
+                "default": "SOLVE_IVP",
                 "choices": ["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"],
-                "doc": "Integration method"
+                "doc": "Integration method",
             }
         }
         inst = MockBlockInstance(meta)
-        block = MockBlockWithMeta("Int1", {"method": "SOLVE_IVP"},
-                                  block_instance=inst, block_fn="Integrator")
+        block = MockBlockWithMeta(
+            "Int1", {"method": "SOLVE_IVP"}, block_instance=inst, block_fn="Integrator"
+        )
         self.editor.set_block(block)
         cb = self.editor.findChild(QComboBox)
         self.assertIsNotNone(cb)
@@ -135,6 +154,7 @@ class TestGenericChoices(unittest.TestCase):
 
 class TestParamTooltips(unittest.TestCase):
     """Test #2: Per-parameter doc tooltips."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -146,9 +166,7 @@ class TestParamTooltips(unittest.TestCase):
         self.editor = PropertyEditor()
 
     def test_doc_shown_as_tooltip(self):
-        meta = {
-            "Kp": {"type": "float", "default": 1.0, "doc": "Proportional gain."}
-        }
+        meta = {"Kp": {"type": "float", "default": 1.0, "doc": "Proportional gain."}}
         inst = MockBlockInstance(meta)
         block = MockBlockWithMeta("PID1", {"Kp": 1.0}, block_instance=inst)
         self.editor.set_block(block)
@@ -160,6 +178,7 @@ class TestParamTooltips(unittest.TestCase):
 
 class TestBlockHeader(unittest.TestCase):
     """Test #3: Block identity header."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -171,11 +190,19 @@ class TestBlockHeader(unittest.TestCase):
         self.editor = PropertyEditor()
 
     def test_header_shows_block_type(self):
-        inst = MockBlockInstance({"Kp": {"type": "float", "default": 1.0}},
-                                 inputs=[{"name": "sp"}, {"name": "meas"}],
-                                 outputs=[{"name": "u"}])
-        block = MockBlockWithMeta("PID1", {"Kp": 1.0}, block_instance=inst,
-                                  block_fn="PID", category="Control", color="magenta")
+        inst = MockBlockInstance(
+            {"Kp": {"type": "float", "default": 1.0}},
+            inputs=[{"name": "sp"}, {"name": "meas"}],
+            outputs=[{"name": "u"}],
+        )
+        block = MockBlockWithMeta(
+            "PID1",
+            {"Kp": 1.0},
+            block_instance=inst,
+            block_fn="PID",
+            category="Control",
+            color="magenta",
+        )
         self.editor.set_block(block)
         labels = self.editor.findChildren(QLabel)
         # Find the block type label (should contain "PID")
@@ -184,22 +211,38 @@ class TestBlockHeader(unittest.TestCase):
 
     def test_header_shows_category(self):
         inst = MockBlockInstance({"Kp": {"type": "float", "default": 1.0}})
-        block = MockBlockWithMeta("PID1", {"Kp": 1.0}, block_instance=inst,
-                                  block_fn="PID", category="Control", color="magenta")
+        block = MockBlockWithMeta(
+            "PID1",
+            {"Kp": 1.0},
+            block_instance=inst,
+            block_fn="PID",
+            category="Control",
+            color="magenta",
+        )
         self.editor.set_block(block)
         from PyQt5.QtWidgets import QLabel
+
         labels = self.editor.findChildren(QLabel)
         cat_labels = [l for l in labels if l.text() == "Control"]
         self.assertTrue(len(cat_labels) > 0, "Expected category badge label")
 
     def test_header_shows_ports(self):
-        inst = MockBlockInstance({"Kp": {"type": "float", "default": 1.0}},
-                                 inputs=[{"name": "sp"}, {"name": "meas"}],
-                                 outputs=[{"name": "u"}])
-        block = MockBlockWithMeta("PID1", {"Kp": 1.0}, block_instance=inst,
-                                  block_fn="PID", category="Control", color="magenta")
+        inst = MockBlockInstance(
+            {"Kp": {"type": "float", "default": 1.0}},
+            inputs=[{"name": "sp"}, {"name": "meas"}],
+            outputs=[{"name": "u"}],
+        )
+        block = MockBlockWithMeta(
+            "PID1",
+            {"Kp": 1.0},
+            block_instance=inst,
+            block_fn="PID",
+            category="Control",
+            color="magenta",
+        )
         self.editor.set_block(block)
         from PyQt5.QtWidgets import QLabel
+
         labels = self.editor.findChildren(QLabel)
         port_labels = [l for l in labels if "\u2192" in l.text()]
         self.assertTrue(len(port_labels) > 0, "Expected port info label with arrow")
@@ -209,6 +252,7 @@ class TestBlockHeader(unittest.TestCase):
 
 class TestCollapsibleSections(unittest.TestCase):
     """Test #4: Collapsible parameter groups."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -222,15 +266,17 @@ class TestCollapsibleSections(unittest.TestCase):
     def test_params_grouped_into_sections(self):
         meta = {
             "Kp": {"type": "float", "default": 1.0, "doc": "Proportional gain"},
-            "u_min": {"type": "float", "default": float('-inf'), "doc": "Lower limit"},
-            "u_max": {"type": "float", "default": float('inf'), "doc": "Upper limit"},
+            "u_min": {"type": "float", "default": float("-inf"), "doc": "Lower limit"},
+            "u_max": {"type": "float", "default": float("inf"), "doc": "Upper limit"},
             "sampling_time": {"type": "float", "default": -1.0, "doc": "Sample time"},
         }
         inst = MockBlockInstance(meta)
-        block = MockBlockWithMeta("PID1",
-                                  {"Kp": 1.0, "u_min": float('-inf'),
-                                   "u_max": float('inf'), "sampling_time": -1.0},
-                                  block_instance=inst, block_fn="PID")
+        block = MockBlockWithMeta(
+            "PID1",
+            {"Kp": 1.0, "u_min": float("-inf"), "u_max": float("inf"), "sampling_time": -1.0},
+            block_instance=inst,
+            block_fn="PID",
+        )
         self.editor.set_block(block)
         sections = self.editor.findChildren(CollapsibleSection)
         self.assertGreaterEqual(len(sections), 2, "Expected at least 2 sections")
@@ -251,6 +297,7 @@ class TestCollapsibleSections(unittest.TestCase):
 
 class TestSliderSpinBox(unittest.TestCase):
     """Test #5: Slider + spinbox for bounded floats."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -271,9 +318,7 @@ class TestSliderSpinBox(unittest.TestCase):
 
     def test_positive_float_gets_slider(self):
         """Positive finite float params should get SliderSpinBox."""
-        meta = {
-            "Kp": {"type": "float", "default": 1.0, "doc": "Gain"}
-        }
+        meta = {"Kp": {"type": "float", "default": 1.0, "doc": "Gain"}}
         inst = MockBlockInstance(meta)
         block = MockBlockWithMeta("G1", {"Kp": 1.0}, block_instance=inst)
         editor = PropertyEditor()
@@ -283,9 +328,7 @@ class TestSliderSpinBox(unittest.TestCase):
 
     def test_negative_float_no_slider(self):
         """Negative float params should get regular QDoubleSpinBox, no slider."""
-        meta = {
-            "sampling_time": {"type": "float", "default": -1.0, "doc": "Sample time"}
-        }
+        meta = {"sampling_time": {"type": "float", "default": -1.0, "doc": "Sample time"}}
         inst = MockBlockInstance(meta)
         block = MockBlockWithMeta("B1", {"sampling_time": -1.0}, block_instance=inst)
         editor = PropertyEditor()
@@ -295,11 +338,9 @@ class TestSliderSpinBox(unittest.TestCase):
 
     def test_inf_float_no_slider(self):
         """Infinite float params should get regular QDoubleSpinBox."""
-        meta = {
-            "u_max": {"type": "float", "default": float('inf'), "doc": "Upper limit"}
-        }
+        meta = {"u_max": {"type": "float", "default": float("inf"), "doc": "Upper limit"}}
         inst = MockBlockInstance(meta)
-        block = MockBlockWithMeta("B1", {"u_max": float('inf')}, block_instance=inst)
+        block = MockBlockWithMeta("B1", {"u_max": float("inf")}, block_instance=inst)
         editor = PropertyEditor()
         editor.set_block(block)
         sliders = editor.findChildren(SliderSpinBox)
@@ -308,6 +349,7 @@ class TestSliderSpinBox(unittest.TestCase):
 
 class TestResetToDefault(unittest.TestCase):
     """Test #6: Reset-to-default buttons."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -347,6 +389,7 @@ class TestResetToDefault(unittest.TestCase):
 
 class TestValueDiffers(unittest.TestCase):
     """Test value comparison helper."""
+
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
@@ -364,13 +407,13 @@ class TestValueDiffers(unittest.TestCase):
         self.assertTrue(self.editor._value_differs(1.0, 2.0))
 
     def test_inf_same(self):
-        self.assertFalse(self.editor._value_differs(float('inf'), float('inf')))
+        self.assertFalse(self.editor._value_differs(float("inf"), float("inf")))
 
     def test_inf_different_sign(self):
-        self.assertTrue(self.editor._value_differs(float('inf'), float('-inf')))
+        self.assertTrue(self.editor._value_differs(float("inf"), float("-inf")))
 
     def test_nan_same(self):
-        self.assertFalse(self.editor._value_differs(float('nan'), float('nan')))
+        self.assertFalse(self.editor._value_differs(float("nan"), float("nan")))
 
 
 class TestSetBlockDoesNotEmitSpuriousChanges(unittest.TestCase):
@@ -393,9 +436,16 @@ class TestSetBlockDoesNotEmitSpuriousChanges(unittest.TestCase):
         self.editor = PropertyEditor()
 
     def test_switching_blocks_does_not_emit_for_old_block(self):
-        block_a = MockBlock("prbs0", {
-            "high": 1.0, "low": 0.0, "bit_time": 0.1, "order": 7, "seed": 1,
-        })
+        block_a = MockBlock(
+            "prbs0",
+            {
+                "high": 1.0,
+                "low": 0.0,
+                "bit_time": 0.1,
+                "order": 7,
+                "seed": 1,
+            },
+        )
         block_b = MockBlock("tranfn0", {"sampling_time": -1.0})
 
         self.editor.set_block(block_a)
@@ -409,10 +459,11 @@ class TestSetBlockDoesNotEmitSpuriousChanges(unittest.TestCase):
 
         stale = [e for e in emissions if e[0] == "prbs0"]
         self.assertEqual(
-            stale, [],
+            stale,
+            [],
             f"Expected no emissions for previously-selected block, got: {stale}",
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

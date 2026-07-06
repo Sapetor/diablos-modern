@@ -38,6 +38,7 @@ reference and the interpreter is the inaccurate one):
     continuous filtered-derivative state). Both are transient-only; the steady
     state agrees. These structural differences keep the trajectory xfail.
 """
+
 import numpy as np
 import pytest
 
@@ -60,46 +61,102 @@ def _build_pid_loop(dsim, kp, ki, kd):
     from lib.simulation.connection import DLine
 
     step_b = StepBlock()
-    step = DBlock("Step", 1, coords=QRect(0, 0, 50, 50), color="blue",
-                  in_ports=0, out_ports=1, b_type=step_b.b_type,
-                  params=_defaults(step_b), block_class=StepBlock,
-                  category=step_b.category)
+    step = DBlock(
+        "Step",
+        1,
+        coords=QRect(0, 0, 50, 50),
+        color="blue",
+        in_ports=0,
+        out_ports=1,
+        b_type=step_b.b_type,
+        params=_defaults(step_b),
+        block_class=StepBlock,
+        category=step_b.category,
+    )
     step.params["value"] = 1.0
     step.params["delay"] = 0.0
 
     pid_b = PIDBlock()
-    pid = DBlock("PID", 1, coords=QRect(100, 0, 50, 50), color="magenta",
-                 in_ports=2, out_ports=1, b_type=2,
-                 params=_defaults(pid_b), block_class=PIDBlock,
-                 category=pid_b.category)
+    pid = DBlock(
+        "PID",
+        1,
+        coords=QRect(100, 0, 50, 50),
+        color="magenta",
+        in_ports=2,
+        out_ports=1,
+        b_type=2,
+        params=_defaults(pid_b),
+        block_class=PIDBlock,
+        category=pid_b.category,
+    )
     pid.params["Kp"] = kp
     pid.params["Ki"] = ki
     pid.params["Kd"] = kd
 
     plant_b = TransferFunctionBlock()
-    plant = DBlock("TranFn", 1, coords=QRect(200, 0, 50, 50), color="green",
-                   in_ports=1, out_ports=1, b_type=plant_b.b_type,
-                   params=_defaults(plant_b), block_class=TransferFunctionBlock,
-                   category=plant_b.category)
+    plant = DBlock(
+        "TranFn",
+        1,
+        coords=QRect(200, 0, 50, 50),
+        color="green",
+        in_ports=1,
+        out_ports=1,
+        b_type=plant_b.b_type,
+        params=_defaults(plant_b),
+        block_class=TransferFunctionBlock,
+        category=plant_b.category,
+    )
     plant.params["numerator"] = [1.0]
     plant.params["denominator"] = [1.0, 1.0]
 
     scope_b = ScopeBlock()
-    scope = DBlock("Scope", 1, coords=QRect(300, 0, 50, 50), color="red",
-                   in_ports=1, out_ports=0, b_type=scope_b.b_type,
-                   params=_defaults(scope_b), block_class=ScopeBlock,
-                   category=scope_b.category)
+    scope = DBlock(
+        "Scope",
+        1,
+        coords=QRect(300, 0, 50, 50),
+        color="red",
+        in_ports=1,
+        out_ports=0,
+        b_type=scope_b.b_type,
+        params=_defaults(scope_b),
+        block_class=ScopeBlock,
+        category=scope_b.category,
+    )
     scope.params["labels"] = "y"
 
     lines = [
-        DLine(sid=0, srcblock=step.name, srcport=0, dstblock=pid.name, dstport=0,
-              points=[QPoint(0, 0), QPoint(1, 1)]),
-        DLine(sid=1, srcblock=pid.name, srcport=0, dstblock=plant.name, dstport=0,
-              points=[QPoint(1, 1), QPoint(2, 2)]),
-        DLine(sid=2, srcblock=plant.name, srcport=0, dstblock=pid.name, dstport=1,
-              points=[QPoint(2, 2), QPoint(1, 1)]),
-        DLine(sid=3, srcblock=plant.name, srcport=0, dstblock=scope.name, dstport=0,
-              points=[QPoint(2, 2), QPoint(3, 3)]),
+        DLine(
+            sid=0,
+            srcblock=step.name,
+            srcport=0,
+            dstblock=pid.name,
+            dstport=0,
+            points=[QPoint(0, 0), QPoint(1, 1)],
+        ),
+        DLine(
+            sid=1,
+            srcblock=pid.name,
+            srcport=0,
+            dstblock=plant.name,
+            dstport=0,
+            points=[QPoint(1, 1), QPoint(2, 2)],
+        ),
+        DLine(
+            sid=2,
+            srcblock=plant.name,
+            srcport=0,
+            dstblock=pid.name,
+            dstport=1,
+            points=[QPoint(2, 2), QPoint(1, 1)],
+        ),
+        DLine(
+            sid=3,
+            srcblock=plant.name,
+            srcport=0,
+            dstblock=scope.name,
+            dstport=0,
+            points=[QPoint(2, 2), QPoint(3, 3)],
+        ),
     ]
 
     dsim.model.blocks_list[:] = [step, pid, plant, scope]
@@ -174,8 +231,8 @@ class TestPIDCompiledVsInterpreted:
 
         # Tolerance appropriate to ODE-solver-vs-fixed-step differences.
         assert np.allclose(interp, compiled, rtol=1e-2, atol=1e-2), (
-            "PID-loop trajectories diverge: max|delta|=%.4f" %
-            float(np.max(np.abs(interp - compiled)))
+            "PID-loop trajectories diverge: max|delta|=%.4f"
+            % float(np.max(np.abs(interp - compiled)))
         )
 
     def test_pid_loop_reaches_shared_steady_state(self, qapp):
@@ -201,6 +258,5 @@ class TestPIDCompiledVsInterpreted:
             "compiled did not settle to setpoint: %.6f" % final_compiled
         )
         assert np.isclose(final_interp, final_compiled, atol=2e-3), (
-            "steady states disagree: interp=%.6f compiled=%.6f" %
-            (final_interp, final_compiled)
+            "steady states disagree: interp=%.6f compiled=%.6f" % (final_interp, final_compiled)
         )

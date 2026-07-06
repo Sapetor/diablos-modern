@@ -20,18 +20,18 @@ class TestVectorPerturbBlock:
 
     def test_perturb_first_component(self):
         """Test perturbing the first component."""
-        params = {'index': 0, 'epsilon': 1e-6}
+        params = {"index": 0, "epsilon": 1e-6}
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
 
         expected = np.array([1.0 + 1e-6, 2.0, 3.0])
         np.testing.assert_array_almost_equal(result[0], expected)
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_perturb_second_component(self):
         """Test perturbing the second component."""
-        params = {'index': 1, 'epsilon': 0.01}
+        params = {"index": 1, "epsilon": 0.01}
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -41,7 +41,7 @@ class TestVectorPerturbBlock:
 
     def test_perturb_last_component(self):
         """Test perturbing the last component."""
-        params = {'index': 2, 'epsilon': -0.5}  # Negative epsilon
+        params = {"index": 2, "epsilon": -0.5}  # Negative epsilon
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -51,7 +51,7 @@ class TestVectorPerturbBlock:
 
     def test_does_not_modify_input(self):
         """Test that original input is not modified."""
-        params = {'index': 0, 'epsilon': 1.0}
+        params = {"index": 0, "epsilon": 1.0}
         x = np.array([1.0, 2.0])
         x_original = x.copy()
 
@@ -61,7 +61,7 @@ class TestVectorPerturbBlock:
 
     def test_out_of_bounds_index(self):
         """Test behavior with out-of-bounds index."""
-        params = {'index': 5, 'epsilon': 1.0}  # Index too large
+        params = {"index": 5, "epsilon": 1.0}  # Index too large
         x = np.array([1.0, 2.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -71,4 +71,4 @@ class TestVectorPerturbBlock:
 
     def test_default_epsilon(self):
         """Test default epsilon value."""
-        assert self.block.params['epsilon']['default'] == 1e-6
+        assert self.block.params["epsilon"]["default"] == 1e-6

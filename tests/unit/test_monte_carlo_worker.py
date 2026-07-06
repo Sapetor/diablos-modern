@@ -21,6 +21,7 @@ def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
         from lib.block_loader import load_blocks
+
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
             try:
@@ -32,7 +33,7 @@ def _params(block_type, **overrides):
     out = {}
     if inst is not None:
         for k, v in inst.params.items():
-            out[k] = v['default'] if isinstance(v, dict) and 'default' in v else v
+            out[k] = v["default"] if isinstance(v, dict) and "default" in v else v
     out.update(overrides)
     return out
 
@@ -40,6 +41,7 @@ def _params(block_type, **overrides):
 def _load(builder, tmp_path, name):
     from lib.lib import DSim
     from lib.workspace import WorkspaceManager
+
     path = tmp_path / name
     builder.save(str(path))
     WorkspaceManager._instance = None
@@ -63,7 +65,8 @@ class TestMonteCarloWorker:
     def test_run_emits_progress_and_finished(self, qapp, tmp_path):
         dsim = _noise_scope(tmp_path, "worker.diablos")
         worker = MonteCarloWorker(
-            dsim, {"n_runs": 4, "master_seed": 7, "sim_time": 0.3, "sim_dt": 0.05})
+            dsim, {"n_runs": 4, "master_seed": 7, "sim_time": 0.3, "sim_dt": 0.05}
+        )
 
         progress, results = [], []
         worker.progress.connect(lambda d, t: progress.append((d, t)))
@@ -78,7 +81,8 @@ class TestMonteCarloWorker:
     def test_cancel_before_run_yields_empty_ensemble(self, qapp, tmp_path):
         dsim = _noise_scope(tmp_path, "worker_cancel.diablos")
         worker = MonteCarloWorker(
-            dsim, {"n_runs": 5, "master_seed": 7, "sim_time": 0.3, "sim_dt": 0.05})
+            dsim, {"n_runs": 5, "master_seed": 7, "sim_time": 0.3, "sim_dt": 0.05}
+        )
         worker.cancel()
 
         results = []

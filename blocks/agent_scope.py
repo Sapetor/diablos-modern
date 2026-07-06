@@ -50,18 +50,24 @@ class AgentScopeBlock(BaseBlock):
         return {
             "n_agents": {"type": "int", "default": 4, "doc": "Number of agents"},
             "show_trails": {"type": "bool", "default": True, "doc": "Draw trails"},
-            "trail_length": {"type": "int", "default": 0,
-                             "doc": "Max trail samples (0 = full history)"},
-            "title": {"type": "string", "default": "Agent trajectories",
-                      "doc": "Plot title"},
-            "_init_start_": {"type": "bool", "default": True,
-                             "doc": "Internal init flag"},
+            "trail_length": {
+                "type": "int",
+                "default": 0,
+                "doc": "Max trail samples (0 = full history)",
+            },
+            "title": {"type": "string", "default": "Agent trajectories", "doc": "Plot title"},
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag"},
         }
 
     @property
     def inputs(self):
-        return [{"name": "positions", "type": "array",
-                 "doc": "Flat positions vector [x1, y1, x2, y2, ...]"}]
+        return [
+            {
+                "name": "positions",
+                "type": "array",
+                "doc": "Flat positions vector [x1, y1, x2, y2, ...]",
+            }
+        ]
 
     @property
     def outputs(self):
@@ -73,6 +79,7 @@ class AgentScopeBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         path.addRect(0.15, 0.15, 0.7, 0.7)
         for cx, cy in [(0.3, 0.35), (0.55, 0.6), (0.7, 0.3), (0.4, 0.7)]:
@@ -95,4 +102,4 @@ class AgentScopeBlock(BaseBlock):
         # this sink; very long runs will accumulate proportional memory.
         params["_pos_history_"].append(u.copy())
         params["_time_history_"].append(float(time))
-        return {'E': False}
+        return {"E": False}

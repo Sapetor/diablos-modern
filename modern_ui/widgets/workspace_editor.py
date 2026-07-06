@@ -1,6 +1,14 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, 
-                             QTableWidgetItem, QHeaderView, QInputDialog, 
-                             QMessageBox, QToolBar, QAction)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QInputDialog,
+    QMessageBox,
+    QToolBar,
+    QAction,
+)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 import logging
@@ -10,12 +18,13 @@ from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
 
+
 class WorkspaceEditor(QWidget):
     """
     A widget that provides a table view for managing workspace variables.
     Allows users to view, add, edit, and delete variables.
     """
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.workspace_manager = WorkspaceManager()
@@ -50,7 +59,7 @@ class WorkspaceEditor(QWidget):
         self.action_delete.triggered.connect(self.delete_variable)
         self.action_delete.setText("➖")
         self.toolbar.addAction(self.action_delete)
-        
+
         self.action_save = QAction("Save", self)
         self.action_save.setToolTip("Save workspace to file")
         self.action_save.triggered.connect(self.save_workspace)
@@ -61,20 +70,20 @@ class WorkspaceEditor(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Name", "Value", "Type"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents) # Name
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)          # Value
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents) # Type
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Name
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # Value
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
         self.table.cellChanged.connect(self.on_cell_changed)
-        
+
         layout.addWidget(self.table)
 
         # Connect to theme changes
         theme_manager.theme_changed.connect(self._apply_theme)
-        
+
         # Apply initial theme
         self._apply_theme()
 
@@ -84,7 +93,7 @@ class WorkspaceEditor(QWidget):
         border_color = theme_manager.get_color("border_primary").name()
         text_color = theme_manager.get_color("text_primary").name()
         table_bg = theme_manager.get_color("surface").name()
-        
+
         # Toolbar styling
         self.toolbar.setStyleSheet(f"""
             QToolBar {{ 
@@ -103,7 +112,7 @@ class WorkspaceEditor(QWidget):
                 background: {theme_manager.get_color("surface_elevated").name()};
             }}
         """)
-        
+
         # Table styling
         self.table.setStyleSheet(f"""
             QTableWidget {{
@@ -122,38 +131,38 @@ class WorkspaceEditor(QWidget):
             }}
         """)
         self.table.setAlternatingRowColors(True)
-        # Note: setAlternatingRowColors uses the widget's palette, which might need specific tuning if the stylesheet doesn't override it fully for rows. 
+        # Note: setAlternatingRowColors uses the widget's palette, which might need specific tuning if the stylesheet doesn't override it fully for rows.
         # But usually QTableWidget stylesheet handles it if we set alternate-background-color property, or we can leave it to defaults.
 
     def refresh_variables(self):
         """Reload variables from the workspace manager."""
         self.table.blockSignals(True)
         self.table.setRowCount(0)
-        
+
         variables = self.workspace_manager.get_all_variables()
         row = 0
         for name, value in sorted(variables.items()):
             self.table.insertRow(row)
-            
+
             # Name (Read-only for now, created via Add)
             name_item = QTableWidgetItem(name)
             name_item.setFlags(name_item.flags() ^ Qt.ItemIsEditable)
             self.table.setItem(row, 0, name_item)
-            
+
             # Value (Editable)
             # We display repr(value) to show quotes for strings, list brackets, etc.
             # But for editing, maybe just the str? No, using repr is safer for parsing back.
             val_str = repr(value)
             val_item = QTableWidgetItem(val_str)
             self.table.setItem(row, 1, val_item)
-            
+
             # Type (Read-only)
             type_item = QTableWidgetItem(type(value).__name__)
             type_item.setFlags(type_item.flags() ^ Qt.ItemIsEditable)
             self.table.setItem(row, 2, type_item)
-            
+
             row += 1
-            
+
         self.table.blockSignals(False)
 
     def add_variable(self):
@@ -162,14 +171,20 @@ class WorkspaceEditor(QWidget):
         if ok and name:
             name = name.strip()
             if not name.isidentifier():
-                QMessageBox.warning(self, "Invalid Name", "Variable name must be a valid Python identifier.")
+                QMessageBox.warning(
+                    self, "Invalid Name", "Variable name must be a valid Python identifier."
+                )
                 return
-                
+
             if name in self.workspace_manager.variables:
-                QMessageBox.warning(self, "Exists", "Variable already exists. Edit it directly in the table.")
+                QMessageBox.warning(
+                    self, "Exists", "Variable already exists. Edit it directly in the table."
+                )
                 return
-            
-            val_str, ok_val = QInputDialog.getText(self, "Initial Value", f"Value for {name}:", text="0")
+
+            val_str, ok_val = QInputDialog.getText(
+                self, "Initial Value", f"Value for {name}:", text="0"
+            )
             if ok_val:
                 try:
                     # Evaluate the string to get the actual python object
@@ -190,8 +205,12 @@ class WorkspaceEditor(QWidget):
         row = self.table.currentRow()
         if row >= 0:
             name = self.table.item(row, 0).text()
-            confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete '{name}'?", 
-                                         QMessageBox.Yes | QMessageBox.No)
+            confirm = QMessageBox.question(
+                self,
+                "Confirm Delete",
+                f"Are you sure you want to delete '{name}'?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
             if confirm == QMessageBox.Yes:
                 self.workspace_manager.delete_variable(name)
                 self.refresh_variables()
@@ -202,28 +221,30 @@ class WorkspaceEditor(QWidget):
         if column == 1:
             name = self.table.item(row, 0).text()
             new_val_str = self.table.item(row, 1).text()
-            
+
             try:
                 # Use safe_expr to evaluate the expression with workspace variables.
                 # Supports math literals and expressions referencing other variables (e.g. "K + 1").
                 # Values are evaluated immediately and stored.
                 new_val = safe_expr(new_val_str, variables=self.workspace_manager.variables)
-                
+
                 # Update backend
                 self.workspace_manager.set_variable(name, new_val)
 
                 # Update type column
-                self.table.blockSignals(True) # Prevent recursion
+                self.table.blockSignals(True)  # Prevent recursion
                 type_item = QTableWidgetItem(type(new_val).__name__)
                 type_item.setFlags(type_item.flags() ^ Qt.ItemIsEditable)
                 self.table.setItem(row, 2, type_item)
                 # Clear any stale error styling from a previous invalid edit
-                self.table.item(row, 1).setForeground(QColor(theme_manager.get_color("text_primary").name()))
+                self.table.item(row, 1).setForeground(
+                    QColor(theme_manager.get_color("text_primary").name())
+                )
                 self.table.item(row, 1).setToolTip("")
                 self.table.blockSignals(False)
-                
+
                 logger.info(f"Updated variable {name} to {new_val}")
-                
+
             except Exception as e:
                 # If invalid, revert or show error?
                 # For now, just log and maybe change color?

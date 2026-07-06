@@ -88,9 +88,7 @@ class TestCompiledDemuxLogic:
         from lib.engine.system_compiler import SystemCompiler
 
         dsim = _load_example()
-        assert dsim.engine.initialize_execution(
-            dsim.model.blocks_list, dsim.model.line_list
-        )
+        assert dsim.engine.initialize_execution(dsim.model.blocks_list, dsim.model.line_list)
         compiler = SystemCompiler()
         assert "Demux" in compiler.COMPILABLE_BLOCKS
         assert "LogicalOperator" in compiler.COMPILABLE_BLOCKS
@@ -114,8 +112,7 @@ class TestCompiledDemuxLogic:
         interp = _run(operator, use_fast=False)
 
         assert compiled.shape == interp.shape, (
-            f"[{operator}] shape mismatch: compiled={compiled.shape} "
-            f"interpreter={interp.shape}"
+            f"[{operator}] shape mismatch: compiled={compiled.shape} interpreter={interp.shape}"
         )
         max_diff = float(np.max(np.abs(compiled - interp)))
         assert max_diff < 1e-9, (
@@ -149,14 +146,26 @@ class TestCompiledDemuxLogic:
 
         def mk(fn, sid, inp, outp, params, b_type=2):
             return DBlock(
-                block_fn=fn, sid=sid, coords=QRect(0, 0, 50, 40),
-                color=QColor(150, 150, 150), in_ports=inp, out_ports=outp,
-                params=params, username="", b_type=b_type,
+                block_fn=fn,
+                sid=sid,
+                coords=QRect(0, 0, 50, 40),
+                color=QColor(150, 150, 150),
+                in_ports=inp,
+                out_ports=outp,
+                params=params,
+                username="",
+                b_type=b_type,
             )
 
         def ln(sid, src, sp, dst, dp):
-            return DLine(sid=sid, srcblock=src, srcport=sp, dstblock=dst,
-                         dstport=dp, points=[QPoint(0, 0), QPoint(1, 0)])
+            return DLine(
+                sid=sid,
+                srcblock=src,
+                srcport=sp,
+                dstblock=dst,
+                dstport=dp,
+                points=[QPoint(0, 0), QPoint(1, 0)],
+            )
 
         blocks = [
             mk("Constant", 0, 0, 1, {"value": [1.0, 1.0]}, b_type=0),
@@ -175,21 +184,23 @@ class TestCompiledDemuxLogic:
         wm = WorkspaceManager()
         for b in blocks:
             b.exec_params = wm.resolve_params(b.params)
-            b.exec_params.update(
-                {k: v for k, v in b.params.items() if k.startswith("_")}
-            )
+            b.exec_params.update({k: v for k, v in b.params.items() if k.startswith("_")})
             b.exec_params["dtime"] = 0.01
 
         compiler = SystemCompiler()
         assert compiler.check_compilability(blocks)
         model_func, y0, state_map, _ = compiler.compile_system(blocks, blocks, lines)
         sol = solve_ivp(
-            model_func, (0, 2.0), y0, method="RK45",
-            t_eval=np.linspace(0, 2, 50), rtol=1e-8, atol=1e-10,
+            model_func,
+            (0, 2.0),
+            y0,
+            method="RK45",
+            t_eval=np.linspace(0, 2, 50),
+            rtol=1e-8,
+            atol=1e-10,
         )
         assert sol.success, f"solve_ivp failed: {sol.message}"
         start, _ = state_map["integrator0"]
         assert np.isclose(sol.y[start, -1], 2.0, atol=1e-4), (
-            f"AND(1,1)=1 integrated over [0,2] should be ~2.0, "
-            f"got {sol.y[start, -1]}"
+            f"AND(1,1)=1 integrated over [0,2] should be ~2.0, got {sol.y[start, -1]}"
         )

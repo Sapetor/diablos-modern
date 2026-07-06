@@ -1,4 +1,3 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
@@ -30,7 +29,7 @@ class LogicalOperatorBlock(BaseBlock):
     @property
     def io_editable(self):
         # Variable number of inputs; NOT operates on the first input only.
-        return 'input'
+        return "input"
 
     @property
     def doc(self):

@@ -22,8 +22,15 @@ and stores ``window._prop_scroll_viewport``.
 import logging
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QSplitter,
-                             QLabel, QFrame, QScrollArea)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QSplitter,
+    QLabel,
+    QFrame,
+    QScrollArea,
+)
 
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.modern_canvas import ModernCanvas
@@ -125,7 +132,9 @@ class LayoutManager:
 
         window.center_splitter.setSizes([canvas_width, property_width])
 
-        logger.info(f"Splitter sizes: left={left_width}, canvas={canvas_width}, properties={property_width}")
+        logger.info(
+            f"Splitter sizes: left={left_width}, canvas={canvas_width}, properties={property_width}"
+        )
 
     def create_left_panel(self) -> QWidget:
         """Create modern left panel for block palette."""

@@ -62,8 +62,8 @@ def _load_and_swap(qapp, swap_sum_before_matrixgain: bool):
     sim_params = dsim.file_service.apply_loaded_data(data)
 
     blocks = dsim.blocks_list
-    sum_idx = next(i for i, b in enumerate(blocks) if b.block_fn == 'Sum')
-    mg_idx = next(i for i, b in enumerate(blocks) if b.block_fn == 'MatrixGain')
+    sum_idx = next(i for i, b in enumerate(blocks) if b.block_fn == "Sum")
+    mg_idx = next(i for i, b in enumerate(blocks) if b.block_fn == "MatrixGain")
 
     if swap_sum_before_matrixgain and sum_idx > mg_idx:
         blocks[sum_idx], blocks[mg_idx] = blocks[mg_idx], blocks[sum_idx]
@@ -84,11 +84,11 @@ def _state_scope_vector(dsim):
     """
     candidates = []
     for b in dsim.engine.active_blocks_list:
-        if b.block_fn != 'Scope':
+        if b.block_fn != "Scope":
             continue
-        params = getattr(b, 'exec_params', b.params)
-        vec = params.get('vector')
-        vec_dim = params.get('vec_dim')
+        params = getattr(b, "exec_params", b.params)
+        vec = params.get("vector")
+        vec_dim = params.get("vec_dim")
         if vec is None or not vec_dim:
             continue
         arr = np.asarray(vec).reshape(-1, vec_dim)
@@ -130,9 +130,7 @@ class TestInterpreterFeedback:
         re-break this example.
         """
         dsim, sim_params = _load_and_swap(qapp, swap_sum_before_matrixgain=False)
-        success, err = dsim.run_tuning_simulation(
-            sim_params['sim_time'], sim_params['sim_dt']
-        )
+        success, err = dsim.run_tuning_simulation(sim_params["sim_time"], sim_params["sim_dt"])
         assert success, f"Simulation failed: {err}"
         self._assert_state_evolves(dsim)
 
@@ -149,15 +147,11 @@ class TestInterpreterFeedback:
 
         # Sanity: confirm the swap took effect
         names = [b.block_fn for b in dsim.blocks_list]
-        sum_idx = names.index('Sum')
-        mg_idx = names.index('MatrixGain')
-        assert sum_idx < mg_idx, (
-            f"Test setup error — expected Sum before MatrixGain: {names}"
-        )
+        sum_idx = names.index("Sum")
+        mg_idx = names.index("MatrixGain")
+        assert sum_idx < mg_idx, f"Test setup error — expected Sum before MatrixGain: {names}"
 
-        success, err = dsim.run_tuning_simulation(
-            sim_params['sim_time'], sim_params['sim_dt']
-        )
+        success, err = dsim.run_tuning_simulation(sim_params["sim_time"], sim_params["sim_dt"])
         assert success, f"Simulation failed: {err}"
         self._assert_state_evolves(dsim)
 
@@ -169,9 +163,7 @@ class TestInterpreterFeedback:
         away from initial conditions).
         """
         dsim, sim_params = _load_and_swap(qapp, swap_sum_before_matrixgain=True)
-        success, err = dsim.run_tuning_simulation(
-            sim_params['sim_time'], sim_params['sim_dt']
-        )
+        success, err = dsim.run_tuning_simulation(sim_params["sim_time"], sim_params["sim_dt"])
         assert success, f"Simulation failed: {err}"
 
         scope = _state_scope_vector(dsim)

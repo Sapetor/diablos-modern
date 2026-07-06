@@ -21,9 +21,7 @@ import logging
 import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.pde._compat import as_scalar
-from blocks.param_templates import (
-    wave_speed_param, domain_params_1d, init_flag_param
-)
+from blocks.param_templates import wave_speed_param, domain_params_1d, init_flag_param
 from lib.engine.pde_helpers import bc_params_1d
 from lib.engine.pde_ops import wave_rhs_1d
 
@@ -78,22 +76,18 @@ class WaveEquation1DBlock(BaseBlock):
     def params(self):
         return {
             **wave_speed_param(default=1.0),
-            "damping": {
-                "type": "float",
-                "default": 0.0,
-                "doc": "Damping coefficient"
-            },
+            "damping": {"type": "float", "default": 0.0, "doc": "Damping coefficient"},
             **domain_params_1d(default_length=1.0, default_nodes=50),
             **bc_params_1d(include_robin=False),
             "init_displacement": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial displacement (scalar, list, or 'gaussian', 'sine')"
+                "doc": "Initial displacement (scalar, list, or 'gaussian', 'sine')",
             },
             "init_velocity": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial velocity (scalar or list)"
+                "doc": "Initial velocity (scalar or list)",
             },
             **init_flag_param(),
         }
@@ -128,6 +122,7 @@ class WaveEquation1DBlock(BaseBlock):
         """Draw wave equation icon - sine wave."""
         from PyQt5.QtGui import QPainterPath
         import math
+
         path = QPainterPath()
         # Draw a sine wave
         path.moveTo(0.1, 0.5)
@@ -139,23 +134,23 @@ class WaveEquation1DBlock(BaseBlock):
 
     def get_num_states(self, params):
         """Return number of states (2N for displacement + velocity)."""
-        N = int(params.get('N', 50))
+        N = int(params.get("N", 50))
         return 2 * N
 
     def get_initial_conditions(self, params):
         """Return initial condition vector [u, v]."""
-        N = int(params.get('N', 50))
-        L = float(params.get('L', 1.0))
+        N = int(params.get("N", 50))
+        L = float(params.get("L", 1.0))
 
         # Initial displacement
-        init_u = params.get('init_displacement', [0.0])
+        init_u = params.get("init_displacement", [0.0])
 
         if isinstance(init_u, str):
             x = np.linspace(0, L, N)
-            if init_u.lower() == 'gaussian':
+            if init_u.lower() == "gaussian":
                 # Gaussian pulse centered at L/2
-                u0 = np.exp(-100 * (x - L/2)**2)
-            elif init_u.lower() in ('sin', 'sine'):
+                u0 = np.exp(-100 * (x - L / 2) ** 2)
+            elif init_u.lower() in ("sin", "sine"):
                 # Single sine mode
                 u0 = np.sin(np.pi * x / L)
             else:
@@ -173,7 +168,7 @@ class WaveEquation1DBlock(BaseBlock):
                 u0 = np.interp(x_new, x_old, u0)
 
         # Initial velocity
-        init_v = params.get('init_velocity', [0.0])
+        init_v = params.get("init_velocity", [0.0])
 
         if isinstance(init_v, (int, float)):
             v0 = np.full(N, float(init_v))
@@ -191,37 +186,37 @@ class WaveEquation1DBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute the wave equation block."""
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
         # Initialization
-        if params.get('_init_start_', True):
-            N = max(2, int(params.get('N', 50)))
-            params['N'] = N
-            L = float(params.get('L', 1.0))
+        if params.get("_init_start_", True):
+            N = max(2, int(params.get("N", 50)))
+            params["N"] = N
+            L = float(params.get("L", 1.0))
             y0 = self.get_initial_conditions(params)
-            params['u'] = y0[:N]
-            params['v'] = y0[N:]
-            params['_init_start_'] = False
-            params['dx'] = L / (N - 1)
+            params["u"] = y0[:N]
+            params["v"] = y0[N:]
+            params["_init_start_"] = False
+            params["dx"] = L / (N - 1)
 
-        N = int(params.get('N', 50))
+        N = int(params.get("N", 50))
 
         if output_only:
-            u = params.get('u', np.zeros(N))
-            v = params.get('v', np.zeros(N))
+            u = params.get("u", np.zeros(N))
+            v = params.get("v", np.zeros(N))
             energy = self._compute_energy(u, v, params)
-            return {0: u, 1: v, 2: energy, 'E': False}
+            return {0: u, 1: v, 2: energy, "E": False}
 
         # Get parameters
-        c = float(params.get('c', 1.0))
-        damping = float(params.get('damping', 0.0))
-        L = float(params.get('L', 1.0))
-        dx = params.get('dx', L / (N - 1))
-        dtime = float(params.get('dtime', 0.01))
+        c = float(params.get("c", 1.0))
+        damping = float(params.get("damping", 0.0))
+        L = float(params.get("L", 1.0))
+        dx = params.get("dx", L / (N - 1))
+        dtime = float(params.get("dtime", 0.01))
 
         # Get current state
-        u = params.get('u', np.zeros(N))
-        v = params.get('v', np.zeros(N))
+        u = params.get("u", np.zeros(N))
+        v = params.get("v", np.zeros(N))
 
         # Get inputs
         force = inputs.get(0, 0.0)
@@ -237,40 +232,40 @@ class WaveEquation1DBlock(BaseBlock):
                 force = np.full(N, force[0] if len(force) > 0 else 0.0)
 
         # Boundary conditions
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
 
         # Spatial discretisation + BC math is single-sourced in
         # lib.engine.pde_ops. Compute the RHS from the pre-update field, then
         # overwrite Dirichlet field values directly (the interpreter's 'hold'
         # convention) before the Forward-Euler step.
         du_dt, dv_dt = wave_rhs_1d(
-            u, v, c, damping, dx, force,
-            bc_type_left, bc_left, bc_type_right, bc_right)
+            u, v, c, damping, dx, force, bc_type_left, bc_left, bc_type_right, bc_right
+        )
 
-        if bc_type_left == 'Dirichlet':
+        if bc_type_left == "Dirichlet":
             u[0] = bc_left
             v[0] = 0.0
-        if bc_type_right == 'Dirichlet':
-            u[N-1] = bc_right
-            v[N-1] = 0.0
+        if bc_type_right == "Dirichlet":
+            u[N - 1] = bc_right
+            v[N - 1] = 0.0
 
         # Forward Euler update
         u_new = u + du_dt * dtime
         v_new = v + dv_dt * dtime
 
-        params['u'] = u_new
-        params['v'] = v_new
+        params["u"] = u_new
+        params["v"] = v_new
 
         energy = self._compute_energy(u_new, v_new, params)
 
-        return {0: u_new, 1: v_new, 2: energy, 'E': False}
+        return {0: u_new, 1: v_new, 2: energy, "E": False}
 
     def _compute_energy(self, u, v, params):
         """Compute total wave energy (kinetic + potential)."""
         N = len(u)
-        L = float(params.get('L', 1.0))
-        c = float(params.get('c', 1.0))
+        L = float(params.get("L", 1.0))
+        c = float(params.get("c", 1.0))
         dx = L / (N - 1)
 
         # Kinetic energy: 0.5 * ∫ v² dx
@@ -295,19 +290,19 @@ class WaveEquation1DBlock(BaseBlock):
         Returns:
             derivatives: [du_dt, dv_dt] flattened
         """
-        N = int(params.get('N', 50))
-        c = float(params.get('c', 1.0))
-        damping = float(params.get('damping', 0.0))
-        L = float(params.get('L', 1.0))
+        N = int(params.get("N", 50))
+        c = float(params.get("c", 1.0))
+        damping = float(params.get("damping", 0.0))
+        L = float(params.get("L", 1.0))
         dx = L / (N - 1)
 
         u = state[:N]
         v = state[N:]
 
         # Get inputs
-        force = inputs.get('force', 0.0)
-        bc_left = as_scalar(inputs.get('bc_left', 0.0))
-        bc_right = as_scalar(inputs.get('bc_right', 0.0))
+        force = inputs.get("force", 0.0)
+        bc_left = as_scalar(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar(inputs.get("bc_right", 0.0))
 
         if isinstance(force, (int, float)):
             force = np.full(N, float(force))
@@ -316,12 +311,12 @@ class WaveEquation1DBlock(BaseBlock):
             if len(force) != N:
                 force = np.full(N, force[0] if len(force) > 0 else 0.0)
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
 
         # Spatial discretisation + BC math is single-sourced in lib.engine.pde_ops.
         du_dt, dv_dt = wave_rhs_1d(
-            u, v, c, damping, dx, force,
-            bc_type_left, bc_left, bc_type_right, bc_right)
+            u, v, c, damping, dx, force, bc_type_left, bc_left, bc_type_right, bc_right
+        )
 
         return np.concatenate([du_dt, dv_dt])

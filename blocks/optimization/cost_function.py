@@ -70,32 +70,32 @@ class CostFunctionBlock(BaseBlock):
             "type": {
                 "type": "string",
                 "default": "ISE",
-                "doc": "Cost type: ISE, IAE, ITAE, terminal, settling, overshoot"
+                "doc": "Cost type: ISE, IAE, ITAE, terminal, settling, overshoot",
             },
             "target": {
                 "type": "float",
                 "default": 0.0,
-                "doc": "Target/reference value for error calculation"
+                "doc": "Target/reference value for error calculation",
             },
             "weight": {
                 "type": "float",
                 "default": 1.0,
-                "doc": "Weight in overall objective function"
+                "doc": "Weight in overall objective function",
             },
             "start_time": {
                 "type": "float",
                 "default": 0.0,
-                "doc": "Start accumulating after this time"
+                "doc": "Start accumulating after this time",
             },
             "settling_threshold": {
                 "type": "float",
                 "default": 0.02,
-                "doc": "Settling threshold (fraction of target)"
+                "doc": "Settling threshold (fraction of target)",
             },
             "_init_start_": {
                 "type": "bool",
                 "default": True,
-                "doc": "Internal: initialization flag"
+                "doc": "Internal: initialization flag",
             },
         }
 
@@ -125,6 +125,7 @@ class CostFunctionBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw cost function icon - J with target."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw "J" letter (cost function symbol)
         path.moveTo(0.55, 0.2)
@@ -141,19 +142,19 @@ class CostFunctionBlock(BaseBlock):
         """Accumulate cost based on input signal."""
 
         # Initialization
-        if params.get('_init_start_', True):
-            params['_accumulated_cost_'] = 0.0
-            params['_prev_time_'] = 0.0
-            params['_max_value_'] = 0.0
-            params['_settled_'] = False
-            params['_settling_time_'] = np.inf
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_accumulated_cost_"] = 0.0
+            params["_prev_time_"] = 0.0
+            params["_max_value_"] = 0.0
+            params["_settled_"] = False
+            params["_settling_time_"] = np.inf
+            params["_init_start_"] = False
 
-        dtime = float(params.get('dtime', 0.01))
-        start_time = float(params.get('start_time', 0.0))
-        weight = float(params.get('weight', 1.0))
-        cost_type = params.get('type', 'ISE')
-        target = float(params.get('target', 0.0))
+        dtime = float(params.get("dtime", 0.01))
+        start_time = float(params.get("start_time", 0.0))
+        weight = float(params.get("weight", 1.0))
+        cost_type = params.get("type", "ISE")
+        target = float(params.get("target", 0.0))
 
         # Get signal
         signal = inputs.get(0, 0.0)
@@ -172,30 +173,30 @@ class CostFunctionBlock(BaseBlock):
 
         # Only accumulate after start_time
         if time < start_time:
-            return {0: params.get('_accumulated_cost_', 0.0), 'E': False}
+            return {0: params.get("_accumulated_cost_", 0.0), "E": False}
 
-        accumulated = params.get('_accumulated_cost_', 0.0)
-        prev_time = params.get('_prev_time_', 0.0)
+        accumulated = params.get("_accumulated_cost_", 0.0)
+        prev_time = params.get("_prev_time_", 0.0)
 
-        if cost_type.upper() == 'ISE':
+        if cost_type.upper() == "ISE":
             # Integral Squared Error
-            accumulated += (error ** 2) * dtime
+            accumulated += (error**2) * dtime
 
-        elif cost_type.upper() == 'IAE':
+        elif cost_type.upper() == "IAE":
             # Integral Absolute Error
             accumulated += abs(error) * dtime
 
-        elif cost_type.upper() == 'ITAE':
+        elif cost_type.upper() == "ITAE":
             # Integral Time-weighted Absolute Error
             accumulated += time * abs(error) * dtime
 
-        elif cost_type.lower() == 'terminal':
+        elif cost_type.lower() == "terminal":
             # Only final value matters (updated each step, last value used)
-            accumulated = error ** 2
+            accumulated = error**2
 
-        elif cost_type.lower() == 'settling':
+        elif cost_type.lower() == "settling":
             # Settling time objective
-            threshold = float(params.get('settling_threshold', 0.02))
+            threshold = float(params.get("settling_threshold", 0.02))
             final_val = reference  # Assume reference is desired final value
 
             if abs(final_val) > 1e-10:
@@ -204,27 +205,27 @@ class CostFunctionBlock(BaseBlock):
                 rel_error = abs(error)
 
             if rel_error > threshold:
-                params['_settling_time_'] = time
-                params['_settled_'] = False
+                params["_settling_time_"] = time
+                params["_settled_"] = False
             else:
-                if not params.get('_settled_', False):
-                    params['_settled_'] = True
+                if not params.get("_settled_", False):
+                    params["_settled_"] = True
 
             # Cost is settling time
-            accumulated = params.get('_settling_time_', np.inf)
+            accumulated = params.get("_settling_time_", np.inf)
             if accumulated == np.inf:
                 accumulated = time  # Still settling
 
-        elif cost_type.lower() == 'overshoot':
+        elif cost_type.lower() == "overshoot":
             # Penalize overshoot
             if reference > 0:
-                if signal > params.get('_max_value_', 0.0):
-                    params['_max_value_'] = signal
-                overshoot = max(0, params['_max_value_'] - reference) / reference
+                if signal > params.get("_max_value_", 0.0):
+                    params["_max_value_"] = signal
+                overshoot = max(0, params["_max_value_"] - reference) / reference
             elif reference < 0:
-                if signal < params.get('_max_value_', 0.0):
-                    params['_max_value_'] = signal
-                overshoot = max(0, reference - params['_max_value_']) / abs(reference)
+                if signal < params.get("_max_value_", 0.0):
+                    params["_max_value_"] = signal
+                overshoot = max(0, reference - params["_max_value_"]) / abs(reference)
             else:
                 overshoot = abs(signal)
 
@@ -232,10 +233,10 @@ class CostFunctionBlock(BaseBlock):
 
         else:
             # Default to ISE
-            accumulated += (error ** 2) * dtime
+            accumulated += (error**2) * dtime
 
-        params['_accumulated_cost_'] = accumulated
-        params['_prev_time_'] = time
+        params["_accumulated_cost_"] = accumulated
+        params["_prev_time_"] = time
 
         # Apply weight
         weighted_cost = accumulated * weight
@@ -244,21 +245,23 @@ class CostFunctionBlock(BaseBlock):
         # (uses prev_time captured before the update above). Kept at DEBUG so it
         # stays silent during optimization loops that re-run the whole simulation.
         if logger.isEnabledFor(logging.DEBUG) and int(time) != int(prev_time):
-            logger.debug(f"CostFunction: t={time:.2f}, signal={signal:.4f}, error={error:.4f}, cost={weighted_cost:.4f}")
+            logger.debug(
+                f"CostFunction: t={time:.2f}, signal={signal:.4f}, error={error:.4f}, cost={weighted_cost:.4f}"
+            )
 
-        return {0: weighted_cost, 'E': False}
+        return {0: weighted_cost, "E": False}
 
     def get_final_cost(self, params):
         """Get the final accumulated cost (called by optimizer after simulation)."""
-        weight = float(params.get('weight', 1.0))
-        accumulated = params.get('_accumulated_cost_', 0.0)
+        weight = float(params.get("weight", 1.0))
+        accumulated = params.get("_accumulated_cost_", 0.0)
         return accumulated * weight
 
     def reset(self, params):
         """Reset accumulated cost for a new optimization iteration."""
-        params['_accumulated_cost_'] = 0.0
-        params['_prev_time_'] = 0.0
-        params['_max_value_'] = 0.0
-        params['_settled_'] = False
-        params['_settling_time_'] = np.inf
-        params['_init_start_'] = True
+        params["_accumulated_cost_"] = 0.0
+        params["_prev_time_"] = 0.0
+        params["_max_value_"] = 0.0
+        params["_settled_"] = False
+        params["_settling_time_"] = np.inf
+        params["_init_start_"] = True

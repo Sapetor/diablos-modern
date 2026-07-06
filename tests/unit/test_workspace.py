@@ -21,6 +21,7 @@ import pytest
 def isolated_workspace():
     """Reset WorkspaceManager singleton around each test."""
     from lib.workspace import WorkspaceManager
+
     prev = WorkspaceManager._instance
     WorkspaceManager._instance = None
     yield
@@ -35,17 +36,32 @@ class TestResolveParamsPreservesPatternStrings:
 
     def setup_method(self):
         from lib.workspace import WorkspaceManager
+
         self.wm = WorkspaceManager()
         self.wm.variables = {}
 
-    @pytest.mark.parametrize("name", [
-        # numpy ufuncs that must stay as strings (not ufunc objects)
-        "sin", "cos", "tan", "exp", "log", "sqrt", "sign",
-        # user-facing function-name strings used by MathFunction / PDE blocks
-        "sine", "cosine", "gaussian", "square", "pi", "e",
-        # Note: "abs" is intentionally NOT listed — safe_eval always resolves
-        # "abs" to the Python builtin, which is correct pre-regression behaviour.
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            # numpy ufuncs that must stay as strings (not ufunc objects)
+            "sin",
+            "cos",
+            "tan",
+            "exp",
+            "log",
+            "sqrt",
+            "sign",
+            # user-facing function-name strings used by MathFunction / PDE blocks
+            "sine",
+            "cosine",
+            "gaussian",
+            "square",
+            "pi",
+            "e",
+            # Note: "abs" is intentionally NOT listed — safe_eval always resolves
+            # "abs" to the Python builtin, which is correct pre-regression behaviour.
+        ],
+    )
     def test_numpy_name_preserved_as_string(self, name):
         result = self.wm.resolve_params({"function": name})
         assert result["function"] == name, (

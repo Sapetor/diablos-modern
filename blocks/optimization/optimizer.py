@@ -65,77 +65,61 @@ class OptimizerBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "method": {
-                "type": "string",
-                "default": "L-BFGS-B",
-                "doc": "Optimization method"
-            },
-            "max_iter": {
-                "type": "int",
-                "default": 100,
-                "doc": "Maximum number of iterations"
-            },
-            "tol": {
-                "type": "float",
-                "default": 1e-6,
-                "doc": "Convergence tolerance"
-            },
+            "method": {"type": "string", "default": "L-BFGS-B", "doc": "Optimization method"},
+            "max_iter": {"type": "int", "default": 100, "doc": "Maximum number of iterations"},
+            "tol": {"type": "float", "default": 1e-6, "doc": "Convergence tolerance"},
             "use_constraints": {
                 "type": "bool",
                 "default": True,
-                "doc": "Enable constraint handling"
+                "doc": "Enable constraint handling",
             },
             "use_penalty": {
                 "type": "bool",
                 "default": False,
-                "doc": "Use penalty method for constraints"
+                "doc": "Use penalty method for constraints",
             },
             "penalty_factor": {
                 "type": "float",
                 "default": 1000.0,
-                "doc": "Penalty factor for constraint violations"
+                "doc": "Penalty factor for constraint violations",
             },
-            "verbose": {
-                "type": "bool",
-                "default": True,
-                "doc": "Print optimization progress"
-            },
+            "verbose": {"type": "bool", "default": True, "doc": "Print optimization progress"},
             "multistart": {
                 "type": "int",
                 "default": 1,
-                "doc": "Number of random restarts for global search"
+                "doc": "Number of random restarts for global search",
             },
             # Differential evolution specific
             "popsize": {
                 "type": "int",
                 "default": 15,
-                "doc": "Population size for differential_evolution"
+                "doc": "Population size for differential_evolution",
             },
             "mutation": {
                 "type": "float",
                 "default": 0.8,
-                "doc": "Mutation factor for differential_evolution"
+                "doc": "Mutation factor for differential_evolution",
             },
             "recombination": {
                 "type": "float",
                 "default": 0.7,
-                "doc": "Recombination rate for differential_evolution"
+                "doc": "Recombination rate for differential_evolution",
             },
             # Results storage
             "_optimal_cost_": {
                 "type": "float",
                 "default": np.inf,
-                "doc": "Internal: Best cost found"
+                "doc": "Internal: Best cost found",
             },
             "_n_iterations_": {
                 "type": "int",
                 "default": 0,
-                "doc": "Internal: Number of function evaluations"
+                "doc": "Internal: Number of function evaluations",
             },
             "_converged_": {
                 "type": "bool",
                 "default": False,
-                "doc": "Internal: Did optimizer converge"
+                "doc": "Internal: Did optimizer converge",
             },
         }
 
@@ -158,6 +142,7 @@ class OptimizerBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw optimizer icon - converging arrows to minimum."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw converging search pattern
         # Left arrow
@@ -184,7 +169,7 @@ class OptimizerBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Optimizer doesn't execute during normal simulation."""
-        return {'E': False}
+        return {"E": False}
 
     def get_optimizer_config(self, params):
         """
@@ -194,17 +179,17 @@ class OptimizerBlock(BaseBlock):
             dict with all optimization settings
         """
         return {
-            'method': params.get('method', 'L-BFGS-B'),
-            'max_iter': int(params.get('max_iter', 100)),
-            'tol': float(params.get('tol', 1e-6)),
-            'use_constraints': params.get('use_constraints', True),
-            'use_penalty': params.get('use_penalty', False),
-            'penalty_factor': float(params.get('penalty_factor', 1000.0)),
-            'verbose': params.get('verbose', True),
-            'multistart': int(params.get('multistart', 1)),
-            'popsize': int(params.get('popsize', 15)),
-            'mutation': float(params.get('mutation', 0.8)),
-            'recombination': float(params.get('recombination', 0.7)),
+            "method": params.get("method", "L-BFGS-B"),
+            "max_iter": int(params.get("max_iter", 100)),
+            "tol": float(params.get("tol", 1e-6)),
+            "use_constraints": params.get("use_constraints", True),
+            "use_penalty": params.get("use_penalty", False),
+            "penalty_factor": float(params.get("penalty_factor", 1000.0)),
+            "verbose": params.get("verbose", True),
+            "multistart": int(params.get("multistart", 1)),
+            "popsize": int(params.get("popsize", 15)),
+            "mutation": float(params.get("mutation", 0.8)),
+            "recombination": float(params.get("recombination", 0.7)),
         }
 
     def store_results(self, params, result):
@@ -215,14 +200,14 @@ class OptimizerBlock(BaseBlock):
             params: Block params dict
             result: scipy.optimize result object
         """
-        params['_optimal_cost_'] = float(result.fun) if hasattr(result, 'fun') else np.inf
-        params['_n_iterations_'] = int(result.nfev) if hasattr(result, 'nfev') else 0
-        params['_converged_'] = bool(result.success) if hasattr(result, 'success') else False
+        params["_optimal_cost_"] = float(result.fun) if hasattr(result, "fun") else np.inf
+        params["_n_iterations_"] = int(result.nfev) if hasattr(result, "nfev") else 0
+        params["_converged_"] = bool(result.success) if hasattr(result, "success") else False
 
     def get_results(self, params):
         """Get stored optimization results."""
         return {
-            'optimal_cost': params.get('_optimal_cost_', np.inf),
-            'n_evaluations': params.get('_n_iterations_', 0),
-            'converged': params.get('_converged_', False),
+            "optimal_cost": params.get("_optimal_cost_", np.inf),
+            "n_evaluations": params.get("_n_iterations_", 0),
+            "converged": params.get("_converged_", False),
         }

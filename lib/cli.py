@@ -18,6 +18,7 @@ numerically accurate engine; pass ``--solver interpreter`` for the fixed-step
 interpreter. See ``docs/ARCHITECTURE.md`` ("Compiled vs interpreter semantics")
 for how the two paths differ.
 """
+
 import argparse
 import json
 import os
@@ -43,6 +44,7 @@ def _ensure_headless_qapp():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("MPLBACKEND", "Agg")
     from PyQt5.QtWidgets import QApplication
+
     _QAPP = QApplication.instance() or QApplication(["diablos-run"])
     return _QAPP
 
@@ -112,8 +114,7 @@ def write_output(result, out_path, out_format=None):
     os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
 
     if out_format == "npz":
-        np.savez(out_path, t=timeline, **{k: np.asarray(v).reshape(-1)
-                                          for k, v in signals.items()})
+        np.savez(out_path, t=timeline, **{k: np.asarray(v).reshape(-1) for k, v in signals.items()})
     else:
         n = len(timeline)
         columns = [timeline]
@@ -131,24 +132,35 @@ def write_output(result, out_path, out_format=None):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(
-        prog="diablos", description="DiaBloS headless diagram tools.")
+    parser = argparse.ArgumentParser(prog="diablos", description="DiaBloS headless diagram tools.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="Simulate a .diablos diagram headlessly.")
     run.add_argument("diagram", help="Path to a .diablos diagram file.")
-    run.add_argument("-o", "--out",
-                     help="Output file (.csv or .npz). Defaults to the "
-                          "diagram name with a .csv extension.")
-    run.add_argument("-t", "--time", type=float, default=None,
-                     help="Simulation duration (s). Default: diagram's sim_time.")
-    run.add_argument("--dt", type=float, default=None,
-                     help="Time step (s). Default: diagram's sim_dt.")
-    run.add_argument("--solver", choices=("compiled", "interpreter"),
-                     default="compiled",
-                     help="Integration path (default: compiled fast solver).")
-    run.add_argument("-q", "--quiet", action="store_true",
-                     help="Suppress the per-run summary on stdout.")
+    run.add_argument(
+        "-o",
+        "--out",
+        help="Output file (.csv or .npz). Defaults to the diagram name with a .csv extension.",
+    )
+    run.add_argument(
+        "-t",
+        "--time",
+        type=float,
+        default=None,
+        help="Simulation duration (s). Default: diagram's sim_time.",
+    )
+    run.add_argument(
+        "--dt", type=float, default=None, help="Time step (s). Default: diagram's sim_dt."
+    )
+    run.add_argument(
+        "--solver",
+        choices=("compiled", "interpreter"),
+        default="compiled",
+        help="Integration path (default: compiled fast solver).",
+    )
+    run.add_argument(
+        "-q", "--quiet", action="store_true", help="Suppress the per-run summary on stdout."
+    )
     return parser
 
 
@@ -163,8 +175,11 @@ def main(argv=None):
 
     try:
         dsim = run_diagram(
-            args.diagram, sim_time=args.time, sim_dt=args.dt,
-            use_fast_solver=(args.solver == "compiled"))
+            args.diagram,
+            sim_time=args.time,
+            sim_dt=args.dt,
+            use_fast_solver=(args.solver == "compiled"),
+        )
     except FileNotFoundError as e:
         print(f"error: diagram not found: {e}", file=sys.stderr)
         return 2
@@ -176,15 +191,15 @@ def main(argv=None):
 
     result = harvest_scope_signals(dsim)
     if result is None or not result["signals"]:
-        print("error: simulation produced no Scope signals to export",
-              file=sys.stderr)
+        print("error: simulation produced no Scope signals to export", file=sys.stderr)
         return 1
 
     n_cols = write_output(result, out_path)
     if not args.quiet:
         n_rows = len(np.atleast_1d(result["timeline"]))
-        print(f"ran {args.diagram} [{args.solver}] -> {out_path} "
-              f"({n_rows} samples, {n_cols} signals)")
+        print(
+            f"ran {args.diagram} [{args.solver}] -> {out_path} ({n_rows} samples, {n_cols} signals)"
+        )
     return 0
 
 

@@ -41,14 +41,26 @@ class LQRBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "A": {"default": "[[0, 1], [0, 0]]", "type": "string",
-                   "doc": "State matrix (n×n). Matrix or workspace variable."},
-            "B": {"default": "[[0], [1]]", "type": "string",
-                   "doc": "Input matrix (n×m). Matrix or workspace variable."},
-            "Q": {"default": "[[1, 0], [0, 1]]", "type": "string",
-                   "doc": "State cost matrix (n×n, positive semidefinite). Matrix or workspace variable."},
-            "R": {"default": "[[1]]", "type": "string",
-                   "doc": "Input cost matrix (m×m, positive definite). Matrix or workspace variable."},
+            "A": {
+                "default": "[[0, 1], [0, 0]]",
+                "type": "string",
+                "doc": "State matrix (n×n). Matrix or workspace variable.",
+            },
+            "B": {
+                "default": "[[0], [1]]",
+                "type": "string",
+                "doc": "Input matrix (n×m). Matrix or workspace variable.",
+            },
+            "Q": {
+                "default": "[[1, 0], [0, 1]]",
+                "type": "string",
+                "doc": "State cost matrix (n×n, positive semidefinite). Matrix or workspace variable.",
+            },
+            "R": {
+                "default": "[[1]]",
+                "type": "string",
+                "doc": "Input cost matrix (m×m, positive definite). Matrix or workspace variable.",
+            },
         }
 
     @property

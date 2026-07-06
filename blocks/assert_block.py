@@ -32,8 +32,16 @@ class AssertBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "condition": {"type": "string", "default": ">0", "doc": "Condition: >0, <0, >=0, <=0, ==0, !=0, finite"},
-            "message": {"type": "string", "default": "Assertion failed", "doc": "Error message on failure."},
+            "condition": {
+                "type": "string",
+                "default": ">0",
+                "doc": "Condition: >0, <0, >=0, <=0, ==0, !=0, finite",
+            },
+            "message": {
+                "type": "string",
+                "default": "Assertion failed",
+                "doc": "Error message on failure.",
+            },
             "enabled": {"type": "bool", "default": True, "doc": "Enable/disable assertion check."},
         }
 
@@ -53,17 +61,17 @@ class AssertBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         if not params.get("enabled", True):
             return {0: np.array([0.0])}
-        
+
         condition = params.get("condition", ">0")
         message = params.get("message", "Assertion failed")
-        
+
         input_value = np.atleast_1d(inputs.get(0, 0))
-        
+
         # Check condition for all elements
         passed = True
         for val in input_value.flatten():
             val = float(val)
-            
+
             if condition == ">0":
                 passed = val > 0
             elif condition == "<0":
@@ -81,10 +89,10 @@ class AssertBlock(BaseBlock):
             else:
                 # Unknown condition, pass
                 passed = True
-            
+
             if not passed:
                 break
-        
+
         if not passed:
             # Coerce time defensively so the assertion message is always produced,
             # even if time is ever passed as a numpy array/multi-element value.
@@ -92,8 +100,8 @@ class AssertBlock(BaseBlock):
             # Return error signal to stop simulation
             return {
                 0: np.array([0.0]),
-                'E': True,
-                'error': f"{message} (value={val}, condition={condition}, time={time_val:.4f})"
+                "E": True,
+                "error": f"{message} (value={val}, condition={condition}, time={time_val:.4f})",
             }
-        
+
         return {0: np.array([0.0])}

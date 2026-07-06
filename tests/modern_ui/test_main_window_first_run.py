@@ -36,6 +36,7 @@ def _qt(qapp):
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -51,7 +52,8 @@ def isolated_settings(tmp_path, monkeypatch):
     """
     ini_path = str(tmp_path / "diablos.ini")
     monkeypatch.setattr(
-        main_window, "QSettings",
+        main_window,
+        "QSettings",
         lambda *a, **k: QSettings(ini_path, QSettings.IniFormat),
     )
     return ini_path
@@ -64,8 +66,7 @@ class _ToastSpy:
         self.calls = []
 
     def show_message(self, message, duration=2000, is_error=False):
-        self.calls.append({"message": message, "duration": duration,
-                           "is_error": is_error})
+        self.calls.append({"message": message, "duration": duration, "is_error": is_error})
 
 
 class TestFirstRunWelcome:
@@ -98,16 +99,23 @@ class TestFirstRunWelcome:
 
     def test_sets_first_run_done_flag(self, window, isolated_settings, monkeypatch):
         monkeypatch.setattr(window, "toast", _ToastSpy())
-        assert QSettings(isolated_settings, QSettings.IniFormat).value(
-            "ui/first_run_done", False, type=bool) is False
+        assert (
+            QSettings(isolated_settings, QSettings.IniFormat).value(
+                "ui/first_run_done", False, type=bool
+            )
+            is False
+        )
         window._maybe_show_first_run_welcome()
-        assert QSettings(isolated_settings, QSettings.IniFormat).value(
-            "ui/first_run_done", False, type=bool) is True
+        assert (
+            QSettings(isolated_settings, QSettings.IniFormat).value(
+                "ui/first_run_done", False, type=bool
+            )
+            is True
+        )
 
     def test_preexisting_flag_suppresses_welcome(self, window, isolated_settings, monkeypatch):
         # Pre-mark first run done -> the welcome must not show at all.
-        QSettings(isolated_settings, QSettings.IniFormat).setValue(
-            "ui/first_run_done", True)
+        QSettings(isolated_settings, QSettings.IniFormat).setValue("ui/first_run_done", True)
         spy = _ToastSpy()
         monkeypatch.setattr(window, "toast", spy)
         window._maybe_show_first_run_welcome()
@@ -118,8 +126,12 @@ class TestFirstRunWelcome:
         # the welcome does not retry on every launch.
         monkeypatch.delattr(window, "toast", raising=False)
         window._maybe_show_first_run_welcome()  # must not raise
-        assert QSettings(isolated_settings, QSettings.IniFormat).value(
-            "ui/first_run_done", False, type=bool) is True
+        assert (
+            QSettings(isolated_settings, QSettings.IniFormat).value(
+                "ui/first_run_done", False, type=bool
+            )
+            is True
+        )
 
     def test_never_calls_exec(self, window, isolated_settings, monkeypatch):
         # Guard against accidental modality: the welcome path must not invoke any

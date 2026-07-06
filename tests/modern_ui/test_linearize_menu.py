@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QMenu
 @pytest.mark.unit
 def test_analysis_menu_and_method_wired(qapp, monkeypatch):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     try:
         assert hasattr(w, "linearize_and_analyze")
@@ -31,9 +32,9 @@ def test_analysis_menu_and_method_wired(qapp, monkeypatch):
 
         # Empty diagram: both features show an info box (monkeypatched), no crash.
         import PyQt5.QtWidgets as qtw
+
         calls = []
-        monkeypatch.setattr(qtw.QMessageBox, "information",
-                            lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(qtw.QMessageBox, "information", lambda *a, **k: calls.append(a))
         w.dsim.blocks_list = []
         w.linearize_and_analyze()
         w.run_monte_carlo()

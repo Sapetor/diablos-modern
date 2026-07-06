@@ -53,6 +53,7 @@ class ZeroOrderHoldBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw staircase/ZOH icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         path.moveTo(0.1, 0.8)
         path.lineTo(0.3, 0.8)
@@ -66,28 +67,28 @@ class ZeroOrderHoldBlock(BaseBlock):
         """
         Zero-Order Hold: Samples input at specified rate and holds value.
         """
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
-        if params.get('_init_start_', True):
-            params['_init_start_'] = False
-            params['_next_sample_time_'] = 0.0
+        if params.get("_init_start_", True):
+            params["_init_start_"] = False
+            params["_next_sample_time_"] = 0.0
             # Initialize held value with initial input if available, else 0
-            params['_held_value_'] = get_vector(inputs, 0)
+            params["_held_value_"] = get_vector(inputs, 0)
 
         # Get current held value
-        held_val = np.atleast_1d(params.get('_held_value_', 0.0))
+        held_val = np.atleast_1d(params.get("_held_value_", 0.0))
 
         # Check if it's time to sample
-        sampling_time = params.get('sampling_time', 0.1)
-        if time >= params['_next_sample_time_'] - 1e-9:
+        sampling_time = params.get("sampling_time", 0.1)
+        if time >= params["_next_sample_time_"] - 1e-9:
             if not output_only:
                 # Update held value
-                params['_held_value_'] = get_vector(inputs, 0)
+                params["_held_value_"] = get_vector(inputs, 0)
 
                 # Schedule next sample
-                while params['_next_sample_time_'] <= time + 1e-9:
-                    params['_next_sample_time_'] += sampling_time
+                while params["_next_sample_time_"] <= time + 1e-9:
+                    params["_next_sample_time_"] += sampling_time
 
-            return {0: np.atleast_1d(params['_held_value_'])}
+            return {0: np.atleast_1d(params["_held_value_"])}
 
         return {0: held_val}

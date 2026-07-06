@@ -20,17 +20,17 @@ class TestVectorGainBlock:
 
     def test_positive_gain(self):
         """Test scaling with positive gain."""
-        params = {'gain': 2.0}
+        params = {"gain": 2.0}
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
 
         np.testing.assert_array_equal(result[0], [2.0, 4.0, 6.0])
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_negative_gain(self):
         """Test scaling with negative gain (for gradient descent)."""
-        params = {'gain': -0.1}
+        params = {"gain": -0.1}
         grad = np.array([6.0, 8.0])
 
         result = self.block.execute(0.0, {0: grad}, params)
@@ -39,7 +39,7 @@ class TestVectorGainBlock:
 
     def test_zero_gain(self):
         """Test scaling with zero gain."""
-        params = {'gain': 0.0}
+        params = {"gain": 0.0}
         x = np.array([1.0, 2.0, 3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -48,7 +48,7 @@ class TestVectorGainBlock:
 
     def test_fractional_gain(self):
         """Test scaling with fractional gain (learning rate)."""
-        params = {'gain': 0.01}
+        params = {"gain": 0.01}
         grad = np.array([100.0, 200.0])
 
         result = self.block.execute(0.0, {0: grad}, params)
@@ -57,7 +57,7 @@ class TestVectorGainBlock:
 
     def test_single_element(self):
         """Test with single element vector."""
-        params = {'gain': 5.0}
+        params = {"gain": 5.0}
         x = np.array([3.0])
 
         result = self.block.execute(0.0, {0: x}, params)
@@ -66,4 +66,4 @@ class TestVectorGainBlock:
 
     def test_default_gain(self):
         """Test default gain is 1.0 (identity)."""
-        assert self.block.params['gain']['default'] == 1.0
+        assert self.block.params["gain"]["default"] == 1.0

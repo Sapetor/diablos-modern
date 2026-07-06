@@ -25,16 +25,16 @@ from modern_ui.widgets.modern_canvas import ModernCanvas
 def _make_block(sid, x, y, w=100, h=80, name=None):
     """Create a real DBlock at the given position/size."""
     block = DBlock(
-        block_fn='TestBlock',
+        block_fn="TestBlock",
         sid=sid,
         coords=QRect(x, y, w, h),
-        color='#4CAF50',
+        color="#4CAF50",
         in_ports=1,
         out_ports=1,
         b_type=2,
-        io_edit='none',
-        fn_name='testblock',
-        params={'gain': 1.0},
+        io_edit="none",
+        fn_name="testblock",
+        params={"gain": 1.0},
         external=False,
         colors=None,
     )
@@ -60,6 +60,7 @@ def _add_block(canvas, block):
 # Drag tests
 # ---------------------------------------------------------------------------
 
+
 class TestDrag:
     def test_single_block_drag_moves_block(self, canvas):
         block = _add_block(canvas, _make_block(0, 100, 100))
@@ -81,14 +82,14 @@ class TestDrag:
         assert block.top == 130
 
     def test_multi_select_drag_preserves_relative_offsets(self, canvas):
-        b1 = _add_block(canvas, _make_block(0, 100, 100, name='b1'))
-        b2 = _add_block(canvas, _make_block(1, 300, 160, name='b2'))
+        b1 = _add_block(canvas, _make_block(0, 100, 100, name="b1"))
+        b2 = _add_block(canvas, _make_block(1, 300, 160, name="b2"))
         b1.selected = True
         b2.selected = True
 
         # Relative offset of b2 from b1 before drag.
         rel_x = b2.left - b1.left  # 200
-        rel_y = b2.top - b1.top    # 60
+        rel_y = b2.top - b1.top  # 60
 
         # Drag clicking on b1 at its corner.
         canvas.start_drag(b1, QPoint(100, 100))
@@ -141,12 +142,13 @@ class TestDrag:
 # Resize tests
 # ---------------------------------------------------------------------------
 
+
 class TestResize:
     def test_resize_bottom_right_grows_block(self, canvas):
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
         block.selected = True
 
-        canvas._start_resize(block, 'bottom_right', QPoint(200, 180))
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
         # Drag the bottom-right handle by (+40, +30).
         canvas._perform_resize(QPoint(240, 210))
 
@@ -160,7 +162,7 @@ class TestResize:
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
         block.selected = True
 
-        canvas._start_resize(block, 'left', QPoint(100, 140))
+        canvas._start_resize(block, "left", QPoint(100, 140))
         # Drag the left handle right by +20: left edge moves in, width shrinks.
         canvas._perform_resize(QPoint(120, 140))
 
@@ -172,6 +174,7 @@ class TestResize:
     def test_resize_enforces_minimum_size(self, canvas):
         try:
             from config.block_sizes import MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
+
             min_w, min_h = MIN_BLOCK_WIDTH, MIN_BLOCK_HEIGHT
         except ImportError:
             min_w, min_h = 50, 40
@@ -181,7 +184,7 @@ class TestResize:
         port_min_h = block.calculate_min_size()
         expected_min_h = max(min_h, port_min_h)
 
-        canvas._start_resize(block, 'bottom_right', QPoint(200, 180))
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
         # Drag far past the minimum (huge negative delta).
         canvas._perform_resize(QPoint(-500, -500))
 
@@ -193,7 +196,7 @@ class TestResize:
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
         block.selected = True
 
-        canvas._start_resize(block, 'bottom_right', QPoint(200, 180))
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
         canvas._perform_resize(QPoint(240, 210))  # +40,+30 -> significant
 
         before = len(canvas.history_manager.undo_stack)
@@ -209,7 +212,7 @@ class TestResize:
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
         block.selected = True
 
-        canvas._start_resize(block, 'bottom_right', QPoint(200, 180))
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
         canvas._perform_resize(QPoint(202, 181))  # +2,+1 -> sub-threshold
 
         before = len(canvas.history_manager.undo_stack)

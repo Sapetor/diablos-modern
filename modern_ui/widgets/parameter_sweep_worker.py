@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 class ParameterSweepWorker(QThread):
     """Run a parameter sweep off the UI thread, reporting progress."""
 
-    progress = pyqtSignal(int, int)   # done, total
-    finished = pyqtSignal(object)     # sweep-result dict
-    failed = pyqtSignal(str)          # error message
+    progress = pyqtSignal(int, int)  # done, total
+    finished = pyqtSignal(object)  # sweep-result dict
+    failed = pyqtSignal(str)  # error message
 
     def __init__(self, dsim, selection, parent=None):
         """

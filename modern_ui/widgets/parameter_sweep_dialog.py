@@ -19,8 +19,15 @@ import logging
 
 import numpy as np
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QGroupBox, QLabel,
-    QComboBox, QSpinBox, QDoubleSpinBox, QDialogButtonBox,
+    QDialog,
+    QVBoxLayout,
+    QFormLayout,
+    QGroupBox,
+    QLabel,
+    QComboBox,
+    QSpinBox,
+    QDoubleSpinBox,
+    QDialogButtonBox,
 )
 
 from modern_ui.themes.theme_manager import theme_manager
@@ -116,8 +123,7 @@ class ParameterSweepDialog(QDialog):
             warn.setWordWrap(True)
             layout.addWidget(warn)
 
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         self.button_box.button(QDialogButtonBox.Ok).setEnabled(bool(self._blocks))
@@ -151,8 +157,12 @@ class ParameterSweepDialog(QDialog):
         form.addRow("Points:", points_spin)
 
         ax = {
-            "group": group, "block": block_combo, "param": param_combo,
-            "min": min_spin, "max": max_spin, "points": points_spin,
+            "group": group,
+            "block": block_combo,
+            "param": param_combo,
+            "min": min_spin,
+            "max": max_spin,
+            "points": points_spin,
         }
         block_combo.currentTextChanged.connect(lambda _t, a=ax: self._on_block_changed(a))
         param_combo.currentTextChanged.connect(lambda _t, a=ax: self._on_param_changed(a))

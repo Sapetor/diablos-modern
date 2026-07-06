@@ -34,7 +34,7 @@ def _count_curve_segments(path: QPainterPath) -> int:
 
 
 def _make_line(sid: int, start: QPoint, finish: QPoint) -> DLine:
-    return DLine(sid, 'src', 0, 'dst', 0, [start, finish])
+    return DLine(sid, "src", 0, "dst", 0, [start, finish])
 
 
 def test_default_routing_mode_is_bezier():

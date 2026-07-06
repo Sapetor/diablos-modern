@@ -43,16 +43,16 @@ def canvas(qapp):
 def _make_block(sid, x, y, w=100, h=80):
     """Create a real DBlock so the canvas is no longer empty."""
     return DBlock(
-        block_fn='TestBlock',
+        block_fn="TestBlock",
         sid=sid,
         coords=QRect(x, y, w, h),
-        color='#4CAF50',
+        color="#4CAF50",
         in_ports=1,
         out_ports=1,
         b_type=2,
-        io_edit='none',
-        fn_name='testblock',
-        params={'gain': 1.0},
+        io_edit="none",
+        fn_name="testblock",
+        params={"gain": 1.0},
         external=False,
         colors=None,
     )
@@ -61,6 +61,7 @@ def _make_block(sid, x, y, w=100, h=80):
 # ---------------------------------------------------------------------------
 # Helper (pure) tests
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyHintLines:
     def test_returns_expected_guidance_lines(self):
@@ -84,6 +85,7 @@ class TestEmptyHintLines:
 # ---------------------------------------------------------------------------
 # Paint smoke tests
 # ---------------------------------------------------------------------------
+
 
 class TestEmptyHintPainting:
     def _draw_hint_on_pixmap(self, canvas):

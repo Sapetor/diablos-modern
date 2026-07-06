@@ -24,11 +24,7 @@ from typing import Union, Optional, Dict, Any, Tuple
 logger = logging.getLogger(__name__)
 
 
-def get_scalar(
-    inputs: Dict[int, Any],
-    port: int,
-    default: float = 0.0
-) -> float:
+def get_scalar(inputs: Dict[int, Any], port: int, default: float = 0.0) -> float:
     """
     Extract a scalar value from inputs.
 
@@ -58,10 +54,7 @@ def get_scalar(
 
 
 def get_vector(
-    inputs: Dict[int, Any],
-    port: int,
-    default: float = 0.0,
-    expected_dim: Optional[int] = None
+    inputs: Dict[int, Any], port: int, default: float = 0.0, expected_dim: Optional[int] = None
 ) -> np.ndarray:
     """
     Extract a vector (1D array) from inputs.
@@ -107,10 +100,7 @@ def get_vector(
 
 
 def get_array_or_scalar(
-    inputs: Dict[int, Any],
-    port: int,
-    shape: Optional[Tuple[int, ...]] = None,
-    default: float = 0.0
+    inputs: Dict[int, Any], port: int, shape: Optional[Tuple[int, ...]] = None, default: float = 0.0
 ) -> Union[float, np.ndarray]:
     """
     Extract a value that could be scalar or array.
@@ -155,9 +145,7 @@ def get_array_or_scalar(
 
 
 def normalize_to_shape(
-    value: Any,
-    target_shape: Tuple[int, ...],
-    default: float = 0.0
+    value: Any, target_shape: Tuple[int, ...], default: float = 0.0
 ) -> np.ndarray:
     """
     Normalize any value to a specific array shape.
@@ -188,7 +176,9 @@ def normalize_to_shape(
     try:
         return np.broadcast_to(arr, target_shape).copy()
     except ValueError:
-        logger.debug("Could not broadcast array to target shape; trying interpolation", exc_info=True)
+        logger.debug(
+            "Could not broadcast array to target shape; trying interpolation", exc_info=True
+        )
 
     # Flatten and interpolate for 1D target
     if len(target_shape) == 1:
@@ -221,11 +211,7 @@ class InitStateManager:
             # Rest of execute...
     """
 
-    def __init__(
-        self,
-        params: Dict[str, Any],
-        flag_name: str = "_init_start_"
-    ):
+    def __init__(self, params: Dict[str, Any], flag_name: str = "_init_start_"):
         """
         Initialize the state manager.
 
@@ -262,11 +248,7 @@ class InitStateManager:
         self._params[self._flag_name] = True
 
 
-def ensure_array_size(
-    arr: np.ndarray,
-    target_size: int,
-    default: float = 0.0
-) -> np.ndarray:
+def ensure_array_size(arr: np.ndarray, target_size: int, default: float = 0.0) -> np.ndarray:
     """
     Ensure a 1D array has the target size.
 
@@ -323,7 +305,7 @@ def clip_to_limits(
     value: Union[float, np.ndarray],
     params: Dict[str, Any],
     min_key: str = "min",
-    max_key: str = "max"
+    max_key: str = "max",
 ) -> Union[float, np.ndarray]:
     """
     Clip a value to min/max limits from params.

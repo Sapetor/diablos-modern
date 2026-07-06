@@ -1,4 +1,3 @@
-
 import numpy as np
 from scipy import signal
 
@@ -11,7 +10,7 @@ print(f"System: Num={num}, Den={den}, dt={dt}")
 sys = signal.TransferFunction(num, den, dt=dt)
 
 # Calculate Bode at specific freq points
-w_targets = [0.001, np.pi/2, np.pi] # approx DC, Half-band, Nyquist
+w_targets = [0.001, np.pi / 2, np.pi]  # approx DC, Half-band, Nyquist
 w_out, mag_out, phase_out = sys.bode(w=w_targets)
 
 print("\n--- Scipy Bode Results ---")
@@ -28,7 +27,7 @@ for i in range(len(w_targets)):
 # Mag = 20 log10(0.666) approx -3.52 dB
 
 print("\n--- Manual Check (Nyquist) ---")
-mag_nyq_calc = 20 * np.log10(2/3)
+mag_nyq_calc = 20 * np.log10(2 / 3)
 print(f"Manual Mag at Nyquist: {mag_nyq_calc:.4f} dB")
 
 print("\n--- Manual Check (w=0.001 approx DC) ---")

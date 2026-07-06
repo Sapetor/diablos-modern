@@ -35,15 +35,14 @@ class TestBodeMargins:
         m = BaseAnalyzer._compute_stability_margins(w, mag, phase)
 
         # Phase margin is finite and positive (system is stable, ~90 deg here).
-        assert np.isfinite(m['phase_margin_deg'])
-        assert m['phase_margin_deg'] == pytest.approx(90.0, abs=2.0)
+        assert np.isfinite(m["phase_margin_deg"])
+        assert m["phase_margin_deg"] == pytest.approx(90.0, abs=2.0)
         # The 0 dB gain crossover sits at the natural frequency (~1 rad/s).
-        assert m['phase_crossover_w'] is not None
-        assert m['phase_crossover_w'] == pytest.approx(1.0, abs=0.05)
+        assert m["phase_crossover_w"] is not None
+        assert m["phase_crossover_w"] == pytest.approx(1.0, abs=0.05)
 
         # All margin keys are present.
-        for key in ('gain_margin_db', 'gain_crossover_w',
-                    'phase_margin_deg', 'phase_crossover_w'):
+        for key in ("gain_margin_db", "gain_crossover_w", "phase_margin_deg", "phase_crossover_w"):
             assert key in m
 
     def test_finite_gain_and_phase_margin(self):
@@ -56,14 +55,14 @@ class TestBodeMargins:
         w, mag, phase = sys.bode(w=w)
         m = BaseAnalyzer._compute_stability_margins(w, mag, phase)
 
-        assert np.isfinite(m['gain_margin_db'])
-        assert m['gain_margin_db'] == pytest.approx(15.56, abs=0.5)
+        assert np.isfinite(m["gain_margin_db"])
+        assert m["gain_margin_db"] == pytest.approx(15.56, abs=0.5)
         # -180 deg crossing occurs at w = sqrt(2) rad/s for this system.
-        assert m['gain_crossover_w'] == pytest.approx(np.sqrt(2.0), abs=0.05)
+        assert m["gain_crossover_w"] == pytest.approx(np.sqrt(2.0), abs=0.05)
 
-        assert np.isfinite(m['phase_margin_deg'])
-        assert m['phase_margin_deg'] == pytest.approx(53.4, abs=1.0)
-        assert m['phase_crossover_w'] is not None
+        assert np.isfinite(m["phase_margin_deg"])
+        assert m["phase_margin_deg"] == pytest.approx(53.4, abs=1.0)
+        assert m["phase_crossover_w"] is not None
 
     def test_auto_range_uses_pole_zero_magnitudes(self):
         """Fast and slow dynamics: 1/((s+0.1)(s+1000))."""
@@ -95,10 +94,10 @@ class TestBodeMargins:
     def test_margins_no_crossing_returns_inf(self):
         """A flat, sub-0 dB, low-phase response has no crossings -> inf margins."""
         w = np.logspace(-2, 2, 100)
-        mag = np.full_like(w, -10.0)   # always below 0 dB
+        mag = np.full_like(w, -10.0)  # always below 0 dB
         phase = np.full_like(w, -30.0)  # never reaches -180
         m = BaseAnalyzer._compute_stability_margins(w, mag, phase)
-        assert m['gain_margin_db'] == float('inf')
-        assert m['gain_crossover_w'] is None
-        assert m['phase_margin_deg'] == float('inf')
-        assert m['phase_crossover_w'] is None
+        assert m["gain_margin_db"] == float("inf")
+        assert m["gain_crossover_w"] is None
+        assert m["phase_margin_deg"] == float("inf")
+        assert m["phase_crossover_w"] is None

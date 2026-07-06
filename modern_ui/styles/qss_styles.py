@@ -517,37 +517,37 @@ def _build_qpalette() -> QPalette:
     dark mode shows dark text on dark backgrounds on Windows/Linux.
     """
     theme = theme_manager.get_current_theme()
-    text       = QColor(theme['text_primary'])
-    text_dim   = QColor(theme['text_secondary'])
-    text_off   = QColor(theme['text_disabled'])
-    window_bg  = QColor(theme['background_primary'])
-    panel_bg   = QColor(theme['background_secondary'])
-    surface    = QColor(theme['surface'])
-    accent     = QColor(theme['accent_primary'])
-    error      = QColor(theme['error'])
-    white      = QColor('#FFFFFF')
+    text = QColor(theme["text_primary"])
+    text_dim = QColor(theme["text_secondary"])
+    text_off = QColor(theme["text_disabled"])
+    window_bg = QColor(theme["background_primary"])
+    panel_bg = QColor(theme["background_secondary"])
+    surface = QColor(theme["surface"])
+    accent = QColor(theme["accent_primary"])
+    error = QColor(theme["error"])
+    white = QColor("#FFFFFF")
 
     p = QPalette()
-    p.setColor(QPalette.Window,          window_bg)
-    p.setColor(QPalette.WindowText,      text)
-    p.setColor(QPalette.Base,            surface)
-    p.setColor(QPalette.AlternateBase,   panel_bg)
-    p.setColor(QPalette.Text,            text)
+    p.setColor(QPalette.Window, window_bg)
+    p.setColor(QPalette.WindowText, text)
+    p.setColor(QPalette.Base, surface)
+    p.setColor(QPalette.AlternateBase, panel_bg)
+    p.setColor(QPalette.Text, text)
     p.setColor(QPalette.PlaceholderText, text_dim)
-    p.setColor(QPalette.Button,          panel_bg)
-    p.setColor(QPalette.ButtonText,      text)
-    p.setColor(QPalette.BrightText,      error)
-    p.setColor(QPalette.ToolTipBase,     surface)
-    p.setColor(QPalette.ToolTipText,     text)
-    p.setColor(QPalette.Highlight,       accent)
+    p.setColor(QPalette.Button, panel_bg)
+    p.setColor(QPalette.ButtonText, text)
+    p.setColor(QPalette.BrightText, error)
+    p.setColor(QPalette.ToolTipBase, surface)
+    p.setColor(QPalette.ToolTipText, text)
+    p.setColor(QPalette.Highlight, accent)
     p.setColor(QPalette.HighlightedText, white)
-    p.setColor(QPalette.Link,            accent)
-    p.setColor(QPalette.LinkVisited,     accent)
+    p.setColor(QPalette.Link, accent)
+    p.setColor(QPalette.LinkVisited, accent)
 
     p.setColor(QPalette.Disabled, QPalette.WindowText, text_off)
-    p.setColor(QPalette.Disabled, QPalette.Text,       text_off)
+    p.setColor(QPalette.Disabled, QPalette.Text, text_off)
     p.setColor(QPalette.Disabled, QPalette.ButtonText, text_off)
-    p.setColor(QPalette.Disabled, QPalette.Highlight,  panel_bg)
+    p.setColor(QPalette.Disabled, QPalette.Highlight, panel_bg)
     p.setColor(QPalette.Disabled, QPalette.HighlightedText, text_off)
     return p
 
@@ -566,8 +566,10 @@ def _maybe_use_fusion_style(app):
     """
     import sys
     from PyQt5.QtCore import QT_VERSION
-    if sys.platform == 'darwin' and QT_VERSION >= 0x050A00:  # 5.10.0
+
+    if sys.platform == "darwin" and QT_VERSION >= 0x050A00:  # 5.10.0
         from PyQt5.QtWidgets import QStyleFactory
+
         fusion = QStyleFactory.create("Fusion")
         if fusion is not None:
             app.setStyle(fusion)
@@ -597,6 +599,7 @@ def apply_modern_theme(app):
         # above. A top-level window that relies purely on inherited QSS and
         # does not self-subscribe will keep stale colors until reconstructed.
         from PyQt5.QtWidgets import QMainWindow
+
         for w in app.topLevelWidgets():
             try:
                 if isinstance(w, QMainWindow):

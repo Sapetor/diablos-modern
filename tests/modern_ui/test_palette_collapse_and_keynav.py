@@ -104,9 +104,7 @@ class TestCollapsibleCategory:
         cat = section.category_name
         section.toggle_collapsed()
 
-        stored = isolated_settings().value(
-            _collapsed_settings_key(cat), False, type=bool
-        )
+        stored = isolated_settings().value(_collapsed_settings_key(cat), False, type=bool)
         assert stored is True
 
     def test_collapsed_state_restored_across_rebuild(self, palette):
@@ -118,10 +116,7 @@ class TestCollapsibleCategory:
         # Rebuild the palette (drops + recreates every section).
         palette.refresh_blocks()
 
-        rebuilt = next(
-            s for s in palette.findChildren(_CategorySection)
-            if s.category_name == cat
-        )
+        rebuilt = next(s for s in palette.findChildren(_CategorySection) if s.category_name == cat)
         assert rebuilt.is_collapsed()
         assert all(not r.isVisible() for r in rebuilt.rows)
         assert rebuilt.header.text().startswith(_CHEVRON_COLLAPSED)

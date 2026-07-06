@@ -44,7 +44,7 @@ class PropertyController:
             # Try to convert to the expected type
             if target_type == bool:
                 if isinstance(new_value, str):
-                    return new_value.lower() == 'true'
+                    return new_value.lower() == "true"
                 return bool(new_value)
             elif target_type == list:
                 converted = ast.literal_eval(new_value)
@@ -72,21 +72,21 @@ class PropertyController:
             for block in canvas.dsim.blocks_list:
                 if block.name == block_name:
                     # Handle username change (special case - not in params)
-                    if prop_name == '_username_':
+                    if prop_name == "_username_":
                         canvas.dsim.dirty = True
                         canvas.update()
                         return
 
                     # Handle port count change from property editor
-                    if prop_name in ('_inputs_', '_outputs_'):
+                    if prop_name in ("_inputs_", "_outputs_"):
                         canvas._push_undo("Edit Ports")
-                        if prop_name == '_inputs_':
+                        if prop_name == "_inputs_":
                             block.in_ports = int(new_value)
                         else:
                             block.out_ports = int(new_value)
                         block.update_Block()
-                        block.params['_inputs_'] = block.in_ports
-                        block.params['_outputs_'] = block.out_ports
+                        block.params["_inputs_"] = block.in_ports
+                        block.params["_outputs_"] = block.out_ports
                         canvas.dsim.dirty = True
                         canvas.update()
                         return
@@ -97,12 +97,14 @@ class PropertyController:
                     # (property editor may have already converted it for accepts_array params)
                     if isinstance(new_value, (list, tuple)):
                         converted_value = list(new_value)
-                    elif hasattr(new_value, 'tolist'):  # numpy array
+                    elif hasattr(new_value, "tolist"):  # numpy array
                         converted_value = new_value
                     else:
                         converted_value = self.convert_param_value(new_value, param_type)
 
-                    logger.debug(f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})")
+                    logger.debug(
+                        f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})"
+                    )
                     block.update_params({prop_name: converted_value})
                     canvas.dsim.dirty = True
                     # For Goto/From blocks, refresh labels and virtual links immediately
@@ -120,6 +122,7 @@ class PropertyController:
         except Exception as e:
             logger.error(f"Error updating property: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     def add_to_tuning(self, block, param_name):

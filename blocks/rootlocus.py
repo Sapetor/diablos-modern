@@ -1,5 +1,6 @@
 from blocks.base_block import BaseBlock
 
+
 class RootLocusBlock(BaseBlock):
     def __init__(self):
         super().__init__()
@@ -43,24 +44,27 @@ class RootLocusBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
-        
+
         # Draw axes centered
         path.moveTo(0.5, 0.1)
         path.lineTo(0.5, 0.9)  # Imag axis
         path.moveTo(0.1, 0.5)
         path.lineTo(0.9, 0.5)  # Real axis
-        
+
         # Draw some "branches"
-        path.moveTo(0.3, 0.5) # Pole on left (stable)
-        path.quadTo(0.3, 0.3, 0.5, 0.2) # Branch going to zero/asymptote
-        
+        path.moveTo(0.3, 0.5)  # Pole on left (stable)
+        path.quadTo(0.3, 0.3, 0.5, 0.2)  # Branch going to zero/asymptote
+
         path.moveTo(0.3, 0.5)
-        path.quadTo(0.3, 0.7, 0.5, 0.8) # Mirror branch
-        
+        path.quadTo(0.3, 0.7, 0.5, 0.8)  # Mirror branch
+
         # Draw 'x' for a pole at 0.3, 0.5
-        path.moveTo(0.28, 0.48); path.lineTo(0.32, 0.52)
-        path.moveTo(0.32, 0.48); path.lineTo(0.28, 0.52)
+        path.moveTo(0.28, 0.48)
+        path.lineTo(0.32, 0.52)
+        path.moveTo(0.32, 0.48)
+        path.lineTo(0.28, 0.52)
 
         return path
 

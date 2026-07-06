@@ -33,11 +33,13 @@ def derive_seed(master_seed, run_index, tag):
     Reproducible from ``master_seed``; distinct per ``run_index`` and ``tag``.
     Avoids 0, which stochastic blocks treat as "entropy / non-reproducible".
     """
-    ss = np.random.SeedSequence([
-        int(master_seed) & 0x7FFFFFFF,
-        int(run_index) & 0x7FFFFFFF,
-        hash(str(tag)) & 0x7FFFFFFF,
-    ])
+    ss = np.random.SeedSequence(
+        [
+            int(master_seed) & 0x7FFFFFFF,
+            int(run_index) & 0x7FFFFFFF,
+            hash(str(tag)) & 0x7FFFFFFF,
+        ]
+    )
     s = int(ss.generate_state(1, dtype=np.uint32)[0])
     return s if s != 0 else 1
 
@@ -48,8 +50,16 @@ class MonteCarloRunner:
     def __init__(self, dsim):
         self.dsim = dsim
 
-    def run(self, n_runs, master_seed=12345, sim_time=None, sim_dt=None,
-            samplers=None, progress_cb=None, cancel_cb=None):
+    def run(
+        self,
+        n_runs,
+        master_seed=12345,
+        sim_time=None,
+        sim_dt=None,
+        samplers=None,
+        progress_cb=None,
+        cancel_cb=None,
+    ):
         """Run ``n_runs`` simulations and aggregate ensemble statistics.
 
         Args:
@@ -67,26 +77,29 @@ class MonteCarloRunner:
             An ensemble-result dict (see :meth:`_aggregate`).
         """
         dsim = self.dsim
-        sim_time = float(sim_time if sim_time is not None else getattr(dsim, 'sim_time', 1.0))
-        sim_dt = float(sim_dt if sim_dt is not None else getattr(dsim, 'sim_dt', 0.01))
+        sim_time = float(sim_time if sim_time is not None else getattr(dsim, "sim_time", 1.0))
+        sim_dt = float(sim_dt if sim_dt is not None else getattr(dsim, "sim_dt", 0.01))
         samplers = samplers or {}
 
         blocks_by_name = {b.name: b for b in dsim.blocks_list}
-        seed_blocks = [b for b in dsim.blocks_list
-                       if isinstance(getattr(b, 'params', None), dict) and 'seed' in b.params]
+        seed_blocks = [
+            b
+            for b in dsim.blocks_list
+            if isinstance(getattr(b, "params", None), dict) and "seed" in b.params
+        ]
 
         # Snapshot originals so we restore the diagram exactly (never mutate it).
         original = {}
         for b in seed_blocks:
-            original[(b.name, 'seed')] = b.params.get('seed')
-        for (bn, pn) in samplers:
+            original[(b.name, "seed")] = b.params.get("seed")
+        for bn, pn in samplers:
             b = blocks_by_name.get(bn)
             if b is not None:
                 original[(bn, pn)] = b.params.get(pn)
 
         def _set(block, name, value):
             block.params[name] = value
-            if getattr(block, 'exec_params', None):
+            if getattr(block, "exec_params", None):
                 block.exec_params[name] = value
 
         runs = []
@@ -97,15 +110,17 @@ class MonteCarloRunner:
                     break
                 # Per-run seed injection for every stochastic block.
                 for b in seed_blocks:
-                    _set(b, 'seed', derive_seed(master_seed, i, b.name))
+                    _set(b, "seed", derive_seed(master_seed, i, b.name))
                 # Per-run parameter samples (reproducible from the master seed).
                 if samplers:
-                    prng = np.random.default_rng(derive_seed(master_seed, i, '__params__'))
+                    prng = np.random.default_rng(derive_seed(master_seed, i, "__params__"))
                     for (bn, pn), spec in samplers.items():
                         b = blocks_by_name.get(bn)
                         if b is None:
                             continue
-                        val = spec(prng) if callable(spec) else float(prng.uniform(spec[0], spec[1]))
+                        val = (
+                            spec(prng) if callable(spec) else float(prng.uniform(spec[0], spec[1]))
+                        )
                         _set(b, pn, val)
 
                 ok, err = dsim.run_tuning_simulation(sim_time, sim_dt)
@@ -127,7 +142,7 @@ class MonteCarloRunner:
                     b.params[pn] = val
                 # Keep exec_params in sync with params (restore the original value
                 # rather than dropping the key) so the diagram is left untouched.
-                if getattr(b, 'exec_params', None) is not None:
+                if getattr(b, "exec_params", None) is not None:
                     if val is None:
                         b.exec_params.pop(pn, None)
                     else:
@@ -150,38 +165,38 @@ class MonteCarloRunner:
         :data:`OUTCOME_METRICS`). Signals are restricted to those present in
         every successful run and truncated to a common length so all series align.
         """
-        ok = [r for r in runs if r is not None and r['signals']]
-        result = {'n_runs': len(runs), 'n_ok': len(ok), 'timeline': None, 'signals': {}}
+        ok = [r for r in runs if r is not None and r["signals"]]
+        result = {"n_runs": len(runs), "n_ok": len(ok), "timeline": None, "signals": {}}
         if not ok:
             return result
 
-        names = set(ok[0]['signals'])
+        names = set(ok[0]["signals"])
         for r in ok[1:]:
-            names &= set(r['signals'])
+            names &= set(r["signals"])
         if not names:
             return result
 
-        lengths = [len(r['timeline']) for r in ok]
+        lengths = [len(r["timeline"]) for r in ok]
         for r in ok:
             for nm in names:
-                lengths.append(len(r['signals'][nm]))
+                lengths.append(len(r["signals"][nm]))
         L = min(lengths)
         if L == 0:
             return result
 
-        result['timeline'] = np.asarray(ok[0]['timeline'][:L], dtype=float)
+        result["timeline"] = np.asarray(ok[0]["timeline"][:L], dtype=float)
         for nm in sorted(names):
-            M = np.vstack([r['signals'][nm][:L] for r in ok])
-            result['signals'][nm] = {
-                'runs': M,
-                'mean': M.mean(axis=0),
-                'std': M.std(axis=0),
-                'p5': np.percentile(M, 5, axis=0),
-                'p50': np.percentile(M, 50, axis=0),
-                'p95': np.percentile(M, 95, axis=0),
-                'min': M.min(axis=0),
-                'max': M.max(axis=0),
+            M = np.vstack([r["signals"][nm][:L] for r in ok])
+            result["signals"][nm] = {
+                "runs": M,
+                "mean": M.mean(axis=0),
+                "std": M.std(axis=0),
+                "p5": np.percentile(M, 5, axis=0),
+                "p50": np.percentile(M, 50, axis=0),
+                "p95": np.percentile(M, 95, axis=0),
+                "min": M.min(axis=0),
+                "max": M.max(axis=0),
                 # Per-run scalar outcomes: {metric_name: length-n_ok vector}.
-                'metrics': {k: fn(M) for k, fn in OUTCOME_METRICS.items()},
+                "metrics": {k: fn(M) for k, fn in OUTCOME_METRICS.items()},
             }
         return result

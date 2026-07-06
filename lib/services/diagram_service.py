@@ -1,4 +1,3 @@
-
 import json
 import logging
 import os
@@ -20,7 +19,7 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
     # is unreliable when DontUseNativeDialog is toggled afterward — on some
     # Qt5/macOS builds the first filter group is dropped or not selected,
     # which makes saved diagrams (*.diablos) look invisible in the dialog.
-    name_filters = [f.strip() for f in filters.split(';;') if f.strip()]
+    name_filters = [f.strip() for f in filters.split(";;") if f.strip()]
     if name_filters:
         dialog.setNameFilters(name_filters)
         dialog.selectNameFilter(name_filters[0])
@@ -30,8 +29,8 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
         dialog.setFileMode(QFileDialog.AnyFile)
         # Default-suffix the first wildcard in the first filter so users
         # who type "myfile" still get the right extension.
-        first = name_filters[0] if name_filters else ''
-        m = re.search(r'\*\.([A-Za-z0-9]+)', first)
+        first = name_filters[0] if name_filters else ""
+        m = re.search(r"\*\.([A-Za-z0-9]+)", first)
         if m:
             dialog.setDefaultSuffix(m.group(1))
     else:
@@ -44,6 +43,7 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
     # Theme-aware styling — replaces hardcoded light-mode colors so the
     # dialog reads correctly in dark mode too.
     from modern_ui.themes.theme_manager import theme_manager
+
     qss = """
         QFileDialog {
             background-color: @background_secondary;
@@ -149,12 +149,14 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
             border-bottom: 1px solid @border_primary;
         }
     """
-    for var, color in sorted(theme_manager.get_qss_variables().items(),
-                             key=lambda x: len(x[0]), reverse=True):
+    for var, color in sorted(
+        theme_manager.get_qss_variables().items(), key=lambda x: len(x[0]), reverse=True
+    ):
         qss = qss.replace(var, color)
     dialog.setStyleSheet(qss)
 
     return dialog
+
 
 class DiagramService:
     """
@@ -165,28 +167,29 @@ class DiagramService:
     def __init__(self, main_window):
         """
         Initialize with reference to main window to access dsim and UI elements.
-        
+
         Args:
             main_window: Reference to ModernDiaBloSWindow
         """
         self.main_window = main_window
         self.dsim = main_window.dsim
-        
+
         # Set default directory to 'examples' relative to current working directory
         # In frozen mode, use bundled examples or ~/Documents/DiaBloS
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             from lib.app_paths import resource_path
-            self.last_directory = resource_path('examples')
+
+            self.last_directory = resource_path("examples")
             if not os.path.exists(self.last_directory):
-                self.last_directory = os.path.expanduser('~/Documents/DiaBloS')
+                self.last_directory = os.path.expanduser("~/Documents/DiaBloS")
                 os.makedirs(self.last_directory, exist_ok=True)
         else:
             project_root = os.getcwd()
-            self.last_directory = os.path.join(project_root, 'examples')
+            self.last_directory = os.path.join(project_root, "examples")
             if not os.path.exists(self.last_directory):
-                self.last_directory = os.path.join(project_root, 'saves')
+                self.last_directory = os.path.join(project_root, "saves")
                 os.makedirs(self.last_directory, exist_ok=True)
-             
+
         self.current_file = None
 
     def _report_error(self, title, message):
@@ -199,6 +202,7 @@ class DiagramService:
         """
         try:
             from PyQt5.QtWidgets import QWidget
+
             if isinstance(self.main_window, QWidget):
                 QMessageBox.critical(self.main_window, title, message)
         except Exception:
@@ -208,10 +212,10 @@ class DiagramService:
     def save_diagram(self, filename=None):
         """
         Save the current diagram to a file.
-        
+
         Args:
             filename (str, optional): Path to save to. If None, asks user.
-            
+
         Returns:
             bool: True if successful, False otherwise.
         """
@@ -222,7 +226,7 @@ class DiagramService:
                 "Save Diagram",
                 self.last_directory,
                 "DiaBloS Files (*.diablos);;All Files (*)",
-                save=True
+                save=True,
             )
             try:
                 if dialog.exec_() == QFileDialog.Accepted:
@@ -243,24 +247,26 @@ class DiagramService:
         try:
             # Gather state from engine
             diagram_data = self.dsim.serialize()
-            
+
             # Add UI-specific state
             ui_state = {
-                "theme": "dark", # simple default or fetch from theme manager
+                "theme": "dark",  # simple default or fetch from theme manager
                 "zoom_factor": self.main_window.canvas.zoom_factor,
                 # Store splitter sizes to restore layout
                 "main_splitter_sizes": self.main_window.main_splitter.sizes(),
-                "center_splitter_sizes": self.main_window.center_splitter.sizes() if hasattr(self.main_window, 'center_splitter') else []
+                "center_splitter_sizes": self.main_window.center_splitter.sizes()
+                if hasattr(self.main_window, "center_splitter")
+                else [],
             }
             diagram_data["ui_state"] = ui_state
 
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(diagram_data, f, indent=4)
-            
+
             logger.info(f"Diagram saved to {filename}")
             self.current_file = filename
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save diagram: {e}")
             self._report_error("Save Error", f"Could not save diagram:\n{str(e)}")
@@ -276,7 +282,9 @@ class DiagramService:
         Returns:
             dict: Loaded data if successful, None otherwise.
         """
-        logger.info(f"load_diagram called, filename={filename}, last_directory={self.last_directory}")
+        logger.info(
+            f"load_diagram called, filename={filename}, last_directory={self.last_directory}"
+        )
         if not filename:
             logger.info("Opening file dialog...")
             # Use styled Qt dialog (fixes macOS native dialog click issues)
@@ -285,7 +293,7 @@ class DiagramService:
                 "Open Diagram",
                 self.last_directory,
                 "DiaBloS Files (*.diablos *.dbs *.json *.dat);;All Files (*)",
-                save=False
+                save=False,
             )
             try:
                 if dialog.exec_() == QFileDialog.Accepted:
@@ -305,20 +313,20 @@ class DiagramService:
         self.last_directory = os.path.dirname(filename)
 
         try:
-            with open(filename, 'r', encoding='utf-8') as f:
+            with open(filename, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             # Clear current diagram
             # self.dsim.new_diagram() # Engine should handle this?
             # For now, let's assume dsim.load() handles clearing or we need manual clear
-            
+
             self.dsim.deserialize(data)
-            
+
             # Restore UI state if present
             ui_state = data.get("ui_state", {})
             if "zoom_factor" in ui_state:
                 self.main_window.set_zoom(ui_state["zoom_factor"])
-            
+
             if "main_splitter_sizes" in ui_state:
                 self.main_window.main_splitter.setSizes(ui_state["main_splitter_sizes"])
 

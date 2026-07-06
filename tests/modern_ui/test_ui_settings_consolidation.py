@@ -53,6 +53,7 @@ class TestSettingsConstants:
 class TestUiSettingsAccessor:
     def test_returns_qsettings(self):
         from PyQt5.QtCore import QSettings
+
         assert isinstance(ui_settings(), QSettings)
 
     def test_resolves_to_shared_org_app(self):
@@ -81,5 +82,6 @@ class TestUiSettingsAccessor:
     def test_helper_does_not_import_qt_at_module_top(self):
         """``lib.app_paths`` stays Qt-free at module scope (lazy import)."""
         import lib.app_paths as ap
+
         # The QSettings import lives inside ui_settings(), not at module top.
         assert not hasattr(ap, "QSettings")

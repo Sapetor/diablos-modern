@@ -5,6 +5,7 @@ getattr fallbacks for src_block/dst_block/src_port/dst_port -- attribute names
 DLine never defines (it uses srcblock/srcport/dstblock/dstport). This pins the
 label format against the real DLine attribute names after that simplification.
 """
+
 import pytest
 
 from modern_ui.managers.menu_manager import MenuManager
@@ -23,7 +24,7 @@ class _StubLine:
 @pytest.mark.qt
 def test_wire_label_uses_dline_attribute_names(qapp):
     mm = MenuManager(canvas=object())
-    label = mm._wire_label(_StubLine('gain0', 0, 'sum0', 1))
+    label = mm._wire_label(_StubLine("gain0", 0, "sum0", 1))
     assert label == "wire: gain0.out[0] → sum0.in[1]"
 
 

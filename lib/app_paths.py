@@ -22,7 +22,7 @@ SETTINGS_APP = "DiaBloS"
 
 def get_base_path() -> str:
     """Return the base path for resolving bundled resource files (read-only)."""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         return sys._MEIPASS
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -41,17 +41,17 @@ def get_user_data_dir() -> str:
       Linux:   ~/.local/share/DiaBloS/
     Development: project root (same as get_base_path).
     """
-    if not getattr(sys, 'frozen', False):
+    if not getattr(sys, "frozen", False):
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    if sys.platform == 'darwin':
-        base = os.path.expanduser('~/Library/Application Support')
-    elif sys.platform == 'win32':
-        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+    if sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support")
+    elif sys.platform == "win32":
+        base = os.environ.get("APPDATA", os.path.expanduser("~"))
     else:
-        base = os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
+        base = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
 
-    data_dir = os.path.join(base, 'DiaBloS')
+    data_dir = os.path.join(base, "DiaBloS")
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
@@ -73,4 +73,5 @@ def ui_settings():
     to keep this module free of a Qt import at module scope.
     """
     from PyQt5.QtCore import QSettings
+
     return QSettings(SETTINGS_ORG, SETTINGS_APP)

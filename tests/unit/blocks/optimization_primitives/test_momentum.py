@@ -20,26 +20,18 @@ class TestMomentumBlock:
 
     def test_first_step(self):
         """Test first momentum step (velocity starts at zero)."""
-        params = {
-            'alpha': 0.1,
-            'beta': 0.9,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta": 0.9, "_init_start_": True}
         grad = np.array([2.0, 4.0])
 
         result = self.block.execute(0.0, {0: grad}, params)
 
         # v = 0.9*0 - 0.1*[2,4] = [-0.2, -0.4]
         np.testing.assert_array_almost_equal(result[0], [-0.2, -0.4])
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_velocity_accumulation(self):
         """Test that velocity accumulates across iterations."""
-        params = {
-            'alpha': 0.1,
-            'beta': 0.9,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta": 0.9, "_init_start_": True}
         grad = np.array([2.0, 2.0])
 
         # First step: v = -0.1 * [2,2] = [-0.2, -0.2]
@@ -57,9 +49,9 @@ class TestMomentumBlock:
     def test_zero_momentum(self):
         """Test with zero momentum (beta=0) - should be like standard GD."""
         params = {
-            'alpha': 0.1,
-            'beta': 0.0,  # No momentum
-            '_init_start_': True
+            "alpha": 0.1,
+            "beta": 0.0,  # No momentum
+            "_init_start_": True,
         }
         grad = np.array([5.0, 10.0])
 
@@ -75,9 +67,9 @@ class TestMomentumBlock:
     def test_high_momentum(self):
         """Test with high momentum coefficient."""
         params = {
-            'alpha': 0.01,
-            'beta': 0.99,  # High momentum
-            '_init_start_': True
+            "alpha": 0.01,
+            "beta": 0.99,  # High momentum
+            "_init_start_": True,
         }
         grad = np.array([1.0, 1.0])
 
@@ -92,16 +84,12 @@ class TestMomentumBlock:
 
     def test_default_parameters(self):
         """Test default parameters."""
-        assert self.block.params['alpha']['default'] == 0.01
-        assert self.block.params['beta']['default'] == 0.9
+        assert self.block.params["alpha"]["default"] == 0.01
+        assert self.block.params["beta"]["default"] == 0.9
 
     def test_zero_gradient(self):
         """Test with zero gradient."""
-        params = {
-            'alpha': 0.1,
-            'beta': 0.9,
-            '_init_start_': True
-        }
+        params = {"alpha": 0.1, "beta": 0.9, "_init_start_": True}
         grad = np.array([0.0, 0.0])
 
         result = self.block.execute(0.0, {0: grad}, params)

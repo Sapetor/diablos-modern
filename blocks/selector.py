@@ -55,9 +55,9 @@ class SelectorBlock(BaseBlock):
     def params(self):
         return {
             "indices": {
-                "type": "string", 
-                "default": "0", 
-                "doc": "Comma-separated indices to select (0-based). E.g., '0,2,4' or '1:3' for range."
+                "type": "string",
+                "default": "0",
+                "doc": "Comma-separated indices to select (0-based). E.g., '0,2,4' or '1:3' for range.",
             },
         }
 
@@ -72,6 +72,7 @@ class SelectorBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw selector icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Vector box on left
         path.moveTo(0.15, 0.3)
@@ -80,13 +81,18 @@ class SelectorBlock(BaseBlock):
         path.lineTo(0.35, 0.3)
         path.lineTo(0.15, 0.3)
         # Lines inside (vector elements)
-        path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4)
-        path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5)
-        path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
+        path.moveTo(0.17, 0.4)
+        path.lineTo(0.33, 0.4)
+        path.moveTo(0.17, 0.5)
+        path.lineTo(0.33, 0.5)
+        path.moveTo(0.17, 0.6)
+        path.lineTo(0.33, 0.6)
         # Arrow to output
         path.moveTo(0.35, 0.5)
         path.lineTo(0.65, 0.5)
-        path.moveTo(0.60, 0.45); path.lineTo(0.65, 0.5); path.lineTo(0.60, 0.55)
+        path.moveTo(0.60, 0.45)
+        path.lineTo(0.65, 0.5)
+        path.lineTo(0.60, 0.55)
         # Output element box
         path.moveTo(0.70, 0.45)
         path.lineTo(0.85, 0.45)
@@ -104,27 +110,27 @@ class SelectorBlock(BaseBlock):
         try:
             # Parse indices
             indices = self._parse_indices(indices_str, len(u))
-            
+
             # Extract selected elements
             if len(indices) == 1:
                 y = np.array([u[indices[0]]])
             else:
                 y = u[indices]
-            
+
             return {0: y}
         except (IndexError, ValueError) as e:
-            return {'E': True, 'error': f"Selector error: {str(e)}"}
-    
+            return {"E": True, "error": f"Selector error: {str(e)}"}
+
     def _parse_indices(self, indices_str, max_len):
         """Parse index string into list of indices."""
         indices = []
-        
-        for part in indices_str.split(','):
+
+        for part in indices_str.split(","):
             part = part.strip()
-            
-            if ':' in part:
+
+            if ":" in part:
                 # Range notation (e.g., "1:3" means indices 1, 2)
-                parts = part.split(':')
+                parts = part.split(":")
                 start = int(parts[0]) if parts[0] else 0
                 end = int(parts[1]) if parts[1] else max_len
                 # Normalize negative bounds like the single-index path
@@ -141,5 +147,5 @@ class SelectorBlock(BaseBlock):
                     idx = max_len + idx  # Support negative indices
                 if 0 <= idx < max_len:
                     indices.append(idx)
-        
+
         return indices if indices else [0]

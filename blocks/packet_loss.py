@@ -63,29 +63,55 @@ class PacketLossBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "loss_model": {"type": "choice", "default": "bernoulli",
-                           "options": ["bernoulli", "gilbert_elliott"],
-                           "doc": "Loss model: 'bernoulli' (i.i.d.) or "
-                                  "'gilbert_elliott' (bursty two-state Markov)."},
-            "loss_prob": {"type": "float", "default": 0.1,
-                          "doc": "Bernoulli / good-state drop probability (0..1)."},
-            "p_bg": {"type": "float", "default": 0.1,
-                     "doc": "Gilbert-Elliott good->bad transition probability."},
-            "p_gb": {"type": "float", "default": 0.5,
-                     "doc": "Gilbert-Elliott bad->good transition probability."},
-            "loss_prob_bad": {"type": "float", "default": 0.9,
-                              "doc": "Gilbert-Elliott drop probability in the bad state."},
-            "sample_time": {"type": "float", "default": 0.0,
-                            "doc": "Channel sample period (s). 0 = every step (use dtime)."},
-            "seed": {"type": "int", "default": 0,
-                     "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible)."},
-            "drop_mode": {"type": "choice", "default": "hold",
-                          "options": ["hold", "zero", "nan"],
-                          "doc": "Output on a dropped packet: hold / zero / nan."},
-            "initial_value": {"type": "float", "default": 0.0,
-                              "doc": "Held value before the first delivered packet."},
-            "_init_start_": {"type": "bool", "default": True,
-                             "doc": "Internal init flag."},
+            "loss_model": {
+                "type": "choice",
+                "default": "bernoulli",
+                "options": ["bernoulli", "gilbert_elliott"],
+                "doc": "Loss model: 'bernoulli' (i.i.d.) or "
+                "'gilbert_elliott' (bursty two-state Markov).",
+            },
+            "loss_prob": {
+                "type": "float",
+                "default": 0.1,
+                "doc": "Bernoulli / good-state drop probability (0..1).",
+            },
+            "p_bg": {
+                "type": "float",
+                "default": 0.1,
+                "doc": "Gilbert-Elliott good->bad transition probability.",
+            },
+            "p_gb": {
+                "type": "float",
+                "default": 0.5,
+                "doc": "Gilbert-Elliott bad->good transition probability.",
+            },
+            "loss_prob_bad": {
+                "type": "float",
+                "default": 0.9,
+                "doc": "Gilbert-Elliott drop probability in the bad state.",
+            },
+            "sample_time": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Channel sample period (s). 0 = every step (use dtime).",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible).",
+            },
+            "drop_mode": {
+                "type": "choice",
+                "default": "hold",
+                "options": ["hold", "zero", "nan"],
+                "doc": "Output on a dropped packet: hold / zero / nan.",
+            },
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Held value before the first delivered packet.",
+            },
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
 
     @property
@@ -99,6 +125,7 @@ class PacketLossBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw a 'lossy pulse train' icon (one pulse missing) in 0-1 coords."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # pulse 1
         path.moveTo(0.10, 0.75)

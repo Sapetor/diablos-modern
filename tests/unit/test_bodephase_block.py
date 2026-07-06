@@ -24,23 +24,24 @@ class TestBodePhaseBlock:
 
     def test_execute_returns_empty(self):
         block = BodePhaseBlock()
-        params = {'_init_start_': True}
+        params = {"_init_start_": True}
         result = block.execute(0.0, {0: np.array([1.0])}, params)
         assert result == {}
 
     def test_execute_ignores_missing_input(self):
         block = BodePhaseBlock()
-        result = block.execute(1.0, {}, {'_init_start_': True})
+        result = block.execute(1.0, {}, {"_init_start_": True})
         assert result == {}
 
     def test_execute_stateless_across_calls(self):
         block = BodePhaseBlock()
-        params = {'_init_start_': True}
+        params = {"_init_start_": True}
         for t in (0.0, 0.1, 0.2):
             assert block.execute(t, {0: np.array([t])}, params) == {}
 
     def test_draw_icon_returns_path(self):
         from PyQt5.QtGui import QPainterPath
+
         block = BodePhaseBlock()
         path = block.draw_icon(None)
         assert isinstance(path, QPainterPath)

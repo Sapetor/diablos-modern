@@ -58,19 +58,15 @@ class FieldProbeBlock(BaseBlock):
             "position": {
                 "type": "float",
                 "default": 0.5,
-                "doc": "Probe position (absolute x or normalized 0-1)"
+                "doc": "Probe position (absolute x or normalized 0-1)",
             },
             "position_mode": {
                 "type": "string",
                 "default": "normalized",
                 "options": ["normalized", "absolute"],
-                "doc": "Position mode: 'absolute' or 'normalized'"
+                "doc": "Position mode: 'absolute' or 'normalized'",
             },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length for absolute mode"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length for absolute mode"},
         }
 
     @property
@@ -94,6 +90,7 @@ class FieldProbeBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw probe icon - crosshair on a curve."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw a curve
         path.moveTo(0.1, 0.7)
@@ -113,19 +110,19 @@ class FieldProbeBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
-            return {0: 0.0, 'E': False}
+            return {0: 0.0, "E": False}
 
         # Get position (use input if available, otherwise parameter)
         position = inputs.get(1, None)
         if position is None:
-            position = float(params.get('position', 0.5))
+            position = float(params.get("position", 0.5))
 
-        mode = params.get('position_mode', 'normalized')
-        L = float(params.get('L', 1.0))
+        mode = params.get("position_mode", "normalized")
+        L = float(params.get("L", 1.0))
         N = len(field)
 
         # Convert to normalized position [0, 1]
-        if mode == 'absolute':
+        if mode == "absolute":
             pos_norm = position / L
         else:
             pos_norm = position
@@ -141,7 +138,7 @@ class FieldProbeBlock(BaseBlock):
 
         value = field[idx_low] * (1 - frac) + field[idx_high] * frac
 
-        return {0: float(value), 'E': False}
+        return {0: float(value), "E": False}
 
 
 class FieldIntegralBlock(BaseBlock):
@@ -180,15 +177,11 @@ class FieldIntegralBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length [m]"},
             "normalize": {
                 "type": "bool",
                 "default": False,
-                "doc": "Normalize by domain length (gives average)"
+                "doc": "Normalize by domain length (gives average)",
             },
         }
 
@@ -207,6 +200,7 @@ class FieldIntegralBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw integral icon - integral symbol with curve."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw integral symbol
         path.moveTo(0.45, 0.15)
@@ -226,19 +220,19 @@ class FieldIntegralBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
-            return {0: 0.0, 'E': False}
+            return {0: 0.0, "E": False}
 
-        L = float(params.get('L', 1.0))
+        L = float(params.get("L", 1.0))
         N = len(field)
         dx = L / (N - 1) if N > 1 else L
 
         # Trapezoidal integration
         integral = trapezoid(field, dx=dx)
 
-        if params.get('normalize', False):
+        if params.get("normalize", False):
             integral = integral / L
 
-        return {0: float(integral), 'E': False}
+        return {0: float(integral), "E": False}
 
 
 class FieldMaxBlock(BaseBlock):
@@ -281,13 +275,9 @@ class FieldMaxBlock(BaseBlock):
                 "type": "string",
                 "default": "max",
                 "options": ["max", "min"],
-                "doc": "Mode: 'max' or 'min'"
+                "doc": "Mode: 'max' or 'min'",
             },
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length for location output"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length for location output"},
         }
 
     @property
@@ -312,6 +302,7 @@ class FieldMaxBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw max icon - curve with peak marker."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw a curve with a peak
         path.moveTo(0.1, 0.7)
@@ -331,13 +322,13 @@ class FieldMaxBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
-            return {0: 0.0, 1: 0.0, 2: 0, 'E': False}
+            return {0: 0.0, 1: 0.0, 2: 0, "E": False}
 
-        mode = params.get('mode', 'max')
-        L = float(params.get('L', 1.0))
+        mode = params.get("mode", "max")
+        L = float(params.get("L", 1.0))
         N = len(field)
 
-        if mode == 'min':
+        if mode == "min":
             idx = int(np.argmin(field))
             value = field[idx]
         else:
@@ -346,7 +337,7 @@ class FieldMaxBlock(BaseBlock):
 
         location = (idx / (N - 1)) * L if N > 1 else 0.0
 
-        return {0: float(value), 1: float(location), 2: idx, 'E': False}
+        return {0: float(value), 1: float(location), 2: idx, "E": False}
 
 
 class FieldScopeBlock(BaseBlock):
@@ -387,35 +378,23 @@ class FieldScopeBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
-            "colormap": {
-                "type": "string",
-                "default": "viridis",
-                "doc": "Matplotlib colormap name"
-            },
-            "title": {
-                "type": "string",
-                "default": "Field Evolution",
-                "doc": "Plot title"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length [m]"},
+            "colormap": {"type": "string", "default": "viridis", "doc": "Matplotlib colormap name"},
+            "title": {"type": "string", "default": "Field Evolution", "doc": "Plot title"},
             "display_mode": {
                 "type": "string",
                 "default": "heatmap",
-                "doc": "Display mode: 'heatmap' (space-time plot) or 'slider' (animated line plot with time slider)"
+                "doc": "Display mode: 'heatmap' (space-time plot) or 'slider' (animated line plot with time slider)",
             },
             "vec_labels": {
                 "type": "string",
                 "default": "field",
-                "doc": "Signal label for data export"
+                "doc": "Signal label for data export",
             },
             "_init_start_": {
                 "type": "bool",
                 "default": True,
-                "doc": "Internal: initialization flag"
+                "doc": "Internal: initialization flag",
             },
         }
 
@@ -437,6 +416,7 @@ class FieldScopeBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw field scope icon - 2D grid/heatmap."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw grid pattern representing heatmap
         # Outer rectangle
@@ -455,10 +435,10 @@ class FieldScopeBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         """Execute the field scope."""
         # Initialization
-        if params.get('_init_start_', True):
-            params['_field_history_'] = []
-            params['_time_history_'] = []
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_field_history_"] = []
+            params["_time_history_"] = []
+            params["_init_start_"] = False
 
         field = inputs.get(0, np.array([0.0]))
         field = np.atleast_1d(field).flatten()
@@ -467,10 +447,10 @@ class FieldScopeBlock(BaseBlock):
         # converted to a NumPy array lazily by the plotting path at simulation
         # end; rebuilding the full array every step is O(T^2 * N) and was unused
         # downstream (the plotting/replay paths read '_field_history_' directly).
-        params['_field_history_'].append(field.copy())
-        params['_time_history_'].append(time)
+        params["_field_history_"].append(field.copy())
+        params["_time_history_"].append(time)
 
-        return {'E': False}
+        return {"E": False}
 
 
 class FieldGradientBlock(BaseBlock):
@@ -508,11 +488,7 @@ class FieldGradientBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length [m]"},
         }
 
     @property
@@ -530,6 +506,7 @@ class FieldGradientBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw gradient icon - slope with nabla symbol."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw nabla (inverted triangle)
         path.moveTo(0.3, 0.2)
@@ -547,16 +524,16 @@ class FieldGradientBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         if len(field) < 2:
-            return {0: np.array([0.0]), 'E': False}
+            return {0: np.array([0.0]), "E": False}
 
-        L = float(params.get('L', 1.0))
+        L = float(params.get("L", 1.0))
         N = len(field)
         dx = L / (N - 1)
 
         # Central differences for interior, one-sided at boundaries
         gradient = np.gradient(field, dx)
 
-        return {0: gradient, 'E': False}
+        return {0: gradient, "E": False}
 
 
 class FieldLaplacianBlock(BaseBlock):
@@ -594,11 +571,7 @@ class FieldLaplacianBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "L": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length [m]"
-            },
+            "L": {"type": "float", "default": 1.0, "doc": "Domain length [m]"},
         }
 
     @property
@@ -616,6 +589,7 @@ class FieldLaplacianBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw Laplacian icon - nabla squared symbol."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw nabla squared (two inverted triangles)
         # First nabla
@@ -639,27 +613,29 @@ class FieldLaplacianBlock(BaseBlock):
         field = np.atleast_1d(field).flatten()
 
         if len(field) < 3:
-            return {0: np.zeros(len(field)), 'E': False}
+            return {0: np.zeros(len(field)), "E": False}
 
-        L = float(params.get('L', 1.0))
+        L = float(params.get("L", 1.0))
         N = len(field)
         dx = L / (N - 1)
         dx_sq = dx * dx
 
         # Central difference for second derivative
         laplacian = np.zeros(N)
-        for i in range(1, N-1):
-            laplacian[i] = (field[i+1] - 2*field[i] + field[i-1]) / dx_sq
+        for i in range(1, N - 1):
+            laplacian[i] = (field[i + 1] - 2 * field[i] + field[i - 1]) / dx_sq
 
         # Boundary values: use genuine one-sided 4-point second-derivative
         # stencils (second-order accurate) when enough nodes are available.
         if N >= 4:
-            laplacian[0] = (2*field[0] - 5*field[1] + 4*field[2] - field[3]) / dx_sq
-            laplacian[N-1] = (2*field[N-1] - 5*field[N-2] + 4*field[N-3] - field[N-4]) / dx_sq
+            laplacian[0] = (2 * field[0] - 5 * field[1] + 4 * field[2] - field[3]) / dx_sq
+            laplacian[N - 1] = (
+                2 * field[N - 1] - 5 * field[N - 2] + 4 * field[N - 3] - field[N - 4]
+            ) / dx_sq
         else:
             # N == 3: not enough nodes for a one-sided 4-point stencil, so the
             # endpoints reuse the single interior central second difference.
-            laplacian[0] = (field[2] - 2*field[1] + field[0]) / dx_sq
-            laplacian[N-1] = laplacian[0]
+            laplacian[0] = (field[2] - 2 * field[1] + field[0]) / dx_sq
+            laplacian[N - 1] = laplacian[0]
 
-        return {0: laplacian, 'E': False}
+        return {0: laplacian, "E": False}

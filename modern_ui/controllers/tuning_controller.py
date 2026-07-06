@@ -101,12 +101,13 @@ class TuningController(QObject):
         self._pending_changes.clear()
 
         import re
+
         blocks_list = self.dsim.blocks_list
         for (block_name, param_name), value in changes.items():
             for block in blocks_list:
                 if block.name == block_name:
                     # Handle indexed list params: "denominator[1]" -> update list element
-                    match = re.match(r'^(.+)\[(\d+)\]$', param_name)
+                    match = re.match(r"^(.+)\[(\d+)\]$", param_name)
                     if match:
                         base_name, idx = match.group(1), int(match.group(2))
                         base_val = block.params.get(base_name)
@@ -117,9 +118,11 @@ class TuningController(QObject):
                         else:
                             # Param changed type/length since slider creation;
                             # surface the skip so stale tuning isn't applied silently.
-                            msg = (f"Tuning: skipped '{block_name}.{param_name}' "
-                                   f"(param '{base_name}' is not an indexable "
-                                   f"list/array of sufficient length)")
+                            msg = (
+                                f"Tuning: skipped '{block_name}.{param_name}' "
+                                f"(param '{base_name}' is not an indexable "
+                                f"list/array of sufficient length)"
+                            )
                             logger.warning(msg)
                             self._set_status(msg)
                     else:
@@ -128,9 +131,7 @@ class TuningController(QObject):
 
         # 2. Run headless re-simulation
         self._set_status("Re-simulating...")
-        success, error_msg = self.dsim.run_tuning_simulation(
-            self._sim_time, self._sim_dt
-        )
+        success, error_msg = self.dsim.run_tuning_simulation(self._sim_time, self._sim_dt)
 
         if not success:
             self._set_status(f"Tuning re-sim failed: {error_msg}")
@@ -153,24 +154,24 @@ class TuningController(QObject):
         # Collect scope vectors (same logic as pyqtPlotScope)
         source_blocks = (
             self.dsim.engine.active_blocks_list
-            if hasattr(self.dsim, 'engine') and self.dsim.engine.active_blocks_list
+            if hasattr(self.dsim, "engine") and self.dsim.engine.active_blocks_list
             else self.dsim.blocks_list
         )
 
         flat_vectors = []
         for block in source_blocks:
-            if block.block_fn == 'Scope':
-                params = getattr(block, 'exec_params', block.params)
-                vec = params.get('vector', block.params.get('vector'))
+            if block.block_fn == "Scope":
+                params = getattr(block, "exec_params", block.params)
+                vec = params.get("vector", block.params.get("vector"))
                 if vec is None:
                     vec = []
                 arr = np.array(vec).astype(float)
 
                 # Handle multi-dimensional scope data
-                vec_dim = params.get('vec_dim', block.params.get('vec_dim', 1))
+                vec_dim = params.get("vec_dim", block.params.get("vec_dim", 1))
                 if arr.ndim == 1 and vec_dim > 1 and len(arr) >= vec_dim:
                     num_samples = len(arr) // vec_dim
-                    arr = arr[:num_samples * vec_dim].reshape(num_samples, vec_dim)
+                    arr = arr[: num_samples * vec_dim].reshape(num_samples, vec_dim)
 
                 if arr.ndim == 2 and arr.shape[1] > 1:
                     for col in range(arr.shape[1]):
@@ -182,10 +183,7 @@ class TuningController(QObject):
 
         if flat_vectors and self.dsim.timeline is not None:
             try:
-                plotty.loop(
-                    new_t=self.dsim.timeline.astype(float),
-                    new_y=flat_vectors
-                )
+                plotty.loop(new_t=self.dsim.timeline.astype(float), new_y=flat_vectors)
             except Exception as e:
                 logger.error(f"Error updating tuning plots: {e}")
                 # Fallback: recreate plot

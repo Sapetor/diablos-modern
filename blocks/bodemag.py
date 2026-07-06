@@ -1,5 +1,6 @@
 from blocks.base_block import BaseBlock
 
+
 class BodeMagBlock(BaseBlock):
     def __init__(self):
         super().__init__()

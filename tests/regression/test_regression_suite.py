@@ -23,7 +23,7 @@ class TestBlockNumericalRegression:
         from blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
-        params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'int'}
+        params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True, "_name_": "int"}
         dt = 0.01
 
         for i in range(100):
@@ -36,7 +36,7 @@ class TestBlockNumericalRegression:
         from blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
-        params = {'init_conds': 0.0, 'method': 'BWD_EULER', '_init_start_': True, '_name_': 'int'}
+        params = {"init_conds": 0.0, "method": "BWD_EULER", "_init_start_": True, "_name_": "int"}
         dt = 0.01
 
         for i in range(100):
@@ -49,7 +49,7 @@ class TestBlockNumericalRegression:
         from blocks.integrator import IntegratorBlock
 
         block = IntegratorBlock()
-        params = {'init_conds': 0.0, 'method': 'TUSTIN', '_init_start_': True, '_name_': 'int'}
+        params = {"init_conds": 0.0, "method": "TUSTIN", "_init_start_": True, "_name_": "int"}
         dt = 0.01
 
         for i in range(100):
@@ -62,7 +62,7 @@ class TestBlockNumericalRegression:
         from blocks.derivative import DerivativeBlock
 
         block = DerivativeBlock()
-        params = {'_init_start_': True}
+        params = {"_init_start_": True}
         dt = 0.001
 
         t = 1.0
@@ -82,20 +82,20 @@ class TestBlockNumericalRegression:
 
         block = StateSpaceBlock()
         params = {
-            'A': [[-1.0]],
-            'B': [[1.0]],
-            'C': [[1.0]],
-            'D': [[0.0]],
-            'init_conds': [0.0],
-            '_init_start_': True,
-            'dtime': 0.01
+            "A": [[-1.0]],
+            "B": [[1.0]],
+            "C": [[1.0]],
+            "D": [[0.0]],
+            "init_conds": [0.0],
+            "_init_start_": True,
+            "dtime": 0.01,
         }
 
         for i in range(500):
             result = block.execute(i * 0.01, {0: np.array([1.0])}, params)
 
         output = result.get(0, [0])
-        if hasattr(output, '__len__'):
+        if hasattr(output, "__len__"):
             output = output[0]
         assert output > 0.9, f"StateSpace should approach 1.0, got {output}"
 
@@ -105,17 +105,17 @@ class TestBlockNumericalRegression:
 
         block = TransferFunctionBlock()
         params = {
-            'numerator': [1.0],
-            'denominator': [1.0, 1.0],
-            '_init_start_': True,
-            'dtime': 0.01
+            "numerator": [1.0],
+            "denominator": [1.0, 1.0],
+            "_init_start_": True,
+            "dtime": 0.01,
         }
 
         for i in range(500):
             result = block.execute(i * 0.01, {0: np.array([1.0])}, params)
 
         output = result.get(0, [0])
-        if hasattr(output, '__len__'):
+        if hasattr(output, "__len__"):
             output = output[0]
         assert output > 0.9, f"TF should approach 1.0, got {output}"
 
@@ -124,7 +124,7 @@ class TestBlockNumericalRegression:
         from blocks.transport_delay import TransportDelayBlock
 
         block = TransportDelayBlock()
-        params = {'delay_time': 0.1, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}
         dt = 0.01
 
         # Send constant 5.0, before delay should be 0.0
@@ -143,9 +143,13 @@ class TestBlockNumericalRegression:
 
         block = PIDBlock()
         params = {
-            'Kp': 2.0, 'Ki': 0.0, 'Kd': 0.0,
-            'max_out': 100.0, 'min_out': -100.0,
-            '_init_start_': True, '_name_': 'pid'
+            "Kp": 2.0,
+            "Ki": 0.0,
+            "Kd": 0.0,
+            "max_out": 100.0,
+            "min_out": -100.0,
+            "_init_start_": True,
+            "_name_": "pid",
         }
 
         # PID takes 2 inputs: setpoint (0) and measurement (1)
@@ -159,7 +163,7 @@ class TestBlockNumericalRegression:
         from blocks.saturation import SaturationBlock
 
         block = SaturationBlock()
-        params = {'max': 5.0, 'min': -5.0}
+        params = {"max": 5.0, "min": -5.0}
 
         # Below range
         result = block.execute(0.0, {0: np.array([-10.0])}, params)
@@ -184,7 +188,7 @@ class TestBugFixRegression:
 
         block = StepBlock()
         # Minimal params - should not raise KeyError
-        params = {'value': 1.0, 'delay': 0.5}
+        params = {"value": 1.0, "delay": 0.5}
 
         try:
             result = block.execute(0.0, {}, params)
@@ -197,7 +201,7 @@ class TestBugFixRegression:
 
         block = ScopeBlock()
         # Minimal params
-        params = {'_init_start_': True, '_name_': 'test'}
+        params = {"_init_start_": True, "_name_": "test"}
 
         try:
             result = block.execute(0.0, {0: np.array([1.0])}, params)
@@ -209,19 +213,19 @@ class TestBugFixRegression:
         from blocks.external import ExternalBlock
 
         block = ExternalBlock()
-        params = {'filename': 'nonexistent.py'}
+        params = {"filename": "nonexistent.py"}
 
         result = block.execute(0.0, {0: np.array([1.0])}, params)
         assert result is not None, "External block should not return None"
-        assert result.get('E') is True, "External block should indicate error"
-        assert 'error' in result, "External block should have error message"
+        assert result.get("E") is True, "External block should indicate error"
+        assert "error" in result, "External block should have error message"
 
     def test_state_variable_optional_input(self):
         """StateVariable should have optional input for feedback loops."""
         from blocks.optimization_primitives.state_variable import StateVariableBlock
 
         block = StateVariableBlock()
-        assert hasattr(block, 'optional_inputs'), "StateVariable should have optional_inputs"
+        assert hasattr(block, "optional_inputs"), "StateVariable should have optional_inputs"
         assert 0 in block.optional_inputs, "Input 0 should be optional"
 
     def test_gain_handles_vector_input(self):
@@ -229,7 +233,7 @@ class TestBugFixRegression:
         from blocks.gain import GainBlock
 
         block = GainBlock()
-        params = {'gain': 2.0}
+        params = {"gain": 2.0}
 
         vec_input = np.array([1.0, 2.0, 3.0])
         result = block.execute(0.0, {0: vec_input}, params)
@@ -244,12 +248,12 @@ class TestBugFixRegression:
         block = SumBlock()
 
         # Two inputs
-        params = {'sign': '+-'}
+        params = {"sign": "+-"}
         result = block.execute(0.0, {0: 5.0, 1: 3.0}, params)
         assert np.isclose(result[0], 2.0), f"Expected 2.0, got {result[0]}"
 
         # Three inputs
-        params = {'sign': '++-'}
+        params = {"sign": "++-"}
         result = block.execute(0.0, {0: 10.0, 1: 5.0, 2: 3.0}, params)
         assert np.isclose(result[0], 12.0), f"Expected 12.0, got {result[0]}"
 
@@ -264,15 +268,15 @@ class TestPDEBlockRegression:
 
         block = HeatEquation1DBlock()
         params = {
-            'length': 1.0,
-            'nx': 50,
-            'alpha': 0.01,
-            'bc_type': 'neumann',
-            'left_bc_value': 0.0,
-            'right_bc_value': 0.0,
-            'initial_condition': 'sine',
-            '_init_start_': True,
-            'dtime': 0.001
+            "length": 1.0,
+            "nx": 50,
+            "alpha": 0.01,
+            "bc_type": "neumann",
+            "left_bc_value": 0.0,
+            "right_bc_value": 0.0,
+            "initial_condition": "sine",
+            "_init_start_": True,
+            "dtime": 0.001,
         }
 
         # Get initial state
@@ -286,8 +290,9 @@ class TestPDEBlockRegression:
         final_sum = np.sum(result[0])
 
         # Total "heat" should be approximately conserved with Neumann BCs
-        assert np.isclose(initial_sum, final_sum, rtol=0.1), \
+        assert np.isclose(initial_sum, final_sum, rtol=0.1), (
             f"Heat not conserved: initial={initial_sum}, final={final_sum}"
+        )
 
     def test_heat_2d_initialization(self):
         """Heat equation 2D should initialize with correct sinusoidal IC."""
@@ -295,16 +300,18 @@ class TestPDEBlockRegression:
 
         block = HeatEquation2DBlock()
         params = {
-            'Lx': 1.0, 'Ly': 1.0,  # Capital letters per block API
-            'Nx': 20, 'Ny': 20,
-            'alpha': 0.1,
-            'bc_type_left': 'Dirichlet',
-            'bc_type_right': 'Dirichlet',
-            'bc_type_bottom': 'Dirichlet',
-            'bc_type_top': 'Dirichlet',
-            'init_temp': 'sinusoidal',
-            'init_amplitude': 1.0,
-            '_init_start_': True,
+            "Lx": 1.0,
+            "Ly": 1.0,  # Capital letters per block API
+            "Nx": 20,
+            "Ny": 20,
+            "alpha": 0.1,
+            "bc_type_left": "Dirichlet",
+            "bc_type_right": "Dirichlet",
+            "bc_type_bottom": "Dirichlet",
+            "bc_type_top": "Dirichlet",
+            "init_temp": "sinusoidal",
+            "init_amplitude": 1.0,
+            "_init_start_": True,
         }
 
         # Get initial state
@@ -329,15 +336,17 @@ class TestPDEBlockRegression:
 
         block = HeatEquation2DBlock()
         params = {
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 20, 'Ny': 20,
-            'alpha': 0.1,
-            'bc_type_left': 'Dirichlet',
-            'bc_type_right': 'Dirichlet',
-            'bc_type_bottom': 'Dirichlet',
-            'bc_type_top': 'Dirichlet',
-            'init_temp': 'sinusoidal',
-            'init_amplitude': 1.0,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 20,
+            "Ny": 20,
+            "alpha": 0.1,
+            "bc_type_left": "Dirichlet",
+            "bc_type_right": "Dirichlet",
+            "bc_type_bottom": "Dirichlet",
+            "bc_type_top": "Dirichlet",
+            "init_temp": "sinusoidal",
+            "init_amplitude": 1.0,
         }
 
         # Get initial state
@@ -360,10 +369,7 @@ class TestOptimizationPrimitivesRegression:
         from blocks.optimization_primitives.objective_function import ObjectiveFunctionBlock
 
         block = ObjectiveFunctionBlock()
-        params = {
-            'expression': 'x1**2 + x2**2',
-            'n_variables': 2
-        }
+        params = {"expression": "x1**2 + x2**2", "n_variables": 2}
 
         result = block.execute(0.0, {0: np.array([3.0, 4.0])}, params)
         assert np.isclose(result[0], 25.0), f"Expected 25.0, got {result[0]}"
@@ -381,23 +387,18 @@ class TestOptimizationPrimitivesRegression:
 
         block = NumericalGradientBlock()
         eps = 1e-6
-        params = {
-            'dimension': 2,
-            'epsilon': eps,
-            'method': 'forward',
-            '_init_start_': True
-        }
+        params = {"dimension": 2, "epsilon": eps, "method": "forward", "_init_start_": True}
 
         # Compute function values externally (as block expects)
         x = np.array([3.0, 4.0])
-        f_center = x[0]**2 + x[1]**2  # 25.0
-        f_plus_0 = (x[0] + eps)**2 + x[1]**2  # 25 + 6*eps + eps^2
-        f_plus_1 = x[0]**2 + (x[1] + eps)**2  # 25 + 8*eps + eps^2
+        f_center = x[0] ** 2 + x[1] ** 2  # 25.0
+        f_plus_0 = (x[0] + eps) ** 2 + x[1] ** 2  # 25 + 6*eps + eps^2
+        f_plus_1 = x[0] ** 2 + (x[1] + eps) ** 2  # 25 + 8*eps + eps^2
 
         # Block expects: input 0 = f_center, input 1 = f_plus_0, input 2 = f_plus_1
         result = block.execute(0.0, {0: f_center, 1: f_plus_0, 2: f_plus_1}, params)
 
-        assert not result.get('E', False), f"Block returned error: {result.get('error')}"
+        assert not result.get("E", False), f"Block returned error: {result.get('error')}"
 
         expected = np.array([6.0, 8.0])  # gradient is [2*x1, 2*x2]
         assert np.allclose(result[0], expected, atol=0.01), f"Expected {expected}, got {result[0]}"
@@ -407,7 +408,7 @@ class TestOptimizationPrimitivesRegression:
         from blocks.optimization_primitives.vector_gain import VectorGainBlock
 
         block = VectorGainBlock()
-        params = {'gain': -0.1}
+        params = {"gain": -0.1}
 
         result = block.execute(0.0, {0: np.array([10.0, 20.0])}, params)
         expected = np.array([-1.0, -2.0])
@@ -419,7 +420,7 @@ class TestOptimizationPrimitivesRegression:
 
         block = VectorSumBlock()
         # VectorSum uses 'signs' (plural) not 'sign'
-        params = {'signs': '+-'}
+        params = {"signs": "+-"}
 
         x = np.array([5.0, 5.0])
         grad_step = np.array([0.5, 0.5])  # alpha * gradient
@@ -438,7 +439,7 @@ class TestSourceBlocksRegression:
         from blocks.sine import SineBlock
 
         block = SineBlock()
-        params = {'amplitude': 1.0, 'omega': 2*np.pi, 'init_angle': 0.0}
+        params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
 
         # At t=0.25 (quarter period), sin(pi/2) = 1
         result = block.execute(0.25, {}, params)
@@ -450,11 +451,11 @@ class TestSourceBlocksRegression:
 
         block = StepBlock()
         params = {
-            'value': 10.0,
-            'delay': 0.5,
-            'type': 'up',
-            'pulse_start_up': True,
-            '_init_start_': True
+            "value": 10.0,
+            "delay": 0.5,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
         }
 
         # Before delay
@@ -470,7 +471,7 @@ class TestSourceBlocksRegression:
         from blocks.ramp import RampBlock
 
         block = RampBlock()
-        params = {'slope': 5.0, 'delay': 0.0}
+        params = {"slope": 5.0, "delay": 0.0}
 
         result = block.execute(2.0, {}, params)
         assert np.isclose(result[0], 10.0), f"At t=2 with slope=5, expected 10.0, got {result[0]}"
@@ -480,12 +481,12 @@ class TestSourceBlocksRegression:
         from blocks.constant import ConstantBlock
 
         block = ConstantBlock()
-        params = {'value': [1.0, 2.0, 3.0]}
+        params = {"value": [1.0, 2.0, 3.0]}
 
         result = block.execute(0.0, {}, params)
         expected = np.array([1.0, 2.0, 3.0])
         assert np.allclose(result[0], expected), f"Expected {expected}, got {result[0]}"
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '-m', 'regression'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "-m", "regression"])

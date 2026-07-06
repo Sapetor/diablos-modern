@@ -1,5 +1,6 @@
 from blocks.base_block import BaseBlock
 
+
 class BodePhaseBlock(BaseBlock):
     def __init__(self):
         super().__init__()
@@ -40,13 +41,16 @@ class BodePhaseBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
-        
+
         # 1. Draw Axes (L-shape for plot)
-        path.moveTo(0.15, 0.15); path.lineTo(0.15, 0.85); path.lineTo(0.85, 0.85)
-        
+        path.moveTo(0.15, 0.15)
+        path.lineTo(0.15, 0.85)
+        path.lineTo(0.85, 0.85)
+
         # 2. Draw Phase Curve (High to Low transition)
-        path.moveTo(0.25, 0.25) # Start high freq/phase
-        path.cubicTo(0.45, 0.25, 0.55, 0.75, 0.75, 0.75) # S-curve transition
-        
+        path.moveTo(0.25, 0.25)  # Start high freq/phase
+        path.cubicTo(0.45, 0.25, 0.55, 0.75, 0.75, 0.75)  # S-curve transition
+
         return path

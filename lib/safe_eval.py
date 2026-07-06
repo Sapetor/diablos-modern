@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 
 try:
     import numpy as np
+
     _HAS_NUMPY = True
 except ImportError:
     _HAS_NUMPY = False
@@ -22,6 +23,7 @@ _logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Public exception
 # ---------------------------------------------------------------------------
+
 
 class SafeEvalError(ValueError):
     """Raised when safe_eval refuses to evaluate an expression."""
@@ -81,13 +83,18 @@ def _make_np_namespace() -> types.SimpleNamespace:
         def wrapper(shape, *rest):
             _guard_alloc(_shape_element_count(shape))
             return fn(shape, *rest)
+
         return wrapper
 
     def _bounded_eye(N, *rest):
         M = rest[0] if rest else N
         count = None
-        if (isinstance(N, (int, np.integer)) and not isinstance(N, bool)
-                and isinstance(M, (int, np.integer)) and not isinstance(M, bool)):
+        if (
+            isinstance(N, (int, np.integer))
+            and not isinstance(N, bool)
+            and isinstance(M, (int, np.integer))
+            and not isinstance(M, bool)
+        ):
             count = int(N) * int(M)
         _guard_alloc(count)
         return np.eye(N, *rest)
@@ -112,8 +119,7 @@ def _make_np_namespace() -> types.SimpleNamespace:
             else:
                 start = stop = step = None
             if step not in (None, 0) and all(
-                isinstance(v, (int, float, np.integer, np.floating))
-                for v in (start, stop, step)
+                isinstance(v, (int, float, np.integer, np.floating)) for v in (start, stop, step)
             ):
                 count = max(int(math.ceil((float(stop) - float(start)) / float(step))), 0)
         except (TypeError, ValueError, ZeroDivisionError, OverflowError):
@@ -136,38 +142,75 @@ def _make_np_namespace() -> types.SimpleNamespace:
         "inf": np.inf,
         "nan": np.nan,
         # Unary
-        "sin": np.sin, "cos": np.cos, "tan": np.tan,
-        "arcsin": np.arcsin, "arccos": np.arccos, "arctan": np.arctan,
-        "asin": np.arcsin, "acos": np.arccos, "atan": np.arctan,
-        "sinh": np.sinh, "cosh": np.cosh, "tanh": np.tanh,
-        "exp": np.exp, "expm1": np.expm1,
-        "log": np.log, "log2": np.log2, "log10": np.log10, "log1p": np.log1p,
-        "sqrt": np.sqrt, "square": np.square,
-        "abs": np.abs, "sign": np.sign,
-        "floor": np.floor, "ceil": np.ceil, "round": np.round,
+        "sin": np.sin,
+        "cos": np.cos,
+        "tan": np.tan,
+        "arcsin": np.arcsin,
+        "arccos": np.arccos,
+        "arctan": np.arctan,
+        "asin": np.arcsin,
+        "acos": np.arccos,
+        "atan": np.arctan,
+        "sinh": np.sinh,
+        "cosh": np.cosh,
+        "tanh": np.tanh,
+        "exp": np.exp,
+        "expm1": np.expm1,
+        "log": np.log,
+        "log2": np.log2,
+        "log10": np.log10,
+        "log1p": np.log1p,
+        "sqrt": np.sqrt,
+        "square": np.square,
+        "abs": np.abs,
+        "sign": np.sign,
+        "floor": np.floor,
+        "ceil": np.ceil,
+        "round": np.round,
         "trunc": np.trunc,
-        "real": np.real, "imag": np.imag, "conjugate": np.conjugate,
-        "isnan": np.isnan, "isfinite": np.isfinite, "isinf": np.isinf,
+        "real": np.real,
+        "imag": np.imag,
+        "conjugate": np.conjugate,
+        "isnan": np.isnan,
+        "isfinite": np.isfinite,
+        "isinf": np.isinf,
         # Binary / variadic
-        "arctan2": np.arctan2, "atan2": np.arctan2,
-        "power": np.power, "mod": np.mod, "fmod": np.fmod,
-        "minimum": np.minimum, "maximum": np.maximum,
-        "min": np.min, "max": np.max,
-        "sum": np.sum, "prod": np.prod, "mean": np.mean,
-        "std": np.std, "var": np.var,
-        "dot": np.dot, "cross": np.cross,
-        "where": np.where, "clip": np.clip, "hypot": np.hypot,
+        "arctan2": np.arctan2,
+        "atan2": np.arctan2,
+        "power": np.power,
+        "mod": np.mod,
+        "fmod": np.fmod,
+        "minimum": np.minimum,
+        "maximum": np.maximum,
+        "min": np.min,
+        "max": np.max,
+        "sum": np.sum,
+        "prod": np.prod,
+        "mean": np.mean,
+        "std": np.std,
+        "var": np.var,
+        "dot": np.dot,
+        "cross": np.cross,
+        "where": np.where,
+        "clip": np.clip,
+        "hypot": np.hypot,
         # Array constructors (allocating ones wrapped to cap element count)
-        "array": np.array, "asarray": np.asarray,
-        "atleast_1d": np.atleast_1d, "atleast_2d": np.atleast_2d,
+        "array": np.array,
+        "asarray": np.asarray,
+        "atleast_1d": np.atleast_1d,
+        "atleast_2d": np.atleast_2d,
         "zeros": _bounded_shape_ctor(np.zeros),
         "ones": _bounded_shape_ctor(np.ones),
         "eye": _bounded_eye,
         "identity": _bounded_identity,
         "full": _bounded_shape_ctor(np.full),
-        "linspace": _bounded_linspace, "arange": _bounded_arange,
-        "diag": np.diag, "vstack": np.vstack, "hstack": np.hstack,
-        "concatenate": np.concatenate, "reshape": np.reshape,
+        "linspace": _bounded_linspace,
+        "arange": _bounded_arange,
+        "diag": np.diag,
+        "vstack": np.vstack,
+        "hstack": np.hstack,
+        "concatenate": np.concatenate,
+        "reshape": np.reshape,
         "transpose": np.transpose,
     }
     return types.SimpleNamespace(**_np_names)
@@ -177,13 +220,37 @@ def _make_math_namespace() -> types.SimpleNamespace:
     """Build a frozen namespace with allowed math/numpy names for `math.` prefix."""
     m: Dict[str, Any] = {}
     _math_names = [
-        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
-        "sinh", "cosh", "tanh",
-        "exp", "expm1", "log", "log2", "log10", "log1p",
-        "sqrt", "floor", "ceil", "trunc", "fmod", "hypot",
-        "pi", "e", "inf", "nan",
-        "isnan", "isfinite", "isinf",
-        "pow", "fabs",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "sinh",
+        "cosh",
+        "tanh",
+        "exp",
+        "expm1",
+        "log",
+        "log2",
+        "log10",
+        "log1p",
+        "sqrt",
+        "floor",
+        "ceil",
+        "trunc",
+        "fmod",
+        "hypot",
+        "pi",
+        "e",
+        "inf",
+        "nan",
+        "isnan",
+        "isfinite",
+        "isinf",
+        "pow",
+        "fabs",
     ]
     for name in _math_names:
         if hasattr(math, name):
@@ -202,11 +269,23 @@ _MATH_ALLOWLIST = frozenset(vars(_MATH_NS).keys())
 
 # Always-bound builtins (present even when allow_numpy=False)
 _BUILTINS: Dict[str, Any] = {
-    "abs": abs, "min": min, "max": max, "sum": sum,
-    "len": len, "round": round,
-    "int": int, "float": float, "bool": bool, "complex": complex,
-    "list": list, "tuple": tuple, "dict": dict, "range": range,
-    "True": True, "False": False, "None": None,
+    "abs": abs,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "len": len,
+    "round": round,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "complex": complex,
+    "list": list,
+    "tuple": tuple,
+    "dict": dict,
+    "range": range,
+    "True": True,
+    "False": False,
+    "None": None,
 }
 
 
@@ -234,56 +313,78 @@ def _build_env(variables: Optional[Dict[str, Any]], allow_numpy: bool) -> Dict[s
 _UNARY_OPS = {
     ast.UAdd: lambda x: +x,
     ast.USub: lambda x: -x,
-    ast.Not:  lambda x: not x,
+    ast.Not: lambda x: not x,
     ast.Invert: lambda x: ~x,
 }
 
 _BIN_OPS = {
-    ast.Add:      lambda a, b: a + b,
-    ast.Sub:      lambda a, b: a - b,
-    ast.Mult:     lambda a, b: a * b,
-    ast.Div:      lambda a, b: a / b,
+    ast.Add: lambda a, b: a + b,
+    ast.Sub: lambda a, b: a - b,
+    ast.Mult: lambda a, b: a * b,
+    ast.Div: lambda a, b: a / b,
     ast.FloorDiv: lambda a, b: a // b,
-    ast.Mod:      lambda a, b: a % b,
-    ast.Pow:      lambda a, b: a ** b,
-    ast.MatMult:  lambda a, b: a @ b,
+    ast.Mod: lambda a, b: a % b,
+    ast.Pow: lambda a, b: a**b,
+    ast.MatMult: lambda a, b: a @ b,
 }
 
 _BOOL_OPS = {
     ast.And: all,
-    ast.Or:  any,
+    ast.Or: any,
 }
 
 _CMP_OPS = {
-    ast.Eq:    lambda a, b: a == b,
+    ast.Eq: lambda a, b: a == b,
     ast.NotEq: lambda a, b: a != b,
-    ast.Lt:    lambda a, b: a < b,
-    ast.LtE:   lambda a, b: a <= b,
-    ast.Gt:    lambda a, b: a > b,
-    ast.GtE:   lambda a, b: a >= b,
-    ast.Is:    lambda a, b: a is b,
+    ast.Lt: lambda a, b: a < b,
+    ast.LtE: lambda a, b: a <= b,
+    ast.Gt: lambda a, b: a > b,
+    ast.GtE: lambda a, b: a >= b,
+    ast.Is: lambda a, b: a is b,
     ast.IsNot: lambda a, b: a is not b,
-    ast.In:    lambda a, b: a in b,
+    ast.In: lambda a, b: a in b,
     ast.NotIn: lambda a, b: a not in b,
 }
 
 # Nodes that are always forbidden
-_FORBIDDEN_NODE_NAMES = frozenset({
-    "Lambda", "ListComp", "SetComp", "DictComp", "GeneratorExp",
-    "Yield", "YieldFrom", "Await",
-    "Import", "ImportFrom",
-    "FunctionDef", "AsyncFunctionDef", "ClassDef",
-    "Assign", "AugAssign", "AnnAssign",
-    "Global", "Nonlocal",
-    "Raise", "Try", "TryStar", "Delete", "With", "AsyncWith",
-    "For", "AsyncFor", "While",
-    "If",                    # statement If (not IfExp)
-    "JoinedStr", "FormattedValue",
-    "NamedExpr",             # walrus :=
-    "Starred",
-    "AsyncFunctionDef",
-    "ExceptHandler",
-})
+_FORBIDDEN_NODE_NAMES = frozenset(
+    {
+        "Lambda",
+        "ListComp",
+        "SetComp",
+        "DictComp",
+        "GeneratorExp",
+        "Yield",
+        "YieldFrom",
+        "Await",
+        "Import",
+        "ImportFrom",
+        "FunctionDef",
+        "AsyncFunctionDef",
+        "ClassDef",
+        "Assign",
+        "AugAssign",
+        "AnnAssign",
+        "Global",
+        "Nonlocal",
+        "Raise",
+        "Try",
+        "TryStar",
+        "Delete",
+        "With",
+        "AsyncWith",
+        "For",
+        "AsyncFor",
+        "While",
+        "If",  # statement If (not IfExp)
+        "JoinedStr",
+        "FormattedValue",
+        "NamedExpr",  # walrus :=
+        "Starred",
+        "AsyncFunctionDef",
+        "ExceptHandler",
+    }
+)
 
 
 class _Walker:
@@ -354,9 +455,7 @@ class _Walker:
     def _visit_Attribute(self, node: ast.Attribute) -> Any:
         # ONLY allow <Name>.attr where Name is 'np' or 'math'
         if not isinstance(node.value, ast.Name):
-            raise SafeEvalError(
-                "Attribute access only allowed on bare 'np' or 'math' names"
-            )
+            raise SafeEvalError("Attribute access only allowed on bare 'np' or 'math' names")
         ns_name = node.value.id
         attr = node.attr
 
@@ -372,9 +471,7 @@ class _Walker:
                 raise SafeEvalError(f"math.{attr} is not in the math allowlist")
             return getattr(_MATH_NS, attr)
         else:
-            raise SafeEvalError(
-                f"Attribute access not allowed on '{ns_name}' (only np/math)"
-            )
+            raise SafeEvalError(f"Attribute access not allowed on '{ns_name}' (only np/math)")
 
     # --- Operators ---------------------------------------------------------
 
@@ -456,8 +553,7 @@ class _Walker:
             callee = self._visit_Attribute(func_node)
         else:
             raise SafeEvalError(
-                f"Call callee must be a Name or np./math. attribute, "
-                f"got {type(func_node).__name__}"
+                f"Call callee must be a Name or np./math. attribute, got {type(func_node).__name__}"
             )
 
         args = [self.visit(a) for a in node.args]
@@ -471,8 +567,12 @@ class _Walker:
             # An unexpected error from an allowlisted callable may be a genuine
             # defect rather than user-input error. Log it before reclassifying
             # as a SafeEvalError so it isn't silently masked.
-            _logger.debug("Unexpected error calling %r in safe_eval: %s",
-                          getattr(callee, "__name__", callee), exc, exc_info=True)
+            _logger.debug(
+                "Unexpected error calling %r in safe_eval: %s",
+                getattr(callee, "__name__", callee),
+                exc,
+                exc_info=True,
+            )
             raise SafeEvalError(f"Call error: {exc}") from exc
 
     # --- Subscript ---------------------------------------------------------
@@ -493,7 +593,7 @@ class _Walker:
     def _visit_Slice(self, node: ast.Slice) -> Any:
         lower = self.visit(node.lower) if node.lower else None
         upper = self.visit(node.upper) if node.upper else None
-        step  = self.visit(node.step)  if node.step  else None
+        step = self.visit(node.step) if node.step else None
         return slice(lower, upper, step)
 
     def _visit_ExtSlice(self, node) -> Any:  # type: ignore[override]
@@ -504,6 +604,7 @@ class _Walker:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def safe_literal(s: Any) -> Any:
     """
@@ -522,8 +623,7 @@ def safe_literal(s: Any) -> Any:
         raise SafeEvalError(str(exc)) from exc
 
 
-def safe_expr(s: Any, variables: Optional[Dict[str, Any]] = None,
-              allow_numpy: bool = True) -> Any:
+def safe_expr(s: Any, variables: Optional[Dict[str, Any]] = None, allow_numpy: bool = True) -> Any:
     """
     Evaluate a numeric expression using a hardened AST walker.
 
@@ -556,6 +656,7 @@ def safe_expr(s: Any, variables: Optional[Dict[str, Any]] = None,
 # ---------------------------------------------------------------------------
 # CompiledExpr — parse once, evaluate many
 # ---------------------------------------------------------------------------
+
 
 class CompiledExpr:
     """
@@ -612,15 +713,15 @@ def compile_expr(s: str, allow_numpy: bool = True) -> CompiledExpr:
 # read off Name/Subscript nodes, etc.). These must be skipped when checking
 # for a corresponding _visit_<name> handler.
 _NON_VISITED_NODE_BASES = (
-    ast.expr_context,   # Load / Store / Del
-    ast.operator,       # Add / Sub / Mult / ...
-    ast.unaryop,        # UAdd / USub / Not / Invert
-    ast.boolop,         # And / Or
-    ast.cmpop,          # Eq / Lt / ...
+    ast.expr_context,  # Load / Store / Del
+    ast.operator,  # Add / Sub / Mult / ...
+    ast.unaryop,  # UAdd / USub / Not / Invert
+    ast.boolop,  # And / Or
+    ast.cmpop,  # Eq / Lt / ...
     ast.comprehension,  # only inside (already-forbidden) comprehensions
     ast.arguments,
     ast.arg,
-    ast.keyword,        # Call keywords are rejected explicitly below
+    ast.keyword,  # Call keywords are rejected explicitly below
 )
 
 
@@ -638,17 +739,17 @@ def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
         # must have a _visit_<name> handler. Reject unsupported-but-not-forbidden
         # nodes at compile time so compile_expr fully validates structure upfront
         # (matching its docstring) instead of only failing at first __call__.
-        if (node is not tree
-                and not isinstance(node, _NON_VISITED_NODE_BASES)
-                and not hasattr(_Walker, f"_visit_{name}")):
+        if (
+            node is not tree
+            and not isinstance(node, _NON_VISITED_NODE_BASES)
+            and not hasattr(_Walker, f"_visit_{name}")
+        ):
             raise SafeEvalError(f"Unsupported AST node: {name}")
 
         # Check Attribute nodes at compile time
         if isinstance(node, ast.Attribute):
             if not isinstance(node.value, ast.Name):
-                raise SafeEvalError(
-                    "Attribute access only allowed on bare 'np' or 'math' names"
-                )
+                raise SafeEvalError("Attribute access only allowed on bare 'np' or 'math' names")
             ns_name = node.value.id
             attr = node.attr
             if ns_name == "np" and attr not in _NP_ALLOWLIST:
@@ -656,9 +757,7 @@ def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
             elif ns_name == "math" and attr not in _MATH_ALLOWLIST:
                 raise SafeEvalError(f"math.{attr} is not in the math allowlist")
             elif ns_name not in ("np", "math"):
-                raise SafeEvalError(
-                    f"Attribute access not allowed on '{ns_name}' (only np/math)"
-                )
+                raise SafeEvalError(f"Attribute access not allowed on '{ns_name}' (only np/math)")
 
         # Check Call callee type
         if isinstance(node, ast.Call):
@@ -666,6 +765,4 @@ def _validate_tree(tree: ast.Expression, env: Dict[str, Any]) -> None:
                 raise SafeEvalError("Keyword arguments are not allowed in safe_eval")
             func_node = node.func
             if not isinstance(func_node, (ast.Name, ast.Attribute)):
-                raise SafeEvalError(
-                    "Call callee must be a Name or np./math. attribute"
-                )
+                raise SafeEvalError("Call callee must be a Name or np./math. attribute")

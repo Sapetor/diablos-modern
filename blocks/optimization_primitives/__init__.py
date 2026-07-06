@@ -35,15 +35,15 @@ from blocks.optimization_primitives.momentum import MomentumBlock
 from blocks.optimization_primitives.adam import AdamBlock
 
 __all__ = [
-    'ObjectiveFunctionBlock',
-    'NumericalGradientBlock',
-    'VectorPerturbBlock',
-    'StateVariableBlock',
-    'VectorGainBlock',
-    'VectorSumBlock',
-    'LinearSystemSolverBlock',
-    'RootFinderBlock',
-    'ResidualNormBlock',
-    'MomentumBlock',
-    'AdamBlock',
+    "ObjectiveFunctionBlock",
+    "NumericalGradientBlock",
+    "VectorPerturbBlock",
+    "StateVariableBlock",
+    "VectorGainBlock",
+    "VectorSumBlock",
+    "LinearSystemSolverBlock",
+    "RootFinderBlock",
+    "ResidualNormBlock",
+    "MomentumBlock",
+    "AdamBlock",
 ]

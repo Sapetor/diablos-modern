@@ -42,31 +42,29 @@ import numpy as np
 #: Block functions that are always memory blocks regardless of parameters.
 #: They all satisfy: execute() is safe with an empty inputs dict OR the
 #: block declares `requires_inputs=False`.
-OUTPUT_ONLY_SAFE_BLOCK_FNS: frozenset = frozenset({
-    # Core stateful blocks
-    'Integrator',
-    'StateVariable',
-    'TransportDelay',
-    'Delay',
-
-    # Optimization primitives (hold previous update / state)
-    'Adam',
-    'Momentum',
-
-    # Sample-rate adapters (hold previous sample)
-    'FirstOrderHold',
-    'ZeroOrderHold',
-    'RateLimiter',
-    'RateTransition',
-
-    # Control blocks hardened to use inputs.get() — see audit priority #7
-    'Deriv',
-    'Hysteresis',
-    'PID',
-
-    # Stochastic sources (no inputs at all)
-    'PRBS',
-})
+OUTPUT_ONLY_SAFE_BLOCK_FNS: frozenset = frozenset(
+    {
+        # Core stateful blocks
+        "Integrator",
+        "StateVariable",
+        "TransportDelay",
+        "Delay",
+        # Optimization primitives (hold previous update / state)
+        "Adam",
+        "Momentum",
+        # Sample-rate adapters (hold previous sample)
+        "FirstOrderHold",
+        "ZeroOrderHold",
+        "RateLimiter",
+        "RateTransition",
+        # Control blocks hardened to use inputs.get() — see audit priority #7
+        "Deriv",
+        "Hysteresis",
+        "PID",
+        # Stochastic sources (no inputs at all)
+        "PRBS",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +76,7 @@ def _params_source(block: Any) -> dict:
     """Prefer resolved exec_params; fall back to raw params for callers
     that haven't run resolve_params yet (e.g. ValidationHelper which is
     invoked during canvas validation)."""
-    return getattr(block, 'exec_params', None) or getattr(block, 'params', {}) or {}
+    return getattr(block, "exec_params", None) or getattr(block, "params", {}) or {}
 
 
 def is_strictly_proper_tf(block: Any) -> bool:
@@ -88,12 +86,12 @@ def is_strictly_proper_tf(block: Any) -> bool:
     only on past inputs and on internal state, so they are memory blocks.
     Proper TFs (equal degrees) DO have feedthrough and are NOT memory.
     """
-    block_fn = getattr(block, 'block_fn', '')
-    if block_fn not in ('TranFn', 'DiscreteTranFn'):
+    block_fn = getattr(block, "block_fn", "")
+    if block_fn not in ("TranFn", "DiscreteTranFn"):
         return False
     p = _params_source(block)
-    num = p.get('numerator', [])
-    den = p.get('denominator', [])
+    num = p.get("numerator", [])
+    den = p.get("denominator", [])
     return len(den) > len(num)
 
 
@@ -103,11 +101,11 @@ def is_zero_D_statespace(block: Any) -> bool:
     A zero-D state-space realisation has no direct feedthrough u → y,
     so y[t] depends only on x[t] (which is set from past inputs).
     """
-    block_fn = getattr(block, 'block_fn', '')
-    if block_fn not in ('StateSpace', 'DiscreteStateSpace'):
+    block_fn = getattr(block, "block_fn", "")
+    if block_fn not in ("StateSpace", "DiscreteStateSpace"):
         return False
     p = _params_source(block)
-    D = np.array(p.get('D', [[0.0]]))
+    D = np.array(p.get("D", [[0.0]]))
     try:
         return bool(np.all(D == 0))
     except (TypeError, ValueError):
@@ -118,7 +116,7 @@ def is_zero_D_statespace(block: Any) -> bool:
 
 def is_memory_block(block: Any) -> bool:
     """Combined check: block is a memory block by name OR by conditional rule."""
-    block_fn = getattr(block, 'block_fn', '')
+    block_fn = getattr(block, "block_fn", "")
     if block_fn in OUTPUT_ONLY_SAFE_BLOCK_FNS:
         return True
     if is_strictly_proper_tf(block):

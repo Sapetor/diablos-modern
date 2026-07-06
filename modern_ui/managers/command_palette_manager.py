@@ -31,32 +31,32 @@ logger = logging.getLogger(__name__)
 # ``palette_command_groups`` so it cannot drift). An empty shortcut string means
 # "no default binding".
 _SIM_COMMANDS: list[tuple[str, str]] = [
-    ('Run simulation',     'F5'),
-    ('Pause simulation',   'F6'),
-    ('Stop simulation',    'F7'),
-    ('Step simulation',    'F8'),
-    ('Toggle fast solver', ''),
+    ("Run simulation", "F5"),
+    ("Pause simulation", "F6"),
+    ("Stop simulation", "F7"),
+    ("Step simulation", "F8"),
+    ("Toggle fast solver", ""),
 ]
 
 _VIEW_COMMANDS: list[tuple[str, str]] = [
-    ('Zoom in',       'Ctrl++'),
-    ('Zoom out',      'Ctrl+-'),
-    ('Fit to window', 'Ctrl+0'),
-    ('Toggle theme',  'Ctrl+T'),
-    ('Toggle grid',   'Ctrl+Shift+G'),
-    ('Toggle minimap', 'Ctrl+Shift+M'),
-    ('Toggle variable editor', 'Ctrl+Shift+V'),
-    ('Toggle workspace variables', 'Ctrl+Shift+W'),
-    ('Toggle tuning panel', 'Ctrl+Shift+T'),
+    ("Zoom in", "Ctrl++"),
+    ("Zoom out", "Ctrl+-"),
+    ("Fit to window", "Ctrl+0"),
+    ("Toggle theme", "Ctrl+T"),
+    ("Toggle grid", "Ctrl+Shift+G"),
+    ("Toggle minimap", "Ctrl+Shift+M"),
+    ("Toggle variable editor", "Ctrl+Shift+V"),
+    ("Toggle workspace variables", "Ctrl+Shift+W"),
+    ("Toggle tuning panel", "Ctrl+Shift+T"),
 ]
 
 _FILE_COMMANDS: list[tuple[str, str]] = [
-    ('New diagram',  'Ctrl+N'),
-    ('Open diagram', 'Ctrl+O'),
-    ('Save diagram', 'Ctrl+S'),
-    ('Load workspace…', ''),
-    ('Show plots',   ''),
-    ('Export as TikZ…', ''),
+    ("New diagram", "Ctrl+N"),
+    ("Open diagram", "Ctrl+O"),
+    ("Save diagram", "Ctrl+S"),
+    ("Load workspace…", ""),
+    ("Show plots", ""),
+    ("Export as TikZ…", ""),
 ]
 
 
@@ -68,11 +68,13 @@ def palette_command_groups() -> "OrderedDict[str, list[tuple[str, str]]]":
     two can never drift apart. Returns copies so callers can't mutate the
     shared tables.
     """
-    return OrderedDict([
-        ('Simulation', list(_SIM_COMMANDS)),
-        ('View', list(_VIEW_COMMANDS)),
-        ('File', list(_FILE_COMMANDS)),
-    ])
+    return OrderedDict(
+        [
+            ("Simulation", list(_SIM_COMMANDS)),
+            ("View", list(_VIEW_COMMANDS)),
+            ("File", list(_FILE_COMMANDS)),
+        ]
+    )
 
 
 class CommandPaletteManager:
@@ -84,7 +86,7 @@ class CommandPaletteManager:
     def show(self):
         """Show the command palette for quick access."""
         window = self.window
-        if hasattr(window, 'command_palette'):
+        if hasattr(window, "command_palette"):
             window.command_palette.show_palette()
 
     def setup(self):
@@ -93,18 +95,20 @@ class CommandPaletteManager:
         commands: list[dict] = []
 
         # Block library — typed as 'block' so the BLOCK badge surfaces
-        if hasattr(window, 'canvas') and hasattr(window.canvas.dsim, 'menu_blocks'):
+        if hasattr(window, "canvas") and hasattr(window.canvas.dsim, "menu_blocks"):
             for menu_block in window.canvas.dsim.menu_blocks:
-                fn_name = getattr(menu_block, 'fn_name', '') or ''
-                block_fn = getattr(menu_block, 'block_fn', '') or fn_name
-                commands.append({
-                    'name': f'Add {block_fn} block',
-                    'type': 'block',
-                    'description': f'{block_fn} ({fn_name})',
-                    'aliases': [fn_name, block_fn, fn_name.lower()],
-                    'callback': lambda mb=menu_block: self.add_block_from_palette_menu(mb),
-                    'data': {'block_type': fn_name},
-                })
+                fn_name = getattr(menu_block, "fn_name", "") or ""
+                block_fn = getattr(menu_block, "block_fn", "") or fn_name
+                commands.append(
+                    {
+                        "name": f"Add {block_fn} block",
+                        "type": "block",
+                        "description": f"{block_fn} ({fn_name})",
+                        "aliases": [fn_name, block_fn, fn_name.lower()],
+                        "callback": lambda mb=menu_block: self.add_block_from_palette_menu(mb),
+                        "data": {"block_type": fn_name},
+                    }
+                )
 
         # Action commands (sim/view/file). Labels and shortcuts live in the
         # module-level tables (shared with the shortcuts dialog); the callbacks
@@ -115,7 +119,7 @@ class CommandPaletteManager:
             window.pause_simulation,
             window.stop_simulation,
             window.step_simulation,
-            lambda: window.toggle_fast_solver(not getattr(window, 'use_fast_solver', True)),
+            lambda: window.toggle_fast_solver(not getattr(window, "use_fast_solver", True)),
         ]
         view_callbacks = [
             window.zoom_in,
@@ -137,29 +141,36 @@ class CommandPaletteManager:
             window.export_tikz,
         ]
         for badge, table, callbacks in [
-            ('sim', _SIM_COMMANDS, sim_callbacks),
-            ('view', _VIEW_COMMANDS, view_callbacks),
-            ('file', _FILE_COMMANDS, file_callbacks),
+            ("sim", _SIM_COMMANDS, sim_callbacks),
+            ("view", _VIEW_COMMANDS, view_callbacks),
+            ("file", _FILE_COMMANDS, file_callbacks),
         ]:
             for (label, kbd), cb in zip(table, callbacks):
-                commands.append({
-                    'name': label, 'type': badge, 'shortcut': kbd,
-                    'callback': cb, 'data': {},
-                })
+                commands.append(
+                    {
+                        "name": label,
+                        "type": badge,
+                        "shortcut": kbd,
+                        "callback": cb,
+                        "data": {},
+                    }
+                )
 
         # Index examples on disk — file paths only, load on click
         try:
-            examples_dir = resource_path('examples')
+            examples_dir = resource_path("examples")
             if os.path.isdir(examples_dir):
                 for f in sorted(os.listdir(examples_dir)):
-                    if f.endswith(('.json', '.dat', '.diablos')):
+                    if f.endswith((".json", ".dat", ".diablos")):
                         path = os.path.join(examples_dir, f)
-                        commands.append({
-                            'name': f'examples / {os.path.splitext(f)[0]}',
-                            'type': 'file',
-                            'callback': lambda p=path: window.open_example(p),
-                            'data': {'path': path},
-                        })
+                        commands.append(
+                            {
+                                "name": f"examples / {os.path.splitext(f)[0]}",
+                                "type": "file",
+                                "callback": lambda p=path: window.open_example(p),
+                                "data": {"path": path},
+                            }
+                        )
         except Exception:
             logger.debug("Could not index examples for command palette", exc_info=True)
 
@@ -169,20 +180,22 @@ class CommandPaletteManager:
         except Exception:
             recents = []
         for path in recents[:6]:
-            commands.append({
-                'name': os.path.basename(path),
-                'type': 'recent',
-                'description': path,
-                'callback': lambda p=path: window._open_recent_file(p),
-                'data': {'path': path},
-            })
+            commands.append(
+                {
+                    "name": os.path.basename(path),
+                    "type": "recent",
+                    "description": path,
+                    "callback": lambda p=path: window._open_recent_file(p),
+                    "data": {"path": path},
+                }
+            )
 
         window.command_palette.set_commands(commands)
 
     def add_block_from_palette_menu(self, menu_block):
         """Add a block to the canvas from command palette."""
         window = self.window
-        if not hasattr(window, 'canvas'):
+        if not hasattr(window, "canvas"):
             return
 
         from PyQt5.QtCore import QPoint

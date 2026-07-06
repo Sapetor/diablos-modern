@@ -1,20 +1,21 @@
-
 import logging
 from PyQt5.QtCore import QRect
 
 logger = logging.getLogger(__name__)
 
+
 class SelectionManager:
     """
     Manages selection of blocks and lines on the canvas.
     """
+
     def __init__(self, canvas):
         self.canvas = canvas
         self.dsim = canvas.dsim
-        
-        # We don't necessarily need to duplicate the lists if we just iterate dsim lists, 
-        # but maintaining a cache might be faster. 
-        # For now, we will follow the existing pattern of iterating dsim lists or 
+
+        # We don't necessarily need to duplicate the lists if we just iterate dsim lists,
+        # but maintaining a cache might be faster.
+        # For now, we will follow the existing pattern of iterating dsim lists or
         # using the 'selected' attribute on items.
 
     def clear_selections(self):
@@ -39,17 +40,17 @@ class SelectionManager:
     def remove_selected_items(self):
         """Remove all selected blocks and lines."""
         # Delegates back to canvas history/removal logic or handles it here?
-        # Since it involves Undo and DSim, it's safer to keep the orchestration here 
+        # Since it involves Undo and DSim, it's safer to keep the orchestration here
         # but maybe call back to canvas for Undo?
         # Actually canvas.remove_selected_items already does Undo.
         # We can implement it here if we depend on HistoryManager.
-        
+
         try:
             blocks_to_remove = [block for block in self.dsim.blocks_list if block.selected]
             lines_to_remove = [line for line in self.dsim.line_list if line.selected]
 
             # Push undo state before deletion
-            if (blocks_to_remove or lines_to_remove) and hasattr(self.canvas, 'history_manager'):
+            if (blocks_to_remove or lines_to_remove) and hasattr(self.canvas, "history_manager"):
                 self.canvas.history_manager.push_undo("Delete")
 
             for block in blocks_to_remove:
@@ -59,12 +60,12 @@ class SelectionManager:
                     self.dsim.line_list.remove(line)
 
             # Clear validation errors when blocks are removed
-            if hasattr(self.canvas, 'clear_validation'):
+            if hasattr(self.canvas, "clear_validation"):
                 self.canvas.clear_validation()
 
             self.canvas.update()
             logger.info(f"Removed {len(blocks_to_remove)} blocks and {len(lines_to_remove)} lines")
-            
+
         except Exception as e:
             logger.error(f"Error removing selected items: {str(e)}")
 
@@ -79,14 +80,14 @@ class SelectionManager:
 
         # Normalize rect
         rect = rect.normalized()
-        
+
         count = 0
         for block in self.dsim.blocks_list:
             block_rect = QRect(block.left, block.top, block.width, block.height)
             if rect.intersects(block_rect):
                 block.selected = True
                 count += 1
-                
+
         logger.info(f"Rectangle selection completed: {count} block(s) selected")
         self.canvas.update()
 

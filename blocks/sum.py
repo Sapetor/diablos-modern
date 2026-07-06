@@ -52,15 +52,15 @@ class SumBlock(BaseBlock):
             params = self.params
 
         # Get the sign string - params is a flat dict like {'sign': '++'}
-        sign_string = params.get('signs', params.get('sign', '++'))
+        sign_string = params.get("signs", params.get("sign", "++"))
 
         # Handle case where sign might still be wrapped in a dict (initialization)
         if isinstance(sign_string, dict):
-            sign_string = sign_string.get('default', '++')
+            sign_string = sign_string.get("default", "++")
 
         # Create an input for each character in the sign string
         num_inputs = len(sign_string)
-        return [{"name": f"in{i+1}", "type": "any"} for i in range(num_inputs)]
+        return [{"name": f"in{i + 1}", "type": "any"} for i in range(num_inputs)]
 
     @property
     def outputs(self):
@@ -89,14 +89,14 @@ class SumBlock(BaseBlock):
         except ImportError:
             return None
 
-        sign_string = params.get('signs', params.get('sign', '++'))
+        sign_string = params.get("signs", params.get("sign", "++"))
         result = Integer(0)
 
         for i in range(len(sign_string)):
-            sign = sign_string[i] if i < len(sign_string) else '+'
-            u = inputs.get(i, Symbol(f'u{i}'))
+            sign = sign_string[i] if i < len(sign_string) else "+"
+            u = inputs.get(i, Symbol(f"u{i}"))
 
-            if sign == '+':
+            if sign == "+":
                 result = result + u
             else:
                 result = result - u
@@ -107,22 +107,21 @@ class SumBlock(BaseBlock):
         try:
             suma = 0.0
             # Accept both 'sign' and 'signs' for backward compatibility
-            sign_string = params.get('signs', params.get('sign', '++'))
+            sign_string = params.get("signs", params.get("sign", "++"))
 
             for i in sorted(inputs.keys()):
-                sign = '+' # Default sign
+                sign = "+"  # Default sign
                 if i < len(sign_string):
                     sign = sign_string[i]
 
                 input_value = np.atleast_1d(inputs[i])
 
-                if sign == '+':
+                if sign == "+":
                     suma += input_value
-                elif sign == '-':
+                elif sign == "-":
                     suma -= input_value
 
             return {0: suma}
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid input type in sum block. Expected numeric. Error: {str(e)}")
-            return {'E': True, 'error': f'Invalid input type in sum block: {str(e)}'}
-
+            return {"E": True, "error": f"Invalid input type in sum block: {str(e)}"}

@@ -51,8 +51,7 @@ class TestNetworkChannel:
         later and then hold.
         """
         D = 0.3
-        params = _fresh_params(loss_prob=0.0, min_delay=D, max_delay=D,
-                               seed=7, initial_value=0.0)
+        params = _fresh_params(loss_prob=0.0, min_delay=D, max_delay=D, seed=7, initial_value=0.0)
         dtime = 0.1
         # input: 0 for t in [0,0.2], then 1 from t=0.3 onward
         n = 12
@@ -70,8 +69,7 @@ class TestNetworkChannel:
     def test_fixed_delay_value_at_arrival_matches_sent(self):
         """Each delivered value equals the input that was sent D earlier."""
         D = 0.2
-        params = _fresh_params(loss_prob=0.0, min_delay=D, max_delay=D,
-                               seed=3, initial_value=-99.0)
+        params = _fresh_params(loss_prob=0.0, min_delay=D, max_delay=D, seed=3, initial_value=-99.0)
         dtime = 0.1
         # ramp 0,1,2,3,...,9 ; with D=0.2 (2 steps), input sent at step k
         # is delivered at step k+2.
@@ -83,13 +81,20 @@ class TestNetworkChannel:
         assert np.allclose(outputs[1], [-99.0])
         # step k>=2 delivers the value sent at step k-2 == (k-2)
         for k in range(2, n):
-            assert np.allclose(outputs[k], [float(k - 2)]), \
-                f"step {k}: expected {k-2}, got {outputs[k]}"
+            assert np.allclose(outputs[k], [float(k - 2)]), (
+                f"step {k}: expected {k - 2}, got {outputs[k]}"
+            )
 
     def test_loss_prob_one_never_delivers(self):
         """loss_prob=1 => nothing is ever delivered; output stays initial."""
-        params = _fresh_params(loss_prob=1.0, min_delay=0.0, max_delay=0.05,
-                               seed=11, initial_value=2.0, drop_mode="hold")
+        params = _fresh_params(
+            loss_prob=1.0,
+            min_delay=0.0,
+            max_delay=0.05,
+            seed=11,
+            initial_value=2.0,
+            drop_mode="hold",
+        )
         inputs = [3.0, -1.5, 7.0, 0.25, 42.0, 8.0, 9.0]
         outputs = _run(params, inputs)
         for out in outputs:
@@ -97,8 +102,7 @@ class TestNetworkChannel:
 
     def test_loss_prob_one_drop_mode_zero(self):
         """drop_mode='zero' outputs 0 while nothing has been delivered."""
-        params = _fresh_params(loss_prob=1.0, seed=11,
-                               drop_mode="zero", initial_value=5.0)
+        params = _fresh_params(loss_prob=1.0, seed=11, drop_mode="zero", initial_value=5.0)
         outputs = _run(params, [4.0, 4.0, 4.0])
         for out in outputs:
             assert np.allclose(out, [0.0])
@@ -118,8 +122,7 @@ class TestNetworkChannel:
         approximates (1-loss_prob)*n.
         """
         loss_prob = 0.3
-        params = _fresh_params(loss_prob=loss_prob, min_delay=0.0,
-                               max_delay=0.0, seed=42)
+        params = _fresh_params(loss_prob=loss_prob, min_delay=0.0, max_delay=0.0, seed=42)
         n = 5000
         # Unique increasing inputs; with zero delay each delivered packet
         # shows up immediately, so a change in output == a delivery.
@@ -127,29 +130,22 @@ class TestNetworkChannel:
         outputs = _run(params, inputs)
         # Count steps where the output equals the just-sent input (delivered
         # this step with zero latency).
-        delivered = sum(
-            1 for i, out in enumerate(outputs)
-            if np.allclose(out, [inputs[i]])
-        )
+        delivered = sum(1 for i, out in enumerate(outputs) if np.allclose(out, [inputs[i]]))
         frac_delivered = delivered / n
         assert abs(frac_delivered - (1.0 - loss_prob)) < 0.05
 
     def test_same_seed_reproducible(self):
         """Two fresh blocks with the same seed produce identical output."""
         inputs = np.arange(1, 401, dtype=float)
-        o1 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0,
-                                max_delay=0.3, seed=42), inputs)
-        o2 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0,
-                                max_delay=0.3, seed=42), inputs)
+        o1 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0, max_delay=0.3, seed=42), inputs)
+        o2 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0, max_delay=0.3, seed=42), inputs)
         assert all(np.allclose(a, b) for a, b in zip(o1, o2))
 
     def test_different_seed_differs(self):
         """Different seeds produce a different output trace."""
         inputs = np.arange(1, 401, dtype=float)
-        o1 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0,
-                                max_delay=0.3, seed=42), inputs)
-        o2 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0,
-                                max_delay=0.3, seed=123), inputs)
+        o1 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0, max_delay=0.3, seed=42), inputs)
+        o2 = _run(_fresh_params(loss_prob=0.4, min_delay=0.0, max_delay=0.3, seed=123), inputs)
         assert any(not np.allclose(a, b) for a, b in zip(o1, o2))
 
     def test_seed_zero_is_nondeterministic_but_valid(self):
@@ -162,8 +158,7 @@ class TestNetworkChannel:
 
     def test_vector_input_preserved(self):
         """Vector packets are delivered/held elementwise."""
-        params = _fresh_params(loss_prob=0.0, min_delay=0.0,
-                               max_delay=0.0, seed=42)
+        params = _fresh_params(loss_prob=0.0, min_delay=0.0, max_delay=0.0, seed=42)
         block = NetworkChannelBlock()
         vec = np.array([1.0, 2.0, 3.0])
         res = block.execute(time=0.0, inputs={0: vec}, params=params, dtime=0.1)

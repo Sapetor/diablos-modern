@@ -37,7 +37,11 @@ class GotoBlock(BaseBlock):
     def params(self):
         return {
             "tag": {"type": "string", "default": "A", "doc": "Tag name to link Goto/From."},
-            "signal_name": {"type": "string", "default": "", "doc": "Optional label; defaults to tag when empty."}
+            "signal_name": {
+                "type": "string",
+                "default": "",
+                "doc": "Optional label; defaults to tag when empty.",
+            },
         }
 
     @property
@@ -54,4 +58,3 @@ class GotoBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         return {0: inputs.get(0, 0)}
-

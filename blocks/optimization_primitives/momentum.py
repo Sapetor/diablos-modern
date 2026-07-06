@@ -57,16 +57,8 @@ class MomentumBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "alpha": {
-                "type": "float",
-                "default": 0.01,
-                "doc": "Learning rate"
-            },
-            "beta": {
-                "type": "float",
-                "default": 0.9,
-                "doc": "Momentum coefficient"
-            },
+            "alpha": {"type": "float", "default": 0.01, "doc": "Learning rate"},
+            "beta": {"type": "float", "default": 0.9, "doc": "Momentum coefficient"},
         }
 
     @property
@@ -81,30 +73,30 @@ class MomentumBlock(BaseBlock):
         try:
             # Output-only path: no gradient input → return last velocity without mutating state.
             if 0 not in inputs:
-                held = params.get('_last_update_', np.array([0.0]))
-                return {0: np.atleast_1d(held), 'E': False}
+                held = params.get("_last_update_", np.array([0.0]))
+                return {0: np.atleast_1d(held), "E": False}
 
             grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
-            alpha = float(params.get('alpha', 0.01))
-            beta = float(params.get('beta', 0.9))
+            alpha = float(params.get("alpha", 0.01))
+            beta = float(params.get("beta", 0.9))
 
             # Initialize velocity on first call
-            if params.get('_init_start_', True):
-                params['_velocity_'] = np.zeros_like(grad)
-                params['_init_start_'] = False
+            if params.get("_init_start_", True):
+                params["_velocity_"] = np.zeros_like(grad)
+                params["_init_start_"] = False
 
             # Handle dimension change
-            v = params['_velocity_']
+            v = params["_velocity_"]
             if len(v) != len(grad):
                 v = np.zeros_like(grad)
 
             # Update velocity: v = β*v - α*∇f
             v = beta * v - alpha * grad
-            params['_velocity_'] = v
+            params["_velocity_"] = v
 
-            params['_last_update_'] = v
-            return {0: v, 'E': False}
+            params["_last_update_"] = v
+            return {0: v, "E": False}
 
         except Exception as e:
             logger.error(f"Momentum error: {e}")
-            return {0: np.array([0.0]), 'E': True, 'error': str(e)}
+            return {0: np.array([0.0]), "E": True, "error": str(e)}

@@ -13,6 +13,7 @@ from PyQt5.QtCore import QPoint, QRect
 @dataclass
 class ZoomPanState:
     """State for zoom and pan operations."""
+
     zoom_factor: float = 1.0
     pan_offset: QPoint = field(default_factory=lambda: QPoint(0, 0))
     is_panning: bool = False
@@ -29,6 +30,7 @@ class ZoomPanState:
 @dataclass
 class GridState:
     """State for grid display and snapping."""
+
     visible: bool = True
     size: int = 20
     snap_enabled: bool = True
@@ -42,6 +44,7 @@ class GridState:
 @dataclass
 class SelectionState:
     """State for rectangle selection operations."""
+
     rect_start: Optional[QPoint] = None
     rect_end: Optional[QPoint] = None
     is_selecting: bool = False
@@ -79,6 +82,7 @@ class SelectionState:
 @dataclass
 class HoverState:
     """State for hover tracking and visual feedback."""
+
     block: Any = None  # The currently hovered block
     port: Optional[Tuple[Any, int, bool]] = None  # (block, port_index, is_output)
     line: Any = None  # The currently hovered connection line
@@ -101,20 +105,21 @@ class HoverState:
 @dataclass
 class DragState:
     """State for block dragging operations."""
+
     offset: Optional[QPoint] = None  # Offset from mouse to block origin
     offsets: Dict[Any, QPoint] = field(default_factory=dict)  # For multi-block dragging
     start_positions: Dict[Any, Tuple[int, int]] = field(default_factory=dict)  # For undo
 
     def start_drag(self, primary_block: Any, mouse_pos: QPoint, selected_blocks: List[Any]):
         """Initialize drag state for one or more blocks."""
-        self.offset = QPoint(mouse_pos.x() - primary_block.left,
-                            mouse_pos.y() - primary_block.top)
+        self.offset = QPoint(mouse_pos.x() - primary_block.left, mouse_pos.y() - primary_block.top)
         self.offsets = {}
         self.start_positions = {}
 
         for block in selected_blocks:
-            self.offsets[block] = QPoint(block.left - primary_block.left,
-                                         block.top - primary_block.top)
+            self.offsets[block] = QPoint(
+                block.left - primary_block.left, block.top - primary_block.top
+            )
             self.start_positions[block] = (block.left, block.top)
 
     def end_drag(self):
@@ -132,6 +137,7 @@ class DragState:
 @dataclass
 class ResizeState:
     """State for block resizing operations."""
+
     block: Any = None  # The block being resized
     handle: Optional[str] = None  # Which handle is being dragged
     start_rect: Optional[QRect] = None  # Original block rect before resize
@@ -163,6 +169,7 @@ class ResizeState:
 @dataclass
 class ConnectionState:
     """State for connection creation operations."""
+
     creation_state: Optional[str] = None  # Current state of line creation
     start_block: Any = None  # Block where connection starts
     start_port: Optional[int] = None  # Port index where connection starts
@@ -194,6 +201,7 @@ class ConnectionState:
 @dataclass
 class ValidationState:
     """State for diagram validation."""
+
     errors: List[Any] = field(default_factory=list)
     blocks_with_errors: Set[Any] = field(default_factory=set)
     blocks_with_warnings: Set[Any] = field(default_factory=set)
@@ -224,6 +232,7 @@ class CanvasState:
     Groups all canvas state into logical sub-states for cleaner
     management and easier debugging/serialization.
     """
+
     zoom_pan: ZoomPanState = field(default_factory=ZoomPanState)
     grid: GridState = field(default_factory=GridState)
     selection: SelectionState = field(default_factory=SelectionState)

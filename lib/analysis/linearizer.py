@@ -35,8 +35,9 @@ class Linearizer:
         self.lines = []
         self.state_blocks = []  # Blocks with states (Integrator, TF, etc.)
 
-    def compute_jacobian_numerical(self, f: callable, x0: np.ndarray,
-                                  eps: float = 1e-6) -> np.ndarray:
+    def compute_jacobian_numerical(
+        self, f: callable, x0: np.ndarray, eps: float = 1e-6
+    ) -> np.ndarray:
         """
         Compute Jacobian matrix numerically using finite differences.
 
@@ -93,26 +94,26 @@ class Linearizer:
         plus model_func.source_names. Raises ValueError if the diagram cannot be
         compiled (e.g. it contains interpreter-only blocks or an algebraic loop).
         """
-        engine = getattr(self.dsim, 'engine', None)
+        engine = getattr(self.dsim, "engine", None)
         if engine is None:
             raise ValueError("DSim has no engine; cannot compile for linearization")
 
         blocks = self.dsim.blocks_list
-        lines = getattr(self.dsim, 'line_list', None)
+        lines = getattr(self.dsim, "line_list", None)
 
         # Flatten + resolve (mirrors SimulationEngine.run_compiled_simulation).
         if not engine.active_blocks_list:
             if not engine.initialize_execution(blocks, lines):
                 raise ValueError(
-                    "Failed to initialize execution (algebraic loop or error); "
-                    "cannot linearize."
+                    "Failed to initialize execution (algebraic loop or error); cannot linearize."
                 )
         current_blocks = engine.active_blocks_list
         current_lines = engine.active_line_list if engine.active_line_list else lines
 
         from lib.workspace import WorkspaceManager
+
         wm = WorkspaceManager()
-        dt = getattr(self.dsim, 'sim_dt', 0.01) or 0.01
+        dt = getattr(self.dsim, "sim_dt", 0.01) or 0.01
         for b in current_blocks:
             engine._resolve_block_params(b, dt, wm)
 
@@ -129,9 +130,9 @@ class Linearizer:
         )
         return model_func, np.asarray(y0, dtype=float), state_map
 
-    def find_operating_point(self, t: float = 0.0,
-                             y_guess: np.ndarray = None,
-                             input_overrides: Dict[str, Any] = None) -> Dict:
+    def find_operating_point(
+        self, t: float = 0.0, y_guess: np.ndarray = None, input_overrides: Dict[str, Any] = None
+    ) -> Dict:
         """
         Find an equilibrium (trim point) of the compiled diagram: a state y* with
         dy/dt = f(t, y*) = 0. Linearization is only physically meaningful at an
@@ -154,11 +155,13 @@ class Linearizer:
         model_func, y0, state_map = self._compile_diagram()
         y_guess = np.asarray(y_guess if y_guess is not None else y0, dtype=float)
 
-        evaluate = getattr(model_func, 'evaluate', None)
+        evaluate = getattr(model_func, "evaluate", None)
         if input_overrides and evaluate is not None:
+
             def f(y):
                 return evaluate(t, np.asarray(y, dtype=float), input_overrides)[0]
         else:
+
             def f(y):
                 return model_func(t, np.asarray(y, dtype=float))
 
@@ -167,22 +170,26 @@ class Linearizer:
 
         op = {}
         for b_name, (start, size) in state_map.items():
-            seg = y_star[start:start + size]
+            seg = y_star[start : start + size]
             op[b_name] = float(seg[0]) if size == 1 else seg
 
         return {
-            'success': bool(sol.success),
-            'y': y_star,
-            'residual': np.asarray(f(y_star), dtype=float),
-            'message': str(sol.message),
-            'state_names': self._state_names_from_map(state_map),
-            'operating_point': op,
+            "success": bool(sol.success),
+            "y": y_star,
+            "residual": np.asarray(f(y_star), dtype=float),
+            "message": str(sol.message),
+            "state_names": self._state_names_from_map(state_map),
+            "operating_point": op,
         }
 
-    def linearize_at_point(self, operating_point: Dict[str, float] = None,
-                          input_blocks: List[str] = None,
-                          output_blocks: List[str] = None,
-                          t: float = 0.0, eps: float = 1e-6) -> Optional[Dict]:
+    def linearize_at_point(
+        self,
+        operating_point: Dict[str, float] = None,
+        input_blocks: List[str] = None,
+        output_blocks: List[str] = None,
+        t: float = 0.0,
+        eps: float = 1e-6,
+    ) -> Optional[Dict]:
         """
         Numerically linearize the diagram at an operating point.
 
@@ -225,13 +232,15 @@ class Linearizer:
                     continue
                 val = self._vec(operating_point[b_name])
                 if val.size == 1:
-                    y0[start:start + size] = val[0]
+                    y0[start : start + size] = val[0]
                 elif val.size == size:
-                    y0[start:start + size] = val
+                    y0[start : start + size] = val
                 else:
                     logger.warning(
-                        "operating_point['%s'] has size %d but block has %d "
-                        "states; ignoring.", b_name, val.size, size
+                        "operating_point['%s'] has size %d but block has %d states; ignoring.",
+                        b_name,
+                        val.size,
+                        size,
                     )
 
         n = len(y0)
@@ -244,17 +253,17 @@ class Linearizer:
         A = self.compute_jacobian_numerical(lambda x: model_func(t, x), y0, eps=eps)
 
         result: Dict[str, Any] = {
-            'A': A,
-            'state_names': state_names,
-            'n_states': n,
-            'operating_point': y0,
+            "A": A,
+            "state_names": state_names,
+            "n_states": n,
+            "operating_point": y0,
         }
         result.update(self.analyze_stability(A))
 
         # B, C, D require designated inputs/outputs and the evaluate() hook.
-        evaluate = getattr(model_func, 'evaluate', None)
+        evaluate = getattr(model_func, "evaluate", None)
         if input_blocks and output_blocks and evaluate is not None:
-            source_names = set(getattr(model_func, 'source_names', []))
+            source_names = set(getattr(model_func, "source_names", []))
             _, sig0 = evaluate(t, y0, None)
 
             for nm in input_blocks:
@@ -266,14 +275,14 @@ class Linearizer:
             for nm in output_blocks:
                 if nm not in sig0:
                     raise ValueError(
-                        f"Output block '{nm}' produces no signal. "
-                        f"Available signals: {sorted(sig0)}"
+                        f"Output block '{nm}' produces no signal. Available signals: {sorted(sig0)}"
                     )
 
             u_nom = {nm: self._vec(sig0[nm]) for nm in input_blocks}
             in_channels = [(nm, c) for nm in input_blocks for c in range(u_nom[nm].size)]
-            out_channels = [(nm, c) for nm in output_blocks
-                            for c in range(self._vec(sig0[nm]).size)]
+            out_channels = [
+                (nm, c) for nm in output_blocks for c in range(self._vec(sig0[nm]).size)
+            ]
             m, p = len(in_channels), len(out_channels)
 
             def read_outputs(signals):
@@ -291,8 +300,10 @@ class Linearizer:
             for col, (nm, c) in enumerate(in_channels):
                 base = u_nom[nm]
                 h = eps * max(1.0, abs(base[c]))
-                up = base.copy(); up[c] += h
-                dn = base.copy(); dn[c] -= h
+                up = base.copy()
+                up[c] += h
+                dn = base.copy()
+                dn[c] -= h
                 dy_p, sig_p = evaluate(t, y0, {nm: override(nm, up)})
                 dy_m, sig_m = evaluate(t, y0, {nm: override(nm, dn)})
                 B[:, col] = (dy_p - dy_m) / (2.0 * h)
@@ -301,8 +312,10 @@ class Linearizer:
             # C: perturb each state, read outputs at nominal inputs.
             for j in range(n):
                 h = eps * max(1.0, abs(y0[j]))
-                yp = y0.copy(); yp[j] += h
-                ym = y0.copy(); ym[j] -= h
+                yp = y0.copy()
+                yp[j] += h
+                ym = y0.copy()
+                ym[j] -= h
                 _, sig_p = evaluate(t, yp, None)
                 _, sig_m = evaluate(t, ym, None)
                 C[:, j] = (read_outputs(sig_p) - read_outputs(sig_m)) / (2.0 * h)
@@ -310,21 +323,27 @@ class Linearizer:
             def chan_name(nm, c, total):
                 return f"{nm}[{c}]" if total > 1 else nm
 
-            result.update({
-                'B': B, 'C': C, 'D': D,
-                'input_names': [chan_name(nm, c, u_nom[nm].size) for nm, c in in_channels],
-                'output_names': [chan_name(nm, c, self._vec(sig0[nm]).size)
-                                 for nm, c in out_channels],
-            })
+            result.update(
+                {
+                    "B": B,
+                    "C": C,
+                    "D": D,
+                    "input_names": [chan_name(nm, c, u_nom[nm].size) for nm, c in in_channels],
+                    "output_names": [
+                        chan_name(nm, c, self._vec(sig0[nm]).size) for nm, c in out_channels
+                    ],
+                }
+            )
             num, den = self.compute_transfer_function(A, B, C, D)
-            result['transfer_function'] = {'num': num, 'den': den}
-            result['controllable'] = self.is_controllable(A, B)
-            result['observable'] = self.is_observable(A, C)
+            result["transfer_function"] = {"num": num, "den": den}
+            result["controllable"] = self.is_controllable(A, B)
+            result["observable"] = self.is_observable(A, C)
 
         return result
 
-    def compute_transfer_function(self, A: np.ndarray, B: np.ndarray,
-                                 C: np.ndarray, D: np.ndarray) -> Tuple:
+    def compute_transfer_function(
+        self, A: np.ndarray, B: np.ndarray, C: np.ndarray, D: np.ndarray
+    ) -> Tuple:
         """
         Compute transfer function from state space matrices.
 
@@ -349,7 +368,8 @@ class Linearizer:
                 return num[0], den
             logger.warning(
                 "ss2tf produced %d output rows; returning the full numerator "
-                "array for the multi-output system.", num.shape[0]
+                "array for the multi-output system.",
+                num.shape[0],
             )
             return num, den
         except Exception as e:
@@ -396,19 +416,21 @@ class Linearizer:
             if np.imag(ev) > imag_tol:
                 omega_n = np.abs(ev)
                 zeta = -np.real(ev) / omega_n if omega_n > 0 else 0
-                oscillatory_modes.append({
-                    'omega_n': omega_n,
-                    'zeta': zeta,
-                    'period': 2 * np.pi / np.abs(np.imag(ev)) if np.imag(ev) != 0 else np.inf,
-                })
+                oscillatory_modes.append(
+                    {
+                        "omega_n": omega_n,
+                        "zeta": zeta,
+                        "period": 2 * np.pi / np.abs(np.imag(ev)) if np.imag(ev) != 0 else np.inf,
+                    }
+                )
 
         return {
-            'eigenvalues': eigenvalues,
-            'is_stable': is_stable,
-            'is_marginally_stable': is_marginally_stable,
-            'dominant_pole': dominant_pole,
-            'time_constants': time_constants,
-            'oscillatory_modes': oscillatory_modes,
+            "eigenvalues": eigenvalues,
+            "is_stable": is_stable,
+            "is_marginally_stable": is_marginally_stable,
+            "dominant_pole": dominant_pole,
+            "time_constants": time_constants,
+            "oscillatory_modes": oscillatory_modes,
         }
 
     def controllability_matrix(self, A: np.ndarray, B: np.ndarray) -> np.ndarray:

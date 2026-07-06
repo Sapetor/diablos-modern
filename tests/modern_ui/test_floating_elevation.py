@@ -22,6 +22,7 @@ def _qt(qapp):
 class TestCommandPaletteElevation:
     def test_card_has_drop_shadow(self):
         from modern_ui.widgets.command_palette import CommandPalette
+
         palette = CommandPalette()
         try:
             effect = palette._card.graphicsEffect()
@@ -31,13 +32,14 @@ class TestCommandPaletteElevation:
 
     def test_card_uses_e3_elevation(self):
         from modern_ui.widgets.command_palette import CommandPalette
+
         palette = CommandPalette()
         try:
             effect = palette._card.graphicsEffect()
-            token = ELEVATION['e3']
-            assert effect.blurRadius() == token['blur']
-            assert effect.yOffset() == token['offset']
-            assert effect.color().alpha() == token['alpha']
+            token = ELEVATION["e3"]
+            assert effect.blurRadius() == token["blur"]
+            assert effect.yOffset() == token["offset"]
+            assert effect.color().alpha() == token["alpha"]
         finally:
             palette.deleteLater()
 
@@ -45,6 +47,7 @@ class TestCommandPaletteElevation:
 class TestErrorPanelElevation:
     def test_panel_has_drop_shadow(self):
         from modern_ui.widgets.error_panel import ErrorPanel
+
         panel = ErrorPanel()
         try:
             effect = panel.graphicsEffect()
@@ -54,12 +57,13 @@ class TestErrorPanelElevation:
 
     def test_panel_uses_e2_elevation(self):
         from modern_ui.widgets.error_panel import ErrorPanel
+
         panel = ErrorPanel()
         try:
             effect = panel.graphicsEffect()
-            token = ELEVATION['e2']
-            assert effect.blurRadius() == token['blur']
-            assert effect.yOffset() == token['offset']
-            assert effect.color().alpha() == token['alpha']
+            token = ELEVATION["e2"]
+            assert effect.blurRadius() == token["blur"]
+            assert effect.yOffset() == token["offset"]
+            assert effect.color().alpha() == token["alpha"]
         finally:
             panel.deleteLater()

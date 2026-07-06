@@ -38,6 +38,7 @@ import lib.app_paths
 def window(qapp):
     """Build one real ModernDiaBloSWindow for the module (construction is heavy)."""
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -62,6 +63,7 @@ def _recent_json(cfg_dir):
 # ---------------------------------------------------------------------------
 # recent-files cluster
 # ---------------------------------------------------------------------------
+
 
 class TestRecentFiles:
     def test_load_missing_returns_empty(self, window, cfg_dir):

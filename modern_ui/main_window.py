@@ -6,18 +6,14 @@ Features modern layout, theming, and enhanced user interface.
 import os
 import logging
 from typing import Any
-from PyQt5.QtWidgets import (QMainWindow, QWidget,
-                             QMessageBox, QFileDialog)
+from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent, QSettings
 from lib.app_paths import SETTINGS_ORG, SETTINGS_APP
 
 # Import existing DSim functionality
 from lib.lib import DSim
-from lib.improvements import (
-    PerformanceHelper, SafetyChecks,
-    SimulationConfig
-)
+from lib.improvements import PerformanceHelper, SafetyChecks, SimulationConfig
 
 # Import modern UI components
 from modern_ui.themes.theme_manager import theme_manager
@@ -45,7 +41,7 @@ FIRST_RUN_WELCOME_MESSAGE = (
 
 class ModernDiaBloSWindow(QMainWindow):
     """Modern DiaBloS main window with enhanced UI."""
-    
+
     def __init__(self, screen_geometry=None):
         super().__init__()
         logger.info("Starting Modern DiaBloS Application")
@@ -55,7 +51,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Default routing mode for new connections
         self.default_routing_mode = "bezier"
-        self.use_fast_solver = True # Enabled by default
+        self.use_fast_solver = True  # Enabled by default
 
         # Core DSim functionality
         self.dsim = DSim()
@@ -74,6 +70,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Builders
         from modern_ui.builders.menu_builder import MenuBuilder
+
         self.menu_builder = MenuBuilder(self)
 
         # Setup modern UI
@@ -83,24 +80,25 @@ class ModernDiaBloSWindow(QMainWindow):
         self.toolbar.set_simulation_state(False, False)
         self._setup_layout()
         self._setup_statusbar()
-        
+
         # Connect property editor signals
         self.property_editor.property_changed.connect(self._on_property_changed)
         self.property_editor.pin_to_tuning.connect(self._add_to_tuning)
         # Wire the inspector to dsim so its empty-state view can render the
         # diagram inspector (V1) rather than a blank placeholder.
-        if hasattr(self.property_editor, 'set_diagram_context'):
+        if hasattr(self.property_editor, "set_diagram_context"):
             self.property_editor.set_diagram_context(self.dsim, self)
-        
+
         # Initialize Variable Editor (Dockable)
         from PyQt5.QtWidgets import QDockWidget
+
         self.variable_editor = VariableEditor(self)
         self.variable_editor_dock = QDockWidget("Variable Editor", self)
         self.variable_editor_dock.setWidget(self.variable_editor)
         self.variable_editor_dock.setAllowedAreas(Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.variable_editor_dock)
         self.variable_editor_dock.hide()  # Hidden by default
-        
+
         # Connect variable editor signals
         self.variable_editor.variables_updated.connect(self._on_variables_updated)
 
@@ -127,12 +125,8 @@ class ModernDiaBloSWindow(QMainWindow):
         canvas_layout = self.canvas_area.layout()
         canvas_layout.addWidget(self.tuning_panel, 0)
 
-        self.tuning_controller = TuningController(
-            self.dsim, self.dsim.scope_plotter, parent=self
-        )
-        self.tuning_controller.set_status_callback(
-            lambda msg: self.status_message.setText(msg)
-        )
+        self.tuning_controller = TuningController(self.dsim, self.dsim.scope_plotter, parent=self)
+        self.tuning_controller.set_status_callback(lambda msg: self.status_message.setText(msg))
         self.tuning_panel.param_changed.connect(self.tuning_controller.on_param_changed)
         self.tuning_panel.panel_cleared.connect(self.tuning_controller.deactivate)
 
@@ -147,6 +141,7 @@ class ModernDiaBloSWindow(QMainWindow):
         # Global ⌘K / Ctrl+K shortcut so the palette is reachable everywhere.
         from PyQt5.QtWidgets import QShortcut
         from PyQt5.QtGui import QKeySequence
+
         self._cmdk_shortcut = QShortcut(QKeySequence("Ctrl+K"), self)
         self._cmdk_shortcut.setContext(Qt.ApplicationShortcut)
         self._cmdk_shortcut.activated.connect(self.show_command_palette)
@@ -154,7 +149,6 @@ class ModernDiaBloSWindow(QMainWindow):
         # Initialize DSim components
         self.dsim.main_buttons_init()
 
-        
         # Setup update timer
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.safe_update)
@@ -165,7 +159,8 @@ class ModernDiaBloSWindow(QMainWindow):
         self.autosave_timer.timeout.connect(self._auto_save)
         self.autosave_timer.start(2 * 60 * 1000)  # 2 minutes in milliseconds
         from lib.app_paths import user_data_path
-        self.autosave_path = user_data_path('config/.autosave.diablos')
+
+        self.autosave_path = user_data_path("config/.autosave.diablos")
 
         # Check for auto-save file on startup
         QTimer.singleShot(500, self._check_autosave_recovery)
@@ -180,7 +175,7 @@ class ModernDiaBloSWindow(QMainWindow):
         QTimer.singleShot(0, self._initialize_splitter_sizes)
 
         logger.info("Modern DiaBloS Window initialized successfully")
-    
+
     def _init_core_managers(self):
         """Instantiate the core manager/controller objects.
 
@@ -188,48 +183,59 @@ class ModernDiaBloSWindow(QMainWindow):
         ordering is preserved (these must exist before _init_state_management).
         """
         from modern_ui.managers.project_manager import ProjectManager
+
         self.project_manager = ProjectManager(self)
 
         from modern_ui.managers.recent_files_manager import RecentFilesManager
+
         self.recent_files_manager = RecentFilesManager(self)
 
         from modern_ui.managers.appearance_manager import AppearanceManager
+
         self.appearance_manager = AppearanceManager(self)
 
         from modern_ui.managers.status_bar_manager import StatusBarManager
+
         self.status_bar_manager = StatusBarManager(self)
 
         from modern_ui.managers.property_controller import PropertyController
+
         self.property_controller = PropertyController(self)
 
         from modern_ui.managers.command_palette_manager import CommandPaletteManager
+
         self.command_palette_manager = CommandPaletteManager(self)
 
         from modern_ui.managers.layout_manager import LayoutManager
+
         self.layout_manager = LayoutManager(self)
 
         from modern_ui.managers.window_setup_manager import WindowSetupManager
+
         self.window_setup_manager = WindowSetupManager(self)
 
         from modern_ui.managers.view_actions_manager import ViewActionsManager
+
         self.view_actions_manager = ViewActionsManager(self)
 
         from modern_ui.managers.simulation_actions_manager import SimulationActionsManager
+
         self.simulation_actions_manager = SimulationActionsManager(self)
 
         from modern_ui.controllers.experiment_controller import ExperimentController
+
         self.experiment_controller = ExperimentController(self)
 
     def _init_state_management(self):
         """Initialize state management from improved version."""
         from enum import Enum, auto
-        
+
         class State(Enum):
             IDLE = auto()
             DRAGGING = auto()
             CONNECTING = auto()
             CONFIGURING = auto()
-        
+
         # State management
         # State management
         self.State = State
@@ -239,13 +245,13 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Initialize Services
         self.diagram_service = self.project_manager.diagram_service
-        
+
         # Connection management
         self.line_creation_state = None
         self.line_start_block = None
         self.line_start_port = None
         self.temp_line = None
-    
+
     # Window/menubar/toolbar facades -> WindowSetupManager (see managers/window_setup_manager.py)
     def _setup_window(self):
         """Setup main window properties with screen-aware sizing."""
@@ -257,7 +263,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def create_subsystem(self):
         """Create subsystem from selection (delegate to canvas)."""
-        if hasattr(self, 'canvas') and hasattr(self.canvas, '_create_subsystem_trigger'):
+        if hasattr(self, "canvas") and hasattr(self.canvas, "_create_subsystem_trigger"):
             self.canvas._create_subsystem_trigger()
 
     def toggle_minimap(self):
@@ -267,22 +273,26 @@ class ModernDiaBloSWindow(QMainWindow):
     def _set_scaling(self, factor):
         import json
         from lib.app_paths import user_data_path
-        config_path = user_data_path('config/default_config.json')
+
+        config_path = user_data_path("config/default_config.json")
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             config = {}
 
-        if 'display' not in config:
-            config['display'] = {}
-        config['display']['scaling_factor'] = factor
+        if "display" not in config:
+            config["display"] = {}
+        config["display"]["scaling_factor"] = factor
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
-        QMessageBox.information(self, "UI Scaling",
-                                "The UI scaling factor has been changed. Please restart the application for the changes to take effect.")
+        QMessageBox.information(
+            self,
+            "UI Scaling",
+            "The UI scaling factor has been changed. Please restart the application for the changes to take effect.",
+        )
 
     def _set_default_routing_mode(self, mode):
         """Set the default routing mode for new connections."""
@@ -294,7 +304,7 @@ class ModernDiaBloSWindow(QMainWindow):
             self.orthogonal_routing_action.setChecked(mode == "orthogonal")
 
             # Pass the setting to the canvas
-            if hasattr(self, 'canvas'):
+            if hasattr(self, "canvas"):
                 self.canvas.default_routing_mode = mode
 
             logger.info(f"Default connection routing mode set to: {mode}")
@@ -348,7 +358,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def _refresh_file_status(self):
         """Update filename + unsaved indicator in the status bar."""
         self.status_bar_manager.refresh_file_status()
-    
+
     def paintEvent(self, event):
         """Paint event - delegated to canvas widget."""
         pass
@@ -366,10 +376,12 @@ class ModernDiaBloSWindow(QMainWindow):
     def export_tikz(self):
         """Open the TikZ export dialog."""
         from PyQt5.QtWidgets import QMessageBox
+
         if not self.dsim.blocks_list:
             QMessageBox.information(self, "Export TikZ", "No blocks to export.")
             return
         from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
+
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
 
     # Analysis/experiment facades -> ExperimentController (see controllers/experiment_controller.py)
@@ -400,15 +412,16 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def show_plots(self):
         """Show plots."""
-        if not hasattr(self.dsim, 'run_history'):
+        if not hasattr(self.dsim, "run_history"):
             return
-        history = getattr(self.dsim, 'run_history', [])
+        history = getattr(self.dsim, "run_history", [])
         if not history:
             QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
             return
 
-        if not hasattr(self, 'waveform_inspector_dock'):
+        if not hasattr(self, "waveform_inspector_dock"):
             from PyQt5.QtWidgets import QDockWidget
+
             self.waveform_inspector = WaveformInspector(self.dsim)
             self.waveform_inspector_dock = QDockWidget("Waveforms", self)
             self.waveform_inspector_dock.setWidget(self.waveform_inspector)
@@ -417,11 +430,11 @@ class ModernDiaBloSWindow(QMainWindow):
             )
             self.addDockWidget(Qt.BottomDockWidgetArea, self.waveform_inspector_dock)
 
-            if hasattr(self, 'variable_editor_dock'):
+            if hasattr(self, "variable_editor_dock"):
                 self.tabifyDockWidget(self.variable_editor_dock, self.waveform_inspector_dock)
         self.waveform_inspector_dock.show()
         self.waveform_inspector_dock.raise_()
-    
+
     def capture_screen(self):
         """Save a PNG screenshot of the application window.
 
@@ -459,15 +472,15 @@ class ModernDiaBloSWindow(QMainWindow):
 
         if pixmap.save(path, "PNG"):
             name = os.path.basename(path)
-            if hasattr(self, 'status_message'):
+            if hasattr(self, "status_message"):
                 self.status_message.setText(f"Screenshot saved: {name}")
-            if hasattr(self, 'toast'):
-                self.toast.show_message(f"\U0001F4F8 Saved {name}")
+            if hasattr(self, "toast"):
+                self.toast.show_message(f"\U0001f4f8 Saved {name}")
         else:
             logger.warning("Failed to save screenshot to %s", path)
-            if hasattr(self, 'toast'):
+            if hasattr(self, "toast"):
                 self.toast.show_message("Screenshot save failed")
-    
+
     # View-action facades -> ViewActionsManager (see managers/view_actions_manager.py)
     def set_zoom(self, factor: float):
         """Set zoom factor."""
@@ -505,21 +518,21 @@ class ModernDiaBloSWindow(QMainWindow):
     # Menu action handlers (simplified for Phase 1)
     def undo_action(self):
         """Undo last action."""
-        if hasattr(self, 'canvas'):
+        if hasattr(self, "canvas"):
             self.canvas.undo()
             self.status_message.setText("Undo")
             self.toast.show_message("⟲ Undo")
 
     def redo_action(self):
         """Redo last undone action."""
-        if hasattr(self, 'canvas'):
+        if hasattr(self, "canvas"):
             self.canvas.redo()
             self.status_message.setText("Redo")
             self.toast.show_message("⟳ Redo")
 
     def select_all(self):
         """Select all blocks in the diagram."""
-        if hasattr(self, 'canvas'):
+        if hasattr(self, "canvas"):
             # Deselect all lines first
             for line in self.canvas.dsim.line_list:
                 line.selected = False
@@ -568,7 +581,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def fit_to_window(self):
         """Fit all blocks to window by auto-zooming and panning."""
         self.view_actions_manager.fit_to_window()
-    
+
     def toggle_variable_editor(self):
         """Toggle Variable Editor visibility."""
         if self.variable_editor_dock.isVisible():
@@ -582,30 +595,30 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def toggle_workspace_editor(self):
         """Toggle Workspace Editor visibility."""
-        if hasattr(self, 'workspace_editor_dock'):
+        if hasattr(self, "workspace_editor_dock"):
             if self.workspace_editor_dock.isVisible():
                 self.workspace_editor_dock.hide()
-                if hasattr(self, 'workspace_editor_action'):
+                if hasattr(self, "workspace_editor_action"):
                     self.workspace_editor_action.setChecked(False)
                 self.toast.show_message("Workspace Variables hidden")
             else:
                 self.workspace_editor_dock.show()
-                if hasattr(self, 'workspace_editor_action'):
+                if hasattr(self, "workspace_editor_action"):
                     self.workspace_editor_action.setChecked(True)
                 self.toast.show_message("Workspace Variables shown")
-    
+
     def _on_variables_updated(self):
         """Handle variable updates from the Variable Editor."""
         try:
             var_count = len(WorkspaceManager().variables)
-            
+
             # Refresh the Workspace Editor (table view)
-            if hasattr(self, 'workspace_editor'):
+            if hasattr(self, "workspace_editor"):
                 self.workspace_editor.refresh_variables()
 
             # Refresh the Property Editor's diagram-inspector Workspace section
             # (only re-renders when no block is selected — block-state view is unaffected)
-            if hasattr(self, 'property_editor') and self.property_editor.block is None:
+            if hasattr(self, "property_editor") and self.property_editor.block is None:
                 self.property_editor.set_block(None)
 
             self.toast.show_message(f"✓ Workspace updated ({var_count} variables)", duration=2000)
@@ -613,8 +626,10 @@ class ModernDiaBloSWindow(QMainWindow):
             logger.info(f"Workspace updated from Variable Editor: {var_count} variables")
         except Exception as e:
             logger.error(f"Error handling variable update: {str(e)}")
-            self.toast.show_message(f"Error updating workspace: {str(e)}", duration=3000, is_error=True)
-    
+            self.toast.show_message(
+                f"Error updating workspace: {str(e)}", duration=3000, is_error=True
+            )
+
     def closeEvent(self, event):
         """Handle application shutdown."""
         logger.info("Modern DiaBloS closing...")
@@ -642,7 +657,7 @@ class ModernDiaBloSWindow(QMainWindow):
                 self.status_message.setText("")
                 self.property_editor.set_block(None)
                 return
-            block_name = getattr(block, 'fn_name', 'Unknown')
+            block_name = getattr(block, "fn_name", "Unknown")
             logger.info(f"Block selected: {block_name}")
             self.status_message.setText(f"Selected: {block_name}")
 
@@ -651,18 +666,18 @@ class ModernDiaBloSWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Error handling block selection: {str(e)}")
-    
+
     def _on_connection_created(self, source_block, target_block):
         """Handle connection creation between blocks."""
         try:
-            source_name = getattr(source_block, 'fn_name', 'Unknown')
-            target_name = getattr(target_block, 'fn_name', 'Unknown')
+            source_name = getattr(source_block, "fn_name", "Unknown")
+            target_name = getattr(target_block, "fn_name", "Unknown")
             logger.info(f"Connection created: {source_name} -> {target_name}")
             self.status_message.setText(f"Connected {source_name} to {target_name}")
-            
+
         except Exception as e:
             logger.error(f"Error handling connection creation: {str(e)}")
-    
+
     def _on_simulation_status_changed(self, status):
         """Handle simulation status changes from canvas."""
         try:
@@ -699,7 +714,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def show_error(self, message):
         """Show an error message to the user."""
         logger.error(message)
-        if hasattr(self, 'toast'):
+        if hasattr(self, "toast"):
             self.toast.show_message(message, duration=5000, is_error=True)
         else:
             QMessageBox.critical(self, "Error", message)
@@ -730,7 +745,7 @@ class ModernDiaBloSWindow(QMainWindow):
             from PyQt5.QtCore import QPoint
 
             # Get affected blocks from the error
-            affected_blocks = error.blocks if hasattr(error, 'blocks') else []
+            affected_blocks = error.blocks if hasattr(error, "blocks") else []
 
             if not affected_blocks:
                 logger.warning("No blocks associated with this error")
@@ -741,8 +756,8 @@ class ModernDiaBloSWindow(QMainWindow):
                 block.selected = False
 
             # Calculate bounding box of all affected blocks
-            min_x = min_y = float('inf')
-            max_x = max_y = float('-inf')
+            min_x = min_y = float("inf")
+            max_x = max_y = float("-inf")
 
             for block in affected_blocks:
                 # Get block position using correct attribute names
@@ -787,14 +802,14 @@ class ModernDiaBloSWindow(QMainWindow):
 
         except Exception as e:
             logger.error(f"Error navigating to error location: {str(e)}")
-    
+
     # Update safe_update to use the new canvas
     def safe_update(self):
         """Safe update with error handling and performance monitoring."""
         try:
             self.perf_helper.start_timer("ui_update")
-            
-            if hasattr(self, 'canvas'):
+
+            if hasattr(self, "canvas"):
                 was_running = self.canvas.is_simulation_running()
 
                 if was_running:
@@ -804,24 +819,24 @@ class ModernDiaBloSWindow(QMainWindow):
                         self.canvas.stop_simulation()
                         self.toolbar.set_simulation_state(False, False)
                         return
-                    
+
                     self.perf_helper.start_timer("simulation_step")
-                    if hasattr(self.canvas.dsim, 'execution_loop'):
+                    if hasattr(self.canvas.dsim, "execution_loop"):
                         self.canvas.dsim.execution_loop()
                     step_duration = self.perf_helper.end_timer("simulation_step")
-                    
+
                     if step_duration and step_duration > 0.1:
                         logger.warning(f"Slow simulation step: {step_duration:.4f}s")
 
                 self.canvas.update()
 
                 # Refresh minimap if visible
-                if hasattr(self, 'minimap_dock') and self.minimap_dock.isVisible():
+                if hasattr(self, "minimap_dock") and self.minimap_dock.isVisible():
                     self.minimap.refresh()
 
-                if was_running and hasattr(self.toolbar, 'set_simulation_time'):
-                    t_now = getattr(self.dsim, 'time_step', 0.0)
-                    t_end = getattr(self.dsim, 'sim_time', 10.0) or 10.0
+                if was_running and hasattr(self.toolbar, "set_simulation_time"):
+                    t_now = getattr(self.dsim, "time_step", 0.0)
+                    t_end = getattr(self.dsim, "sim_time", 10.0) or 10.0
                     self.toolbar.set_simulation_time(t_now, t_end)
 
                 is_running = self.canvas.is_simulation_running()
@@ -830,25 +845,23 @@ class ModernDiaBloSWindow(QMainWindow):
                     self.toolbar.set_simulation_state(False, False)
                     self.status_message.setText("Simulation finished")
                     # Arm tuning controller with sim params from completed run
-                    self.tuning_controller.store_sim_params(
-                        self.dsim.sim_time, self.dsim.sim_dt
-                    )
-            
+                    self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
+
             self.perf_helper.end_timer("ui_update")
-            
+
         except Exception as e:
             logger.error(f"Error in safe_update: {str(e)}")
-            if hasattr(self, 'canvas'):
+            if hasattr(self, "canvas"):
                 self.canvas.stop_simulation()
                 self.toolbar.set_simulation_state(False, False)
-    
+
     # Override toolbar actions to use canvas methods
     def new_diagram(self):
         """Create new diagram."""
-        if hasattr(self, 'canvas'):
+        if hasattr(self, "canvas"):
             self.canvas.clear_canvas()
         self.status_message.setText("New diagram created")
-    
+
     def start_simulation(self) -> None:
         """Start simulation with validation."""
         self.simulation_actions_manager.start()
@@ -900,14 +913,16 @@ class ModernDiaBloSWindow(QMainWindow):
             # would fail against a read-only cwd in frozen builds).
 
             # Save using file_service for proper JSON format
-            if hasattr(self.dsim, 'file_service'):
+            if hasattr(self.dsim, "file_service"):
                 self.dsim.file_service.save(
-                    autosave=True, 
+                    autosave=True,
                     modern_ui_data={
-                        'theme': theme_manager.current_theme.value,
-                        'zoom_factor': self.canvas.zoom_factor if hasattr(self.canvas, 'zoom_factor') else 1.0
+                        "theme": theme_manager.current_theme.value,
+                        "zoom_factor": self.canvas.zoom_factor
+                        if hasattr(self.canvas, "zoom_factor")
+                        else 1.0,
                     },
-                    filepath=self.autosave_path
+                    filepath=self.autosave_path,
                 )
             else:
                 # Fallback: use dsim.save
@@ -944,7 +959,7 @@ class ModernDiaBloSWindow(QMainWindow):
             # Set the flag first so a later toast failure still marks first run
             # done (idempotent: we only ever want this to fire once).
             settings.setValue("ui/first_run_done", True)
-            if hasattr(self, 'toast'):
+            if hasattr(self, "toast"):
                 self.toast.show_message(FIRST_RUN_WELCOME_MESSAGE, duration=8000)
         except Exception as e:
             logger.error(f"Error showing first-run welcome: {str(e)}")
@@ -958,7 +973,11 @@ class ModernDiaBloSWindow(QMainWindow):
             try:
                 WorkspaceManager().load_from_file(filepath)
                 self._on_variables_updated()
-                self.toast.show_message(f"Workspace loaded from {os.path.basename(filepath)}", duration=3000)
+                self.toast.show_message(
+                    f"Workspace loaded from {os.path.basename(filepath)}", duration=3000
+                )
             except Exception as e:
-                self.toast.show_message(f"Failed to load workspace: {str(e)}", duration=5000, is_error=True)
+                self.toast.show_message(
+                    f"Failed to load workspace: {str(e)}", duration=5000, is_error=True
+                )
                 logger.error(f"Failed to load workspace: {str(e)}")

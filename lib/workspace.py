@@ -5,11 +5,13 @@ from lib.safe_eval import safe_expr
 
 logger = logging.getLogger(__name__)
 
+
 class WorkspaceManager:
     """
     Manages workspace variables loaded from text files.
     Singleton pattern to ensure consistent state across the application.
     """
+
     _instance = None
 
     def __new__(cls):
@@ -29,7 +31,7 @@ class WorkspaceManager:
             return False
 
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 content = f.read()
 
             # Parse the file content safely
@@ -47,7 +49,7 @@ class WorkspaceManager:
                             except ValueError:
                                 # Handle simple math expressions if needed, or just skip complex ones
                                 logger.warning(f"Could not evaluate value for {target.id}")
-            
+
             self.variables = new_variables
             self.workspace_file = filepath
             logger.info(f"Loaded {len(self.variables)} variables from {filepath}")
@@ -86,7 +88,7 @@ class WorkspaceManager:
                 # Recursively resolve lists (though usually lists are numbers)
                 # For now, we assume lists are already resolved or contain literals
                 pass
-        
+
         return resolved
 
     def set_variable(self, name, value):
@@ -108,9 +110,9 @@ class WorkspaceManager:
         if not path:
             logger.warning("No filepath specified for saving workspace.")
             return False
-            
+
         try:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 for name, value in self.variables.items():
                     # We use repr() to ensure the value is written as a valid Python literal (e.g. string with quotes)
                     f.write(f"{name} = {repr(value)}\n")
@@ -119,4 +121,3 @@ class WorkspaceManager:
         except Exception as e:
             logger.error(f"Error saving workspace file: {e}")
             return False
-

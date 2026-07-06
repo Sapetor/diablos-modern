@@ -28,7 +28,6 @@ def _stub(block_fn: str, params: dict = None, exec_params: dict = None):
 
 @pytest.mark.unit
 class TestUnconditionalMemoryBlocks:
-
     @pytest.mark.parametrize("block_fn", sorted(OUTPUT_ONLY_SAFE_BLOCK_FNS))
     def test_all_listed_blocks_classify(self, block_fn):
         assert is_memory_block(_stub(block_fn)), (
@@ -38,12 +37,11 @@ class TestUnconditionalMemoryBlocks:
 
     def test_canonical_block_fns_present(self):
         """Sanity-check that the obvious memory blocks are in the set."""
-        for name in ('Integrator', 'StateVariable', 'PID',
-                     'TransportDelay', 'ZeroOrderHold'):
+        for name in ("Integrator", "StateVariable", "PID", "TransportDelay", "ZeroOrderHold"):
             assert name in OUTPUT_ONLY_SAFE_BLOCK_FNS
 
     def test_known_non_memory_blocks_excluded(self):
-        for name in ('Gain', 'Sum', 'Constant', 'Saturation', 'Step'):
+        for name in ("Gain", "Sum", "Constant", "Saturation", "Step"):
             assert name not in OUTPUT_ONLY_SAFE_BLOCK_FNS
             assert not is_memory_block(_stub(name)), (
                 f"{name} should NOT be classified as a memory block."
@@ -52,46 +50,65 @@ class TestUnconditionalMemoryBlocks:
 
 @pytest.mark.unit
 class TestStrictlyProperTF:
-
     def test_strictly_proper_tranfn_classified(self):
-        block = _stub("TranFn", exec_params={
-            "numerator": [1.0], "denominator": [1.0, 1.0],
-        })
+        block = _stub(
+            "TranFn",
+            exec_params={
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         assert is_strictly_proper_tf(block)
         assert is_memory_block(block)
 
     def test_proper_tranfn_not_classified(self):
-        block = _stub("TranFn", exec_params={
-            "numerator": [1.0, 2.0], "denominator": [1.0, 1.0],
-        })
+        block = _stub(
+            "TranFn",
+            exec_params={
+                "numerator": [1.0, 2.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         assert not is_strictly_proper_tf(block)
         assert not is_memory_block(block)
 
     def test_strictly_proper_discrete_tranfn_classified(self):
-        block = _stub("DiscreteTranFn", exec_params={
-            "numerator": [1.0], "denominator": [1.0, 1.0],
-        })
+        block = _stub(
+            "DiscreteTranFn",
+            exec_params={
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
         assert is_strictly_proper_tf(block)
         assert is_memory_block(block)
 
     def test_proper_discrete_tranfn_not_classified(self):
-        block = _stub("DiscreteTranFn", exec_params={
-            "numerator": [1.0, 0.5], "denominator": [1.0, 0.2],
-        })
+        block = _stub(
+            "DiscreteTranFn",
+            exec_params={
+                "numerator": [1.0, 0.5],
+                "denominator": [1.0, 0.2],
+            },
+        )
         assert not is_strictly_proper_tf(block)
         assert not is_memory_block(block)
 
     def test_falls_back_to_params_when_exec_params_empty(self):
         """Legacy callers (ValidationHelper) may pass raw params only."""
-        block = _stub("TranFn", params={
-            "numerator": [1.0], "denominator": [1.0, 1.0],
-        }, exec_params={})
+        block = _stub(
+            "TranFn",
+            params={
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+            exec_params={},
+        )
         assert is_strictly_proper_tf(block)
 
 
 @pytest.mark.unit
 class TestZeroDStateSpace:
-
     def test_zero_D_statespace_classified(self):
         block = _stub("StateSpace", exec_params={"D": np.array([[0.0]])})
         assert is_zero_D_statespace(block)
@@ -126,9 +143,9 @@ class TestSharedTaxonomyConsistency:
         """SimulationEngine.identify_memory_blocks imports the shared helper."""
         import inspect
         from lib.engine import simulation_engine
+
         src = inspect.getsource(simulation_engine.SimulationEngine.identify_memory_blocks)
-        assert "from lib.engine.memory_blocks import" in src or \
-               "memory_blocks import" in src, (
+        assert "from lib.engine.memory_blocks import" in src or "memory_blocks import" in src, (
             "identify_memory_blocks no longer references the shared "
             "memory_blocks module — the taxonomy has drifted again."
         )
@@ -137,6 +154,7 @@ class TestSharedTaxonomyConsistency:
         """ValidationHelper.detect_algebraic_loops imports the shared helper."""
         import inspect
         from lib.improvements import ValidationHelper
+
         src = inspect.getsource(ValidationHelper.detect_algebraic_loops)
         assert "memory_blocks import" in src, (
             "detect_algebraic_loops no longer references the shared "

@@ -54,7 +54,9 @@ class WindowSetupManager:
             window.setMinimumSize(min_width, min_height)
             window.resize(target_width, target_height)
 
-            logger.info(f"Window sizing: target={target_width}×{target_height}, min={min_width}×{min_height}")
+            logger.info(
+                f"Window sizing: target={target_width}×{target_height}, min={min_width}×{min_height}"
+            )
         else:
             # Fallback to larger sizes
             window.setMinimumSize(1200, 800)
@@ -63,7 +65,7 @@ class WindowSetupManager:
         # Set the app-wide base font from the canonical UI stack (Segoe UI on
         # Windows, -apple-system on macOS, …). The old hardcoded "Segoe UI" was
         # wrong on macOS/Linux.
-        window.setFont(get_ui_font(TYPE['body_strong']))
+        window.setFont(get_ui_font(TYPE["body_strong"]))
 
         # Apply modern theme
         window.setObjectName("ModernMainWindow")

@@ -26,6 +26,7 @@ def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
         from lib.block_loader import load_blocks
+
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
             try:
@@ -37,7 +38,7 @@ def _params(block_type, **overrides):
     out = {}
     if inst is not None:
         for k, v in inst.params.items():
-            out[k] = v['default'] if isinstance(v, dict) and 'default' in v else v
+            out[k] = v["default"] if isinstance(v, dict) and "default" in v else v
     out.update(overrides)
     return out
 

@@ -20,17 +20,20 @@ def _qt(qapp):
 @pytest.fixture
 def editor():
     from modern_ui.widgets.property_editor import PropertyEditor
+
     return PropertyEditor()
 
 
 class TestChoicesAndOptions:
     def test_options_key_yields_combobox(self, editor):
-        meta = {"type": "choice", "default": "linear",
-                "options": ["linear", "logarithmic", "quadratic"]}
+        meta = {
+            "type": "choice",
+            "default": "linear",
+            "options": ["linear", "logarithmic", "quadratic"],
+        }
         w = editor._create_editor_for_value("method", "linear", meta, "Parameters")
         assert isinstance(w, QComboBox)
-        assert [w.itemText(i) for i in range(w.count())] == \
-            ["linear", "logarithmic", "quadratic"]
+        assert [w.itemText(i) for i in range(w.count())] == ["linear", "logarithmic", "quadratic"]
         assert w.currentText() == "linear"
 
     def test_choices_key_still_yields_combobox(self, editor):
@@ -69,12 +72,14 @@ class TestRealBlockEnums:
     @pytest.mark.parametrize("module_name,class_name", _ENUM_BLOCKS)
     def test_block_enum_params_yield_combobox(self, editor, module_name, class_name):
         import importlib
+
         mod = importlib.import_module(module_name)
         block = getattr(mod, class_name)()
         params = block.params
 
         enum_keys = [
-            k for k, meta in params.items()
+            k
+            for k, meta in params.items()
             if isinstance(meta, dict) and (meta.get("choices") or meta.get("options"))
         ]
         assert enum_keys, f"{class_name} declared no enum params to test"
@@ -83,6 +88,4 @@ class TestRealBlockEnums:
             meta = params[key]
             default = meta.get("default", (meta.get("choices") or meta.get("options"))[0])
             w = editor._create_editor_for_value(key, default, meta, "Parameters")
-            assert isinstance(w, QComboBox), (
-                f"{class_name}.{key} did not render as a QComboBox"
-            )
+            assert isinstance(w, QComboBox), f"{class_name}.{key} did not render as a QComboBox"

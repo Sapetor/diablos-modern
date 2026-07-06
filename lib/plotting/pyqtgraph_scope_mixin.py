@@ -8,6 +8,7 @@ split across files without changing any call site: ``self.pyqtPlotScope`` and
 :class:`SignalPlot` window and reuse the core helpers (``self._scope_step_modes``,
 ``self._close_plotty``) via ``self``.
 """
+
 import logging
 
 import numpy as np
@@ -28,15 +29,19 @@ class _PyQtGraphScopeMixin:
         labels_list = []
         vector_list = []
         # Use active blocks from engine if available
-        source_blocks = self.dsim.engine.active_blocks_list if hasattr(self.dsim, 'engine') and self.dsim.engine.active_blocks_list else self.dsim.blocks_list
-        
+        source_blocks = (
+            self.dsim.engine.active_blocks_list
+            if hasattr(self.dsim, "engine") and self.dsim.engine.active_blocks_list
+            else self.dsim.blocks_list
+        )
+
         for block in source_blocks:
-            if block.block_fn == 'Scope':
+            if block.block_fn == "Scope":
                 logger.debug(f"Found Scope block: {block.name}")
                 # Use exec_params as that's where simulation data is stored
-                b_labels = block.exec_params.get('vec_labels', block.params.get('vec_labels'))
+                b_labels = block.exec_params.get("vec_labels", block.params.get("vec_labels"))
                 labels_list.append(b_labels)
-                b_vectors = block.exec_params.get('vector', block.params.get('vector'))
+                b_vectors = block.exec_params.get("vector", block.params.get("vector"))
                 if b_vectors is None:
                     b_vectors = []
                 vector_list.append(b_vectors)
@@ -61,13 +66,19 @@ class _PyQtGraphScopeMixin:
 
                 # Check if this is an interleaved multi-signal vector that needs reshaping
                 # The Scope block stores vec_dim for multi-dimensional inputs
-                scope_block = [b for b in source_blocks if b.block_fn == 'Scope'][idx] if idx < len([b for b in source_blocks if b.block_fn == 'Scope']) else None
+                scope_block = (
+                    [b for b in source_blocks if b.block_fn == "Scope"][idx]
+                    if idx < len([b for b in source_blocks if b.block_fn == "Scope"])
+                    else None
+                )
                 if scope_block and arr.ndim == 1:
-                    vec_dim = scope_block.exec_params.get('vec_dim', scope_block.params.get('vec_dim', 1))
+                    vec_dim = scope_block.exec_params.get(
+                        "vec_dim", scope_block.params.get("vec_dim", 1)
+                    )
                     if vec_dim > 1 and len(arr) >= vec_dim:
                         # Reshape interleaved flat array to 2D: (num_samples, vec_dim)
                         num_samples = len(arr) // vec_dim
-                        arr = arr[:num_samples * vec_dim].reshape(num_samples, vec_dim)
+                        arr = arr[: num_samples * vec_dim].reshape(num_samples, vec_dim)
                         logger.debug(f"Reshaped interleaved vector to {arr.shape}")
 
                 if arr.ndim == 2 and arr.shape[1] > 1:
@@ -75,7 +86,7 @@ class _PyQtGraphScopeMixin:
                     if isinstance(labels, list):
                         signal_labels = labels
                     elif isinstance(labels, str):
-                        signal_labels = [l.strip() for l in labels.split(',')]
+                        signal_labels = [l.strip() for l in labels.split(",")]
                     else:
                         signal_labels = [f"Signal {i}" for i in range(arr.shape[1])]
 
@@ -111,8 +122,10 @@ class _PyQtGraphScopeMixin:
             t_arr = self.dsim.timeline.astype(float)
             for si, (lbl, vec) in enumerate(zip(flat_labels, flat_vectors)):
                 v = np.asarray(vec).flatten()
-                logger.info(f"Scope plot [{si}] '{lbl}': len={len(v)}, min={float(v.min()):.4f}, max={float(v.max()):.4f}, "
-                           f"first={float(v[0]):.4f}, last={float(v[-1]):.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}")
+                logger.info(
+                    f"Scope plot [{si}] '{lbl}': len={len(v)}, min={float(v.min()):.4f}, max={float(v.max()):.4f}, "
+                    f"first={float(v[0]):.4f}, last={float(v[-1]):.4f}, step_mode={flat_step_modes[si] if si < len(flat_step_modes) else False}"
+                )
 
             # Close previous plot window if it exists (prevents stale windows
             # lingering). _close_plotty disconnects destroyed BEFORE deleteLater
@@ -121,7 +134,9 @@ class _PyQtGraphScopeMixin:
             self._close_plotty()
 
             # Use step mode for discrete/ZOH signals to keep values constant between samples
-            self.plotty = SignalPlot(self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes)
+            self.plotty = SignalPlot(
+                self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes
+            )
             # Null out both references when the C++ QWidget is destroyed to avoid
             # RuntimeError on the next simulation run.
             self.plotty.destroyed.connect(lambda: self._on_plotty_destroyed())
@@ -157,8 +172,8 @@ class _PyQtGraphScopeMixin:
         if step == 0:  # init
             labels_list = []
             for block in self.dsim.blocks_list:
-                if block.block_fn == 'Scope':
-                    b_labels = block.params['vec_labels']
+                if block.block_fn == "Scope":
+                    b_labels = block.params["vec_labels"]
                     labels_list.append(b_labels)
 
             if labels_list != []:
@@ -167,17 +182,19 @@ class _PyQtGraphScopeMixin:
                 self._close_plotty()
 
                 step_modes = self._scope_step_modes()
-                self.plotty = SignalPlot(self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes)
+                self.plotty = SignalPlot(
+                    self.dsim.sim_dt, labels_list, self.dsim.plot_trange, step_mode=step_modes
+                )
                 # Null out both references when the C++ QWidget is destroyed.
                 self.plotty.destroyed.connect(lambda: self._on_plotty_destroyed())
                 # Sync to dsim for backward compatibility
                 self.dsim.plotty = self.plotty
 
-        elif step == 1: # loop
+        elif step == 1:  # loop
             vector_list = []
             for block in self.dsim.blocks_list:
-                if block.block_fn == 'Scope':
-                    b_vectors = block.params['vector']
+                if block.block_fn == "Scope":
+                    b_vectors = block.params["vector"]
                     vector_list.append(b_vectors)
             if len(vector_list) > 0 and self.plotty is not None:
                 self.plotty.loop(new_t=self.dsim.timeline, new_y=vector_list)

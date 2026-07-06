@@ -54,11 +54,11 @@ def test_example_loads_and_inits(example_file, qapp):
             for block in blocks:
                 block.exec_params = workspace_manager.resolve_params(block.params)
                 block.exec_params.update(
-                    {k: v for k, v in block.params.items() if k.startswith('_')}
+                    {k: v for k, v in block.params.items() if k.startswith("_")}
                 )
-                block.exec_params['dtime'] = dsim.sim_dt
+                block.exec_params["dtime"] = dsim.sim_dt
                 dsim.engine.set_block_type(block)
-                if getattr(block, 'block_type', '') == 'Subsystem':
+                if getattr(block, "block_type", "") == "Subsystem":
                     resolve_recursive(block.sub_blocks)
 
         root_blocks, root_lines = dsim.get_root_context()

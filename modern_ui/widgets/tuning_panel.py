@@ -9,10 +9,21 @@ import logging
 import math
 import re
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QToolButton, QFrame, QScrollArea, QSlider,
-    QMenu, QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout,
-    QLineEdit
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QToolButton,
+    QFrame,
+    QScrollArea,
+    QSlider,
+    QMenu,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QLineEdit,
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
@@ -108,7 +119,7 @@ class TuningParameterRow(QFrame):
             return f"{val:.4g}"
         if val == int(val):
             return str(int(val))
-        return f"{val:.4f}".rstrip('0').rstrip('.')
+        return f"{val:.4f}".rstrip("0").rstrip(".")
 
     @staticmethod
     def _fmt_range(val):
@@ -239,10 +250,10 @@ class TuningParameterRow(QFrame):
     # ── Theming ──
 
     def update_theme(self, colors):
-        accent = colors['accent']
-        text = colors['text']
-        border = colors['border']
-        input_bg = colors['input_bg']
+        accent = colors["accent"]
+        text = colors["text"]
+        border = colors["border"]
+        input_bg = colors["input_bg"]
 
         self._name_label.setStyleSheet(f"color: {text}; font-size: 11px;")
         self._value_edit.setStyleSheet(f"""
@@ -369,14 +380,14 @@ class TuningPanel(QFrame):
 
     def add_parameter(self, block, param_name):
         """Add a parameter slider for the given block and param."""
-        block_name = getattr(block, 'name', str(block))
+        block_name = getattr(block, "name", str(block))
         key = (block_name, param_name)
         if key in self._rows:
             logger.debug(f"Parameter {key} already in tuning panel")
             return
 
         # Parse indexed list params: "denominator[1]" -> ("denominator", 1)
-        match = re.match(r'^(.+)\[(\d+)\]$', param_name)
+        match = re.match(r"^(.+)\[(\d+)\]$", param_name)
         if match:
             base_name, idx = match.group(1), int(match.group(2))
             base_val = block.params.get(base_name)
@@ -448,11 +459,11 @@ class TuningPanel(QFrame):
         self._hint.setVisible(checked and not self._rows)
 
     def _update_theme(self):
-        bg = theme_manager.get_color('surface').name()
-        border = theme_manager.get_color('border_primary').name()
-        text = theme_manager.get_color('text_primary').name()
-        accent = theme_manager.get_color('accent_primary').name()
-        input_bg = theme_manager.get_color('surface_variant').name()
+        bg = theme_manager.get_color("surface").name()
+        border = theme_manager.get_color("border_primary").name()
+        text = theme_manager.get_color("text_primary").name()
+        accent = theme_manager.get_color("accent_primary").name()
+        input_bg = theme_manager.get_color("surface_variant").name()
 
         self.setStyleSheet(f"""
             #TuningPanel {{
@@ -463,8 +474,10 @@ class TuningPanel(QFrame):
         """)
 
         self._title_label.setStyleSheet(f"color: {text}; font-weight: bold; font-size: 11px;")
-        self._hint.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()}; "
-                                  "font-style: italic; padding: 4px; font-size: 11px;")
+        self._hint.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()}; "
+            "font-style: italic; padding: 4px; font-size: 11px;"
+        )
         self._clear_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent; color: {text};
@@ -482,9 +495,12 @@ class TuningPanel(QFrame):
         """)
 
         colors = {
-            'text': text, 'border': border, 'accent': accent,
-            'input_bg': input_bg, 'surface_variant': input_bg,
-            'text_primary': text,
+            "text": text,
+            "border": border,
+            "accent": accent,
+            "input_bg": input_bg,
+            "surface_variant": input_bg,
+            "text_primary": text,
         }
         for row in self._rows.values():
             row.update_theme(colors)

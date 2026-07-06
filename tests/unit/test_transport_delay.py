@@ -9,20 +9,22 @@ class TestTransportDelay:
     def test_block_properties(self):
         """Test basic block properties and metadata."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        assert block.block_name == 'TransportDelay'
-        assert block.category == 'Control'
-        assert block.color == 'cyan'
-        assert 'delay_time' in block.params
-        assert 'initial_value' in block.params
+        assert block.block_name == "TransportDelay"
+        assert block.category == "Control"
+        assert block.color == "cyan"
+        assert "delay_time" in block.params
+        assert "initial_value" in block.params
         assert len(block.inputs) == 1
         assert len(block.outputs) == 1
 
     def test_zero_delay_passthrough(self):
         """With delay=0, output should equal input after buffer builds."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        params = {'delay_time': 0.0, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": 0.0, "initial_value": 0.0, "_init_start_": True}
 
         # First call - initialization
         result = block.execute(0.0, {0: np.array([1.0])}, params)
@@ -41,9 +43,10 @@ class TestTransportDelay:
     def test_constant_delay(self):
         """Signal should arrive after delay time."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.1
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         # Step input at t=0: u(t) = 1.0
         dt = 0.01
@@ -67,10 +70,11 @@ class TestTransportDelay:
     def test_initial_value_before_delay(self):
         """Before delay elapses, should return initial_value."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         initial_val = 5.0
         delay = 0.2
-        params = {'delay_time': delay, 'initial_value': initial_val, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": initial_val, "_init_start_": True}
 
         # Execute at early times (before delay)
         result1 = block.execute(0.0, {0: np.array([10.0])}, params)
@@ -85,9 +89,10 @@ class TestTransportDelay:
     def test_interpolation_accuracy(self):
         """Test linear interpolation for sub-timestep delays."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.05  # 50ms delay
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         # Create a ramp signal: u(t) = t
         dt = 0.01
@@ -110,9 +115,10 @@ class TestTransportDelay:
     def test_ramp_signal(self):
         """Test with linearly increasing input."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.1
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         # Ramp: u(t) = 10*t
         dt = 0.01
@@ -135,9 +141,10 @@ class TestTransportDelay:
     def test_buffer_pruning(self):
         """Verify buffer doesn't grow unbounded."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.1
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         # Run for a long time
         dt = 0.01
@@ -148,16 +155,17 @@ class TestTransportDelay:
         # Buffer should be pruned to reasonable size
         # Should keep ~2x delay worth of samples
         max_expected_length = int(2.0 * delay / dt) + 10  # Add margin
-        assert len(params['_time_buffer_']) < max_expected_length
-        assert len(params['_value_buffer_']) < max_expected_length
-        assert len(params['_time_buffer_']) == len(params['_value_buffer_'])
+        assert len(params["_time_buffer_"]) < max_expected_length
+        assert len(params["_value_buffer_"]) < max_expected_length
+        assert len(params["_time_buffer_"]) == len(params["_value_buffer_"])
 
     def test_step_response(self):
         """Test classic step response with delay."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.1
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         dt = 0.01
         step_time = 0.05
@@ -183,15 +191,16 @@ class TestTransportDelay:
     def test_vector_input(self):
         """Test with vector-valued inputs."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.05
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         # Vector input - build up buffer first
         dt = 0.01
         for i in range(20):
             t = i * dt
-            input_vec = np.array([t, 2*t, 3*t])
+            input_vec = np.array([t, 2 * t, 3 * t])
             result = block.execute(t, {0: input_vec}, params)
 
             target_time = t - delay
@@ -205,17 +214,18 @@ class TestTransportDelay:
 
         # Check final delayed output
         t_final = 0.15
-        result = block.execute(t_final, {0: np.array([t_final, 2*t_final, 3*t_final])}, params)
+        result = block.execute(t_final, {0: np.array([t_final, 2 * t_final, 3 * t_final])}, params)
 
         # Expected: delayed by 0.05s
-        expected = np.array([t_final - delay, 2*(t_final - delay), 3*(t_final - delay)])
+        expected = np.array([t_final - delay, 2 * (t_final - delay), 3 * (t_final - delay)])
         np.testing.assert_allclose(result[0], expected, atol=0.02)
 
     def test_negative_delay_clamped_to_zero(self):
         """Negative delay should be clamped to zero."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        params = {'delay_time': -0.1, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": -0.1, "initial_value": 0.0, "_init_start_": True}
 
         # Should behave like zero delay
         result1 = block.execute(0.0, {0: np.array([1.0])}, params)
@@ -227,29 +237,31 @@ class TestTransportDelay:
     def test_initialization_flag(self):
         """Test that _init_start_ flag properly resets buffers."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        params = {'delay_time': 0.1, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}
 
         # First execution
         block.execute(0.0, {0: np.array([1.0])}, params)
-        assert not params['_init_start_']
-        assert len(params['_time_buffer_']) == 1
+        assert not params["_init_start_"]
+        assert len(params["_time_buffer_"]) == 1
 
         # Reset initialization flag
-        params['_init_start_'] = True
+        params["_init_start_"] = True
         block.execute(0.1, {0: np.array([2.0])}, params)
 
         # Buffers should be reset
-        assert not params['_init_start_']
-        assert len(params['_time_buffer_']) == 1
+        assert not params["_init_start_"]
+        assert len(params["_time_buffer_"]) == 1
 
     def test_sine_wave_delay(self):
         """Test delay on sinusoidal signal."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
         delay = 0.1
         freq = 5.0  # 5 Hz
-        params = {'delay_time': delay, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": delay, "initial_value": 0.0, "_init_start_": True}
 
         dt = 0.001
         times = np.arange(0.0, 0.5, dt)
@@ -271,8 +283,9 @@ class TestTransportDelay:
     def test_no_input_uses_initial_value(self):
         """When no input is provided, should use initial_value."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        params = {'delay_time': 0.1, 'initial_value': 7.5, '_init_start_': True}
+        params = {"delay_time": 0.1, "initial_value": 7.5, "_init_start_": True}
 
         # No input provided (empty dict)
         result = block.execute(0.0, {}, params)
@@ -281,8 +294,9 @@ class TestTransportDelay:
     def test_buffer_consistency(self):
         """Verify time and value buffers stay synchronized."""
         from blocks.transport_delay import TransportDelayBlock
+
         block = TransportDelayBlock()
-        params = {'delay_time': 0.1, 'initial_value': 0.0, '_init_start_': True}
+        params = {"delay_time": 0.1, "initial_value": 0.0, "_init_start_": True}
 
         dt = 0.01
         for i in range(50):
@@ -290,9 +304,11 @@ class TestTransportDelay:
             _ = block.execute(t, {0: np.array([float(i)])}, params)
 
             # Buffers should always have same length
-            assert len(params['_time_buffer_']) == len(params['_value_buffer_'])
+            assert len(params["_time_buffer_"]) == len(params["_value_buffer_"])
 
             # Time buffer should be monotonically increasing
-            if len(params['_time_buffer_']) > 1:
-                assert all(params['_time_buffer_'][i] <= params['_time_buffer_'][i+1]
-                          for i in range(len(params['_time_buffer_'])-1))
+            if len(params["_time_buffer_"]) > 1:
+                assert all(
+                    params["_time_buffer_"][i] <= params["_time_buffer_"][i + 1]
+                    for i in range(len(params["_time_buffer_"]) - 1)
+                )

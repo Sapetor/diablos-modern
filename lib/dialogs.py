@@ -1,8 +1,19 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QCheckBox, QComboBox, QMessageBox
+from PyQt5.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QCheckBox,
+    QComboBox,
+    QMessageBox,
+)
 from PyQt5.QtCore import Qt
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class ParamDialog(QDialog):
     def __init__(self, name, params, parent=None):
@@ -18,8 +29,8 @@ class ParamDialog(QDialog):
 
         for key, value in params.items():
             self.layout.addWidget(QLabel(key))
-            if key in ['numerator', 'denominator']:
-                entry = QLineEdit(', '.join(map(str, value)))
+            if key in ["numerator", "denominator"]:
+                entry = QLineEdit(", ".join(map(str, value)))
             else:
                 entry = QLineEdit(str(value))
             self.layout.addWidget(entry)
@@ -38,14 +49,15 @@ class ParamDialog(QDialog):
     def get_values(self):
         values = {}
         for key, entry in self.entries.items():
-            if key in ['numerator', 'denominator']:
+            if key in ["numerator", "denominator"]:
                 try:
-                    values[key] = list(map(float, entry.text().split(',')))
+                    values[key] = list(map(float, entry.text().split(",")))
                 except ValueError:
-                    pass # Ignore errors while typing
+                    pass  # Ignore errors while typing
             else:
                 values[key] = entry.text()
         return values
+
 
 class PortDialog(QDialog):
     def __init__(self, name, params, parent=None):
@@ -70,15 +82,26 @@ class PortDialog(QDialog):
     def get_values(self):
         return {key: entry.text() for key, entry in self.entries.items()}
 
+
 class SimulationDialog(QDialog):
     # Methods offered in the solver dropdown. Fixed-step methods (Euler, RK4)
     # use the base step size; the rest are adaptive scipy.integrate solvers.
     SOLVER_METHODS = ["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA", "RK4", "Euler"]
 
-    def __init__(self, sim_time, sim_dt, plot_trange, parent=None,
-                 solver_method="RK45", rtol=1e-9, atol=1e-12):
+    def __init__(
+        self,
+        sim_time,
+        sim_dt,
+        plot_trange,
+        parent=None,
+        solver_method="RK45",
+        rtol=1e-9,
+        atol=1e-12,
+    ):
         super().__init__(parent)
-        from PyQt5.QtWidgets import QGroupBox  # Local import to avoid circular dep issues if any, or just convenience
+        from PyQt5.QtWidgets import (
+            QGroupBox,
+        )  # Local import to avoid circular dep issues if any, or just convenience
 
         self.setWindowTitle("Simulation Configuration")
         self.resize(480, 420)
@@ -112,7 +135,9 @@ class SimulationDialog(QDialog):
         solver_layout.addWidget(self.sampling_time_input)
 
         # Explanation Hint — themed via QSS, not inline styles
-        hint_label = QLabel("Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step.")
+        hint_label = QLabel(
+            "Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step."
+        )
         hint_label.setObjectName("HintLabel")
         hint_label.setWordWrap(True)
         solver_layout.addWidget(hint_label)
@@ -144,30 +169,30 @@ class SimulationDialog(QDialog):
         # --- Visualization Group ---
         viz_group = QGroupBox("Visualization")
         viz_layout = QVBoxLayout()
-        
+
         viz_layout.addWidget(QLabel("Plot Window Range [samples]"))
         self.plot_range_input = QLineEdit(str(plot_trange))
         viz_layout.addWidget(self.plot_range_input)
-        
+
         self.dynamic_plot_checkbox = QCheckBox("Enable Dynamic Plotting")
         viz_layout.addWidget(self.dynamic_plot_checkbox)
-        
+
         viz_group.setLayout(viz_layout)
         self.layout.addWidget(viz_group)
 
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        
+
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
-        
+
         accept_btn = QPushButton("Simulate")
         accept_btn.clicked.connect(self.accept)
         accept_btn.setDefault(True)
         button_layout.addWidget(accept_btn)
-        
+
         self.layout.addLayout(button_layout)
 
         self.setLayout(self.layout)
@@ -205,12 +230,12 @@ class SimulationDialog(QDialog):
 
     def get_values(self):
         return {
-            'sim_time': float(self.sim_time_input.text()),
-            'sim_dt': float(self.sampling_time_input.text()),
-            'plot_trange': float(self.plot_range_input.text()),
-            'dynamic_plot': self.dynamic_plot_checkbox.isChecked(),
-            'real_time': self.real_time_checkbox.isChecked(),
-            'solver_method': self.solver_method_combo.currentText(),
-            'rtol': float(self.rtol_input.text()),
-            'atol': float(self.atol_input.text())
+            "sim_time": float(self.sim_time_input.text()),
+            "sim_dt": float(self.sampling_time_input.text()),
+            "plot_trange": float(self.plot_range_input.text()),
+            "dynamic_plot": self.dynamic_plot_checkbox.isChecked(),
+            "real_time": self.real_time_checkbox.isChecked(),
+            "solver_method": self.solver_method_combo.currentText(),
+            "rtol": float(self.rtol_input.text()),
+            "atol": float(self.atol_input.text()),
         }

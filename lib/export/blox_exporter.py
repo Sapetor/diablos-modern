@@ -59,12 +59,12 @@ class BloxExporter:
             return None
 
         opts = {
-            'show_values': True,
-            'show_signal_labels': True,
-            'show_usernames': True,
-            'page_width_cm': 14.0,
-            'use_resizebox': False,
-            'standalone': True,
+            "show_values": True,
+            "show_signal_labels": True,
+            "show_usernames": True,
+            "page_width_cm": 14.0,
+            "use_resizebox": False,
+            "standalone": True,
         }
         if options:
             opts.update(options)
@@ -72,18 +72,18 @@ class BloxExporter:
         parts = []
 
         # Preamble
-        if opts.get('standalone', True):
-            parts.append(r'\documentclass[border=5mm]{standalone}')
-            parts.append(r'\usepackage{blox}')
-            parts.append(r'\usepackage{tikz}')
-            parts.append(r'\usepackage{amsmath}')
-            parts.append('')
-            parts.append(r'\begin{document}')
+        if opts.get("standalone", True):
+            parts.append(r"\documentclass[border=5mm]{standalone}")
+            parts.append(r"\usepackage{blox}")
+            parts.append(r"\usepackage{tikz}")
+            parts.append(r"\usepackage{amsmath}")
+            parts.append("")
+            parts.append(r"\begin{document}")
 
-        if opts.get('use_resizebox'):
-            parts.append(r'\resizebox{\textwidth}{!}{%')
+        if opts.get("use_resizebox"):
+            parts.append(r"\resizebox{\textwidth}{!}{%")
 
-        parts.append(r'\begin{tikzpicture}')
+        parts.append(r"\begin{tikzpicture}")
 
         # Compute inter-block distance (em)
         n = len(chain)
@@ -94,84 +94,76 @@ class BloxExporter:
         node_ids = {}  # block.name -> blox node id
 
         for block in chain:
-            nid = _sanitize_node_id(
-                block.username if block.username != block.name else block.name
-            )
+            nid = _sanitize_node_id(block.username if block.username != block.name else block.name)
             node_ids[block.name] = nid
 
             if self._is_source(block):
-                parts.append(f'  \\bXInput{{{nid}}}')
+                parts.append(f"  \\bXInput{{{nid}}}")
                 prev_node = nid
                 continue
 
             if self._is_sink(block):
-                parts.append(f'  \\bXOutput[{dist}]{{{nid}}}{{{prev_node}}}')
+                parts.append(f"  \\bXOutput[{dist}]{{{nid}}}{{{prev_node}}}")
                 # Link from previous
                 label = self._find_label(prev_node, nid, chain, feedback, node_ids, opts)
                 if label:
-                    parts.append(f'  \\bXLink[{label}]{{{prev_node}}}{{{nid}}}')
+                    parts.append(f"  \\bXLink[{label}]{{{prev_node}}}{{{nid}}}")
                 else:
-                    parts.append(f'  \\bXLink{{{prev_node}}}{{{nid}}}')
+                    parts.append(f"  \\bXLink{{{prev_node}}}{{{nid}}}")
                 prev_node = nid
                 continue
 
-            if block.block_fn == 'Sum':
-                sign_str = block.params.get('sign', block.params.get('signs', '+-'))
+            if block.block_fn == "Sum":
+                sign_str = block.params.get("sign", block.params.get("signs", "+-"))
                 if isinstance(sign_str, dict):
-                    sign_str = sign_str.get('default', '+-')
-                parts.append(
-                    self._emit_sum(nid, prev_node, sign_str, dist)
-                )
+                    sign_str = sign_str.get("default", "+-")
+                parts.append(self._emit_sum(nid, prev_node, sign_str, dist))
                 # Auto-link from previous
                 label = self._find_label(prev_node, nid, chain, feedback, node_ids, opts)
                 if label:
-                    parts.append(f'  \\bXLink[{label}]{{{prev_node}}}{{{nid}}}')
+                    parts.append(f"  \\bXLink[{label}]{{{prev_node}}}{{{nid}}}")
                 else:
-                    parts.append(f'  \\bXLink{{{prev_node}}}{{{nid}}}')
+                    parts.append(f"  \\bXLink{{{prev_node}}}{{{nid}}}")
                 prev_node = nid
                 continue
 
             # Generic block (Gain, TranFn, etc.)
             content = self._block_content(block, opts)
-            parts.append(
-                f'  \\bXBlocL[{dist}]{{{nid}}}{{{content}}}{{{prev_node}}}'
-            )
+            parts.append(f"  \\bXBlocL[{dist}]{{{nid}}}{{{content}}}{{{prev_node}}}")
             prev_node = nid
 
         # Emit feedback arcs
         for fb in feedback:
             src_block, dst_block, line = fb
-            src_nid = node_ids.get(src_block.name, '')
-            dst_nid = node_ids.get(dst_block.name, '')
+            src_nid = node_ids.get(src_block.name, "")
+            dst_nid = node_ids.get(dst_block.name, "")
             if not src_nid or not dst_nid:
                 continue
 
-            fb_label = ''
-            if opts.get('show_signal_labels') and line.label:
+            fb_label = ""
+            if opts.get("show_signal_labels") and line.label:
                 fb_label = self._latex_label(line.label)
 
             # Simple feedback with no intermediate block
             fb_dist = max(dist, 4.0)
-            parts.append(
-                f'  \\bXReturn[{fb_dist}]{{{src_nid}}}{{{dst_nid}}}{{{fb_label}}}'
-            )
+            parts.append(f"  \\bXReturn[{fb_dist}]{{{src_nid}}}{{{dst_nid}}}{{{fb_label}}}")
 
-        parts.append(r'\end{tikzpicture}')
+        parts.append(r"\end{tikzpicture}")
 
-        if opts.get('use_resizebox'):
-            parts.append('}')
+        if opts.get("use_resizebox"):
+            parts.append("}")
 
-        if opts.get('standalone', True):
-            parts.append(r'\end{document}')
+        if opts.get("standalone", True):
+            parts.append(r"\end{document}")
 
-        return '\n'.join(parts)
+        return "\n".join(parts)
 
     def get_info(self):
         """Return summary info."""
         return {
-            'block_count': len(self.blocks),
-            'connection_count': len([ln for ln in self.lines if not ln.hidden]),
-            'block_types': sorted(set(b.block_fn for b in self.blocks)),
+            "block_count": len(self.blocks),
+            "connection_count": len([ln for ln in self.lines if not ln.hidden]),
+            "block_types": sorted(set(b.block_fn for b in self.blocks)),
         }
 
     # ------------------------------------------------------------------
@@ -195,7 +187,7 @@ class BloxExporter:
             return (None, [])
 
         # Build adjacency from visible lines
-        fwd = {}   # block.name -> [(dst_block, line)]
+        fwd = {}  # block.name -> [(dst_block, line)]
         back_edges = []
         block_names = {b.name for b in self.blocks}
 
@@ -255,7 +247,7 @@ class BloxExporter:
             for b in self.blocks:
                 if b.name not in visited:
                     # Skip sinks that are not in the chain
-                    if b.category == 'Sinks':
+                    if b.category == "Sinks":
                         continue
                     return (None, [])
 
@@ -272,69 +264,69 @@ class BloxExporter:
         """
         label = raw_label.strip()
         if not label:
-            return ''
-        if label.startswith('$') and label.endswith('$'):
+            return ""
+        if label.startswith("$") and label.endswith("$"):
             return label
-        return f'${_escape_latex(label)}$'
+        return f"${_escape_latex(label)}$"
 
     # ------------------------------------------------------------------
     # Block content helpers
     # ------------------------------------------------------------------
 
     def _is_source(self, block):
-        return block.category == 'Sources'
+        return block.category == "Sources"
 
     def _is_sink(self, block):
-        return block.category == 'Sinks'
+        return block.category == "Sinks"
 
     def _block_content(self, block, opts):
         """Generate the content string for a blox block node."""
         fn = block.block_fn
-        show_values = opts.get('show_values', True)
+        show_values = opts.get("show_values", True)
 
-        if fn == 'Gain':
+        if fn == "Gain":
             if show_values:
-                gain = block.params.get('gain', 1.0)
+                gain = block.params.get("gain", 1.0)
                 if isinstance(gain, (int, float)):
-                    val = f'{gain:.4g}' if gain != int(gain) else str(int(gain))
-                    return f'${val}$'
-                return '$K$'
-            return '$K$'
+                    val = f"{gain:.4g}" if gain != int(gain) else str(int(gain))
+                    return f"${val}$"
+                return "$K$"
+            return "$K$"
 
-        if fn == 'TranFn':
+        if fn == "TranFn":
             if show_values:
-                num = block.params.get('numerator', [1.0])
-                den = block.params.get('denominator', [1.0, 1.0])
+                num = block.params.get("numerator", [1.0])
+                den = block.params.get("denominator", [1.0, 1.0])
                 if isinstance(num, (list, tuple)) and isinstance(den, (list, tuple)):
-                    return f'$\\dfrac{{{_poly_to_latex(num)}}}{{{_poly_to_latex(den)}}}$'
-            return '$G(s)$'
+                    return f"$\\dfrac{{{_poly_to_latex(num)}}}{{{_poly_to_latex(den)}}}$"
+            return "$G(s)$"
 
-        if fn == 'DiscreteTranFn':
+        if fn == "DiscreteTranFn":
             if show_values:
-                num = block.params.get('numerator', [1.0])
-                den = block.params.get('denominator', [1.0, 1.0])
+                num = block.params.get("numerator", [1.0])
+                den = block.params.get("denominator", [1.0, 1.0])
                 if isinstance(num, (list, tuple)) and isinstance(den, (list, tuple)):
-                    num_tex = _poly_to_latex(num, var='z')
-                    den_tex = _poly_to_latex(den, var='z')
-                    return f'$\\dfrac{{{num_tex}}}{{{den_tex}}}$'
-            return '$H(z)$'
+                    num_tex = _poly_to_latex(num, var="z")
+                    den_tex = _poly_to_latex(den, var="z")
+                    return f"$\\dfrac{{{num_tex}}}{{{den_tex}}}$"
+            return "$H(z)$"
 
-        if fn == 'Integrator':
-            return r'$\dfrac{1}{s}$'
+        if fn == "Integrator":
+            return r"$\dfrac{1}{s}$"
 
-        if fn == 'Deriv':
-            return '$s$'
+        if fn == "Deriv":
+            return "$s$"
 
-        if fn == 'StateSpace':
+        if fn == "StateSpace":
             if show_values:
-                return r'$\dot{x}{=}Ax{+}Bu$'
-            return '$P(s)$'
+                return r"$\dot{x}{=}Ax{+}Bu$"
+            return "$P(s)$"
 
-        if fn == 'PID':
-            return 'PID'
+        if fn == "PID":
+            return "PID"
 
-        if fn == 'Subsystem':
-            uname = block.username if block.username != block.name else 'Subsystem'
+        if fn == "Subsystem":
+            uname = block.username if block.username != block.name else "Subsystem"
             return _escape_latex(uname)
 
         return _escape_latex(fn)
@@ -354,25 +346,25 @@ class BloxExporter:
         west, south, north, east (in that order); missing ports leave the
         corresponding anchor blank.
         """
-        if sign_str == '+-':
-            return f'  \\bXComp[{dist}]{{{nid}}}{{{prev_node}}}'
-        if sign_str == '-+':
-            return f'  \\bXComp*[{dist}]{{{nid}}}{{{prev_node}}}'
+        if sign_str == "+-":
+            return f"  \\bXComp[{dist}]{{{nid}}}{{{prev_node}}}"
+        if sign_str == "-+":
+            return f"  \\bXComp*[{dist}]{{{nid}}}{{{prev_node}}}"
 
         # General case: map port signs to blox compass anchors w, s, n, e.
-        w_sign = sign_str[0] if len(sign_str) > 0 else '+'
-        s_sign = sign_str[1] if len(sign_str) > 1 else ''
-        n_sign = sign_str[2] if len(sign_str) > 2 else ''
-        e_sign = sign_str[3] if len(sign_str) > 3 else ''
+        w_sign = sign_str[0] if len(sign_str) > 0 else "+"
+        s_sign = sign_str[1] if len(sign_str) > 1 else ""
+        n_sign = sign_str[2] if len(sign_str) > 2 else ""
+        e_sign = sign_str[3] if len(sign_str) > 3 else ""
         return (
-            f'  \\bXCompSum[{dist}]{{{nid}}}{{{prev_node}}}'
-            f'{{{n_sign}}}{{{s_sign}}}{{{w_sign}}}{{{e_sign}}}'
+            f"  \\bXCompSum[{dist}]{{{nid}}}{{{prev_node}}}"
+            f"{{{n_sign}}}{{{s_sign}}}{{{w_sign}}}{{{e_sign}}}"
         )
 
     def _find_label(self, src_nid, dst_nid, chain, feedback, node_ids, opts):
         """Find a signal label for the connection between two chain nodes."""
-        if not opts.get('show_signal_labels', True):
-            return ''
+        if not opts.get("show_signal_labels", True):
+            return ""
 
         # Look for a line that matches these two nodes
         for line in self.lines:
@@ -382,9 +374,9 @@ class BloxExporter:
             dst = self._resolve(line.dstblock)
             if not src or not dst:
                 continue
-            s_nid = node_ids.get(src.name, '')
-            d_nid = node_ids.get(dst.name, '')
+            s_nid = node_ids.get(src.name, "")
+            d_nid = node_ids.get(dst.name, "")
             if s_nid == src_nid and d_nid == dst_nid:
                 if line.label:
                     return self._latex_label(line.label)
-        return ''
+        return ""

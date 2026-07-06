@@ -4,6 +4,7 @@ The golden harness (tests/regression/test_compiled_golden.py) exercises the
 kernels end-to-end; these pin the registry mechanism and a couple of builders
 directly so the infrastructure has its own fast coverage.
 """
+
 import numpy as np
 import pytest
 
@@ -17,8 +18,14 @@ from lib.engine.compiler_kernels import (
 
 def _ctx(b_name="blk0", **params):
     return BuildContext(
-        block=None, b_name=b_name, fn="?", params=params,
-        input_sources=[], deps={}, state_map={}, block_matrices={},
+        block=None,
+        b_name=b_name,
+        fn="?",
+        params=params,
+        input_sources=[],
+        deps={},
+        state_map={},
+        block_matrices={},
     )
 
 
@@ -47,6 +54,7 @@ class TestKernelRegistry:
         @kernel("AaaTmp1", "AaaTmp2")
         def _b(ctx):
             return None
+
         try:
             assert get_kernel_builder("AaaTmp1") is _b
             assert get_kernel_builder("AaaTmp2") is _b
@@ -80,9 +88,9 @@ class TestSourceKernels:
     def test_ramp_clamps_at_delay(self):
         ex = get_kernel_builder("Ramp")(_ctx(slope=2.0, delay=1.0))
         sig = {}
-        ex(0.5, None, None, sig)   # before delay -> 0
+        ex(0.5, None, None, sig)  # before delay -> 0
         assert sig["blk0"] == 0.0
-        ex(3.0, None, None, sig)   # 2*(3-1) = 4
+        ex(3.0, None, None, sig)  # 2*(3-1) = 4
         assert sig["blk0"] == 4.0
 
     def test_sine_value(self):
@@ -93,24 +101,26 @@ class TestSourceKernels:
 
     def test_wavegenerator_sine(self):
         ex = get_kernel_builder("Wavegenerator")(
-            _ctx(waveform="Sine", amplitude=2.0, frequency=1.0, phase=0.0, bias=0.5))
+            _ctx(waveform="Sine", amplitude=2.0, frequency=1.0, phase=0.0, bias=0.5)
+        )
         sig = {}
         ex(0.25, None, None, sig)  # 2*pi*1*0.25 = pi/2 -> sin = 1
         assert np.isclose(sig["blk0"], 0.5 + 2.0 * 1.0)
 
     def test_wavegenerator_square_sign(self):
         ex = get_kernel_builder("Wavegenerator")(
-            _ctx(waveform="Square", amplitude=1.0, frequency=1.0, phase=0.0, bias=0.0))
+            _ctx(waveform="Square", amplitude=1.0, frequency=1.0, phase=0.0, bias=0.0)
+        )
         sig = {}
-        ex(0.1, None, None, sig)   # first half period -> +1
+        ex(0.1, None, None, sig)  # first half period -> +1
         assert sig["blk0"] == 1.0
 
     def test_impulse_window(self):
         ex = get_kernel_builder("Impulse")(_ctx(delay=1.0, value=1.0, dtime=0.01))
         sig = {}
-        ex(0.5, None, None, sig)            # before delay -> 0
+        ex(0.5, None, None, sig)  # before delay -> 0
         assert sig["blk0"] == 0.0
-        ex(1.0, None, None, sig)            # inside narrow pulse -> large height
+        ex(1.0, None, None, sig)  # inside narrow pulse -> large height
         assert sig["blk0"] > 0.0
 
     def test_prbs_deterministic_from_seed(self):
@@ -130,8 +140,14 @@ class TestSourceKernels:
 
 def _ctx_io(b_name, params, input_sources):
     return BuildContext(
-        block=None, b_name=b_name, fn="?", params=params,
-        input_sources=input_sources, deps={}, state_map={}, block_matrices={},
+        block=None,
+        b_name=b_name,
+        fn="?",
+        params=params,
+        input_sources=input_sources,
+        deps={},
+        state_map={},
+        block_matrices={},
     )
 
 
@@ -184,8 +200,10 @@ class TestNonlinearKernels:
     def test_switch_threshold_selects(self):
         # ctrl >= threshold -> data input 0 (port index 1); else input 1 (port 2)
         ex = get_kernel_builder("Switch")(
-            _ctx_io("sw0", {"mode": "threshold", "n_inputs": 2, "threshold": 0.0},
-                    ["ctrl", "a", "b"]))
+            _ctx_io(
+                "sw0", {"mode": "threshold", "n_inputs": 2, "threshold": 0.0}, ["ctrl", "a", "b"]
+            )
+        )
         sig = {"ctrl": 1.0, "a": 10.0, "b": 20.0}
         ex(0.0, None, None, sig)
         assert sig["sw0"] == 10.0
@@ -205,19 +223,20 @@ class TestNonlinearKernels:
 
     def test_hysteresis_latches(self):
         ex = get_kernel_builder("Hysteresis")(
-            _ctx_io("h0", {"upper": 0.5, "lower": -0.5, "high": 1.0, "low": 0.0}, ["x"]))
+            _ctx_io("h0", {"upper": 0.5, "lower": -0.5, "high": 1.0, "low": 0.0}, ["x"])
+        )
         sig = {"x": 0.0}
         ex(0.0, None, None, sig)
-        assert sig["h0"] == 0.0          # starts low, stays in deadband
+        assert sig["h0"] == 0.0  # starts low, stays in deadband
         sig = {"x": 1.0}
         ex(0.0, None, None, sig)
-        assert sig["h0"] == 1.0          # crosses upper -> high
+        assert sig["h0"] == 1.0  # crosses upper -> high
         sig = {"x": 0.0}
         ex(0.0, None, None, sig)
-        assert sig["h0"] == 1.0          # in deadband -> retains high
+        assert sig["h0"] == 1.0  # in deadband -> retains high
         sig = {"x": -1.0}
         ex(0.0, None, None, sig)
-        assert sig["h0"] == 0.0          # crosses lower -> low
+        assert sig["h0"] == 0.0  # crosses lower -> low
 
 
 @pytest.mark.unit
@@ -231,10 +250,16 @@ class TestRoutingKernels:
     def test_demux_splits_to_secondary_ports(self):
         class _Blk:
             out_ports = 3
+
         ctx = BuildContext(
-            block=_Blk(), b_name="d0", fn="Demux",
+            block=_Blk(),
+            b_name="d0",
+            fn="Demux",
             params={"output_shape": 1, "_outputs_": 3},
-            input_sources=["src"], deps={}, state_map={}, block_matrices={},
+            input_sources=["src"],
+            deps={},
+            state_map={},
+            block_matrices={},
         )
         ex = get_kernel_builder("Demux")(ctx)
         sig = {"src": np.array([10.0, 11.0, 12.0])}
@@ -245,7 +270,8 @@ class TestRoutingKernels:
 
     def test_logicaloperator_and(self):
         ex = get_kernel_builder("Logicaloperator")(
-            _ctx_io("l0", {"operator": "AND", "_inputs_": 2}, ["a", "b"]))
+            _ctx_io("l0", {"operator": "AND", "_inputs_": 2}, ["a", "b"])
+        )
         sig = {"a": 1.0, "b": 1.0}
         ex(0.0, None, None, sig)
         assert sig["l0"][0] == 1.0
@@ -255,7 +281,8 @@ class TestRoutingKernels:
 
     def test_logicaloperator_xor(self):
         ex = get_kernel_builder("Logicaloperator")(
-            _ctx_io("l0", {"operator": "XOR", "_inputs_": 2}, ["a", "b"]))
+            _ctx_io("l0", {"operator": "XOR", "_inputs_": 2}, ["a", "b"])
+        )
         sig = {"a": 1.0, "b": 0.0}
         ex(0.0, None, None, sig)
         assert sig["l0"][0] == 1.0
@@ -269,16 +296,17 @@ class TestRoutingKernels:
 
     def test_statevariable_holds_and_updates(self):
         ex = get_kernel_builder("StateVariable")(
-            _ctx_io("sv0", {"initial_value": "[2.0]"}, ["src"]))
+            _ctx_io("sv0", {"initial_value": "[2.0]"}, ["src"])
+        )
         # Each call outputs the current state, then (if time advanced past the
         # discrete-update guard) latches src for the next read. prev_t starts at
         # -1.0, so the first call already latches.
         sig = {"src": 9.0}
         ex(0.0, None, None, sig)
-        assert sig["sv0"] == 2.0           # outputs initial state, then latches 9.0
+        assert sig["sv0"] == 2.0  # outputs initial state, then latches 9.0
         sig = {"src": 7.0}
         ex(1.0, None, None, sig)
-        assert sig["sv0"] == 9.0           # outputs latched 9.0, then latches 7.0
+        assert sig["sv0"] == 9.0  # outputs latched 9.0, then latches 7.0
         sig = {"src": 7.0}
         ex(2.0, None, None, sig)
         assert sig["sv0"] == 7.0
@@ -342,8 +370,13 @@ class TestRoutingKernels:
 
 def _ctx_state(b_name, params, input_sources, state_map, block_matrices=None):
     return BuildContext(
-        block=None, b_name=b_name, fn="?", params=params,
-        input_sources=input_sources, deps={}, state_map=state_map,
+        block=None,
+        b_name=b_name,
+        fn="?",
+        params=params,
+        input_sources=input_sources,
+        deps={},
+        state_map=state_map,
         block_matrices=block_matrices or {},
     )
 
@@ -351,55 +384,62 @@ def _ctx_state(b_name, params, input_sources, state_map, block_matrices=None):
 @pytest.mark.unit
 class TestStateKernels:
     def test_integrator_output_and_derivative(self):
-        ex = get_kernel_builder("Integrator")(
-            _ctx_state("i0", {}, ["x"], {"i0": (0, 1)}))
+        ex = get_kernel_builder("Integrator")(_ctx_state("i0", {}, ["x"], {"i0": (0, 1)}))
         sig = {"x": 3.0}
         y = np.array([5.0])
         dy = np.zeros(1)
         ex(0.0, y, dy, sig)
-        assert sig["i0"] == 5.0       # output = state
-        assert dy[0] == 3.0           # dx/dt = input
+        assert sig["i0"] == 5.0  # output = state
+        assert dy[0] == 3.0  # dx/dt = input
 
     def test_statespace_siso(self):
-        A = np.array([[-1.0]]); B = np.array([[1.0]])
-        C = np.array([[1.0]]); D = np.array([[0.0]])
+        A = np.array([[-1.0]])
+        B = np.array([[1.0]])
+        C = np.array([[1.0]])
+        D = np.array([[0.0]])
         ex = get_kernel_builder("StateSpace")(
-            _ctx_state("ss0", {}, ["x"], {"ss0": (0, 1)}, {"ss0": (A, B, C, D)}))
+            _ctx_state("ss0", {}, ["x"], {"ss0": (0, 1)}, {"ss0": (A, B, C, D)})
+        )
         sig = {"x": 1.0}
         y = np.array([2.0])
         dy = np.zeros(1)
         ex(0.0, y, dy, sig)
-        assert sig["ss0"] == 2.0       # y = C x + D u = 2
-        assert dy[0] == -1.0           # dx = A x + B u = -2 + 1 = -1
+        assert sig["ss0"] == 2.0  # y = C x + D u = 2
+        assert dy[0] == -1.0  # dx = A x + B u = -2 + 1 = -1
 
     def test_statespace_no_matrices_is_noop(self):
-        ex = get_kernel_builder("StateSpace")(
-            _ctx_state("ss0", {}, ["x"], {}, {}))
+        ex = get_kernel_builder("StateSpace")(_ctx_state("ss0", {}, ["x"], {}, {}))
         sig = {"x": 1.0}
         ex(0.0, np.zeros(0), np.zeros(0), sig)
-        assert "ss0" not in sig        # falls through to no-op
+        assert "ss0" not in sig  # falls through to no-op
 
     def test_pid_proportional(self):
         ex = get_kernel_builder("PID")(
-            _ctx_state("pid0", {"Kp": 2.0, "Ki": 0.0, "Kd": 0.0, "N": 20.0},
-                       ["sp", "meas"], {"pid0": (0, 2)}))
+            _ctx_state(
+                "pid0",
+                {"Kp": 2.0, "Ki": 0.0, "Kd": 0.0, "N": 20.0},
+                ["sp", "meas"],
+                {"pid0": (0, 2)},
+            )
+        )
         sig = {"sp": 1.0, "meas": 0.0}
         y = np.array([0.0, 0.0])
         dy = np.zeros(2)
         ex(0.0, y, dy, sig)
-        assert np.isclose(sig["pid0"], 2.0)   # Kp * e
-        assert dy[0] == 1.0                    # dx_i = e
-        assert dy[1] == 20.0                   # dx_d = N*(e - x_d)
+        assert np.isclose(sig["pid0"], 2.0)  # Kp * e
+        assert dy[0] == 1.0  # dx_i = e
+        assert dy[1] == 20.0  # dx_d = N*(e - x_d)
 
     def test_ratelimiter_clamps_rate(self):
         ex = get_kernel_builder("RateLimiter")(
-            _ctx_state("rl0", {"rising_slew": 5.0}, ["x"], {"rl0": (0, 1)}))
+            _ctx_state("rl0", {"rising_slew": 5.0}, ["x"], {"rl0": (0, 1)})
+        )
         sig = {"x": 1.0}
         y = np.array([0.0])
         dy = np.zeros(1)
         ex(0.0, y, dy, sig)
-        assert sig["rl0"] == 0.0       # output = state
-        assert dy[0] == 5.0            # clip((1-0)*1000, -inf, 5) = 5
+        assert sig["rl0"] == 0.0  # output = state
+        assert dy[0] == 5.0  # clip((1-0)*1000, -inf, 5) = 5
 
 
 @pytest.mark.unit
@@ -408,13 +448,13 @@ class TestFieldKernels:
         ex = get_kernel_builder("Fieldprobe")(_ctx_io("fp", {"position": 0.5}, ["f"]))
         sig = {"f": np.array([0.0, 1.0, 2.0, 3.0, 4.0])}
         ex(0.0, None, None, sig)
-        assert np.isclose(sig["fp"], 2.0)   # midpoint of 0..4 grid
+        assert np.isclose(sig["fp"], 2.0)  # midpoint of 0..4 grid
 
     def test_fieldintegral_trapezoid(self):
         ex = get_kernel_builder("Fieldintegral")(_ctx_io("fi", {"L": 1.0}, ["f"]))
         sig = {"f": np.array([1.0, 1.0, 1.0])}
         ex(0.0, None, None, sig)
-        assert np.isclose(sig["fi"], 1.0)   # area under constant 1 over [0,1]
+        assert np.isclose(sig["fi"], 1.0)  # area under constant 1 over [0,1]
 
     def test_fieldmax_value_and_aux_outputs(self):
         ex = get_kernel_builder("Fieldmax")(_ctx_io("fm", {"mode": "max", "L": 1.0}, ["f"]))
@@ -444,10 +484,11 @@ class TestFieldKernels:
 
     def test_fieldprobe2d_bilinear_center(self):
         ex = get_kernel_builder("Fieldprobe2D")(
-            _ctx_io("fp2", {"x_position": 0.5, "y_position": 0.5}, ["f"]))
+            _ctx_io("fp2", {"x_position": 0.5, "y_position": 0.5}, ["f"])
+        )
         sig = {"f": np.array([[0.0, 2.0], [4.0, 6.0]])}
         ex(0.0, None, None, sig)
-        assert np.isclose(sig["fp2"], 3.0)   # mean of the 2x2 grid
+        assert np.isclose(sig["fp2"], 3.0)  # mean of the 2x2 grid
 
     def test_fieldscope2d_passthrough(self):
         ex = get_kernel_builder("Fieldscope2D")(_ctx_io("fs2", {}, ["f"]))
@@ -457,7 +498,8 @@ class TestFieldKernels:
 
     def test_fieldslice_row(self):
         ex = get_kernel_builder("Fieldslice")(
-            _ctx_io("fsl", {"slice_direction": "x", "slice_position": 0.0}, ["f"]))
+            _ctx_io("fsl", {"slice_direction": "x", "slice_position": 0.0}, ["f"])
+        )
         sig = {"f": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])}
         ex(0.0, None, None, sig)
         assert np.allclose(sig["fsl"], np.array([1.0, 2.0, 3.0]))  # row j=0

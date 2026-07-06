@@ -8,8 +8,10 @@ class TestStochasticSolverDetection:
 
     def _make_block(self, name, block_fn):
         """Create a minimal mock block for compilability checks."""
+
         class FakeBlock:
             pass
+
         b = FakeBlock()
         b.name = name
         b.block_fn = block_fn
@@ -18,40 +20,37 @@ class TestStochasticSolverDetection:
 
     def test_noise_detected_as_stochastic(self):
         """Noise block should be detected by stochastic check."""
-        stochastic_fns = {'Noise'}
+        stochastic_fns = {"Noise"}
         blocks = [
-            self._make_block('noise0', 'Noise'),
-            self._make_block('scope0', 'Scope'),
+            self._make_block("noise0", "Noise"),
+            self._make_block("scope0", "Scope"),
         ]
         has_stochastic = any(
-            (b.block_fn.title() if b.block_fn else '') in stochastic_fns
-            for b in blocks
+            (b.block_fn.title() if b.block_fn else "") in stochastic_fns for b in blocks
         )
         assert has_stochastic
 
     def test_prbs_not_detected_as_stochastic(self):
         """PRBS is deterministic (LFSR) and should NOT trigger Euler."""
-        stochastic_fns = {'Noise'}
+        stochastic_fns = {"Noise"}
         blocks = [
-            self._make_block('prbs0', 'PRBS'),
-            self._make_block('scope0', 'Scope'),
+            self._make_block("prbs0", "PRBS"),
+            self._make_block("scope0", "Scope"),
         ]
         has_stochastic = any(
-            (b.block_fn.title() if b.block_fn else '') in stochastic_fns
-            for b in blocks
+            (b.block_fn.title() if b.block_fn else "") in stochastic_fns for b in blocks
         )
         assert not has_stochastic
 
     def test_step_not_detected_as_stochastic(self):
         """Deterministic sources should use normal RK45."""
-        stochastic_fns = {'Noise'}
+        stochastic_fns = {"Noise"}
         blocks = [
-            self._make_block('step0', 'Step'),
-            self._make_block('tranfn0', 'TranFn'),
+            self._make_block("step0", "Step"),
+            self._make_block("tranfn0", "TranFn"),
         ]
         has_stochastic = any(
-            (b.block_fn.title() if b.block_fn else '') in stochastic_fns
-            for b in blocks
+            (b.block_fn.title() if b.block_fn else "") in stochastic_fns for b in blocks
         )
         assert not has_stochastic
 
@@ -127,6 +126,6 @@ class TestFixedStepEuler:
 
         assert y_history.shape == (2, n_steps)
         # Energy should be roughly conserved (Euler drifts slightly)
-        energy_start = y_history[0, 0]**2 + y_history[1, 0]**2
-        energy_end = y_history[0, -1]**2 + y_history[1, -1]**2
+        energy_start = y_history[0, 0] ** 2 + y_history[1, 0] ** 2
+        energy_end = y_history[0, -1] ** 2 + y_history[1, -1] ** 2
         assert np.isclose(energy_start, energy_end, rtol=0.05)

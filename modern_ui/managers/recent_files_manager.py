@@ -38,12 +38,13 @@ class RecentFilesManager:
     def load(self):
         """Load recent files list from config."""
         from lib.app_paths import user_data_path
-        config_path = user_data_path('config/recent_files.json')
+
+        config_path = user_data_path("config/recent_files.json")
         try:
             if os.path.exists(config_path):
-                with open(config_path, 'r') as f:
+                with open(config_path, "r") as f:
                     data = json.load(f)
-                    return data.get('recent_files', [])
+                    return data.get("recent_files", [])
         except Exception as e:
             logger.error(f"Error loading recent files: {e}")
         return []
@@ -51,11 +52,12 @@ class RecentFilesManager:
     def save(self, recent_files):
         """Save recent files list to config."""
         from lib.app_paths import user_data_path
-        config_path = user_data_path('config/recent_files.json')
+
+        config_path = user_data_path("config/recent_files.json")
         try:
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
-            with open(config_path, 'w') as f:
-                json.dump({'recent_files': recent_files}, f, indent=2)
+            with open(config_path, "w") as f:
+                json.dump({"recent_files": recent_files}, f, indent=2)
         except Exception as e:
             logger.error(f"Error saving recent files: {e}")
 
@@ -76,7 +78,7 @@ class RecentFilesManager:
         recent_files.insert(0, filepath)
 
         # Keep only last MAX_RECENT
-        recent_files = recent_files[:self.MAX_RECENT]
+        recent_files = recent_files[: self.MAX_RECENT]
 
         self.save(recent_files)
         self.update_menu()
@@ -106,9 +108,7 @@ class RecentFilesManager:
             filename = os.path.basename(filepath)
             action = menu.addAction(filename)
             action.setData(filepath)
-            action.triggered.connect(
-                lambda checked, path=filepath: self.open(path)
-            )
+            action.triggered.connect(lambda checked, path=filepath: self.open(path))
 
         menu.addSeparator()
         clear_action = menu.addAction("Clear Recent Files")
@@ -122,29 +122,23 @@ class RecentFilesManager:
         if os.path.exists(filepath):
             try:
                 # Use DSim's file service if available, else fall back.
-                if hasattr(window.dsim, 'file_service'):
+                if hasattr(window.dsim, "file_service"):
                     block_data = window.dsim.file_service.load(filepath=filepath)
                     window.dsim.deserialize(block_data)
                 else:
                     window.dsim.open(filepath)
 
                 self.add(filepath)
-                window.status_message.setText(
-                    f"Opened: {os.path.basename(filepath)}"
-                )
+                window.status_message.setText(f"Opened: {os.path.basename(filepath)}")
                 logger.info(f"Opening recent file: {filepath}")
                 window.canvas.update()
 
             except Exception as e:
                 logger.error(f"Failed to open recent file: {e}")
-                QMessageBox.critical(
-                    window, "Error", f"Failed to open file:\n{str(e)}"
-                )
+                QMessageBox.critical(window, "Error", f"Failed to open file:\n{str(e)}")
         else:
             QMessageBox.warning(
-                window,
-                "File Not Found",
-                f"The file '{filepath}' no longer exists."
+                window, "File Not Found", f"The file '{filepath}' no longer exists."
             )
             # Remove from recent files
             recent_files = self.load()

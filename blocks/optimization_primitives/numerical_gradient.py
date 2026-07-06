@@ -62,21 +62,13 @@ class NumericalGradientBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "dimension": {
-                "type": "int",
-                "default": 2,
-                "doc": "Number of variables"
-            },
-            "epsilon": {
-                "type": "float",
-                "default": 1e-6,
-                "doc": "Perturbation size"
-            },
+            "dimension": {"type": "int", "default": 2, "doc": "Number of variables"},
+            "epsilon": {"type": "float", "default": 1e-6, "doc": "Perturbation size"},
             "method": {
                 "type": "choice",
                 "default": "forward",
                 "options": ["forward", "central"],
-                "doc": "Finite difference method"
+                "doc": "Finite difference method",
             },
         }
 
@@ -94,14 +86,14 @@ class NumericalGradientBlock(BaseBlock):
         if params is None:
             params = self.params
 
-        dimension = params.get('dimension', 2)
+        dimension = params.get("dimension", 2)
         if isinstance(dimension, dict):
-            dimension = dimension.get('default', 2)
+            dimension = dimension.get("default", 2)
         dimension = int(dimension)
 
-        method = params.get('method', 'forward')
+        method = params.get("method", "forward")
         if isinstance(method, dict):
-            method = method.get('default', 'forward')
+            method = method.get("default", "forward")
 
         inputs = [{"name": "f_center", "type": "float"}]
 
@@ -128,9 +120,9 @@ class NumericalGradientBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            dimension = int(params.get('dimension', 2))
-            epsilon = float(params.get('epsilon', 1e-6))
-            method = params.get('method', 'forward')
+            dimension = int(params.get("dimension", 2))
+            epsilon = float(params.get("epsilon", 1e-6))
+            method = params.get("method", "forward")
 
             f_center = self._to_scalar(inputs.get(0), 0.0)
             grad = np.zeros(dimension)
@@ -145,9 +137,9 @@ class NumericalGradientBlock(BaseBlock):
                     f_minus = self._to_scalar(inputs.get(dimension + 1 + i), f_center)
                     grad[i] = (f_plus - f_minus) / (2 * epsilon)
 
-            return {0: grad, 'E': False}
+            return {0: grad, "E": False}
 
         except Exception as e:
             logger.error(f"NumericalGradient error: {e}")
-            dimension = int(params.get('dimension', 2))
-            return {0: np.zeros(dimension), 'E': True, 'error': str(e)}
+            dimension = int(params.get("dimension", 2))
+            return {0: np.zeros(dimension), "E": True, "error": str(e)}

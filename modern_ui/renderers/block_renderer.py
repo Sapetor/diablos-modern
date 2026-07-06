@@ -8,8 +8,16 @@ import logging
 import math
 from typing import Optional
 from PyQt5.QtGui import (
-    QColor, QPen, QPainter, QPolygonF, QLinearGradient, QPainterPath,
-    QRadialGradient, QTransform, QFont, QFontMetrics,
+    QColor,
+    QPen,
+    QPainter,
+    QPolygonF,
+    QLinearGradient,
+    QPainterPath,
+    QRadialGradient,
+    QTransform,
+    QFont,
+    QFontMetrics,
 )
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
@@ -17,22 +25,22 @@ from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
 logger = logging.getLogger(__name__)
 
 _CATEGORY_KEY_MAP = (
-    ('source',    'block_source'),
-    ('math',      'block_process'),
-    ('control',   'block_control'),
-    ('sink',      'block_sink'),
-    ('routing',   'block_routing'),
-    ('analysis',  'block_analysis'),
-    ('pde',       'block_pde'),
-    ('optim',     'block_optimization'),
+    ("source", "block_source"),
+    ("math", "block_process"),
+    ("control", "block_control"),
+    ("sink", "block_sink"),
+    ("routing", "block_routing"),
+    ("analysis", "block_analysis"),
+    ("pde", "block_pde"),
+    ("optim", "block_optimization"),
 )
 
 
 def _category_token(block) -> str:
     """Return a lowercased category string from a block, or '' if absent."""
-    cat = getattr(block, 'category', None)
+    cat = getattr(block, "category", None)
     if cat is None:
-        return ''
+        return ""
     return cat.lower() if isinstance(cat, str) else str(cat).lower()
 
 
@@ -45,7 +53,7 @@ def _category_token(block) -> str:
 _CATEGORY_KEY_CACHE: dict = {}
 
 
-def _category_color_key(block, suffix: str = '') -> str:
+def _category_color_key(block, suffix: str = "") -> str:
     """Resolve the theme-manager color key for a block's category.
 
     suffix='' returns the fill key (e.g. 'block_source'); '_border' returns
@@ -61,7 +69,7 @@ def _category_color_key(block, suffix: str = '') -> str:
             result = key + suffix
             break
     else:
-        result = 'block_other' + suffix
+        result = "block_other" + suffix
     _CATEGORY_KEY_CACHE[cache_key] = result
     return result
 
@@ -96,8 +104,14 @@ class BlockRenderer:
         # is logged once at warning level rather than every paint frame.
         self._draw_icon_warned = set()
 
-    def draw_block(self, block, painter: Optional[QPainter], draw_name: bool = True,
-                   draw_ports: bool = True, hovered_port=None) -> None:
+    def draw_block(
+        self,
+        block,
+        painter: Optional[QPainter],
+        draw_name: bool = True,
+        draw_ports: bool = True,
+        hovered_port=None,
+    ) -> None:
         """
         Draw a block on the canvas with modern styling, shadows, and depth.
 
@@ -122,8 +136,9 @@ class BlockRenderer:
         finally:
             painter.restore()
 
-    def _draw_block_body(self, block, painter: QPainter, draw_name: bool,
-                         draw_ports: bool, hovered_port=None) -> None:
+    def _draw_block_body(
+        self, block, painter: QPainter, draw_name: bool, draw_ports: bool, hovered_port=None
+    ) -> None:
         """Body of draw_block; runs inside a painter.save()/restore() guard."""
         # Draw a soft multi-layer shadow for depth. The shadow follows the block
         # outline (triangle for Gain, rounded rect otherwise) and is built from
@@ -135,15 +150,15 @@ class BlockRenderer:
         # later, that cache goes stale and produces light fills on a dark
         # canvas (or vice versa). Going through theme_manager keeps fill
         # and border in sync with the active theme.
-        if hasattr(block, 'category') and block.category:
-            border_color = theme_manager.get_color(_category_color_key(block, '_border'))
-            base_color = theme_manager.get_color(_category_color_key(block, ''))
+        if hasattr(block, "category") and block.category:
+            border_color = theme_manager.get_color(_category_color_key(block, "_border"))
+            base_color = theme_manager.get_color(_category_color_key(block, ""))
         else:
-            border_color = theme_manager.get_color('border_primary')
+            border_color = theme_manager.get_color("border_primary")
             base_color = block.b_color
 
         if block.selected:
-            border_color = theme_manager.get_color('block_selected')
+            border_color = theme_manager.get_color("block_selected")
 
         # Draw main block shape with gradient fill.
         # Subtle lighten (+12 RGB) keeps the top close to base so icons over
@@ -155,7 +170,7 @@ class BlockRenderer:
         lighter_color.setBlue(min(255, base_color.blue() + 12))
         gradient.setColorAt(0, lighter_color)
         gradient.setColorAt(1, base_color)
-        
+
         painter.setBrush(gradient)
         painter.setPen(QPen(border_color, 3 if block.selected else 2.5))
 
@@ -173,16 +188,18 @@ class BlockRenderer:
             painter.drawPolygon(points)
         else:
             radius = 12
-            painter.drawRoundedRect(QRect(block.left, block.top, block.width, block.height), radius, radius)
+            painter.drawRoundedRect(
+                QRect(block.left, block.top, block.width, block.height), radius, radius
+            )
 
         # Draw block-specific icon
-        icon_pen = QPen(theme_manager.get_color('block_icon_color'), 2)
+        icon_pen = QPen(theme_manager.get_color("block_icon_color"), 2)
         painter.setPen(icon_pen)
-        
+
         path = QPainterPath()
-        
+
         # Try polymorphic draw_icon first
-        if block.block_instance and hasattr(block.block_instance, 'draw_icon'):
+        if block.block_instance and hasattr(block.block_instance, "draw_icon"):
             try:
                 custom_path = block.block_instance.draw_icon(block.rect)
                 if custom_path is not None:
@@ -197,7 +214,7 @@ class BlockRenderer:
                     logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
                 else:
                     logger.debug(f"draw_icon failed for {block.block_fn}: {e}")
-        
+
         # Fallback to legacy switch statement
         self._draw_legacy_icon(block, painter, path)
 
@@ -210,7 +227,7 @@ class BlockRenderer:
             else:
                 transform.translate(block.left + margin, block.top + margin)
                 transform.scale(block.width - 2 * margin, block.height - 2 * margin)
-            
+
             scaled_path = transform.map(path)
             painter.drawPath(scaled_path)
 
@@ -220,7 +237,7 @@ class BlockRenderer:
             self.draw_port_labels(block, painter)
 
         if draw_name:
-            text_color = theme_manager.get_color('text_primary')
+            text_color = theme_manager.get_color("text_primary")
             painter.setPen(text_color)
             # Copy the model's QFont before mutating; this renderer is stateless
             # and must not alter shared model state (block.font is persistent).
@@ -232,7 +249,7 @@ class BlockRenderer:
 
         # Enhanced selection visualization
         if block.selected:
-            selection_color = theme_manager.get_color('block_selected')
+            selection_color = theme_manager.get_color("block_selected")
             painter.setPen(QPen(selection_color, 3, Qt.SolidLine))
             painter.setBrush(Qt.NoBrush)
             padding = 4
@@ -240,7 +257,7 @@ class BlockRenderer:
                 block.left - padding,
                 block.top - padding,
                 block.width + 2 * padding,
-                block.height + 2 * padding
+                block.height + 2 * padding,
             )
             painter.drawRoundedRect(selection_rect, 14, 14)
 
@@ -257,7 +274,7 @@ class BlockRenderer:
         color/alpha come from the active theme's 'block_shadow' token so
         light/dark themes stay consistent.
         """
-        base_shadow = theme_manager.get_color('block_shadow')
+        base_shadow = theme_manager.get_color("block_shadow")
         base_alpha = base_shadow.alpha()
 
         painter.setPen(Qt.NoPen)
@@ -273,13 +290,37 @@ class BlockRenderer:
                 # Shadow for the Gain triangle, grown outward by `expand`.
                 shadow_points = QPolygonF()
                 if not block.flipped:
-                    shadow_points.append(QPoint(block.left + offset - expand, block.top + offset - expand))
-                    shadow_points.append(QPoint(block.left + block.width + offset + expand, int(block.top + block.height / 2) + offset))
-                    shadow_points.append(QPoint(block.left + offset - expand, block.top + block.height + offset + expand))
+                    shadow_points.append(
+                        QPoint(block.left + offset - expand, block.top + offset - expand)
+                    )
+                    shadow_points.append(
+                        QPoint(
+                            block.left + block.width + offset + expand,
+                            int(block.top + block.height / 2) + offset,
+                        )
+                    )
+                    shadow_points.append(
+                        QPoint(
+                            block.left + offset - expand, block.top + block.height + offset + expand
+                        )
+                    )
                 else:
-                    shadow_points.append(QPoint(block.left + block.width + offset + expand, block.top + offset - expand))
-                    shadow_points.append(QPoint(block.left + offset - expand, int(block.top + block.height / 2) + offset))
-                    shadow_points.append(QPoint(block.left + block.width + offset + expand, block.top + block.height + offset + expand))
+                    shadow_points.append(
+                        QPoint(
+                            block.left + block.width + offset + expand, block.top + offset - expand
+                        )
+                    )
+                    shadow_points.append(
+                        QPoint(
+                            block.left + offset - expand, int(block.top + block.height / 2) + offset
+                        )
+                    )
+                    shadow_points.append(
+                        QPoint(
+                            block.left + block.width + offset + expand,
+                            block.top + block.height + offset + expand,
+                        )
+                    )
                 painter.drawPolygon(shadow_points)
             else:
                 # Shadow for the rounded rectangle, grown outward by `expand`.
@@ -305,8 +346,8 @@ class BlockRenderer:
         if painter is None:
             return
 
-        port_input_color = theme_manager.get_color('port_input')
-        port_output_color = theme_manager.get_color('port_output')
+        port_input_color = theme_manager.get_color("port_input")
+        port_output_color = theme_manager.get_color("port_output")
         port_draw_radius = block.port_radius - 1
 
         # Resolve which (index, is_output) on this block is hovered, if any.
@@ -315,12 +356,16 @@ class BlockRenderer:
         # Input ports
         for i, port_in_location in enumerate(block.in_coords):
             is_hovered = hover_idx == i and hover_is_output is False
-            self._draw_port(painter, port_in_location, port_input_color, port_draw_radius, is_hovered)
+            self._draw_port(
+                painter, port_in_location, port_input_color, port_draw_radius, is_hovered
+            )
 
         # Output ports
         for i, port_out_location in enumerate(block.out_coords):
             is_hovered = hover_idx == i and hover_is_output is True
-            self._draw_port(painter, port_out_location, port_output_color, port_draw_radius, is_hovered)
+            self._draw_port(
+                painter, port_out_location, port_output_color, port_draw_radius, is_hovered
+            )
 
     @staticmethod
     def _resolve_hovered_port(hovered_port):
@@ -338,8 +383,14 @@ class BlockRenderer:
             return None, None
         return port_idx, bool(is_output)
 
-    def _draw_port(self, painter: QPainter, location, port_color: QColor,
-                   port_draw_radius: int, is_hovered: bool) -> None:
+    def _draw_port(
+        self,
+        painter: QPainter,
+        location,
+        port_color: QColor,
+        port_draw_radius: int,
+        is_hovered: bool,
+    ) -> None:
         """Draw a single port disc, emphasized when hovered.
 
         A hovered port is drawn slightly larger and brighter using the
@@ -348,7 +399,7 @@ class BlockRenderer:
         """
         # A hovered port grows by ~40% and recolors to the brighter hover token.
         if is_hovered:
-            base_color = theme_manager.get_color('port_hover')
+            base_color = theme_manager.get_color("port_hover")
             radius = int(port_draw_radius * 1.4)
         else:
             base_color = port_color
@@ -368,9 +419,16 @@ class BlockRenderer:
         painter.setBrush(QColor(255, 255, 255, 50))
         highlight_offset = int(radius * 0.3)
         highlight_size = int(radius * 0.4)
-        painter.drawEllipse(location.x() - highlight_offset, location.y() - highlight_offset, highlight_size, highlight_size)
+        painter.drawEllipse(
+            location.x() - highlight_offset,
+            location.y() - highlight_offset,
+            highlight_size,
+            highlight_size,
+        )
 
-    def draw_port_labels(self, block, painter: Optional[QPainter], show_labels: bool = True) -> None:
+    def draw_port_labels(
+        self, block, painter: Optional[QPainter], show_labels: bool = True
+    ) -> None:
         """
         Draw labels next to input and output ports for blocks with multiple ports.
 
@@ -387,7 +445,7 @@ class BlockRenderer:
             return
 
         # Skip blocks where port meaning is obvious from the icon
-        skip_blocks = {'Sum', 'SgProd', 'Product', 'Mux', 'Demux'}
+        skip_blocks = {"Sum", "SgProd", "Product", "Mux", "Demux"}
         if block.block_fn in skip_blocks:
             return
 
@@ -395,20 +453,20 @@ class BlockRenderer:
         input_names, output_names = block.get_port_names()
 
         # Setup font for labels (canonical UI stack instead of fixed Arial)
-        label_font = get_ui_font(TYPE['caption'])
+        label_font = get_ui_font(TYPE["caption"])
         label_font.setBold(False)
         painter.setFont(label_font)
         font_metrics = QFontMetrics(label_font)
 
         # Qt 5.11+ uses horizontalAdvance, older versions use width
         def get_text_width(text):
-            if hasattr(font_metrics, 'horizontalAdvance'):
+            if hasattr(font_metrics, "horizontalAdvance"):
                 return font_metrics.horizontalAdvance(text)
             return font_metrics.width(text)
 
         # Label colors
-        text_color = theme_manager.get_color('text_primary')
-        bg_color = theme_manager.get_color('background_secondary')
+        text_color = theme_manager.get_color("text_primary")
+        bg_color = theme_manager.get_color("background_secondary")
         bg_color.setAlpha(200)
 
         port_radius = block.port_radius
@@ -426,7 +484,9 @@ class BlockRenderer:
                 y = port_coord.y() + text_height // 4
 
                 # Draw background for readability
-                bg_rect = QRect(int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height))
+                bg_rect = QRect(
+                    int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height)
+                )
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(bg_color)
                 painter.drawRoundedRect(bg_rect, 2, 2)
@@ -447,7 +507,9 @@ class BlockRenderer:
                 y = port_coord.y() + text_height // 4
 
                 # Draw background for readability
-                bg_rect = QRect(int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height))
+                bg_rect = QRect(
+                    int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height)
+                )
                 painter.setPen(Qt.NoPen)
                 painter.setBrush(bg_color)
                 painter.drawRoundedRect(bg_rect, 2, 2)
@@ -461,6 +523,7 @@ class BlockRenderer:
         """Resolve the resize-handle square size (config-driven, fallback 8px)."""
         try:
             from config.block_sizes import RESIZE_HANDLE_SIZE
+
             return RESIZE_HANDLE_SIZE
         except ImportError:
             return 8
@@ -473,14 +536,14 @@ class BlockRenderer:
         """
         half = self._resize_handle_size() // 2
         return {
-            'top_left': (block.left - half, block.top - half),
-            'top_right': (block.left + block.width - half, block.top - half),
-            'bottom_left': (block.left - half, block.top + block.height - half),
-            'bottom_right': (block.left + block.width - half, block.top + block.height - half),
-            'top': (block.left + block.width // 2 - half, block.top - half),
-            'bottom': (block.left + block.width // 2 - half, block.top + block.height - half),
-            'left': (block.left - half, block.top + block.height // 2 - half),
-            'right': (block.left + block.width - half, block.top + block.height // 2 - half),
+            "top_left": (block.left - half, block.top - half),
+            "top_right": (block.left + block.width - half, block.top - half),
+            "bottom_left": (block.left - half, block.top + block.height - half),
+            "bottom_right": (block.left + block.width - half, block.top + block.height - half),
+            "top": (block.left + block.width // 2 - half, block.top - half),
+            "bottom": (block.left + block.width // 2 - half, block.top + block.height - half),
+            "left": (block.left - half, block.top + block.height // 2 - half),
+            "right": (block.left + block.width - half, block.top + block.height // 2 - half),
         }
 
     def draw_resize_handles(self, block, painter):
@@ -489,8 +552,8 @@ class BlockRenderer:
             return
 
         handle_size = self._resize_handle_size()
-        handle_color = theme_manager.get_color('accent_primary')
-        border_color = theme_manager.get_color('border_primary')
+        handle_color = theme_manager.get_color("accent_primary")
+        border_color = theme_manager.get_color("border_primary")
 
         painter.save()
         painter.setPen(QPen(border_color, 1))
@@ -519,8 +582,7 @@ class BlockRenderer:
 
         # Check if position is within any handle (same geometry as the draw path)
         for handle_name, (x, y) in self._resize_handle_rects(block).items():
-            if (x <= pos.x() <= x + handle_size and
-                y <= pos.y() <= y + handle_size):
+            if x <= pos.x() <= x + handle_size and y <= pos.y() <= y + handle_size:
                 return handle_name
 
         return None
@@ -529,39 +591,79 @@ class BlockRenderer:
         """Helper to draw legacy icons that use direct calls or mess with fonts."""
         # Using if/elif chain copied from original block.py
         if path.isEmpty() and block.block_fn == "Step":
-            path.moveTo(0.1, 0.7); path.lineTo(0.5, 0.7); path.lineTo(0.5, 0.3); path.lineTo(0.9, 0.3)
+            path.moveTo(0.1, 0.7)
+            path.lineTo(0.5, 0.7)
+            path.lineTo(0.5, 0.3)
+            path.lineTo(0.9, 0.3)
         elif path.isEmpty() and block.block_fn == "Ramp":
-            path.moveTo(0.1, 0.9); path.lineTo(0.9, 0.1)
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.9, 0.1)
         elif path.isEmpty() and block.block_fn == "Sine":
-            path.moveTo(0.1, 0.5); path.quadTo(0.3, 0.1, 0.5, 0.5); path.quadTo(0.7, 0.9, 0.9, 0.5)
+            path.moveTo(0.1, 0.5)
+            path.quadTo(0.3, 0.1, 0.5, 0.5)
+            path.quadTo(0.7, 0.9, 0.9, 0.5)
         elif block.block_fn == "SgProd":
-            path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.8); path.lineTo(0.8, 0.2)
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.moveTo(0.2, 0.8)
+            path.lineTo(0.8, 0.2)
         elif block.block_fn == "TranFn":
             self._draw_text_icon(block, painter, ["B(s)", "A(s)"], italic=True)
         elif block.block_fn == "Demux":
-            path.moveTo(0.2, 0.5); path.lineTo(0.4, 0.5)
-            path.moveTo(0.4, 0.2); path.lineTo(0.4, 0.8); path.lineTo(0.8, 0.8); path.lineTo(0.8, 0.2); path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.3); path.lineTo(1.0, 0.3)
-            path.moveTo(0.8, 0.7); path.lineTo(1.0, 0.7)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.4, 0.5)
+            path.moveTo(0.4, 0.2)
+            path.lineTo(0.4, 0.8)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.4, 0.2)
+            path.moveTo(0.8, 0.3)
+            path.lineTo(1.0, 0.3)
+            path.moveTo(0.8, 0.7)
+            path.lineTo(1.0, 0.7)
         elif block.block_fn == "Mux":
-            path.moveTo(0.2, 0.3); path.lineTo(0.4, 0.3)
-            path.moveTo(0.2, 0.7); path.lineTo(0.4, 0.7)
-            path.moveTo(0.4, 0.2); path.lineTo(0.8, 0.4); path.lineTo(0.8, 0.6); path.lineTo(0.4, 0.8); path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.5); path.lineTo(1.0, 0.5)
+            path.moveTo(0.2, 0.3)
+            path.lineTo(0.4, 0.3)
+            path.moveTo(0.2, 0.7)
+            path.lineTo(0.4, 0.7)
+            path.moveTo(0.4, 0.2)
+            path.lineTo(0.8, 0.4)
+            path.lineTo(0.8, 0.6)
+            path.lineTo(0.4, 0.8)
+            path.lineTo(0.4, 0.2)
+            path.moveTo(0.8, 0.5)
+            path.lineTo(1.0, 0.5)
         elif block.block_fn == "BodeMag":
-            path.moveTo(0.1, 0.9); path.lineTo(0.9, 0.9)
-            path.moveTo(0.1, 0.9); path.lineTo(0.1, 0.1)
-            path.moveTo(0.1, 0.4); path.lineTo(0.4, 0.4); path.lineTo(0.6, 0.7); path.lineTo(0.9, 0.7)
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.9, 0.9)
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.1, 0.1)
+            path.moveTo(0.1, 0.4)
+            path.lineTo(0.4, 0.4)
+            path.lineTo(0.6, 0.7)
+            path.lineTo(0.9, 0.7)
         elif block.block_fn == "RootLocus":
-            path.moveTo(0.1, 0.5); path.lineTo(0.9, 0.5)
-            path.moveTo(0.5, 0.1); path.lineTo(0.5, 0.9)
-            p_x, p_y = 0.4, 0.3; path.moveTo(p_x-0.03, p_y-0.03); path.lineTo(p_x+0.03, p_y+0.03); path.moveTo(p_x+0.03, p_y-0.03); path.lineTo(p_x-0.03, p_y+0.03)
-            p_x, p_y = 0.4, 0.7; path.moveTo(p_x-0.03, p_y-0.03); path.lineTo(p_x+0.03, p_y+0.03); path.moveTo(p_x+0.03, p_y-0.03); path.lineTo(p_x-0.03, p_y+0.03)
-            path.addEllipse(QPointF(0.2*block.width, 0.5*block.height), 3, 3) 
-            path.moveTo(0.4, 0.3); path.quadTo(0.3, 0.3, 0.2, 0.5)
-            path.moveTo(0.4, 0.7); path.quadTo(0.3, 0.7, 0.2, 0.5)
-            path.moveTo(0.2, 0.5); path.lineTo(0.1, 0.5)
+            path.moveTo(0.1, 0.5)
+            path.lineTo(0.9, 0.5)
+            path.moveTo(0.5, 0.1)
+            path.lineTo(0.5, 0.9)
+            p_x, p_y = 0.4, 0.3
+            path.moveTo(p_x - 0.03, p_y - 0.03)
+            path.lineTo(p_x + 0.03, p_y + 0.03)
+            path.moveTo(p_x + 0.03, p_y - 0.03)
+            path.lineTo(p_x - 0.03, p_y + 0.03)
+            p_x, p_y = 0.4, 0.7
+            path.moveTo(p_x - 0.03, p_y - 0.03)
+            path.lineTo(p_x + 0.03, p_y + 0.03)
+            path.moveTo(p_x + 0.03, p_y - 0.03)
+            path.lineTo(p_x - 0.03, p_y + 0.03)
+            path.addEllipse(QPointF(0.2 * block.width, 0.5 * block.height), 3, 3)
+            path.moveTo(0.4, 0.3)
+            path.quadTo(0.3, 0.3, 0.2, 0.5)
+            path.moveTo(0.4, 0.7)
+            path.quadTo(0.3, 0.7, 0.2, 0.5)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.1, 0.5)
         elif block.block_fn == "LQR":
             self._draw_centered_text(block, painter, "LQR", bold=True, size_delta=2)
         elif block.block_fn == "Deriv":
@@ -569,127 +671,266 @@ class BlockRenderer:
         elif block.block_fn == "DiscreteTranFn":
             self._draw_text_icon(block, painter, ["B(z)", "A(z)"], italic=True)
         elif block.block_fn == "Integrator":
-             self._draw_text_icon(block, painter, ["1", "s"], italic=True, size_delta=4)
+            self._draw_text_icon(block, painter, ["1", "s"], italic=True, size_delta=4)
         elif block.block_fn == "Scope":
-            path.moveTo(0.1, 0.9); path.lineTo(0.9, 0.9); path.moveTo(0.1, 0.9); path.lineTo(0.1, 0.1)
-            path.moveTo(0.1, 0.6); path.quadTo(0.3, 0.2, 0.5, 0.6); path.quadTo(0.7, 1.0, 0.9, 0.6)
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.9, 0.9)
+            path.moveTo(0.1, 0.9)
+            path.lineTo(0.1, 0.1)
+            path.moveTo(0.1, 0.6)
+            path.quadTo(0.3, 0.2, 0.5, 0.6)
+            path.quadTo(0.7, 1.0, 0.9, 0.6)
         elif block.block_fn == "Sum":
-             sign_text = block.params.get('sign', '++')
-             if isinstance(sign_text, dict): sign_text = sign_text.get('default', '++')
-             self._draw_centered_text(block, painter, str(sign_text), size_delta=4)
+            sign_text = block.params.get("sign", "++")
+            if isinstance(sign_text, dict):
+                sign_text = sign_text.get("default", "++")
+            self._draw_centered_text(block, painter, str(sign_text), size_delta=4)
         elif block.block_fn == "Noise":
-             path.moveTo(0.1, 0.5); path.lineTo(0.2, 0.3); path.lineTo(0.3, 0.7); path.lineTo(0.4, 0.4)
-             path.lineTo(0.5, 0.6); path.lineTo(0.6, 0.2); path.lineTo(0.7, 0.8); path.lineTo(0.8, 0.5); path.lineTo(0.9, 0.6)
+            path.moveTo(0.1, 0.5)
+            path.lineTo(0.2, 0.3)
+            path.lineTo(0.3, 0.7)
+            path.lineTo(0.4, 0.4)
+            path.lineTo(0.5, 0.6)
+            path.lineTo(0.6, 0.2)
+            path.lineTo(0.7, 0.8)
+            path.lineTo(0.8, 0.5)
+            path.lineTo(0.9, 0.6)
         elif block.block_fn == "Exp":
-             self._draw_centered_text(block, painter, "eˣ", italic=True, size_delta=4)
+            self._draw_centered_text(block, painter, "eˣ", italic=True, size_delta=4)
         elif block.block_fn == "Display":
-             params_source = getattr(block, 'exec_params', block.params) or block.params
-             display_val = params_source.get('_display_value_', '---')
-             # Dynamic character limit based on block width (approx 8 pixels per char)
-             block_width = getattr(block, 'width', 80)
-             max_chars = max(10, int(block_width / 8))
-             if len(str(display_val)) > max_chars: display_val = str(display_val)[:max_chars-1] + "…"
-             self._draw_centered_text(block, painter, str(display_val), bold=True, size_delta=2)
+            params_source = getattr(block, "exec_params", block.params) or block.params
+            display_val = params_source.get("_display_value_", "---")
+            # Dynamic character limit based on block width (approx 8 pixels per char)
+            block_width = getattr(block, "width", 80)
+            max_chars = max(10, int(block_width / 8))
+            if len(str(display_val)) > max_chars:
+                display_val = str(display_val)[: max_chars - 1] + "…"
+            self._draw_centered_text(block, painter, str(display_val), bold=True, size_delta=2)
         elif block.block_fn == "Term":
-             path.moveTo(0.5, 0.2); path.lineTo(0.5, 0.6)
-             path.moveTo(0.2, 0.6); path.lineTo(0.8, 0.6)
-             path.moveTo(0.3, 0.75); path.lineTo(0.7, 0.75)
-             path.moveTo(0.4, 0.9); path.lineTo(0.6, 0.9)
+            path.moveTo(0.5, 0.2)
+            path.lineTo(0.5, 0.6)
+            path.moveTo(0.2, 0.6)
+            path.lineTo(0.8, 0.6)
+            path.moveTo(0.3, 0.75)
+            path.lineTo(0.7, 0.75)
+            path.moveTo(0.4, 0.9)
+            path.lineTo(0.6, 0.9)
         elif block.block_fn == "Export":
-             path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.2); path.lineTo(0.8, 0.8); path.lineTo(0.2, 0.8); path.lineTo(0.2, 0.2)
-             path.moveTo(0.5, 0.5); path.lineTo(1.0, 0.5); path.moveTo(0.8, 0.3); path.lineTo(1.0, 0.5); path.lineTo(0.8, 0.7)
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.2, 0.8)
+            path.lineTo(0.2, 0.2)
+            path.moveTo(0.5, 0.5)
+            path.lineTo(1.0, 0.5)
+            path.moveTo(0.8, 0.3)
+            path.lineTo(1.0, 0.5)
+            path.lineTo(0.8, 0.7)
         elif block.block_fn == "ZeroOrderHold":
-             path.moveTo(0.1, 0.8); path.lineTo(0.3, 0.8); path.lineTo(0.3, 0.5); path.lineTo(0.6, 0.5)
-             path.lineTo(0.6, 0.2); path.lineTo(0.9, 0.2)
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.3, 0.8)
+            path.lineTo(0.3, 0.5)
+            path.lineTo(0.6, 0.5)
+            path.lineTo(0.6, 0.2)
+            path.lineTo(0.9, 0.2)
         elif block.block_fn == "PRBS":
-             path.moveTo(0.1, 0.7); path.lineTo(0.18, 0.7); path.lineTo(0.18, 0.3); path.lineTo(0.32, 0.3)
-             path.lineTo(0.32, 0.7); path.lineTo(0.45, 0.7); path.lineTo(0.45, 0.4); path.lineTo(0.6, 0.4)
-             path.lineTo(0.6, 0.7); path.lineTo(0.78, 0.7); path.lineTo(0.78, 0.3); path.lineTo(0.9, 0.3); path.lineTo(0.9, 0.7)
+            path.moveTo(0.1, 0.7)
+            path.lineTo(0.18, 0.7)
+            path.lineTo(0.18, 0.3)
+            path.lineTo(0.32, 0.3)
+            path.lineTo(0.32, 0.7)
+            path.lineTo(0.45, 0.7)
+            path.lineTo(0.45, 0.4)
+            path.lineTo(0.6, 0.4)
+            path.lineTo(0.6, 0.7)
+            path.lineTo(0.78, 0.7)
+            path.lineTo(0.78, 0.3)
+            path.lineTo(0.9, 0.3)
+            path.lineTo(0.9, 0.7)
         elif block.block_fn == "Hysteresis":
-             path.moveTo(0.15, 0.75); path.lineTo(0.75, 0.75); path.lineTo(0.75, 0.25); path.lineTo(0.85, 0.25)
-             path.moveTo(0.85, 0.25); path.lineTo(0.25, 0.25); path.lineTo(0.25, 0.75); path.lineTo(0.15, 0.75)
-             path.moveTo(0.45, 0.75); path.lineTo(0.45, 0.72); path.lineTo(0.51, 0.75); path.lineTo(0.45, 0.78); path.lineTo(0.45, 0.75)
-             path.moveTo(0.55, 0.25); path.lineTo(0.55, 0.22); path.lineTo(0.49, 0.25); path.lineTo(0.55, 0.28); path.lineTo(0.55, 0.25)
+            path.moveTo(0.15, 0.75)
+            path.lineTo(0.75, 0.75)
+            path.lineTo(0.75, 0.25)
+            path.lineTo(0.85, 0.25)
+            path.moveTo(0.85, 0.25)
+            path.lineTo(0.25, 0.25)
+            path.lineTo(0.25, 0.75)
+            path.lineTo(0.15, 0.75)
+            path.moveTo(0.45, 0.75)
+            path.lineTo(0.45, 0.72)
+            path.lineTo(0.51, 0.75)
+            path.lineTo(0.45, 0.78)
+            path.lineTo(0.45, 0.75)
+            path.moveTo(0.55, 0.25)
+            path.lineTo(0.55, 0.22)
+            path.lineTo(0.49, 0.25)
+            path.lineTo(0.55, 0.28)
+            path.lineTo(0.55, 0.25)
         elif block.block_fn == "Deadband":
-             path.moveTo(0.15, 0.80); path.lineTo(0.35, 0.50); path.lineTo(0.65, 0.50); path.lineTo(0.85, 0.20)
-             path.moveTo(0.2, 0.5); path.lineTo(0.8, 0.5)
+            path.moveTo(0.15, 0.80)
+            path.lineTo(0.35, 0.50)
+            path.lineTo(0.65, 0.50)
+            path.lineTo(0.85, 0.20)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.8, 0.5)
         elif block.block_fn == "Switch":
-             path.moveTo(0.5, 0.10); path.lineTo(0.5, 0.35)
-             path.moveTo(0.47, 0.30); path.lineTo(0.5, 0.35); path.lineTo(0.53, 0.30)
-             path.moveTo(0.30, 0.35); path.lineTo(0.70, 0.35); path.lineTo(0.70, 0.75); path.lineTo(0.30, 0.75); path.lineTo(0.30, 0.35)
-             path.moveTo(0.30, 0.45); path.lineTo(0.45, 0.45); path.moveTo(0.30, 0.65); path.lineTo(0.45, 0.65)
-             path.moveTo(0.45, 0.45); path.lineTo(0.55, 0.55); path.lineTo(0.70, 0.55)
-             path.moveTo(0.70, 0.55); path.lineTo(0.90, 0.55)
+            path.moveTo(0.5, 0.10)
+            path.lineTo(0.5, 0.35)
+            path.moveTo(0.47, 0.30)
+            path.lineTo(0.5, 0.35)
+            path.lineTo(0.53, 0.30)
+            path.moveTo(0.30, 0.35)
+            path.lineTo(0.70, 0.35)
+            path.lineTo(0.70, 0.75)
+            path.lineTo(0.30, 0.75)
+            path.lineTo(0.30, 0.35)
+            path.moveTo(0.30, 0.45)
+            path.lineTo(0.45, 0.45)
+            path.moveTo(0.30, 0.65)
+            path.lineTo(0.45, 0.65)
+            path.moveTo(0.45, 0.45)
+            path.lineTo(0.55, 0.55)
+            path.lineTo(0.70, 0.55)
+            path.moveTo(0.70, 0.55)
+            path.lineTo(0.90, 0.55)
         elif block.block_fn == "Saturation":
-             path.moveTo(0.1, 0.8); path.lineTo(0.9, 0.8); path.moveTo(0.1, 0.2); path.lineTo(0.9, 0.2)
-             path.moveTo(0.15, 0.5); path.quadTo(0.3, 0.2, 0.45, 0.2); path.lineTo(0.55, 0.2); path.quadTo(0.7, 0.8, 0.85, 0.8)
+            path.moveTo(0.1, 0.8)
+            path.lineTo(0.9, 0.8)
+            path.moveTo(0.1, 0.2)
+            path.lineTo(0.9, 0.2)
+            path.moveTo(0.15, 0.5)
+            path.quadTo(0.3, 0.2, 0.45, 0.2)
+            path.lineTo(0.55, 0.2)
+            path.quadTo(0.7, 0.8, 0.85, 0.8)
         elif block.block_fn == "RateLimiter":
-             # draw_icon already supplies the slew-response shape; only build it
-             # here as a fallback so the same path is not stroked twice.
-             if path.isEmpty():
-                 path.moveTo(0.15, 0.75); path.lineTo(0.35, 0.75); path.lineTo(0.65, 0.25); path.lineTo(0.85, 0.25)
-             path.moveTo(0.35, 0.75); path.lineTo(0.35, 0.25); path.lineTo(0.40, 0.25)
-             self._draw_corner_label(block, painter, "du/dt")
+            # draw_icon already supplies the slew-response shape; only build it
+            # here as a fallback so the same path is not stroked twice.
+            if path.isEmpty():
+                path.moveTo(0.15, 0.75)
+                path.lineTo(0.35, 0.75)
+                path.lineTo(0.65, 0.25)
+                path.lineTo(0.85, 0.25)
+            path.moveTo(0.35, 0.75)
+            path.lineTo(0.35, 0.25)
+            path.lineTo(0.40, 0.25)
+            self._draw_corner_label(block, painter, "du/dt")
         elif block.block_fn == "PID":
-             self._draw_centered_text(block, painter, "PID", bold=True, size_delta=3)
-             self._draw_corner_labels(block, painter, "sp", "pv")
+            self._draw_centered_text(block, painter, "PID", bold=True, size_delta=3)
+            self._draw_corner_labels(block, painter, "sp", "pv")
         elif block.block_fn == "StateSpace":
-             self._draw_centered_text(block, painter, "x' = Ax+Bu\ny = Cx+Du", size_delta=-1)
+            self._draw_centered_text(block, painter, "x' = Ax+Bu\ny = Cx+Du", size_delta=-1)
         elif block.block_fn == "DiscreteStateSpace":
-             self._draw_centered_text(block, painter, "x[k+1]=Ax+Bu\ny[k]=Cx+Du", size_delta=-2)
+            self._draw_centered_text(block, painter, "x[k+1]=Ax+Bu\ny[k]=Cx+Du", size_delta=-2)
         elif block.block_fn == "External":
-             path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.2); path.moveTo(0.2, 0.5); path.lineTo(0.6, 0.5)
-             path.moveTo(0.2, 0.8); path.lineTo(0.8, 0.8); path.moveTo(0.2, 0.2); path.lineTo(0.2, 0.8)
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.2)
+            path.moveTo(0.2, 0.5)
+            path.lineTo(0.6, 0.5)
+            path.moveTo(0.2, 0.8)
+            path.lineTo(0.8, 0.8)
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.2, 0.8)
         elif path.isEmpty() and block.block_fn == "Constant":
-             # When draw_icon supplies the flat-line "constant level" shape (the
-             # same convention as Step/Ramp/Sine), don't overlay a "K" on it.
-             self._draw_centered_text(block, painter, "K", bold=True, size_delta=4)
+            # When draw_icon supplies the flat-line "constant level" shape (the
+            # same convention as Step/Ramp/Sine), don't overlay a "K" on it.
+            self._draw_centered_text(block, painter, "K", bold=True, size_delta=4)
         elif block.block_fn == "Delay":
-             self._draw_centered_text(block, painter, "z⁻ⁿ", size_delta=2)
+            self._draw_centered_text(block, painter, "z⁻ⁿ", size_delta=2)
         elif block.block_fn == "Abs":
-             self._draw_centered_text(block, painter, "|u|", bold=True, size_delta=4)
+            self._draw_centered_text(block, painter, "|u|", bold=True, size_delta=4)
         elif block.block_fn == "TransportDelay":
-             font = painter.font()
-             orig = font.pointSize()
-             font.setPointSize(orig + 3); font.setItalic(True); painter.setFont(font)
-             painter.setPen(theme_manager.get_color('block_icon_color'))
-             cx, cy = block.left + block.width // 2, block.top + block.height // 2
-             painter.drawText(cx - 12, cy + 4, "e")
-             font.setPointSize(orig); painter.setFont(font)
-             painter.drawText(cx - 2, cy - 4, "-τs")
-             font.setItalic(False); painter.setFont(font)
+            font = painter.font()
+            orig = font.pointSize()
+            font.setPointSize(orig + 3)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(theme_manager.get_color("block_icon_color"))
+            cx, cy = block.left + block.width // 2, block.top + block.height // 2
+            painter.drawText(cx - 12, cy + 4, "e")
+            font.setPointSize(orig)
+            painter.setFont(font)
+            painter.drawText(cx - 2, cy - 4, "-τs")
+            font.setItalic(False)
+            painter.setFont(font)
         elif block.block_fn == "XYGraph":
-             path.moveTo(0.15, 0.85); path.lineTo(0.85, 0.85); path.moveTo(0.15, 0.85); path.lineTo(0.15, 0.15)
-             path.moveTo(0.82, 0.82); path.lineTo(0.85, 0.85); path.lineTo(0.82, 0.88)
-             path.moveTo(0.12, 0.18); path.lineTo(0.15, 0.15); path.lineTo(0.18, 0.18)
-             path.moveTo(0.25, 0.75); path.quadTo(0.35, 0.35, 0.55, 0.45); path.quadTo(0.75, 0.55, 0.70, 0.30)
+            path.moveTo(0.15, 0.85)
+            path.lineTo(0.85, 0.85)
+            path.moveTo(0.15, 0.85)
+            path.lineTo(0.15, 0.15)
+            path.moveTo(0.82, 0.82)
+            path.lineTo(0.85, 0.85)
+            path.lineTo(0.82, 0.88)
+            path.moveTo(0.12, 0.18)
+            path.lineTo(0.15, 0.15)
+            path.lineTo(0.18, 0.18)
+            path.moveTo(0.25, 0.75)
+            path.quadTo(0.35, 0.35, 0.55, 0.45)
+            path.quadTo(0.75, 0.55, 0.70, 0.30)
         elif block.block_fn == "Assert":
-             self._draw_centered_text(block, painter, "⚠", bold=True, size_delta=6, color=theme_manager.get_current_theme()['error'])
+            self._draw_centered_text(
+                block,
+                painter,
+                "⚠",
+                bold=True,
+                size_delta=6,
+                color=theme_manager.get_current_theme()["error"],
+            )
         elif block.block_fn == "Selector":
-             path.moveTo(0.15, 0.3); path.lineTo(0.15, 0.7); path.lineTo(0.35, 0.7); path.lineTo(0.35, 0.3); path.lineTo(0.15, 0.3)
-             path.moveTo(0.17, 0.4); path.lineTo(0.33, 0.4); path.moveTo(0.17, 0.5); path.lineTo(0.33, 0.5); path.moveTo(0.17, 0.6); path.lineTo(0.33, 0.6)
-             path.moveTo(0.35, 0.5); path.lineTo(0.65, 0.5); path.moveTo(0.60, 0.45); path.lineTo(0.65, 0.5); path.lineTo(0.60, 0.55)
-             path.moveTo(0.70, 0.45); path.lineTo(0.85, 0.45); path.lineTo(0.85, 0.55); path.lineTo(0.70, 0.55); path.lineTo(0.70, 0.45)
+            path.moveTo(0.15, 0.3)
+            path.lineTo(0.15, 0.7)
+            path.lineTo(0.35, 0.7)
+            path.lineTo(0.35, 0.3)
+            path.lineTo(0.15, 0.3)
+            path.moveTo(0.17, 0.4)
+            path.lineTo(0.33, 0.4)
+            path.moveTo(0.17, 0.5)
+            path.lineTo(0.33, 0.5)
+            path.moveTo(0.17, 0.6)
+            path.lineTo(0.33, 0.6)
+            path.moveTo(0.35, 0.5)
+            path.lineTo(0.65, 0.5)
+            path.moveTo(0.60, 0.45)
+            path.lineTo(0.65, 0.5)
+            path.lineTo(0.60, 0.55)
+            path.moveTo(0.70, 0.45)
+            path.lineTo(0.85, 0.45)
+            path.lineTo(0.85, 0.55)
+            path.lineTo(0.70, 0.55)
+            path.lineTo(0.70, 0.45)
         elif block.block_fn == "Subsystem":
-             # Nested rectangles icon
-             path.moveTo(0.2, 0.2); path.lineTo(0.8, 0.2); path.lineTo(0.8, 0.8); path.lineTo(0.2, 0.8); path.lineTo(0.2, 0.2)
-             path.moveTo(0.3, 0.3); path.lineTo(0.7, 0.3); path.lineTo(0.7, 0.7); path.lineTo(0.3, 0.7); path.lineTo(0.3, 0.3)
+            # Nested rectangles icon
+            path.moveTo(0.2, 0.2)
+            path.lineTo(0.8, 0.2)
+            path.lineTo(0.8, 0.8)
+            path.lineTo(0.2, 0.8)
+            path.lineTo(0.2, 0.2)
+            path.moveTo(0.3, 0.3)
+            path.lineTo(0.7, 0.3)
+            path.lineTo(0.7, 0.7)
+            path.lineTo(0.3, 0.7)
+            path.lineTo(0.3, 0.3)
         elif block.block_fn == "Inport":
-             self._draw_centered_text(block, painter, "In", bold=True, size_delta=2)
-             # Draw arrow?
-             # path.moveTo(0.2, 0.5); path.lineTo(0.8, 0.5); path.lineTo(0.6, 0.3)...
+            self._draw_centered_text(block, painter, "In", bold=True, size_delta=2)
+            # Draw arrow?
+            # path.moveTo(0.2, 0.5); path.lineTo(0.8, 0.5); path.lineTo(0.6, 0.3)...
         elif block.block_fn == "Outport":
-             self._draw_centered_text(block, painter, "Out", bold=True, size_delta=2)
-             
+            self._draw_centered_text(block, painter, "Out", bold=True, size_delta=2)
+
         elif block.block_fn == "FFT":
-             path.moveTo(0.15, 0.80); path.lineTo(0.15, 0.20); path.moveTo(0.15, 0.80); path.lineTo(0.85, 0.80)
-             bar_positions = [0.22, 0.32, 0.42, 0.52, 0.62, 0.72]
-             bar_heights = [0.30, 0.55, 0.70, 0.45, 0.25, 0.15]
-             bar_w = 0.06
-             for x, h in zip(bar_positions, bar_heights):
-                 path.moveTo(x, 0.80); path.lineTo(x, 0.80 - h * 0.55); path.lineTo(x + bar_w, 0.80 - h * 0.55); path.lineTo(x + bar_w, 0.80)
+            path.moveTo(0.15, 0.80)
+            path.lineTo(0.15, 0.20)
+            path.moveTo(0.15, 0.80)
+            path.lineTo(0.85, 0.80)
+            bar_positions = [0.22, 0.32, 0.42, 0.52, 0.62, 0.72]
+            bar_heights = [0.30, 0.55, 0.70, 0.45, 0.25, 0.15]
+            bar_w = 0.06
+            for x, h in zip(bar_positions, bar_heights):
+                path.moveTo(x, 0.80)
+                path.lineTo(x, 0.80 - h * 0.55)
+                path.lineTo(x + bar_w, 0.80 - h * 0.55)
+                path.lineTo(x + bar_w, 0.80)
         elif block.block_fn == "MathFunction":
-             self._draw_centered_text(block, painter, "f(u)", italic=True, size_delta=4)
+            self._draw_centered_text(block, painter, "f(u)", italic=True, size_delta=4)
 
     # --- Helper methods for common icon patterns ---
 
@@ -699,32 +940,36 @@ class BlockRenderer:
         font.setPointSize(orig + size_delta)
         font.setItalic(italic)
         painter.setFont(font)
-        painter.setPen(theme_manager.get_color('block_icon_color'))
+        painter.setPen(theme_manager.get_color("block_icon_color"))
 
         rect_top = QRect(block.left, block.top, block.width, block.height // 2)
         painter.drawText(rect_top, Qt.AlignCenter, lines[0])
-        
+
         line_y = block.top + block.height // 2
         painter.drawLine(block.left + 10, line_y, block.left + block.width - 10, line_y)
-        
+
         rect_bot = QRect(block.left, block.top + block.height // 2, block.width, block.height // 2)
         painter.drawText(rect_bot, Qt.AlignCenter, lines[1])
-        
+
         font.setItalic(False)
         font.setPointSize(orig)
         painter.setFont(font)
 
-    def _draw_centered_text(self, block, painter, text, bold=False, italic=False, size_delta=0, color=None):
+    def _draw_centered_text(
+        self, block, painter, text, bold=False, italic=False, size_delta=0, color=None
+    ):
         font = painter.font()
         orig = font.pointSize()
         font.setPointSize(orig + size_delta)
         font.setBold(bold)
         font.setItalic(italic)
         painter.setFont(font)
-        painter.setPen(QColor(color) if color else theme_manager.get_color('block_icon_color'))
+        painter.setPen(QColor(color) if color else theme_manager.get_color("block_icon_color"))
         rect = QRect(block.left, block.top, block.width, block.height)
         painter.drawText(rect, Qt.AlignCenter, text)
-        font.setBold(False); font.setItalic(False); font.setPointSize(orig)
+        font.setBold(False)
+        font.setItalic(False)
+        font.setPointSize(orig)
         painter.setFont(font)
 
     def _draw_corner_label(self, block, painter, text):
@@ -732,8 +977,17 @@ class BlockRenderer:
         orig = font.pointSize()
         font.setPointSize(orig - 1)
         painter.setFont(font)
-        painter.setPen(theme_manager.get_color('block_icon_color'))
-        painter.drawText(QRect(block.left + int(block.width*0.4), block.top + int(block.height*0.4), int(block.width*0.6), int(block.height*0.6)), Qt.AlignCenter, text)
+        painter.setPen(theme_manager.get_color("block_icon_color"))
+        painter.drawText(
+            QRect(
+                block.left + int(block.width * 0.4),
+                block.top + int(block.height * 0.4),
+                int(block.width * 0.6),
+                int(block.height * 0.6),
+            ),
+            Qt.AlignCenter,
+            text,
+        )
         font.setPointSize(orig)
         painter.setFont(font)
 
@@ -748,8 +1002,18 @@ class BlockRenderer:
         font.setBold(False)
         font.setItalic(False)
         painter.setFont(font)
-        painter.drawText(QRect(block.left + 4, block.top + 2, block.width // 2, block.height // 2), Qt.AlignLeft | Qt.AlignTop, tl)
-        painter.drawText(QRect(block.left + 4, block.top + block.height // 2, block.width // 2, block.height // 2), Qt.AlignLeft | Qt.AlignBottom, bl)
+        painter.drawText(
+            QRect(block.left + 4, block.top + 2, block.width // 2, block.height // 2),
+            Qt.AlignLeft | Qt.AlignTop,
+            tl,
+        )
+        painter.drawText(
+            QRect(
+                block.left + 4, block.top + block.height // 2, block.width // 2, block.height // 2
+            ),
+            Qt.AlignLeft | Qt.AlignBottom,
+            bl,
+        )
         font.setPointSize(orig)
         font.setBold(orig_bold)
         font.setItalic(orig_italic)
@@ -775,9 +1039,10 @@ class BlockRenderer:
             return
 
         # Get sample time from block params
-        sample_time = block.params.get('sampling_time',
-                      block.params.get('sample_time',
-                      block.params.get('output_sample_time', -1.0)))
+        sample_time = block.params.get(
+            "sampling_time",
+            block.params.get("sample_time", block.params.get("output_sample_time", -1.0)),
+        )
 
         try:
             sample_time = float(sample_time)
@@ -801,7 +1066,7 @@ class BlockRenderer:
             # Fixed discrete rate - color based on sample time
             # Use log scale: 0.001s (1kHz) = red, 1s (1Hz) = blue
             log_min = math.log10(0.001)  # 1ms = fast (red)
-            log_max = math.log10(1.0)    # 1s = slow (blue)
+            log_max = math.log10(1.0)  # 1s = slow (blue)
             log_sample = math.log10(max(0.001, min(1.0, sample_time)))
 
             # Normalize to 0-1 range
@@ -819,8 +1084,6 @@ class BlockRenderer:
         painter.setPen(QPen(QColor(50, 50, 50), 1))
         painter.setBrush(indicator_color)
         painter.drawEllipse(
-            QPoint(int(indicator_x), int(indicator_y)),
-            indicator_radius,
-            indicator_radius
+            QPoint(int(indicator_x), int(indicator_y)), indicator_radius, indicator_radius
         )
         painter.restore()

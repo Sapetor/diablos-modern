@@ -19,6 +19,7 @@ def palette():
     try:
         from lib.lib import DSim
         from modern_ui.widgets.modern_palette import ModernBlockPalette
+
         dsim = DSim()
         init = getattr(dsim, "menu_blocks_init", None)
         if callable(init):
@@ -62,6 +63,7 @@ def test_drag_path_does_not_emit_palette_add_signal(palette, monkeypatch):
 
     # Neutralize the actual QDrag.exec_ so the test doesn't start a real drag.
     from PyQt5.QtGui import QDrag
+
     monkeypatch.setattr(QDrag, "exec_", lambda *a, **k: 0)
     try:
         row._start_drag(None)

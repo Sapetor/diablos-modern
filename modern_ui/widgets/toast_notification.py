@@ -17,7 +17,7 @@ class ToastNotification(QLabel):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         # Styling
-        self.setFont(get_ui_font(TYPE['body_strong'], WEIGHT['bold']))
+        self.setFont(get_ui_font(TYPE["body_strong"], WEIGHT["bold"]))
         self.setAlignment(Qt.AlignCenter)
         self.setMinimumWidth(200)
         self.setMaximumWidth(400)
@@ -50,13 +50,13 @@ class ToastNotification(QLabel):
     def _apply_styling(self):
         """Apply theme-aware styling (red error variant when ``self._is_error``)."""
         if self._is_error:
-            bg_color = theme_manager.get_color('error_bg')
-            text_color = theme_manager.get_color('text_primary')
-            border_color = theme_manager.get_color('error')
+            bg_color = theme_manager.get_color("error_bg")
+            text_color = theme_manager.get_color("text_primary")
+            border_color = theme_manager.get_color("error")
         else:
-            bg_color = theme_manager.get_color('surface_elevated')
-            text_color = theme_manager.get_color('text_primary')
-            border_color = theme_manager.get_color('accent_primary')
+            bg_color = theme_manager.get_color("surface_elevated")
+            text_color = theme_manager.get_color("text_primary")
+            border_color = theme_manager.get_color("accent_primary")
 
         self.setStyleSheet(f"""
             QLabel {{

@@ -44,14 +44,14 @@ def compute_alignment_guides(moving_rect, other_rects, threshold=4):
 
     # Candidate edge positions on the moving block, keyed by axis role. The
     # value is the canvas coordinate of that edge in the relevant axis.
-    moving_x_edges = {'left': mx, 'center': mx + mw / 2.0, 'right': mx + mw}
-    moving_y_edges = {'top': my, 'middle': my + mh / 2.0, 'bottom': my + mh}
+    moving_x_edges = {"left": mx, "center": mx + mw / 2.0, "right": mx + mw}
+    moving_y_edges = {"top": my, "middle": my + mh / 2.0, "bottom": my + mh}
 
     # Track the single best snap per axis: (abs_distance, signed_offset, ...).
     best_x = None  # (dist, offset, moving_edge_pos, other_rect)
     best_y = None
 
-    for (ox, oy, ow, oh) in other_rects:
+    for ox, oy, ow, oh in other_rects:
         other_x_edges = (ox, ox + ow / 2.0, ox + ow)
         other_y_edges = (oy, oy + oh / 2.0, oy + oh)
 
@@ -60,16 +60,14 @@ def compute_alignment_guides(moving_rect, other_rects, threshold=4):
             for o_edge in other_x_edges:
                 dist = abs(o_edge - m_edge)
                 if dist <= threshold and (best_x is None or dist < best_x[0]):
-                    best_x = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge),
-                              (ox, oy, ow, oh))
+                    best_x = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge), (ox, oy, ow, oh))
 
         # Y axis: compare every moving horizontal edge to every other one.
         for m_edge in moving_y_edges.values():
             for o_edge in other_y_edges:
                 dist = abs(o_edge - m_edge)
                 if dist <= threshold and (best_y is None or dist < best_y[0]):
-                    best_y = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge),
-                              (ox, oy, ow, oh))
+                    best_y = (dist, o_edge - m_edge, m_edge + (o_edge - m_edge), (ox, oy, ow, oh))
 
     snap_dx = best_x[1] if best_x else 0.0
     snap_dy = best_y[1] if best_y else 0.0
@@ -97,6 +95,7 @@ def compute_alignment_guides(moving_rect, other_rects, threshold=4):
 
     return snap_dx, snap_dy, guide_lines
 
+
 class CanvasRenderer:
     """Renderer for general canvas elements."""
 
@@ -120,8 +119,8 @@ class CanvasRenderer:
 
             # Copy before mutating alpha so we never corrupt shared theme state
             # if get_color ever starts caching its QColor instances.
-            small_dot_color = QColor(theme_manager.get_color('grid_dots'))
-            large_dot_color = QColor(theme_manager.get_color('grid_dots'))
+            small_dot_color = QColor(theme_manager.get_color("grid_dots"))
+            large_dot_color = QColor(theme_manager.get_color("grid_dots"))
             large_dot_color.setAlpha(180)
 
             # Snap iteration bounds to multiples of the grid spacing so dots
@@ -193,12 +192,12 @@ class CanvasRenderer:
             selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
 
             # Draw semi-transparent fill (copy before mutating alpha)
-            fill_color = QColor(theme_manager.get_color('selection_rectangle'))
+            fill_color = QColor(theme_manager.get_color("selection_rectangle"))
             fill_color.setAlpha(50)
             painter.fillRect(selection_rect, fill_color)
 
             # Draw border
-            border_pen = QPen(theme_manager.get_color('selection_rectangle'), 2, Qt.DashLine)
+            border_pen = QPen(theme_manager.get_color("selection_rectangle"), 2, Qt.DashLine)
             painter.setPen(border_pen)
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(selection_rect)
@@ -223,7 +222,7 @@ class CanvasRenderer:
         try:
             # Cosmetic pen (width 0) -> always 1 device px regardless of zoom,
             # so the guide stays crisp and hairline at any scale.
-            pen = QPen(theme_manager.get_color('selection_rectangle'), 0, Qt.SolidLine)
+            pen = QPen(theme_manager.get_color("selection_rectangle"), 0, Qt.SolidLine)
             pen.setCosmetic(True)
             painter.setPen(pen)
             painter.setBrush(Qt.NoBrush)
@@ -239,9 +238,9 @@ class CanvasRenderer:
 
         # Choose color based on validity
         if is_valid_target:
-            line_color = theme_manager.get_color('success')  # Green for valid
+            line_color = theme_manager.get_color("success")  # Green for valid
         else:
-            line_color = theme_manager.get_color('accent_primary')  # Blue for dragging
+            line_color = theme_manager.get_color("accent_primary")  # Blue for dragging
 
         painter.save()
         try:
@@ -277,7 +276,14 @@ class CanvasRenderer:
     _PORT_GLOW_BASE_ALPHA = 100
     _PORT_CENTER_ALPHA = 180
 
-    def draw_hover_effects(self, painter: QPainter, hovered_port=None, hovered_block=None, hovered_line=None, pulse_alpha=None):
+    def draw_hover_effects(
+        self,
+        painter: QPainter,
+        hovered_port=None,
+        hovered_block=None,
+        hovered_line=None,
+        pulse_alpha=None,
+    ):
         """Draw hover effects for ports, blocks, and connections.
 
         ``pulse_alpha`` is an optional ``callable(base_alpha) -> int`` (the
@@ -300,48 +306,45 @@ class CanvasRenderer:
                     # Draw pulsing glow around hovered port (copy before mutating
                     # alpha). The phase-modulated alpha makes it breathe while
                     # the canvas animation timer runs.
-                    glow_alpha = (pulse_alpha(self._PORT_GLOW_BASE_ALPHA)
-                                  if callable(pulse_alpha) else self._PORT_GLOW_BASE_ALPHA)
-                    glow_color = QColor(theme_manager.get_color('accent_primary'))
+                    glow_alpha = (
+                        pulse_alpha(self._PORT_GLOW_BASE_ALPHA)
+                        if callable(pulse_alpha)
+                        else self._PORT_GLOW_BASE_ALPHA
+                    )
+                    glow_color = QColor(theme_manager.get_color("accent_primary"))
                     glow_color.setAlpha(glow_alpha)
                     painter.setBrush(glow_color)
                     painter.setPen(Qt.NoPen)
                     painter.drawEllipse(port_pos, 12, 12)
 
                     # Draw brighter center (copy before mutating alpha)
-                    center_color = QColor(theme_manager.get_color('accent_primary'))
+                    center_color = QColor(theme_manager.get_color("accent_primary"))
                     center_color.setAlpha(self._PORT_CENTER_ALPHA)
                     painter.setBrush(center_color)
                     painter.drawEllipse(port_pos, 8, 8)
 
             # Draw hovered block outline
-            elif hovered_block and not getattr(hovered_block, 'selected', False):
-                hover_color = QColor(theme_manager.get_color('accent_secondary'))
+            elif hovered_block and not getattr(hovered_block, "selected", False):
+                hover_color = QColor(theme_manager.get_color("accent_secondary"))
                 hover_color.setAlpha(120)
 
                 # Draw glowing outline
                 painter.setPen(QPen(hover_color, 2.5, Qt.SolidLine))
                 painter.setBrush(Qt.NoBrush)
-                
+
                 # Access block geometry - handle potential differences in block object
-                left = getattr(hovered_block, 'left', 0)
-                top = getattr(hovered_block, 'top', 0)
-                width = getattr(hovered_block, 'width', 0)
-                height = getattr(hovered_block, 'height', 0)
-                
-                painter.drawRoundedRect(
-                    left - 2,
-                    top - 2,
-                    width + 4,
-                    height + 4,
-                    8, 8
-                )
+                left = getattr(hovered_block, "left", 0)
+                top = getattr(hovered_block, "top", 0)
+                width = getattr(hovered_block, "width", 0)
+                height = getattr(hovered_block, "height", 0)
+
+                painter.drawRoundedRect(left - 2, top - 2, width + 4, height + 4, 8, 8)
 
             # Draw hovered connection highlight
-            elif hovered_line and not getattr(hovered_line, 'selected', False):
-                path = getattr(hovered_line, 'path', None)
+            elif hovered_line and not getattr(hovered_line, "selected", False):
+                path = getattr(hovered_line, "path", None)
                 if path and not path.isEmpty():
-                    hover_color = QColor(theme_manager.get_color('accent_secondary'))
+                    hover_color = QColor(theme_manager.get_color("accent_secondary"))
                     hover_color.setAlpha(150)
 
                     # Draw thicker line underneath
@@ -362,17 +365,17 @@ class CanvasRenderer:
             # Only show if there is at least one routing block
             tags = {}
             # Access logic safely
-            blocks = getattr(dsim_instance, 'blocks_list', [])
-            
+            blocks = getattr(dsim_instance, "blocks_list", [])
+
             for block in blocks:
                 # Assuming block object has block_fn and params
-                block_fn = getattr(block, 'block_fn', '')
-                params = getattr(block, 'params', {})
-                
-                if block_fn in ('Goto', 'From'):
-                    tag = str(params.get('tag', '')).strip()
+                block_fn = getattr(block, "block_fn", "")
+                params = getattr(block, "params", {})
+
+                if block_fn in ("Goto", "From"):
+                    tag = str(params.get("tag", "")).strip()
                     entry = tags.setdefault(tag, {"goto": 0, "from": 0})
-                    if block_fn == 'Goto':
+                    if block_fn == "Goto":
                         entry["goto"] += 1
                     else:
                         entry["from"] += 1
@@ -402,14 +405,14 @@ class CanvasRenderer:
             rect = QRect(margin, margin, max_w, box_h)
 
             # Background (copy before mutating alpha)
-            bg = QColor(theme_manager.get_color('surface'))
+            bg = QColor(theme_manager.get_color("surface"))
             bg.setAlpha(200)
             painter.setBrush(bg)
             painter.setPen(Qt.NoPen)
             painter.drawRoundedRect(rect, 6, 6)
 
             # Text
-            painter.setPen(theme_manager.get_color('text_primary'))
+            painter.setPen(theme_manager.get_color("text_primary"))
             y = margin + 6 + fm.ascent()
             for line in lines:
                 painter.drawText(rect.left() + 6, y, line)
@@ -426,13 +429,13 @@ class CanvasRenderer:
         try:
             painter.save()
 
-            # Note: The actual drawing of the indicator (red/orange dot/icon) 
-            # might depend on block geometry. 
+            # Note: The actual drawing of the indicator (red/orange dot/icon)
+            # might depend on block geometry.
             # We iterate here but the drawing logic needs to know HOW to draw the indicator.
             # Assuming _draw_block_error_indicator logic is needed here or we implement it.
-            
+
             # Since _draw_block_error_indicator was internal to Canvas, we should implement it here.
-            
+
             # Draw error indicators on blocks
             for block in blocks_with_errors:
                 self._draw_error_indicator_on_block(painter, block, is_error=True)
@@ -454,28 +457,28 @@ class CanvasRenderer:
         the top edge regardless of block size.
         """
         # Calculate position (top-right corner of block); height is unused by design.
-        left = getattr(block, 'left', 0)
-        top = getattr(block, 'top', 0)
-        width = getattr(block, 'width', 0)
+        left = getattr(block, "left", 0)
+        top = getattr(block, "top", 0)
+        width = getattr(block, "width", 0)
 
         indicator_size = 14
         x = left + width - indicator_size / 2
         y = top - indicator_size / 2
-        
+
         rect = QRectF(x, y, indicator_size, indicator_size)
-        
-        color = theme_manager.get_color('error') if is_error else theme_manager.get_color('warning')
-        
+
+        color = theme_manager.get_color("error") if is_error else theme_manager.get_color("warning")
+
         painter.setBrush(color)
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(rect)
-        
+
         # Draw symbol
         painter.setPen(QColor("white"))
         font = painter.font()
         font.setBold(True)
         font.setPixelSize(10)
         painter.setFont(font)
-        
+
         text = "!" if is_error else "?"
         painter.drawText(rect, Qt.AlignCenter, text)

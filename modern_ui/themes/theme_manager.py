@@ -64,12 +64,12 @@ RADIUS: Dict[str, int] = {"sm": 4, "md": 6, "lg": 8, "pill": 999}
 
 # Typographic scale in points (QFont.setPointSize). Six named roles.
 TYPE: Dict[str, int] = {
-    "caption": 8,        # muted hints, kbd glyphs
-    "body": 9,           # default UI text
-    "body_strong": 10,   # emphasized body / main-window base
-    "subtitle": 11,      # secondary headings
-    "title": 12,         # panel titles
-    "heading": 14,       # window / dialog headings
+    "caption": 8,  # muted hints, kbd glyphs
+    "body": 9,  # default UI text
+    "body_strong": 10,  # emphasized body / main-window base
+    "subtitle": 11,  # secondary headings
+    "title": 12,  # panel titles
+    "heading": 14,  # window / dialog headings
 }
 
 # Font weights on the CSS 100–900 scale (mapped to Qt5's 0–99 enum by helpers).
@@ -78,10 +78,21 @@ WEIGHT: Dict[str, int] = {"regular": 400, "medium": 500, "semibold": 600, "bold"
 # Font stacks: the first installed family wins, the rest are cross-platform
 # (macOS / Windows / Linux) graceful fallbacks.
 UI_FONT_STACK = [
-    "Inter", "Segoe UI", "-apple-system", "Roboto", "Helvetica Neue", "Arial", "sans-serif",
+    "Inter",
+    "Segoe UI",
+    "-apple-system",
+    "Roboto",
+    "Helvetica Neue",
+    "Arial",
+    "sans-serif",
 ]
 MONO_FONT_STACK = [
-    "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", "Courier New", "monospace",
+    "JetBrains Mono",
+    "Menlo",
+    "Consolas",
+    "DejaVu Sans Mono",
+    "Courier New",
+    "monospace",
 ]
 
 # Soft-elevation tokens: blur radius, vertical offset, and shadow alpha (0–255).
@@ -89,7 +100,7 @@ MONO_FONT_STACK = [
 # (command palette, toasts, panels, dialogs); defined here so the scale is
 # shared and tunable in one place.
 ELEVATION: Dict[str, Dict[str, int]] = {
-    "e1": {"blur": 8,  "offset": 1, "alpha": 40},
+    "e1": {"blur": 8, "offset": 1, "alpha": 40},
     "e2": {"blur": 16, "offset": 3, "alpha": 56},
     "e3": {"blur": 28, "offset": 6, "alpha": 72},
 }
@@ -97,8 +108,8 @@ ELEVATION: Dict[str, Dict[str, int]] = {
 # Glow-pulse animation tuning, shared by the canvas hover/active-wire glow
 # (ModernCanvas) and the toolbar running-status dot (_StateDot) so the two
 # read as one effect — change the cadence here, not in two widgets.
-PULSE_INTERVAL_MS = 33      # ~30 fps
-PULSE_PHASE_STEP = 0.22     # radians advanced per timer tick
+PULSE_INTERVAL_MS = 33  # ~30 fps
+PULSE_PHASE_STEP = 0.22  # radians advanced per timer tick
 
 
 def pulse_alpha(phase: float, base_alpha: int, depth: float = 0.4) -> int:
@@ -119,10 +130,10 @@ def _qt5_weight(css_weight: int) -> int:
     the CSS 100–900 scale Qt6 adopted. Unknown values fall back to Normal.
     """
     return {
-        400: QFont.Normal,    # 50
-        500: QFont.Medium,    # 57
+        400: QFont.Normal,  # 50
+        500: QFont.Medium,  # 57
         600: QFont.DemiBold,  # 63
-        700: QFont.Bold,      # 75
+        700: QFont.Bold,  # 75
     }.get(css_weight, QFont.Normal)
 
 
@@ -194,204 +205,198 @@ PALETTES: Dict[str, Dict[str, Dict[str, str]]] = {
             # Fills retuned to neutral surface — Solarized teal (#073642) was
             # clashing with the neutral chrome. Accents/borders keep the
             # Solarized hues so the palette still reads as "Solarized".
-            "block_source":             "#1C2128",
-            "block_source_border":      "#859900",
-            "block_source_accent":      "#859900",
-            "block_process":            "#1C2128",
-            "block_process_border":     "#268BD2",
-            "block_process_accent":     "#268BD2",
-            "block_control":            "#1C2128",
-            "block_control_border":     "#6C71C4",
-            "block_control_accent":     "#6C71C4",
-            "block_sink":               "#1C2128",
-            "block_sink_border":        "#DC322F",
-            "block_sink_accent":        "#DC322F",
-            "block_routing":            "#1C2128",
-            "block_routing_border":     "#2AA198",
-            "block_routing_accent":     "#2AA198",
-            "block_analysis":           "#1C2128",
-            "block_analysis_border":    "#D33682",
-            "block_analysis_accent":    "#D33682",
-            "block_pde":                "#1C2128",
-            "block_pde_border":         "#B58900",
-            "block_pde_accent":         "#B58900",
-            "block_optimization":       "#1C2128",
-            "block_optimization_border":"#CB4B16",
-            "block_optimization_accent":"#CB4B16",
-            "block_other":              "#1C2128",
-            "block_other_border":       "#93A1A1",
-            "block_other_accent":       "#93A1A1",
+            "block_source": "#1C2128",
+            "block_source_border": "#859900",
+            "block_source_accent": "#859900",
+            "block_process": "#1C2128",
+            "block_process_border": "#268BD2",
+            "block_process_accent": "#268BD2",
+            "block_control": "#1C2128",
+            "block_control_border": "#6C71C4",
+            "block_control_accent": "#6C71C4",
+            "block_sink": "#1C2128",
+            "block_sink_border": "#DC322F",
+            "block_sink_accent": "#DC322F",
+            "block_routing": "#1C2128",
+            "block_routing_border": "#2AA198",
+            "block_routing_accent": "#2AA198",
+            "block_analysis": "#1C2128",
+            "block_analysis_border": "#D33682",
+            "block_analysis_accent": "#D33682",
+            "block_pde": "#1C2128",
+            "block_pde_border": "#B58900",
+            "block_pde_accent": "#B58900",
+            "block_optimization": "#1C2128",
+            "block_optimization_border": "#CB4B16",
+            "block_optimization_accent": "#CB4B16",
+            "block_other": "#1C2128",
+            "block_other_border": "#93A1A1",
+            "block_other_accent": "#93A1A1",
         },
         "light": {
-            "block_source":             "#EEE8D5",
-            "block_source_border":      "#859900",
-            "block_source_accent":      "#859900",
-            "block_process":            "#EEE8D5",
-            "block_process_border":     "#268BD2",
-            "block_process_accent":     "#268BD2",
-            "block_control":            "#EEE8D5",
-            "block_control_border":     "#6C71C4",
-            "block_control_accent":     "#6C71C4",
-            "block_sink":               "#EEE8D5",
-            "block_sink_border":        "#DC322F",
-            "block_sink_accent":        "#DC322F",
-            "block_routing":            "#EEE8D5",
-            "block_routing_border":     "#2AA198",
-            "block_routing_accent":     "#2AA198",
-            "block_analysis":           "#EEE8D5",
-            "block_analysis_border":    "#D33682",
-            "block_analysis_accent":    "#D33682",
-            "block_pde":                "#EEE8D5",
-            "block_pde_border":         "#B58900",
-            "block_pde_accent":         "#B58900",
-            "block_optimization":       "#EEE8D5",
-            "block_optimization_border":"#CB4B16",
-            "block_optimization_accent":"#CB4B16",
-            "block_other":              "#EEE8D5",
-            "block_other_border":       "#93A1A1",
-            "block_other_accent":       "#93A1A1",
+            "block_source": "#EEE8D5",
+            "block_source_border": "#859900",
+            "block_source_accent": "#859900",
+            "block_process": "#EEE8D5",
+            "block_process_border": "#268BD2",
+            "block_process_accent": "#268BD2",
+            "block_control": "#EEE8D5",
+            "block_control_border": "#6C71C4",
+            "block_control_accent": "#6C71C4",
+            "block_sink": "#EEE8D5",
+            "block_sink_border": "#DC322F",
+            "block_sink_accent": "#DC322F",
+            "block_routing": "#EEE8D5",
+            "block_routing_border": "#2AA198",
+            "block_routing_accent": "#2AA198",
+            "block_analysis": "#EEE8D5",
+            "block_analysis_border": "#D33682",
+            "block_analysis_accent": "#D33682",
+            "block_pde": "#EEE8D5",
+            "block_pde_border": "#B58900",
+            "block_pde_accent": "#B58900",
+            "block_optimization": "#EEE8D5",
+            "block_optimization_border": "#CB4B16",
+            "block_optimization_accent": "#CB4B16",
+            "block_other": "#EEE8D5",
+            "block_other_border": "#93A1A1",
+            "block_other_accent": "#93A1A1",
         },
     },
-
     "tailwind": {
         "dark": {
             # Fills at Tailwind 800 level (~5-10% luminance). White icons
             # (#E5E9EF) get 6-15:1 contrast (AA/AAA). Block edge still
             # separates from canvas (#14181F ~1.4% lum) at 3-7× luminance
             # ratio. The +30 RGB gradient brings the top close to 700.
-            "block_source":             "#065F46",
-            "block_source_border":      "#10B981",
-            "block_source_accent":      "#34D399",
-            "block_process":            "#1E40AF",
-            "block_process_border":     "#3B82F6",
-            "block_process_accent":     "#60A5FA",
-            "block_control":            "#5B21B6",
-            "block_control_border":     "#8B5CF6",
-            "block_control_accent":     "#A78BFA",
-            "block_sink":               "#991B1B",
-            "block_sink_border":        "#EF4444",
-            "block_sink_accent":        "#F87171",
-            "block_routing":            "#115E59",
-            "block_routing_border":     "#14B8A6",
-            "block_routing_accent":     "#2DD4BF",
-            "block_analysis":           "#9D174D",
-            "block_analysis_border":    "#EC4899",
-            "block_analysis_accent":    "#F472B6",
-            "block_pde":                "#854D0E",
-            "block_pde_border":         "#EAB308",
-            "block_pde_accent":         "#FACC15",
-            "block_optimization":       "#3730A3",
-            "block_optimization_border":"#6366F1",
-            "block_optimization_accent":"#818CF8",
-            "block_other":              "#1F2937",
-            "block_other_border":       "#6B7280",
-            "block_other_accent":       "#9CA3AF",
+            "block_source": "#065F46",
+            "block_source_border": "#10B981",
+            "block_source_accent": "#34D399",
+            "block_process": "#1E40AF",
+            "block_process_border": "#3B82F6",
+            "block_process_accent": "#60A5FA",
+            "block_control": "#5B21B6",
+            "block_control_border": "#8B5CF6",
+            "block_control_accent": "#A78BFA",
+            "block_sink": "#991B1B",
+            "block_sink_border": "#EF4444",
+            "block_sink_accent": "#F87171",
+            "block_routing": "#115E59",
+            "block_routing_border": "#14B8A6",
+            "block_routing_accent": "#2DD4BF",
+            "block_analysis": "#9D174D",
+            "block_analysis_border": "#EC4899",
+            "block_analysis_accent": "#F472B6",
+            "block_pde": "#854D0E",
+            "block_pde_border": "#EAB308",
+            "block_pde_accent": "#FACC15",
+            "block_optimization": "#3730A3",
+            "block_optimization_border": "#6366F1",
+            "block_optimization_accent": "#818CF8",
+            "block_other": "#1F2937",
+            "block_other_border": "#6B7280",
+            "block_other_accent": "#9CA3AF",
         },
         "light": {
-            "block_source":             "#D1FAE5",
-            "block_source_border":      "#6EE7B7",
-            "block_source_accent":      "#10B981",
-            "block_process":            "#DBEAFE",
-            "block_process_border":     "#93C5FD",
-            "block_process_accent":     "#2563EB",
-            "block_control":            "#EDE9FE",
-            "block_control_border":     "#C4B5FD",
-            "block_control_accent":     "#7C3AED",
-            "block_sink":               "#FEE2E2",
-            "block_sink_border":        "#FCA5A5",
-            "block_sink_accent":        "#DC2626",
-            "block_routing":            "#CCFBF1",
-            "block_routing_border":     "#5EEAD4",
-            "block_routing_accent":     "#0D9488",
-            "block_analysis":           "#FCE7F3",
-            "block_analysis_border":    "#F9A8D4",
-            "block_analysis_accent":    "#DB2777",
-            "block_pde":                "#FEF3C7",
-            "block_pde_border":         "#FCD34D",
-            "block_pde_accent":         "#D97706",
-            "block_optimization":       "#E0E7FF",
-            "block_optimization_border":"#A5B4FC",
-            "block_optimization_accent":"#4F46E5",
-            "block_other":              "#F3F4F6",
-            "block_other_border":       "#D1D5DB",
-            "block_other_accent":       "#6B7280",
+            "block_source": "#D1FAE5",
+            "block_source_border": "#6EE7B7",
+            "block_source_accent": "#10B981",
+            "block_process": "#DBEAFE",
+            "block_process_border": "#93C5FD",
+            "block_process_accent": "#2563EB",
+            "block_control": "#EDE9FE",
+            "block_control_border": "#C4B5FD",
+            "block_control_accent": "#7C3AED",
+            "block_sink": "#FEE2E2",
+            "block_sink_border": "#FCA5A5",
+            "block_sink_accent": "#DC2626",
+            "block_routing": "#CCFBF1",
+            "block_routing_border": "#5EEAD4",
+            "block_routing_accent": "#0D9488",
+            "block_analysis": "#FCE7F3",
+            "block_analysis_border": "#F9A8D4",
+            "block_analysis_accent": "#DB2777",
+            "block_pde": "#FEF3C7",
+            "block_pde_border": "#FCD34D",
+            "block_pde_accent": "#D97706",
+            "block_optimization": "#E0E7FF",
+            "block_optimization_border": "#A5B4FC",
+            "block_optimization_accent": "#4F46E5",
+            "block_other": "#F3F4F6",
+            "block_other_border": "#D1D5DB",
+            "block_other_accent": "#6B7280",
         },
     },
-
     "catppuccin": {
         "dark": {
-            "block_source":             "#303446",
-            "block_source_border":      "#A6D189",
-            "block_source_accent":      "#A6D189",
-            "block_process":            "#303446",
-            "block_process_border":     "#8CAAEE",
-            "block_process_accent":     "#8CAAEE",
-            "block_control":            "#303446",
-            "block_control_border":     "#CA9EE6",
-            "block_control_accent":     "#CA9EE6",
-            "block_sink":               "#303446",
-            "block_sink_border":        "#E78284",
-            "block_sink_accent":        "#E78284",
-            "block_routing":            "#303446",
-            "block_routing_border":     "#81C8BE",
-            "block_routing_accent":     "#81C8BE",
-            "block_analysis":           "#303446",
-            "block_analysis_border":    "#F4B8E4",
-            "block_analysis_accent":    "#F4B8E4",
-            "block_pde":                "#303446",
-            "block_pde_border":         "#EF9F76",
-            "block_pde_accent":         "#EF9F76",
-            "block_optimization":       "#303446",
-            "block_optimization_border":"#BABBF1",
-            "block_optimization_accent":"#BABBF1",
-            "block_other":              "#303446",
-            "block_other_border":       "#B5BFE2",
-            "block_other_accent":       "#B5BFE2",
+            "block_source": "#303446",
+            "block_source_border": "#A6D189",
+            "block_source_accent": "#A6D189",
+            "block_process": "#303446",
+            "block_process_border": "#8CAAEE",
+            "block_process_accent": "#8CAAEE",
+            "block_control": "#303446",
+            "block_control_border": "#CA9EE6",
+            "block_control_accent": "#CA9EE6",
+            "block_sink": "#303446",
+            "block_sink_border": "#E78284",
+            "block_sink_accent": "#E78284",
+            "block_routing": "#303446",
+            "block_routing_border": "#81C8BE",
+            "block_routing_accent": "#81C8BE",
+            "block_analysis": "#303446",
+            "block_analysis_border": "#F4B8E4",
+            "block_analysis_accent": "#F4B8E4",
+            "block_pde": "#303446",
+            "block_pde_border": "#EF9F76",
+            "block_pde_accent": "#EF9F76",
+            "block_optimization": "#303446",
+            "block_optimization_border": "#BABBF1",
+            "block_optimization_accent": "#BABBF1",
+            "block_other": "#303446",
+            "block_other_border": "#B5BFE2",
+            "block_other_accent": "#B5BFE2",
         },
         "light": {
-            "block_source":             "#EFF1F5",
-            "block_source_border":      "#40A02B",
-            "block_source_accent":      "#40A02B",
-            "block_process":            "#EFF1F5",
-            "block_process_border":     "#1E66F5",
-            "block_process_accent":     "#1E66F5",
-            "block_control":            "#EFF1F5",
-            "block_control_border":     "#8839EF",
-            "block_control_accent":     "#8839EF",
-            "block_sink":               "#EFF1F5",
-            "block_sink_border":        "#D20F39",
-            "block_sink_accent":        "#D20F39",
-            "block_routing":            "#EFF1F5",
-            "block_routing_border":     "#179299",
-            "block_routing_accent":     "#179299",
-            "block_analysis":           "#EFF1F5",
-            "block_analysis_border":    "#EA76CB",
-            "block_analysis_accent":    "#EA76CB",
-            "block_pde":                "#EFF1F5",
-            "block_pde_border":         "#FE640B",
-            "block_pde_accent":         "#FE640B",
-            "block_optimization":       "#EFF1F5",
-            "block_optimization_border":"#7287FD",
-            "block_optimization_accent":"#7287FD",
-            "block_other":              "#EFF1F5",
-            "block_other_border":       "#6C6F85",
-            "block_other_accent":       "#6C6F85",
+            "block_source": "#EFF1F5",
+            "block_source_border": "#40A02B",
+            "block_source_accent": "#40A02B",
+            "block_process": "#EFF1F5",
+            "block_process_border": "#1E66F5",
+            "block_process_accent": "#1E66F5",
+            "block_control": "#EFF1F5",
+            "block_control_border": "#8839EF",
+            "block_control_accent": "#8839EF",
+            "block_sink": "#EFF1F5",
+            "block_sink_border": "#D20F39",
+            "block_sink_accent": "#D20F39",
+            "block_routing": "#EFF1F5",
+            "block_routing_border": "#179299",
+            "block_routing_accent": "#179299",
+            "block_analysis": "#EFF1F5",
+            "block_analysis_border": "#EA76CB",
+            "block_analysis_accent": "#EA76CB",
+            "block_pde": "#EFF1F5",
+            "block_pde_border": "#FE640B",
+            "block_pde_accent": "#FE640B",
+            "block_optimization": "#EFF1F5",
+            "block_optimization_border": "#7287FD",
+            "block_optimization_accent": "#7287FD",
+            "block_other": "#EFF1F5",
+            "block_other_border": "#6C6F85",
+            "block_other_accent": "#6C6F85",
         },
     },
 }
 
-_PALETTE_KEYS = frozenset(
-    key
-    for variants in PALETTES["solarized"].values()
-    for key in variants
-)
+_PALETTE_KEYS = frozenset(key for variants in PALETTES["solarized"].values() for key in variants)
 
 # Tailwind is the default — its dark fills are tuned to neutral chrome.
 # (Solarized was the old default; its teal fills clashed with the gray chrome.)
 DEFAULT_PALETTE = "tailwind"
 PALETTE_DISPLAY_NAMES = {
     "solarized": "Solarized",
-    "tailwind":  "Tailwind",
+    "tailwind": "Tailwind",
     "catppuccin": "Catppuccin Frappé",
 }
 
@@ -401,11 +406,19 @@ class ThemeManager(QObject):
 
     theme_changed = pyqtSignal(str)
 
-    _BLOCK_FILL_KEYS = frozenset([
-        "block_source", "block_process", "block_control", "block_sink",
-        "block_routing", "block_analysis", "block_pde", "block_optimization",
-        "block_other",
-    ])
+    _BLOCK_FILL_KEYS = frozenset(
+        [
+            "block_source",
+            "block_process",
+            "block_control",
+            "block_sink",
+            "block_routing",
+            "block_analysis",
+            "block_pde",
+            "block_optimization",
+            "block_other",
+        ]
+    )
 
     def __init__(self):
         super().__init__()
@@ -414,7 +427,7 @@ class ThemeManager(QObject):
         self.solid_fills: bool = False
         self.themes = {
             ThemeType.DARK: self._create_dark_theme(),
-            ThemeType.LIGHT: self._create_light_theme()
+            ThemeType.LIGHT: self._create_light_theme(),
         }
 
     # ------------------------------------------------------------------
@@ -431,176 +444,150 @@ class ThemeManager(QObject):
         """
         return {
             # Main backgrounds — single hue, 4-step luminance ramp
-            'background_primary':   '#13171D',    # canvas + outermost frame
-            'background_secondary': '#1C2128',    # panel containers (palette, inspector)
-            'background_tertiary':  '#2B3038',    # elevated widgets, button bg
-
+            "background_primary": "#13171D",  # canvas + outermost frame
+            "background_secondary": "#1C2128",  # panel containers (palette, inspector)
+            "background_tertiary": "#2B3038",  # elevated widgets, button bg
             # Surface
-            'surface':              '#1C2128',
-            'surface_primary':      '#1C2128',
-            'surface_secondary':    '#2B3038',
-            'surface_variant':      '#2B3038',
-            'surface_elevated':     '#363D47',
-
+            "surface": "#1C2128",
+            "surface_primary": "#1C2128",
+            "surface_secondary": "#2B3038",
+            "surface_variant": "#2B3038",
+            "surface_elevated": "#363D47",
             # Text — brightened from the Mac-tuned values so Windows ClearType
             # rendering still reads cleanly against #1C2128 panels. The old
             # secondary (#9AA4B2) and disabled (#5B6573) looked fine with
             # macOS grayscale antialiasing but went thin/washed-out on Win.
-            'text_primary':         '#E5E9EF',    # softer than pure white
-            'text_secondary':       '#B5BFCC',    # was #9AA4B2
-            'text_disabled':        '#7A8494',    # was #5B6573
-            'text_inverse':         '#13171D',
-
+            "text_primary": "#E5E9EF",  # softer than pure white
+            "text_secondary": "#B5BFCC",  # was #9AA4B2
+            "text_disabled": "#7A8494",  # was #5B6573
+            "text_inverse": "#13171D",
             # Accent
-            'accent_primary':       '#60A5FA',
-            'accent_secondary':     '#3B82F6',
-            'accent_hover':         '#7CB8FF',
-            'accent_pressed':       '#2563EB',
-
+            "accent_primary": "#60A5FA",
+            "accent_secondary": "#3B82F6",
+            "accent_hover": "#7CB8FF",
+            "accent_pressed": "#2563EB",
             # Status
-            'success':              '#10B981',
-            'success_bg':           '#064E3B',
-            'warning':              '#F59E0B',
-            'warning_bg':           '#78350F',
-            'error':                '#EF4444',
-            'error_bg':             '#7F1D1D',
-            'info':                 '#60A5FA',
-            'info_bg':              '#1E3A8A',
-
+            "success": "#10B981",
+            "success_bg": "#064E3B",
+            "warning": "#F59E0B",
+            "warning_bg": "#78350F",
+            "error": "#EF4444",
+            "error_bg": "#7F1D1D",
+            "info": "#60A5FA",
+            "info_bg": "#1E3A8A",
             # Borders — subtle (no more visible separator clutter)
-            'border_primary':       '#2D333D',
-            'border_secondary':     '#3A414B',
-            'border_focus':         '#60A5FA',
-            'border_hover':         '#4B5563',
-
+            "border_primary": "#2D333D",
+            "border_secondary": "#3A414B",
+            "border_focus": "#60A5FA",
+            "border_hover": "#4B5563",
             # Block defaults
-            'block_default':        '#1C2128',
-            'block_default_border': '#4B5563',
-
+            "block_default": "#1C2128",
+            "block_default_border": "#4B5563",
             # Selection / interaction
-            'block_selected':       '#60A5FA',
-            'block_selected_bg':    '#1E3A8A',
-            'block_hover':          '#2F353D',
-            'block_shadow':         '#00000066',  # 40% alpha — softer
-
+            "block_selected": "#60A5FA",
+            "block_selected_bg": "#1E3A8A",
+            "block_hover": "#2F353D",
+            "block_shadow": "#00000066",  # 40% alpha — softer
             # Connections
-            'connection_default':   '#8B95A5',
-            'connection_active':    '#4C9EFF',
-            'connection_selected':  '#60A5FF',
-            'connection_error':     '#EF5A6F',
-            'connection_preview':   '#F59E0B',
-            'connection_shadow':    '#0F1216',
-
+            "connection_default": "#8B95A5",
+            "connection_active": "#4C9EFF",
+            "connection_selected": "#60A5FF",
+            "connection_error": "#EF5A6F",
+            "connection_preview": "#F59E0B",
+            "connection_shadow": "#0F1216",
             # Ports
-            'port_input':           '#60A5FA',
-            'port_output':          '#10B981',
-            'port_hover':           '#7CB8FF',
-
+            "port_input": "#60A5FA",
+            "port_output": "#10B981",
+            "port_hover": "#7CB8FF",
             # Grid + canvas — KEY FIX: canvas is now neutral, matches chrome
-            'grid_dots':            '#2A3038',
-            'grid_lines':           '#2D333D',
-            'canvas_background':    '#14181F',    # neutral — was #002B36 (teal)
-            'canvas_background_alt':'#181C23',    # for patterns
-            'selection_rectangle':  '#60A5FA',
-            'selection_rectangle_fill': '#60A5FA1A',
-
+            "grid_dots": "#2A3038",
+            "grid_lines": "#2D333D",
+            "canvas_background": "#14181F",  # neutral — was #002B36 (teal)
+            "canvas_background_alt": "#181C23",  # for patterns
+            "selection_rectangle": "#60A5FA",
+            "selection_rectangle_fill": "#60A5FA1A",
             # Palette
-            'palette_bg':           '#1C2128',
-            'palette_item_bg':      '#232830',    # slightly recessed
-            'palette_item_hover':   '#2E3540',
-            'palette_item_border':  '#2A2F38',
-            'palette_item_border_hover': '#60A5FA',
-            'palette_text':         '#E5E9EF',    # softer than pure white
-            'palette_category_bg':  '#1C2128',
-            'palette_category_text':'#9AA4B2',
-
+            "palette_bg": "#1C2128",
+            "palette_item_bg": "#232830",  # slightly recessed
+            "palette_item_hover": "#2E3540",
+            "palette_item_border": "#2A2F38",
+            "palette_item_border_hover": "#60A5FA",
+            "palette_text": "#E5E9EF",  # softer than pure white
+            "palette_category_bg": "#1C2128",
+            "palette_category_text": "#9AA4B2",
             # Block icon/text drawing color
-            'block_icon_color':     '#E5E9EF',    # light icons on neutral fills
-
+            "block_icon_color": "#E5E9EF",  # light icons on neutral fills
             # Status bar
-            'statusbar_bg':         '#1C2128',
-            'statusbar_text':       '#E5E9EF',
+            "statusbar_bg": "#1C2128",
+            "statusbar_text": "#E5E9EF",
         }
 
     def _create_light_theme(self) -> Dict[str, Any]:
         """Light theme — unchanged from v2."""
         return {
-            'background_primary':   '#FAFBFC',
-            'background_secondary': '#F3F4F6',
-            'background_tertiary':  '#E5E7EB',
-
-            'surface':              '#FFFFFF',
-            'surface_primary':      '#FAFBFC',
-            'surface_secondary':    '#F3F4F6',
-            'surface_variant':      '#F9FAFB',
-            'surface_elevated':     '#FFFFFF',
-
+            "background_primary": "#FAFBFC",
+            "background_secondary": "#F3F4F6",
+            "background_tertiary": "#E5E7EB",
+            "surface": "#FFFFFF",
+            "surface_primary": "#FAFBFC",
+            "surface_secondary": "#F3F4F6",
+            "surface_variant": "#F9FAFB",
+            "surface_elevated": "#FFFFFF",
             # Darkened from the original (#6B7280 / #9CA3AF) so secondary and
             # disabled text still read at AA contrast against white panels.
             # Original disabled (#9CA3AF) hit only ~2.5:1 — below WCAG AA.
-            'text_primary':         '#111827',
-            'text_secondary':       '#4B5563',    # was #6B7280
-            'text_disabled':        '#6B7280',    # was #9CA3AF
-            'text_inverse':         '#FFFFFF',
-
-            'accent_primary':       '#2563EB',
-            'accent_secondary':     '#1D4ED8',
-            'accent_hover':         '#3B82F6',
-            'accent_pressed':       '#1E40AF',
-
-            'success':              '#10B981',
-            'success_bg':           '#D1FAE5',
-            'warning':              '#F59E0B',
-            'warning_bg':           '#FEF3C7',
-            'error':                '#EF4444',
-            'error_bg':             '#FEE2E2',
-            'info':                 '#2563EB',
-            'info_bg':              '#DBEAFE',
-
-            'border_primary':       '#E5E7EB',
-            'border_secondary':     '#D1D5DB',
-            'border_focus':         '#2563EB',
-            'border_hover':         '#9CA3AF',
-
-            'block_default':        '#EEE8D5',
-            'block_default_border': '#586E75',
-
-            'block_selected':       '#2563EB',
-            'block_selected_bg':    '#EFF6FF',
-            'block_hover':          '#F3F4F6',
-            'block_shadow':         '#00000015',
-
-            'connection_default':   '#2563EB',
-            'connection_active':    '#1D4ED8',
-            'connection_selected':  '#3B82F6',
-            'connection_error':     '#EF4444',
-            'connection_preview':   '#2563EB',
-            'connection_shadow':    '#00000010',
-
-            'port_input':           '#2563EB',
-            'port_output':          '#10B981',
-            'port_hover':           '#3B82F6',
-
-            'grid_dots':            '#E5E7EB',
-            'grid_lines':           '#D1D5DB',
-            'canvas_background':    '#FAFBFC',
-            'canvas_background_alt':'#FFFFFF',
-            'selection_rectangle':  '#2563EB',
-            'selection_rectangle_fill': '#2563EB1A',
-
-            'palette_bg':           '#F3F4F6',
-            'palette_item_bg':      '#FFFFFF',
-            'palette_item_hover':   '#F9FAFB',
-            'palette_item_border':  '#E5E7EB',
-            'palette_item_border_hover': '#2563EB',
-            'palette_text':         '#374151',
-            'palette_category_bg':  '#E5E7EB',
-            'palette_category_text':'#6B7280',
-
-            'block_icon_color':     '#1F2937',
-
-            'statusbar_bg':         '#F3F4F6',
-            'statusbar_text':       '#374151',
+            "text_primary": "#111827",
+            "text_secondary": "#4B5563",  # was #6B7280
+            "text_disabled": "#6B7280",  # was #9CA3AF
+            "text_inverse": "#FFFFFF",
+            "accent_primary": "#2563EB",
+            "accent_secondary": "#1D4ED8",
+            "accent_hover": "#3B82F6",
+            "accent_pressed": "#1E40AF",
+            "success": "#10B981",
+            "success_bg": "#D1FAE5",
+            "warning": "#F59E0B",
+            "warning_bg": "#FEF3C7",
+            "error": "#EF4444",
+            "error_bg": "#FEE2E2",
+            "info": "#2563EB",
+            "info_bg": "#DBEAFE",
+            "border_primary": "#E5E7EB",
+            "border_secondary": "#D1D5DB",
+            "border_focus": "#2563EB",
+            "border_hover": "#9CA3AF",
+            "block_default": "#EEE8D5",
+            "block_default_border": "#586E75",
+            "block_selected": "#2563EB",
+            "block_selected_bg": "#EFF6FF",
+            "block_hover": "#F3F4F6",
+            "block_shadow": "#00000015",
+            "connection_default": "#2563EB",
+            "connection_active": "#1D4ED8",
+            "connection_selected": "#3B82F6",
+            "connection_error": "#EF4444",
+            "connection_preview": "#2563EB",
+            "connection_shadow": "#00000010",
+            "port_input": "#2563EB",
+            "port_output": "#10B981",
+            "port_hover": "#3B82F6",
+            "grid_dots": "#E5E7EB",
+            "grid_lines": "#D1D5DB",
+            "canvas_background": "#FAFBFC",
+            "canvas_background_alt": "#FFFFFF",
+            "selection_rectangle": "#2563EB",
+            "selection_rectangle_fill": "#2563EB1A",
+            "palette_bg": "#F3F4F6",
+            "palette_item_bg": "#FFFFFF",
+            "palette_item_hover": "#F9FAFB",
+            "palette_item_border": "#E5E7EB",
+            "palette_item_border_hover": "#2563EB",
+            "palette_text": "#374151",
+            "palette_category_bg": "#E5E7EB",
+            "palette_category_text": "#6B7280",
+            "block_icon_color": "#1F2937",
+            "statusbar_bg": "#F3F4F6",
+            "statusbar_text": "#374151",
         }
 
     # ------------------------------------------------------------------
@@ -619,16 +606,16 @@ class ThemeManager(QObject):
                 if self.solid_fills and color_name in self._BLOCK_FILL_KEYS
                 else color_name
             )
-            color_hex = palette[theme_key].get(lookup, '#000000')
+            color_hex = palette[theme_key].get(lookup, "#000000")
         else:
             theme = self.get_current_theme()
-            color_hex = theme.get(color_name, '#000000')
+            color_hex = theme.get(color_name, "#000000")
 
         # Handle 8-digit #RRGGBBAA (e.g. block_shadow with alpha).
         # PyQt5's QColor mis-parses 9-char strings, so parse channels by hand.
-        if len(color_hex) == 9 and color_hex.startswith('#'):
+        if len(color_hex) == 9 and color_hex.startswith("#"):
             try:
-                r, g, b, a = (int(color_hex[i:i + 2], 16) for i in (1, 3, 5, 7))
+                r, g, b, a = (int(color_hex[i : i + 2], 16) for i in (1, 3, 5, 7))
                 return QColor(r, g, b, a)
             except ValueError:
                 return QColor(color_hex[:7])
@@ -656,6 +643,7 @@ class ThemeManager(QObject):
     def set_palette(self, palette_name: str):
         if palette_name not in PALETTES:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Unknown palette %r — falling back to %r", palette_name, DEFAULT_PALETTE
             )
@@ -694,6 +682,7 @@ class ThemeManager(QObject):
 
     def get_icon_size(self):
         from PyQt5.QtCore import QSize
+
         return QSize(24, 24)
 
 

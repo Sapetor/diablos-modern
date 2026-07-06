@@ -21,8 +21,8 @@ class TestSimulationExecution:
         const_block = ConstantBlock()
         scope_block = ScopeBlock()
 
-        const_params = {'value': 5.0}
-        scope_params = {'labels': 'const_out', '_init_start_': True, '_name_': 'TestScope'}
+        const_params = {"value": 5.0}
+        scope_params = {"labels": "const_out", "_init_start_": True, "_name_": "TestScope"}
 
         # Run 10 simulation steps
         for i in range(10):
@@ -31,7 +31,7 @@ class TestSimulationExecution:
             scope_block.execute(time=time, inputs={0: const_out[0]}, params=scope_params)
 
         # Verify scope collected correct values
-        vector = scope_params['vector']
+        vector = scope_params["vector"]
         assert len(vector) == 10, f"Should have 10 data points, got {len(vector)}"
         assert all(np.isclose(v, 5.0) for v in vector), "All values should be 5.0"
 
@@ -43,16 +43,21 @@ class TestSimulationExecution:
         step_block = StepBlock()
         scope_block = ScopeBlock()
 
-        step_params = {'value': 1.0, 'delay': 0.5, 'type': 'up',
-                      'pulse_start_up': True, '_init_start_': True}
-        scope_params = {'labels': 'step_out', '_init_start_': True, '_name_': 'TestScope'}
+        step_params = {
+            "value": 1.0,
+            "delay": 0.5,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        }
+        scope_params = {"labels": "step_out", "_init_start_": True, "_name_": "TestScope"}
 
         times = np.linspace(0, 1.0, 11)
         for t in times:
             step_out = step_block.execute(time=t, inputs={}, params=step_params)
             scope_block.execute(time=t, inputs={0: step_out[0][0]}, params=scope_params)
 
-        vector = scope_params['vector']
+        vector = scope_params["vector"]
         # Before t=0.5: values should be 0
         # After t=0.5: values should be 1.0
         assert vector[0] == 0.0, "Step should be 0 before delay"
@@ -63,7 +68,7 @@ class TestSimulationExecution:
         from blocks.sine import SineBlock
 
         sine_block = SineBlock()
-        params = {'amplitude': 3.0, 'omega': 2*np.pi, 'init_angle': 0.0}
+        params = {"amplitude": 3.0, "omega": 2 * np.pi, "init_angle": 0.0}
 
         # Collect values over one period
         values = []
@@ -79,7 +84,7 @@ class TestSimulationExecution:
         from blocks.gain import GainBlock
 
         gain_block = GainBlock()
-        params = {'gain': 2.5}
+        params = {"gain": 2.5}
 
         result = gain_block.execute(time=0.0, inputs={0: 4.0}, params=params)
         assert np.isclose(result[0], 10.0), "Gain should multiply input by k"
@@ -89,7 +94,7 @@ class TestSimulationExecution:
         from blocks.sum import SumBlock
 
         sum_block = SumBlock()
-        params = {'sign': '+-', '_init_start_': True}
+        params = {"sign": "+-", "_init_start_": True}
 
         result = sum_block.execute(time=0.0, inputs={0: 5.0, 1: 3.0}, params=params)
         assert np.isclose(result[0], 2.0), "Sum with +- should give 5-3=2"
@@ -99,7 +104,7 @@ class TestSimulationExecution:
         from blocks.sum import SumBlock
 
         sum_block = SumBlock()
-        params = {'sign': '++-'}
+        params = {"sign": "++-"}
 
         result = sum_block.execute(time=0.0, inputs={0: 10.0, 1: 5.0, 2: 3.0}, params=params)
         assert np.isclose(result[0], 12.0), "Sum with ++- should give 10+5-3=12"
@@ -110,30 +115,43 @@ class TestSimulationExecution:
 
         integrator = IntegratorBlock()
         dtime = 0.01
-        params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
+        params = {
+            "init_conds": 0.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
 
         # Integrate constant 1.0 for 1 second
         for i in range(100):
             result = integrator.execute(
-                time=i*dtime,
-                inputs={0: np.array([1.0])},
-                params=params,
-                dtime=dtime
+                time=i * dtime, inputs={0: np.array([1.0])}, params=params, dtime=dtime
             )
 
         # After 100 steps of dt=0.01 with input 1.0: integral ≈ 1.0
-        assert np.isclose(result[0][0], 1.0, atol=0.05), f"Integral should be ~1.0, got {result[0][0]}"
+        assert np.isclose(result[0][0], 1.0, atol=0.05), (
+            f"Integral should be ~1.0, got {result[0][0]}"
+        )
 
     def test_integrator_initial_condition(self):
         """Test integrator respects initial conditions."""
         from blocks.integrator import IntegratorBlock
 
         integrator = IntegratorBlock()
-        params = {'init_conds': 5.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
+        params = {
+            "init_conds": 5.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
 
         # First step with zero input should return initial condition
-        result = integrator.execute(time=0.0, inputs={0: np.array([0.0])}, params=params, dtime=0.01)
-        assert np.isclose(result[0][0], 5.0, atol=0.01), f"Initial output should be 5.0, got {result[0][0]}"
+        result = integrator.execute(
+            time=0.0, inputs={0: np.array([0.0])}, params=params, dtime=0.01
+        )
+        assert np.isclose(result[0][0], 5.0, atol=0.01), (
+            f"Initial output should be 5.0, got {result[0][0]}"
+        )
 
     def test_chain_constant_gain_scope(self):
         """Test chain: Constant → Gain → Scope."""
@@ -145,17 +163,19 @@ class TestSimulationExecution:
         gain_block = GainBlock()
         scope_block = ScopeBlock()
 
-        const_params = {'value': 3.0}
-        gain_params = {'gain': 4.0}
-        scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'TestScope'}
+        const_params = {"value": 3.0}
+        gain_params = {"gain": 4.0}
+        scope_params = {"labels": "out", "_init_start_": True, "_name_": "TestScope"}
 
         # Run 5 steps
         for i in range(5):
-            const_out = const_block.execute(time=i*0.1, inputs={}, params=const_params)
-            gain_out = gain_block.execute(time=i*0.1, inputs={0: const_out[0]}, params=gain_params)
-            scope_block.execute(time=i*0.1, inputs={0: gain_out[0]}, params=scope_params)
+            const_out = const_block.execute(time=i * 0.1, inputs={}, params=const_params)
+            gain_out = gain_block.execute(
+                time=i * 0.1, inputs={0: const_out[0]}, params=gain_params
+            )
+            scope_block.execute(time=i * 0.1, inputs={0: gain_out[0]}, params=scope_params)
 
-        vector = scope_params['vector']
+        vector = scope_params["vector"]
         assert all(np.isclose(v, 12.0) for v in vector), "All values should be 3.0 * 4.0 = 12.0"
 
     def test_chain_sine_gain_sum_scope(self):
@@ -172,11 +192,11 @@ class TestSimulationExecution:
         sum_block = SumBlock()
         scope_block = ScopeBlock()
 
-        sine_params = {'amplitude': 1.0, 'omega': 2*np.pi, 'init_angle': 0.0}
-        const_params = {'value': 2.0}
-        gain_params = {'gain': 3.0}
-        sum_params = {'sign': '++'}
-        scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'TestScope'}
+        sine_params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
+        const_params = {"value": 2.0}
+        gain_params = {"gain": 3.0}
+        sum_params = {"sign": "++"}
+        scope_params = {"labels": "out", "_init_start_": True, "_name_": "TestScope"}
 
         # Run over one period
         times = np.linspace(0, 1.0, 20)
@@ -189,14 +209,18 @@ class TestSimulationExecution:
             const_out = const_block.execute(time=t, inputs={}, params=const_params)
 
             # Sum (gain_out + const_out)
-            sum_out = sum_block.execute(time=t, inputs={0: gain_out[0], 1: const_out[0]}, params=sum_params)
+            sum_out = sum_block.execute(
+                time=t, inputs={0: gain_out[0], 1: const_out[0]}, params=sum_params
+            )
 
             # Scope
             scope_block.execute(time=t, inputs={0: sum_out[0]}, params=scope_params)
 
-        vector = scope_params['vector']
+        vector = scope_params["vector"]
         # At t=0: sin(0) = 0, so output = 3*0 + 2 = 2
-        assert np.isclose(vector[0], 2.0, atol=0.01), f"At t=0, output should be 2.0, got {vector[0]}"
+        assert np.isclose(vector[0], 2.0, atol=0.01), (
+            f"At t=0, output should be 2.0, got {vector[0]}"
+        )
 
         # Check that output varies (sine wave effect)
         assert np.std(vector) > 0.5, "Output should vary due to sine input"
@@ -211,9 +235,9 @@ class TestSimulationExecution:
         func_block = FunctionBlock()
         scope_block = ScopeBlock()
 
-        ramp_params = {'slope': 1.0, 'delay': 0.0, '_init_start_': True}
-        func_params = {'expression': 'sin(u[0])', '_inputs_': 1}
-        scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'TestScope'}
+        ramp_params = {"slope": 1.0, "delay": 0.0, "_init_start_": True}
+        func_params = {"expression": "sin(u[0])", "_inputs_": 1}
+        scope_params = {"labels": "out", "_init_start_": True, "_name_": "TestScope"}
 
         times = np.linspace(0, np.pi, 30)
         for t in times:
@@ -221,7 +245,7 @@ class TestSimulationExecution:
             func_out = func_block.execute(time=t, inputs={0: ramp_out[0]}, params=func_params)
             scope_block.execute(time=t, inputs={0: func_out[0]}, params=scope_params)
 
-        vector = np.asarray(scope_params['vector']).flatten()
+        vector = np.asarray(scope_params["vector"]).flatten()
         # Ramp value equals t (slope 1), so output should track sin(t).
         assert np.isclose(vector[0], 0.0, atol=1e-6), f"At t=0, sin(0)=0, got {vector[0]}"
         assert np.allclose(vector, np.sin(times), atol=1e-6)
@@ -236,9 +260,9 @@ class TestSimulationExecution:
         const_block = ConstantBlock()
         func_block = FunctionBlock()
 
-        sine_params = {'amplitude': 1.0, 'omega': 2 * np.pi, 'init_angle': 0.0}
-        const_params = {'value': 3.0}
-        func_params = {'expression': 'u1 * u2', '_inputs_': 2}
+        sine_params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
+        const_params = {"value": 3.0}
+        func_params = {"expression": "u1 * u2", "_inputs_": 2}
 
         t = 0.25  # sin(2*pi*0.25) = sin(pi/2) = 1
         sine_out = sine_block.execute(time=t, inputs={}, params=sine_params)
@@ -263,10 +287,15 @@ class TestSimulationExecution:
         integrator = IntegratorBlock()
         gain_block = GainBlock()
 
-        const_params = {'value': 1.0}
-        sum_params = {'sign': '+-'}
-        int_params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
-        gain_params = {'gain': 0.5}  # Feedback gain
+        const_params = {"value": 1.0}
+        sum_params = {"sign": "+-"}
+        int_params = {
+            "init_conds": 0.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
+        gain_params = {"gain": 0.5}  # Feedback gain
 
         dt = 0.01
         x = 0.0  # Track integrator output
@@ -282,10 +311,14 @@ class TestSimulationExecution:
             feedback = gain_block.execute(time=t, inputs={0: x}, params=gain_params)
 
             # Sum (input - feedback)
-            sum_out = sum_block.execute(time=t, inputs={0: const_out[0], 1: feedback[0]}, params=sum_params)
+            sum_out = sum_block.execute(
+                time=t, inputs={0: const_out[0], 1: feedback[0]}, params=sum_params
+            )
 
             # Integrator
-            int_out = integrator.execute(time=t, inputs={0: sum_out[0]}, params=int_params, dtime=dt)
+            int_out = integrator.execute(
+                time=t, inputs={0: sum_out[0]}, params=int_params, dtime=dt
+            )
             x = int_out[0][0]
 
         # Should approach steady-state (exponential approach to u/k)
@@ -307,10 +340,10 @@ class TestSimulationExecution:
         gain2 = GainBlock()
         sum_block = SumBlock()
 
-        const_params = {'value': 5.0}
-        gain1_params = {'gain': 2.0}
-        gain2_params = {'gain': 3.0}
-        sum_params = {'sign': '++'}
+        const_params = {"value": 5.0}
+        gain1_params = {"gain": 2.0}
+        gain2_params = {"gain": 3.0}
+        sum_params = {"sign": "++"}
 
         # Single time step
         const_out = const_block.execute(time=0.0, inputs={}, params=const_params)
@@ -320,7 +353,9 @@ class TestSimulationExecution:
         gain2_out = gain2.execute(time=0.0, inputs={0: const_out[0]}, params=gain2_params)
 
         # Sum
-        sum_out = sum_block.execute(time=0.0, inputs={0: gain1_out[0], 1: gain2_out[0]}, params=sum_params)
+        sum_out = sum_block.execute(
+            time=0.0, inputs={0: gain1_out[0], 1: gain2_out[0]}, params=sum_params
+        )
 
         expected = 5.0 * (2.0 + 3.0)  # 25.0
         assert np.isclose(sum_out[0], expected), f"Expected {expected}, got {sum_out[0]}"
@@ -344,12 +379,22 @@ class TestSimulationExecution:
         K = 2.0
         tau = 0.5
 
-        step_params = {'value': 1.0, 'delay': 0.1, 'type': 'up',
-                      'pulse_start_up': True, '_init_start_': True}
-        gain_k_params = {'gain': K}
-        sum_params = {'sign': '+-'}
-        gain_tau_params = {'gain': 1.0/tau}
-        int_params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
+        step_params = {
+            "value": 1.0,
+            "delay": 0.1,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        }
+        gain_k_params = {"gain": K}
+        sum_params = {"sign": "+-"}
+        gain_tau_params = {"gain": 1.0 / tau}
+        int_params = {
+            "init_conds": 0.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
 
         dt = 0.005
         y = 0.0
@@ -381,7 +426,9 @@ class TestSimulationExecution:
 
         # Check steady-state (should approach K*step_value = 2.0)
         steady_state = np.mean(outputs[-50:])
-        assert np.isclose(steady_state, K, atol=0.1), f"Steady-state should be ~{K}, got {steady_state}"
+        assert np.isclose(steady_state, K, atol=0.1), (
+            f"Steady-state should be ~{K}, got {steady_state}"
+        )
 
         # Check response started from 0
         assert outputs[0] < 0.1, "Should start near zero"
@@ -397,10 +444,10 @@ class TestSimulationExecution:
         scope1 = ScopeBlock()
         scope2 = ScopeBlock()
 
-        sine_params = {'amplitude': 1.0, 'omega': 2*np.pi, 'init_angle': 0.0}
-        gain_params = {'gain': 2.0}
-        scope1_params = {'labels': 'sine', '_init_start_': True, '_name_': 'Scope1'}
-        scope2_params = {'labels': 'scaled', '_init_start_': True, '_name_': 'Scope2'}
+        sine_params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
+        gain_params = {"gain": 2.0}
+        scope1_params = {"labels": "sine", "_init_start_": True, "_name_": "Scope1"}
+        scope2_params = {"labels": "scaled", "_init_start_": True, "_name_": "Scope2"}
 
         times = np.linspace(0, 1.0, 50)
         for t in times:
@@ -410,8 +457,8 @@ class TestSimulationExecution:
             scope1.execute(time=t, inputs={0: sine_out[0]}, params=scope1_params)
             scope2.execute(time=t, inputs={0: gain_out[0]}, params=scope2_params)
 
-        vec1 = scope1_params['vector']
-        vec2 = scope2_params['vector']
+        vec1 = scope1_params["vector"]
+        vec2 = scope2_params["vector"]
 
         # Both should have same length
         assert len(vec1) == len(vec2) == 50, "Both scopes should collect 50 points"
@@ -429,8 +476,8 @@ class TestSimulationExecution:
         gain_block = GainBlock()
 
         # Vector constant
-        const_params = {'value': [1.0, 2.0, 3.0]}
-        gain_params = {'gain': 2.0}
+        const_params = {"value": [1.0, 2.0, 3.0]}
+        gain_params = {"gain": 2.0}
 
         const_out = const_block.execute(time=0.0, inputs={}, params=const_params)
         gain_out = gain_block.execute(time=0.0, inputs={0: const_out[0]}, params=gain_params)
@@ -443,14 +490,19 @@ class TestSimulationExecution:
         from blocks.integrator import IntegratorBlock
 
         integrator = IntegratorBlock()
-        params = {'init_conds': [0.0, 0.0], 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'VecInt'}
+        params = {
+            "init_conds": [0.0, 0.0],
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "VecInt",
+        }
 
         dt = 0.1
         input_vec = np.array([1.0, 2.0])
 
         # Integrate for 10 steps
         for i in range(10):
-            result = integrator.execute(time=i*dt, inputs={0: input_vec}, params=params, dtime=dt)
+            result = integrator.execute(time=i * dt, inputs={0: input_vec}, params=params, dtime=dt)
 
         # After 10 steps with dt=0.1: integral ≈ [1.0, 2.0]
         expected = np.array([1.0, 2.0])
@@ -464,8 +516,13 @@ class TestSimulationExecution:
         ramp_block = RampBlock()
         integrator = IntegratorBlock()
 
-        ramp_params = {'slope': 2.0, 'delay': 0.0}
-        int_params = {'init_conds': 0.0, 'method': 'FWD_EULER', '_init_start_': True, '_name_': 'TestInt'}
+        ramp_params = {"slope": 2.0, "delay": 0.0}
+        int_params = {
+            "init_conds": 0.0,
+            "method": "FWD_EULER",
+            "_init_start_": True,
+            "_name_": "TestInt",
+        }
 
         dt = 0.01
 
@@ -474,18 +531,22 @@ class TestSimulationExecution:
         for i in range(100):
             t = i * dt
             ramp_out = ramp_block.execute(time=t, inputs={}, params=ramp_params)
-            int_out = integrator.execute(time=t, inputs={0: ramp_out[0]}, params=int_params, dtime=dt)
+            int_out = integrator.execute(
+                time=t, inputs={0: ramp_out[0]}, params=int_params, dtime=dt
+            )
 
         # At t=1.0, integral of 2t should be t^2 = 1.0
         expected = 1.0
-        assert np.isclose(int_out[0][0], expected, atol=0.1), f"Expected {expected}, got {int_out[0][0]}"
+        assert np.isclose(int_out[0][0], expected, atol=0.1), (
+            f"Expected {expected}, got {int_out[0][0]}"
+        )
 
     def test_zero_crossing(self):
         """Test system crossing zero (sine wave)."""
         from blocks.sine import SineBlock
 
         sine_block = SineBlock()
-        params = {'amplitude': 1.0, 'omega': 2*np.pi, 'init_angle': 0.0}
+        params = {"amplitude": 1.0, "omega": 2 * np.pi, "init_angle": 0.0}
 
         # Collect values around half-period
         times = np.linspace(0, 0.6, 20)
@@ -498,14 +559,16 @@ class TestSimulationExecution:
         # Should cross zero somewhere in the middle
         # Check that sign changes
         signs = [np.sign(v) for v in values]
-        assert 1 in signs and -1 in signs, "Sine should cross zero (have both positive and negative values)"
+        assert 1 in signs and -1 in signs, (
+            "Sine should cross zero (have both positive and negative values)"
+        )
 
     def test_saturation_behavior(self):
         """Test gain doesn't saturate (linear behavior maintained)."""
         from blocks.gain import GainBlock
 
         gain_block = GainBlock()
-        params = {'gain': 10.0}
+        params = {"gain": 10.0}
 
         # Test with various input magnitudes
         inputs_test = [-100, -10, -1, 0, 1, 10, 100]
@@ -513,7 +576,9 @@ class TestSimulationExecution:
         for inp in inputs_test:
             result = gain_block.execute(time=0.0, inputs={0: float(inp)}, params=params)
             expected = inp * 10.0
-            assert np.isclose(result[0], expected), f"Gain should be linear: {inp} * 10 = {expected}, got {result[0]}"
+            assert np.isclose(result[0], expected), (
+                f"Gain should be linear: {inp} * 10 = {expected}, got {result[0]}"
+            )
 
 
 @pytest.mark.integration
@@ -528,9 +593,14 @@ class TestSimulationEdgeCases:
         sine_block = SineBlock()
         step_block = StepBlock()
 
-        sine_params = {'amplitude': 1.0, 'omega': 1.0, 'init_angle': 0.0}
-        step_params = {'value': 1.0, 'delay': 0.0, 'type': 'up',
-                      'pulse_start_up': True, '_init_start_': True}
+        sine_params = {"amplitude": 1.0, "omega": 1.0, "init_angle": 0.0}
+        step_params = {
+            "value": 1.0,
+            "delay": 0.0,
+            "type": "up",
+            "pulse_start_up": True,
+            "_init_start_": True,
+        }
 
         sine_result = sine_block.execute(time=0.0, inputs={}, params=sine_params)
         step_result = step_block.execute(time=0.0, inputs={}, params=step_params)
@@ -544,7 +614,7 @@ class TestSimulationEdgeCases:
         from blocks.sine import SineBlock
 
         sine_block = SineBlock()
-        params = {'amplitude': 1.0, 'omega': 1.0, 'init_angle': 0.0}
+        params = {"amplitude": 1.0, "omega": 1.0, "init_angle": 0.0}
 
         # Should handle large time values without numerical issues
         for t in [100.0, 1000.0, 10000.0]:
@@ -556,7 +626,7 @@ class TestSimulationEdgeCases:
         from blocks.gain import GainBlock
 
         gain_block = GainBlock()
-        params = {'gain': -2.0}
+        params = {"gain": -2.0}
 
         result = gain_block.execute(time=0.0, inputs={0: 5.0}, params=params)
         assert np.isclose(result[0], -10.0), "Negative gain should invert and scale"
@@ -566,7 +636,7 @@ class TestSimulationEdgeCases:
         from blocks.gain import GainBlock
 
         gain_block = GainBlock()
-        params = {'gain': 0.0}
+        params = {"gain": 0.0}
 
         result = gain_block.execute(time=0.0, inputs={0: 100.0}, params=params)
         assert np.isclose(result[0], 0.0), "Zero gain should output zero"
@@ -576,7 +646,7 @@ class TestSimulationEdgeCases:
         from blocks.sine import SineBlock
 
         sine_block = SineBlock()
-        params = {'amplitude': 1.0, 'omega': 1000.0, 'init_angle': 0.0}
+        params = {"amplitude": 1.0, "omega": 1000.0, "init_angle": 0.0}
 
         # Should still be bounded
         for t in np.linspace(0, 0.1, 10):
@@ -584,5 +654,5 @@ class TestSimulationEdgeCases:
             assert -1.0 <= result[0] <= 1.0, f"High-frequency sine should stay bounded at t={t}"
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

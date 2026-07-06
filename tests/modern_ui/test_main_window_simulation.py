@@ -30,6 +30,7 @@ from lib.diagram_validator import ErrorSeverity
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -61,6 +62,7 @@ def _err(severity):
 # toggle_fast_solver
 # ---------------------------------------------------------------------------
 
+
 class TestToggleFastSolver:
     def test_mirrors_flag_to_window_and_dsim(self, window):
         window.toggle_fast_solver(False)
@@ -75,11 +77,15 @@ class TestToggleFastSolver:
 # pause_simulation
 # ---------------------------------------------------------------------------
 
+
 class TestPause:
     def test_sets_pause_and_toolbar(self, window, monkeypatch):
         captured = {}
-        monkeypatch.setattr(window.toolbar, "set_simulation_state",
-                            lambda r, p: captured.__setitem__("state", (r, p)))
+        monkeypatch.setattr(
+            window.toolbar,
+            "set_simulation_state",
+            lambda r, p: captured.__setitem__("state", (r, p)),
+        )
         window.pause_simulation()
         assert window.dsim.execution_pause is True
         assert captured["state"] == (True, True)
@@ -89,13 +95,18 @@ class TestPause:
 # stop_simulation
 # ---------------------------------------------------------------------------
 
+
 class TestStop:
     def test_stops_canvas_and_resets_toolbar(self, window, monkeypatch):
         captured = {}
-        monkeypatch.setattr(window.canvas, "stop_simulation",
-                            lambda: captured.__setitem__("stopped", True))
-        monkeypatch.setattr(window.toolbar, "set_simulation_state",
-                            lambda r, p: captured.__setitem__("state", (r, p)))
+        monkeypatch.setattr(
+            window.canvas, "stop_simulation", lambda: captured.__setitem__("stopped", True)
+        )
+        monkeypatch.setattr(
+            window.toolbar,
+            "set_simulation_state",
+            lambda r, p: captured.__setitem__("state", (r, p)),
+        )
         window.stop_simulation()
         assert captured.get("stopped") is True
         assert captured["state"] == (False, False)
@@ -106,13 +117,14 @@ class TestStop:
 # start_simulation
 # ---------------------------------------------------------------------------
 
+
 class TestStart:
     def test_blocked_by_validation_errors(self, window, monkeypatch):
         started = {}
-        monkeypatch.setattr(window.canvas, "run_validation",
-                            lambda: [_err(ErrorSeverity.ERROR)])
-        monkeypatch.setattr(window.canvas, "start_simulation",
-                            lambda: started.__setitem__("ran", True))
+        monkeypatch.setattr(window.canvas, "run_validation", lambda: [_err(ErrorSeverity.ERROR)])
+        monkeypatch.setattr(
+            window.canvas, "start_simulation", lambda: started.__setitem__("ran", True)
+        )
         monkeypatch.setattr(window.error_panel, "set_errors", lambda errs: None)
         window.start_simulation()
         # Critical errors block the run entirely.
@@ -122,11 +134,13 @@ class TestStart:
     def test_runs_when_validation_clean(self, window, monkeypatch):
         captured = {}
         monkeypatch.setattr(window.canvas, "run_validation", lambda: [])
-        monkeypatch.setattr(window.error_panel, "clear",
-                            lambda: captured.__setitem__("cleared", True))
+        monkeypatch.setattr(
+            window.error_panel, "clear", lambda: captured.__setitem__("cleared", True)
+        )
         monkeypatch.setattr(window.canvas, "clear_validation", lambda: None)
-        monkeypatch.setattr(window.canvas, "start_simulation",
-                            lambda: captured.__setitem__("ran", True))
+        monkeypatch.setattr(
+            window.canvas, "start_simulation", lambda: captured.__setitem__("ran", True)
+        )
         monkeypatch.setattr(window.canvas, "is_simulation_running", lambda: True)
         window.start_simulation()
         assert captured.get("cleared") is True
@@ -137,6 +151,7 @@ class TestStart:
 # ---------------------------------------------------------------------------
 # step_simulation
 # ---------------------------------------------------------------------------
+
 
 class TestStep:
     def test_first_step_initializes(self, window, monkeypatch):
@@ -165,6 +180,7 @@ class TestStep:
         def fake_single_step():
             window.dsim.execution_initialized = False
             return False
+
         monkeypatch.setattr(window.dsim, "single_step", fake_single_step)
         monkeypatch.setattr(window.toolbar, "set_simulation_state", lambda r, p: None)
         window.step_simulation()

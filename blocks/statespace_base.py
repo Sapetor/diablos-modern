@@ -1,4 +1,5 @@
 """Base class for state-space based blocks with common functionality."""
+
 from abc import abstractmethod
 from blocks.base_block import BaseBlock
 import numpy as np
@@ -79,13 +80,13 @@ class StateSpaceBaseBlock(BaseBlock):
         # Validate A is square
         n = A.shape[0]
         if A.shape != (n, n):
-            return {'E': True, 'error': 'A matrix must be square (n×n)'}
+            return {"E": True, "error": "A matrix must be square (n×n)"}
 
         # Reshape B if 1D
         if len(B.shape) == 1:
             B = B.reshape(-1, 1)
         if B.shape[0] != n:
-            return {'E': True, 'error': f'B matrix must have {n} rows to match A'}
+            return {"E": True, "error": f"B matrix must have {n} rows to match A"}
 
         m = B.shape[1]  # Number of inputs
 
@@ -93,7 +94,7 @@ class StateSpaceBaseBlock(BaseBlock):
         if len(C.shape) == 1:
             C = C.reshape(1, -1)
         if C.shape[1] != n:
-            return {'E': True, 'error': f'C matrix must have {n} columns to match A'}
+            return {"E": True, "error": f"C matrix must have {n} columns to match A"}
 
         p = C.shape[0]  # Number of outputs
 
@@ -101,7 +102,7 @@ class StateSpaceBaseBlock(BaseBlock):
         if len(D.shape) == 1:
             D = D.reshape(1, -1) if D.shape[0] > 1 else D.reshape(1, 1)
         if D.shape != (p, m):
-            return {'E': True, 'error': f'D matrix must be {p}×{m} to match C and B'}
+            return {"E": True, "error": f"D matrix must be {p}×{m} to match C and B"}
 
         return (A, B, C, D, n, m, p)
 
@@ -119,7 +120,7 @@ class StateSpaceBaseBlock(BaseBlock):
         init_conds = np.atleast_1d(np.array(init_conds, dtype=float))
         if len(init_conds) < n:
             padded = np.zeros(n)
-            padded[:len(init_conds)] = init_conds
+            padded[: len(init_conds)] = init_conds
             init_conds = padded
         elif len(init_conds) > n:
             init_conds = init_conds[:n]
@@ -148,8 +149,8 @@ class StateSpaceBaseBlock(BaseBlock):
 
         if u.shape[0] != n_inputs:
             return None, {
-                'E': True,
-                'error': f"Input dimension mismatch: expected {n_inputs}, got {u.shape[0]}"
+                "E": True,
+                "error": f"Input dimension mismatch: expected {n_inputs}, got {u.shape[0]}",
             }
 
         return u, None
@@ -172,7 +173,7 @@ class StateSpaceBaseBlock(BaseBlock):
             return y, None
         except ValueError as e:
             logger.error(f"Error in state space output: {e}")
-            return None, {'E': True, 'error': f"Output computation error: {e}"}
+            return None, {"E": True, "error": f"Output computation error: {e}"}
 
     def _update_state(self, A, B, x, u, params_ref):
         """
@@ -189,11 +190,11 @@ class StateSpaceBaseBlock(BaseBlock):
             dict or None: Error dict if failed, None if successful
         """
         try:
-            params_ref['_x_'] = A @ x + B @ u
+            params_ref["_x_"] = A @ x + B @ u
             return None
         except ValueError as e:
             logger.error(f"Error in state space state update: {e}")
-            return {'E': True, 'error': f"State update error: {e}"}
+            return {"E": True, "error": f"State update error: {e}"}
 
     def _format_output(self, y):
         """

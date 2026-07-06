@@ -1,6 +1,7 @@
 from blocks.base_block import BaseBlock
 import numpy as np
 
+
 class MuxBlock(BaseBlock):
     def __init__(self):
         super().__init__()
@@ -19,7 +20,7 @@ class MuxBlock(BaseBlock):
 
     @property
     def io_editable(self):
-        return 'input'
+        return "input"
 
     @property
     def params(self):
@@ -47,10 +48,13 @@ class MuxBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw multiplexer icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Input lines
-        path.moveTo(0.2, 0.3); path.lineTo(0.4, 0.3)
-        path.moveTo(0.2, 0.7); path.lineTo(0.4, 0.7)
+        path.moveTo(0.2, 0.3)
+        path.lineTo(0.4, 0.3)
+        path.moveTo(0.2, 0.7)
+        path.lineTo(0.4, 0.7)
         # Main body (trapezoid)
         path.moveTo(0.4, 0.2)
         path.lineTo(0.8, 0.4)
@@ -58,7 +62,8 @@ class MuxBlock(BaseBlock):
         path.lineTo(0.4, 0.8)
         path.lineTo(0.4, 0.2)
         # Output
-        path.moveTo(0.8, 0.5); path.lineTo(1.0, 0.5)
+        path.moveTo(0.8, 0.5)
+        path.lineTo(1.0, 0.5)
         return path
 
     def execute(self, time, inputs, params, **kwargs):
@@ -66,4 +71,3 @@ class MuxBlock(BaseBlock):
         for p in sorted(inputs.keys()):
             combined.extend(np.atleast_1d(inputs[p]).flatten())
         return {0: np.array(combined)}
-

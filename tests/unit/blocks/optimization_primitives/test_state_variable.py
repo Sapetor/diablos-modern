@@ -21,24 +21,16 @@ class TestStateVariableBlock:
 
     def test_initial_value(self):
         """Test that initial value is output on first call."""
-        params = {
-            'initial_value': [5.0, 3.0],
-            'dimension': 2,
-            '_init_start_': True
-        }
+        params = {"initial_value": [5.0, 3.0], "dimension": 2, "_init_start_": True}
 
         result = self.block.execute(0.0, {}, params)
 
         np.testing.assert_array_equal(result[0], [5.0, 3.0])
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_state_update(self):
         """Test that state is updated from input."""
-        params = {
-            'initial_value': [1.0, 1.0],
-            'dimension': 2,
-            '_init_start_': True
-        }
+        params = {"initial_value": [1.0, 1.0], "dimension": 2, "_init_start_": True}
 
         # First call - returns initial
         result1 = self.block.execute(0.0, {}, params)
@@ -54,11 +46,7 @@ class TestStateVariableBlock:
 
     def test_iteration_sequence(self):
         """Test a sequence of iterations like gradient descent."""
-        params = {
-            'initial_value': [10.0, 10.0],
-            'dimension': 2,
-            '_init_start_': True
-        }
+        params = {"initial_value": [10.0, 10.0], "dimension": 2, "_init_start_": True}
 
         # Iteration 0: x = [10, 10]
         x0 = self.block.execute(0.0, {}, params)[0]
@@ -74,11 +62,7 @@ class TestStateVariableBlock:
 
     def test_string_initial_value(self):
         """Test that string initial value is parsed correctly."""
-        params = {
-            'initial_value': '[1.0, 2.0, 3.0]',
-            'dimension': 3,
-            '_init_start_': True
-        }
+        params = {"initial_value": "[1.0, 2.0, 3.0]", "dimension": 3, "_init_start_": True}
 
         result = self.block.execute(0.0, {}, params)
 
@@ -86,11 +70,7 @@ class TestStateVariableBlock:
 
     def test_single_variable(self):
         """Test with single state variable."""
-        params = {
-            'initial_value': [5.0],
-            'dimension': 1,
-            '_init_start_': True
-        }
+        params = {"initial_value": [5.0], "dimension": 1, "_init_start_": True}
 
         result = self.block.execute(0.0, {}, params)
 

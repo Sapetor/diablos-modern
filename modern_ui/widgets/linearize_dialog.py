@@ -22,8 +22,15 @@ A-only linearization downstream.
 import logging
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QListWidget,
-    QListWidgetItem, QCheckBox, QDialogButtonBox, QGroupBox,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QCheckBox,
+    QDialogButtonBox,
+    QGroupBox,
 )
 from PyQt5.QtCore import Qt
 
@@ -91,9 +98,7 @@ class LinearizeDialog(QDialog):
 
         layout.addWidget(self.trim_checkbox)
 
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)

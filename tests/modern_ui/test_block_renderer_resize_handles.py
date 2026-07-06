@@ -5,6 +5,7 @@ same 8-handle position dict (a verbatim duplicate). They now share
 _resize_handle_rects; these tests pin that the hit-test resolves exactly the
 geometry the draw path uses, and the selection/miss guards.
 """
+
 import pytest
 from PyQt5.QtCore import QPoint
 
@@ -33,8 +34,14 @@ class TestResizeHandleGeometry:
         size = r._resize_handle_size()
         rects = r._resize_handle_rects(block)
         assert set(rects) == {
-            'top_left', 'top_right', 'bottom_left', 'bottom_right',
-            'top', 'bottom', 'left', 'right',
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+            "top",
+            "bottom",
+            "left",
+            "right",
         }
         # The center of each handle rect must hit-test back to that handle.
         for name, (x, y) in rects.items():

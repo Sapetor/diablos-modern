@@ -58,6 +58,7 @@ class TestTimeseriesLoader:
 
     def test_mat_roundtrip(self, tmp_path):
         from scipy.io import savemat
+
         p = tmp_path / "d.mat"
         savemat(str(p), {"t": np.array([0.0, 1.0]), "y": np.array([2.0, 4.0])})
         t, y = load_timeseries(str(p), "t", "y")

@@ -1,7 +1,7 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
 from scipy import signal
+
 
 class WaveGeneratorBlock(BaseBlock):
     def __init__(self):
@@ -30,12 +30,12 @@ class WaveGeneratorBlock(BaseBlock):
             "waveform": {
                 "default": "Sine",
                 "type": "choice",
-                "options": ["Sine", "Square", "Triangle", "Sawtooth"]
+                "options": ["Sine", "Square", "Triangle", "Sawtooth"],
             },
             "amplitude": {"default": 1.0, "type": "float"},
             "frequency": {"default": 1.0, "type": "float"},
             "phase": {"default": 0.0, "type": "float"},
-            "bias": {"default": 0.0, "type": "float"}
+            "bias": {"default": 0.0, "type": "float"},
         }
 
     @property
@@ -64,16 +64,16 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
         freq = params.get("frequency", 1.0)
         phase = params.get("phase", 0.0)
         bias = params.get("bias", 0.0)
-        
+
         # t is current simulation time
         t = time
-        
+
         # Argument for periodic functions
         # 2*pi*f*t + phi
         arg = 2 * np.pi * freq * t + phase
-        
+
         val = 0.0
-        
+
         if wv == "Sine":
             val = np.sin(arg)
         elif wv == "Square":
@@ -82,23 +82,24 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
             val = signal.sawtooth(arg, width=0.5)
         elif wv == "Sawtooth":
             val = signal.sawtooth(arg, width=1.0)
-            
+
         return {0: bias + amp * val}
 
     def draw_icon(self, block_rect):
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
-        
+
         # Draw a composite wave icon (sine + square hint)
         # Sine part
         path.moveTo(0.1, 0.5)
         path.cubicTo(0.2, 0.2, 0.3, 0.2, 0.4, 0.5)
-        
+
         # Square part
         path.lineTo(0.4, 0.2)
         path.lineTo(0.6, 0.2)
         path.lineTo(0.6, 0.8)
         path.lineTo(0.8, 0.8)
         path.lineTo(0.8, 0.5)
-        
+
         return path

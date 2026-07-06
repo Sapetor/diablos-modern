@@ -1,4 +1,3 @@
-
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
@@ -37,7 +36,7 @@ class FunctionBlock(BaseBlock):
     @property
     def io_editable(self):
         # Users add/remove input ports via the property-editor port spinner.
-        return 'input'
+        return "input"
 
     @property
     def doc(self):

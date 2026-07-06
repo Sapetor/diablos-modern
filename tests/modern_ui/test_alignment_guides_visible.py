@@ -29,6 +29,7 @@ from PyQt5.QtCore import QPoint, QRect
 # and shown in every drag; the position-changing nudge is only applied when grid
 # snap is off AND there is a non-zero snap offset on either axis.
 
+
 def _should_apply_alignment_nudge(grid_snap_on, snap_dx, snap_dy):
     return (not grid_snap_on) and bool(snap_dx or snap_dy)
 
@@ -52,6 +53,7 @@ class TestShouldApplyAlignmentNudge:
 # Integration: DragResizeManager shows guides regardless of grid snap
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _qt(qapp):
     return qapp
@@ -59,17 +61,18 @@ def _qt(qapp):
 
 def _make_block(sid, x, y, w=100, h=80, name=None):
     from lib.simulation.block import DBlock
+
     block = DBlock(
-        block_fn='TestBlock',
+        block_fn="TestBlock",
         sid=sid,
         coords=QRect(x, y, w, h),
-        color='#4CAF50',
+        color="#4CAF50",
         in_ports=1,
         out_ports=1,
         b_type=2,
-        io_edit='none',
-        fn_name='testblock',
-        params={'gain': 1.0},
+        io_edit="none",
+        fn_name="testblock",
+        params={"gain": 1.0},
         external=False,
         colors=None,
     )
@@ -82,14 +85,15 @@ def _make_block(sid, x, y, w=100, h=80, name=None):
 def canvas(qapp):
     from lib.lib import DSim
     from modern_ui.widgets.modern_canvas import ModernCanvas
+
     dsim = DSim()
     return ModernCanvas(dsim)
 
 
 def _setup_near_drag(canvas):
     """Target at (100, 50); mover 3px off the target's left edge."""
-    target = _make_block(0, 100, 50, name='target')
-    mover = _make_block(1, 103, 300, name='mover')  # left edge 3px off target
+    target = _make_block(0, 100, 50, name="target")
+    mover = _make_block(1, 103, 300, name="mover")  # left edge 3px off target
     canvas.dsim.blocks_list.extend([target, mover])
     mover.selected = True
     canvas.start_drag(mover, QPoint(103, 300))
@@ -127,8 +131,8 @@ class TestGuidesVisibleRegardlessOfGridSnap:
     def test_grid_on_no_neighbor_in_range_clears_guides(self, canvas):
         # Far apart -> nothing to align to, on either snap mode.
         assert canvas.snap_enabled is True
-        target = _make_block(0, 100, 50, name='target')
-        mover = _make_block(1, 400, 300, name='mover')
+        target = _make_block(0, 100, 50, name="target")
+        mover = _make_block(1, 400, 300, name="mover")
         canvas.dsim.blocks_list.extend([target, mover])
         mover.selected = True
         canvas.start_drag(mover, QPoint(400, 300))
@@ -151,9 +155,9 @@ class TestGuidesVisibleRegardlessOfGridSnap:
     def test_grid_on_multi_select_does_not_shift_partner(self, canvas):
         # With grid snap on, the rigid-group shift must NOT fire (no nudge).
         assert canvas.snap_enabled is True
-        target = _make_block(0, 100, 50, name='target')
-        mover = _make_block(1, 103, 300, name='mover')
-        partner = _make_block(2, 300, 300, name='partner')
+        target = _make_block(0, 100, 50, name="target")
+        mover = _make_block(1, 103, 300, name="mover")
+        partner = _make_block(2, 300, 300, name="partner")
         canvas.dsim.blocks_list.extend([target, mover, partner])
         mover.selected = True
         partner.selected = True
@@ -162,6 +166,6 @@ class TestGuidesVisibleRegardlessOfGridSnap:
         canvas.start_drag(mover, QPoint(103, 300))
         canvas.drag_resize_manager.update_drag_alignment()
 
-        assert mover.left == 103                 # mover untouched
+        assert mover.left == 103  # mover untouched
         assert partner.left == partner_left_before  # partner untouched
-        assert canvas._alignment_guides          # guide still shown
+        assert canvas._alignment_guides  # guide still shown

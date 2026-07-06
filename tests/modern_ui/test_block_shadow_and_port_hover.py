@@ -50,7 +50,9 @@ class _StubBlock:
         self.in_ports = in_ports
         self.out_ports = out_ports
         self.in_coords = [QPoint(self.left, self.top + 10 + 15 * i) for i in range(in_ports)]
-        self.out_coords = [QPoint(self.left + self.width, self.top + 10 + 15 * i) for i in range(out_ports)]
+        self.out_coords = [
+            QPoint(self.left + self.width, self.top + 10 + 15 * i) for i in range(out_ports)
+        ]
 
 
 def _painter_on_pixmap():
@@ -78,7 +80,7 @@ class TestSoftShadow:
 
     def test_shadow_derives_alpha_from_theme_token(self):
         # Strongest layer must not exceed the theme's block_shadow base alpha.
-        base_alpha = theme_manager.get_color('block_shadow').alpha()
+        base_alpha = theme_manager.get_color("block_shadow").alpha()
         strongest = max(layer[2] for layer in _SOFT_SHADOW_LAYERS)
         assert int(base_alpha * strongest) <= base_alpha
 
@@ -146,7 +148,7 @@ class TestDrawBlockWithPorts:
         renderer = BlockRenderer()
         painter, pixmap = _painter_on_pixmap()
         try:
-            base = theme_manager.get_color('port_input')
+            base = theme_manager.get_color("port_input")
             renderer._draw_port(painter, QPoint(50, 50), base, 7, is_hovered=True)
             renderer._draw_port(painter, QPoint(80, 80), base, 7, is_hovered=False)
         finally:

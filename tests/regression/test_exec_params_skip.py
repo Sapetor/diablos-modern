@@ -25,6 +25,7 @@ import pytest
 @pytest.fixture
 def engine(qapp, simulation_model):
     from lib.engine.simulation_engine import SimulationEngine
+
     return SimulationEngine(simulation_model)
 
 
@@ -54,15 +55,17 @@ def _make_stub(name: str, exec_params: dict = None):
 
 @pytest.mark.regression
 class TestExecParamsSkipResolution:
-
     def test_skip_when_dtime_matches(self, engine):
         """Engine skips resolve_params when exec_params['dtime'] equals sim_dt."""
         engine.sim_dt = 0.01
 
-        stub = _make_stub("g1", exec_params={
-            "gain": 1.0,
-            "dtime": 0.01,  # already resolved with current dt
-        })
+        stub = _make_stub(
+            "g1",
+            exec_params={
+                "gain": 1.0,
+                "dtime": 0.01,  # already resolved with current dt
+            },
+        )
 
         with patch("lib.workspace.WorkspaceManager.resolve_params") as mocked:
             # Drive only the resolve-loop portion of initialize_execution.
@@ -80,16 +83,20 @@ class TestExecParamsSkipResolution:
     def test_resolve_when_dtime_mismatches(self, engine):
         """Engine resolves when cached dtime doesn't match (e.g. sim_dt changed)."""
         from lib.workspace import WorkspaceManager
+
         # Reset singleton so we don't leak state.
         prev = WorkspaceManager._instance
         WorkspaceManager._instance = None
         try:
             engine.sim_dt = 0.005
 
-            stub = _make_stub("g1", exec_params={
-                "gain": 1.0,
-                "dtime": 0.01,  # stale — different dt
-            })
+            stub = _make_stub(
+                "g1",
+                exec_params={
+                    "gain": 1.0,
+                    "dtime": 0.01,  # stale — different dt
+                },
+            )
             engine.active_blocks_list = [stub]
 
             wsm = WorkspaceManager()
@@ -111,6 +118,7 @@ class TestExecParamsSkipResolution:
     def test_resolve_when_exec_params_empty(self, engine):
         """Engine resolves when exec_params is empty (fresh block)."""
         from lib.workspace import WorkspaceManager
+
         prev = WorkspaceManager._instance
         WorkspaceManager._instance = None
         try:
@@ -135,9 +143,7 @@ class TestExecParamsSkipResolution:
         finally:
             WorkspaceManager._instance = prev
 
-    def test_initialize_execution_full_path_skips_when_dsim_resolved(
-        self, qapp, simulation_model
-    ):
+    def test_initialize_execution_full_path_skips_when_dsim_resolved(self, qapp, simulation_model):
         """End-to-end: pre-resolve like DSim, then ensure engine skips its resolve.
 
         Counts calls to workspace_manager.resolve_params during
@@ -153,10 +159,13 @@ class TestExecParamsSkipResolution:
             engine = SimulationEngine(simulation_model)
             engine.sim_dt = 0.01
 
-            stub = _make_stub("g1", exec_params={
-                "gain": 1.0,
-                "dtime": 0.01,
-            })
+            stub = _make_stub(
+                "g1",
+                exec_params={
+                    "gain": 1.0,
+                    "dtime": 0.01,
+                },
+            )
             engine.active_blocks_list = [stub]
 
             # Mirror exactly the engine's pre-loop logic (without invoking
@@ -167,10 +176,12 @@ class TestExecParamsSkipResolution:
             call_count = 0
 
             original_resolve = wsm.resolve_params
+
             def counting_resolve(params):
                 nonlocal call_count
                 call_count += 1
                 return original_resolve(params)
+
             wsm.resolve_params = counting_resolve
 
             for block in engine.active_blocks_list:
@@ -181,8 +192,7 @@ class TestExecParamsSkipResolution:
                 block.exec_params["dtime"] = current_dt
 
             assert call_count == 0, (
-                f"Expected 0 calls to resolve_params (pre-resolved block), "
-                f"got {call_count}"
+                f"Expected 0 calls to resolve_params (pre-resolved block), got {call_count}"
             )
         finally:
             WorkspaceManager._instance = prev
@@ -203,10 +213,12 @@ class TestExecParamsSkipResolution:
             wsm = WorkspaceManager()
             call_count = 0
             original = wsm.resolve_params
+
             def counting(params):
                 nonlocal call_count
                 call_count += 1
                 return original(params)
+
             wsm.resolve_params = counting
 
             for block in current_blocks:
@@ -217,8 +229,7 @@ class TestExecParamsSkipResolution:
                 block.exec_params["dtime"] = dt
 
             assert call_count == 0, (
-                "run_compiled_simulation should skip resolve when exec_params "
-                "is already current"
+                "run_compiled_simulation should skip resolve when exec_params is already current"
             )
         finally:
             WorkspaceManager._instance = prev

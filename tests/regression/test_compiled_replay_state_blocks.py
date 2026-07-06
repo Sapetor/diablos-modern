@@ -17,6 +17,7 @@ tolerance is loose enough to absorb cross-platform RK45 jitter (the local pins
 are generated on the Windows venv; CI also runs them on Linux) while a real
 kernel/dispatch regression is O(1) -- far larger.
 """
+
 import numpy as np
 import pytest
 from PyQt5.QtCore import QRect, QPoint
@@ -26,6 +27,7 @@ from PyQt5.QtGui import QColor
 def _dsim():
     from lib.lib import DSim
     from lib.workspace import WorkspaceManager
+
     WorkspaceManager._instance = None
     return DSim()
 
@@ -33,14 +35,21 @@ def _dsim():
 def _mk(dsim, block_fn, sid, in_ports, out_ports, params):
     """Build a DBlock and attach a real block_instance (mirrors file_service)."""
     from lib.simulation.block import DBlock
+
     menu = next((mb for mb in dsim.model.menu_blocks if mb.block_fn == block_fn), None)
     assert menu is not None, f"{block_fn} not registered in menu_blocks"
     inst = menu.block_class() if menu.block_class else None
     b_type = getattr(inst, "b_type", 2)
     blk = DBlock(
-        block_fn=block_fn, sid=sid, coords=QRect(0, 0, 50, 40),
-        color=QColor(150, 150, 150), in_ports=in_ports, out_ports=out_ports,
-        params=dict(params), username="", b_type=b_type,
+        block_fn=block_fn,
+        sid=sid,
+        coords=QRect(0, 0, 50, 40),
+        color=QColor(150, 150, 150),
+        in_ports=in_ports,
+        out_ports=out_ports,
+        params=dict(params),
+        username="",
+        b_type=b_type,
     )
     blk.block_instance = inst
     return blk
@@ -48,8 +57,15 @@ def _mk(dsim, block_fn, sid, in_ports, out_ports, params):
 
 def _ln(sid, src, sp, dst, dp):
     from lib.simulation.connection import DLine
-    return DLine(sid=sid, srcblock=src, srcport=sp, dstblock=dst, dstport=dp,
-                 points=[QPoint(0, 0), QPoint(1, 0)])
+
+    return DLine(
+        sid=sid,
+        srcblock=src,
+        srcport=sp,
+        dstblock=dst,
+        dstport=dp,
+        points=[QPoint(0, 0), QPoint(1, 0)],
+    )
 
 
 def _scope_vec(dsim):
@@ -133,19 +149,57 @@ SIM_DT = 0.1
 RTOL = 1e-3
 ATOL = 1e-5
 
-_PID_BASELINE = np.array([
-    12.0, 3.4533528317144317, 2.383156389452658, 2.324787524282258,
-    2.403354626171109, 2.500453998696557, 2.600061442350375, 2.7000083151371603,
-    2.80000112652195, 2.9000001516477276, 3.000000019994506, 3.100000001882709,
-    3.1999999997036728, 3.3000000019875397, 3.399999989595336, 3.5000000091769348,
-    3.599999998342692, 3.7000000055748155, 3.800000001440207, 3.8999999983747666,
-    4.000000003021193,
-]).reshape(-1, 1)
+_PID_BASELINE = np.array(
+    [
+        12.0,
+        3.4533528317144317,
+        2.383156389452658,
+        2.324787524282258,
+        2.403354626171109,
+        2.500453998696557,
+        2.600061442350375,
+        2.7000083151371603,
+        2.80000112652195,
+        2.9000001516477276,
+        3.000000019994506,
+        3.100000001882709,
+        3.1999999997036728,
+        3.3000000019875397,
+        3.399999989595336,
+        3.5000000091769348,
+        3.599999998342692,
+        3.7000000055748155,
+        3.800000001440207,
+        3.8999999983747666,
+        4.000000003021193,
+    ]
+).reshape(-1, 1)
 
-_RATELIMITER_BASELINE = np.array([
-    0.0, 0.2, 0.4, 0.6, 0.8, 0.9992642329695153, 1.0, 1.0, 1.0, 1.0, 1.0,
-    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-]).reshape(-1, 1)
+_RATELIMITER_BASELINE = np.array(
+    [
+        0.0,
+        0.2,
+        0.4,
+        0.6,
+        0.8,
+        0.9992642329695153,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    ]
+).reshape(-1, 1)
 
 
 @pytest.mark.regression
@@ -166,7 +220,8 @@ class TestCompiledReplayPID:
         u = clip(Kp*e + Ki*x_i + Kd*x_d') with x_i ramping."""
         compiled = _run_compiled(_pid_diagram, SIM_TIME, SIM_DT)
         assert compiled.shape == _PID_BASELINE.shape, (
-            f"shape {compiled.shape} != pinned {_PID_BASELINE.shape}")
+            f"shape {compiled.shape} != pinned {_PID_BASELINE.shape}"
+        )
         np.testing.assert_allclose(compiled, _PID_BASELINE, rtol=RTOL, atol=ATOL)
 
 
@@ -177,5 +232,6 @@ class TestCompiledReplayRateLimiter:
         at the configured slew rate (0.2 per 0.1 s) and saturates at 1.0."""
         compiled = _run_compiled(_ratelimiter_diagram, SIM_TIME, SIM_DT)
         assert compiled.shape == _RATELIMITER_BASELINE.shape, (
-            f"shape {compiled.shape} != pinned {_RATELIMITER_BASELINE.shape}")
+            f"shape {compiled.shape} != pinned {_RATELIMITER_BASELINE.shape}"
+        )
         np.testing.assert_allclose(compiled, _RATELIMITER_BASELINE, rtol=RTOL, atol=ATOL)

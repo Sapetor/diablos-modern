@@ -21,7 +21,7 @@ class ConnectionManager:
     Extracted from ModernCanvas to reduce file size and improve maintainability.
     """
 
-    def __init__(self, canvas: 'ModernCanvas'):
+    def __init__(self, canvas: "ModernCanvas"):
         self.canvas = canvas
         self.dsim = canvas.dsim
 
@@ -31,14 +31,16 @@ class ConnectionManager:
         """Check for port clicks to create connections. Returns True if a port was clicked."""
         try:
             # Check all blocks for port collisions
-            for block in getattr(self.dsim, 'blocks_list', []):
-                if hasattr(block, 'port_collision'):
+            for block in getattr(self.dsim, "blocks_list", []):
+                if hasattr(block, "port_collision"):
                     # Convert QPoint to tuple for collision detection
                     point_tuple = (pos.x(), pos.y())
                     port_result = block.port_collision(point_tuple)
                     if port_result != (-1, -1):
                         port_type, port_index = port_result
-                        logger.debug(f"Port clicked: {port_type}{port_index} on block {getattr(block, 'name', 'Unknown')}")
+                        logger.debug(
+                            f"Port clicked: {port_type}{port_index} on block {getattr(block, 'name', 'Unknown')}"
+                        )
                         self.handle_port_click(block, port_type, port_index, pos)
                         return True  # Port was clicked
             return False  # No port was clicked
@@ -51,22 +53,22 @@ class ConnectionManager:
         from modern_ui.interactions.interaction_manager import State
 
         try:
-            block_name = getattr(block, 'name', 'Unknown')
+            block_name = getattr(block, "name", "Unknown")
             logger.debug(f"Port clicked on block {block_name}, port: {port_type}{port_index}")
 
             if self.canvas.line_creation_state is None:
-                if port_type == 'o':  # Start line from output port
+                if port_type == "o":  # Start line from output port
                     self.canvas.state = State.CONNECTING
-                    self.canvas.line_creation_state = 'start'
+                    self.canvas.line_creation_state = "start"
                     self.canvas.line_start_block = block
                     self.canvas.line_start_port = port_index
                     # Get the output port coordinates
-                    if hasattr(block, 'out_coords') and port_index < len(block.out_coords):
+                    if hasattr(block, "out_coords") and port_index < len(block.out_coords):
                         start_point = block.out_coords[port_index]
                         self.canvas.temp_line = (start_point, pos)
                     logger.info(f"Started line creation from {block_name} output port {port_index}")
-            elif self.canvas.line_creation_state == 'start':
-                if port_type == 'i':  # End line at input port
+            elif self.canvas.line_creation_state == "start":
+                if port_type == "i":  # End line at input port
                     logger.info(f"Completing line to {block_name} input port {port_index}")
                     self.finish_line_creation(block, port_index)
                 else:
@@ -81,31 +83,37 @@ class ConnectionManager:
     def finish_line_creation(self, end_block: Any, end_port: int) -> None:
         """Complete line creation between two blocks."""
         try:
-            start_block_name = getattr(self.canvas.line_start_block, 'name', 'Unknown')
-            end_block_name = getattr(end_block, 'name', 'Unknown')
+            start_block_name = getattr(self.canvas.line_start_block, "name", "Unknown")
+            end_block_name = getattr(end_block, "name", "Unknown")
             logger.debug(f"Finishing line creation from {start_block_name} to {end_block_name}")
 
-            if hasattr(self.dsim, 'add_line'):
+            if hasattr(self.dsim, "add_line"):
                 # Get coordinates for the line
                 start_coords = None
                 end_coords = None
-                if (hasattr(self.canvas.line_start_block, 'out_coords') and
-                    self.canvas.line_start_port < len(self.canvas.line_start_block.out_coords)):
-                    start_coords = self.canvas.line_start_block.out_coords[self.canvas.line_start_port]
-                if (hasattr(end_block, 'in_coords') and
-                    end_port < len(end_block.in_coords)):
+                if hasattr(
+                    self.canvas.line_start_block, "out_coords"
+                ) and self.canvas.line_start_port < len(self.canvas.line_start_block.out_coords):
+                    start_coords = self.canvas.line_start_block.out_coords[
+                        self.canvas.line_start_port
+                    ]
+                if hasattr(end_block, "in_coords") and end_port < len(end_block.in_coords):
                     end_coords = end_block.in_coords[end_port]
 
                 if start_coords and end_coords:
                     # Validate connection before creating
                     is_valid, validation_errors = self.canvas._validate_connection(
-                        self.canvas.line_start_block, self.canvas.line_start_port,
-                        end_block, end_port
+                        self.canvas.line_start_block,
+                        self.canvas.line_start_port,
+                        end_block,
+                        end_port,
                     )
                     if not is_valid:
                         error_msg = "\n".join(validation_errors)
                         logger.warning(f"Connection validation failed: {error_msg}")
-                        self.canvas.simulation_status_changed.emit(f"Connection invalid: {error_msg}")
+                        self.canvas.simulation_status_changed.emit(
+                            f"Connection invalid: {error_msg}"
+                        )
                         self.cancel_line_creation()
                         return
 
@@ -115,14 +123,19 @@ class ConnectionManager:
                     # Create line using DSim's add_line method
                     new_line = self.dsim.add_line(
                         (start_block_name, self.canvas.line_start_port, start_coords),
-                        (end_block_name, end_port, end_coords)
+                        (end_block_name, end_port, end_coords),
                     )
                     if new_line:
                         # Set the default routing mode for the new connection
                         new_line.routing_mode = self.canvas.default_routing_mode
-                        logger.info(f"Line created: {start_block_name} -> {end_block_name} (routing: {self.canvas.default_routing_mode})")
+                        logger.info(
+                            f"Line created: {start_block_name} -> {end_block_name} (routing: {self.canvas.default_routing_mode})"
+                        )
                         # If Goto/From involved, relink to sync labels/virtual lines
-                        if getattr(self.canvas.line_start_block, "block_fn", "") in ("Goto", "From") or getattr(end_block, "block_fn", "") in ("Goto", "From"):
+                        if getattr(self.canvas.line_start_block, "block_fn", "") in (
+                            "Goto",
+                            "From",
+                        ) or getattr(end_block, "block_fn", "") in ("Goto", "From"):
                             try:
                                 self.dsim.model.link_goto_from()
                             except Exception as e:
@@ -157,10 +170,10 @@ class ConnectionManager:
 
     def get_clicked_line(self, pos: QPoint) -> Tuple[Optional[Any], Optional[Any]]:
         """Get the line at the given position."""
-        for line in getattr(self.dsim, 'line_list', []):
+        for line in getattr(self.dsim, "line_list", []):
             if getattr(line, "hidden", False):
                 continue
-            if hasattr(line, 'collision'):
+            if hasattr(line, "collision"):
                 result = line.collision(pos)
                 if result:
                     return line, result
@@ -171,7 +184,7 @@ class ConnectionManager:
         from modern_ui.interactions.interaction_manager import State
 
         try:
-            line_name = getattr(line, 'name', 'Unknown')
+            line_name = getattr(line, "name", "Unknown")
             logger.info(f"Line clicked: {line_name}")
 
             collision_type, collision_index = collision_result
@@ -225,14 +238,14 @@ class ConnectionManager:
     def edit_connection_label(self, line: Any) -> None:
         """Edit the label of a connection."""
         # Get current label
-        current_label = line.label if hasattr(line, 'label') else ""
+        current_label = line.label if hasattr(line, "label") else ""
 
         # Show input dialog
         text, ok = QInputDialog.getText(
             self.canvas,
             "Edit Connection Label",
             f"Enter label for connection {line.srcblock} -> {line.dstblock}:",
-            text=current_label
+            text=current_label,
         )
 
         if ok:

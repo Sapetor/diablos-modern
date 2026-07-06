@@ -6,6 +6,7 @@ destroyed a live thread ("QThread: Destroyed while thread is still running"),
 aborting the process. These pin the _cancel_experiment_workers helper and its
 wiring into closeEvent.
 """
+
 import pytest
 from PyQt5.QtGui import QCloseEvent
 
@@ -42,6 +43,7 @@ class _StubWorker:
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -81,7 +83,7 @@ class TestCancelExperimentWorkers:
         # Must not raise even when the attributes are missing entirely.
         del window._mc_worker
         window._cancel_experiment_workers()
-        assert getattr(window, '_mc_worker', None) is None
+        assert getattr(window, "_mc_worker", None) is None
 
     def test_not_running_worker_is_not_cancelled(self, window):
         idle = _StubWorker(running=False)
@@ -110,7 +112,8 @@ class TestCancelExperimentWorkers:
     def test_closeEvent_invokes_worker_teardown(self, window, monkeypatch):
         called = {"n": 0}
         monkeypatch.setattr(
-            window, "_cancel_experiment_workers",
+            window,
+            "_cancel_experiment_workers",
             lambda: called.__setitem__("n", called["n"] + 1),
         )
         window.closeEvent(QCloseEvent())

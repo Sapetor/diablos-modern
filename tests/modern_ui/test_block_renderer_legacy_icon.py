@@ -7,6 +7,7 @@ RateLimiter's slew path. Both are now guarded with path.isEmpty() (the same
 convention Step/Ramp/Sine already use) so draw_icon owns the shape and the
 legacy branch only acts as a fallback.
 """
+
 import pytest
 from PyQt5.QtGui import QPainterPath, QPixmap, QPainter, QColor
 

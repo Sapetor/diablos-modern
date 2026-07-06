@@ -15,14 +15,10 @@ logger = logging.getLogger(__name__)
 class AnimationExporter:
     """Export field animations as GIF or MP4."""
 
-    WRITERS = {'gif': 'pillow', 'mp4': 'ffmpeg'}
-    QUALITY_PRESETS = {
-        'low': 72,
-        'medium': 100,
-        'high': 150
-    }
+    WRITERS = {"gif": "pillow", "mp4": "ffmpeg"}
+    QUALITY_PRESETS = {"low": 72, "medium": 100, "high": 150}
 
-    def __init__(self, field_data, time_data, params, dimension='2d'):
+    def __init__(self, field_data, time_data, params, dimension="2d"):
         """
         Initialize the animation exporter.
 
@@ -39,16 +35,18 @@ class AnimationExporter:
             dimension: '1d' or '2d'
         """
         self.field_data = np.asarray(field_data)
-        self.time_data = np.asarray(time_data) if time_data is not None else np.arange(len(field_data))
+        self.time_data = (
+            np.asarray(time_data) if time_data is not None else np.arange(len(field_data))
+        )
         self.params = params
         self.dimension = dimension.lower()
 
         # Validate data shape
-        if self.dimension == '2d' and self.field_data.ndim != 3:
+        if self.dimension == "2d" and self.field_data.ndim != 3:
             raise ValueError(f"2D field data must be 3D array, got {self.field_data.ndim}D")
-        if self.dimension == '1d' and self.field_data.ndim != 2:
+        if self.dimension == "1d" and self.field_data.ndim != 2:
             raise ValueError(f"1D field data must be 2D array, got {self.field_data.ndim}D")
-        if self.dimension == 'agents' and self.field_data.ndim != 3:
+        if self.dimension == "agents" and self.field_data.ndim != 3:
             raise ValueError(f"Agents data must be 3D array (T, N, 2), got {self.field_data.ndim}D")
 
     @property
@@ -66,7 +64,7 @@ class AnimationExporter:
     @property
     def grid_size(self):
         """Grid dimensions as string (e.g., '50x50' for 2D or '100' for 1D)."""
-        if self.dimension == '2d':
+        if self.dimension == "2d":
             _, Ny, Nx = self.field_data.shape
             return f"{Nx}x{Ny}"
         else:
@@ -96,7 +94,7 @@ class AnimationExporter:
             Playback duration in seconds
         """
         if fps <= 0:
-            return float('inf')
+            return float("inf")
         return self.n_frames / fps
 
     def create_animation(self, fps=15, figsize=(8, 6), dpi=100):
@@ -112,9 +110,9 @@ class AnimationExporter:
             tuple: (fig, animation) - matplotlib figure and FuncAnimation object
         """
 
-        if self.dimension == '2d':
+        if self.dimension == "2d":
             return self._create_2d_animation(fps, figsize, dpi)
-        elif self.dimension == 'agents':
+        elif self.dimension == "agents":
             return self._create_agents_animation(fps, figsize, dpi)
         else:
             return self._create_1d_animation(fps, figsize, dpi)
@@ -127,9 +125,9 @@ class AnimationExporter:
         positions = self.field_data
         n_times, n_agents, _ = positions.shape
 
-        title = self.params.get('title', 'Agent trajectories')
-        show_trails = bool(self.params.get('show_trails', True))
-        trail_length = int(self.params.get('trail_length', 0) or 0)
+        title = self.params.get("title", "Agent trajectories")
+        show_trails = bool(self.params.get("show_trails", True))
+        trail_length = int(self.params.get("trail_length", 0) or 0)
 
         x_min, x_max = float(np.min(positions[..., 0])), float(np.max(positions[..., 0]))
         y_min, y_max = float(np.min(positions[..., 1])), float(np.max(positions[..., 1]))
@@ -139,27 +137,35 @@ class AnimationExporter:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
         ax.set_xlim(x_min - pad_x, x_max + pad_x)
         ax.set_ylim(y_min - pad_y, y_max + pad_y)
-        ax.set_aspect('equal', adjustable='box')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
         ax.grid(True, alpha=0.3)
         title_text = ax.set_title(f"{title}  t={self.time_data[0]:.3f}s")
 
-        cmap = plt.get_cmap('tab10')
+        cmap = plt.get_cmap("tab10")
         colors = [cmap(i % 10) for i in range(n_agents)]
 
         trail_lines = []
         if show_trails:
             for i in range(n_agents):
-                line, = ax.plot([], [], '-', color=colors[i], linewidth=1.5, alpha=0.6)
+                (line,) = ax.plot([], [], "-", color=colors[i], linewidth=1.5, alpha=0.6)
                 trail_lines.append(line)
 
-        scatter = ax.scatter(positions[0, :, 0], positions[0, :, 1],
-                             c=colors, s=80, edgecolors='black', zorder=3)
-        labels = [ax.annotate(str(i + 1),
-                              (positions[0, i, 0], positions[0, i, 1]),
-                              fontsize=9, ha='center', va='center', zorder=4)
-                  for i in range(n_agents)]
+        scatter = ax.scatter(
+            positions[0, :, 0], positions[0, :, 1], c=colors, s=80, edgecolors="black", zorder=3
+        )
+        labels = [
+            ax.annotate(
+                str(i + 1),
+                (positions[0, i, 0], positions[0, i, 1]),
+                fontsize=9,
+                ha="center",
+                va="center",
+                zorder=4,
+            )
+            for i in range(n_agents)
+        ]
         plt.tight_layout()
 
         def update(frame):
@@ -169,13 +175,15 @@ class AnimationExporter:
             if show_trails:
                 start = 0 if trail_length <= 0 else max(0, frame - trail_length)
                 for i in range(n_agents):
-                    trail_lines[i].set_data(positions[start:frame + 1, i, 0],
-                                            positions[start:frame + 1, i, 1])
+                    trail_lines[i].set_data(
+                        positions[start : frame + 1, i, 0], positions[start : frame + 1, i, 1]
+                    )
             title_text.set_text(f"{title}  t={self.time_data[frame]:.3f}s")
             return [scatter, title_text, *trail_lines, *labels]
 
-        anim = FuncAnimation(fig, update, frames=n_times,
-                             interval=1000 / fps, blit=False, repeat=True)
+        anim = FuncAnimation(
+            fig, update, frames=n_times, interval=1000 / fps, blit=False, repeat=True
+        )
         return fig, anim
 
     def _create_2d_animation(self, fps, figsize, dpi):
@@ -186,12 +194,12 @@ class AnimationExporter:
         n_times, Ny, Nx = self.field_data.shape
 
         # Get parameters
-        Lx = float(self.params.get('Lx', 1.0))
-        Ly = float(self.params.get('Ly', 1.0))
-        colormap = self.params.get('colormap', 'viridis')
-        title = self.params.get('title', '2D Field')
-        clim_min = self.params.get('clim_min', np.min(self.field_data))
-        clim_max = self.params.get('clim_max', np.max(self.field_data))
+        Lx = float(self.params.get("Lx", 1.0))
+        Ly = float(self.params.get("Ly", 1.0))
+        colormap = self.params.get("colormap", "viridis")
+        title = self.params.get("title", "2D Field")
+        clim_min = self.params.get("clim_min", np.min(self.field_data))
+        clim_max = self.params.get("clim_max", np.max(self.field_data))
 
         # Create figure
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -200,22 +208,22 @@ class AnimationExporter:
         extent = [0, Lx, 0, Ly]
         im = ax.imshow(
             self.field_data[0],
-            aspect='equal',
-            origin='lower',
+            aspect="equal",
+            origin="lower",
             extent=extent,
             cmap=colormap,
             vmin=clim_min,
             vmax=clim_max,
-            interpolation='bilinear'
+            interpolation="bilinear",
         )
 
         # Colorbar
         cbar = plt.colorbar(im, ax=ax)
-        cbar.set_label('Field Value')
+        cbar.set_label("Field Value")
 
         # Labels
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
         title_text = ax.set_title(f"{title} at t={self.time_data[0]:.3f}")
 
         plt.tight_layout()
@@ -226,11 +234,7 @@ class AnimationExporter:
             return [im, title_text]
 
         anim = FuncAnimation(
-            fig, update,
-            frames=n_times,
-            interval=1000 / fps,
-            blit=True,
-            repeat=True
+            fig, update, frames=n_times, interval=1000 / fps, blit=True, repeat=True
         )
 
         return fig, anim
@@ -243,8 +247,8 @@ class AnimationExporter:
         n_times, n_nodes = self.field_data.shape
 
         # Get parameters
-        L = float(self.params.get('L', 1.0))
-        title = self.params.get('title', 'Field Evolution')
+        L = float(self.params.get("L", 1.0))
+        title = self.params.get("title", "Field Evolution")
 
         # Spatial positions
         x_positions = np.linspace(0, L, n_nodes)
@@ -260,12 +264,12 @@ class AnimationExporter:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
         # Initial frame
-        line, = ax.plot(x_positions, self.field_data[0], 'b-', linewidth=2)
+        (line,) = ax.plot(x_positions, self.field_data[0], "b-", linewidth=2)
 
         ax.set_xlim(0, L)
         ax.set_ylim(y_min, y_max)
-        ax.set_xlabel('Position x')
-        ax.set_ylabel('Field Value')
+        ax.set_xlabel("Position x")
+        ax.set_ylabel("Field Value")
         ax.grid(True, alpha=0.3)
         title_text = ax.set_title(f"{title} at t={self.time_data[0]:.3f}")
 
@@ -277,16 +281,12 @@ class AnimationExporter:
             return [line, title_text]
 
         anim = FuncAnimation(
-            fig, update,
-            frames=n_times,
-            interval=1000 / fps,
-            blit=True,
-            repeat=True
+            fig, update, frames=n_times, interval=1000 / fps, blit=True, repeat=True
         )
 
         return fig, anim
 
-    def export(self, filepath, format='gif', fps=15, dpi=100, progress_callback=None):
+    def export(self, filepath, format="gif", fps=15, dpi=100, progress_callback=None):
         """
         Export animation to file.
 
@@ -321,11 +321,13 @@ class AnimationExporter:
             fig, anim = self.create_animation(fps=fps, dpi=dpi)
 
             # Set up writer
-            if format == 'gif':
+            if format == "gif":
                 from matplotlib.animation import PillowWriter
+
                 writer = PillowWriter(fps=fps)
             else:  # mp4
                 from matplotlib.animation import FFMpegWriter
+
                 writer = FFMpegWriter(fps=fps, bitrate=1800)
 
             # Ensure parent directory exists
@@ -340,7 +342,7 @@ class AnimationExporter:
                 anim.save(
                     str(filepath),
                     writer=writer,
-                    progress_callback=lambda i, n: progress_callback(i, n)
+                    progress_callback=lambda i, n: progress_callback(i, n),
                 )
             else:
                 anim.save(str(filepath), writer=writer)
@@ -351,6 +353,7 @@ class AnimationExporter:
         except Exception as e:
             logger.error(f"Failed to export animation: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -368,24 +371,22 @@ class AnimationExporter:
         Returns:
             dict: {'gif': bool, 'mp4': bool}
         """
-        available = {'gif': False, 'mp4': False}
+        available = {"gif": False, "mp4": False}
 
         # Check Pillow for GIF
         try:
             from PIL import Image  # noqa: F401  -- import success is the availability probe
-            available['gif'] = True
+
+            available["gif"] = True
         except ImportError:
             logger.debug("Pillow not available; GIF export disabled", exc_info=True)
 
         # Check ffmpeg for MP4
         try:
             import subprocess
-            result = subprocess.run(
-                ['ffmpeg', '-version'],
-                capture_output=True,
-                timeout=5
-            )
-            available['mp4'] = result.returncode == 0
+
+            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
+            available["mp4"] = result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             logger.debug("ffmpeg not available; MP4 export disabled", exc_info=True)
 

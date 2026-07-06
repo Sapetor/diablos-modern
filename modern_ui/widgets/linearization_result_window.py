@@ -166,9 +166,7 @@ class LinearizationResultWindow(QWidget):
 
         bode = self.result.get("bode")
         if not bode or not bode.get("w"):
-            label = QLabel(
-                "Designate input & output blocks to compute a Bode plot."
-            )
+            label = QLabel("Designate input & output blocks to compute a Bode plot.")
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
@@ -210,9 +208,7 @@ class LinearizationResultWindow(QWidget):
 
         data = self.result.get(key)
         if not data or not data.get("t"):
-            label = QLabel(
-                "Designate input & output blocks to compute the time response."
-            )
+            label = QLabel("Designate input & output blocks to compute the time response.")
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
@@ -280,10 +276,7 @@ class LinearizationResultWindow(QWidget):
 
         tcs = r.get("time_constants") or []
         if tcs:
-            lines.append(
-                "Time constants: "
-                + ", ".join(f"{float(t):.4g}" for t in tcs)
-            )
+            lines.append("Time constants: " + ", ".join(f"{float(t):.4g}" for t in tcs))
 
         modes = r.get("oscillatory_modes") or []
         if modes:

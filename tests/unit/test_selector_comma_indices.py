@@ -8,6 +8,7 @@ and the compiled kernel did str((0, 2)) == "(0, 2)", failed to int-parse, and
 silently selected index 0. Both paths now normalize the resolved value back to a
 comma string via blocks.selector.normalize_indices_str.
 """
+
 import numpy as np
 import pytest
 
@@ -43,15 +44,22 @@ class TestSelectorCommaListAfterResolve:
         resolved = WorkspaceManager().resolve_params({"indices": "0,2"})
         block = SelectorBlock()
         result = block.execute(
-            time=0.0, inputs={0: np.array([10.0, 11.0, 12.0, 13.0])},
-            params=resolved)
+            time=0.0, inputs={0: np.array([10.0, 11.0, 12.0, 13.0])}, params=resolved
+        )
         assert np.allclose(result[0], [10.0, 12.0])
 
     def test_compiled_kernel_handles_resolved_tuple(self):
         resolved = WorkspaceManager().resolve_params({"indices": "0,2"})
         ctx = BuildContext(
-            block=None, b_name="se0", fn="Selector", params=resolved,
-            input_sources=["x"], deps={}, state_map={}, block_matrices={})
+            block=None,
+            b_name="se0",
+            fn="Selector",
+            params=resolved,
+            input_sources=["x"],
+            deps={},
+            state_map={},
+            block_matrices={},
+        )
         ex = get_kernel_builder("Selector")(ctx)
         sig = {"x": np.array([10.0, 11.0, 12.0, 13.0])}
         ex(0.0, None, None, sig)

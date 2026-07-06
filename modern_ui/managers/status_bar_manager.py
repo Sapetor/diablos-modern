@@ -59,11 +59,14 @@ class StatusBarManager:
 
         def _mono_label(text=""):
             from PyQt5.QtGui import QFont as _QF
+
             lbl = QLabel(text)
             f = _QF("Menlo")
             f.setStyleHint(_QF.Monospace)
-            if hasattr(f, 'setFamilies'):
-                f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+            if hasattr(f, "setFamilies"):
+                f.setFamilies(
+                    ["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"]
+                )
             f.setPointSize(8)
             lbl.setFont(f)
             return lbl
@@ -76,6 +79,7 @@ class StatusBarManager:
         # Hidden compatibility shim — many call sites still call status_message.setText(...)
         window.status_message = QLabel()
         window.status_message.hide()
+
         # Forward text changes to the pill (idle/running/paused detection)
         def _on_status_text_changed(text):
             try:
@@ -83,19 +87,22 @@ class StatusBarManager:
             except Exception:
                 logger.debug("Failed to forward status text to toolbar", exc_info=True)
             t = (text or "").lower()
-            if 'run' in t and 'paus' not in t:
-                window.status_pill.set_state('running')
-            elif 'paus' in t:
-                window.status_pill.set_state('paused')
-            elif 'error' in t or 'fail' in t:
-                window.status_pill.set_state('error', text)
+            if "run" in t and "paus" not in t:
+                window.status_pill.set_state("running")
+            elif "paus" in t:
+                window.status_pill.set_state("paused")
+            elif "error" in t or "fail" in t:
+                window.status_pill.set_state("error", text)
             else:
-                window.status_pill.set_state('idle', text if text else None)
+                window.status_pill.set_state("idle", text if text else None)
+
         # Replace setText to propagate to the pill
         _orig_setText = window.status_message.setText
+
         def _propagating_setText(text):
             _orig_setText(text)
             _on_status_text_changed(text)
+
         window.status_message.setText = _propagating_setText  # type: ignore[attr-defined]
 
         statusbar.addWidget(_vsep())
@@ -109,8 +116,7 @@ class StatusBarManager:
         window.file_unsaved_status = QLabel("")
         window.file_unsaved_status.setToolTip("Unsaved changes indicator")
         window.file_unsaved_status.setStyleSheet(
-            f"color: {theme_manager.get_color('text_disabled').name()};"
-            f" font-size: 9pt;"
+            f"color: {theme_manager.get_color('text_disabled').name()}; font-size: 9pt;"
         )
         statusbar.addWidget(window.file_status)
         statusbar.addWidget(window.file_unsaved_status)
@@ -147,7 +153,10 @@ class StatusBarManager:
         # Theme + palette tag
         theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
         from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
-        palette_label = PALETTE_DISPLAY_NAMES.get(theme_manager.current_palette, theme_manager.current_palette).split()[0]
+
+        palette_label = PALETTE_DISPLAY_NAMES.get(
+            theme_manager.current_palette, theme_manager.current_palette
+        ).split()[0]
         window.theme_status = QLabel(f"{theme_label} · {palette_label}")
         window.theme_status.setToolTip("Click to toggle theme (Ctrl+T)")
         window.theme_status.setStyleSheet(
@@ -160,7 +169,7 @@ class StatusBarManager:
         # Drive zoom from toolbar's zoom rocker so the two stay in sync
         try:
             window.toolbar.zoom_changed.connect(
-                lambda f: window.zoom_status.setText(f"zoom {int(round(f*100))}%")
+                lambda f: window.zoom_status.setText(f"zoom {int(round(f * 100))}%")
             )
         except Exception:
             logger.debug("Failed to wire toolbar zoom_changed to zoom status label", exc_info=True)
@@ -189,12 +198,12 @@ class StatusBarManager:
         """Update the counts pill from current dsim state."""
         window = self.window
         try:
-            dsim = getattr(window, 'dsim', None)
+            dsim = getattr(window, "dsim", None)
             if dsim is None:
                 return
-            blocks = list(getattr(dsim, 'blocks_list', []) or [])
-            wires = list(getattr(dsim, 'line_list', []) or [])
-            scopes = sum(1 for b in blocks if getattr(b, 'block_fn', '') in ('Scope', 'FieldScope'))
+            blocks = list(getattr(dsim, "blocks_list", []) or [])
+            wires = list(getattr(dsim, "line_list", []) or [])
+            scopes = sum(1 for b in blocks if getattr(b, "block_fn", "") in ("Scope", "FieldScope"))
             window.counts_status.setText(
                 f"blocks {len(blocks)} · wires {len(wires)} · scopes {scopes}"
             )
@@ -205,9 +214,13 @@ class StatusBarManager:
         """Update filename + unsaved indicator in the status bar."""
         window = self.window
         try:
-            path = getattr(window.dsim, 'current_filepath', None) or getattr(window.dsim, 'filepath', None)
+            path = getattr(window.dsim, "current_filepath", None) or getattr(
+                window.dsim, "filepath", None
+            )
             name = os.path.basename(path) if path else "untitled"
             window.file_status.setText(name)
-            window.file_unsaved_status.setText("unsaved" if getattr(window.dsim, 'dirty', False) else "")
+            window.file_unsaved_status.setText(
+                "unsaved" if getattr(window.dsim, "dirty", False) else ""
+            )
         except Exception:
             logger.debug("Failed to refresh file/unsaved status in status bar", exc_info=True)

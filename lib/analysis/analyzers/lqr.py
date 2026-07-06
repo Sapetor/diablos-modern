@@ -3,8 +3,14 @@ import ast
 import numpy as np
 from scipy.linalg import solve_continuous_are
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTextEdit, QGroupBox, QApplication
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QGroupBox,
+    QApplication,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -31,14 +37,14 @@ class LQRAnalyzer(BaseAnalyzer):
         try:
             if ss_block:
                 ss_params = ss_block.params
-                A = self._resolve_matrix(ss_params.get('A', '[[0]]'), canvas)
-                B = self._resolve_matrix(ss_params.get('B', '[[0]]'), canvas)
+                A = self._resolve_matrix(ss_params.get("A", "[[0]]"), canvas)
+                B = self._resolve_matrix(ss_params.get("B", "[[0]]"), canvas)
                 logger.info(f"LQR: reading A, B from connected StateSpace '{ss_block.name}'")
             else:
-                A = self._resolve_matrix(params.get('A', '[[0]]'), canvas)
-                B = self._resolve_matrix(params.get('B', '[[0]]'), canvas)
-            Q = self._resolve_matrix(params.get('Q', '[[1]]'), canvas)
-            R = self._resolve_matrix(params.get('R', '[[1]]'), canvas)
+                A = self._resolve_matrix(params.get("A", "[[0]]"), canvas)
+                B = self._resolve_matrix(params.get("B", "[[0]]"), canvas)
+            Q = self._resolve_matrix(params.get("Q", "[[1]]"), canvas)
+            R = self._resolve_matrix(params.get("R", "[[1]]"), canvas)
         except Exception as e:
             logger.error(f"Failed to parse LQR matrices: {e}")
             self._show_error(f"Failed to parse matrices:\n{e}")
@@ -82,10 +88,17 @@ class LQRAnalyzer(BaseAnalyzer):
         # Show results dialog
         plant_source = ss_block.name if ss_block else None
         dialog = LQRResultDialog(
-            K=K, P=P, A=A, B=B, Q=Q, R=R,
-            eig_cl=eig_cl, eig_ol=eig_ol,
-            stable=stable, block_name=source_block.name,
-            plant_source=plant_source
+            K=K,
+            P=P,
+            A=A,
+            B=B,
+            Q=Q,
+            R=R,
+            eig_cl=eig_cl,
+            eig_ol=eig_ol,
+            stable=stable,
+            block_name=source_block.name,
+            plant_source=plant_source,
         )
         dialog.show()
         return dialog
@@ -104,7 +117,9 @@ class LQRAnalyzer(BaseAnalyzer):
                     if src and src.block_fn in ("StateSpace", "DiscreteStateSpace"):
                         return src
                 except AttributeError:
-                    logger.debug("Could not resolve source block for LQR line; skipping", exc_info=True)
+                    logger.debug(
+                        "Could not resolve source block for LQR line; skipping", exc_info=True
+                    )
         return None
 
     def _resolve_matrix(self, value, canvas):
@@ -121,11 +136,14 @@ class LQRAnalyzer(BaseAnalyzer):
                 parsed = ast.literal_eval(value)
                 return np.atleast_2d(np.array(parsed, dtype=float))
             except (ValueError, SyntaxError):
-                logger.debug("Matrix value is not a literal; trying workspace variable lookup", exc_info=True)
+                logger.debug(
+                    "Matrix value is not a literal; trying workspace variable lookup", exc_info=True
+                )
 
             # Try workspace variable
             try:
                 from lib.workspace import WorkspaceManager
+
                 ws = WorkspaceManager()
                 ws_val = ws.get_variable(value)
                 if ws_val is not None:
@@ -136,14 +154,15 @@ class LQRAnalyzer(BaseAnalyzer):
             raise ValueError(f"Cannot parse '{value}' as matrix or workspace variable")
 
         # dict with 'default' key (param dict)
-        if isinstance(value, dict) and 'default' in value:
-            return self._resolve_matrix(value['default'], canvas)
+        if isinstance(value, dict) and "default" in value:
+            return self._resolve_matrix(value["default"], canvas)
 
         return np.atleast_2d(np.array(value, dtype=float))
 
     def _show_error(self, message):
         """Show error in a message box."""
         from PyQt5.QtWidgets import QMessageBox
+
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
         msg.setWindowTitle("LQR Error")
@@ -154,8 +173,9 @@ class LQRAnalyzer(BaseAnalyzer):
 class LQRResultDialog(QDialog):
     """Dialog showing LQR computation results with copy buttons."""
 
-    def __init__(self, K, P, A, B, Q, R, eig_cl, eig_ol, stable, block_name,
-                 plant_source=None, parent=None):
+    def __init__(
+        self, K, P, A, B, Q, R, eig_cl, eig_ol, stable, block_name, plant_source=None, parent=None
+    ):
         super().__init__(parent)
         self.K = K
         self.P = P
@@ -206,8 +226,7 @@ class LQRResultDialog(QDialog):
 
         status = QLabel("✓ Stable" if stable else "✗ UNSTABLE")
         status.setStyleSheet(
-            "color: green; font-weight: bold;" if stable
-            else "color: red; font-weight: bold;"
+            "color: green; font-weight: bold;" if stable else "color: red; font-weight: bold;"
         )
         eig_layout.addWidget(status)
 
@@ -273,19 +292,17 @@ class LQRResultDialog(QDialog):
         so the output is clean (e.g. ``[[1.0, 1.73205]]`` not
         ``[[1.0000000000000002, 1.7320508075688772]]``).
         """
+
         def _fmt(x):
             s = f"{x:.{digits}g}"
             # Ensure floats keep a decimal point (so ast.literal_eval → float)
-            if '.' not in s and 'e' not in s:
-                s += '.0'
+            if "." not in s and "e" not in s:
+                s += ".0"
             return s
 
         if M.ndim == 1:
-            return '[' + ', '.join(_fmt(v) for v in M) + ']'
-        return '[' + ', '.join(
-            '[' + ', '.join(_fmt(v) for v in row) + ']'
-            for row in M
-        ) + ']'
+            return "[" + ", ".join(_fmt(v) for v in M) + "]"
+        return "[" + ", ".join("[" + ", ".join(_fmt(v) for v in row) + "]" for row in M) + "]"
 
     def _copy_to_clipboard(self, text):
         """Copy text to system clipboard."""

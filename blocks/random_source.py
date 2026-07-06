@@ -69,25 +69,32 @@ class RandomSourceBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "distribution": {"type": "choice", "default": "uniform",
-                             "options": ["uniform", "bernoulli", "normal", "randint"],
-                             "doc": "Distribution to sample from."},
-            "p": {"type": "float", "default": 0.5,
-                  "doc": "Bernoulli success probability (0..1)."},
-            "low": {"type": "float", "default": 0.0,
-                    "doc": "Lower bound for uniform / randint."},
-            "high": {"type": "float", "default": 1.0,
-                     "doc": "Upper bound for uniform / randint."},
-            "mu": {"type": "float", "default": 0.0,
-                   "doc": "Mean for the normal distribution."},
-            "sigma": {"type": "float", "default": 1.0,
-                      "doc": "Standard deviation for the normal distribution."},
-            "sample_time": {"type": "float", "default": 0.0,
-                            "doc": "Sample period (s). 0 = every step (use dtime)."},
-            "seed": {"type": "int", "default": 0,
-                     "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible)."},
-            "_init_start_": {"type": "bool", "default": True,
-                             "doc": "Internal init flag."},
+            "distribution": {
+                "type": "choice",
+                "default": "uniform",
+                "options": ["uniform", "bernoulli", "normal", "randint"],
+                "doc": "Distribution to sample from.",
+            },
+            "p": {"type": "float", "default": 0.5, "doc": "Bernoulli success probability (0..1)."},
+            "low": {"type": "float", "default": 0.0, "doc": "Lower bound for uniform / randint."},
+            "high": {"type": "float", "default": 1.0, "doc": "Upper bound for uniform / randint."},
+            "mu": {"type": "float", "default": 0.0, "doc": "Mean for the normal distribution."},
+            "sigma": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "Standard deviation for the normal distribution.",
+            },
+            "sample_time": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Sample period (s). 0 = every step (use dtime).",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "RNG seed (0 = non-reproducible, nonzero = reproducible).",
+            },
+            "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
         }
 
     @property
@@ -101,6 +108,7 @@ class RandomSourceBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw a 'dice / random samples' icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # scattered random stems on a baseline
         path.moveTo(0.10, 0.80)

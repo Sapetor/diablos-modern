@@ -20,6 +20,7 @@ def _params(block_type, **overrides):
     global _BLOCK_INSTANCES
     if _BLOCK_INSTANCES is None:
         from lib.block_loader import load_blocks
+
         _BLOCK_INSTANCES = {}
         for cls in load_blocks():
             try:
@@ -31,7 +32,7 @@ def _params(block_type, **overrides):
     out = {}
     if inst is not None:
         for k, v in inst.params.items():
-            out[k] = v['default'] if isinstance(v, dict) and 'default' in v else v
+            out[k] = v["default"] if isinstance(v, dict) and "default" in v else v
     out.update(overrides)
     return out
 
@@ -39,6 +40,7 @@ def _params(block_type, **overrides):
 def _load(builder, tmp_path, name):
     from lib.lib import DSim
     from lib.workspace import WorkspaceManager
+
     path = tmp_path / name
     builder.save(str(path))
     WorkspaceManager._instance = None
@@ -79,8 +81,8 @@ class TestParameterSweep:
         values = [0.0, 1.0, 2.0, 3.0]
 
         res = ParameterSweepRunner(dsim).run(
-            axes=[{"block": gain, "param": "gain", "values": values}],
-            sim_time=0.5, sim_dt=0.05)
+            axes=[{"block": gain, "param": "gain", "values": values}], sim_time=0.5, sim_dt=0.05
+        )
 
         assert res["mode"] == "1d"
         assert res["n_points"] == 4 and res["n_ok"] == 4
@@ -100,8 +102,8 @@ class TestParameterSweep:
         before = block.params["gain"]
 
         ParameterSweepRunner(dsim).run(
-            axes=[{"block": gain, "param": "gain", "values": [0.0, 5.0]}],
-            sim_time=0.3, sim_dt=0.05)
+            axes=[{"block": gain, "param": "gain", "values": [0.0, 5.0]}], sim_time=0.3, sim_dt=0.05
+        )
 
         assert block.params["gain"] == before  # never mutates the diagram
         # exec_params must be restored in sync with params (not left desynced).
@@ -112,13 +114,17 @@ class TestParameterSweep:
         dsim = _const_gain_scope(tmp_path, "sweep2d.diablos")
         const = _name_of(dsim, "Constant")
         gain = _name_of(dsim, "Gain")
-        xv = [1.0, 2.0]          # Constant.value
-        yv = [1.0, 2.0, 3.0]     # Gain.gain
+        xv = [1.0, 2.0]  # Constant.value
+        yv = [1.0, 2.0, 3.0]  # Gain.gain
 
         res = ParameterSweepRunner(dsim).run(
-            axes=[{"block": const, "param": "value", "values": xv},
-                  {"block": gain, "param": "gain", "values": yv}],
-            sim_time=0.3, sim_dt=0.05)
+            axes=[
+                {"block": const, "param": "value", "values": xv},
+                {"block": gain, "param": "gain", "values": yv},
+            ],
+            sim_time=0.3,
+            sim_dt=0.05,
+        )
 
         assert res["mode"] == "2d"
         assert res["n_points"] == 6 and res["n_ok"] == 6
@@ -135,9 +141,11 @@ class TestParameterSweep:
         done = {"n": 0}
         res = ParameterSweepRunner(dsim).run(
             axes=[{"block": gain, "param": "gain", "values": list(range(10))}],
-            sim_time=0.3, sim_dt=0.05,
+            sim_time=0.3,
+            sim_dt=0.05,
             progress_cb=lambda d, t: done.__setitem__("n", d),
-            cancel_cb=lambda: done["n"] >= 3)  # allow 3 points, then cancel
+            cancel_cb=lambda: done["n"] >= 3,
+        )  # allow 3 points, then cancel
         assert res["n_points"] == 10
         assert res["n_ok"] == 3
         assert res["signals"], "partial sweep should still carry signals"
@@ -146,6 +154,7 @@ class TestParameterSweep:
         dsim = _const_gain_scope(tmp_path, "sweepbad.diablos")
         with pytest.raises(ValueError):
             ParameterSweepRunner(dsim).run(
-                axes=[{"block": "NoSuchBlock", "param": "gain", "values": [0, 1]}])
+                axes=[{"block": "NoSuchBlock", "param": "gain", "values": [0, 1]}]
+            )
         with pytest.raises(ValueError):
             ParameterSweepRunner(dsim).run(axes=[])

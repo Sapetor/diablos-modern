@@ -58,16 +58,8 @@ class ExternalBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "filename": {
-                "default": "",
-                "type": "string",
-                "doc": "Path to external Python file"
-            },
-            "function": {
-                "default": "execute",
-                "type": "string",
-                "doc": "Function name to call"
-            },
+            "filename": {"default": "", "type": "string", "doc": "Path to external Python file"},
+            "function": {"default": "execute", "type": "string", "doc": "Function name to call"},
         }
 
     @property
@@ -86,10 +78,10 @@ class ExternalBlock(BaseBlock):
         security reasons, so this stub is the only code path. It always
         returns an error.
         """
-        filename = params.get('filename', '')
+        filename = params.get("filename", "")
         if not filename:
             logger.warning("External block: No filename specified")
-            return {0: 0.0, 'E': True, 'error': 'No external file specified'}
+            return {0: 0.0, "E": True, "error": "No external file specified"}
 
         logger.warning(f"External block: file_function not loaded for {filename}")
-        return {0: 0.0, 'E': True, 'error': f'External file not loaded: {filename}'}
+        return {0: 0.0, "E": True, "error": f"External file not loaded: {filename}"}

@@ -5,7 +5,7 @@ from blocks.base_block import BaseBlock
 class DeadbandBlock(BaseBlock):
     """
     Dead Zone block.
-    
+
     Output is zero inside [start, end] deadzone.
     Outside the deadzone, the offset is subtracted:
     - input < start: output = input - start
@@ -43,7 +43,11 @@ class DeadbandBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "start": {"type": "float", "default": -0.5, "doc": "Start of dead zone (lower threshold)."},
+            "start": {
+                "type": "float",
+                "default": -0.5,
+                "doc": "Start of dead zone (lower threshold).",
+            },
             "end": {"type": "float", "default": 0.5, "doc": "End of dead zone (upper threshold)."},
         }
 
@@ -58,6 +62,7 @@ class DeadbandBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw deadband characteristic icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Left slope
         path.moveTo(0.15, 0.80)
@@ -79,19 +84,18 @@ class DeadbandBlock(BaseBlock):
         u = np.array(inputs[0], dtype=float)
         start = float(params.get("start", -0.5))
         end = float(params.get("end", 0.5))
-        
+
         # Dead Zone behavior
         out = np.zeros_like(u)
-        
+
         # Below dead zone: subtract start threshold
         below_mask = u < start
         out[below_mask] = u[below_mask] - start
-        
+
         # Above dead zone: subtract end threshold
         above_mask = u > end
         out[above_mask] = u[above_mask] - end
-        
-        # Inside dead zone: output remains 0 (already initialized)
-        
-        return {0: out}
 
+        # Inside dead zone: output remains 0 (already initialized)
+
+        return {0: out}

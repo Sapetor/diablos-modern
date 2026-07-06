@@ -20,6 +20,7 @@ def _qt(qapp):
 @pytest.fixture
 def dialog():
     from modern_ui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
+
     d = KeyboardShortcutsDialog()
     yield d
     d.close()
@@ -32,11 +33,13 @@ class TestKeyboardShortcutsDialog:
 
     def test_catalogue_has_expected_groups(self):
         from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
+
         titles = [title for title, _ in SHORTCUT_GROUPS]
         assert titles == ["File", "Edit", "Simulation", "View", "Help"]
 
     def test_catalogue_entries_are_label_key_pairs(self):
         from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
+
         for _title, entries in SHORTCUT_GROUPS:
             assert entries  # each group is non-empty
             for entry in entries:
@@ -47,9 +50,8 @@ class TestKeyboardShortcutsDialog:
 
     def test_f1_help_binding_present(self):
         from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
-        help_entries = dict(
-            e for _t, group in SHORTCUT_GROUPS for e in group
-        )
+
+        help_entries = dict(e for _t, group in SHORTCUT_GROUPS for e in group)
         assert help_entries.get("Keyboard shortcuts") == "F1"
 
     def test_renders_known_keys_into_widget_tree(self, dialog):

@@ -59,10 +59,7 @@ def _scope_vector(dsim, scope_username: str = None):
         if vec is None:
             continue
         return np.asarray(vec).reshape(-1, vec_dim)
-    raise AssertionError(
-        f"No Scope with captured vector found "
-        f"(username={scope_username!r})"
-    )
+    raise AssertionError(f"No Scope with captured vector found (username={scope_username!r})")
 
 
 @pytest.mark.regression
@@ -76,9 +73,7 @@ class TestInterpreterCompiledEquivalence:
     def _run(self, filename: str, use_fast: bool):
         dsim = _load_example(filename)
         dsim.use_fast_solver = use_fast
-        success, err = dsim.run_tuning_simulation(
-            dsim.sim_time, dsim.sim_dt
-        )
+        success, err = dsim.run_tuning_simulation(dsim.sim_time, dsim.sim_dt)
         assert success, f"Simulation ({use_fast=}) failed: {err}"
         return dsim
 
@@ -100,8 +95,7 @@ class TestInterpreterCompiledEquivalence:
 
         # Equal sample counts (both ran the same time × dt).
         assert c_scope.shape == i_scope.shape, (
-            f"Shape mismatch: compiled={c_scope.shape} "
-            f"interpreter={i_scope.shape}"
+            f"Shape mismatch: compiled={c_scope.shape} interpreter={i_scope.shape}"
         )
 
         # Per-sample agreement — same dt forward-Euler should match exactly
@@ -111,7 +105,7 @@ class TestInterpreterCompiledEquivalence:
         assert max_diff < 1e-6, (
             f"Compiled vs interpreter scope traces disagree by max "
             f"{max_diff:.3e} > 1e-6 — possible memory-block timing lag.  "
-            f"c_scope[:5,0]={c_scope[:5,0]}, i_scope[:5,0]={i_scope[:5,0]}"
+            f"c_scope[:5,0]={c_scope[:5, 0]}, i_scope[:5,0]={i_scope[:5, 0]}"
         )
 
         # Bug-signature check: if there were a one-step lag the SHIFTED

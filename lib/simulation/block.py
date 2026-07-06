@@ -13,6 +13,7 @@ from lib.dialogs import ParamDialog, PortDialog
 
 logger = logging.getLogger(__name__)
 
+
 class DBlock:
     """
     Represents a functional block in the simulation diagram.
@@ -34,12 +35,24 @@ class DBlock:
         input_queue: Dictionary mapping port number to received data
     """
 
-    def __init__(self, block_fn: str, sid: int, coords: QRect, color: Union[str, QColor],
-                 in_ports: int = 1, out_ports: int = 1, b_type: int = 2,
-                 io_edit: Union[bool, str] = True, fn_name: str = 'block',
-                 params: Optional[Dict[str, Any]] = None, external: bool = False,
-                 username: str = '', block_class: Optional[Any] = None,
-                 colors: Optional[Dict[str, QColor]] = None, category: str = 'Other') -> None:
+    def __init__(
+        self,
+        block_fn: str,
+        sid: int,
+        coords: QRect,
+        color: Union[str, QColor],
+        in_ports: int = 1,
+        out_ports: int = 1,
+        b_type: int = 2,
+        io_edit: Union[bool, str] = True,
+        fn_name: str = "block",
+        params: Optional[Dict[str, Any]] = None,
+        external: bool = False,
+        username: str = "",
+        block_class: Optional[Any] = None,
+        colors: Optional[Dict[str, QColor]] = None,
+        category: str = "Other",
+    ) -> None:
         """
         Initialize a block instance.
 
@@ -69,7 +82,7 @@ class DBlock:
         self.flipped: bool = False
         self.block_fn: str = block_fn
         self.sid: int = sid
-        self.username: str = self.name if username == '' else username
+        self.username: str = self.name if username == "" else username
 
         self.rect: QRect = coords
         self.left: int = self.rect.left()
@@ -89,8 +102,12 @@ class DBlock:
 
         self.params: Dict[str, Any] = params.copy()
         self.initial_params: Dict[str, Any] = params.copy()
-        self.exec_params: Dict[str, Any] = {}  # Parameters used during execution (resolved variables)
-        self.init_params_list: List[str] = [key for key in params.keys() if not (key.startswith('_') and key.endswith('_'))]
+        self.exec_params: Dict[
+            str, Any
+        ] = {}  # Parameters used during execution (resolved variables)
+        self.init_params_list: List[str] = [
+            key for key in params.keys() if not (key.startswith("_") and key.endswith("_"))
+        ]
         logger.debug(f"Initialized block {self.name} with params: {self.params}")
 
         self.fn_name: str = fn_name
@@ -100,8 +117,12 @@ class DBlock:
         self.in_ports: int = in_ports
         self.out_ports: int = out_ports
 
-        self.params.update({'_name_': self.name, '_inputs_': self.in_ports, '_outputs_': self.out_ports})
-        self.rectf: QRect = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
+        self.params.update(
+            {"_name_": self.name, "_inputs_": self.in_ports, "_outputs_": self.out_ports}
+        )
+        self.rectf: QRect = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
 
         self.in_coords: List[QPoint] = []
         self.out_coords: List[QPoint] = []
@@ -114,7 +135,7 @@ class DBlock:
             # Check if block supports dynamic port configuration and update accordingly.
             # update_Block() below refreshes geometry regardless, so we only need to
             # reconcile the port count here.
-            if hasattr(self.block_instance, 'get_inputs'):
+            if hasattr(self.block_instance, "get_inputs"):
                 try:
                     # Get initial input configuration based on default params
                     initial_inputs = self.block_instance.get_inputs(self.params)
@@ -122,9 +143,11 @@ class DBlock:
 
                     # Update port count if different from default
                     if initial_input_count != self.in_ports:
-                        logger.info(f"Setting dynamic input ports for {self.name}: {initial_input_count}")
+                        logger.info(
+                            f"Setting dynamic input ports for {self.name}: {initial_input_count}"
+                        )
                         self.in_ports = initial_input_count
-                        self.params['_inputs_'] = initial_input_count
+                        self.params["_inputs_"] = initial_input_count
                 except (AttributeError, KeyError, TypeError, ValueError) as e:
                     logger.error(f"Error setting initial dynamic ports for {self.name}: {str(e)}")
         else:
@@ -160,7 +183,7 @@ class DBlock:
     @property
     def doc(self) -> str:
         """Get the documentation string from the block instance."""
-        if self.block_instance and hasattr(self.block_instance, 'doc'):
+        if self.block_instance and hasattr(self.block_instance, "doc"):
             return self.block_instance.doc
         return ""
 
@@ -240,8 +263,7 @@ class DBlock:
         Returns -1.0 for continuous, 0.0 for inherited, >0 for fixed rate.
         """
         # Check for explicit sample time in params
-        sample_time = self.params.get('sampling_time',
-                      self.params.get('sample_time', -1.0))
+        sample_time = self.params.get("sampling_time", self.params.get("sample_time", -1.0))
 
         # Handle string values
         if isinstance(sample_time, str):
@@ -265,62 +287,61 @@ class DBlock:
         if self.block_instance:
             # Get input names
             try:
-                if hasattr(self.block_instance, 'get_inputs'):
+                if hasattr(self.block_instance, "get_inputs"):
                     inputs = self.block_instance.get_inputs(self.params)
-                elif hasattr(self.block_instance, 'inputs'):
+                elif hasattr(self.block_instance, "inputs"):
                     inputs = self.block_instance.inputs
                 else:
                     inputs = []
-                input_names = [inp.get('name', f'in{i}') for i, inp in enumerate(inputs)]
+                input_names = [inp.get("name", f"in{i}") for i, inp in enumerate(inputs)]
             except (AttributeError, KeyError, TypeError, ValueError) as e:
                 logger.warning(f"Falling back to generic input port names for {self.name}: {e}")
-                input_names = [f'in{i}' for i in range(self.in_ports)]
+                input_names = [f"in{i}" for i in range(self.in_ports)]
 
             # Get output names
             try:
-                if hasattr(self.block_instance, 'outputs'):
+                if hasattr(self.block_instance, "outputs"):
                     outputs = self.block_instance.outputs
                 else:
                     outputs = []
-                output_names = [out.get('name', f'out{i}') for i, out in enumerate(outputs)]
+                output_names = [out.get("name", f"out{i}") for i, out in enumerate(outputs)]
             except (AttributeError, KeyError, TypeError, ValueError) as e:
                 logger.warning(f"Falling back to generic output port names for {self.name}: {e}")
-                output_names = [f'out{i}' for i in range(self.out_ports)]
+                output_names = [f"out{i}" for i in range(self.out_ports)]
         else:
             # Fallback to generic names
-            input_names = [f'in{i}' for i in range(self.in_ports)]
-            output_names = [f'out{i}' for i in range(self.out_ports)]
+            input_names = [f"in{i}" for i in range(self.in_ports)]
+            output_names = [f"out{i}" for i in range(self.out_ports)]
 
         # Ensure we have the right number of names
         while len(input_names) < self.in_ports:
-            input_names.append(f'in{len(input_names)}')
+            input_names.append(f"in{len(input_names)}")
         while len(output_names) < self.out_ports:
-            output_names.append(f'out{len(output_names)}')
+            output_names.append(f"out{len(output_names)}")
 
-        return (input_names[:self.in_ports], output_names[:self.out_ports])
+        return (input_names[: self.in_ports], output_names[: self.out_ports])
 
     def calculate_min_size(self) -> int:
         """
         Calculate the minimum height required for the block based on its ports.
-        
+
         Returns:
             int: The calculated minimum height (usually applied only if greater than default).
         """
         # Constants for layout
         PORT_SPACING = 20  # Vertical spacing between ports
-        PORT_MARGIN = 12   # Top/bottom margin
-        
+        PORT_MARGIN = 12  # Top/bottom margin
+
         # Calculate required height for inputs and outputs
         max_ports = max(self.in_ports, self.out_ports)
-        
+
         if max_ports <= 1:
             return self.height_base
-            
+
         required_height = (max_ports * PORT_SPACING) + (PORT_MARGIN * 2)
-        
+
         # Ensure we don't shrink below a reasonable minimum or the base height
         return max(self.height_base, required_height)
-
 
     def toggle_selection(self) -> None:
         """Toggle the selection state of this block."""
@@ -338,9 +359,13 @@ class DBlock:
         control_group_indices = []
         data_group_indices = []
         top_port_indices = []  # Ports positioned on top edge
-        if hasattr(self, 'block_instance') and self.block_instance:
+        if hasattr(self, "block_instance") and self.block_instance:
             try:
-                port_defs = self.block_instance.get_inputs(self.params) if hasattr(self.block_instance, 'get_inputs') else self.block_instance.inputs
+                port_defs = (
+                    self.block_instance.get_inputs(self.params)
+                    if hasattr(self.block_instance, "get_inputs")
+                    else self.block_instance.inputs
+                )
             except (AttributeError, KeyError, TypeError, ValueError) as e:
                 logger.warning(f"Could not resolve port definitions for {self.name}: {e}")
                 port_defs = []
@@ -357,16 +382,18 @@ class DBlock:
 
         # Calculate minimum height based on ports
         min_height = self.calculate_min_size()
-        
+
         # Ensure block is at least the calculated minimum height
         if self.height < min_height:
             self.height = min_height
-        
+
         # Also respect the base height (initial size) if distinct, though calculate_min_size usually covers this
         if self.height < self.height_base:
             self.height = self.height_base
-            
-        self.rectf = QRect(self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height)
+
+        self.rectf = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
         self.rect = QRect(self.left, self.top, self.width, self.height)
 
         in_x = self.left if not self.flipped else self.left + self.width
@@ -376,7 +403,11 @@ class DBlock:
         # Blocks can opt-in via block_instance.use_port_grid_snap = True
         grid_size = 10
         use_grid_snap = False
-        if hasattr(self, 'block_instance') and self.block_instance and hasattr(self.block_instance, 'use_port_grid_snap'):
+        if (
+            hasattr(self, "block_instance")
+            and self.block_instance
+            and hasattr(self.block_instance, "use_port_grid_snap")
+        ):
             use_grid_snap = self.block_instance.use_port_grid_snap
 
         # Helper to compute evenly spaced Y positions
@@ -391,20 +422,31 @@ class DBlock:
         data_top = self.top + ctrl_section_height
 
         if control_group_indices:
-            ctrl_positions = spaced_positions(len(control_group_indices), ctrl_top, max(ctrl_section_height, self.port_radius * 2))
+            ctrl_positions = spaced_positions(
+                len(control_group_indices), ctrl_top, max(ctrl_section_height, self.port_radius * 2)
+            )
             for idx, pos in zip(control_group_indices, ctrl_positions):
                 port_y_positions[idx] = pos
 
-        data_indices = [i for i in range(self.in_ports) if i not in control_group_indices and i not in top_port_indices]
+        data_indices = [
+            i
+            for i in range(self.in_ports)
+            if i not in control_group_indices and i not in top_port_indices
+        ]
         if data_indices:
-            data_positions = spaced_positions(len(data_indices), data_top, max(data_section_height, self.port_radius * 2))
+            data_positions = spaced_positions(
+                len(data_indices), data_top, max(data_section_height, self.port_radius * 2)
+            )
             for idx, pos in zip(data_indices, data_positions):
                 port_y_positions[idx] = pos
 
         # Calculate top port positions (horizontal spacing on top edge)
         top_port_positions = {}
         if top_port_indices:
-            top_x_positions = [int(self.left + self.width * (i + 1) / (len(top_port_indices) + 1)) for i in range(len(top_port_indices))]
+            top_x_positions = [
+                int(self.left + self.width * (i + 1) / (len(top_port_indices) + 1))
+                for i in range(len(top_port_indices))
+            ]
             for idx, x_pos in zip(top_port_indices, top_x_positions):
                 top_port_positions[idx] = x_pos
 
@@ -417,7 +459,9 @@ class DBlock:
                 else:
                     # Left-side port
                     if port_y_positions:
-                        port_y_float = port_y_positions.get(i, self.top + self.height * (i + 1) / (self.in_ports + 1))
+                        port_y_float = port_y_positions.get(
+                            i, self.top + self.height * (i + 1) / (self.in_ports + 1)
+                        )
                     else:
                         port_y_float = self.top + self.height * (i + 1) / (self.in_ports + 1)
                     if use_grid_snap:
@@ -436,32 +480,28 @@ class DBlock:
                 port_out = QPoint(out_x, port_y)
                 self.out_coords.append(port_out)
 
-
-
-
-
     def port_collision(self, pos):
         if isinstance(pos, tuple):
             pos = QPoint(*pos)
-        
+
         enlarged_radius = self.port_radius * 2  # Increase the clickable area
 
         for i, coord in enumerate(self.in_coords):
             if (pos - coord).manhattanLength() <= enlarged_radius:
                 return ("i", i)
-        
+
         for i, coord in enumerate(self.out_coords):
             if (pos - coord).manhattanLength() <= enlarged_radius:
                 return ("o", i)
-        
+
         return (-1, -1)
 
     def relocate_Block(self, new_pos):
         logger.debug(f"Relocating block {self.name} to {new_pos}")
         self.left = new_pos.x()
         self.top = new_pos.y()
-        self.rect.moveTo(self.left, self.top) # Update the QRect used for collision detection
-        self.rectf.moveTopLeft(QPoint(self.left, self.top)) # Update the QRectF
+        self.rect.moveTo(self.left, self.top)  # Update the QRect used for collision detection
+        self.rectf.moveTopLeft(QPoint(self.left, self.top))  # Update the QRectF
         self.update_Block()
 
     def resize_Block(self, new_width, new_height):
@@ -475,6 +515,7 @@ class DBlock:
         # Clamp to minimum and maximum sizes
         try:
             from config.block_sizes import clamp_block_size
+
             new_width, new_height = clamp_block_size(new_width, new_height)
         except ImportError:
             # Fallback min/max if config not available
@@ -488,8 +529,9 @@ class DBlock:
 
         # Update rect properties
         self.rect = QRect(self.left, self.top, self.width, self.height)
-        self.rectf = QRect(self.left - self.port_radius, self.top,
-                          self.width + 2 * self.port_radius, self.height)
+        self.rectf = QRect(
+            self.left - self.port_radius, self.top, self.width + 2 * self.port_radius, self.height
+        )
 
         # Update port positions
         self.update_Block()
@@ -516,29 +558,31 @@ class DBlock:
     def change_port_numbers(self):
         logger.debug(f"Changing port numbers for block: {self.name}")
 
-        if self.io_edit == 'both':
+        if self.io_edit == "both":
             # Inputs and outputs can be edited
-            dialog = PortDialog(self.name, {'inputs': self.in_ports, 'outputs': self.out_ports})
+            dialog = PortDialog(self.name, {"inputs": self.in_ports, "outputs": self.out_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.in_ports = self._parse_port_count(new_io['inputs'], self.in_ports)
-                self.out_ports = self._parse_port_count(new_io['outputs'], self.out_ports)
-                logger.debug(f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}")
+                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
+                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
+                logger.debug(
+                    f"Changed input ports to {self.in_ports} and output ports to {self.out_ports}"
+                )
 
-        elif self.io_edit == 'input':
+        elif self.io_edit == "input":
             # Only inputs can be edited
-            dialog = PortDialog(self.name, {'inputs': self.in_ports})
+            dialog = PortDialog(self.name, {"inputs": self.in_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.in_ports = self._parse_port_count(new_io['inputs'], self.in_ports)
+                self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
                 logger.debug(f"Changed input ports to {self.in_ports}")
 
-        elif self.io_edit == 'output':
+        elif self.io_edit == "output":
             # Only outputs can be edited
-            dialog = PortDialog(self.name, {'outputs': self.out_ports})
+            dialog = PortDialog(self.name, {"outputs": self.out_ports})
             if dialog.exec_():
                 new_io = dialog.get_values()
-                self.out_ports = self._parse_port_count(new_io['outputs'], self.out_ports)
+                self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
                 logger.debug(f"Changed output ports to {self.out_ports}")
 
         else:
@@ -548,8 +592,8 @@ class DBlock:
         self.update_Block()
 
         # To maintain the data in the parameters for the functions
-        self.params['_inputs_'] = self.in_ports
-        self.params['_outputs_'] = self.out_ports
+        self.params["_inputs_"] = self.in_ports
+        self.params["_outputs_"] = self.out_ports
 
         logger.debug(f"Port numbers updated for block: {self.name}")
 
@@ -588,20 +632,20 @@ class DBlock:
     def change_params(self):
         logger.info(f"change_params called for block {self.name}")
         # Always show dialog so users can rename the block (Name field)
-        ed_dict = {'Name': self.username}
+        ed_dict = {"Name": self.username}
         for key, value in self.initial_params.items():
-            if not (key.startswith('_') and key.endswith('_')):
+            if not (key.startswith("_") and key.endswith("_")):
                 ed_dict[key] = self.params.get(key, value)  # Use current value if available
 
         dialog = ParamDialog(self.name, ed_dict)
         if dialog.exec_():
             new_inputs = dialog.get_values()
-            
-            if new_inputs['Name'] == '--':
+
+            if new_inputs["Name"] == "--":
                 self.username = self.name
             else:
-                self.username = new_inputs['Name']
-            new_inputs.pop('Name')
+                self.username = new_inputs["Name"]
+            new_inputs.pop("Name")
 
             if new_inputs:
                 for key, value in new_inputs.items():
@@ -626,7 +670,7 @@ class DBlock:
         count from current params; when it changes, update geometry/ports.
         Shared by ``__init__``, ``change_params`` and ``update_params``.
         """
-        if not (self.block_instance and hasattr(self.block_instance, 'get_inputs')):
+        if not (self.block_instance and hasattr(self.block_instance, "get_inputs")):
             return
         try:
             new_inputs_config = self.block_instance.get_inputs(self.params)
@@ -636,9 +680,11 @@ class DBlock:
             return
 
         if new_input_count != self.in_ports:
-            logger.info(f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}")
+            logger.info(
+                f"Updating {self.name} input ports from {self.in_ports} to {new_input_count}"
+            )
             self.in_ports = new_input_count
-            self.params['_inputs_'] = new_input_count
+            self.params["_inputs_"] = new_input_count
             # Update block geometry and port positions
             self.update_Block()
 
@@ -650,15 +696,15 @@ class DBlock:
         flags the block for re-initialization. Shared by ``change_params`` and
         ``update_params``.
         """
-        if self.block_fn != 'TranFn':
+        if self.block_fn != "TranFn":
             return
-        num = self.params.get('numerator', [])
-        den = self.params.get('denominator', [])
+        num = self.params.get("numerator", [])
+        den = self.params.get("denominator", [])
         if len(den) > len(num):
             self.b_type = 1
         else:
             self.b_type = 2
-        self.params['_init_start_'] = True
+        self.params["_init_start_"] = True
 
     def load_external_data(self, params_reset=False):
         # Implement this method based on your specific requirements for loading external data
@@ -690,17 +736,26 @@ class DBlock:
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
-        
+
         # Attributes that must never be silently nulled: corrupting them would
         # produce hard-to-trace AttributeErrors / wrong results far from here.
-        load_bearing_keys = {'params', 'initial_params', 'exec_params', 'rect',
-                             'rectf', 'b_color', 'name', 'block_fn', 'sid'}
+        load_bearing_keys = {
+            "params",
+            "initial_params",
+            "exec_params",
+            "rect",
+            "rectf",
+            "b_color",
+            "name",
+            "block_fn",
+            "sid",
+        }
 
         for k, v in self.__dict__.items():
-            if k == 'image' or k == 'pixmap':
+            if k == "image" or k == "pixmap":
                 # QPixmap cannot be copied, create a new empty one
                 setattr(result, k, QPixmap())
-            elif k == 'font':
+            elif k == "font":
                 # QFont cannot be copied safely in some versions, recreate it
                 f = QFont()
                 f.setPointSize(self.font_size)
@@ -711,9 +766,9 @@ class DBlock:
             elif isinstance(v, (QRect, QPoint)):
                 # Qt geometry types: reconstruct via copy constructor
                 setattr(result, k, type(v)(v))
-            elif k == 'sub_blocks':
-                 # List of blocks, recurse
-                 setattr(result, k, copy.deepcopy(v, memo))
+            elif k == "sub_blocks":
+                # List of blocks, recurse
+                setattr(result, k, copy.deepcopy(v, memo))
             else:
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))

@@ -1,5 +1,5 @@
-
 from blocks.base_block import BaseBlock
+
 
 class TerminatorBlock(BaseBlock):
     """

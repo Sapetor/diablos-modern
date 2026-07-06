@@ -11,6 +11,7 @@ reproducible from the replay's reconstructed state (StateSpace/TransferFcn/
 PID/RateLimiter). PDE/Field blocks, Integrator, Mathfunction, StateVariable,
 Demux and Hysteresis stay on their own replay branches (genuinely divergent).
 """
+
 from pathlib import Path
 
 import pytest
@@ -58,8 +59,7 @@ class TestReplayKernelReuse:
         ok, err = dsim.run_tuning_simulation(dsim.sim_time, dsim.sim_dt)
         assert ok, f"compiled run failed: {err}"
 
-        gains = [b for b in dsim.engine.active_blocks_list
-                 if b.block_fn == "Gain"]
+        gains = [b for b in dsim.engine.active_blocks_list if b.block_fn == "Gain"]
         assert gains, "expected a Gain block in c01_tank_feedback"
         be = dsim.engine.compiler.block_executors
         for g in gains:
@@ -75,11 +75,22 @@ class TestReplayKernelReuse:
         no per-run reset). Routing any of these would change replay output."""
         must_exclude = {
             "Integrator",
-            "Heatequation1D", "Waveequation1D", "Advectionequation1D",
-            "Diffusionreaction1D", "Heatequation2D", "Waveequation2D",
-            "Advectionequation2D", "Mathfunction", "StateVariable",
-            "Statevariable", "Demux", "Hysteresis",
-            "Fieldprobe", "Fieldscope", "Fieldprobe2D", "Fieldscope2D",
+            "Heatequation1D",
+            "Waveequation1D",
+            "Advectionequation1D",
+            "Diffusionreaction1D",
+            "Heatequation2D",
+            "Waveequation2D",
+            "Advectionequation2D",
+            "Mathfunction",
+            "StateVariable",
+            "Statevariable",
+            "Demux",
+            "Hysteresis",
+            "Fieldprobe",
+            "Fieldscope",
+            "Fieldprobe2D",
+            "Fieldscope2D",
             "Fieldslice",
         }
         leaked = must_exclude & _KERNEL_REPLAY_FNS
@@ -91,10 +102,25 @@ class TestReplayKernelReuse:
         through the shared kernel (pinned by tests/regression/
         test_compiled_replay_state_blocks.py)."""
         expected = {
-            "Sine", "Constant", "Gain", "Sum", "Step", "Product",
-            "Exponential", "Deadband", "Saturation", "Ramp", "Switch",
-            "Wavegenerator", "Mux", "Logicaloperator",
-            "Selector", "StateSpace", "TransferFcn", "PID", "RateLimiter",
+            "Sine",
+            "Constant",
+            "Gain",
+            "Sum",
+            "Step",
+            "Product",
+            "Exponential",
+            "Deadband",
+            "Saturation",
+            "Ramp",
+            "Switch",
+            "Wavegenerator",
+            "Mux",
+            "Logicaloperator",
+            "Selector",
+            "StateSpace",
+            "TransferFcn",
+            "PID",
+            "RateLimiter",
         }
         missing = expected - _KERNEL_REPLAY_FNS
         assert not missing, f"expected these to be routed via the kernel: {missing}"

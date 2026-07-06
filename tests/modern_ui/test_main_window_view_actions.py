@@ -30,6 +30,7 @@ from lib.simulation.block import DBlock
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -38,8 +39,12 @@ def window(qapp):
 @pytest.fixture(autouse=True)
 def _restore_canvas_view(window):
     c = window.canvas
-    saved = (c.zoom_factor, c.pan_offset, getattr(c, 'grid_visible', None),
-             list(getattr(c.dsim, 'blocks_list', []) or []))
+    saved = (
+        c.zoom_factor,
+        c.pan_offset,
+        getattr(c, "grid_visible", None),
+        list(getattr(c.dsim, "blocks_list", []) or []),
+    )
     yield
     c.zoom_factor = saved[0]
     c.pan_offset = saved[1]
@@ -50,9 +55,18 @@ def _restore_canvas_view(window):
 
 def _make_block(name, x, y, w=100, h=80):
     block = DBlock(
-        block_fn='Gain', sid=0, coords=QRect(x, y, w, h), color='#4CAF50',
-        in_ports=1, out_ports=1, b_type=2, io_edit='none', fn_name='gain',
-        params={'gain': 1.0}, external=False, colors=None,
+        block_fn="Gain",
+        sid=0,
+        coords=QRect(x, y, w, h),
+        color="#4CAF50",
+        in_ports=1,
+        out_ports=1,
+        b_type=2,
+        io_edit="none",
+        fn_name="gain",
+        params={"gain": 1.0},
+        external=False,
+        colors=None,
     )
     block.name = name
     return block
@@ -68,6 +82,7 @@ def _zoom_pct(window):
 # ---------------------------------------------------------------------------
 # zoom
 # ---------------------------------------------------------------------------
+
 
 class TestZoom:
     def test_set_zoom_updates_status(self, window):
@@ -94,6 +109,7 @@ class TestZoom:
 # grid
 # ---------------------------------------------------------------------------
 
+
 class TestToggleGrid:
     def test_toggle_flips_and_syncs_action(self, window):
         before = window.canvas.grid_visible
@@ -111,6 +127,7 @@ class TestToggleGrid:
 # fit_to_window
 # ---------------------------------------------------------------------------
 
+
 class TestFitToWindow:
     def test_no_blocks_message(self, window):
         window.canvas.dsim.blocks_list[:] = []
@@ -119,7 +136,8 @@ class TestFitToWindow:
 
     def test_fit_sets_zoom_and_status(self, window):
         window.canvas.dsim.blocks_list[:] = [
-            _make_block("A", 0, 0), _make_block("B", 400, 300),
+            _make_block("A", 0, 0),
+            _make_block("B", 400, 300),
         ]
         window.fit_to_window()
         # Zoom is clamped to [0.1, 2.0] and the status pill reflects it.
@@ -133,14 +151,17 @@ class TestFitToWindow:
 # minimap
 # ---------------------------------------------------------------------------
 
+
 class TestToggleMinimap:
     def test_toggle_from_hidden_shows_and_refreshes(self, window, monkeypatch):
         captured = {}
         monkeypatch.setattr(window.minimap_dock, "isVisible", lambda: False)
-        monkeypatch.setattr(window.minimap_dock, "setVisible",
-                            lambda v: captured.__setitem__("visible", v))
-        monkeypatch.setattr(window.minimap, "refresh",
-                            lambda: captured.__setitem__("refreshed", True))
+        monkeypatch.setattr(
+            window.minimap_dock, "setVisible", lambda v: captured.__setitem__("visible", v)
+        )
+        monkeypatch.setattr(
+            window.minimap, "refresh", lambda: captured.__setitem__("refreshed", True)
+        )
         window.toggle_minimap()
         assert captured["visible"] is True
         assert captured.get("refreshed") is True
@@ -149,8 +170,9 @@ class TestToggleMinimap:
     def test_toggle_from_visible_hides(self, window, monkeypatch):
         captured = {}
         monkeypatch.setattr(window.minimap_dock, "isVisible", lambda: True)
-        monkeypatch.setattr(window.minimap_dock, "setVisible",
-                            lambda v: captured.__setitem__("visible", v))
+        monkeypatch.setattr(
+            window.minimap_dock, "setVisible", lambda v: captured.__setitem__("visible", v)
+        )
         window.toggle_minimap()
         assert captured["visible"] is False
         assert window.minimap_action.isChecked() is False

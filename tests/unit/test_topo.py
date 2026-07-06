@@ -3,6 +3,7 @@
 Used by SimulationEngine.detect_algebraic_loops (cycle detection) and the
 compiled replay sort (feedthrough ordering).
 """
+
 import pytest
 
 from lib.engine.topo import kahn_topological_order
@@ -12,7 +13,8 @@ from lib.engine.topo import kahn_topological_order
 class TestKahnTopologicalOrder:
     def test_linear_chain(self):
         order, remaining = kahn_topological_order(
-            ["a", "b", "c"], {"a": ["b"], "b": ["c"], "c": []})
+            ["a", "b", "c"], {"a": ["b"], "b": ["c"], "c": []}
+        )
         assert order == ["a", "b", "c"]
         assert remaining == []
 

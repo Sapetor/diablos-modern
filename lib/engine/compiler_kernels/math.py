@@ -5,6 +5,7 @@ MathFunction. Bodies are verbatim extractions of the corresponding branches
 from ``SystemCompiler._create_block_executor``; only the shared locals are
 unpacked from the BuildContext at the top.
 """
+
 import logging
 
 import numpy as np
@@ -20,13 +21,14 @@ def build_gain(ctx):
     b_name = ctx.b_name
     params = ctx.params
     input_sources = ctx.input_sources
-    gain = float(params.get('gain', 1.0))
+    gain = float(params.get("gain", 1.0))
     # Optimization: If only 1 input
     src = input_sources[0] if input_sources else None
 
     def exec_gain(t, y, dy_vec, signals):
         val = signals.get(src, 0.0) if src else 0.0
         signals[b_name] = val * gain
+
     return exec_gain
 
 
@@ -35,16 +37,16 @@ def build_sum(ctx):
     b_name = ctx.b_name
     params = ctx.params
     input_sources = ctx.input_sources
-    signs = params.get('sign', params.get('inputs', '++'))
+    signs = params.get("sign", params.get("inputs", "++"))
     # Bake signs and sources. Iterate over the connected input ports
     # (not just the sign string) so extra wired inputs are not silently
     # dropped; missing sign characters default to '+'.
     n_terms = max(len(signs), len(input_sources))
     ops = []
     for i in range(n_terms):
-        char = signs[i] if i < len(signs) else '+'
+        char = signs[i] if i < len(signs) else "+"
         src = input_sources[i] if i < len(input_sources) else None
-        ops.append((src, 1.0 if char == '+' else -1.0))
+        ops.append((src, 1.0 if char == "+" else -1.0))
 
     def exec_sum(t, y, dy_vec, signals):
         res = 0.0
@@ -52,6 +54,7 @@ def build_sum(ctx):
             val = signals.get(src, 0.0) if src else 0.0
             res += val * mul
         signals[b_name] = res
+
     return exec_sum
 
 
@@ -61,12 +64,13 @@ def build_exponential(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
-    a = float(params.get('a', 1.0))
-    b_coef = float(params.get('b', 1.0))  # avoid local var 'b'
+    a = float(params.get("a", 1.0))
+    b_coef = float(params.get("b", 1.0))  # avoid local var 'b'
 
     def exec_exp(t, y, dy_vec, signals):
         x_in = signals.get(src, 0.0) if src else 0.0
         signals[b_name] = a * np.exp(b_coef * x_in)
+
     return exec_exp
 
 
@@ -79,6 +83,7 @@ def build_abs(ctx):
     def exec_abs(t, y, dy_vec, signals):
         val = signals.get(src, 0.0) if src else 0.0
         signals[b_name] = abs(val)
+
     return exec_abs
 
 
@@ -103,6 +108,7 @@ def build_sgprod(ctx):
         else:
             res = 1.0  # Or 1.0 for identity
         signals[b_name] = res
+
     return exec_sgprod
 
 
@@ -113,16 +119,16 @@ def build_product(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     baked_srcs = [s for s in input_sources]
-    ops = params.get('ops', '**')
+    ops = params.get("ops", "**")
 
     def exec_product(t, y, dy_vec, signals, _ops=ops, _srcs=baked_srcs):
         res = 1.0
         for i, src in enumerate(_srcs):
-            op = _ops[i] if i < len(_ops) else '*'
+            op = _ops[i] if i < len(_ops) else "*"
             val = signals.get(src, 0.0) if src else 0.0
-            if op == '*':
+            if op == "*":
                 res *= val
-            elif op == '/':
+            elif op == "/":
                 # Element-wise so vector divisors work (`if val != 0` is
                 # ambiguous on an array). Mirror Product.execute() / the
                 # compiled-replay path: divide-by-zero keeps the numerator
@@ -130,11 +136,12 @@ def build_product(ctx):
                 # the ODE RHS) and 0/0 -> 0.
                 res = np.asarray(res, dtype=float)
                 v = np.asarray(val, dtype=float)
-                with np.errstate(divide='ignore', invalid='ignore'):
+                with np.errstate(divide="ignore", invalid="ignore"):
                     res = res / v
                     res = np.where(np.isinf(res), np.sign(res) * 1e308, res)
                     res = np.where(np.isnan(res), 0.0, res)
         signals[b_name] = res
+
     return exec_product
 
 
@@ -144,7 +151,8 @@ def build_matrixgain(ctx):
     params = ctx.params
     input_sources = ctx.input_sources
     import ast as _ast
-    K_raw = params.get('gain', '1.0')
+
+    K_raw = params.get("gain", "1.0")
     if isinstance(K_raw, str):
         try:
             K = np.array(_ast.literal_eval(K_raw), dtype=float)
@@ -155,12 +163,13 @@ def build_matrixgain(ctx):
     src = input_sources[0] if input_sources else None
 
     if K.ndim == 2:
+
         def exec_mgain(t, y, dy_vec, signals):
             u = np.atleast_1d(signals.get(src, 0.0) if src else 0.0).astype(float).flatten()
             if len(u) < K.shape[1]:
                 u = np.pad(u, (0, K.shape[1] - len(u)))
             elif len(u) > K.shape[1]:
-                u = u[:K.shape[1]]
+                u = u[: K.shape[1]]
             signals[b_name] = K @ u
     elif K.ndim == 1 and K.size > 1:
         _warned = [False]
@@ -176,7 +185,10 @@ def build_matrixgain(ctx):
                     logger.warning(
                         "MatrixGain %s: vector gain length %d does not match "
                         "input length %d; truncating to the overlapping prefix.",
-                        b_name, len(K), len(u))
+                        b_name,
+                        len(K),
+                        len(u),
+                    )
                     _warned[0] = True
                 m = min(len(K), len(u))
                 signals[b_name] = K[:m] * u[:m]
@@ -186,6 +198,7 @@ def build_matrixgain(ctx):
         def exec_mgain(t, y, dy_vec, signals):
             val = signals.get(src, 0.0) if src else 0.0
             signals[b_name] = np.atleast_1d(val).astype(float) * k_scalar
+
     return exec_mgain
 
 
@@ -196,51 +209,53 @@ def build_mathfunction(ctx):
     input_sources = ctx.input_sources
     src = input_sources[0] if input_sources else None
     # Check both 'function' and 'expression' keys for backward compatibility
-    func_raw = params.get('function', params.get('expression', 'sin'))
+    func_raw = params.get("function", params.get("expression", "sin"))
     func = str(func_raw).lower()
 
     # Pre-select the function to avoid string comparison at runtime
     np_func = None
     use_expr = False
-    if func == 'sin':
+    if func == "sin":
         np_func = np.sin
-    elif func == 'cos':
+    elif func == "cos":
         np_func = np.cos
-    elif func == 'tan':
+    elif func == "tan":
         np_func = np.tan
-    elif func == 'asin':
+    elif func == "asin":
         np_func = np.arcsin
-    elif func == 'acos':
+    elif func == "acos":
         np_func = np.arccos
-    elif func == 'atan':
+    elif func == "atan":
         np_func = np.arctan
-    elif func == 'exp':
+    elif func == "exp":
         np_func = np.exp
-    elif func == 'log':
+    elif func == "log":
         np_func = np.log
-    elif func == 'log10':
+    elif func == "log10":
         np_func = np.log10
-    elif func == 'sqrt':
+    elif func == "sqrt":
         np_func = np.sqrt
-    elif func == 'square':
+    elif func == "square":
         np_func = lambda x: x * x
-    elif func == 'sign':
+    elif func == "sign":
         np_func = np.sign
-    elif func == 'abs':
+    elif func == "abs":
         np_func = np.abs
-    elif func == 'ceil':
+    elif func == "ceil":
         np_func = np.ceil
-    elif func == 'floor':
+    elif func == "floor":
         np_func = np.floor
-    elif func == 'reciprocal':
+    elif func == "reciprocal":
+
         def _reciprocal(x):
             if isinstance(x, np.ndarray):
                 m = x != 0
                 # Build the non-zero mask once and reuse it.
                 return np.where(m, 1.0 / np.where(m, x, 1.0), 0.0)
             return 1.0 / x if x != 0 else 0.0
+
         np_func = _reciprocal
-    elif func == 'cube':
+    elif func == "cube":
         np_func = lambda x: x * x * x
     else:
         # Python expression fallback
@@ -261,7 +276,10 @@ def build_mathfunction(ctx):
             logger.warning(
                 "MathFunction %s: expression %r failed to evaluate on a "
                 "sample input (%s); it will fall back to 0.0 each step.",
-                b_name, expr_str, _e)
+                b_name,
+                expr_str,
+                _e,
+            )
 
         def exec_mathfunc_expr(t, y, dy_vec, signals, _src=src, _compiled=_compiled_expr):
             val = signals.get(_src, 0.0) if _src else 0.0
@@ -275,12 +293,15 @@ def build_mathfunction(ctx):
                 # time via the dry-run WARNING above.
                 logger.debug("MathFunction expr eval failed for %s: %s", b_name, _e)
                 signals[b_name] = 0.0
+
         return exec_mathfunc_expr
     else:
+
         def exec_mathfunc(t, y, dy_vec, signals, _func=np_func, _src=src):
             val = signals.get(_src, 0.0) if _src else 0.0
             try:
                 signals[b_name] = _func(val)
             except (ValueError, ZeroDivisionError):
                 signals[b_name] = 0.0
+
         return exec_mathfunc

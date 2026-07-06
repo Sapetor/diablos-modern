@@ -57,12 +57,12 @@ class ObjectiveFunctionBlock(BaseBlock):
             "expression": {
                 "type": "string",
                 "default": "x1**2 + x2**2",
-                "doc": "Python expression using x1, x2, ..."
+                "doc": "Python expression using x1, x2, ...",
             },
             "variables": {
                 "type": "string",
                 "default": "x1,x2",
-                "doc": "Comma-separated variable names"
+                "doc": "Comma-separated variable names",
             },
         }
 
@@ -77,14 +77,17 @@ class ObjectiveFunctionBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0]))
-            variables = [v.strip() for v in params.get('variables', 'x1,x2').split(',')]
-            expression = params.get('expression', 'x1**2 + x2**2')
+            variables = [v.strip() for v in params.get("variables", "x1,x2").split(",")]
+            expression = params.get("expression", "x1**2 + x2**2")
 
-            user_vars = {"t": time, **{var: (x[i] if i < len(x) else 0.0) for i, var in enumerate(variables)}}
+            user_vars = {
+                "t": time,
+                **{var: (x[i] if i < len(x) else 0.0) for i, var in enumerate(variables)},
+            }
 
             result = safe_expr(expression, variables=user_vars)
-            return {0: float(result), 'E': False}
+            return {0: float(result), "E": False}
 
         except Exception as e:
             logger.error(f"ObjectiveFunction error: {e}")
-            return {0: 0.0, 'E': True, 'error': str(e)}
+            return {0: 0.0, "E": True, "error": str(e)}

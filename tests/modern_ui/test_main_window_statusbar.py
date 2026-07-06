@@ -33,6 +33,7 @@ import pytest
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -42,10 +43,10 @@ def window(qapp):
 def _restore_dsim(window):
     """Snapshot/restore the dsim state the status bar reads from."""
     dsim = window.dsim
-    saved_blocks = list(getattr(dsim, 'blocks_list', []) or [])
-    saved_lines = list(getattr(dsim, 'line_list', []) or [])
-    saved_dirty = getattr(dsim, 'dirty', False)
-    saved_fp = getattr(dsim, 'current_filepath', None)
+    saved_blocks = list(getattr(dsim, "blocks_list", []) or [])
+    saved_lines = list(getattr(dsim, "line_list", []) or [])
+    saved_dirty = getattr(dsim, "dirty", False)
+    saved_fp = getattr(dsim, "current_filepath", None)
     yield
     dsim.blocks_list[:] = saved_blocks
     dsim.line_list[:] = saved_lines
@@ -63,11 +64,19 @@ def _fake_block(block_fn):
 # construction
 # ---------------------------------------------------------------------------
 
+
 class TestStatusbarConstruction:
     def test_segments_exist(self, window):
-        for attr in ("status_pill", "status_message", "file_status",
-                     "file_unsaved_status", "counts_status", "cursor_status",
-                     "zoom_status", "theme_status"):
+        for attr in (
+            "status_pill",
+            "status_message",
+            "file_status",
+            "file_unsaved_status",
+            "counts_status",
+            "cursor_status",
+            "zoom_status",
+            "theme_status",
+        ):
             assert hasattr(window, attr), f"missing status segment: {attr}"
 
     def test_status_message_is_hidden_shim(self, window):
@@ -82,6 +91,7 @@ class TestStatusbarConstruction:
 # ---------------------------------------------------------------------------
 # status_message.setText -> status_pill state propagation
 # ---------------------------------------------------------------------------
+
 
 class TestStatusMessagePropagation:
     def test_setText_updates_underlying_label(self, window):
@@ -114,6 +124,7 @@ class TestStatusMessagePropagation:
 # _refresh_status_counts
 # ---------------------------------------------------------------------------
 
+
 class TestRefreshCounts:
     def test_counts_blocks_wires_scopes(self, window):
         dsim = window.dsim
@@ -137,6 +148,7 @@ class TestRefreshCounts:
 # ---------------------------------------------------------------------------
 # _refresh_file_status
 # ---------------------------------------------------------------------------
+
 
 class TestRefreshFileStatus:
     def test_untitled_when_no_file(self, window):

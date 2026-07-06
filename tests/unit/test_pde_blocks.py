@@ -29,23 +29,22 @@ class TestHeatEquation1D:
         T0 = np.sin(np.pi * x / L)
 
         # Expected decay rate
-        lambda_heat = alpha * (np.pi / L)**2
+        lambda_heat = alpha * (np.pi / L) ** 2
 
         def heat_rhs(t, T):
             dT_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dT_dt[i] = alpha * (T[i+1] - 2*T[i] + T[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dT_dt[i] = alpha * (T[i + 1] - 2 * T[i] + T[i - 1]) / dx_sq
             # Dirichlet BC with penalty method
             dT_dt[0] = 1000.0 * (0.0 - T[0])
-            dT_dt[N-1] = 1000.0 * (0.0 - T[N-1])
+            dT_dt[N - 1] = 1000.0 * (0.0 - T[N - 1])
             return dT_dt
 
-        sol = solve_ivp(heat_rhs, (0, 5), T0, t_eval=np.linspace(0, 5, 501),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(heat_rhs, (0, 5), T0, t_eval=np.linspace(0, 5, 501), rtol=1e-6, atol=1e-8)
 
         # Compare at center
-        numerical = sol.y[N//2, :]
+        numerical = sol.y[N // 2, :]
         analytical = np.exp(-lambda_heat * sol.t)
 
         # Calculate relative error where analytical is significant
@@ -53,7 +52,7 @@ class TestHeatEquation1D:
         rel_error = np.abs(numerical[mask] - analytical[mask]) / analytical[mask]
         max_rel_error = np.max(rel_error)
 
-        assert max_rel_error < 0.01, f"Heat equation error {max_rel_error*100:.2f}% exceeds 1%"
+        assert max_rel_error < 0.01, f"Heat equation error {max_rel_error * 100:.2f}% exceeds 1%"
 
     def test_decay_rate_matches_theory(self):
         """Test that decay rate matches theoretical value."""
@@ -64,22 +63,23 @@ class TestHeatEquation1D:
         x = np.linspace(0, L, N)
 
         T0 = np.sin(np.pi * x / L)
-        expected_lambda = alpha * (np.pi / L)**2
+        expected_lambda = alpha * (np.pi / L) ** 2
 
         def heat_rhs(t, T):
             dT_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dT_dt[i] = alpha * (T[i+1] - 2*T[i] + T[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dT_dt[i] = alpha * (T[i + 1] - 2 * T[i] + T[i - 1]) / dx_sq
             dT_dt[0] = 1000.0 * (0.0 - T[0])
-            dT_dt[N-1] = 1000.0 * (0.0 - T[N-1])
+            dT_dt[N - 1] = 1000.0 * (0.0 - T[N - 1])
             return dT_dt
 
-        sol = solve_ivp(heat_rhs, (0, 10), T0, t_eval=np.linspace(0, 10, 101),
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(
+            heat_rhs, (0, 10), T0, t_eval=np.linspace(0, 10, 101), rtol=1e-8, atol=1e-10
+        )
 
         # Fit exponential decay to extract numerical decay rate
-        center = sol.y[N//2, :]
+        center = sol.y[N // 2, :]
         # Use log-linear fit: ln(T) = ln(T0) - lambda*t
         valid = center > 0.001
         if np.sum(valid) > 10:
@@ -89,7 +89,7 @@ class TestHeatEquation1D:
             numerical_lambda = -coeffs[0]
 
             rel_error = abs(numerical_lambda - expected_lambda) / expected_lambda
-            assert rel_error < 0.02, f"Decay rate error {rel_error*100:.2f}% exceeds 2%"
+            assert rel_error < 0.02, f"Decay rate error {rel_error * 100:.2f}% exceeds 2%"
 
 
 @pytest.mark.unit
@@ -120,19 +120,18 @@ class TestWaveEquation1D:
             du_dt = v.copy()
             dv_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dv_dt[i] = c**2 * (u[i+1] - 2*u[i] + u[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dv_dt[i] = c**2 * (u[i + 1] - 2 * u[i] + u[i - 1]) / dx_sq
             # Dirichlet BC with penalty
             du_dt[0] = 1000.0 * (0.0 - u[0])
-            du_dt[N-1] = 1000.0 * (0.0 - u[N-1])
+            du_dt[N - 1] = 1000.0 * (0.0 - u[N - 1])
             dv_dt[0] = 0.0
-            dv_dt[N-1] = 0.0
+            dv_dt[N - 1] = 0.0
             return np.concatenate([du_dt, dv_dt])
 
-        sol = solve_ivp(wave_rhs, (0, 4), y0, t_eval=np.linspace(0, 4, 401),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(wave_rhs, (0, 4), y0, t_eval=np.linspace(0, 4, 401), rtol=1e-6, atol=1e-8)
 
-        numerical = sol.y[N//2, :]
+        numerical = sol.y[N // 2, :]
         analytical = np.cos(omega * sol.t)
 
         # Wave equation is harder to match exactly due to dispersion
@@ -159,28 +158,29 @@ class TestWaveEquation1D:
             du_dt = v.copy()
             dv_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dv_dt[i] = c**2 * (u[i+1] - 2*u[i] + u[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dv_dt[i] = c**2 * (u[i + 1] - 2 * u[i] + u[i - 1]) / dx_sq
             du_dt[0] = 1000.0 * (0.0 - u[0])
-            du_dt[N-1] = 1000.0 * (0.0 - u[N-1])
+            du_dt[N - 1] = 1000.0 * (0.0 - u[N - 1])
             return np.concatenate([du_dt, dv_dt])
 
         # Simulate for 3 periods
         t_end = 3 * expected_period
-        sol = solve_ivp(wave_rhs, (0, t_end), y0, t_eval=np.linspace(0, t_end, 301),
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(
+            wave_rhs, (0, t_end), y0, t_eval=np.linspace(0, t_end, 301), rtol=1e-8, atol=1e-10
+        )
 
         # Find peaks to measure period (more robust than zero crossings)
-        center = sol.y[N//2, :]
+        center = sol.y[N // 2, :]
         peaks = []
         for i in range(1, len(center) - 1):
-            if center[i] > center[i-1] and center[i] > center[i+1]:
+            if center[i] > center[i - 1] and center[i] > center[i + 1]:
                 peaks.append(sol.t[i])
 
         if len(peaks) >= 2:
             numerical_period = peaks[1] - peaks[0]
             rel_error = abs(numerical_period - expected_period) / expected_period
-            assert rel_error < 0.05, f"Period error {rel_error*100:.2f}% exceeds 5%"
+            assert rel_error < 0.05, f"Period error {rel_error * 100:.2f}% exceeds 5%"
 
 
 @pytest.mark.unit
@@ -197,20 +197,21 @@ class TestAdvectionEquation1D:
 
         # Initial: Gaussian at x = L/4
         x_init = L / 4
-        c0 = np.exp(-100 * (x - x_init)**2)
+        c0 = np.exp(-100 * (x - x_init) ** 2)
 
         def advection_rhs(t, c):
             dc_dt = np.zeros(N)
             c_inlet = 0.0
             # Upwind for v > 0
             for i in range(1, N):
-                dc_dx = (c[i] - c[i-1]) / dx
+                dc_dx = (c[i] - c[i - 1]) / dx
                 dc_dt[i] = -v * dc_dx
             dc_dt[0] = 1000.0 * (c_inlet - c[0])
             return dc_dt
 
-        sol = solve_ivp(advection_rhs, (0, 2), c0, t_eval=np.linspace(0, 2, 201),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            advection_rhs, (0, 2), c0, t_eval=np.linspace(0, 2, 201), rtol=1e-6, atol=1e-8
+        )
 
         # Track peak position
         peak_positions = []
@@ -224,7 +225,9 @@ class TestAdvectionEquation1D:
             expected_x = x_init + v * t
             if expected_x < L:  # Before reaching boundary
                 error = abs(x_peak - expected_x)
-                assert error < 0.05, f"Peak at t={t:.2f} expected at {expected_x:.3f}, got {x_peak:.3f}"
+                assert error < 0.05, (
+                    f"Peak at t={t:.2f} expected at {expected_x:.3f}, got {x_peak:.3f}"
+                )
 
     def test_mass_conservation_periodic(self):
         """Test that total mass is conserved with periodic BC."""
@@ -241,20 +244,21 @@ class TestAdvectionEquation1D:
         def advection_periodic(t, c):
             dc_dt = np.zeros(N)
             for i in range(1, N):
-                dc_dx = (c[i] - c[i-1]) / dx
+                dc_dx = (c[i] - c[i - 1]) / dx
                 dc_dt[i] = -v * dc_dx
             # Periodic BC
-            dc_dx = (c[0] - c[N-1]) / dx
+            dc_dx = (c[0] - c[N - 1]) / dx
             dc_dt[0] = -v * dc_dx
             return dc_dt
 
-        sol = solve_ivp(advection_periodic, (0, 2), c0, t_eval=np.linspace(0, 2, 201),
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(
+            advection_periodic, (0, 2), c0, t_eval=np.linspace(0, 2, 201), rtol=1e-8, atol=1e-10
+        )
 
         # Check mass at final time
         final_mass = np.sum(sol.y[:, -1]) * dx
         rel_error = abs(final_mass - initial_mass) / initial_mass
-        assert rel_error < 0.01, f"Mass conservation error {rel_error*100:.2f}% exceeds 1%"
+        assert rel_error < 0.01, f"Mass conservation error {rel_error * 100:.2f}% exceeds 1%"
 
 
 @pytest.mark.unit
@@ -278,29 +282,30 @@ class TestDiffusionReaction1D:
         c0 = np.sin(np.pi * x / L)
 
         # Total decay rate
-        lambda_total = D * (np.pi / L)**2 + k
+        lambda_total = D * (np.pi / L) ** 2 + k
 
         def diffreact_rhs(t, c):
             dc_dt = np.zeros(N)
             dx_sq = dx * dx
 
             # Interior
-            for i in range(1, N-1):
-                d2c_dx2 = (c[i+1] - 2*c[i] + c[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                d2c_dx2 = (c[i + 1] - 2 * c[i] + c[i - 1]) / dx_sq
                 reaction = k * np.power(max(c[i], 0), n)
                 dc_dt[i] = D * d2c_dx2 - reaction
 
             # Dirichlet BC with penalty
             dc_dt[0] = 1000.0 * (0.0 - c[0])
-            dc_dt[N-1] = 1000.0 * (0.0 - c[N-1])
+            dc_dt[N - 1] = 1000.0 * (0.0 - c[N - 1])
 
             return dc_dt
 
-        sol = solve_ivp(diffreact_rhs, (0, 5), c0, t_eval=np.linspace(0, 5, 501),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            diffreact_rhs, (0, 5), c0, t_eval=np.linspace(0, 5, 501), rtol=1e-6, atol=1e-8
+        )
 
         # Compare at center
-        numerical = sol.y[N//2, :]
+        numerical = sol.y[N // 2, :]
         analytical = np.exp(-lambda_total * sol.t)
 
         # Calculate relative error
@@ -308,7 +313,9 @@ class TestDiffusionReaction1D:
         rel_error = np.abs(numerical[mask] - analytical[mask]) / analytical[mask]
         max_rel_error = np.max(rel_error)
 
-        assert max_rel_error < 0.01, f"Diffusion-reaction error {max_rel_error*100:.2f}% exceeds 1%"
+        assert max_rel_error < 0.01, (
+            f"Diffusion-reaction error {max_rel_error * 100:.2f}% exceeds 1%"
+        )
 
     def test_pure_reaction_decay(self):
         """Test pure reaction (no diffusion) with uniform initial condition."""
@@ -328,11 +335,12 @@ class TestDiffusionReaction1D:
                 dc_dt[i] = -k * np.power(max(c[i], 0), n)
             return dc_dt
 
-        sol = solve_ivp(reaction_rhs, (0, 5), c0, t_eval=np.linspace(0, 5, 501),
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(
+            reaction_rhs, (0, 5), c0, t_eval=np.linspace(0, 5, 501), rtol=1e-8, atol=1e-10
+        )
 
         # Analytical: c(t) = c0 * exp(-k*t)
-        numerical = sol.y[N//2, :]
+        numerical = sol.y[N // 2, :]
         analytical = np.exp(-k * sol.t)
 
         max_error = np.max(np.abs(numerical - analytical))
@@ -353,14 +361,13 @@ class TestDiffusionReaction1D:
         def diffusion_rhs(t, c):
             dc_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dc_dt[i] = D * (c[i+1] - 2*c[i] + c[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dc_dt[i] = D * (c[i + 1] - 2 * c[i] + c[i - 1]) / dx_sq
             dc_dt[0] = 1000.0 * (0.0 - c[0])
-            dc_dt[N-1] = 1000.0 * (0.0 - c[N-1])
+            dc_dt[N - 1] = 1000.0 * (0.0 - c[N - 1])
             return dc_dt
 
-        sol = solve_ivp(diffusion_rhs, (0, 20), c0, t_eval=[0, 20],
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(diffusion_rhs, (0, 20), c0, t_eval=[0, 20], rtol=1e-8, atol=1e-10)
 
         # At steady state, should be zero (Dirichlet BC at both ends)
         final_max = np.max(np.abs(sol.y[:, -1]))
@@ -397,26 +404,25 @@ class TestPDEBoundaryConditions:
 
         # Gaussian in center
         x = np.linspace(0, L, N)
-        c0 = np.exp(-50 * (x - L/2)**2)
+        c0 = np.exp(-50 * (x - L / 2) ** 2)
         initial_mass = np.sum(c0) * dx
 
         def diffusion_neumann(t, c):
             dc_dt = np.zeros(N)
             dx_sq = dx * dx
-            for i in range(1, N-1):
-                dc_dt[i] = D * (c[i+1] - 2*c[i] + c[i-1]) / dx_sq
+            for i in range(1, N - 1):
+                dc_dt[i] = D * (c[i + 1] - 2 * c[i] + c[i - 1]) / dx_sq
             # Neumann BC: dc/dx = 0 at boundaries (zero flux)
-            dc_dt[0] = D * (2*c[1] - 2*c[0]) / dx_sq
-            dc_dt[N-1] = D * (2*c[N-2] - 2*c[N-1]) / dx_sq
+            dc_dt[0] = D * (2 * c[1] - 2 * c[0]) / dx_sq
+            dc_dt[N - 1] = D * (2 * c[N - 2] - 2 * c[N - 1]) / dx_sq
             return dc_dt
 
-        sol = solve_ivp(diffusion_neumann, (0, 5), c0, t_eval=[0, 5],
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(diffusion_neumann, (0, 5), c0, t_eval=[0, 5], rtol=1e-8, atol=1e-10)
 
         final_mass = np.sum(sol.y[:, -1]) * dx
         rel_error = abs(final_mass - initial_mass) / initial_mass
         # Allow 5% error due to discretization effects at boundaries
-        assert rel_error < 0.05, f"Mass conservation error {rel_error*100:.3f}% with Neumann BC"
+        assert rel_error < 0.05, f"Mass conservation error {rel_error * 100:.3f}% with Neumann BC"
 
 
 @pytest.mark.unit
@@ -446,12 +452,12 @@ class TestPDEInitialConditions:
         x = np.linspace(0, L, N)
 
         # Gaussian at L/4
-        c0 = np.exp(-100 * (x - L/4)**2)
+        c0 = np.exp(-100 * (x - L / 4) ** 2)
 
         # Check peak location
         peak_idx = np.argmax(c0)
         peak_x = x[peak_idx]
-        assert abs(peak_x - L/4) < 0.02, f"Gaussian peak at {peak_x}, expected {L/4}"
+        assert abs(peak_x - L / 4) < 0.02, f"Gaussian peak at {peak_x}, expected {L / 4}"
 
         # Check peak value is 1.0
         assert abs(c0[peak_idx] - 1.0) < 0.01, "Gaussian peak should be 1.0"
@@ -468,6 +474,7 @@ class TestPDEInitialConditions:
 # =============================================================================
 # 2D PDE Block Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestHeatEquation2D:
@@ -494,7 +501,7 @@ class TestHeatEquation2D:
         T0_flat = T0.flatten()
 
         # Decay rate for (1,1) mode: α * (π²/Lx² + π²/Ly²) = α * 2π²/L²
-        lambda_heat = alpha * 2 * (np.pi / L)**2
+        lambda_heat = alpha * 2 * (np.pi / L) ** 2
 
         def heat_2d_rhs(t, T_flat):
             T = T_flat.reshape((Ny, Nx))
@@ -503,21 +510,22 @@ class TestHeatEquation2D:
             # Interior points: 5-point stencil
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2T_dx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / (dx * dx)
-                    d2T_dy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / (dy * dy)
+                    d2T_dx2 = (T[j, i + 1] - 2 * T[j, i] + T[j, i - 1]) / (dx * dx)
+                    d2T_dy2 = (T[j + 1, i] - 2 * T[j, i] + T[j - 1, i]) / (dy * dy)
                     dT_dt[j, i] = alpha * (d2T_dx2 + d2T_dy2)
 
             # Dirichlet BC with penalty
             penalty = 1000.0
             dT_dt[0, :] = penalty * (0.0 - T[0, :])
-            dT_dt[Ny-1, :] = penalty * (0.0 - T[Ny-1, :])
+            dT_dt[Ny - 1, :] = penalty * (0.0 - T[Ny - 1, :])
             dT_dt[:, 0] = penalty * (0.0 - T[:, 0])
-            dT_dt[:, Nx-1] = penalty * (0.0 - T[:, Nx-1])
+            dT_dt[:, Nx - 1] = penalty * (0.0 - T[:, Nx - 1])
 
             return dT_dt.flatten()
 
-        sol = solve_ivp(heat_2d_rhs, (0, 2), T0_flat, t_eval=np.linspace(0, 2, 201),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            heat_2d_rhs, (0, 2), T0_flat, t_eval=np.linspace(0, 2, 201), rtol=1e-6, atol=1e-8
+        )
 
         # Compare at center (Ny//2, Nx//2)
         center_idx = (Ny // 2) * Nx + (Nx // 2)
@@ -529,7 +537,7 @@ class TestHeatEquation2D:
         rel_error = np.abs(numerical[mask] - analytical[mask]) / analytical[mask]
         max_rel_error = np.max(rel_error)
 
-        assert max_rel_error < 0.05, f"2D Heat equation error {max_rel_error*100:.2f}% exceeds 5%"
+        assert max_rel_error < 0.05, f"2D Heat equation error {max_rel_error * 100:.2f}% exceeds 5%"
 
     def test_decay_rate_matches_theory_2d(self):
         """Test that 2D heat equation decay rate matches theoretical value."""
@@ -546,24 +554,25 @@ class TestHeatEquation2D:
         T0 = np.sin(np.pi * X / L) * np.sin(np.pi * Y / L)
         T0_flat = T0.flatten()
 
-        expected_lambda = alpha * 2 * (np.pi / L)**2
+        expected_lambda = alpha * 2 * (np.pi / L) ** 2
 
         def heat_2d_rhs(t, T_flat):
             T = T_flat.reshape((Ny, Nx))
             dT_dt = np.zeros((Ny, Nx))
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2T_dx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / (dx * dx)
-                    d2T_dy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / (dy * dy)
+                    d2T_dx2 = (T[j, i + 1] - 2 * T[j, i] + T[j, i - 1]) / (dx * dx)
+                    d2T_dy2 = (T[j + 1, i] - 2 * T[j, i] + T[j - 1, i]) / (dy * dy)
                     dT_dt[j, i] = alpha * (d2T_dx2 + d2T_dy2)
             dT_dt[0, :] = 1000.0 * (0.0 - T[0, :])
-            dT_dt[Ny-1, :] = 1000.0 * (0.0 - T[Ny-1, :])
+            dT_dt[Ny - 1, :] = 1000.0 * (0.0 - T[Ny - 1, :])
             dT_dt[:, 0] = 1000.0 * (0.0 - T[:, 0])
-            dT_dt[:, Nx-1] = 1000.0 * (0.0 - T[:, Nx-1])
+            dT_dt[:, Nx - 1] = 1000.0 * (0.0 - T[:, Nx - 1])
             return dT_dt.flatten()
 
-        sol = solve_ivp(heat_2d_rhs, (0, 5), T0_flat, t_eval=np.linspace(0, 5, 101),
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(
+            heat_2d_rhs, (0, 5), T0_flat, t_eval=np.linspace(0, 5, 101), rtol=1e-8, atol=1e-10
+        )
 
         # Fit exponential to extract numerical decay rate
         center_idx = (Ny // 2) * Nx + (Nx // 2)
@@ -576,7 +585,7 @@ class TestHeatEquation2D:
             numerical_lambda = -coeffs[0]
 
             rel_error = abs(numerical_lambda - expected_lambda) / expected_lambda
-            assert rel_error < 0.05, f"2D decay rate error {rel_error*100:.2f}% exceeds 5%"
+            assert rel_error < 0.05, f"2D decay rate error {rel_error * 100:.2f}% exceeds 5%"
 
     def test_gaussian_initial_condition_2d(self):
         """Test 2D heat equation with Gaussian initial condition diffuses."""
@@ -591,7 +600,7 @@ class TestHeatEquation2D:
         X, Y = np.meshgrid(x, y)
 
         # Gaussian at center
-        T0 = np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
+        T0 = np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
         T0_flat = T0.flatten()
         initial_max = np.max(T0)
 
@@ -600,24 +609,25 @@ class TestHeatEquation2D:
             dT_dt = np.zeros((Ny, Nx))
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2T_dx2 = (T[j, i+1] - 2*T[j, i] + T[j, i-1]) / (dx * dx)
-                    d2T_dy2 = (T[j+1, i] - 2*T[j, i] + T[j-1, i]) / (dy * dy)
+                    d2T_dx2 = (T[j, i + 1] - 2 * T[j, i] + T[j, i - 1]) / (dx * dx)
+                    d2T_dy2 = (T[j + 1, i] - 2 * T[j, i] + T[j - 1, i]) / (dy * dy)
                     dT_dt[j, i] = alpha * (d2T_dx2 + d2T_dy2)
             # Dirichlet BC
             dT_dt[0, :] = 1000.0 * (0.0 - T[0, :])
-            dT_dt[Ny-1, :] = 1000.0 * (0.0 - T[Ny-1, :])
+            dT_dt[Ny - 1, :] = 1000.0 * (0.0 - T[Ny - 1, :])
             dT_dt[:, 0] = 1000.0 * (0.0 - T[:, 0])
-            dT_dt[:, Nx-1] = 1000.0 * (0.0 - T[:, Nx-1])
+            dT_dt[:, Nx - 1] = 1000.0 * (0.0 - T[:, Nx - 1])
             return dT_dt.flatten()
 
-        sol = solve_ivp(heat_2d_rhs, (0, 1), T0_flat, t_eval=[0, 0.5, 1.0],
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(heat_2d_rhs, (0, 1), T0_flat, t_eval=[0, 0.5, 1.0], rtol=1e-6, atol=1e-8)
 
         # Peak should decrease as heat diffuses
         final_T = sol.y[:, -1].reshape((Ny, Nx))
         final_max = np.max(final_T)
 
-        assert final_max < initial_max * 0.5, f"Gaussian should diffuse: initial max={initial_max:.3f}, final max={final_max:.3f}"
+        assert final_max < initial_max * 0.5, (
+            f"Gaussian should diffuse: initial max={initial_max:.3f}, final max={final_max:.3f}"
+        )
 
 
 @pytest.mark.unit
@@ -659,28 +669,33 @@ class TestWaveEquation2D:
             # Interior: 5-point Laplacian
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2u_dx2 = (u[j, i+1] - 2*u[j, i] + u[j, i-1]) / (dx * dx)
-                    d2u_dy2 = (u[j+1, i] - 2*u[j, i] + u[j-1, i]) / (dy * dy)
+                    d2u_dx2 = (u[j, i + 1] - 2 * u[j, i] + u[j, i - 1]) / (dx * dx)
+                    d2u_dy2 = (u[j + 1, i] - 2 * u[j, i] + u[j - 1, i]) / (dy * dy)
                     dv_dt[j, i] = c**2 * (d2u_dx2 + d2u_dy2)
 
             # Dirichlet BC with penalty
             penalty = 1000.0
             du_dt[0, :] = penalty * (0.0 - u[0, :])
-            du_dt[Ny-1, :] = penalty * (0.0 - u[Ny-1, :])
+            du_dt[Ny - 1, :] = penalty * (0.0 - u[Ny - 1, :])
             du_dt[:, 0] = penalty * (0.0 - u[:, 0])
-            du_dt[:, Nx-1] = penalty * (0.0 - u[:, Nx-1])
+            du_dt[:, Nx - 1] = penalty * (0.0 - u[:, Nx - 1])
             dv_dt[0, :] = 0.0
-            dv_dt[Ny-1, :] = 0.0
+            dv_dt[Ny - 1, :] = 0.0
             dv_dt[:, 0] = 0.0
-            dv_dt[:, Nx-1] = 0.0
+            dv_dt[:, Nx - 1] = 0.0
 
             return np.concatenate([du_dt.flatten(), dv_dt.flatten()])
 
         # Simulate for 2 periods
         T_period = 2 * np.pi / omega
-        sol = solve_ivp(wave_2d_rhs, (0, 2*T_period), y0,
-                        t_eval=np.linspace(0, 2*T_period, 201),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            wave_2d_rhs,
+            (0, 2 * T_period),
+            y0,
+            t_eval=np.linspace(0, 2 * T_period, 201),
+            rtol=1e-6,
+            atol=1e-8,
+        )
 
         # Compare center displacement to analytical
         center_idx = (Ny // 2) * Nx + (Nx // 2)
@@ -716,14 +731,14 @@ class TestWaveEquation2D:
             dv_dt = np.zeros((Ny, Nx))
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2u_dx2 = (u[j, i+1] - 2*u[j, i] + u[j, i-1]) / (dx * dx)
-                    d2u_dy2 = (u[j+1, i] - 2*u[j, i] + u[j-1, i]) / (dy * dy)
+                    d2u_dx2 = (u[j, i + 1] - 2 * u[j, i] + u[j, i - 1]) / (dx * dx)
+                    d2u_dy2 = (u[j + 1, i] - 2 * u[j, i] + u[j - 1, i]) / (dy * dy)
                     dv_dt[j, i] = c**2 * (d2u_dx2 + d2u_dy2)
             # Dirichlet BC
             du_dt[0, :] = 1000.0 * (0.0 - u[0, :])
-            du_dt[Ny-1, :] = 1000.0 * (0.0 - u[Ny-1, :])
+            du_dt[Ny - 1, :] = 1000.0 * (0.0 - u[Ny - 1, :])
             du_dt[:, 0] = 1000.0 * (0.0 - u[:, 0])
-            du_dt[:, Nx-1] = 1000.0 * (0.0 - u[:, Nx-1])
+            du_dt[:, Nx - 1] = 1000.0 * (0.0 - u[:, Nx - 1])
             return np.concatenate([du_dt.flatten(), dv_dt.flatten()])
 
         def compute_energy(state):
@@ -739,15 +754,14 @@ class TestWaveEquation2D:
             potential = 0.5 * c**2 * np.sum(du_dx**2 + du_dy**2) * dA
             return kinetic + potential
 
-        sol = solve_ivp(wave_2d_rhs, (0, 2), y0, t_eval=np.linspace(0, 2, 21),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(wave_2d_rhs, (0, 2), y0, t_eval=np.linspace(0, 2, 21), rtol=1e-6, atol=1e-8)
 
         energies = [compute_energy(sol.y[:, i]) for i in range(sol.y.shape[1])]
         initial_energy = energies[0]
 
         # Energy should be approximately conserved (allow 20% due to penalty BC)
         max_variation = max(abs(E - initial_energy) / initial_energy for E in energies)
-        assert max_variation < 0.2, f"Energy variation {max_variation*100:.1f}% exceeds 20%"
+        assert max_variation < 0.2, f"Energy variation {max_variation * 100:.1f}% exceeds 20%"
 
 
 @pytest.mark.unit
@@ -769,7 +783,7 @@ class TestAdvectionEquation2D:
 
         # Initial: Gaussian stripe at x = Lx/4
         x_init = Lx / 4
-        c0 = np.exp(-50 * (X - x_init)**2)
+        c0 = np.exp(-50 * (X - x_init) ** 2)
         c0_flat = c0.flatten()
 
         def advection_2d_rhs(t, c_flat):
@@ -779,7 +793,7 @@ class TestAdvectionEquation2D:
             # Interior: upwind for vx > 0
             for j in range(Ny):
                 for i in range(1, Nx):
-                    dc_dx = (c[j, i] - c[j, i-1]) / dx
+                    dc_dx = (c[j, i] - c[j, i - 1]) / dx
                     dc_dt[j, i] = -vx * dc_dx
 
             # Left BC: Dirichlet (inlet = 0)
@@ -787,9 +801,9 @@ class TestAdvectionEquation2D:
 
             return dc_dt.flatten()
 
-        sol = solve_ivp(advection_2d_rhs, (0, 1), c0_flat,
-                        t_eval=np.linspace(0, 1, 101),
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            advection_2d_rhs, (0, 1), c0_flat, t_eval=np.linspace(0, 1, 101), rtol=1e-6, atol=1e-8
+        )
 
         # Track peak position at several times
         for t_idx in [0, 25, 50, 75]:
@@ -803,7 +817,9 @@ class TestAdvectionEquation2D:
             expected_x = x_init + vx * t
             if expected_x < Lx - dx:  # Before reaching boundary
                 error = abs(peak_x - expected_x)
-                assert error < 0.1, f"Peak at t={t:.2f} expected at x={expected_x:.2f}, got {peak_x:.2f}"
+                assert error < 0.1, (
+                    f"Peak at t={t:.2f} expected at x={expected_x:.2f}, got {peak_x:.2f}"
+                )
 
     def test_advection_velocity_diagonal(self):
         """Test diagonal advection (vx > 0, vy > 0)."""
@@ -820,7 +836,7 @@ class TestAdvectionEquation2D:
 
         # Initial: Gaussian pulse at (Lx/4, Ly/2)
         x_init, y_init = Lx / 4, Ly / 2
-        c0 = np.exp(-50 * ((X - x_init)**2 + (Y - y_init)**2))
+        c0 = np.exp(-50 * ((X - x_init) ** 2 + (Y - y_init) ** 2))
         c0_flat = c0.flatten()
 
         def advection_2d_rhs(t, c_flat):
@@ -830,8 +846,8 @@ class TestAdvectionEquation2D:
             for j in range(1, Ny):
                 for i in range(1, Nx):
                     # Upwind for vx > 0, vy > 0
-                    dc_dx = (c[j, i] - c[j, i-1]) / dx
-                    dc_dy = (c[j, i] - c[j-1, i]) / dy
+                    dc_dx = (c[j, i] - c[j, i - 1]) / dx
+                    dc_dy = (c[j, i] - c[j - 1, i]) / dy
                     dc_dt[j, i] = -vx * dc_dx - vy * dc_dy
 
             # BC: Dirichlet at inflow boundaries
@@ -840,9 +856,9 @@ class TestAdvectionEquation2D:
 
             return dc_dt.flatten()
 
-        sol = solve_ivp(advection_2d_rhs, (0, 0.5), c0_flat,
-                        t_eval=[0, 0.25, 0.5],
-                        rtol=1e-6, atol=1e-8)
+        sol = solve_ivp(
+            advection_2d_rhs, (0, 0.5), c0_flat, t_eval=[0, 0.25, 0.5], rtol=1e-6, atol=1e-8
+        )
 
         # At t=0.25, peak should have moved to approximately (x_init + 0.25, y_init + 0.125)
         c_mid = sol.y[:, 1].reshape((Ny, Nx))
@@ -852,8 +868,12 @@ class TestAdvectionEquation2D:
         expected_x = x_init + vx * 0.25
         expected_y = y_init + vy * 0.25
 
-        assert abs(peak_x - expected_x) < 0.15, f"X peak error: expected {expected_x:.2f}, got {peak_x:.2f}"
-        assert abs(peak_y - expected_y) < 0.15, f"Y peak error: expected {expected_y:.2f}, got {peak_y:.2f}"
+        assert abs(peak_x - expected_x) < 0.15, (
+            f"X peak error: expected {expected_x:.2f}, got {peak_x:.2f}"
+        )
+        assert abs(peak_y - expected_y) < 0.15, (
+            f"Y peak error: expected {expected_y:.2f}, got {peak_y:.2f}"
+        )
 
     def test_mass_conservation_closed_domain(self):
         """Test mass conservation with Neumann (no-flux) BC."""
@@ -869,7 +889,7 @@ class TestAdvectionEquation2D:
         X, Y = np.meshgrid(x, y)
 
         # Gaussian at center
-        c0 = np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
+        c0 = np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
         c0_flat = c0.flatten()
         initial_mass = np.sum(c0) * dx * dy
 
@@ -880,35 +900,49 @@ class TestAdvectionEquation2D:
             # Interior: diffusion only
             for j in range(1, Ny - 1):
                 for i in range(1, Nx - 1):
-                    d2c_dx2 = (c[j, i+1] - 2*c[j, i] + c[j, i-1]) / (dx * dx)
-                    d2c_dy2 = (c[j+1, i] - 2*c[j, i] + c[j-1, i]) / (dy * dy)
+                    d2c_dx2 = (c[j, i + 1] - 2 * c[j, i] + c[j, i - 1]) / (dx * dx)
+                    d2c_dy2 = (c[j + 1, i] - 2 * c[j, i] + c[j - 1, i]) / (dy * dy)
                     dc_dt[j, i] = D * (d2c_dx2 + d2c_dy2)
 
             # Neumann BC: zero normal gradient (no flux)
             # Left/Right
             for j in range(1, Ny - 1):
-                dc_dt[j, 0] = D * (2*c[j, 1] - 2*c[j, 0]) / (dx * dx) + D * (c[j+1, 0] - 2*c[j, 0] + c[j-1, 0]) / (dy * dy)
-                dc_dt[j, Nx-1] = D * (2*c[j, Nx-2] - 2*c[j, Nx-1]) / (dx * dx) + D * (c[j+1, Nx-1] - 2*c[j, Nx-1] + c[j-1, Nx-1]) / (dy * dy)
+                dc_dt[j, 0] = D * (2 * c[j, 1] - 2 * c[j, 0]) / (dx * dx) + D * (
+                    c[j + 1, 0] - 2 * c[j, 0] + c[j - 1, 0]
+                ) / (dy * dy)
+                dc_dt[j, Nx - 1] = D * (2 * c[j, Nx - 2] - 2 * c[j, Nx - 1]) / (dx * dx) + D * (
+                    c[j + 1, Nx - 1] - 2 * c[j, Nx - 1] + c[j - 1, Nx - 1]
+                ) / (dy * dy)
             # Bottom/Top
             for i in range(1, Nx - 1):
-                dc_dt[0, i] = D * (c[0, i+1] - 2*c[0, i] + c[0, i-1]) / (dx * dx) + D * (2*c[1, i] - 2*c[0, i]) / (dy * dy)
-                dc_dt[Ny-1, i] = D * (c[Ny-1, i+1] - 2*c[Ny-1, i] + c[Ny-1, i-1]) / (dx * dx) + D * (2*c[Ny-2, i] - 2*c[Ny-1, i]) / (dy * dy)
+                dc_dt[0, i] = D * (c[0, i + 1] - 2 * c[0, i] + c[0, i - 1]) / (dx * dx) + D * (
+                    2 * c[1, i] - 2 * c[0, i]
+                ) / (dy * dy)
+                dc_dt[Ny - 1, i] = D * (c[Ny - 1, i + 1] - 2 * c[Ny - 1, i] + c[Ny - 1, i - 1]) / (
+                    dx * dx
+                ) + D * (2 * c[Ny - 2, i] - 2 * c[Ny - 1, i]) / (dy * dy)
             # Corners (approximate)
-            dc_dt[0, 0] = D * (2*c[0, 1] - 2*c[0, 0]) / (dx * dx) + D * (2*c[1, 0] - 2*c[0, 0]) / (dy * dy)
-            dc_dt[0, Nx-1] = D * (2*c[0, Nx-2] - 2*c[0, Nx-1]) / (dx * dx) + D * (2*c[1, Nx-1] - 2*c[0, Nx-1]) / (dy * dy)
-            dc_dt[Ny-1, 0] = D * (2*c[Ny-1, 1] - 2*c[Ny-1, 0]) / (dx * dx) + D * (2*c[Ny-2, 0] - 2*c[Ny-1, 0]) / (dy * dy)
-            dc_dt[Ny-1, Nx-1] = D * (2*c[Ny-1, Nx-2] - 2*c[Ny-1, Nx-1]) / (dx * dx) + D * (2*c[Ny-2, Nx-1] - 2*c[Ny-1, Nx-1]) / (dy * dy)
+            dc_dt[0, 0] = D * (2 * c[0, 1] - 2 * c[0, 0]) / (dx * dx) + D * (
+                2 * c[1, 0] - 2 * c[0, 0]
+            ) / (dy * dy)
+            dc_dt[0, Nx - 1] = D * (2 * c[0, Nx - 2] - 2 * c[0, Nx - 1]) / (dx * dx) + D * (
+                2 * c[1, Nx - 1] - 2 * c[0, Nx - 1]
+            ) / (dy * dy)
+            dc_dt[Ny - 1, 0] = D * (2 * c[Ny - 1, 1] - 2 * c[Ny - 1, 0]) / (dx * dx) + D * (
+                2 * c[Ny - 2, 0] - 2 * c[Ny - 1, 0]
+            ) / (dy * dy)
+            dc_dt[Ny - 1, Nx - 1] = D * (2 * c[Ny - 1, Nx - 2] - 2 * c[Ny - 1, Nx - 1]) / (
+                dx * dx
+            ) + D * (2 * c[Ny - 2, Nx - 1] - 2 * c[Ny - 1, Nx - 1]) / (dy * dy)
 
             return dc_dt.flatten()
 
-        sol = solve_ivp(diffusion_2d_neumann, (0, 2), c0_flat,
-                        t_eval=[0, 2],
-                        rtol=1e-8, atol=1e-10)
+        sol = solve_ivp(diffusion_2d_neumann, (0, 2), c0_flat, t_eval=[0, 2], rtol=1e-8, atol=1e-10)
 
         final_mass = np.sum(sol.y[:, -1]) * dx * dy
         rel_error = abs(final_mass - initial_mass) / initial_mass
         # Allow 15% error due to corner BC approximations in 2D
-        assert rel_error < 0.15, f"Mass conservation error {rel_error*100:.2f}% exceeds 15%"
+        assert rel_error < 0.15, f"Mass conservation error {rel_error * 100:.2f}% exceeds 15%"
 
 
 @pytest.mark.unit
@@ -921,11 +955,13 @@ class Test2DPDEBlockImplementations:
 
         block = HeatEquation2DBlock()
         params = {
-            'alpha': 0.01,
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 10, 'Ny': 10,
-            'init_temp': 'sinusoidal',
-            'init_amplitude': 1.0
+            "alpha": 0.01,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 10,
+            "Ny": 10,
+            "init_temp": "sinusoidal",
+            "init_amplitude": 1.0,
         }
 
         state = block.get_initial_state(params)
@@ -948,13 +984,15 @@ class Test2DPDEBlockImplementations:
 
         block = WaveEquation2DBlock()
         params = {
-            'c': 1.0,
-            'damping': 0.0,
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 10, 'Ny': 10,
-            'init_displacement': 'gaussian',
-            'init_velocity': '0.0',
-            'init_amplitude': 1.0
+            "c": 1.0,
+            "damping": 0.0,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 10,
+            "Ny": 10,
+            "init_displacement": "gaussian",
+            "init_velocity": "0.0",
+            "init_amplitude": 1.0,
         }
 
         state = block.get_initial_state(params)
@@ -979,12 +1017,15 @@ class Test2DPDEBlockImplementations:
 
         block = AdvectionEquation2DBlock()
         params = {
-            'vx': 1.0, 'vy': 0.0,
-            'D': 0.0,
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 15, 'Ny': 15,
-            'init_concentration': 'step',
-            'init_amplitude': 1.0
+            "vx": 1.0,
+            "vy": 0.0,
+            "D": 0.0,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 15,
+            "Ny": 15,
+            "init_concentration": "step",
+            "init_amplitude": 1.0,
         }
 
         state = block.get_initial_state(params)
@@ -1003,14 +1044,16 @@ class Test2DPDEBlockImplementations:
 
         block = HeatEquation2DBlock()
         params = {
-            'alpha': 0.1,
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 10, 'Ny': 10,
-            'bc_type_left': 'Dirichlet',
-            'bc_type_right': 'Dirichlet',
-            'bc_type_bottom': 'Dirichlet',
-            'bc_type_top': 'Dirichlet',
-            'init_temp': 'sinusoidal'
+            "alpha": 0.1,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 10,
+            "Ny": 10,
+            "bc_type_left": "Dirichlet",
+            "bc_type_right": "Dirichlet",
+            "bc_type_bottom": "Dirichlet",
+            "bc_type_top": "Dirichlet",
+            "init_temp": "sinusoidal",
         }
 
         state = block.get_initial_state(params)
@@ -1032,16 +1075,18 @@ class Test2DPDEBlockImplementations:
 
         block = WaveEquation2DBlock()
         params = {
-            'c': 1.0,
-            'damping': 0.0,
-            'Lx': 1.0, 'Ly': 1.0,
-            'Nx': 10, 'Ny': 10,
-            'bc_type_left': 'Dirichlet',
-            'bc_type_right': 'Dirichlet',
-            'bc_type_bottom': 'Dirichlet',
-            'bc_type_top': 'Dirichlet',
-            'init_displacement': 'sinusoidal',
-            'init_velocity': '0.0'
+            "c": 1.0,
+            "damping": 0.0,
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "Nx": 10,
+            "Ny": 10,
+            "bc_type_left": "Dirichlet",
+            "bc_type_right": "Dirichlet",
+            "bc_type_bottom": "Dirichlet",
+            "bc_type_top": "Dirichlet",
+            "init_displacement": "sinusoidal",
+            "init_velocity": "0.0",
         }
 
         state = block.get_initial_state(params)

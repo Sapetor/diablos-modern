@@ -13,9 +13,9 @@ from lib.safe_eval import SafeEvalError, safe_literal, safe_expr, compile_expr, 
 # Happy paths — literals
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestSafeLiteralHappy:
-
     def test_float(self):
         assert safe_literal("1.0") == 1.0
 
@@ -60,9 +60,9 @@ class TestSafeLiteralHappy:
 # Happy paths — expressions
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestSafeExprHappy:
-
     def test_arithmetic(self):
         assert safe_expr("2*3 + 4") == 10
 
@@ -229,7 +229,7 @@ _MALICIOUS = [
     "[i for i in range(10)]",
     "{i: i for i in range(3)}",
     "(x := 1)",
-    'f"{__import__(\'os\')}"',
+    "f\"{__import__('os')}\"",
     "1; import os",
 ]
 
@@ -243,7 +243,6 @@ def test_refusal(payload):
 
 @pytest.mark.unit
 class TestRefusalDetailed:
-
     def test_x_dunder_class(self):
         with pytest.raises(SafeEvalError):
             safe_expr("x.__class__", {"x": 1})
@@ -270,7 +269,7 @@ class TestRefusalDetailed:
 
     def test_fstring(self):
         with pytest.raises(SafeEvalError):
-            safe_expr('f"{__import__(\'os\')}"')
+            safe_expr("f\"{__import__('os')}\"")
 
     def test_multi_statement(self):
         with pytest.raises(SafeEvalError):
@@ -345,9 +344,9 @@ class TestRefusalDetailed:
 # Edge cases
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestEdgeCases:
-
     def test_empty_string_literal(self):
         with pytest.raises(SafeEvalError):
             safe_literal("")
@@ -427,9 +426,9 @@ class TestEdgeCases:
 # CompiledExpr tests
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestCompiledExpr:
-
     def test_basic_reuse(self):
         expr = compile_expr("u + 1")
         assert expr({"u": 2}) == 3

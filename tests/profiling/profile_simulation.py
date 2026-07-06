@@ -29,28 +29,33 @@ def create_test_simulation():
 
     # Create blocks
     step = StepBlock()
-    step_params = {'value': 1.0, 'delay': 0.1, 'type': 'up',
-                   'pulse_start_up': True, '_init_start_': True, '_name_': 'step'}
+    step_params = {
+        "value": 1.0,
+        "delay": 0.1,
+        "type": "up",
+        "pulse_start_up": True,
+        "_init_start_": True,
+        "_name_": "step",
+    }
 
     gain = GainBlock()
-    gain_params = {'gain': 2.0}
+    gain_params = {"gain": 2.0}
 
     sum_block = SumBlock()
-    sum_params = {'sign': '+-', '_init_start_': True}
+    sum_params = {"sign": "+-", "_init_start_": True}
 
     integrator = IntegratorBlock()
-    int_params = {'init_conds': 0.0, 'method': 'FWD_EULER',
-                  '_init_start_': True, '_name_': 'int'}
+    int_params = {"init_conds": 0.0, "method": "FWD_EULER", "_init_start_": True, "_name_": "int"}
 
     scope = ScopeBlock()
-    scope_params = {'labels': 'out', '_init_start_': True, '_name_': 'scope'}
+    scope_params = {"labels": "out", "_init_start_": True, "_name_": "scope"}
 
     return {
-        'step': (step, step_params),
-        'gain': (gain, gain_params),
-        'sum': (sum_block, sum_params),
-        'integrator': (integrator, int_params),
-        'scope': (scope, scope_params)
+        "step": (step, step_params),
+        "gain": (gain, gain_params),
+        "sum": (sum_block, sum_params),
+        "integrator": (integrator, int_params),
+        "scope": (scope, scope_params),
     }
 
 
@@ -58,11 +63,11 @@ def run_block_level_simulation(num_steps=1000, dt=0.01):
     """Run block-level simulation manually (bypasses engine overhead)."""
     blocks = create_test_simulation()
 
-    step, step_params = blocks['step']
-    gain, gain_params = blocks['gain']
-    sum_block, sum_params = blocks['sum']
-    integrator, int_params = blocks['integrator']
-    scope, scope_params = blocks['scope']
+    step, step_params = blocks["step"]
+    gain, gain_params = blocks["gain"]
+    sum_block, sum_params = blocks["sum"]
+    integrator, int_params = blocks["integrator"]
+    scope, scope_params = blocks["scope"]
 
     y = 0.0  # integrator output (feedback)
 
@@ -71,7 +76,7 @@ def run_block_level_simulation(num_steps=1000, dt=0.01):
 
         # Step input
         step_out = step.execute(t, {}, step_params)
-        step_val = step_out[0][0] if hasattr(step_out[0], '__len__') else step_out[0]
+        step_val = step_out[0][0] if hasattr(step_out[0], "__len__") else step_out[0]
 
         # Gain on step
         gain_out = gain.execute(t, {0: step_val}, gain_params)
@@ -81,12 +86,12 @@ def run_block_level_simulation(num_steps=1000, dt=0.01):
 
         # Integrator
         int_out = integrator.execute(t, {0: sum_out[0]}, int_params, dtime=dt)
-        y = int_out[0][0] if hasattr(int_out[0], '__len__') else int_out[0]
+        y = int_out[0][0] if hasattr(int_out[0], "__len__") else int_out[0]
 
         # Scope
         scope.execute(t, {0: y}, scope_params)
 
-    return scope_params.get('vector', [])
+    return scope_params.get("vector", [])
 
 
 def run_pde_simulation(num_steps=100, dt=0.001):
@@ -95,15 +100,15 @@ def run_pde_simulation(num_steps=100, dt=0.001):
 
     block = HeatEquation1DBlock()
     params = {
-        'length': 1.0,
-        'nx': 100,
-        'alpha': 0.01,
-        'bc_type': 'dirichlet',
-        'left_bc_value': 0.0,
-        'right_bc_value': 0.0,
-        'initial_condition': 'sine',
-        '_init_start_': True,
-        'dtime': dt
+        "length": 1.0,
+        "nx": 100,
+        "alpha": 0.01,
+        "bc_type": "dirichlet",
+        "left_bc_value": 0.0,
+        "right_bc_value": 0.0,
+        "initial_condition": "sine",
+        "_init_start_": True,
+        "dtime": dt,
     }
 
     for i in range(num_steps):
@@ -126,11 +131,16 @@ def run_optimization_simulation(num_iterations=100):
     gain = VectorGainBlock()
     sum_block = VectorSumBlock()
 
-    state_params = {'initial_value': '[5.0, 5.0]', 'n_variables': 2, '_init_start_': True}
-    obj_params = {'expression': 'x1**2 + x2**2', 'n_variables': 2}
-    grad_params = {'expression': 'x1**2 + x2**2', 'n_variables': 2, 'epsilon': 1e-6, '_init_start_': True}
-    gain_params = {'gain': 0.1}
-    sum_params = {'signs': '+-'}
+    state_params = {"initial_value": "[5.0, 5.0]", "n_variables": 2, "_init_start_": True}
+    obj_params = {"expression": "x1**2 + x2**2", "n_variables": 2}
+    grad_params = {
+        "expression": "x1**2 + x2**2",
+        "n_variables": 2,
+        "epsilon": 1e-6,
+        "_init_start_": True,
+    }
+    gain_params = {"gain": 0.1}
+    sum_params = {"signs": "+-"}
 
     x = np.array([5.0, 5.0])
 
@@ -166,7 +176,7 @@ def profile_function(func, *args, **kwargs):
     # Get stats
     stream = io.StringIO()
     stats = pstats.Stats(profiler, stream=stream)
-    stats.sort_stats('cumulative')
+    stats.sort_stats("cumulative")
     stats.print_stats(20)
 
     return result, elapsed, stream.getvalue()
@@ -236,5 +246,5 @@ Based on typical DiaBloS simulation profiles:
 """)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

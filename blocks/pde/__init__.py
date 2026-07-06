@@ -46,23 +46,23 @@ from blocks.pde.field_processing_2d import (
 
 __all__ = [
     # 1D PDE blocks
-    'HeatEquation1DBlock',
-    'WaveEquation1DBlock',
-    'AdvectionEquation1DBlock',
-    'DiffusionReaction1DBlock',
+    "HeatEquation1DBlock",
+    "WaveEquation1DBlock",
+    "AdvectionEquation1DBlock",
+    "DiffusionReaction1DBlock",
     # 2D PDE blocks
-    'HeatEquation2DBlock',
-    'WaveEquation2DBlock',
-    'AdvectionEquation2DBlock',
+    "HeatEquation2DBlock",
+    "WaveEquation2DBlock",
+    "AdvectionEquation2DBlock",
     # 1D Field processing
-    'FieldProbeBlock',
-    'FieldIntegralBlock',
-    'FieldMaxBlock',
-    'FieldScopeBlock',
-    'FieldGradientBlock',
-    'FieldLaplacianBlock',
+    "FieldProbeBlock",
+    "FieldIntegralBlock",
+    "FieldMaxBlock",
+    "FieldScopeBlock",
+    "FieldGradientBlock",
+    "FieldLaplacianBlock",
     # 2D Field processing
-    'FieldProbe2DBlock',
-    'FieldScope2DBlock',
-    'FieldSliceBlock',
+    "FieldProbe2DBlock",
+    "FieldScope2DBlock",
+    "FieldSliceBlock",
 ]

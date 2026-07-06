@@ -27,6 +27,7 @@ The diagram is built programmatically (there is no shipped example with a
 TransportDelay) using the DSim harness from test_compiled_golden and the
 DBlock/DLine idiom from tests/unit/test_solver_selection.py.
 """
+
 import numpy as np
 import pytest
 
@@ -66,33 +67,69 @@ def _build_dsim():
     model = dsim.model
 
     sine_b = SineBlock()
-    sine = DBlock("Sine", 0, coords=QRect(0, 0, 50, 50), color="blue",
-                  in_ports=0, out_ports=1, b_type=sine_b.b_type,
-                  params=_defaults(sine_b), block_class=SineBlock,
-                  category=sine_b.category)
+    sine = DBlock(
+        "Sine",
+        0,
+        coords=QRect(0, 0, 50, 50),
+        color="blue",
+        in_ports=0,
+        out_ports=1,
+        b_type=sine_b.b_type,
+        params=_defaults(sine_b),
+        block_class=SineBlock,
+        category=sine_b.category,
+    )
     sine.params["amplitude"] = AMPLITUDE
     sine.params["omega"] = OMEGA
     sine.params["init_angle"] = 0.0
 
     td_b = TransportDelayBlock()
-    td = DBlock("TransportDelay", 0, coords=QRect(100, 0, 50, 50), color="cyan",
-                in_ports=1, out_ports=1, b_type=2,
-                params=_defaults(td_b), block_class=TransportDelayBlock,
-                category=td_b.category)
+    td = DBlock(
+        "TransportDelay",
+        0,
+        coords=QRect(100, 0, 50, 50),
+        color="cyan",
+        in_ports=1,
+        out_ports=1,
+        b_type=2,
+        params=_defaults(td_b),
+        block_class=TransportDelayBlock,
+        category=td_b.category,
+    )
     td.params["delay_time"] = DELAY
     td.params["initial_value"] = 0.0
 
     scope_b = ScopeBlock()
-    scope = DBlock("Scope", 0, coords=QRect(200, 0, 50, 50), color="red",
-                   in_ports=1, out_ports=0, b_type=scope_b.b_type,
-                   params=_defaults(scope_b), block_class=ScopeBlock,
-                   category=scope_b.category)
+    scope = DBlock(
+        "Scope",
+        0,
+        coords=QRect(200, 0, 50, 50),
+        color="red",
+        in_ports=1,
+        out_ports=0,
+        b_type=scope_b.b_type,
+        params=_defaults(scope_b),
+        block_class=ScopeBlock,
+        category=scope_b.category,
+    )
 
     lines = [
-        DLine(sid=0, srcblock=sine.name, srcport=0, dstblock=td.name, dstport=0,
-              points=[QPoint(0, 0), QPoint(1, 1)]),
-        DLine(sid=1, srcblock=td.name, srcport=0, dstblock=scope.name, dstport=0,
-              points=[QPoint(1, 1), QPoint(2, 2)]),
+        DLine(
+            sid=0,
+            srcblock=sine.name,
+            srcport=0,
+            dstblock=td.name,
+            dstport=0,
+            points=[QPoint(0, 0), QPoint(1, 1)],
+        ),
+        DLine(
+            sid=1,
+            srcblock=td.name,
+            srcport=0,
+            dstblock=scope.name,
+            dstport=0,
+            points=[QPoint(1, 1), QPoint(2, 2)],
+        ),
     ]
     model.blocks_list.clear()
     model.blocks_list.extend([sine, td, scope])
@@ -163,8 +200,7 @@ class TestTransportDelayEquivalence:
         analytic = AMPLITUDE * np.sin(OMEGA * (t - DELAY))
         max_abs = float(np.max(np.abs(y[post] - analytic[post])))
         assert np.allclose(y[post], analytic[post], rtol=RTOL, atol=ATOL), (
-            "interpreted transport delay does not match sin(3*(t-0.5)) "
-            "(max|delta|=%.3e)" % max_abs
+            "interpreted transport delay does not match sin(3*(t-0.5)) (max|delta|=%.3e)" % max_abs
         )
         # Sanity: the signal actually swings over the full sine amplitude.
         assert np.max(np.abs(y)) > 0.9 * AMPLITUDE

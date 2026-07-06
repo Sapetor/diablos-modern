@@ -13,6 +13,7 @@ Migration is incremental: families move here one at a time, each gated behind th
 compiled-path golden harness (``tests/regression/test_compiled_golden.py``).
 Blocks not yet migrated fall through to the legacy if/elif in the compiler.
 """
+
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
@@ -24,11 +25,12 @@ class BuildContext:
     Computed once by the compiler before dispatch. Builders read only the fields
     they need (e.g. a source block uses ``b_name`` and ``params`` only).
     """
+
     block: Any
     b_name: str
     fn: str
     params: Dict
-    input_sources: List[Optional[str]]   # signal key per input port (None -> 0.0)
+    input_sources: List[Optional[str]]  # signal key per input port (None -> 0.0)
     deps: Dict
     state_map: Dict
     block_matrices: Dict
@@ -40,10 +42,12 @@ KERNEL_BUILDERS: Dict[str, Callable[[BuildContext], Callable]] = {}
 
 def kernel(*names):
     """Decorator: register a builder under one or more canonical fn-names."""
+
     def deco(builder):
         for name in names:
             KERNEL_BUILDERS[name] = builder
         return builder
+
     return deco
 
 

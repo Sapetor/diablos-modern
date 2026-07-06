@@ -32,27 +32,27 @@ def canonical_fn(block_fn):
         The canonical name, or ``""`` for a falsy input.
     """
     if not block_fn:
-        return ''
+        return ""
 
     fn = block_fn.title()
 
-    if fn == 'Statespace':
-        fn = 'StateSpace'
-    if fn in ('Transferfcn', 'Tranfn'):
-        fn = 'TransferFcn'
-    if block_fn == 'PID':  # 'PID'.title() == 'Pid'; keep the upstream spelling
-        fn = 'PID'
-    if fn == 'Ratelimiter':
-        fn = 'RateLimiter'
+    if fn == "Statespace":
+        fn = "StateSpace"
+    if fn in ("Transferfcn", "Tranfn"):
+        fn = "TransferFcn"
+    if block_fn == "PID":  # 'PID'.title() == 'Pid'; keep the upstream spelling
+        fn = "PID"
+    if fn == "Ratelimiter":
+        fn = "RateLimiter"
 
     # PDE 1D blocks (no-ops in practice; see module/function docstring).
-    if fn == 'Heatequation1d':
-        fn = 'Heatequation1D'
-    if fn == 'Waveequation1d':
-        fn = 'Waveequation1D'
-    if fn == 'Advectionequation1d':
-        fn = 'Advectionequation1D'
-    if fn == 'Diffusionreaction1d':
-        fn = 'Diffusionreaction1D'
+    if fn == "Heatequation1d":
+        fn = "Heatequation1D"
+    if fn == "Waveequation1d":
+        fn = "Waveequation1D"
+    if fn == "Advectionequation1d":
+        fn = "Advectionequation1D"
+    if fn == "Diffusionreaction1d":
+        fn = "Diffusionreaction1D"
 
     return fn

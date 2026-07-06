@@ -1,7 +1,7 @@
-
 import unittest
 from unittest.mock import MagicMock
 from modern_ui.managers.history_manager import HistoryManager
+
 
 class TestHistoryManager(unittest.TestCase):
     def setUp(self):
@@ -10,7 +10,7 @@ class TestHistoryManager(unittest.TestCase):
         self.mock_canvas.dsim = self.mock_dsim
         self.mock_dsim.blocks_list = []
         self.mock_dsim.line_list = []
-        
+
         self.manager = HistoryManager(self.mock_canvas)
 
     def test_initial_state(self):
@@ -36,14 +36,14 @@ class TestHistoryManager(unittest.TestCase):
         mock_block.params = {}
         mock_block.external = False
         mock_block.selected = False
-        
+
         self.mock_dsim.blocks_list = [mock_block]
-        
+
         self.manager.push_undo("Added Block")
-        
+
         self.assertEqual(len(self.manager.undo_stack), 1)
-        self.assertEqual(self.manager.undo_stack[0]['description'], "Added Block")
-        self.assertEqual(len(self.manager.undo_stack[0]['state']['blocks']), 1)
+        self.assertEqual(self.manager.undo_stack[0]["description"], "Added Block")
+        self.assertEqual(len(self.manager.undo_stack[0]["state"]["blocks"]), 1)
 
     def test_undo_restores_state(self):
         """Verify that undo() moves the top undo entry onto the redo stack and
@@ -65,11 +65,12 @@ class TestHistoryManager(unittest.TestCase):
         self.assertEqual(len(self.manager.redo_stack), 1)
         # _restore_state was called once with the initial snapshot
         self.assertEqual(len(restored), 1)
-        self.assertIn('blocks', restored[0])
-        self.assertIn('lines', restored[0])
-        
+        self.assertIn("blocks", restored[0])
+        self.assertIn("lines", restored[0])
+
     def test_stack_limit(self):
         import collections
+
         # Recreate the deque with the smaller maxlen after updating the limit,
         # since deque.maxlen is fixed at construction time.
         self.manager.max_undo_steps = 2
@@ -79,8 +80,9 @@ class TestHistoryManager(unittest.TestCase):
         self.manager.push_undo("3")
 
         self.assertEqual(len(self.manager.undo_stack), 2)
-        self.assertEqual(self.manager.undo_stack[0]['description'], "2")
-        self.assertEqual(self.manager.undo_stack[1]['description'], "3")
+        self.assertEqual(self.manager.undo_stack[0]["description"], "2")
+        self.assertEqual(self.manager.undo_stack[1]["description"], "3")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

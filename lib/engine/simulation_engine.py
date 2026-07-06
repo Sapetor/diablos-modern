@@ -20,47 +20,49 @@ from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 logger = logging.getLogger(__name__)
 
 # Compiled-solver methods that scipy.integrate.solve_ivp accepts directly.
-SCIPY_SOLVER_METHODS = ('RK45', 'RK23', 'DOP853', 'Radau', 'BDF', 'LSODA')
+SCIPY_SOLVER_METHODS = ("RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA")
 # Fixed-step schemes integrated in-house (use the simulation step dt).
-FIXED_STEP_METHODS = ('Euler', 'RK4')
+FIXED_STEP_METHODS = ("Euler", "RK4")
 
 # Runtime/history keys that must not invalidate the compiled-system cache.
 # The compiler only needs user-facing/resolved parameters and port metadata;
 # these values are written during interpreted initialization or post-solve
 # replay and would otherwise make every repeat run look structurally new.
-_COMPILE_CACHE_ALLOWED_INTERNAL_KEYS = frozenset({'_inputs_', '_outputs_'})
-_COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset({
-    '_source_params_fingerprint',
-    '_init_start_',
-    '_rng',
-    '_prev',
-    '_x_',
-    '_held_output_',
-    '_held_value_',
-    '_last_value_',
-    '_last_time_',
-    '_next_sample_time_',
-    '_current_value_',
-    '_sample_index_',
-    '_time_buffer_',
-    '_value_buffer_',
-    '_vector_buf',
-    '_vector_len',
-    '_field_history_',
-    '_field_history_2d_',
-    '_time_history_',
-    '_replay_state_',
-    '_replay_pending_',
-    '_replay_hyst_state_',
-    'vector',
-    'vec_dim',
-    'vec_labels',
-    'mem',
-    'mem_list',
-    'mem_len',
-    'output',
-    'aux',
-})
+_COMPILE_CACHE_ALLOWED_INTERNAL_KEYS = frozenset({"_inputs_", "_outputs_"})
+_COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset(
+    {
+        "_source_params_fingerprint",
+        "_init_start_",
+        "_rng",
+        "_prev",
+        "_x_",
+        "_held_output_",
+        "_held_value_",
+        "_last_value_",
+        "_last_time_",
+        "_next_sample_time_",
+        "_current_value_",
+        "_sample_index_",
+        "_time_buffer_",
+        "_value_buffer_",
+        "_vector_buf",
+        "_vector_len",
+        "_field_history_",
+        "_field_history_2d_",
+        "_time_history_",
+        "_replay_state_",
+        "_replay_pending_",
+        "_replay_hyst_state_",
+        "vector",
+        "vec_dim",
+        "vec_labels",
+        "mem",
+        "mem_list",
+        "mem_len",
+        "output",
+        "aux",
+    }
+)
 
 # Canonical fn-names whose compiled kernel executor is reused verbatim by the
 # post-solve replay loop (instead of a duplicated inline computation), so the
@@ -76,13 +78,34 @@ _COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset({
 # StateVariable (discrete pending-update state), Demux (secondary-port outputs),
 # and Hysteresis (relay state lives in a kernel closure that the out-of-order
 # solve phase pollutes and that has no per-run reset).
-_KERNEL_REPLAY_FNS = frozenset({
-    'Sine', 'Constant', 'Gain', 'Sum', 'Step', 'SgProd', 'Product',
-    'Exponential', 'Deadband', 'Saturation', 'Abs', 'Absblock', 'Ramp',
-    'Switch', 'Wavegenerator', 'Noise', 'Mux',
-    'Logicaloperator', 'LogicalOperator',
-    'Selector', 'StateSpace', 'TransferFcn', 'PID', 'RateLimiter',
-})
+_KERNEL_REPLAY_FNS = frozenset(
+    {
+        "Sine",
+        "Constant",
+        "Gain",
+        "Sum",
+        "Step",
+        "SgProd",
+        "Product",
+        "Exponential",
+        "Deadband",
+        "Saturation",
+        "Abs",
+        "Absblock",
+        "Ramp",
+        "Switch",
+        "Wavegenerator",
+        "Noise",
+        "Mux",
+        "Logicaloperator",
+        "LogicalOperator",
+        "Selector",
+        "StateSpace",
+        "TransferFcn",
+        "PID",
+        "RateLimiter",
+    }
+)
 
 
 def integrate_fixed_step(model_func, t_eval, y0, scheme):
@@ -110,7 +133,7 @@ def integrate_fixed_step(model_func, t_eval, y0, scheme):
     for idx in range(1, n_steps):
         t_prev = t_eval[idx - 1]
         h = t_eval[idx] - t_prev
-        if scheme == 'rk4':
+        if scheme == "rk4":
             k1 = np.asarray(model_func(t_prev, y), dtype=float)
             k2 = np.asarray(model_func(t_prev + h / 2.0, y + h / 2.0 * k1), dtype=float)
             k3 = np.asarray(model_func(t_prev + h / 2.0, y + h / 2.0 * k2), dtype=float)
@@ -161,7 +184,7 @@ class SimulationEngine:
         self.sim_time: float = 1.0
         self.sim_dt: float = 0.01
         # Compiled-solver selection (see run_compiled_simulation).
-        self.solver_method: str = 'RK45'
+        self.solver_method: str = "RK45"
         self.rtol: float = 1e-9
         self.atol: float = 1e-12
         self.real_time: bool = True
@@ -177,7 +200,7 @@ class SimulationEngine:
         self.rk45_len: bool = False
         self.rk_counter: int = 0
         self.execution_time_start: float = 0.0
-        
+
         # System Compiler
         self.compiler = SystemCompiler()
         self.flattener = Flattener()
@@ -190,12 +213,14 @@ class SimulationEngine:
         self.compile_cache_hits: int = 0
         self.compile_cache_misses: int = 0
         self.last_solver_diagnostics: Dict[str, Any] = {}
-        
+
         # Active execution lists (may differ from model if flattened)
         self.active_blocks_list = []
         self.active_line_list = []
 
-    def initialize_execution(self, blocks_list: List[DBlock], lines_list: Optional[List[DLine]] = None) -> bool:
+    def initialize_execution(
+        self, blocks_list: List[DBlock], lines_list: Optional[List[DLine]] = None
+    ) -> bool:
         """
         Initialize the execution sequence for the simulation.
 
@@ -208,39 +233,46 @@ class SimulationEngine:
         """
         try:
             import time as _time
+
             _te0 = _time.time()
             logger.debug("Engine: Initializing execution...")
-            
+
             # 1. Flatten Hierarchy if lines provided
             # If line_list is None, we fallback to model list, but flattening requires consistent lists.
             # DSim calls this. We assume DSim passes lines.
-            
+
             if lines_list is None:
                 lines_list = self.model.line_list
 
             # Check if flattening needed (if any Subsystem block exists)
-            has_subsystems = any(getattr(b, 'block_type', '') == 'Subsystem' for b in blocks_list)
+            has_subsystems = any(getattr(b, "block_type", "") == "Subsystem" for b in blocks_list)
 
             if has_subsystems:
                 logger.info("Flattening hierarchical system...")
-                self.active_blocks_list, self.active_line_list = self.flattener.flatten(blocks_list, lines_list)
-                logger.info(f"Flattening complete. Blocks: {len(self.active_blocks_list)}, Lines: {len(self.active_line_list)}")
+                self.active_blocks_list, self.active_line_list = self.flattener.flatten(
+                    blocks_list, lines_list
+                )
+                logger.info(
+                    f"Flattening complete. Blocks: {len(self.active_blocks_list)}, Lines: {len(self.active_line_list)}"
+                )
             else:
-                 self.active_blocks_list = blocks_list
-                 self.active_line_list = lines_list
+                self.active_blocks_list = blocks_list
+                self.active_line_list = lines_list
             logger.debug(f"[ENGINE TIMING] flattening check: {_time.time() - _te0:.3f}s")
 
             # Integrity Check on the Active (Flattened) System
             _te1 = _time.time()
             if not self.check_diagram_integrity():
-                 self.error_msg = "Diagram integrity check failed (connections)."
-                 logger.error(self.error_msg)
-                 return False
+                self.error_msg = "Diagram integrity check failed (connections)."
+                logger.error(self.error_msg)
+                return False
             logger.debug(f"[ENGINE TIMING] integrity check: {_time.time() - _te1:.3f}s")
 
             # Reset temporary lists using ACTIVE list
-            self.global_computed_list = [{'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
-                                       for x in self.active_blocks_list]
+            self.global_computed_list = [
+                {"name": x.name, "computed_data": x.computed_data, "hierarchy": x.hierarchy}
+                for x in self.active_blocks_list
+            ]
             self.reset_execution_data()
             self.execution_time_start = time_module.time()
 
@@ -275,9 +307,11 @@ class SimulationEngine:
             # Loop 1: Execute Source Blocks (b_type=0) and Initialize Memory Blocks
             # Iterate active_blocks_list instead of blocks_list input
             blocks_to_exec = self.active_blocks_list
-            logger.info(f"Engine: Initializing execution for {len(blocks_to_exec)} blocks (flattened)")
+            logger.info(
+                f"Engine: Initializing execution for {len(blocks_to_exec)} blocks (flattened)"
+            )
             _te2 = _time.time()
-            
+
             if not self._init_execute_sources(blocks_to_exec):
                 return False
 
@@ -318,6 +352,7 @@ class SimulationEngine:
 
         except Exception as e:
             import traceback
+
             logger.error(f"Engine: Error during execution init: {e}")
             logger.error(traceback.format_exc())
             self.error_msg = str(e)
@@ -330,8 +365,11 @@ class SimulationEngine:
         outputs. Returns False with self.error_msg set on a block error.
         """
         import time as _time
+
         for block in blocks_to_exec:
-            logger.debug(f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}")
+            logger.debug(
+                f"Engine: Initial processing of block: {block.name}, b_type: {block.b_type}"
+            )
             out_value = {}
 
             # Determine whether this block can run with no upstream data.
@@ -343,8 +381,8 @@ class SimulationEngine:
             # used in Loop 2 below: a block is a source only if every
             # input port is optional (or there are none).
             optional_inputs = set()
-            if hasattr(block, 'block_instance') and block.block_instance:
-                if hasattr(block.block_instance, 'optional_inputs'):
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_inputs"):
                     optional_inputs = set(block.block_instance.optional_inputs)
             required_ports = block.in_ports - len(optional_inputs)
             is_source = required_ports == 0
@@ -353,8 +391,10 @@ class SimulationEngine:
                 # Execute source block
                 _tblk = _time.time()
                 out_value = self.execute_block(block)
-                logger.debug(f"[ENGINE TIMING] execute_block({block.name}): {_time.time() - _tblk:.3f}s")
-                if out_value is False: # execute_block handles errors and returns None/False/Dict
+                logger.debug(
+                    f"[ENGINE TIMING] execute_block({block.name}): {_time.time() - _tblk:.3f}s"
+                )
+                if out_value is False:  # execute_block handles errors and returns None/False/Dict
                     return False
 
                 block.computed_data = True
@@ -365,24 +405,28 @@ class SimulationEngine:
                 # Execute memory block (output_only=True)
                 _tblk = _time.time()
                 out_value = self.execute_block(block, output_only=True)
-                logger.debug(f"[ENGINE TIMING] execute_block({block.name}, memory): {_time.time() - _tblk:.3f}s")
+                logger.debug(
+                    f"[ENGINE TIMING] execute_block({block.name}, memory): {_time.time() - _tblk:.3f}s"
+                )
                 if out_value is False:
-                     return False
+                    return False
 
                 block.computed_data = True
                 self.update_global_list(block.name, h_value=0, h_assign=True)
 
             # Check for errors in output
-            if out_value and isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
-                self.error_msg = out_value.get('error', 'Unknown error')
+            if out_value and isinstance(out_value, dict) and "E" in out_value and out_value["E"]:
+                self.error_msg = out_value.get("error", "Unknown error")
                 logger.error(self.error_msg)
                 return False
 
             # Propagate outputs to children
             if out_value:
-                if block.b_type not in [1, 3]: # Only propagate if valid type logic applies (memory blocks propagate manually here)
-                     # Note: The original logic had custom propagation here.
-                     pass
+                if (
+                    block.b_type not in [1, 3]
+                ):  # Only propagate if valid type logic applies (memory blocks propagate manually here)
+                    # Note: The original logic had custom propagation here.
+                    pass
 
                 # We can reuse propagate_outputs but need to be careful about the specific logic used in init
                 # Original logic manually iterated children. Let's replicate or delegate.
@@ -390,7 +434,9 @@ class SimulationEngine:
                 self.propagate_outputs(block, out_value)
                 _prop_time = _time.time() - _tprop
                 if _prop_time > 0.01:
-                    logger.debug(f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s")
+                    logger.debug(
+                        f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s"
+                    )
         return True
 
     def _init_resolve_hierarchy(self, blocks_to_exec, check_loop):
@@ -405,14 +451,16 @@ class SimulationEngine:
             for block in blocks_to_exec:
                 # Check execution readiness - account for optional inputs
                 optional_inputs = set()
-                if hasattr(block, 'block_instance') and block.block_instance:
-                    if hasattr(block.block_instance, 'optional_inputs'):
+                if hasattr(block, "block_instance") and block.block_instance:
+                    if hasattr(block.block_instance, "optional_inputs"):
                         optional_inputs = set(block.block_instance.optional_inputs)
 
                 required_ports = block.in_ports - len(optional_inputs)
                 can_execute = block.data_recieved >= required_ports or block.in_ports == 0
 
-                logger.debug(f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_ports})")
+                logger.debug(
+                    f"LOOP {h_count}: {block.name} (computed={block.computed_data}) Ready={can_execute} (Recv={block.data_recieved}/Ports={block.in_ports}, Req={required_ports})"
+                )
 
                 if can_execute and not block.computed_data:
                     # OUT_VALUE execute_block...
@@ -420,15 +468,17 @@ class SimulationEngine:
                     if out_value is False:
                         return False
                     # Check for error dict from block
-                    if isinstance(out_value, dict) and (out_value.get('E') or out_value.get('error')):
-                        self.error_msg = out_value.get('error', 'Block returned error')
+                    if isinstance(out_value, dict) and (
+                        out_value.get("E") or out_value.get("error")
+                    ):
+                        self.error_msg = out_value.get("error", "Block returned error")
                         logger.error(f"Block {block.name} error: {self.error_msg}")
                         return False
 
                     # Memory block special output update
                     if block.name in self.memory_blocks:
-                         if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                            block.exec_params['output'] = block.exec_params['mem']
+                        if block.block_fn == "Integrator" and "mem" in block.exec_params:
+                            block.exec_params["output"] = block.exec_params["mem"]
 
                     self.update_global_list(block.name, h_value=h_count, h_assign=True)
                     block.computed_data = True
@@ -466,8 +516,9 @@ class SimulationEngine:
                     # uncomputed blocks are all memory blocks (they execute
                     # in Loop 3). Any uncomputed non-memory block would
                     # silently never run, so surface that as a hard error.
-                    stalled_non_memory = [b.name for b in uncomputed_blocks
-                                          if b.name not in self.memory_blocks]
+                    stalled_non_memory = [
+                        b.name for b in uncomputed_blocks if b.name not in self.memory_blocks
+                    ]
                     if stalled_non_memory:
                         self.error_msg = (
                             f"Hierarchy resolution stalled with uncomputed "
@@ -494,12 +545,12 @@ class SimulationEngine:
                 out_value = self.execute_block(block)
                 if out_value is False:
                     return False
-                if isinstance(out_value, dict) and out_value.get('E'):
-                    self.error_msg = out_value.get('error', 'State advance failed')
+                if isinstance(out_value, dict) and out_value.get("E"):
+                    self.error_msg = out_value.get("error", "State advance failed")
                     logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
                     return False
-                if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                    block.exec_params['output'] = block.exec_params['mem']
+                if block.block_fn == "Integrator" and "mem" in block.exec_params:
+                    block.exec_params["output"] = block.exec_params["mem"]
                 # For discrete blocks, sync the DBlock-level sample schedule
                 # with the block-internal sample state so the simulation
                 # loop's should_execute() agrees with the block's own
@@ -513,21 +564,28 @@ class SimulationEngine:
                     block.schedule_next_execution(self.time_step)
         return True
 
-    def update_global_list(self, block_name: str, h_value: int = 0, h_assign: bool = False, reset_computed: bool = False) -> None:
+    def update_global_list(
+        self,
+        block_name: str,
+        h_value: int = 0,
+        h_assign: bool = False,
+        reset_computed: bool = False,
+    ) -> None:
         """Update global computed list."""
         for g_block in self.global_computed_list:
-            if g_block['name'] == block_name:
+            if g_block["name"] == block_name:
                 if reset_computed:
-                    g_block['computed_data'] = False
+                    g_block["computed_data"] = False
                 else:
-                    g_block['computed_data'] = True
-                
+                    g_block["computed_data"] = True
+
                 if h_assign:
-                    g_block['hierarchy'] = h_value
+                    g_block["hierarchy"] = h_value
                 break
 
-    def _resolve_block_params(self, block: DBlock, dt: float,
-                              workspace_manager: Optional[WorkspaceManager] = None) -> None:
+    def _resolve_block_params(
+        self, block: DBlock, dt: float, workspace_manager: Optional[WorkspaceManager] = None
+    ) -> None:
         """Resolve a block's exec_params for the given simulation step.
 
         Skips the (potentially expensive) workspace resolution when exec_params
@@ -536,20 +594,22 @@ class SimulationEngine:
         initialize_execution and run_compiled_simulation so the cache-skip logic
         stays consistent.
         """
-        cached = getattr(block, 'exec_params', None)
+        cached = getattr(block, "exec_params", None)
         params_fp = self._source_params_fingerprint(block.params)
-        cached_fp = cached.get('_source_params_fingerprint') if cached else None
-        if cached and cached.get('dtime') == dt and cached_fp == params_fp:
+        cached_fp = cached.get("_source_params_fingerprint") if cached else None
+        if cached and cached.get("dtime") == dt and cached_fp == params_fp:
             return
         if workspace_manager is None:
             workspace_manager = WorkspaceManager()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
-        block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
-        block.exec_params['dtime'] = dt
-        block.exec_params['_source_params_fingerprint'] = params_fp
+        block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
+        block.exec_params["dtime"] = dt
+        block.exec_params["_source_params_fingerprint"] = params_fp
 
-    def execute_block(self, block: DBlock, output_only: bool = False) -> Union[Dict[int, Any], bool]:
+    def execute_block(
+        self, block: DBlock, output_only: bool = False
+    ) -> Union[Dict[int, Any], bool]:
         """
         Execute a single block.
         Returns output value (dict) or False on failure.
@@ -557,17 +617,17 @@ class SimulationEngine:
         try:
             logger.info(f"ENGINE EXECUTE: {block.name} (b_type={block.b_type})")
             kwargs = {
-                'time': self.time_step,
-                'inputs': block.input_queue,
-                'params': block.exec_params
+                "time": self.time_step,
+                "inputs": block.input_queue,
+                "params": block.exec_params,
             }
-            
+
             if output_only:
-                kwargs['output_only'] = True
-                if block.block_fn == 'Integrator':
-                    kwargs['next_add_in_memory'] = False
-                    kwargs['dtime'] = self.sim_dt
-            
+                kwargs["output_only"] = True
+                if block.block_fn == "Integrator":
+                    kwargs["next_add_in_memory"] = False
+                    kwargs["dtime"] = self.sim_dt
+
             if block.external:
                 # The External block is an unimplemented stub (see blocks/external.py).
                 # Do NOT dynamically dispatch into a file-supplied function here: the
@@ -584,21 +644,23 @@ class SimulationEngine:
                 if block.block_instance is None:
                     # Logic for blocks without instance (e.g. Subsystem if not flattened correctly)
                     # If it's a Subsystem, we shouldn't be here unless flattening failed.
-                    b_type_logs = getattr(block, 'block_type', 'Unknown')
-                    logger.error(f"Block {block.name} (type={b_type_logs}) has no block_instance. Skipping execution.")
+                    b_type_logs = getattr(block, "block_type", "Unknown")
+                    logger.error(
+                        f"Block {block.name} (type={b_type_logs}) has no block_instance. Skipping execution."
+                    )
                     return False
-                    
+
                 out_value = block.block_instance.execute(**kwargs)
-                
+
             if out_value is None:
-                 logger.error(f"Block {block.name} returned None")
-                 return False
-                 
-            if isinstance(out_value, dict) and 'E' in out_value and out_value['E']:
-                return out_value # Caller checks for error
-                
+                logger.error(f"Block {block.name} returned None")
+                return False
+
+            if isinstance(out_value, dict) and "E" in out_value and out_value["E"]:
+                return out_value  # Caller checks for error
+
             return out_value
-            
+
         except Exception as e:
             logger.error(f"Error executing block {block.name}: {e}", exc_info=True)
             self.error_msg = f"Block '{block.name}' failed: {e}"
@@ -615,7 +677,9 @@ class SimulationEngine:
         error_trigger = False
 
         # Use active lists (fallback to model if not initialized, but ideally active)
-        blocks_to_check = self.active_blocks_list if self.active_blocks_list else self.model.blocks_list
+        blocks_to_check = (
+            self.active_blocks_list if self.active_blocks_list else self.model.blocks_list
+        )
         # get_neighbors already uses active_line_list
 
         for block in blocks_to_check:
@@ -623,17 +687,17 @@ class SimulationEngine:
 
             # Get optional inputs from block instance (if available)
             optional_inputs = set()
-            if hasattr(block, 'block_instance') and block.block_instance:
-                if hasattr(block.block_instance, 'optional_inputs'):
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_inputs"):
                     optional_inputs = set(block.block_instance.optional_inputs)
 
             # Get optional outputs from block instance (if available)
             optional_outputs = set()
-            if hasattr(block, 'block_instance') and block.block_instance:
-                if hasattr(block.block_instance, 'optional_outputs'):
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_outputs"):
                     optional_outputs = set(block.block_instance.optional_outputs)
                 # Also check requires_outputs property
-                if hasattr(block.block_instance, 'requires_outputs'):
+                if hasattr(block.block_instance, "requires_outputs"):
                     if not block.block_instance.requires_outputs:
                         optional_outputs = set(range(block.out_ports))
 
@@ -642,7 +706,7 @@ class SimulationEngine:
             # silently last-write-win with no error surfaced to the user.
             dst_counts = {}
             for tupla in inputs:
-                dst_counts[tupla['dstport']] = dst_counts.get(tupla['dstport'], 0) + 1
+                dst_counts[tupla["dstport"]] = dst_counts.get(tupla["dstport"], 0) + 1
             duplicated = sorted(p for p, c in dst_counts.items() if c > 1)
             if duplicated:
                 logger.error(
@@ -653,7 +717,9 @@ class SimulationEngine:
 
             # Check input ports
             required_in_ports = block.in_ports - len(optional_inputs)
-            connected_required_inputs = sum(1 for t in inputs if t['dstport'] not in optional_inputs)
+            connected_required_inputs = sum(
+                1 for t in inputs if t["dstport"] not in optional_inputs
+            )
 
             if required_in_ports == 1 and connected_required_inputs < 1:
                 logger.error(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
@@ -661,16 +727,24 @@ class SimulationEngine:
             elif required_in_ports > 1 or (block.in_ports > 1 and required_in_ports > 0):
                 in_vector = np.zeros(block.in_ports)
                 for tupla in inputs:
-                    in_vector[tupla['dstport']] += 1
+                    in_vector[tupla["dstport"]] += 1
                 # Find unlinked ports that are NOT optional
-                unlinked = [i for i in range(block.in_ports) if in_vector[i] == 0 and i not in optional_inputs]
+                unlinked = [
+                    i
+                    for i in range(block.in_ports)
+                    if in_vector[i] == 0 and i not in optional_inputs
+                ]
                 if len(unlinked) > 0:
-                    logger.error(f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}")
+                    logger.error(
+                        f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}"
+                    )
                     error_trigger = True
 
             # Check output ports
             required_out_ports = block.out_ports - len(optional_outputs)
-            connected_required_outputs = sum(1 for t in outputs if t['srcport'] not in optional_outputs)
+            connected_required_outputs = sum(
+                1 for t in outputs if t["srcport"] not in optional_outputs
+            )
 
             if required_out_ports == 1 and connected_required_outputs < 1:
                 logger.error(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
@@ -678,11 +752,17 @@ class SimulationEngine:
             elif required_out_ports > 1 or (block.out_ports > 1 and required_out_ports > 0):
                 out_vector = np.zeros(block.out_ports)
                 for tupla in outputs:
-                    out_vector[tupla['srcport']] += 1
+                    out_vector[tupla["srcport"]] += 1
                 # Find unlinked ports that are NOT optional
-                unlinked = [i for i in range(block.out_ports) if out_vector[i] == 0 and i not in optional_outputs]
+                unlinked = [
+                    i
+                    for i in range(block.out_ports)
+                    if out_vector[i] == 0 and i not in optional_outputs
+                ]
                 if len(unlinked) > 0:
-                    logger.error(f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}")
+                    logger.error(
+                        f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}"
+                    )
                     error_trigger = True
 
         if error_trigger:
@@ -711,17 +791,13 @@ class SimulationEngine:
 
         for line in line_source:
             if line.dstblock == block_name:
-                inputs.append({
-                    'srcblock': line.srcblock,
-                    'srcport': line.srcport,
-                    'dstport': line.dstport
-                })
+                inputs.append(
+                    {"srcblock": line.srcblock, "srcport": line.srcport, "dstport": line.dstport}
+                )
             if line.srcblock == block_name:
-                outputs.append({
-                    'dstblock': line.dstblock,
-                    'srcport': line.srcport,
-                    'dstport': line.dstport
-                })
+                outputs.append(
+                    {"dstblock": line.dstblock, "srcport": line.srcport, "dstport": line.dstport}
+                )
 
         return inputs, outputs
 
@@ -739,14 +815,12 @@ class SimulationEngine:
         # Use active_line_list if active_blocks_list is populated
         use_active = len(self.active_blocks_list) > 0
         line_source = self.active_line_list if use_active else self.model.line_list
-        
+
         for line in line_source:
             if line.srcblock == block_name:
-                outputs.append({
-                    'dstblock': line.dstblock,
-                    'srcport': line.srcport,
-                    'dstport': line.dstport
-                })
+                outputs.append(
+                    {"dstblock": line.dstblock, "srcport": line.srcport, "dstport": line.dstport}
+                )
         return outputs
 
     def get_max_hierarchy(self):
@@ -774,7 +848,9 @@ class SimulationEngine:
         Memory blocks preserve their input_queue so feedback from previous step can be used.
         """
         # Safety check - if global_computed_list isn't populated yet, use simple reset
-        if not self.global_computed_list or len(self.global_computed_list) != len(self.active_blocks_list):
+        if not self.global_computed_list or len(self.global_computed_list) != len(
+            self.active_blocks_list
+        ):
             for block in self.active_blocks_list:
                 block.computed_data = False
                 block.data_recieved = 0
@@ -787,19 +863,19 @@ class SimulationEngine:
 
         for i in range(len(self.active_blocks_list)):
             block = self.active_blocks_list[i]
-            self.global_computed_list[i]['computed_data'] = False
+            self.global_computed_list[i]["computed_data"] = False
             block.computed_data = False
             block.data_recieved = 0
             block.data_sent = 0
             # Preserve input_queue for memory blocks (they need feedback from previous step)
             if block.name not in self.memory_blocks:
                 block.input_queue = {}
-            block.hierarchy = self.global_computed_list[i]['hierarchy']
-    
-    # Duplicate definition of count_rk45_integrators here? 
-    # Yes, previous edit might have left one. 
+            block.hierarchy = self.global_computed_list[i]["hierarchy"]
+
+    # Duplicate definition of count_rk45_integrators here?
+    # Yes, previous edit might have left one.
     # Let's fix count_rk45_integrators to use active list too.
-    
+
     def count_rk45_integrators(self):
         """
         Check if any integrators use RK45 method.
@@ -808,9 +884,9 @@ class SimulationEngine:
             bool: True if RK45 integrators exist
         """
         for block in self.active_blocks_list:
-            if block.block_fn == 'Integrator' and block.params.get('method') == 'RK45':
+            if block.block_fn == "Integrator" and block.params.get("method") == "RK45":
                 return True
-            elif block.block_fn == 'External' and block.params.get('method') == 'RK45':
+            elif block.block_fn == "External" and block.params.get("method") == "RK45":
                 return True
         return False
 
@@ -824,21 +900,21 @@ class SimulationEngine:
         re-init from silently reusing the previous run's final values.
         """
         for block in self.active_blocks_list:
-            if '_init_start_' in block.params:
-                block.params['_init_start_'] = True
+            if "_init_start_" in block.params:
+                block.params["_init_start_"] = True
             # Also reset in exec_params if it exists (used during execution)
-            if hasattr(block, 'exec_params') and block.exec_params:
-                if '_init_start_' in block.exec_params:
-                    block.exec_params['_init_start_'] = True
+            if hasattr(block, "exec_params") and block.exec_params:
+                if "_init_start_" in block.exec_params:
+                    block.exec_params["_init_start_"] = True
                 # Clear stored per-run state accumulators so a stale value from
                 # a previous run cannot leak into the next one.
-                for stale_key in ('_prev', 'mem', 'output'):
+                for stale_key in ("_prev", "mem", "output"):
                     if stale_key in block.exec_params:
                         del block.exec_params[stale_key]
 
     def detect_algebraic_loops(self, uncomputed_blocks):
         """
-        Detect if there are algebraic loops in uncomputed blocks using 
+        Detect if there are algebraic loops in uncomputed blocks using
         topological sort (Kahn's algorithm).
 
         Args:
@@ -861,14 +937,13 @@ class SimulationEngine:
         for block in uncomputed_blocks:
             children = self.get_outputs(block.name)
             for child_info in children:
-                child_name = child_info['dstblock']
+                child_name = child_info["dstblock"]
                 if child_name in uncomputed_block_names:
                     graph[block.name].append(child_name)
 
         # Topological sort (Kahn). Any node left in a cycle has unresolved
         # dependencies -> a non-empty `cycle_nodes` means an algebraic loop.
-        _order, cycle_nodes = kahn_topological_order(
-            (b.name for b in uncomputed_blocks), graph)
+        _order, cycle_nodes = kahn_topological_order((b.name for b in uncomputed_blocks), graph)
 
         if cycle_nodes:
             # Check if the cycle contains any memory blocks
@@ -895,16 +970,21 @@ class SimulationEngine:
         outputs = self.get_outputs(block_name)
 
         for output in outputs:
-            child_name = output['dstblock']
+            child_name = output["dstblock"]
             if child_name not in children_list:
                 children_list.append(child_name)
                 self.children_recognition(child_name, children_list)
 
         return children_list
 
-    def update_sim_params(self, sim_time: float, sim_dt: float,
-                          solver_method: str = None, rtol: float = None,
-                          atol: float = None) -> None:
+    def update_sim_params(
+        self,
+        sim_time: float,
+        sim_dt: float,
+        solver_method: str = None,
+        rtol: float = None,
+        atol: float = None,
+    ) -> None:
         """
         Update simulation parameters.
 
@@ -933,12 +1013,12 @@ class SimulationEngine:
             dict: Status information
         """
         return {
-            'initialized': self.execution_initialized,
-            'paused': self.execution_pause,
-            'stopped': self.execution_stop,
-            'error': self.error_msg if self.error_msg else None,
-            'sim_time': self.sim_time,
-            'sim_dt': self.sim_dt
+            "initialized": self.execution_initialized,
+            "paused": self.execution_pause,
+            "stopped": self.execution_stop,
+            "error": self.error_msg if self.error_msg else None,
+            "sim_time": self.sim_time,
+            "sim_dt": self.sim_dt,
         }
 
     # =========================================================================
@@ -947,7 +1027,7 @@ class SimulationEngine:
 
     def prepare_execution(self, execution_time: float) -> bool:
         """
-        Prepare the simulation for execution by resolving parameters and 
+        Prepare the simulation for execution by resolving parameters and
         identifying memory blocks.
 
         Args:
@@ -957,7 +1037,7 @@ class SimulationEngine:
             bool: True if preparation successful, False otherwise
         """
         logger.debug("*****INIT NEW EXECUTION*****")
-        
+
         self.execution_stop = False
         self.error_msg = ""
         self.time_step = 0
@@ -971,14 +1051,14 @@ class SimulationEngine:
             logger.debug(f"Block {block.name}: params before resolve = {block.params}")
             block.exec_params = workspace_manager.resolve_params(block.params)
             logger.debug(f"Block {block.name}: exec_params after resolve = {block.exec_params}")
-            
+
             # Copy internal parameters that start with '_'
-            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
 
             # Dynamically set b_type for Transfer Functions
             self.set_block_type(block)
-            
-            block.exec_params['dtime'] = self.sim_dt
+
+            block.exec_params["dtime"] = self.sim_dt
             try:
                 missing_file_flag = block.reload_external_data()
                 if missing_file_flag == 1:
@@ -994,15 +1074,15 @@ class SimulationEngine:
 
         # Initialize global computed list
         self.global_computed_list = [
-            {'name': x.name, 'computed_data': x.computed_data, 'hierarchy': x.hierarchy}
+            {"name": x.name, "computed_data": x.computed_data, "hierarchy": x.hierarchy}
             for x in self.model.blocks_list
         ]
         self.reset_execution_data()
         self.execution_time_start = time_module.time()
-        
+
         # Identify memory blocks
         self.identify_memory_blocks()
-        
+
         # Check for RK45 integrators
         self.rk45_len = self.count_rk45_integrators()
         self.rk_counter = 0
@@ -1018,19 +1098,19 @@ class SimulationEngine:
 
     def set_block_type(self, block: DBlock) -> None:
         """Set block type based on transfer function properness."""
-        if block.block_fn == 'TranFn':
-            num = block.exec_params.get('numerator', [])
-            den = block.exec_params.get('denominator', [])
+        if block.block_fn == "TranFn":
+            num = block.exec_params.get("numerator", [])
+            den = block.exec_params.get("denominator", [])
             block.b_type = 1 if len(den) > len(num) else 2
-        elif block.block_fn == 'DiscreteTranFn':
-            num = block.exec_params.get('numerator', [])
-            den = block.exec_params.get('denominator', [])
+        elif block.block_fn == "DiscreteTranFn":
+            num = block.exec_params.get("numerator", [])
+            den = block.exec_params.get("denominator", [])
             block.b_type = 1 if len(den) > len(num) else 2
-        elif block.block_fn == 'DiscreteStateSpace':
+        elif block.block_fn == "DiscreteStateSpace":
             # Coerce to float so a ragged/malformed D becomes a clear error
             # instead of an object array where elementwise `== 0` misbehaves.
             try:
-                D = np.asarray(block.exec_params.get('D', [[0.0]]), dtype=float)
+                D = np.asarray(block.exec_params.get("D", [[0.0]]), dtype=float)
             except (ValueError, TypeError) as e:
                 raise ValueError(
                     f"Block '{block.name}': invalid D matrix for DiscreteStateSpace: {e}"
@@ -1045,17 +1125,18 @@ class SimulationEngine:
         conditional helpers (is_strictly_proper_tf, is_zero_D_statespace).
         """
         from lib.engine.memory_blocks import is_memory_block
+
         self.memory_blocks = set()
         for block in self.active_blocks_list:
             # requires_inputs=False blocks (sources) are always safe to call
             # with output_only=True; treat them as memory blocks too so the
             # init loop runs them once.
-            block_class = getattr(block, 'block_class', None)
+            block_class = getattr(block, "block_class", None)
             if block_class:
                 # requires_inputs is a class-level attribute (block contract), so
                 # read it off the class directly — no need to instantiate, which
                 # would incur constructor cost/side effects on every init.
-                if not getattr(block_class, 'requires_inputs', True):
+                if not getattr(block_class, "requires_inputs", True):
                     self.memory_blocks.add(block.name)
                     continue
 
@@ -1129,11 +1210,16 @@ class SimulationEngine:
                 line.discrete_signal = False
 
         # Log resolved sample times
-        discrete_blocks = [(b.name, b.effective_sample_time)
-                          for b in self.active_blocks_list if b.effective_sample_time > 0]
+        discrete_blocks = [
+            (b.name, b.effective_sample_time)
+            for b in self.active_blocks_list
+            if b.effective_sample_time > 0
+        ]
         if discrete_blocks:
             logger.info(f"DISCRETE BLOCKS: {discrete_blocks}")
-        discrete_lines = sum(1 for line in self.active_line_list if getattr(line, 'discrete_signal', False))
+        discrete_lines = sum(
+            1 for line in self.active_line_list if getattr(line, "discrete_signal", False)
+        )
         if discrete_lines:
             logger.info(f"DISCRETE CONNECTIONS: {discrete_lines}")
         logger.debug("Sample time propagation complete")
@@ -1148,7 +1234,9 @@ class SimulationEngine:
         """
         children = self.get_outputs(block.name)
         # Use active blocks if execution initialized (flattened copies), otherwise model (fallback)
-        target_blocks = self.active_blocks_list if len(self.active_blocks_list) > 0 else self.model.blocks_list
+        target_blocks = (
+            self.active_blocks_list if len(self.active_blocks_list) > 0 else self.model.blocks_list
+        )
 
         logger.debug(f"ENGINE PROPAGATE: {block.name} -> {[c['dstblock'] for c in children]}")
 
@@ -1156,7 +1244,7 @@ class SimulationEngine:
             is_child, tuple_list = self._children_recognition(mblock.name, children)
             if is_child:
                 for tuple_child in tuple_list:
-                    srcport = tuple_child['srcport']
+                    srcport = tuple_child["srcport"]
                     # A block may legitimately omit a port from its output dict
                     # (sparse/partial output). Guard so a missing-but-wired port
                     # logs a clear diagnostic instead of raising a raw KeyError
@@ -1169,10 +1257,12 @@ class SimulationEngine:
                         )
                         continue
                     mblock.data_recieved += 1
-                    mblock.input_queue[tuple_child['dstport']] = out_value[srcport]
+                    mblock.input_queue[tuple_child["dstport"]] = out_value[srcport]
                     block.data_sent += 1
 
-    def _children_recognition(self, block_name: str, children_list: List[Dict]) -> Tuple[bool, List[Dict]]:
+    def _children_recognition(
+        self, block_name: str, children_list: List[Dict]
+    ) -> Tuple[bool, List[Dict]]:
         """
         Check if block_name is in the children list.
 
@@ -1181,21 +1271,19 @@ class SimulationEngine:
         """
         child_ports = []
         for child in children_list:
-            if child.get('dstblock') == block_name:
+            if child.get("dstblock") == block_name:
                 child_ports.append(child)
         if not child_ports:
             return False, []
         return True, child_ports
 
-
-
     def check_global_list(self) -> bool:
         """Check if all blocks have been computed."""
-        return all(elem['computed_data'] for elem in self.global_computed_list)
+        return all(elem["computed_data"] for elem in self.global_computed_list)
 
     def count_computed_global_list(self) -> int:
         """Count the number of computed blocks."""
-        return sum(1 for x in self.global_computed_list if x['computed_data'])
+        return sum(1 for x in self.global_computed_list if x["computed_data"])
 
     def execution_failed(self, msg: str = "") -> None:
         """
@@ -1220,20 +1308,20 @@ class SimulationEngine:
             arr = np.asarray(value)
             if arr.dtype == object:
                 return (
-                    'ndarray-object',
+                    "ndarray-object",
                     tuple(arr.shape),
                     tuple(cls._normalize_cache_value(x) for x in arr.ravel().tolist()),
                 )
             contiguous = np.ascontiguousarray(arr)
             digest = hashlib.blake2b(contiguous.tobytes(), digest_size=16).hexdigest()
-            return ('ndarray', tuple(contiguous.shape), str(contiguous.dtype), digest)
+            return ("ndarray", tuple(contiguous.shape), str(contiguous.dtype), digest)
         if isinstance(value, np.generic):
             return cls._normalize_cache_value(value.item())
         if isinstance(value, float):
             if np.isnan(value):
-                return ('float', 'nan')
+                return ("float", "nan")
             if np.isinf(value):
-                return ('float', 'inf' if value > 0 else '-inf')
+                return ("float", "inf" if value > 0 else "-inf")
             return value
         if isinstance(value, dict):
             return tuple(
@@ -1243,10 +1331,12 @@ class SimulationEngine:
         if isinstance(value, (list, tuple)):
             return tuple(cls._normalize_cache_value(v) for v in value)
         if isinstance(value, set):
-            return tuple(sorted(
-                (cls._normalize_cache_value(v) for v in value),
-                key=repr,
-            ))
+            return tuple(
+                sorted(
+                    (cls._normalize_cache_value(v) for v in value),
+                    key=repr,
+                )
+            )
         try:
             hash(value)
             return value
@@ -1261,7 +1351,7 @@ class SimulationEngine:
             key_s = str(key)
             if key_s in _COMPILE_CACHE_IGNORED_PARAM_KEYS:
                 continue
-            if key_s.startswith('_') and key_s not in _COMPILE_CACHE_ALLOWED_INTERNAL_KEYS:
+            if key_s.startswith("_") and key_s not in _COMPILE_CACHE_ALLOWED_INTERNAL_KEYS:
                 continue
             items.append((key_s, cls._normalize_cache_value(value)))
         return tuple(items)
@@ -1275,30 +1365,32 @@ class SimulationEngine:
         """Build a conservative cache key for compile_system outputs."""
         block_fp = []
         for block in blocks:
-            block_fp.append((
-                getattr(block, 'name', ''),
-                getattr(block, 'block_fn', ''),
-                canonical_fn(getattr(block, 'block_fn', '')),
-                int(getattr(block, 'in_ports', 0) or 0),
-                int(getattr(block, 'out_ports', 0) or 0),
-                int(getattr(block, 'b_type', 0) or 0),
-                int(getattr(block, 'hierarchy', -1)),
-                float(getattr(block, 'effective_sample_time', -1.0)),
-                self._compile_param_items(getattr(block, 'params', {})),
-                self._compile_param_items(getattr(block, 'exec_params', {}) or {}),
-            ))
+            block_fp.append(
+                (
+                    getattr(block, "name", ""),
+                    getattr(block, "block_fn", ""),
+                    canonical_fn(getattr(block, "block_fn", "")),
+                    int(getattr(block, "in_ports", 0) or 0),
+                    int(getattr(block, "out_ports", 0) or 0),
+                    int(getattr(block, "b_type", 0) or 0),
+                    int(getattr(block, "hierarchy", -1)),
+                    float(getattr(block, "effective_sample_time", -1.0)),
+                    self._compile_param_items(getattr(block, "params", {})),
+                    self._compile_param_items(getattr(block, "exec_params", {}) or {}),
+                )
+            )
 
         line_fp = tuple(
             (
-                getattr(line, 'srcblock', None),
-                int(getattr(line, 'srcport', 0) or 0),
-                getattr(line, 'dstblock', None),
-                int(getattr(line, 'dstport', 0) or 0),
-                bool(getattr(line, 'hidden', False)),
+                getattr(line, "srcblock", None),
+                int(getattr(line, "srcport", 0) or 0),
+                getattr(line, "dstblock", None),
+                int(getattr(line, "dstport", 0) or 0),
+                bool(getattr(line, "hidden", False)),
             )
             for line in lines
         )
-        order_fp = tuple(getattr(block, 'name', '') for block in sorted_blocks)
+        order_fp = tuple(getattr(block, "name", "") for block in sorted_blocks)
         return (float(dt), tuple(block_fp), order_fp, line_fp)
 
     def clear_compile_cache(self) -> None:
@@ -1321,10 +1413,14 @@ class SimulationEngine:
         model_func, y0, state_map, block_matrices = self.compiler.compile_system(
             blocks, sorted_blocks, lines
         )
-        block_executors = dict(getattr(self.compiler, 'block_executors', {}))
+        block_executors = dict(getattr(self.compiler, "block_executors", {}))
         self._compiled_system_cache_key = key
         self._compiled_system_cache_value = (
-            model_func, y0.copy(), state_map, block_matrices, block_executors
+            model_func,
+            y0.copy(),
+            state_map,
+            block_matrices,
+            block_executors,
         )
         return model_func, y0.copy(), state_map, block_matrices, False
 
@@ -1336,60 +1432,78 @@ class SimulationEngine:
         """One-line summary of the most recent compiled run, or '' when none
         was recorded (e.g. the interpreter path ran)."""
         if not self.last_solver_diagnostics:
-            return ''
+            return ""
         return self._format_solver_diagnostics_for_log(self.last_solver_diagnostics)
 
     @staticmethod
     def _solver_attr(sol, name, default=None):
         return getattr(sol, name, default)
 
-    def _record_solver_diagnostics(self, *, sol, success, method_requested,
-                                   method_used, backend, t_span, dt, rtol, atol,
-                                   n_states, n_blocks, n_lines, compile_cache_hit,
-                                   compile_time, solve_time, replay_time,
-                                   total_time, fallback_reason=None,
-                                   failure_stage=None, output_range=None) -> None:
+    def _record_solver_diagnostics(
+        self,
+        *,
+        sol,
+        success,
+        method_requested,
+        method_used,
+        backend,
+        t_span,
+        dt,
+        rtol,
+        atol,
+        n_states,
+        n_blocks,
+        n_lines,
+        compile_cache_hit,
+        compile_time,
+        solve_time,
+        replay_time,
+        total_time,
+        fallback_reason=None,
+        failure_stage=None,
+        output_range=None,
+    ) -> None:
         """Store a compact, UI/log-friendly summary of the compiled run."""
-        times = getattr(sol, 't', None)
+        times = getattr(sol, "t", None)
         n_time_points = 0 if times is None else len(times)
         diagnostics = {
-            'success': bool(success),
-            'failure_stage': failure_stage,
-            'message': str(self._solver_attr(sol, 'message', '') or ''),
-            'status': self._solver_attr(sol, 'status', None),
-            'backend': backend,
-            'method_requested': method_requested,
-            'method_used': method_used,
-            'fallback_reason': fallback_reason,
-            'rtol': rtol,
-            'atol': atol,
-            't_start': float(t_span[0]),
-            't_end': float(t_span[1]),
-            'dt': float(dt),
-            'n_states': int(n_states),
-            'n_blocks': int(n_blocks),
-            'n_lines': int(n_lines),
-            'n_time_points': int(n_time_points),
-            'n_output_steps': max(0, int(n_time_points) - 1),
-            'nfev': self._solver_attr(sol, 'nfev', None),
-            'njev': self._solver_attr(sol, 'njev', None),
-            'nlu': self._solver_attr(sol, 'nlu', None),
-            'compile_cache_hit': bool(compile_cache_hit),
-            'compile_cache_hits_total': int(self.compile_cache_hits),
-            'compile_cache_misses_total': int(self.compile_cache_misses),
-            'compile_wall_time': float(compile_time),
-            'solve_wall_time': float(solve_time),
-            'replay_wall_time': float(replay_time),
-            'total_wall_time': float(total_time),
-            'output_range': output_range,
+            "success": bool(success),
+            "failure_stage": failure_stage,
+            "message": str(self._solver_attr(sol, "message", "") or ""),
+            "status": self._solver_attr(sol, "status", None),
+            "backend": backend,
+            "method_requested": method_requested,
+            "method_used": method_used,
+            "fallback_reason": fallback_reason,
+            "rtol": rtol,
+            "atol": atol,
+            "t_start": float(t_span[0]),
+            "t_end": float(t_span[1]),
+            "dt": float(dt),
+            "n_states": int(n_states),
+            "n_blocks": int(n_blocks),
+            "n_lines": int(n_lines),
+            "n_time_points": int(n_time_points),
+            "n_output_steps": max(0, int(n_time_points) - 1),
+            "nfev": self._solver_attr(sol, "nfev", None),
+            "njev": self._solver_attr(sol, "njev", None),
+            "nlu": self._solver_attr(sol, "nlu", None),
+            "compile_cache_hit": bool(compile_cache_hit),
+            "compile_cache_hits_total": int(self.compile_cache_hits),
+            "compile_cache_misses_total": int(self.compile_cache_misses),
+            "compile_wall_time": float(compile_time),
+            "solve_wall_time": float(solve_time),
+            "replay_wall_time": float(replay_time),
+            "total_wall_time": float(total_time),
+            "output_range": output_range,
         }
         self.last_solver_diagnostics = diagnostics
 
     @staticmethod
     def _format_solver_diagnostics_for_log(diagnostics: Dict[str, Any]) -> str:
-        cache = 'hit' if diagnostics.get('compile_cache_hit') else 'miss'
-        nfev = diagnostics.get('nfev')
-        nfev_text = 'n/a' if nfev is None else str(nfev)
+        cache = "hit" if diagnostics.get("compile_cache_hit") else "miss"
+        nfev = diagnostics.get("nfev")
+        nfev_text = "n/a" if nfev is None else str(nfev)
         return (
             f"method={diagnostics.get('method_used')} "
             f"backend={diagnostics.get('backend')} "
@@ -1403,8 +1517,9 @@ class SimulationEngine:
             f"total={diagnostics.get('total_wall_time', 0.0):.4f}s"
         )
 
-    def _replay_compiled_signals(self, sol, current_blocks, current_lines,
-                                 state_map, block_matrices):
+    def _replay_compiled_signals(
+        self, sol, current_blocks, current_lines, state_map, block_matrices
+    ):
         """Re-evaluate every block at each saved solver time so Scope /
         FieldScope blocks capture their signal history.
 
@@ -1437,19 +1552,19 @@ class SimulationEngine:
             if dst_block:
                 fn = canonical_fn(dst_block.block_fn)
 
-                if fn == 'Integrator':
+                if fn == "Integrator":
                     is_feedthrough = False
-                elif fn == 'TransferFcn':
+                elif fn == "TransferFcn":
                     # Check strictly proper (num < den)
-                    num = dst_block.params.get('numerator', [])
-                    den = dst_block.params.get('denominator', [])
+                    num = dst_block.params.get("numerator", [])
+                    den = dst_block.params.get("denominator", [])
                     if len(den) > len(num):
                         is_feedthrough = False
-                elif fn == 'StateSpace':
-                     # Check D=0
-                     D = np.array(dst_block.params.get('D', [[0.0]]))
-                     if np.all(D == 0):
-                         is_feedthrough = False
+                elif fn == "StateSpace":
+                    # Check D=0
+                    D = np.array(dst_block.params.get("D", [[0.0]]))
+                    if np.all(D == 0):
+                        is_feedthrough = False
 
             if is_feedthrough and src in adj:
                 adj[src].append(dst)
@@ -1458,16 +1573,18 @@ class SimulationEngine:
         # before sine if independent). Any cycle leftovers are appended in
         # current-block order (best effort) so every block still runs.
         order_names, leftover_names = kahn_topological_order(
-            (b.name for b in current_blocks), adj, key=lambda n: n)
-        sorted_blocks = ([block_by_name[n] for n in order_names]
-                         + [block_by_name[n] for n in leftover_names])
+            (b.name for b in current_blocks), adj, key=lambda n: n
+        )
+        sorted_blocks = [block_by_name[n] for n in order_names] + [
+            block_by_name[n] for n in leftover_names
+        ]
 
         # Precompute dst_name -> list of (srcblock, srcport, dstport) once so
         # the per-step replay does not rescan every connection for every
         # block (was O(steps * blocks * lines)).
         inputs_by_dst: Dict[str, List[Tuple[str, int, int]]] = {}
         for line in current_lines:
-            src_port = getattr(line, 'srcport', 0) or 0
+            src_port = getattr(line, "srcport", 0) or 0
             inputs_by_dst.setdefault(line.dstblock, []).append(
                 (line.srcblock, src_port, line.dstport)
             )
@@ -1475,7 +1592,7 @@ class SimulationEngine:
         # Pure-function blocks (see _KERNEL_REPLAY_FNS) reuse their compiled
         # kernel executor during replay instead of a duplicated inline
         # computation. block_executors was populated by compile_system above.
-        block_executors = getattr(self.compiler, 'block_executors', {})
+        block_executors = getattr(self.compiler, "block_executors", {})
         replay_dy = np.zeros(sol.y.shape[0])  # scratch dy_vec; pure kernels never write it
 
         # Replay Loop
@@ -1486,16 +1603,16 @@ class SimulationEngine:
             # 1. State Map - Populate 'current_states' first
             # Output 'signals' populate diffently based on block type.
             current_signals = {}
-            current_states = {} # b_name -> x
+            current_states = {}  # b_name -> x
 
             for b_name, (start, size) in state_map.items():
-                 x_val = y_step[start : start + size]
-                 current_states[b_name] = x_val
+                x_val = y_step[start : start + size]
+                current_states[b_name] = x_val
 
-                 # For Integrator, y = x
-                 # For SS/TF, y != x. We calculate y later.
-                 # We can pe-fill generic "Integrator" assumption if we verify type?
-                 # No, let's rely on block loop.
+                # For Integrator, y = x
+                # For SS/TF, y != x. We calculate y later.
+                # We can pe-fill generic "Integrator" assumption if we verify type?
+                # No, let's rely on block loop.
 
             # 2. Block Logic Replay
             # Execute blocks in topological order
@@ -1529,72 +1646,72 @@ class SimulationEngine:
                     # touch replay_dy.
                     executor(t, y_step, replay_dy, current_signals)
                     out_val = current_signals.get(b_name, out_val)
-                elif fn == 'Integrator':
+                elif fn == "Integrator":
                     # Valid because Integrator state output is just the state
                     if b_name in current_states:
-                         val = current_states[b_name]
-                         out_val = val if val.size > 1 else val.item()
+                        val = current_states[b_name]
+                        out_val = val if val.size > 1 else val.item()
 
                 # ==================== PDE BLOCKS ====================
-                elif fn == 'Heatequation1D':
+                elif fn == "Heatequation1D":
                     # HeatEquation1D: output is the temperature field (state vector)
                     if b_name in current_states:
                         T = current_states[b_name]
                         out_val = T
-                        current_signals[b_name + '_out1'] = float(np.mean(T))  # T_avg
+                        current_signals[b_name + "_out1"] = float(np.mean(T))  # T_avg
                     else:
-                        out_val = np.zeros(int(block.params.get('N', 20)))
+                        out_val = np.zeros(int(block.params.get("N", 20)))
 
-                elif fn == 'Waveequation1D':
+                elif fn == "Waveequation1D":
                     # WaveEquation1D: state is [u, v], output primary is u (displacement)
-                    N = int(block.params.get('N', 50))
+                    N = int(block.params.get("N", 50))
                     if b_name in current_states:
                         state = current_states[b_name]
-                        u = state[:N]   # Displacement field
-                        v = state[N:]   # Velocity field
+                        u = state[:N]  # Displacement field
+                        v = state[N:]  # Velocity field
                         out_val = u
-                        current_signals[b_name + '_out1'] = v  # v_field
+                        current_signals[b_name + "_out1"] = v  # v_field
                         # Energy = 0.5 * (kinetic + potential)
-                        L = float(block.params.get('L', 1.0))
+                        L = float(block.params.get("L", 1.0))
                         dx = L / (N - 1)
                         energy = 0.5 * np.sum(v**2) * dx  # Simplified
-                        current_signals[b_name + '_out2'] = float(energy)
+                        current_signals[b_name + "_out2"] = float(energy)
                     else:
                         out_val = np.zeros(N)
 
-                elif fn == 'Advectionequation1D':
+                elif fn == "Advectionequation1D":
                     # AdvectionEquation1D: output is concentration field
                     if b_name in current_states:
                         c = current_states[b_name]
                         out_val = c
-                        L = float(block.params.get('L', 1.0))
+                        L = float(block.params.get("L", 1.0))
                         N = len(c)
                         dx = L / (N - 1) if N > 1 else 1.0
-                        current_signals[b_name + '_out1'] = float(np.sum(c) * dx)  # c_total
+                        current_signals[b_name + "_out1"] = float(np.sum(c) * dx)  # c_total
                     else:
-                        out_val = np.zeros(int(block.params.get('N', 50)))
+                        out_val = np.zeros(int(block.params.get("N", 50)))
 
-                elif fn == 'Diffusionreaction1D':
+                elif fn == "Diffusionreaction1D":
                     # DiffusionReaction1D: output is concentration field
                     if b_name in current_states:
                         c = current_states[b_name]
                         out_val = c
-                        L = float(block.params.get('L', 1.0))
+                        L = float(block.params.get("L", 1.0))
                         N = len(c)
                         dx = L / (N - 1) if N > 1 else 1.0
-                        current_signals[b_name + '_out1'] = float(np.sum(c) * dx)  # c_total
-                        k = float(block.params.get('k', 0.1))
-                        n_order = int(block.params.get('n', 1))
+                        current_signals[b_name + "_out1"] = float(np.sum(c) * dx)  # c_total
+                        k = float(block.params.get("k", 0.1))
+                        n_order = int(block.params.get("n", 1))
                         reaction = np.sum(k * np.power(np.maximum(c, 0), n_order)) * dx
-                        current_signals[b_name + '_out2'] = float(reaction)  # reaction_rate
+                        current_signals[b_name + "_out2"] = float(reaction)  # reaction_rate
                     else:
-                        out_val = np.zeros(int(block.params.get('N', 50)))
+                        out_val = np.zeros(int(block.params.get("N", 50)))
 
                 # ==================== 2D PDE BLOCKS ====================
-                elif fn == 'Heatequation2D':
+                elif fn == "Heatequation2D":
                     # HeatEquation2D: output is 2D temperature field
-                    Nx = int(block.params.get('Nx', 20))
-                    Ny = int(block.params.get('Ny', 20))
+                    Nx = int(block.params.get("Nx", 20))
+                    Ny = int(block.params.get("Ny", 20))
                     if b_name in current_states:
                         state = current_states[b_name]
                         T_field = state.reshape((Ny, Nx))
@@ -1602,18 +1719,18 @@ class SimulationEngine:
                         T_field = np.zeros((Ny, Nx))
                     out_val = T_field
                     # Store secondary outputs for multi-port access
-                    current_signals[b_name + '_out1'] = float(np.mean(T_field))  # T_avg
-                    current_signals[b_name + '_out2'] = float(np.max(T_field))   # T_max
+                    current_signals[b_name + "_out1"] = float(np.mean(T_field))  # T_avg
+                    current_signals[b_name + "_out2"] = float(np.max(T_field))  # T_max
 
-                elif fn == 'Fieldprobe2D':
+                elif fn == "Fieldprobe2D":
                     # FieldProbe2D: bilinear interpolation from 2D field
                     field = inputs.get(0, None)
                     if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
                         out_val = 0.0
                     else:
                         Ny_f, Nx_f = field.shape
-                        x_pos = float(block.params.get('x_position', 0.5))
-                        y_pos = float(block.params.get('y_position', 0.5))
+                        x_pos = float(block.params.get("x_position", 0.5))
+                        y_pos = float(block.params.get("y_position", 0.5))
                         x_norm = max(0, min(1, x_pos))
                         y_norm = max(0, min(1, y_pos))
                         i_float = x_norm * (Nx_f - 1)
@@ -1624,26 +1741,28 @@ class SimulationEngine:
                         j1 = min(j0 + 1, Ny_f - 1)
                         di = i_float - i0
                         dj = j_float - j0
-                        out_val = (field[j0, i0] * (1 - di) * (1 - dj) +
-                                  field[j0, i1] * di * (1 - dj) +
-                                  field[j1, i0] * (1 - di) * dj +
-                                  field[j1, i1] * di * dj)
+                        out_val = (
+                            field[j0, i0] * (1 - di) * (1 - dj)
+                            + field[j0, i1] * di * (1 - dj)
+                            + field[j1, i0] * (1 - di) * dj
+                            + field[j1, i1] * di * dj
+                        )
 
-                elif fn == 'Fieldscope2D':
+                elif fn == "Fieldscope2D":
                     # FieldScope2D: pass through 2D field
                     field = inputs.get(0, np.zeros((1, 1)))
                     out_val = np.atleast_2d(field)
 
-                elif fn == 'Fieldslice':
+                elif fn == "Fieldslice":
                     # FieldSlice: extract 1D slice from 2D field
                     field = inputs.get(0, None)
                     if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
                         out_val = np.array([0.0])
                     else:
                         Ny_f, Nx_f = field.shape
-                        direction = block.params.get('slice_direction', 'x')
-                        position = float(block.params.get('slice_position', 0.5))
-                        if direction.lower() == 'x':
+                        direction = block.params.get("slice_direction", "x")
+                        position = float(block.params.get("slice_position", 0.5))
+                        if direction.lower() == "x":
                             j = int(position * (Ny_f - 1))
                             j = max(0, min(Ny_f - 1, j))
                             out_val = field[j, :]
@@ -1652,88 +1771,101 @@ class SimulationEngine:
                             i = max(0, min(Nx_f - 1, i))
                             out_val = field[:, i]
 
-                elif fn in ('Statevariable', 'StateVariable'):
-                     # StateVariable: manage discrete state across iterations
-                     # State is stored in block.params for persistence across replay steps
-                     # Key insight: We must update state from PREVIOUS iteration's computed input
-                     # before outputting, not after.
-                     # Re-initialize whenever _init_start_ is True (mirroring the
-                     # Hysteresis branch) so reset_memblocks takes effect across
-                     # runs; otherwise a second run would keep the previous run's
-                     # final state instead of resetting to initial_value.
-                     if block.params.get('_init_start_', True) or '_replay_state_' not in block.params:
-                         initial = block.params.get('initial_value', [1.0])
-                         if isinstance(initial, str):
-                             try:
-                                 initial = safe_literal(initial)
-                             except (SafeEvalError, ValueError, SyntaxError):
-                                 initial = [1.0]
-                         # Preserve full vector state, not just first element
-                         block.params['_replay_state_'] = np.atleast_1d(initial).copy()
-                         block.params['_replay_pending_'] = None  # Input from previous step
-                         block.params['_init_start_'] = False
+                elif fn in ("Statevariable", "StateVariable"):
+                    # StateVariable: manage discrete state across iterations
+                    # State is stored in block.params for persistence across replay steps
+                    # Key insight: We must update state from PREVIOUS iteration's computed input
+                    # before outputting, not after.
+                    # Re-initialize whenever _init_start_ is True (mirroring the
+                    # Hysteresis branch) so reset_memblocks takes effect across
+                    # runs; otherwise a second run would keep the previous run's
+                    # final state instead of resetting to initial_value.
+                    if (
+                        block.params.get("_init_start_", True)
+                        or "_replay_state_" not in block.params
+                    ):
+                        initial = block.params.get("initial_value", [1.0])
+                        if isinstance(initial, str):
+                            try:
+                                initial = safe_literal(initial)
+                            except (SafeEvalError, ValueError, SyntaxError):
+                                initial = [1.0]
+                        # Preserve full vector state, not just first element
+                        block.params["_replay_state_"] = np.atleast_1d(initial).copy()
+                        block.params["_replay_pending_"] = None  # Input from previous step
+                        block.params["_init_start_"] = False
 
-                     # First: Apply pending update from previous iteration
-                     if block.params['_replay_pending_'] is not None:
-                         block.params['_replay_state_'] = block.params['_replay_pending_']
-                         block.params['_replay_pending_'] = None
+                    # First: Apply pending update from previous iteration
+                    if block.params["_replay_pending_"] is not None:
+                        block.params["_replay_state_"] = block.params["_replay_pending_"]
+                        block.params["_replay_pending_"] = None
 
-                     # Output current state (preserve vector or return scalar if 1D)
-                     state = block.params['_replay_state_']
-                     out_val = state if np.atleast_1d(state).size > 1 else float(np.atleast_1d(state)[0])
+                    # Output current state (preserve vector or return scalar if 1D)
+                    state = block.params["_replay_state_"]
+                    out_val = (
+                        state if np.atleast_1d(state).size > 1 else float(np.atleast_1d(state)[0])
+                    )
 
-                     # Store input for next iteration (will be applied next time step)
-                     if 0 in inputs:
-                         new_val = inputs[0]
-                         # Preserve full vector, not just first element
-                         block.params['_replay_pending_'] = np.atleast_1d(new_val).copy()
+                    # Store input for next iteration (will be applied next time step)
+                    if 0 in inputs:
+                        new_val = inputs[0]
+                        # Preserve full vector, not just first element
+                        block.params["_replay_pending_"] = np.atleast_1d(new_val).copy()
 
-                elif fn == 'Mathfunction':
+                elif fn == "Mathfunction":
                     # Keep the input as an array so vector signals work:
                     # float(...) raises on a multi-element array (numpy 2.x).
                     val = np.asarray(inputs.get(0, 0.0), dtype=float)
                     # Check both 'function' and 'expression' keys for backward compatibility
-                    func_raw = block.params.get('function', block.params.get('expression', 'sin'))
+                    func_raw = block.params.get("function", block.params.get("expression", "sin"))
                     func = str(func_raw).lower()
 
                     try:
-                        if func == 'sin':
+                        if func == "sin":
                             out_val = np.sin(val)
-                        elif func == 'cos':
+                        elif func == "cos":
                             out_val = np.cos(val)
-                        elif func == 'tan':
+                        elif func == "tan":
                             out_val = np.tan(val)
-                        elif func == 'asin':
-                            with np.errstate(invalid='ignore'):
-                                out_val = np.where(np.abs(val) <= 1, np.arcsin(np.clip(val, -1.0, 1.0)), 0.0)
-                        elif func == 'acos':
-                            with np.errstate(invalid='ignore'):
-                                out_val = np.where(np.abs(val) <= 1, np.arccos(np.clip(val, -1.0, 1.0)), 0.0)
-                        elif func == 'atan':
+                        elif func == "asin":
+                            with np.errstate(invalid="ignore"):
+                                out_val = np.where(
+                                    np.abs(val) <= 1, np.arcsin(np.clip(val, -1.0, 1.0)), 0.0
+                                )
+                        elif func == "acos":
+                            with np.errstate(invalid="ignore"):
+                                out_val = np.where(
+                                    np.abs(val) <= 1, np.arccos(np.clip(val, -1.0, 1.0)), 0.0
+                                )
+                        elif func == "atan":
                             out_val = np.arctan(val)
-                        elif func == 'exp':
+                        elif func == "exp":
                             out_val = np.exp(val)
-                        elif func == 'log':
-                            with np.errstate(divide='ignore', invalid='ignore'):
-                                out_val = np.where(val > 0, np.log(np.where(val > 0, val, 1.0)), 0.0)
-                        elif func == 'log10':
-                            with np.errstate(divide='ignore', invalid='ignore'):
-                                out_val = np.where(val > 0, np.log10(np.where(val > 0, val, 1.0)), 0.0)
-                        elif func == 'sqrt':
+                        elif func == "log":
+                            with np.errstate(divide="ignore", invalid="ignore"):
+                                out_val = np.where(
+                                    val > 0, np.log(np.where(val > 0, val, 1.0)), 0.0
+                                )
+                        elif func == "log10":
+                            with np.errstate(divide="ignore", invalid="ignore"):
+                                out_val = np.where(
+                                    val > 0, np.log10(np.where(val > 0, val, 1.0)), 0.0
+                                )
+                        elif func == "sqrt":
                             out_val = np.where(val >= 0, np.sqrt(np.where(val >= 0, val, 0.0)), 0.0)
-                        elif func == 'square':
+                        elif func == "square":
                             out_val = val * val
-                        elif func == 'sign':
+                        elif func == "sign":
                             out_val = np.sign(val)
-                        elif func == 'abs':
+                        elif func == "abs":
                             out_val = np.abs(val)
-                        elif func == 'ceil':
+                        elif func == "ceil":
                             out_val = np.ceil(val)
-                        elif func == 'floor':
+                        elif func == "floor":
                             out_val = np.floor(val)
-                        elif func == 'reciprocal':
+                        elif func == "reciprocal":
                             out_val = np.where(val != 0, 1.0 / np.where(val != 0, val, 1.0), 0.0)
-                        elif func == 'cube':
+                        elif func == "cube":
                             out_val = val * val * val
                         else:
                             # Python expression fallback (vectorized: no float()).
@@ -1741,58 +1873,62 @@ class SimulationEngine:
                     except (ValueError, ZeroDivisionError):
                         out_val = 0.0
 
-                elif fn == 'Hysteresis':
+                elif fn == "Hysteresis":
                     # Relay latch state is scalar; reduce vector inputs safely.
                     val = float(np.ravel(inputs.get(0, 0.0))[0])
-                    upper = float(block.params.get('upper', 0.5))
-                    lower = float(block.params.get('lower', -0.5))
-                    high_val = float(block.params.get('high', 1.0))
-                    low_val = float(block.params.get('low', 0.0))
+                    upper = float(block.params.get("upper", 0.5))
+                    lower = float(block.params.get("lower", -0.5))
+                    high_val = float(block.params.get("high", 1.0))
+                    low_val = float(block.params.get("low", 0.0))
 
                     # Get or initialize persistent state for replay (in exec_params, not on self).
                     # Re-initialize whenever _init_start_ is True so reset_memblocks takes effect.
-                    if block.exec_params.get('_init_start_', True) or '_replay_hyst_state_' not in block.exec_params:
-                        block.exec_params['_replay_hyst_state_'] = low_val
-                        block.exec_params['_init_start_'] = False
+                    if (
+                        block.exec_params.get("_init_start_", True)
+                        or "_replay_hyst_state_" not in block.exec_params
+                    ):
+                        block.exec_params["_replay_hyst_state_"] = low_val
+                        block.exec_params["_init_start_"] = False
 
                     if val >= upper:
-                        block.exec_params['_replay_hyst_state_'] = high_val
+                        block.exec_params["_replay_hyst_state_"] = high_val
                     elif val <= lower:
-                        block.exec_params['_replay_hyst_state_'] = low_val
+                        block.exec_params["_replay_hyst_state_"] = low_val
 
-                    out_val = block.exec_params['_replay_hyst_state_']
+                    out_val = block.exec_params["_replay_hyst_state_"]
 
-                elif fn == 'Demux':
+                elif fn == "Demux":
                     # Split the vector input into N consecutive sub-vectors of
                     # length output_shape each (mirrors blocks/demux.py). Port
                     # 0 is the primary out_val (stored at signals[b_name]);
                     # secondary ports use the "{b_name}_out{i}" convention.
                     arr = np.atleast_1d(np.asarray(inputs.get(0, 0.0), dtype=float)).flatten()
-                    output_shape = int(block.params.get('output_shape', 1))
+                    output_shape = int(block.params.get("output_shape", 1))
                     if output_shape < 1:
                         output_shape = 1
-                    n_outputs = int(block.params.get(
-                        '_outputs_', getattr(block, 'out_ports', 1)))
+                    n_outputs = int(block.params.get("_outputs_", getattr(block, "out_ports", 1)))
                     if n_outputs < 1:
                         n_outputs = 1
                     out_val = arr[0:output_shape]
                     for p in range(1, n_outputs):
-                        current_signals[b_name + f'_out{p}'] = arr[p * output_shape:(p + 1) * output_shape]
+                        current_signals[b_name + f"_out{p}"] = arr[
+                            p * output_shape : (p + 1) * output_shape
+                        ]
 
-                elif fn == 'Fieldprobe':
+                elif fn == "Fieldprobe":
                     # FieldProbe: Extract value at position from field array
                     field = inputs.get(0, np.array([0.0]))
                     field = np.atleast_1d(field).flatten()
 
-                    position = float(block.params.get('position', 0.5))
-                    mode = block.params.get('position_mode', 'normalized')
-                    L = float(block.params.get('L', 1.0))
+                    position = float(block.params.get("position", 0.5))
+                    mode = block.params.get("position_mode", "normalized")
+                    L = float(block.params.get("L", 1.0))
                     N = len(field)
 
                     if N == 0:
                         out_val = 0.0
                     else:
-                        if mode == 'normalized':
+                        if mode == "normalized":
                             idx_float = position * (N - 1)
                         else:
                             idx_float = (position / L) * (N - 1)
@@ -1804,13 +1940,13 @@ class SimulationEngine:
 
                         out_val = field[idx_low] * (1 - frac) + field[idx_high] * frac
 
-                elif fn == 'Fieldscope':
+                elif fn == "Fieldscope":
                     # FieldScope: Store field for 2D visualization
                     field = inputs.get(0, np.array([0.0]))
                     out_val = np.atleast_1d(field).flatten()
 
-                elif fn in ('Terminator', 'Display'):
-                    pass # Do nothing
+                elif fn in ("Terminator", "Display"):
+                    pass  # Do nothing
 
                 else:
                     # Fallback: call block.execute() for unhandled block types
@@ -1818,9 +1954,7 @@ class SimulationEngine:
                     if block.block_instance is not None:
                         try:
                             result = block.block_instance.execute(
-                                time=t,
-                                inputs=inputs,
-                                params=block.params
+                                time=t, inputs=inputs, params=block.params
                             )
                             if result and 0 in result:
                                 out_val = result[0]
@@ -1837,14 +1971,14 @@ class SimulationEngine:
                 # Ah, `Scope` blocks have internal `execute` that saves to `vector`.
                 # Standard blocks don't save history unless probed.
                 # But Scopes DO.
-                if fn == 'Scope':
+                if fn == "Scope":
                     # Scope can have multiple inputs - collect all of them
                     # Ensure we write to exec_params as ScopePlotter prioritizes it
-                    if not hasattr(block, 'exec_params'):
+                    if not hasattr(block, "exec_params"):
                         block.exec_params = block.params.copy()
 
                     # Get number of input ports
-                    n_inputs = block.in_ports if hasattr(block, 'in_ports') else 1
+                    n_inputs = block.in_ports if hasattr(block, "in_ports") else 1
 
                     # Collect and flatten all input values (matching Scope.execute() behavior)
                     # Each port value is flattened to 1D so vector signals (e.g. StateSpace
@@ -1858,85 +1992,105 @@ class SimulationEngine:
 
                     # Initialize vector list and labels on first timestep
                     if i == 0:
-                        block.exec_params['vector'] = []
-                        block.exec_params['vec_dim'] = vec_dim
+                        block.exec_params["vector"] = []
+                        block.exec_params["vec_dim"] = vec_dim
                         # Set vec_labels from 'labels' param (Scope uses 'labels', plotter reads 'vec_labels')
-                        labels_raw = block.params.get('labels', block.exec_params.get('labels', ''))
+                        labels_raw = block.params.get("labels", block.exec_params.get("labels", ""))
                         # Guard against non-string labels (e.g. a list/dict):
                         # calling string methods would raise AttributeError
                         # that the broad except would mask as a generic failure.
-                        if isinstance(labels_raw, str) and labels_raw and labels_raw != 'default':
-                            labels_list = [l.strip() for l in labels_raw.replace(' ', '').split(',') if l.strip()]
+                        if isinstance(labels_raw, str) and labels_raw and labels_raw != "default":
+                            labels_list = [
+                                l.strip()
+                                for l in labels_raw.replace(" ", "").split(",")
+                                if l.strip()
+                            ]
                             # Pad or trim to match actual signal dimension
                             while len(labels_list) < vec_dim:
                                 labels_list.append(f"{b_name}-{len(labels_list)}")
                             labels_list = labels_list[:vec_dim]
                         else:
                             labels_list = [f"{b_name}-{j}" for j in range(vec_dim)]
-                        block.exec_params['vec_labels'] = labels_list
+                        block.exec_params["vec_labels"] = labels_list
 
-                    block.exec_params['vector'].append(new_sample)
+                    block.exec_params["vector"].append(new_sample)
 
                     if i == num_steps - 1:
-                        vec = block.exec_params['vector']
-                        logger.info(f"Replay Scope {b_name}: vec_dim={vec_dim}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}")
+                        vec = block.exec_params["vector"]
+                        logger.info(
+                            f"Replay Scope {b_name}: vec_dim={vec_dim}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}"
+                        )
 
-                if fn == 'Fieldscope':
+                if fn == "Fieldscope":
                     # FieldScope: Store field history for 2D heatmap
                     field = inputs.get(0, np.array([0.0]))
                     field = np.atleast_1d(field).flatten()
 
-                    if not hasattr(block, 'exec_params'):
+                    if not hasattr(block, "exec_params"):
                         block.exec_params = block.params.copy()
 
                     if i == 0:
-                        block.exec_params['_field_history_'] = []
-                        block.exec_params['_time_history_'] = []
+                        block.exec_params["_field_history_"] = []
+                        block.exec_params["_time_history_"] = []
 
-                    block.exec_params['_field_history_'].append(field.copy())
-                    block.exec_params['_time_history_'].append(t)
+                    block.exec_params["_field_history_"].append(field.copy())
+                    block.exec_params["_time_history_"].append(t)
 
                     if i == num_steps - 1:
-                        logger.info(f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['_field_history_'])}")
+                        logger.info(
+                            f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['_field_history_'])}"
+                        )
 
-                if fn == 'Fieldscope2D':
+                if fn == "Fieldscope2D":
                     # FieldScope2D: Store 2D field history for animated heatmap
                     field = inputs.get(0, np.zeros((1, 1)))
                     field = np.atleast_2d(field)
 
-                    if not hasattr(block, 'exec_params'):
+                    if not hasattr(block, "exec_params"):
                         block.exec_params = block.params.copy()
 
                     if i == 0:
-                        block.exec_params['_field_history_2d_'] = []
-                        block.exec_params['_time_history_'] = []
+                        block.exec_params["_field_history_2d_"] = []
+                        block.exec_params["_time_history_"] = []
 
                     # Store every N frames to reduce memory
-                    sample_interval = int(block.params.get('sample_interval', 5))
+                    sample_interval = int(block.params.get("sample_interval", 5))
                     if i % sample_interval == 0:
-                        block.exec_params['_field_history_2d_'].append(field.copy())
-                        block.exec_params['_time_history_'].append(t)
+                        block.exec_params["_field_history_2d_"].append(field.copy())
+                        block.exec_params["_time_history_"].append(t)
 
                     if i == num_steps - 1:
-                        logger.info(f"DEBUG Replay FieldScope2D {b_name}: field_shape={field.shape}, history_len={len(block.exec_params['_field_history_2d_'])}")
+                        logger.info(
+                            f"DEBUG Replay FieldScope2D {b_name}: field_shape={field.shape}, history_len={len(block.exec_params['_field_history_2d_'])}"
+                        )
 
         # Finalize Scope Vectors (convert to numpy)
         for block in current_blocks:
-            if block.block_fn == 'Scope':
-                 if hasattr(block, 'exec_params') and 'vector' in block.exec_params:
-                    block.exec_params['vector'] = np.array(block.exec_params['vector'])
-            elif block.block_fn == 'FieldScope':
-                if hasattr(block, 'exec_params') and '_field_history_' in block.exec_params:
-                    block.exec_params['_field_history_'] = np.array(block.exec_params['_field_history_'])
-                if hasattr(block, 'exec_params') and '_time_history_' in block.exec_params:
-                    block.exec_params['_time_history_'] = np.array(block.exec_params['_time_history_'])
-            elif block.block_fn == 'FieldScope2D':
-                if hasattr(block, 'exec_params') and '_field_history_2d_' in block.exec_params:
-                    block.exec_params['_field_history_2d_'] = np.array(block.exec_params['_field_history_2d_'])
-                if hasattr(block, 'exec_params') and '_time_history_' in block.exec_params:
-                    block.exec_params['_time_history_'] = np.array(block.exec_params['_time_history_'])
+            if block.block_fn == "Scope":
+                if hasattr(block, "exec_params") and "vector" in block.exec_params:
+                    block.exec_params["vector"] = np.array(block.exec_params["vector"])
+            elif block.block_fn == "FieldScope":
+                if hasattr(block, "exec_params") and "_field_history_" in block.exec_params:
+                    block.exec_params["_field_history_"] = np.array(
+                        block.exec_params["_field_history_"]
+                    )
+                if hasattr(block, "exec_params") and "_time_history_" in block.exec_params:
+                    block.exec_params["_time_history_"] = np.array(
+                        block.exec_params["_time_history_"]
+                    )
+            elif block.block_fn == "FieldScope2D":
+                if hasattr(block, "exec_params") and "_field_history_2d_" in block.exec_params:
+                    block.exec_params["_field_history_2d_"] = np.array(
+                        block.exec_params["_field_history_2d_"]
+                    )
+                if hasattr(block, "exec_params") and "_time_history_" in block.exec_params:
+                    block.exec_params["_time_history_"] = np.array(
+                        block.exec_params["_time_history_"]
+                    )
 
-    def run_compiled_simulation(self, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float) -> bool:
+    def run_compiled_simulation(
+        self, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float
+    ) -> bool:
         """
         Run the simulation using the compiled fast solver.
         """
@@ -1945,12 +2099,12 @@ class SimulationEngine:
         solve_time = 0.0
         replay_time = 0.0
         compile_cache_hit = False
-        method_requested = getattr(self, 'solver_method', 'RK45') or 'RK45'
+        method_requested = getattr(self, "solver_method", "RK45") or "RK45"
         method_used = method_requested
         backend = None
         fallback_reason = None
-        rtol = getattr(self, 'rtol', 1e-9)
-        atol = getattr(self, 'atol', 1e-12)
+        rtol = getattr(self, "rtol", 1e-9)
+        atol = getattr(self, "atol", 1e-12)
         self.last_solver_diagnostics = {}
 
         try:
@@ -1964,10 +2118,10 @@ class SimulationEngine:
                 if not self.initialize_execution(blocks, lines):
                     logger.error("Failed to initialize execution (algebraic loop or error).")
                     self.last_solver_diagnostics = {
-                        'success': False,
-                        'failure_stage': 'initialize',
-                        'message': self.error_msg,
-                        'total_wall_time': time_module.perf_counter() - run_start,
+                        "success": False,
+                        "failure_stage": "initialize",
+                        "message": self.error_msg,
+                        "total_wall_time": time_module.perf_counter() - run_start,
                     }
                     return False
             else:
@@ -1989,10 +2143,10 @@ class SimulationEngine:
             if not self.compiler.check_compilability(current_blocks):
                 logger.error("Flattened system contains uncompilable blocks.")
                 self.last_solver_diagnostics = {
-                    'success': False,
-                    'failure_stage': 'compilability',
-                    'message': "Flattened system contains uncompilable blocks.",
-                    'total_wall_time': time_module.perf_counter() - run_start,
+                    "success": False,
+                    "failure_stage": "compilability",
+                    "message": "Flattened system contains uncompilable blocks.",
+                    "total_wall_time": time_module.perf_counter() - run_start,
                 }
                 return False
 
@@ -2005,22 +2159,21 @@ class SimulationEngine:
                 self._compile_system_cached(current_blocks, sorted_blocks, current_lines, dt)
             )
             compile_time = time_module.perf_counter() - compile_start
-            
+
             logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
             t_eval = np.arange(t_span[0], t_span[1] + dt, dt)
             # Clip to avoid floating-point overshoot past t_span[1]
             t_eval = t_eval[t_eval <= t_span[1] + 1e-12]
             t_eval[-1] = min(t_eval[-1], t_span[1])
-            
+
             # Lightweight container matching scipy solve_ivp result interface
             class _SolverResult:
-                __slots__ = ('t', 'y', 'success', 'message', 'status',
-                             'nfev', 'njev', 'nlu')
+                __slots__ = ("t", "y", "success", "message", "status", "nfev", "njev", "nlu")
 
             solve_start = time_module.perf_counter()
             if len(y0) == 0:
                 # Purely algebraic system
-                backend = 'algebraic'
+                backend = "algebraic"
                 sol = _SolverResult()
                 sol.t = t_eval
                 sol.y = np.zeros((0, len(t_eval)))
@@ -2038,23 +2191,24 @@ class SimulationEngine:
                 # the RHS multiple times per step, seeing different random values
                 # each time, which makes error estimates explode and the solver
                 # hang. (PRBS is a deterministic seeded LFSR and is safe.)
-                stochastic_fns = {'Noise', 'PacketLoss', 'NetworkChannel', 'RandomSource'}
+                stochastic_fns = {"Noise", "PacketLoss", "NetworkChannel", "RandomSource"}
                 has_stochastic = any(
-                    (b.block_fn in stochastic_fns
-                     or (b.block_fn.title() if b.block_fn else '') in stochastic_fns)
+                    (
+                        b.block_fn in stochastic_fns
+                        or (b.block_fn.title() if b.block_fn else "") in stochastic_fns
+                    )
                     for b in current_blocks
                 )
                 if has_stochastic and method not in FIXED_STEP_METHODS:
                     logger.info(
-                        f"Stochastic source detected — overriding '{method}' "
-                        f"with fixed-step Euler"
+                        f"Stochastic source detected — overriding '{method}' with fixed-step Euler"
                     )
                     fallback_reason = f"stochastic source forced fixed-step Euler from {method}"
-                    method = 'Euler'
+                    method = "Euler"
 
                 if method in FIXED_STEP_METHODS:
-                    backend = 'fixed_step'
-                    scheme = 'rk4' if method == 'RK4' else 'euler'
+                    backend = "fixed_step"
+                    scheme = "rk4" if method == "RK4" else "euler"
                     y_history = integrate_fixed_step(model_func, t_eval, y0, scheme)
                     sol = _SolverResult()
                     sol.t = t_eval
@@ -2062,49 +2216,59 @@ class SimulationEngine:
                     sol.success = True
                     sol.message = f"Fixed-step {method}"
                     sol.status = 0
-                    evals_per_step = 4 if method == 'RK4' else 1
+                    evals_per_step = 4 if method == "RK4" else 1
                     sol.nfev = max(0, len(t_eval) - 1) * evals_per_step
                     sol.njev = 0
                     sol.nlu = 0
                 else:
                     if method not in SCIPY_SOLVER_METHODS:
-                        logger.warning(
-                            f"Unknown solver '{method}', falling back to RK45"
-                        )
+                        logger.warning(f"Unknown solver '{method}', falling back to RK45")
                         fallback_reason = f"unknown solver '{method}' fell back to RK45"
-                        method = 'RK45'
-                    backend = 'scipy'
+                        method = "RK45"
+                    backend = "scipy"
                     logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
-                    sol = solve_ivp(model_func, t_span, y0, t_eval=t_eval,
-                                    method=method, rtol=rtol, atol=atol)
+                    sol = solve_ivp(
+                        model_func, t_span, y0, t_eval=t_eval, method=method, rtol=rtol, atol=atol
+                    )
                 method_used = method
             solve_time = time_module.perf_counter() - solve_start
-            
+
             if not sol.success:
                 logger.error(f"Solver failed: {sol.message}")
                 self._record_solver_diagnostics(
-                    sol=sol, success=False, method_requested=method_requested,
-                    method_used=method_used, backend=backend, t_span=t_span, dt=dt,
-                    rtol=rtol, atol=atol, n_states=len(y0),
-                    n_blocks=len(current_blocks), n_lines=len(current_lines),
-                    compile_cache_hit=compile_cache_hit, compile_time=compile_time,
-                    solve_time=solve_time, replay_time=0.0,
+                    sol=sol,
+                    success=False,
+                    method_requested=method_requested,
+                    method_used=method_used,
+                    backend=backend,
+                    t_span=t_span,
+                    dt=dt,
+                    rtol=rtol,
+                    atol=atol,
+                    n_states=len(y0),
+                    n_blocks=len(current_blocks),
+                    n_lines=len(current_lines),
+                    compile_cache_hit=compile_cache_hit,
+                    compile_time=compile_time,
+                    solve_time=solve_time,
+                    replay_time=0.0,
                     total_time=time_module.perf_counter() - run_start,
-                    fallback_reason=fallback_reason, failure_stage='solve',
+                    fallback_reason=fallback_reason,
+                    failure_stage="solve",
                 )
                 return False
-                
+
             logger.info("Simulation finished. Processing results...")
-            
+
             # 4. Distribute results
             self.outs = sol.y
             self.timeline = sol.t
-            
+
             output_range = None
             if sol.y.size > 0:
                 output_range = {
-                    'min': float(np.min(sol.y)),
-                    'max': float(np.max(sol.y)),
+                    "min": float(np.min(sol.y)),
+                    "max": float(np.max(sol.y)),
                 }
                 logger.info(
                     f"Solver output range: min={output_range['min']:.6f}, "
@@ -2113,26 +2277,38 @@ class SimulationEngine:
 
             replay_start = time_module.perf_counter()
             self._replay_compiled_signals(
-                sol, current_blocks, current_lines, state_map, block_matrices)
+                sol, current_blocks, current_lines, state_map, block_matrices
+            )
             replay_time = time_module.perf_counter() - replay_start
 
             self._record_solver_diagnostics(
-                sol=sol, success=True, method_requested=method_requested,
-                method_used=method_used, backend=backend, t_span=t_span, dt=dt,
-                rtol=rtol, atol=atol, n_states=len(y0),
-                n_blocks=len(current_blocks), n_lines=len(current_lines),
-                compile_cache_hit=compile_cache_hit, compile_time=compile_time,
-                solve_time=solve_time, replay_time=replay_time,
+                sol=sol,
+                success=True,
+                method_requested=method_requested,
+                method_used=method_used,
+                backend=backend,
+                t_span=t_span,
+                dt=dt,
+                rtol=rtol,
+                atol=atol,
+                n_states=len(y0),
+                n_blocks=len(current_blocks),
+                n_lines=len(current_lines),
+                compile_cache_hit=compile_cache_hit,
+                compile_time=compile_time,
+                solve_time=solve_time,
+                replay_time=replay_time,
                 total_time=time_module.perf_counter() - run_start,
-                fallback_reason=fallback_reason, output_range=output_range,
+                fallback_reason=fallback_reason,
+                output_range=output_range,
             )
             logger.info(
                 "Compiled solver diagnostics: %s",
                 self._format_solver_diagnostics_for_log(self.last_solver_diagnostics),
             )
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Compiled simulation failed: {e}", exc_info=True)
             # Surface the exception type/message so callers and the UI can tell
@@ -2140,16 +2316,16 @@ class SimulationEngine:
             # solver failure, instead of only seeing a generic False.
             self.error_msg = f"Compiled simulation failed: {type(e).__name__}: {e}"
             self.last_solver_diagnostics = {
-                'success': False,
-                'failure_stage': 'exception',
-                'message': self.error_msg,
-                'method_requested': method_requested,
-                'method_used': method_used,
-                'backend': backend,
-                'compile_cache_hit': bool(compile_cache_hit),
-                'compile_wall_time': float(compile_time),
-                'solve_wall_time': float(solve_time),
-                'replay_wall_time': float(replay_time),
-                'total_wall_time': time_module.perf_counter() - run_start,
+                "success": False,
+                "failure_stage": "exception",
+                "message": self.error_msg,
+                "method_requested": method_requested,
+                "method_used": method_used,
+                "backend": backend,
+                "compile_cache_hit": bool(compile_cache_hit),
+                "compile_wall_time": float(compile_time),
+                "solve_wall_time": float(solve_time),
+                "replay_wall_time": float(replay_time),
+                "total_wall_time": time_module.perf_counter() - run_start,
             }
             return False

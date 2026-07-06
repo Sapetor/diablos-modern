@@ -11,17 +11,23 @@ logger = logging.getLogger(__name__)
 
 class ErrorSeverity(Enum):
     """Error severity levels."""
-    ERROR = "error"      # Prevents simulation
+
+    ERROR = "error"  # Prevents simulation
     WARNING = "warning"  # Simulation can run but may have issues
-    INFO = "info"        # Informational message
+    INFO = "info"  # Informational message
 
 
 class ValidationError:
     """Represents a validation error or warning."""
 
-    def __init__(self, severity: ErrorSeverity, message: str,
-                 blocks: List = None, connections: List = None,
-                 suggestion: str = None):
+    def __init__(
+        self,
+        severity: ErrorSeverity,
+        message: str,
+        blocks: List = None,
+        connections: List = None,
+        suggestion: str = None,
+    ):
         """
         Initialize a validation error.
 
@@ -116,28 +122,32 @@ class DiagramValidator:
             connected_blocks.add(line.dstblock)
 
         return {
-            'input_connections': input_connections,
-            'output_connections': output_connections,
-            'connected_blocks': connected_blocks,
-            'valid_block_names': {block.name for block in self.dsim.blocks_list}
+            "input_connections": input_connections,
+            "output_connections": output_connections,
+            "connected_blocks": connected_blocks,
+            "valid_block_names": {block.name for block in self.dsim.blocks_list},
         }
 
     def _check_disconnected_inputs(self, connection_maps: dict) -> None:
         """Check for input ports that have no connections."""
-        input_connections = connection_maps['input_connections']
+        input_connections = connection_maps["input_connections"]
 
         for block in self.dsim.blocks_list:
             # Skip blocks that don't require inputs (use block property if available)
-            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_inputs'):
+            if (
+                hasattr(block, "block_instance")
+                and block.block_instance
+                and hasattr(block.block_instance, "requires_inputs")
+            ):
                 if not block.block_instance.requires_inputs:
                     continue
-            elif hasattr(block, 'category') and block.category == 'Sources':
+            elif hasattr(block, "category") and block.category == "Sources":
                 continue
 
             # Get optional inputs list (if the block specifies any)
             optional_inputs = set()
-            if hasattr(block, 'block_instance') and block.block_instance:
-                if hasattr(block.block_instance, 'optional_inputs'):
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_inputs"):
                     optional_inputs = set(block.block_instance.optional_inputs)
 
             # Check for disconnected inputs using pre-built map
@@ -147,28 +157,32 @@ class DiagramValidator:
                 if (block.name, i) not in input_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.ERROR,
-                        message=f"Block '{block.username or block.name}' has disconnected input port {i+1}",
+                        message=f"Block '{block.username or block.name}' has disconnected input port {i + 1}",
                         blocks=[block],
-                        suggestion=f"Connect an output to input port {i+1} or remove the block"
+                        suggestion=f"Connect an output to input port {i + 1} or remove the block",
                     )
                     self.errors.append(error)
 
     def _check_disconnected_outputs(self, connection_maps: dict) -> None:
         """Check for output ports that have no connections."""
-        output_connections = connection_maps['output_connections']
+        output_connections = connection_maps["output_connections"]
 
         for block in self.dsim.blocks_list:
             # Skip blocks that don't require outputs to be connected (use block property if available)
-            if hasattr(block, 'block_instance') and block.block_instance and hasattr(block.block_instance, 'requires_outputs'):
+            if (
+                hasattr(block, "block_instance")
+                and block.block_instance
+                and hasattr(block.block_instance, "requires_outputs")
+            ):
                 if not block.block_instance.requires_outputs:
                     continue
-            elif hasattr(block, 'category') and block.category in ['Sinks', 'Other']:
+            elif hasattr(block, "category") and block.category in ["Sinks", "Other"]:
                 continue
 
             # Get optional outputs (ports that don't need to be connected)
             optional_outputs = set()
-            if hasattr(block, 'block_instance') and block.block_instance:
-                if hasattr(block.block_instance, 'optional_outputs'):
+            if hasattr(block, "block_instance") and block.block_instance:
+                if hasattr(block.block_instance, "optional_outputs"):
                     optional_outputs = set(block.block_instance.optional_outputs)
 
             # Check for disconnected outputs using pre-built map
@@ -179,21 +193,21 @@ class DiagramValidator:
                 if (block.name, i) not in output_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.WARNING,
-                        message=f"Block '{block.username or block.name}' has disconnected output port {i+1}",
+                        message=f"Block '{block.username or block.name}' has disconnected output port {i + 1}",
                         blocks=[block],
-                        suggestion=f"Connect output port {i+1} to another block or add a sink"
+                        suggestion=f"Connect output port {i + 1} to another block or add a sink",
                     )
                     self.errors.append(error)
 
     def _check_isolated_blocks(self, connection_maps: dict) -> None:
         """Check for blocks with no connections at all."""
-        connected_blocks = connection_maps['connected_blocks']
+        connected_blocks = connection_maps["connected_blocks"]
 
         for block in self.dsim.blocks_list:
             # Skip meta-blocks that don't require connections (e.g., Optimizer)
-            if hasattr(block, 'block_instance') and block.block_instance:
-                requires_inputs = getattr(block.block_instance, 'requires_inputs', True)
-                requires_outputs = getattr(block.block_instance, 'requires_outputs', True)
+            if hasattr(block, "block_instance") and block.block_instance:
+                requires_inputs = getattr(block.block_instance, "requires_inputs", True)
+                requires_outputs = getattr(block.block_instance, "requires_outputs", True)
                 # If block doesn't require either inputs or outputs, it's a meta-block
                 if not requires_inputs and not requires_outputs:
                     continue
@@ -208,7 +222,7 @@ class DiagramValidator:
                     severity=ErrorSeverity.ERROR,
                     message=f"Block '{block.username or block.name}' is not connected to anything",
                     blocks=[block],
-                    suggestion="Connect this block to the diagram or remove it"
+                    suggestion="Connect this block to the diagram or remove it",
                 )
                 self.errors.append(error)
 
@@ -217,12 +231,12 @@ class DiagramValidator:
         goto_tags = {}
         from_tags = {}
         for block in self.dsim.blocks_list:
-            block_fn = getattr(block, 'block_fn', None)
-            if block_fn == 'Goto':
-                tag = str(getattr(block, 'params', {}).get('tag', '')).strip()
+            block_fn = getattr(block, "block_fn", None)
+            if block_fn == "Goto":
+                tag = str(getattr(block, "params", {}).get("tag", "")).strip()
                 goto_tags.setdefault(tag, []).append(block)
-            elif block_fn == 'From':
-                tag = str(getattr(block, 'params', {}).get('tag', '')).strip()
+            elif block_fn == "From":
+                tag = str(getattr(block, "params", {}).get("tag", "")).strip()
                 from_tags.setdefault(tag, []).append(block)
 
         # Multiple Goto with same tag -> warning (ambiguous source)
@@ -233,7 +247,7 @@ class DiagramValidator:
                         severity=ErrorSeverity.WARNING,
                         message=f"Multiple Goto blocks share tag '{tag or '(empty)'}'",
                         blocks=gotos,
-                        suggestion="Use unique tags or remove duplicates to avoid ambiguity"
+                        suggestion="Use unique tags or remove duplicates to avoid ambiguity",
                     )
                 )
 
@@ -245,7 +259,7 @@ class DiagramValidator:
                         severity=ErrorSeverity.ERROR,
                         message=f"From tag '{tag or '(empty)'}' has no matching Goto",
                         blocks=frs,
-                        suggestion="Add a Goto with the same tag or update the tag"
+                        suggestion="Add a Goto with the same tag or update the tag",
                     )
                 )
 
@@ -257,13 +271,13 @@ class DiagramValidator:
                         severity=ErrorSeverity.WARNING,
                         message=f"Goto tag '{tag or '(empty)'}' is unused (no From)",
                         blocks=gotos,
-                        suggestion="Add a From with the same tag or remove the Goto"
+                        suggestion="Add a From with the same tag or remove the Goto",
                     )
                 )
 
     def _check_invalid_connections(self, connection_maps: dict) -> None:
         """Check for connections with invalid block references."""
-        valid_block_names = connection_maps['valid_block_names']
+        valid_block_names = connection_maps["valid_block_names"]
 
         for line in self.dsim.line_list:
             if getattr(line, "hidden", False):
@@ -273,7 +287,7 @@ class DiagramValidator:
                     severity=ErrorSeverity.ERROR,
                     message=f"Connection '{line.name}' references non-existent source block '{line.srcblock}'",
                     connections=[line],
-                    suggestion="Delete this invalid connection"
+                    suggestion="Delete this invalid connection",
                 )
                 self.errors.append(error)
 
@@ -282,13 +296,13 @@ class DiagramValidator:
                     severity=ErrorSeverity.ERROR,
                     message=f"Connection '{line.name}' references non-existent destination block '{line.dstblock}'",
                     connections=[line],
-                    suggestion="Delete this invalid connection"
+                    suggestion="Delete this invalid connection",
                 )
                 self.errors.append(error)
 
     def _check_duplicate_connections(self, connection_maps: dict) -> None:
         """Check for multiple connections to the same input port."""
-        input_connections = connection_maps['input_connections']
+        input_connections = connection_maps["input_connections"]
 
         # Find duplicates
         for (block_name, port_idx), connections in input_connections.items():
@@ -302,10 +316,10 @@ class DiagramValidator:
 
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx+1} has {len(connections)} connections",
+                    message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx + 1} has {len(connections)} connections",
                     blocks=[block] if block else [],
                     connections=connections,
-                    suggestion=f"Remove all but one connection to input port {port_idx+1}"
+                    suggestion=f"Remove all but one connection to input port {port_idx + 1}",
                 )
                 self.errors.append(error)
 
@@ -353,10 +367,10 @@ class DiagramValidator:
             """Get effective sample time from block params. Returns -1 for continuous."""
             if not block:
                 return -1.0
-            params = getattr(block, 'params', {})
-            sample_time = params.get('sampling_time',
-                          params.get('sample_time',
-                          params.get('output_sample_time', -1.0)))
+            params = getattr(block, "params", {})
+            sample_time = params.get(
+                "sampling_time", params.get("sample_time", params.get("output_sample_time", -1.0))
+            )
             try:
                 return float(sample_time)
             except (ValueError, TypeError):
@@ -366,7 +380,11 @@ class DiagramValidator:
             """Check if block is a rate transition type."""
             if not block:
                 return False
-            return getattr(block, 'block_fn', None) in ('RateTransition', 'ZeroOrderHold', 'FirstOrderHold')
+            return getattr(block, "block_fn", None) in (
+                "RateTransition",
+                "ZeroOrderHold",
+                "FirstOrderHold",
+            )
 
         # Check each connection for rate mismatches
         for line in self.dsim.line_list:
@@ -397,11 +415,11 @@ class DiagramValidator:
                     ValidationError(
                         severity=ErrorSeverity.INFO,
                         message=f"Discrete signal from '{src_block.username or src_block.name}' "
-                               f"(Ts={src_rate}s) connects to continuous block "
-                               f"'{dst_block.username or dst_block.name}'",
+                        f"(Ts={src_rate}s) connects to continuous block "
+                        f"'{dst_block.username or dst_block.name}'",
                         blocks=[src_block, dst_block],
                         connections=[line],
-                        suggestion="Consider adding a RateTransition block for proper signal conversion"
+                        suggestion="Consider adding a RateTransition block for proper signal conversion",
                     )
                 )
 
@@ -421,11 +439,11 @@ class DiagramValidator:
                         ValidationError(
                             severity=ErrorSeverity.WARNING,
                             message=f"Non-integer sample rate ratio ({ratio:.2f}x, {direction}) "
-                                   f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
-                                   f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
+                            f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
                             blocks=[src_block, dst_block],
                             connections=[line],
-                            suggestion="Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block"
+                            suggestion="Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block",
                         )
                     )
 
@@ -435,10 +453,10 @@ class DiagramValidator:
                         ValidationError(
                             severity=ErrorSeverity.INFO,
                             message=f"Sample rate change ({ratio:.0f}x, {direction}) "
-                                   f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
-                                   f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
+                            f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
                             blocks=[src_block, dst_block],
                             connections=[line],
-                            suggestion="Consider adding a RateTransition block for proper rate conversion"
+                            suggestion="Consider adding a RateTransition block for proper rate conversion",
                         )
                     )

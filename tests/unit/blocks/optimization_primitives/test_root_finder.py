@@ -24,29 +24,24 @@ class TestRootFinderBlock:
         # F(x) = x1 - 2, x2 - 3
         # Solution: x = [2, 3]
         params = {
-            'expressions': 'x1 - 2, x2 - 3',
-            'variables': 'x1,x2',
-            'epsilon': 1e-6,
-            'damping': 1.0
+            "expressions": "x1 - 2, x2 - 3",
+            "variables": "x1,x2",
+            "epsilon": 1e-6,
+            "damping": 1.0,
         }
 
         x = np.array([0.0, 0.0])
         result = self.block.execute(0.0, {0: x}, params)
 
         np.testing.assert_array_almost_equal(result[0], [2.0, 3.0])
-        assert result['E'] is False
+        assert result["E"] is False
 
     def test_quadratic_system(self):
         """Test Newton step on quadratic system."""
         # F(x) = x1**2 - 1
         # Starting at x=2, F(2)=3, F'(2)=4
         # Newton step: x_new = 2 - 3/4 = 1.25
-        params = {
-            'expressions': 'x1**2 - 1',
-            'variables': 'x1',
-            'epsilon': 1e-6,
-            'damping': 1.0
-        }
+        params = {"expressions": "x1**2 - 1", "variables": "x1", "epsilon": 1e-6, "damping": 1.0}
 
         x = np.array([2.0])
         result = self.block.execute(0.0, {0: x}, params)
@@ -56,10 +51,10 @@ class TestRootFinderBlock:
     def test_damping(self):
         """Test damped Newton step."""
         params = {
-            'expressions': 'x1 - 2',
-            'variables': 'x1',
-            'epsilon': 1e-6,
-            'damping': 0.5  # Half step
+            "expressions": "x1 - 2",
+            "variables": "x1",
+            "epsilon": 1e-6,
+            "damping": 0.5,  # Half step
         }
 
         x = np.array([0.0])
@@ -74,10 +69,10 @@ class TestRootFinderBlock:
         # x1 + x2**2 - 1 = 0
         # Solutions include (0, 1), (1, 0)
         params = {
-            'expressions': 'x1**2 + x2 - 1, x1 + x2**2 - 1',
-            'variables': 'x1,x2',
-            'epsilon': 1e-6,
-            'damping': 1.0
+            "expressions": "x1**2 + x2 - 1, x1 + x2**2 - 1",
+            "variables": "x1,x2",
+            "epsilon": 1e-6,
+            "damping": 1.0,
         }
 
         # Start near (1, 0)
@@ -98,12 +93,7 @@ class TestRootFinderBlock:
     def test_convergence_from_far(self):
         """Test convergence from a far starting point."""
         # Simple 1D: x - 5 = 0
-        params = {
-            'expressions': 'x1 - 5',
-            'variables': 'x1',
-            'epsilon': 1e-6,
-            'damping': 1.0
-        }
+        params = {"expressions": "x1 - 5", "variables": "x1", "epsilon": 1e-6, "damping": 1.0}
 
         x = np.array([100.0])  # Far from solution
         result = self.block.execute(0.0, {0: x}, params)

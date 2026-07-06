@@ -116,9 +116,7 @@ class AnalysisController:
                 output_blocks=output_blocks,
             )
             if lin_res is None:
-                return _empty_result(
-                    "Diagram has no continuous states; nothing to linearize."
-                )
+                return _empty_result("Diagram has no continuous states; nothing to linearize.")
 
             return self._assemble(lin_res, trim_note=trim_note)
 
@@ -167,8 +165,7 @@ class AnalysisController:
             y = np.atleast_1d(np.asarray(trim.get("y", []), dtype=float)).flatten()
             if y.size == 0:
                 res = self._empty_trim(
-                    "Diagram has no continuous states; no operating point to "
-                    "solve for."
+                    "Diagram has no continuous states; no operating point to solve for."
                 )
                 res["summary"] = res["error"]
                 return res
@@ -176,21 +173,15 @@ class AnalysisController:
             names = list(trim.get("state_names", []))
             if len(names) != y.size:
                 names = [f"x{i}" for i in range(y.size)]
-            residual = np.atleast_1d(
-                np.asarray(trim.get("residual", []), dtype=float)
-            ).flatten()
-            residual_norm = (
-                float(np.linalg.norm(residual)) if residual.size else None
-            )
+            residual = np.atleast_1d(np.asarray(trim.get("residual", []), dtype=float)).flatten()
+            residual_norm = float(np.linalg.norm(residual)) if residual.size else None
 
             result = self._empty_trim()
             result["ok"] = True
             result["success"] = bool(trim.get("success", False))
             result["message"] = str(trim.get("message", ""))
             result["residual_norm"] = residual_norm
-            result["states"] = [
-                {"name": str(n), "value": float(v)} for n, v in zip(names, y)
-            ]
+            result["states"] = [{"name": str(n), "value": float(v)} for n, v in zip(names, y)]
             result["operating_point"] = self._operating_point_to_dict(
                 trim.get("operating_point"), names
             )
@@ -332,9 +323,7 @@ class AnalysisController:
                 out[k] = float(arr[0]) if arr.size == 1 else arr.tolist()
             return out
         arr = np.atleast_1d(np.asarray(op, dtype=float)).flatten()
-        names = state_names if len(state_names) == arr.size else [
-            f"x{i}" for i in range(arr.size)
-        ]
+        names = state_names if len(state_names) == arr.size else [f"x{i}" for i in range(arr.size)]
         return {nm: float(v) for nm, v in zip(names, arr)}
 
     @staticmethod
@@ -380,9 +369,7 @@ class AnalysisController:
             tf = signal.TransferFunction(num, den)
             w, mag_db, phase_deg = tf.bode(w=w)
             # Keep only finite samples so plotting / margins stay clean.
-            finite = (
-                np.isfinite(w) & np.isfinite(mag_db) & np.isfinite(phase_deg)
-            )
+            finite = np.isfinite(w) & np.isfinite(mag_db) & np.isfinite(phase_deg)
             w = np.asarray(w)[finite]
             mag_db = np.asarray(mag_db)[finite]
             phase_deg = np.asarray(phase_deg)[finite]
@@ -422,8 +409,7 @@ class AnalysisController:
                 finite = np.isfinite(t) & np.isfinite(y)
                 t, y = t[finite], y[finite]
                 out[name] = (
-                    {"t": [float(v) for v in t], "y": [float(v) for v in y]}
-                    if t.size else None
+                    {"t": [float(v) for v in t], "y": [float(v) for v in y]} if t.size else None
                 )
             except Exception:
                 logger.warning("%s-response computation failed", name, exc_info=True)
@@ -464,9 +450,7 @@ class AnalysisController:
             lines.append(f"Dominant pole: {self._fmt_complex(dom)}")
 
         if result["poles"]:
-            ev_str = ", ".join(
-                self._fmt_complex(complex(re, im)) for re, im in result["poles"]
-            )
+            ev_str = ", ".join(self._fmt_complex(complex(re, im)) for re, im in result["poles"])
             lines.append(f"Eigenvalues: {ev_str}")
 
         if result["time_constants"]:
@@ -481,13 +465,9 @@ class AnalysisController:
                 )
 
         if result["controllable"] is not None:
-            lines.append(
-                f"Controllable: {'yes' if result['controllable'] else 'no'}"
-            )
+            lines.append(f"Controllable: {'yes' if result['controllable'] else 'no'}")
         if result["observable"] is not None:
-            lines.append(
-                f"Observable: {'yes' if result['observable'] else 'no'}"
-            )
+            lines.append(f"Observable: {'yes' if result['observable'] else 'no'}")
 
         if result["tf_num"] is not None and result["tf_den"] is not None:
             lines.append(
@@ -498,12 +478,8 @@ class AnalysisController:
         gm = result["gain_margin_db"]
         pm = result["phase_margin_deg"]
         if gm is not None or pm is not None:
-            gm_s = "inf" if gm == float("inf") else (
-                "n/a" if gm is None else f"{gm:.4g} dB"
-            )
-            pm_s = "inf" if pm == float("inf") else (
-                "n/a" if pm is None else f"{pm:.4g} deg"
-            )
+            gm_s = "inf" if gm == float("inf") else ("n/a" if gm is None else f"{gm:.4g} dB")
+            pm_s = "inf" if pm == float("inf") else ("n/a" if pm is None else f"{pm:.4g} deg")
             lines.append(f"Gain margin: {gm_s}, Phase margin: {pm_s}")
 
         return "\n".join(lines)

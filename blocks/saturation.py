@@ -34,10 +34,7 @@ class SaturationBlock(BaseBlock):
 
     @property
     def params(self):
-        return limit_params(
-            min_doc="Lower saturation limit.",
-            max_doc="Upper saturation limit."
-        )
+        return limit_params(min_doc="Lower saturation limit.", max_doc="Upper saturation limit.")
 
     @property
     def inputs(self):
@@ -50,6 +47,7 @@ class SaturationBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw saturation/clipping icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Rails
         path.moveTo(0.1, 0.8)
@@ -67,4 +65,3 @@ class SaturationBlock(BaseBlock):
         u = get_vector(inputs, 0)
         u_sat = clip_to_limits(u, params)
         return {0: u_sat}
-

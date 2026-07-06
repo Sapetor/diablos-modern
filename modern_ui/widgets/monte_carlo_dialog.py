@@ -22,8 +22,13 @@ The dialog performs no simulation; it only gathers a selection.
 import logging
 
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QLabel,
-    QSpinBox, QDoubleSpinBox, QDialogButtonBox,
+    QDialog,
+    QVBoxLayout,
+    QFormLayout,
+    QLabel,
+    QSpinBox,
+    QDoubleSpinBox,
+    QDialogButtonBox,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,9 +102,7 @@ class MonteCarloDialog(QDialog):
         helper.setWordWrap(True)
         layout.addWidget(helper)
 
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)

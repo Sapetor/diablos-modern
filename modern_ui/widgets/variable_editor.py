@@ -1,7 +1,14 @@
-
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
-                             QLabel, QToolBar, QAction,
-                             QDockWidget, QFrame)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTextEdit,
+    QLabel,
+    QToolBar,
+    QAction,
+    QDockWidget,
+    QFrame,
+)
 from PyQt5.QtCore import pyqtSignal, QRegExp
 from PyQt5.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
 import ast
@@ -12,25 +19,55 @@ from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
 
+
 class PythonHighlighter(QSyntaxHighlighter):
     """Syntax highlighter for Python code."""
+
     def __init__(self, document):
         super().__init__(document)
         self.highlighting_rules = []
 
         # Keywords
         keywords = [
-            'and', 'as', 'assert', 'break', 'class', 'continue', 'def',
-            'del', 'elif', 'else', 'except', 'False', 'finally', 'for',
-            'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'None',
-            'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'True',
-            'try', 'while', 'with', 'yield'
+            "and",
+            "as",
+            "assert",
+            "break",
+            "class",
+            "continue",
+            "def",
+            "del",
+            "elif",
+            "else",
+            "except",
+            "False",
+            "finally",
+            "for",
+            "from",
+            "global",
+            "if",
+            "import",
+            "in",
+            "is",
+            "lambda",
+            "None",
+            "nonlocal",
+            "not",
+            "or",
+            "pass",
+            "raise",
+            "return",
+            "True",
+            "try",
+            "while",
+            "with",
+            "yield",
         ]
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(QColor("#CC7832"))  # Orange-ish
         keyword_format.setFontWeight(QFont.Bold)
         for word in keywords:
-            pattern = QRegExp(r'\b' + word + r'\b')
+            pattern = QRegExp(r"\b" + word + r"\b")
             self.highlighting_rules.append((pattern, keyword_format))
 
         # Strings (single and double quotes)
@@ -42,13 +79,13 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Comments
         comment_format = QTextCharFormat()
         comment_format.setForeground(QColor("#808080"))  # Grey
-        self.highlighting_rules.append((QRegExp(r'#[^\n]*'), comment_format))
+        self.highlighting_rules.append((QRegExp(r"#[^\n]*"), comment_format))
 
         # Numbers
         number_format = QTextCharFormat()
         number_format.setForeground(QColor("#6897BB"))  # Blue-ish
-        self.highlighting_rules.append((QRegExp(r'\b[0-9]+\b'), number_format))
-        self.highlighting_rules.append((QRegExp(r'\b[0-9]*\.[0-9]+\b'), number_format))
+        self.highlighting_rules.append((QRegExp(r"\b[0-9]+\b"), number_format))
+        self.highlighting_rules.append((QRegExp(r"\b[0-9]*\.[0-9]+\b"), number_format))
 
     def highlightBlock(self, text):
         for pattern, format in self.highlighting_rules:
@@ -61,11 +98,13 @@ class PythonHighlighter(QSyntaxHighlighter):
                 self.setFormat(index, length, format)
                 index = expression.indexIn(text, index + length)
 
+
 class VariableEditor(QWidget):
     """
     A widget that provides a text editor for defining workspace variables.
     Allows users to write Python code to define variables (e.g., K=1, A=[1,2]).
     """
+
     variables_updated = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -96,7 +135,7 @@ class VariableEditor(QWidget):
         self.action_run.setToolTip("Run code and update workspace (Ctrl+Enter)")
         self.action_run.triggered.connect(self.update_workspace)
         # Simple text icon for now if no image assets
-        self.action_run.setText("▶ Run") 
+        self.action_run.setText("▶ Run")
         self.toolbar.addAction(self.action_run)
 
         self.action_clear = QAction("Clear", self)
@@ -117,12 +156,14 @@ class VariableEditor(QWidget):
         # Text Editor
         self.editor = QTextEdit()
         self.editor.setFont(QFont("Monospace", 11))
-        self.editor.setPlaceholderText("# Define variables here\nK = 10\namplitude = 5\n\n# You can use math/numpy expressions (no import needed)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])")
+        self.editor.setPlaceholderText(
+            "# Define variables here\nK = 10\namplitude = 5\n\n# You can use math/numpy expressions (no import needed)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])"
+        )
         self.editor.setStyleSheet("border: none;")
-        
+
         # Apply syntax highlighting
         self.highlighter = PythonHighlighter(self.editor.document())
-        
+
         layout.addWidget(self.editor)
 
         # Status Bar (Inline Feedback)
@@ -131,17 +172,17 @@ class VariableEditor(QWidget):
         # Style applied in _apply_theme
         status_layout = QHBoxLayout(self.status_bar)
         status_layout.setContentsMargins(10, 0, 10, 0)
-        
+
         self.status_label = QLabel("Ready")
         # Style applied in _apply_theme
         status_layout.addWidget(self.status_label)
-        
+
         # Connect to theme changes
         theme_manager.theme_changed.connect(self._apply_theme)
-        
+
         # Apply initial theme
         self._apply_theme()
-        
+
         layout.addWidget(self.status_bar)
 
     def _apply_theme(self):
@@ -150,7 +191,7 @@ class VariableEditor(QWidget):
         border_color = theme_manager.get_color("border_primary").name()
         text_color = theme_manager.get_color("text_primary").name()
         status_bg = theme_manager.get_color("surface_variant").name()
-        
+
         # Toolbar styling
         self.toolbar.setStyleSheet(f"""
             QToolBar {{ 
@@ -169,44 +210,51 @@ class VariableEditor(QWidget):
                 background: {theme_manager.get_color("surface_elevated").name()};
             }}
         """)
-        
+
         # Status bar styling
-        self.status_bar.setStyleSheet(f"background: {status_bg}; border-top: 1px solid {border_color};")
+        self.status_bar.setStyleSheet(
+            f"background: {status_bg}; border-top: 1px solid {border_color};"
+        )
         self.status_label.setStyleSheet(f"color: {text_color};")
-        
+
         # Editor styling (optional, but good for consistency)
         editor_bg = theme_manager.get_color("surface").name()
-        self.editor.setStyleSheet(f"border: none; background-color: {editor_bg}; color: {text_color};")
+        self.editor.setStyleSheet(
+            f"border: none; background-color: {editor_bg}; color: {text_color};"
+        )
 
     def clear_editor(self):
         self.editor.clear()
         self.status_label.setText("Cleared")
-        self.status_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
+        self.status_label.setStyleSheet(
+            f"color: {theme_manager.get_color('text_secondary').name()};"
+        )
 
     def load_script(self):
         """Load a Python script from a file."""
         from PyQt5.QtWidgets import QFileDialog
         import os
-        
+
         filename, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Load Python Script", 
-            "", 
-            "Python Files (*.py);;Text Files (*.txt);;All Files (*)"
+            self, "Load Python Script", "", "Python Files (*.py);;Text Files (*.txt);;All Files (*)"
         )
-        
+
         if filename:
             try:
-                with open(filename, 'r', encoding='utf-8') as f:
+                with open(filename, "r", encoding="utf-8") as f:
                     content = f.read()
                 self.editor.setPlainText(content)
                 self.status_label.setText(f"Loaded {os.path.basename(filename)}")
-                self.status_label.setStyleSheet(f"color: {theme_manager.get_color('text_secondary').name()};")
+                self.status_label.setStyleSheet(
+                    f"color: {theme_manager.get_color('text_secondary').name()};"
+                )
                 logger.info(f"Loaded script from {filename}")
             except Exception as e:
                 logger.error(f"Error loading script: {e}")
                 self.status_label.setText(f"Error loading file: {str(e)}")
-                self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()};")
+                self.status_label.setStyleSheet(
+                    f"color: {theme_manager.get_color('error').name()};"
+                )
 
     def toggle_float(self, checked):
         """Toggle floating state of the parent dock widget."""
@@ -214,7 +262,7 @@ class VariableEditor(QWidget):
         parent = self.parent()
         while parent and not isinstance(parent, QDockWidget):
             parent = parent.parent()
-        
+
         if parent and isinstance(parent, QDockWidget):
             parent.setFloating(checked)
             if checked:
@@ -242,7 +290,9 @@ class VariableEditor(QWidget):
         except SyntaxError as e:
             logger.error(f"Error parsing workspace code: {e}")
             self.status_label.setText(f"⚠ Syntax error: {str(e)}")
-            self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                f"color: {theme_manager.get_color('error').name()}; font-weight: bold;"
+            )
             return
 
         new_vars = {}
@@ -250,9 +300,7 @@ class VariableEditor(QWidget):
         try:
             for node in tree.body:
                 if not isinstance(node, ast.Assign):
-                    raise SafeEvalError(
-                        "Only 'name = expression' assignments are supported"
-                    )
+                    raise SafeEvalError("Only 'name = expression' assignments are supported")
                 # Evaluate the right-hand side once, then bind to each target.
                 rhs_src = ast.get_source_segment(code, node.value)
                 if rhs_src is None:
@@ -261,10 +309,8 @@ class VariableEditor(QWidget):
                 value = safe_expr(rhs_src, variables=local_vars, allow_numpy=True)
                 for target in node.targets:
                     if not isinstance(target, ast.Name):
-                        raise SafeEvalError(
-                            "Only simple variable assignments are supported"
-                        )
-                    if target.id.startswith('_'):
+                        raise SafeEvalError("Only simple variable assignments are supported")
+                    if target.id.startswith("_"):
                         raise SafeEvalError(
                             f"Variable names starting with '_' are not allowed: {target.id}"
                         )
@@ -273,7 +319,9 @@ class VariableEditor(QWidget):
         except SafeEvalError as e:
             logger.error(f"Error updating workspace: {e}")
             self.status_label.setText(f"⚠ Error: {str(e)}")
-            self.status_label.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; font-weight: bold;")
+            self.status_label.setStyleSheet(
+                f"color: {theme_manager.get_color('error').name()}; font-weight: bold;"
+            )
             return
 
         # Update the workspace manager
@@ -287,8 +335,12 @@ class VariableEditor(QWidget):
         self.variables_updated.emit()
 
         # Update status inline
-        self.status_label.setText(f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list)>3 else ''}")
-        self.status_label.setStyleSheet(f"color: {theme_manager.get_color('success').name()}; font-weight: bold;")
+        self.status_label.setText(
+            f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list) > 3 else ''}"
+        )
+        self.status_label.setStyleSheet(
+            f"color: {theme_manager.get_color('success').name()}; font-weight: bold;"
+        )
 
     def set_text(self, text):
         self.editor.setPlainText(text)

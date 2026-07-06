@@ -8,10 +8,21 @@ including format, FPS, quality, and output path.
 import os
 import logging
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QSpinBox, QComboBox, QLineEdit, QPushButton,
-    QFileDialog, QGroupBox, QRadioButton, QButtonGroup,
-    QProgressBar, QMessageBox
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QSpinBox,
+    QComboBox,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QGroupBox,
+    QRadioButton,
+    QButtonGroup,
+    QProgressBar,
+    QMessageBox,
 )
 from PyQt5.QtCore import QThread, pyqtSignal
 
@@ -40,6 +51,7 @@ class ExportWorker(QThread):
     def run(self):
         """Run the export in a separate thread."""
         try:
+
             def progress_callback(frame, total):
                 if self._cancelled:
                     raise InterruptedError("Export cancelled")
@@ -50,7 +62,7 @@ class ExportWorker(QThread):
                 format=self.format,
                 fps=self.fps,
                 dpi=self.dpi,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
             )
 
             if success:
@@ -204,13 +216,14 @@ class AnimationExportDialog(QDialog):
     def _check_writers(self):
         """Check available writers and disable unavailable formats."""
         from lib.plotting.animation_exporter import AnimationExporter
+
         available = AnimationExporter.check_writers()
 
-        if not available.get('gif', False):
+        if not available.get("gif", False):
             self.gif_radio.setEnabled(False)
             self.gif_radio.setToolTip("Pillow not installed. Install with: pip install Pillow")
 
-        if not available.get('mp4', False):
+        if not available.get("mp4", False):
             self.mp4_radio.setEnabled(False)
             self.mp4_radio.setToolTip("ffmpeg not found. Install ffmpeg to enable MP4 export.")
 
@@ -235,7 +248,7 @@ class AnimationExportDialog(QDialog):
             return
 
         # Get new extension
-        new_ext = '.gif' if self.gif_radio.isChecked() else '.mp4'
+        new_ext = ".gif" if self.gif_radio.isChecked() else ".mp4"
 
         # Replace extension
         base = os.path.splitext(current_path)[0]
@@ -247,16 +260,13 @@ class AnimationExportDialog(QDialog):
         filter_str = f"{ext.upper()} files (*.{ext})"
 
         filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Animation",
-            self.path_edit.text(),
-            filter_str
+            self, "Save Animation", self.path_edit.text(), filter_str
         )
 
         if filepath:
             # Ensure correct extension
-            if not filepath.lower().endswith(f'.{ext}'):
-                filepath += f'.{ext}'
+            if not filepath.lower().endswith(f".{ext}"):
+                filepath += f".{ext}"
             self.path_edit.setText(filepath)
 
     def _get_dpi(self):
@@ -271,7 +281,7 @@ class AnimationExportDialog(QDialog):
             QMessageBox.warning(self, "Error", "Please specify an output file path.")
             return
 
-        format = 'gif' if self.gif_radio.isChecked() else 'mp4'
+        format = "gif" if self.gif_radio.isChecked() else "mp4"
         fps = self.fps_spin.value()
         dpi = self._get_dpi()
 
@@ -341,7 +351,7 @@ class AnimationExportDialog(QDialog):
 
     def _cleanup_partial_file(self):
         """Delete a partially written output file from a failed/cancelled export."""
-        filepath = getattr(self, '_export_filepath', None)
+        filepath = getattr(self, "_export_filepath", None)
         if not filepath:
             return
         try:

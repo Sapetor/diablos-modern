@@ -20,8 +20,13 @@ if _project_root not in sys.path:
 
 from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
 from modern_ui.themes.theme_manager import (
-    theme_manager, get_ui_font, TYPE, SPACE,
-    pulse_alpha, PULSE_INTERVAL_MS, PULSE_PHASE_STEP,
+    theme_manager,
+    get_ui_font,
+    TYPE,
+    SPACE,
+    pulse_alpha,
+    PULSE_INTERVAL_MS,
+    PULSE_PHASE_STEP,
 )
 from lib.analysis.control_system_analyzer import ControlSystemAnalyzer
 from modern_ui.renderers.block_renderer import BlockRenderer
@@ -57,22 +62,22 @@ class ModernCanvas(QWidget):
     command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     scope_changed = pyqtSignal(list)  # Emitted when navigation scope changes (path)
     cursor_moved = pyqtSignal(int, int)  # (x, y) in canvas coordinates — drives status bar
-    
+
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
-        
+
         # Enable keyboard focus
         self.setFocusPolicy(Qt.StrongFocus)
-        
+
         # Initialize core DSim functionality
         self.dsim = dsim
-        
+
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
-        
+
         # Simulation configuration
         self.sim_config = SimulationConfig()
-        
+
         # State management - Unified state object
         self.canvas_state = CanvasState()
 
@@ -117,7 +122,7 @@ class ModernCanvas(QWidget):
 
         # Initialize Analysis Tool
         self.analyzer = ControlSystemAnalyzer(self, parent=self)
-        
+
         # Initialize Renderer
         self.block_renderer = BlockRenderer()
         self.connection_renderer = ConnectionRenderer()
@@ -135,9 +140,7 @@ class ModernCanvas(QWidget):
         # Let the connection renderer pulse its active-wire glow via our phase.
         self.connection_renderer.pulse_alpha = self.glow_pulse_alpha
         # Re-evaluate the gate whenever simulation status flips (start/stop).
-        self.simulation_status_changed.connect(
-            lambda _msg: self._evaluate_animation_state()
-        )
+        self.simulation_status_changed.connect(lambda _msg: self._evaluate_animation_state())
 
         # Setup UI
         self._setup_canvas()
@@ -146,25 +149,23 @@ class ModernCanvas(QWidget):
         self.setAcceptDrops(True)
 
         logger.info("Modern canvas initialized successfully")
-    
+
     def _setup_canvas(self):
         """Setup canvas properties and styling."""
         self.setMinimumSize(800, 600)
         self.setMouseTracking(True)  # Enable mouse tracking for hover effects
         self.setFocusPolicy(Qt.StrongFocus)  # Allow keyboard focus
-        
+
         # Apply theme-aware styling
         self._update_theme_styling()
-        
+
         # Connect to theme changes
         theme_manager.theme_changed.connect(self._update_theme_styling)
-    
-    
-    
+
     def _update_theme_styling(self):
         """Update canvas styling based on current theme."""
-        canvas_bg = theme_manager.get_color('canvas_background')
-        border_color = theme_manager.get_color('border_primary')
+        canvas_bg = theme_manager.get_color("canvas_background")
+        border_color = theme_manager.get_color("border_primary")
 
         self.setStyleSheet(f"""
             ModernCanvas {{
@@ -176,19 +177,21 @@ class ModernCanvas(QWidget):
         # Force a repaint so blocks pick up the new theme colors immediately
         # (BlockRenderer resolves fill/border via theme_manager each paint).
         self.update()
-    
+
     def add_block_from_palette(self, menu_block, position):
         """Add a new block from the palette at the specified position."""
         try:
-            block_name = getattr(menu_block, 'fn_name', 'Unknown')
-            logger.info(f"Adding block from palette: {block_name} at ({position.x()}, {position.y()})")
-            
+            block_name = getattr(menu_block, "fn_name", "Unknown")
+            logger.info(
+                f"Adding block from palette: {block_name} at ({position.x()}, {position.y()})"
+            )
+
             # Add new block using DSim
-            if hasattr(self.dsim, 'add_block'):
+            if hasattr(self.dsim, "add_block"):
                 new_block = self.dsim.add_block(menu_block, position)
                 if new_block:
                     # Apply dynamic sizing based on port count
-                    if hasattr(new_block, 'calculate_min_size'):
+                    if hasattr(new_block, "calculate_min_size"):
                         min_height = new_block.calculate_min_size()
                         if min_height > new_block.height:
                             logger.info(f"Resizing {block_name} to min_height {min_height}")
@@ -227,7 +230,7 @@ class ModernCanvas(QWidget):
                     logger.error(f"Failed to create block {block_name}")
             else:
                 logger.error("DSim does not have add_block method")
-                
+
         except Exception as e:
             logger.error(f"Error adding block from palette: {str(e)}")
 
@@ -242,12 +245,12 @@ class ModernCanvas(QWidget):
         never fails just because the palette is absent (e.g. in tests/headless).
         """
         try:
-            fn_name = getattr(menu_block, 'fn_name', None)
+            fn_name = getattr(menu_block, "fn_name", None)
             if not fn_name:
                 return
             window = self.window()
-            palette = getattr(window, 'block_palette', None) if window is not None else None
-            recorder = getattr(palette, 'record_recent', None)
+            palette = getattr(window, "block_palette", None) if window is not None else None
+            recorder = getattr(palette, "record_recent", None)
             if callable(recorder):
                 recorder(fn_name)
         except Exception as e:
@@ -300,7 +303,7 @@ class ModernCanvas(QWidget):
         """
         # The property setters that call us can, in principle, fire before the
         # timer is constructed in __init__; tolerate that gracefully.
-        timer = getattr(self, '_animation_timer', None)
+        timer = getattr(self, "_animation_timer", None)
         if timer is None:
             return
         try:
@@ -349,7 +352,7 @@ class ModernCanvas(QWidget):
 
             # Fill viewport background in WIDGET coordinates so panning
             # doesn't expose unfilled areas at the edges.
-            painter.fillRect(self.rect(), theme_manager.get_color('canvas_background'))
+            painter.fillRect(self.rect(), theme_manager.get_color("canvas_background"))
 
             painter.translate(self.pan_offset)
             painter.scale(self.zoom_factor, self.zoom_factor)
@@ -369,7 +372,7 @@ class ModernCanvas(QWidget):
             # and the user isn't mid-simulation, draw dim guidance on how to get
             # started. Purely additive — drawn over the grid, under everything
             # else, so it never collides with real diagram content.
-            if not getattr(self.dsim, 'blocks_list', []) and not self.is_simulation_running():
+            if not getattr(self.dsim, "blocks_list", []) and not self.is_simulation_running():
                 self._draw_empty_hint(painter)
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
@@ -385,7 +388,7 @@ class ModernCanvas(QWidget):
                 self.canvas_renderer.draw_alignment_guides(painter, self._alignment_guides)
 
             # Draw temporary connection line (with enhanced preview)
-            if self.line_creation_state == 'start' and self.temp_line:
+            if self.line_creation_state == "start" and self.temp_line:
                 start_point, end_point = self.temp_line
 
                 # Check if hovering over valid target port
@@ -396,35 +399,46 @@ class ModernCanvas(QWidget):
                     if not is_output:
                         is_valid_target = True
 
-                self.canvas_renderer.draw_temp_line(painter, start_point, end_point, is_valid_target)
+                self.canvas_renderer.draw_temp_line(
+                    painter, start_point, end_point, is_valid_target
+                )
 
             # Draw rectangle selection
             if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
-                self.canvas_renderer.draw_selection_rect(painter, self.selection_rect_start, self.selection_rect_end)
+                self.canvas_renderer.draw_selection_rect(
+                    painter, self.selection_rect_start, self.selection_rect_end
+                )
 
             # Draw hover effects. Pass our glow_pulse_alpha so the renderer can
             # gently pulse the hovered-port glow while the animation timer runs
             # (it resolves to a stable alpha when idle).
             self.canvas_renderer.draw_hover_effects(
-                painter, self.hovered_port, self.hovered_block, self.hovered_line,
+                painter,
+                self.hovered_port,
+                self.hovered_block,
+                self.hovered_line,
                 pulse_alpha=self.glow_pulse_alpha,
             )
 
             # Draw validation error indicators
             if self.show_validation_errors:
-                self.canvas_renderer.draw_validation_errors(painter, self.blocks_with_errors, self.blocks_with_warnings)
+                self.canvas_renderer.draw_validation_errors(
+                    painter, self.blocks_with_errors, self.blocks_with_warnings
+                )
 
             # Draw routing tag HUD (Goto/From overview)
             self.canvas_renderer.draw_tag_hud(painter, self.dsim)
 
             # Live overlay: V1 port-value chips while simulation is running.
             # Hidden during drag/zoom for perf (the chips would jitter anyway).
-            if (self.is_simulation_running()
-                    and getattr(self, 'show_live_chips', True)
-                    and self.state != State.DRAGGING):
+            if (
+                self.is_simulation_running()
+                and getattr(self, "show_live_chips", True)
+                and self.state != State.DRAGGING
+            ):
                 try:
                     self.connection_renderer.draw_port_value_chips(
-                        painter, getattr(self.dsim, 'blocks_list', []) or []
+                        painter, getattr(self.dsim, "blocks_list", []) or []
                     )
                 except Exception as e:
                     # Non-critical live overlay: log at debug so a genuine
@@ -433,11 +447,11 @@ class ModernCanvas(QWidget):
 
             painter.end()
             paint_duration = self.perf_helper.end_timer("canvas_paint")
-            
+
             # Log slow paint events
             if paint_duration and paint_duration > 0.05:
                 logger.warning(f"Slow canvas paint: {paint_duration:.4f}s")
-                
+
         except Exception as e:
             logger.error(f"Error in canvas paintEvent: {str(e)}")
         finally:
@@ -472,11 +486,11 @@ class ModernCanvas(QWidget):
             # Drop the scene transform so the hint is laid out against the
             # widget viewport, then center it there.
             painter.resetTransform()
-            painter.setPen(QPen(theme_manager.get_color('text_disabled')))
-            painter.setFont(get_ui_font(TYPE['subtitle']))
+            painter.setPen(QPen(theme_manager.get_color("text_disabled")))
+            painter.setFont(get_ui_font(TYPE["subtitle"]))
 
             fm = painter.fontMetrics()
-            line_h = fm.height() + SPACE['sm']
+            line_h = fm.height() + SPACE["sm"]
             block_h = line_h * len(lines)
             y = (self.height() - block_h) // 2 + fm.ascent()
             for line in lines:
@@ -516,6 +530,7 @@ class ModernCanvas(QWidget):
         """Re-run A* routing on lines connected to the given block names."""
         try:
             from lib.simulation.wire_router import route_all_lines
+
             lines = self.dsim.line_list
             affected = [l for l in lines if l.srcblock in block_names or l.dstblock in block_names]
             if affected:
@@ -555,47 +570,53 @@ class ModernCanvas(QWidget):
                 clicked_line, _ = self._get_clicked_line(pos)
 
                 if clicked_block:
-                    logger.info(f"Double-clicked block: {clicked_block.name}, fn: {clicked_block.block_fn}")
-                    
+                    logger.info(
+                        f"Double-clicked block: {clicked_block.name}, fn: {clicked_block.block_fn}"
+                    )
+
                     # 1. SPECIAL: Analysis Blocks -> Trigger Plot
-                    if clicked_block.block_fn in ['BodePhase', 'Nyquist', 'RootLocus', 'BodeMag']:
+                    if clicked_block.block_fn in ["BodePhase", "Nyquist", "RootLocus", "BodeMag"]:
                         logger.info(f"Double-click analysis trigger for {clicked_block.name}")
-                        if clicked_block.block_fn == 'BodePhase':
+                        if clicked_block.block_fn == "BodePhase":
                             self.generate_bode_phase_plot(clicked_block)
-                        elif clicked_block.block_fn == 'Nyquist':
+                        elif clicked_block.block_fn == "Nyquist":
                             self.generate_nyquist_plot(clicked_block)
-                        elif clicked_block.block_fn == 'RootLocus':
+                        elif clicked_block.block_fn == "RootLocus":
                             self.generate_root_locus(clicked_block)
-                        elif clicked_block.block_fn == 'BodeMag':
+                        elif clicked_block.block_fn == "BodeMag":
                             self.generate_bode_plot(clicked_block)
                         return
 
                     # 2. SPECIAL: Subsystems -> Enter
                     # Check both block_type (legacy) and block_fn
-                    is_subsystem = (getattr(clicked_block, 'block_type', '') == 'subsystem' or 
-                                   clicked_block.block_fn == 'Subsystem')
-                                   
+                    is_subsystem = (
+                        getattr(clicked_block, "block_type", "") == "subsystem"
+                        or clicked_block.block_fn == "Subsystem"
+                    )
+
                     if is_subsystem:
                         self.dsim.enter_subsystem(clicked_block)
                         self.update()
                         logger.info(f"Entered subsystem: {clicked_block.name}")
-                        
+
                         # Reset view to ensure blocks are visible
                         self.pan_offset = QPoint(0, 0)
                         self.zoom_factor = 1.0
                         self.zoom_to_fit()
-                        
+
                         self.scope_changed.emit(self.dsim.get_current_path())
                         return
-                    
+
                     # 3. DEFAULT: Properties Dialog
                     self._show_block_properties(clicked_block)
 
                 if not clicked_block and not clicked_line:
                     # Double-clicked on empty space - open command palette
-                    logger.info("Double-clicked on empty canvas - emitting command_palette_requested")
+                    logger.info(
+                        "Double-clicked on empty canvas - emitting command_palette_requested"
+                    )
                     self.command_palette_requested.emit()
-                    
+
         except Exception as e:
             logger.error(f"Error in mouseDoubleClickEvent: {e}")
 
@@ -608,6 +629,7 @@ class ModernCanvas(QWidget):
         # If focus returns without left mouse button pressed, reset any pending rect selection
         # This handles cases where a popup (like command palette) closed and focus returned
         from PyQt5.QtWidgets import QApplication
+
         if not (QApplication.mouseButtons() & Qt.LeftButton):
             if self.is_rect_selecting:
                 logger.debug("Resetting rect selection on focus return (no mouse button pressed)")
@@ -619,7 +641,7 @@ class ModernCanvas(QWidget):
     def navigate_scope_by_path(self, path_str):
         """Navigate to a specific scope path (e.g. via BreadcrumbBar string)."""
         logger.info(f"Navigating to scope: {path_str}")
-        if hasattr(self.dsim, 'navigate_scope'):
+        if hasattr(self.dsim, "navigate_scope"):
             self.dsim.navigate_scope(path_str)
             self.update()
 
@@ -631,9 +653,9 @@ class ModernCanvas(QWidget):
             self.scope_changed.emit(self.dsim.get_current_path())
         else:
             logger.warning("DSim does not support navigate_scope")
-            
+
     # Cleaned up dangling except block here
-    
+
     def _handle_right_click(self, pos):
         """Handle right mouse button clicks - delegate to MenuManager."""
         try:
@@ -644,8 +666,8 @@ class ModernCanvas(QWidget):
 
     def _get_clicked_block(self, pos):
         # logger.info(f"Checking click at {pos}")
-        for block in reversed(getattr(self.dsim, 'blocks_list', [])):
-            if hasattr(block, 'rect') and block.rect.contains(pos):
+        for block in reversed(getattr(self.dsim, "blocks_list", [])):
+            if hasattr(block, "rect") and block.rect.contains(pos):
                 # logger.info(f"Hit block: {block.name}")
                 return block
             # else:
@@ -657,14 +679,12 @@ class ModernCanvas(QWidget):
         return self.connection_manager.get_clicked_line(pos)
 
     def _clear_selections(self):
-        had_selection = any(
-            b.selected for b in getattr(self.dsim, 'blocks_list', [])
-        )
-        for block in getattr(self.dsim, 'blocks_list', []):
+        had_selection = any(b.selected for b in getattr(self.dsim, "blocks_list", []))
+        for block in getattr(self.dsim, "blocks_list", []):
             block.selected = False
-        for line in getattr(self.dsim, 'line_list', []):
+        for line in getattr(self.dsim, "line_list", []):
             line.selected = False
-            if hasattr(line, 'selected_segment'):
+            if hasattr(line, "selected_segment"):
                 line.selected_segment = -1
         self.source_block_for_connection = None
         if had_selection:
@@ -689,8 +709,8 @@ class ModernCanvas(QWidget):
 
             # Select all blocks whose rectangles intersect with the selection rectangle
             selected_count = 0
-            for block in getattr(self.dsim, 'blocks_list', []):
-                if hasattr(block, 'rect') and selection_rect.intersects(block.rect):
+            for block in getattr(self.dsim, "blocks_list", []):
+                if hasattr(block, "rect") and selection_rect.intersects(block.rect):
                     block.selected = True
                     selected_count += 1
 
@@ -712,13 +732,21 @@ class ModernCanvas(QWidget):
             modifiers = QApplication.keyboardModifiers()
 
             # NEW: Connection logic with Ctrl+Click (only when a source is already selected)
-            if (modifiers & Qt.ControlModifier) and self.source_block_for_connection and self.source_block_for_connection is not block:
+            if (
+                (modifiers & Qt.ControlModifier)
+                and self.source_block_for_connection
+                and self.source_block_for_connection is not block
+            ):
                 source_block = self.source_block_for_connection
                 target_block = block
 
                 if source_block.out_ports > 0:
                     # Find first free output port
-                    connected_output_ports = {line.srcport for line in self.dsim.line_list if line.srcblock == source_block.name}
+                    connected_output_ports = {
+                        line.srcport
+                        for line in self.dsim.line_list
+                        if line.srcblock == source_block.name
+                    }
                     source_port_index = 0
                     for i in range(source_block.out_ports):
                         if i not in connected_output_ports:
@@ -727,7 +755,11 @@ class ModernCanvas(QWidget):
                     # If all ports connected, source_port_index remains 0 (fan-out allowed)
 
                     # Find an available input port on the target block
-                    connected_input_ports = {line.dstport for line in self.dsim.line_list if line.dstblock == target_block.name}
+                    connected_input_ports = {
+                        line.dstport
+                        for line in self.dsim.line_list
+                        if line.dstblock == target_block.name
+                    }
                     target_port_index = -1
                     for i in range(target_block.in_ports):
                         if i not in connected_input_ports:
@@ -735,7 +767,9 @@ class ModernCanvas(QWidget):
                             break
 
                     if target_port_index != -1:
-                        logger.info(f"Creating connection from {source_block.name} to {target_block.name}")
+                        logger.info(
+                            f"Creating connection from {source_block.name} to {target_block.name}"
+                        )
                         self.line_start_block = source_block
                         self.line_start_port = source_port_index
                         self._finish_line_creation(target_block, target_port_index)
@@ -745,9 +779,11 @@ class ModernCanvas(QWidget):
                         self.source_block_for_connection = target_block
                         self.update()
                     else:
-                        logger.warning(f"Could not connect: No available input ports on {target_block.name}")
+                        logger.warning(
+                            f"Could not connect: No available input ports on {target_block.name}"
+                        )
 
-                    return # End of connection logic for this click
+                    return  # End of connection logic for this click
 
             # Selection logic based on modifiers
             if modifiers & Qt.ShiftModifier:
@@ -768,8 +804,10 @@ class ModernCanvas(QWidget):
                     block.selected = True
                     logger.info(f"Selected {block.name}")
                 else:
-                    logger.info(f"Clicked on already-selected block {block.name}, keeping selection for drag")
-                self.source_block_for_connection = block # Set source for connection
+                    logger.info(
+                        f"Clicked on already-selected block {block.name}, keeping selection for drag"
+                    )
+                self.source_block_for_connection = block  # Set source for connection
 
             # Start dragging the block (or all selected blocks)
             self.start_drag(block, pos)
@@ -849,8 +887,9 @@ class ModernCanvas(QWidget):
                     self._finish_drag()
                 else:
                     # Check if anything is selected
-                    has_selection = any(b.selected for b in getattr(self.dsim, 'blocks_list', [])) or \
-                                    any(l.selected for l in getattr(self.dsim, 'line_list', []))
+                    has_selection = any(
+                        b.selected for b in getattr(self.dsim, "blocks_list", [])
+                    ) or any(l.selected for l in getattr(self.dsim, "line_list", []))
                     if has_selection:
                         self._clear_selections()
                     elif self.dsim.current_subsystem:
@@ -914,9 +953,9 @@ class ModernCanvas(QWidget):
             for block in self.dsim.blocks_list:
                 if block.selected:
                     block.flipped = not block.flipped
-                    block.update_Block() # Recalculate port positions
+                    block.update_Block()  # Recalculate port positions
             self._update_line_positions()
-            self.update() # Redraw canvas
+            self.update()  # Redraw canvas
             logger.info("Flipped selected blocks")
         except Exception as e:
             logger.error(f"Error flipping blocks: {str(e)}")
@@ -928,8 +967,6 @@ class ModernCanvas(QWidget):
     def paste_blocks(self):
         """Paste blocks from clipboard."""
         self.clipboard_manager.paste_blocks()
-
-
 
     # Helper methods for context menu actions
     def _duplicate_block(self, block):
@@ -951,21 +988,23 @@ class ModernCanvas(QWidget):
             index: The index in the path list to navigate to (0 = Top Level).
         """
         current_path = self.dsim.get_current_path()
-        current_depth = len(current_path) - 1 # 0-indexed index of current scope
-        
+        current_depth = len(current_path) - 1  # 0-indexed index of current scope
+
         target_depth = index
-        
-        if target_depth < 0: return
-        if target_depth >= current_depth: return # Already there or invalid
-        
+
+        if target_depth < 0:
+            return
+        if target_depth >= current_depth:
+            return  # Already there or invalid
+
         # Pop scopes until we reach target
         # Calculate how many times to pop
         # If current is depth 2 (Main > Sub1 > Sub2), index 0 (Main) -> pop 2 times
         pops = current_depth - target_depth
-        
+
         for _ in range(pops):
             self.dsim.exit_subsystem()
-            
+
         self.update()
         self.scope_changed.emit(self.dsim.get_current_path())
         logger.info(f"Navigated to scope index {index}")
@@ -1000,7 +1039,7 @@ class ModernCanvas(QWidget):
             self._push_undo("Paste")
 
             # Calculate offset from first block's position to paste position
-            first_block_coords = clipboard_blocks[0]['coords']
+            first_block_coords = clipboard_blocks[0]["coords"]
             offset_x = pos.x() - first_block_coords.x()
             offset_y = pos.y() - first_block_coords.y()
 
@@ -1009,31 +1048,31 @@ class ModernCanvas(QWidget):
             for block_data in clipboard_blocks:
                 # Calculate new position (center of block)
                 new_position = QPoint(
-                    block_data['coords'].x() + block_data['coords'].width() // 2 + offset_x,
-                    block_data['coords'].y() + block_data['coords'].height() // 2 + offset_y
+                    block_data["coords"].x() + block_data["coords"].width() // 2 + offset_x,
+                    block_data["coords"].y() + block_data["coords"].height() // 2 + offset_y,
                 )
 
                 # Create MenuBlocks object from clipboard data
                 io_params = {
-                    'inputs': block_data['in_ports'],
-                    'outputs': block_data['out_ports'],
-                    'b_type': block_data['b_type'],
-                    'io_edit': block_data['io_edit']
+                    "inputs": block_data["in_ports"],
+                    "outputs": block_data["out_ports"],
+                    "b_type": block_data["b_type"],
+                    "io_edit": block_data["io_edit"],
                 }
 
                 menu_block = MenuBlocks(
-                    block_fn=block_data['block_fn'],
-                    fn_name=block_data['fn_name'],
+                    block_fn=block_data["block_fn"],
+                    fn_name=block_data["fn_name"],
                     io_params=io_params,
-                    ex_params=block_data['params'],
-                    b_color=block_data['color'],
-                    coords=(block_data['coords'].width(), block_data['coords'].height()),
-                    external=block_data['external'],
-                    block_class=block_data.get('block_class', None)
+                    ex_params=block_data["params"],
+                    b_color=block_data["color"],
+                    coords=(block_data["coords"].width(), block_data["coords"].height()),
+                    external=block_data["external"],
+                    block_class=block_data.get("block_class", None),
                 )
                 # Preserve category so add_block resolves the correct
                 # theme color (otherwise it defaults to 'Other' -> grey).
-                menu_block.category = block_data.get('category', 'Other')
+                menu_block.category = block_data.get("category", "Other")
 
                 # Use add_block with the MenuBlocks object
                 new_block = self.dsim.add_block(menu_block, new_position)
@@ -1054,8 +1093,6 @@ class ModernCanvas(QWidget):
 
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
-
-
 
     def _show_block_properties(self, block):
         """Show properties dialog for a block."""
@@ -1097,7 +1134,6 @@ class ModernCanvas(QWidget):
 
     # Undo/Redo System
 
-
     def undo(self):
         """Undo the last action."""
         self.history_manager.undo()
@@ -1122,7 +1158,7 @@ class ModernCanvas(QWidget):
     def clear_canvas(self):
         """Clear all blocks and connections from the canvas."""
         try:
-            if hasattr(self.dsim, 'clear_all'):
+            if hasattr(self.dsim, "clear_all"):
                 self.dsim.clear_all()
                 # Clear validation errors when canvas is cleared
                 self.clear_validation()
@@ -1135,6 +1171,7 @@ class ModernCanvas(QWidget):
         """Recompute every connection's path with the orthogonal A* router."""
         try:
             from lib.simulation.wire_router import route_all_lines
+
             blocks = self.dsim.blocks_list
             lines = self.dsim.line_list
             if not lines:
@@ -1150,11 +1187,11 @@ class ModernCanvas(QWidget):
 
     def get_blocks(self):
         """Get all blocks on the canvas."""
-        return getattr(self.dsim, 'blocks_list', [])
+        return getattr(self.dsim, "blocks_list", [])
 
     def get_connections(self):
         """Get all connections on the canvas."""
-        return getattr(self.dsim, 'line_list', [])
+        return getattr(self.dsim, "line_list", [])
 
     def screen_to_world(self, pos):
         """Converts screen coordinates to world coordinates."""
@@ -1250,7 +1287,9 @@ class ModernCanvas(QWidget):
                 if mime_text.startswith("diablo_block:"):
                     block_name = mime_text.split(":", 1)[1]
                     drop_pos = self.screen_to_world(event.pos())
-                    logger.info(f"Drop event: Creating {block_name} at ({drop_pos.x()}, {drop_pos.y()})")
+                    logger.info(
+                        f"Drop event: Creating {block_name} at ({drop_pos.x()}, {drop_pos.y()})"
+                    )
 
                     # Find the corresponding menu block
                     menu_block = self._find_menu_block_by_name(block_name)
@@ -1277,9 +1316,9 @@ class ModernCanvas(QWidget):
     def _find_menu_block_by_name(self, block_name):
         """Find a menu block by its function name."""
         try:
-            menu_blocks = getattr(self.dsim, 'menu_blocks', [])
+            menu_blocks = getattr(self.dsim, "menu_blocks", [])
             for menu_block in menu_blocks:
-                if getattr(menu_block, 'fn_name', '') == block_name:
+                if getattr(menu_block, "fn_name", "") == block_name:
                     return menu_block
             return None
         except Exception as e:
@@ -1296,38 +1335,51 @@ class ModernCanvas(QWidget):
                 validation_errors.append("Cannot connect a block to itself")
 
             # BodeMag and RootLocus connections logic
-            allowed_bode_blocks = ['TranFn', 'DiscreteTranFn', 'StateSpace', 'DiscreteStateSpace', 'PID']
-            
-            if end_block.block_fn in ["BodeMag", "BodePhase", "Nyquist"] and start_block.block_fn not in allowed_bode_blocks:
-                validation_errors.append(f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}")
+            allowed_bode_blocks = [
+                "TranFn",
+                "DiscreteTranFn",
+                "StateSpace",
+                "DiscreteStateSpace",
+                "PID",
+            ]
+
+            if (
+                end_block.block_fn in ["BodeMag", "BodePhase", "Nyquist"]
+                and start_block.block_fn not in allowed_bode_blocks
+            ):
+                validation_errors.append(
+                    f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}"
+                )
 
             if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
-                validation_errors.append("RootLocus block can only be connected to a Transfer Function.")
+                validation_errors.append(
+                    "RootLocus block can only be connected to a Transfer Function."
+                )
 
             # Check if the destination input port is already connected.
             # An exact-duplicate connection (same src+srcport+dst+dstport) is a
             # strict subset of this case, so a single pass over the destination
             # port covers both without emitting two overlapping messages.
-            existing_lines = getattr(self.dsim, 'line_list', [])
-            end_name = getattr(end_block, 'name', '')
+            existing_lines = getattr(self.dsim, "line_list", [])
+            end_name = getattr(end_block, "name", "")
             for line in existing_lines:
-                if (hasattr(line, 'dstblock') and hasattr(line, 'dstport')):
+                if hasattr(line, "dstblock") and hasattr(line, "dstport"):
                     if line.dstblock == end_name and line.dstport == end_port:
                         validation_errors.append("Input port already connected")
                         break
 
             # Use ValidationHelper if available
             try:
-                all_blocks = getattr(self.dsim, 'blocks_list', [])
-                all_lines = getattr(self.dsim, 'line_list', [])
+                all_blocks = getattr(self.dsim, "blocks_list", [])
+                all_lines = getattr(self.dsim, "line_list", [])
                 # Create a temporary line list for validation
                 temp_lines = list(all_lines)
                 # Add our proposed connection for validation
                 temp_line = types.SimpleNamespace(
-                    srcblock=getattr(start_block, 'name', ''),
+                    srcblock=getattr(start_block, "name", ""),
                     srcport=start_port,
-                    dstblock=getattr(end_block, 'name', ''),
-                    dstport=end_port
+                    dstblock=getattr(end_block, "name", ""),
+                    dstport=end_port,
                 )
                 temp_lines.append(temp_line)
 
@@ -1346,7 +1398,6 @@ class ModernCanvas(QWidget):
                 # broken validator isn't mistaken for a passing connection.
                 logger.warning(f"ValidationHelper execution failed: {str(e)}")
 
-
             return len(validation_errors) == 0, validation_errors
         except Exception as e:
             logger.error(f"Error validating connection: {str(e)}")
@@ -1355,35 +1406,35 @@ class ModernCanvas(QWidget):
     # Analysis Methods
     def generate_bode_plot(self, block):
         """Delegate Bode plot generation to analyzer."""
-        if hasattr(self, 'analyzer'):
+        if hasattr(self, "analyzer"):
             self.analyzer.generate_bode_plot(block)
         else:
             logger.error("Analyzer not initialized")
 
     def generate_root_locus(self, block):
         """Delegate Root Locus generation to analyzer."""
-        if hasattr(self, 'analyzer'):
+        if hasattr(self, "analyzer"):
             self.analyzer.generate_root_locus(block)
         else:
             logger.error("Analyzer not initialized")
 
     def generate_nyquist_plot(self, block):
         """Delegate Nyquist plot generation to analyzer."""
-        if hasattr(self, 'analyzer'):
+        if hasattr(self, "analyzer"):
             self.analyzer.generate_nyquist_plot(block)
         else:
             logger.error("Analyzer not initialized")
 
     def compute_lqr(self, block):
         """Delegate LQR computation to analyzer."""
-        if hasattr(self, 'analyzer'):
+        if hasattr(self, "analyzer"):
             self.analyzer.compute_lqr(block)
         else:
             logger.error("Analyzer not initialized")
 
     def generate_bode_phase_plot(self, block):
         """Delegate Bode Phase plot generation to analyzer."""
-        if hasattr(self, 'analyzer'):
+        if hasattr(self, "analyzer"):
             self.analyzer.generate_bode_phase_plot(block)
         else:
             logger.error("Analyzer not initialized")
@@ -1393,6 +1444,7 @@ class ModernCanvas(QWidget):
     def align_left(self):
         """Align selected blocks to the leftmost block's left edge."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1405,6 +1457,7 @@ class ModernCanvas(QWidget):
     def align_right(self):
         """Align selected blocks to the rightmost block's right edge."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1417,6 +1470,7 @@ class ModernCanvas(QWidget):
     def align_center_horizontal(self):
         """Align selected blocks to horizontal center."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1429,6 +1483,7 @@ class ModernCanvas(QWidget):
     def align_top(self):
         """Align selected blocks to the topmost block's top edge."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1441,6 +1496,7 @@ class ModernCanvas(QWidget):
     def align_bottom(self):
         """Align selected blocks to the bottommost block's bottom edge."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1453,6 +1509,7 @@ class ModernCanvas(QWidget):
     def align_center_vertical(self):
         """Align selected blocks to vertical center."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 2:
             logger.info("Need at least 2 blocks selected to align")
@@ -1465,6 +1522,7 @@ class ModernCanvas(QWidget):
     def distribute_horizontal(self):
         """Distribute selected blocks evenly horizontally."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 3:
             logger.info("Need at least 3 blocks selected to distribute")
@@ -1477,6 +1535,7 @@ class ModernCanvas(QWidget):
     def distribute_vertical(self):
         """Distribute selected blocks evenly vertically."""
         from modern_ui.tools.alignment_tools import AlignmentTools
+
         blocks = self.selection_manager.get_selected_blocks()
         if len(blocks) < 3:
             logger.info("Need at least 3 blocks selected to distribute")

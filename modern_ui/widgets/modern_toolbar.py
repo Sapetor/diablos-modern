@@ -26,24 +26,34 @@ Visual changes
 from __future__ import annotations
 
 from PyQt5.QtWidgets import (
-    QToolBar, QAction, QWidget, QHBoxLayout, QLabel, QPushButton, QToolButton,
-    QSizePolicy, QFrame
+    QToolBar,
+    QAction,
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QToolButton,
+    QSizePolicy,
+    QFrame,
 )
 import math
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
-from PyQt5.QtGui import (
-    QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
-)
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
 from modern_ui.themes.theme_manager import (
-    theme_manager, get_mono_font, TYPE,
-    pulse_alpha, PULSE_INTERVAL_MS, PULSE_PHASE_STEP,
+    theme_manager,
+    get_mono_font,
+    TYPE,
+    pulse_alpha,
+    PULSE_INTERVAL_MS,
+    PULSE_PHASE_STEP,
 )
 
 
-# ----------------------------------------------------------------------------- 
+# -----------------------------------------------------------------------------
 # Icon builder — geometric, theme-aware, DPI-safe
 # -----------------------------------------------------------------------------
+
 
 def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     """Build a QIcon from a small geometric path. ``kind`` is one of:
@@ -51,7 +61,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     sun, moon, search, plus, minus.
     """
     if color is None:
-        color = theme_manager.get_color('text_primary').name()
+        color = theme_manager.get_color("text_primary").name()
 
     # Render at 2× for DPI safety, let Qt downscale.
     px = QPixmap(size * 2, size * 2)
@@ -74,7 +84,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     def line(x1, y1, x2, y2):
         p.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
-    if kind == 'new':
+    if kind == "new":
         # Document with folded corner
         path = QPainterPath()
         path.moveTo(pad + 1, pad)
@@ -87,7 +97,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         line(s - pad - 3, pad, s - pad - 3, pad + 3)
         line(s - pad - 3, pad + 3, s - pad, pad + 3)
 
-    elif kind == 'open':
+    elif kind == "open":
         # Folder
         path = QPainterPath()
         path.moveTo(pad, pad + 3)
@@ -99,7 +109,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         path.closeSubpath()
         p.drawPath(path)
 
-    elif kind == 'save':
+    elif kind == "save":
         # Floppy disk-ish
         p.drawRoundedRect(rect, 1.2, 1.2)
         # Top slot
@@ -108,52 +118,55 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         # Bottom label box
         p.drawRect(QRectF(pad + 1.5, s - pad - 4, s - 2 * pad - 3, 3))
 
-    elif kind == 'play':
+    elif kind == "play":
         # Right-pointing triangle, filled
-        tri = QPolygonF([
-            QPointF(pad + 1, pad),
-            QPointF(s - pad, s / 2),
-            QPointF(pad + 1, s - pad),
-        ])
+        tri = QPolygonF(
+            [
+                QPointF(pad + 1, pad),
+                QPointF(s - pad, s / 2),
+                QPointF(pad + 1, s - pad),
+            ]
+        )
         p.setBrush(QColor(color))
         p.setPen(Qt.NoPen)
         p.drawPolygon(tri)
 
-    elif kind == 'pause':
+    elif kind == "pause":
         p.setBrush(QColor(color))
         p.setPen(Qt.NoPen)
         bar_w = (s - 2 * pad - 2) / 2 - 0.5
         p.drawRoundedRect(QRectF(pad, pad, bar_w, s - 2 * pad), 0.6, 0.6)
         p.drawRoundedRect(QRectF(s - pad - bar_w, pad, bar_w, s - 2 * pad), 0.6, 0.6)
 
-    elif kind == 'stop':
+    elif kind == "stop":
         p.setBrush(QColor(color))
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(rect, 1.0, 1.0)
 
-    elif kind == 'step':
+    elif kind == "step":
         # ▶ + bar
-        tri = QPolygonF([
-            QPointF(pad, pad),
-            QPointF(s - pad - 3, s / 2),
-            QPointF(pad, s - pad),
-        ])
+        tri = QPolygonF(
+            [
+                QPointF(pad, pad),
+                QPointF(s - pad - 3, s / 2),
+                QPointF(pad, s - pad),
+            ]
+        )
         p.setBrush(QColor(color))
         p.setPen(Qt.NoPen)
         p.drawPolygon(tri)
         p.drawRoundedRect(QRectF(s - pad - 1.6, pad, 1.6, s - 2 * pad), 0.5, 0.5)
 
-    elif kind == 'plot':
+    elif kind == "plot":
         # Axes + curve
         line(pad, pad, pad, s - pad)
         line(pad, s - pad, s - pad, s - pad)
         path = QPainterPath()
         path.moveTo(pad + 1, s - pad - 1)
-        path.quadTo(pad + (s - 2 * pad) * 0.4, pad - 0.5,
-                    (s - pad), pad + 1)
+        path.quadTo(pad + (s - 2 * pad) * 0.4, pad - 0.5, (s - pad), pad + 1)
         p.drawPath(path)
 
-    elif kind == 'capture':
+    elif kind == "capture":
         # Camera
         p.drawRoundedRect(QRectF(pad, pad + 2, s - 2 * pad, s - 2 * pad - 2), 1.5, 1.5)
         # Top hump
@@ -161,7 +174,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         # Lens
         p.drawEllipse(QPointF(s / 2, s / 2 + 0.8), 2.2, 2.2)
 
-    elif kind == 'route':
+    elif kind == "route":
         # Routing zig-zag
         path = QPainterPath()
         path.moveTo(pad, pad + 2)
@@ -176,15 +189,19 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         p.drawEllipse(QPointF(pad, pad + 2), 1.0, 1.0)
         p.drawEllipse(QPointF(s - pad, s - pad - 2), 1.0, 1.0)
 
-    elif kind == 'sun':
+    elif kind == "sun":
         p.drawEllipse(QPointF(s / 2, s / 2), 2.2, 2.2)
         for i in range(8):
             a = i * math.pi / 4
             r1, r2 = 3.4, 4.6
-            line(s / 2 + math.cos(a) * r1, s / 2 + math.sin(a) * r1,
-                 s / 2 + math.cos(a) * r2, s / 2 + math.sin(a) * r2)
+            line(
+                s / 2 + math.cos(a) * r1,
+                s / 2 + math.sin(a) * r1,
+                s / 2 + math.cos(a) * r2,
+                s / 2 + math.sin(a) * r2,
+            )
 
-    elif kind == 'moon':
+    elif kind == "moon":
         path = QPainterPath()
         path.moveTo(s - pad - 1, pad + 1)
         path.arcTo(QRectF(pad, pad, s - 2 * pad, s - 2 * pad), 60, 240)
@@ -193,15 +210,15 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         p.setPen(Qt.NoPen)
         p.drawPath(path)
 
-    elif kind == 'search':
+    elif kind == "search":
         p.drawEllipse(QPointF(s / 2 - 1, s / 2 - 1), s / 3 - 0.5, s / 3 - 0.5)
         line(s / 2 + 1.4, s / 2 + 1.4, s - pad, s - pad)
 
-    elif kind == 'plus':
+    elif kind == "plus":
         line(s / 2, pad + 1, s / 2, s - pad - 1)
         line(pad + 1, s / 2, s - pad - 1, s / 2)
 
-    elif kind == 'minus':
+    elif kind == "minus":
         line(pad + 1, s / 2, s - pad - 1, s / 2)
 
     p.end()
@@ -211,6 +228,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
 # -----------------------------------------------------------------------------
 # Small reusable widgets
 # -----------------------------------------------------------------------------
+
 
 class _StatusPill(QFrame):
     """Colored-dot widget + text ('Ready', 'Simulating…', etc.).
@@ -238,16 +256,19 @@ class _StatusPill(QFrame):
         lay.addWidget(self._label, 0, Qt.AlignVCenter)
 
     def set_state(self, state: str, label: str | None = None):
-        if state not in ('idle', 'running', 'paused', 'error'):
-            state = 'idle'
+        if state not in ("idle", "running", "paused", "error"):
+            state = "idle"
         self.setProperty("state", state)
         self._dot.set_state(state)
-        text = label or {
-            'idle': 'Ready',
-            'running': 'Simulating…',
-            'paused': 'Paused',
-            'error': 'Error',
-        }[state]
+        text = (
+            label
+            or {
+                "idle": "Ready",
+                "running": "Simulating…",
+                "paused": "Paused",
+                "error": "Error",
+            }[state]
+        )
         self._label.setText(text)
         # Force re-polish so the [state=…] selector reapplies on dark/light swap.
         self.style().unpolish(self)
@@ -262,23 +283,24 @@ class _StateDot(QWidget):
     it starts only when ``set_state('running')`` and stops for every other
     state, so an idle/paused toolbar never repaints continuously.
     """
+
     _COLORS = {
-        'idle':    ('text_secondary', None),
-        'running': ('success', 'success'),
-        'paused':  ('warning', 'warning'),
-        'error':   ('error', 'error'),
+        "idle": ("text_secondary", None),
+        "running": ("success", "success"),
+        "paused": ("warning", "warning"),
+        "error": ("error", "error"),
     }
 
     # Cadence shared with the canvas pulse (theme_manager.PULSE_*) so the two
     # read as one effect; base alpha / depth are local to this 8px dot.
     _PULSE_INTERVAL_MS = PULSE_INTERVAL_MS
     _PULSE_PHASE_STEP = PULSE_PHASE_STEP
-    _GLOW_BASE_ALPHA = 70            # resting alpha of the glow ring
-    _GLOW_PULSE_DEPTH = 0.45         # fraction of base alpha swung by the sine
+    _GLOW_BASE_ALPHA = 70  # resting alpha of the glow ring
+    _GLOW_PULSE_DEPTH = 0.45  # fraction of base alpha swung by the sine
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._state = 'idle'
+        self._state = "idle"
         self._pulse_phase = 0.0
         self.setFixedSize(QSize(8, 8))
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -289,9 +311,9 @@ class _StateDot(QWidget):
         self._pulse_timer.timeout.connect(self._on_pulse_tick)
 
     def set_state(self, s: str):
-        self._state = s if s in self._COLORS else 'idle'
+        self._state = s if s in self._COLORS else "idle"
         # Gate the pulse timer strictly to the running state.
-        if self._state == 'running':
+        if self._state == "running":
             if not self._pulse_timer.isActive():
                 self._pulse_timer.start()
         elif self._pulse_timer.isActive():
@@ -316,13 +338,16 @@ class _StateDot(QWidget):
         p.setRenderHint(QPainter.Antialiasing, True)
         # Soft glow ring for active states
         if glow_key:
-            glow = QColor(col); glow.setAlpha(self._glow_alpha())
-            p.setBrush(glow); p.setPen(Qt.NoPen)
+            glow = QColor(col)
+            glow.setAlpha(self._glow_alpha())
+            p.setBrush(glow)
+            p.setPen(Qt.NoPen)
             p.drawEllipse(0, 0, 8, 8)
             p.setBrush(col)
             p.drawEllipse(1, 1, 6, 6)
         else:
-            p.setBrush(col); p.setPen(Qt.NoPen)
+            p.setBrush(col)
+            p.setPen(Qt.NoPen)
             p.drawEllipse(1, 1, 6, 6)
         p.end()
 
@@ -341,7 +366,9 @@ class _ZoomRocker(QWidget):
 
         self.minus_btn = QToolButton()
         self.minus_btn.setObjectName("ZoomRockerBtn")
-        self.minus_btn.setIcon(_make_icon('minus', 14, theme_manager.get_color('text_secondary').name()))
+        self.minus_btn.setIcon(
+            _make_icon("minus", 14, theme_manager.get_color("text_secondary").name())
+        )
         self.minus_btn.setIconSize(QSize(14, 14))
         self.minus_btn.setAutoRaise(True)
         self.minus_btn.setFixedSize(QSize(22, 22))
@@ -355,7 +382,9 @@ class _ZoomRocker(QWidget):
 
         self.plus_btn = QToolButton()
         self.plus_btn.setObjectName("ZoomRockerBtn")
-        self.plus_btn.setIcon(_make_icon('plus', 14, theme_manager.get_color('text_secondary').name()))
+        self.plus_btn.setIcon(
+            _make_icon("plus", 14, theme_manager.get_color("text_secondary").name())
+        )
         self.plus_btn.setIconSize(QSize(14, 14))
         self.plus_btn.setAutoRaise(True)
         self.plus_btn.setFixedSize(QSize(22, 22))
@@ -384,9 +413,9 @@ class _ZoomRocker(QWidget):
         return self._zoom
 
     def refresh_icons(self):
-        c = theme_manager.get_color('text_secondary').name()
-        self.minus_btn.setIcon(_make_icon('minus', 14, c))
-        self.plus_btn.setIcon(_make_icon('plus', 14, c))
+        c = theme_manager.get_color("text_secondary").name()
+        self.minus_btn.setIcon(_make_icon("minus", 14, c))
+        self.plus_btn.setIcon(_make_icon("plus", 14, c))
 
 
 class _TransportGroup(QWidget):
@@ -403,10 +432,10 @@ class _TransportGroup(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(2)
 
-        self.play_btn = self._mk_btn('play', 'TransportPlay', "Run (F5)")
-        self.pause_btn = self._mk_btn('pause', 'TransportPause', "Pause (F6)")
-        self.stop_btn = self._mk_btn('stop', 'TransportStop', "Stop (F7)")
-        self.step_btn = self._mk_btn('step', 'TransportStep', "Step (F8)")
+        self.play_btn = self._mk_btn("play", "TransportPlay", "Run (F5)")
+        self.pause_btn = self._mk_btn("pause", "TransportPause", "Pause (F6)")
+        self.stop_btn = self._mk_btn("stop", "TransportStop", "Stop (F7)")
+        self.step_btn = self._mk_btn("step", "TransportStep", "Step (F8)")
 
         self.play_btn.clicked.connect(self.play)
         self.pause_btn.clicked.connect(self.pause)
@@ -415,7 +444,7 @@ class _TransportGroup(QWidget):
 
         self.time_label = QLabel("t = 0.000 / 10.000 s")
         self.time_label.setObjectName("TransportTimeLabel")
-        self.time_label.setFont(get_mono_font(TYPE['body']))
+        self.time_label.setFont(get_mono_font(TYPE["body"]))
         self.time_label.setMinimumWidth(140)
         self.time_label.setAlignment(Qt.AlignCenter)
 
@@ -441,10 +470,10 @@ class _TransportGroup(QWidget):
         return b
 
     def refresh_icons(self):
-        self.play_btn.setIcon(_make_icon('play', 16))
-        self.pause_btn.setIcon(_make_icon('pause', 16))
-        self.stop_btn.setIcon(_make_icon('stop', 16))
-        self.step_btn.setIcon(_make_icon('step', 16))
+        self.play_btn.setIcon(_make_icon("play", 16))
+        self.pause_btn.setIcon(_make_icon("pause", 16))
+        self.stop_btn.setIcon(_make_icon("stop", 16))
+        self.step_btn.setIcon(_make_icon("step", 16))
 
     def set_state(self, running: bool, paused: bool):
         self.play_btn.setEnabled(not running or paused)
@@ -459,6 +488,7 @@ class _TransportGroup(QWidget):
 # -----------------------------------------------------------------------------
 # Main toolbar
 # -----------------------------------------------------------------------------
+
 
 class ModernToolBar(QToolBar):
     """Modern styled toolbar — tightened V1 redesign."""
@@ -507,13 +537,19 @@ class ModernToolBar(QToolBar):
             a.triggered.connect(sig)
             return a
 
-        self.new_action = mk('new', "New", "Ctrl+N", "New diagram", self.new_diagram.emit)
-        self.open_action = mk('open', "Open", "Ctrl+O", "Open diagram", self.open_diagram.emit)
-        self.save_action = mk('save', "Save", "Ctrl+S", "Save diagram", self.save_diagram.emit)
-        self.plot_action = mk('plot', "Plot", None, "Show waveform inspector", self.plot_results.emit)
-        self.capture_action = mk('capture', "Capture", None, "Take screenshot", self.capture_screen.emit)
-        self.auto_route_action = mk('route', "Auto-route", None, "Auto-route wires", self.auto_route_wires.emit)
-        self.theme_action = mk('sun', "Theme", None, "Toggle theme", self._toggle_theme)
+        self.new_action = mk("new", "New", "Ctrl+N", "New diagram", self.new_diagram.emit)
+        self.open_action = mk("open", "Open", "Ctrl+O", "Open diagram", self.open_diagram.emit)
+        self.save_action = mk("save", "Save", "Ctrl+S", "Save diagram", self.save_diagram.emit)
+        self.plot_action = mk(
+            "plot", "Plot", None, "Show waveform inspector", self.plot_results.emit
+        )
+        self.capture_action = mk(
+            "capture", "Capture", None, "Take screenshot", self.capture_screen.emit
+        )
+        self.auto_route_action = mk(
+            "route", "Auto-route", None, "Auto-route wires", self.auto_route_wires.emit
+        )
+        self.theme_action = mk("sun", "Theme", None, "Toggle theme", self._toggle_theme)
 
     # -- Layout -------------------------------------------------------------
 
@@ -575,19 +611,19 @@ class ModernToolBar(QToolBar):
 
     def _update_theme(self):
         # Re-render all icons with new theme colors
-        self.new_action.setIcon(_make_icon('new', 18))
-        self.open_action.setIcon(_make_icon('open', 18))
-        self.save_action.setIcon(_make_icon('save', 18))
-        self.plot_action.setIcon(_make_icon('plot', 18))
-        self.capture_action.setIcon(_make_icon('capture', 18))
-        self.auto_route_action.setIcon(_make_icon('route', 18))
+        self.new_action.setIcon(_make_icon("new", 18))
+        self.open_action.setIcon(_make_icon("open", 18))
+        self.save_action.setIcon(_make_icon("save", 18))
+        self.plot_action.setIcon(_make_icon("plot", 18))
+        self.capture_action.setIcon(_make_icon("capture", 18))
+        self.auto_route_action.setIcon(_make_icon("route", 18))
 
         if theme_manager.current_theme.value == "dark":
-            self.theme_action.setIcon(_make_icon('sun', 18))
+            self.theme_action.setIcon(_make_icon("sun", 18))
             self.theme_action.setToolTip("Switch to light theme")
             self.theme_action.setStatusTip("Switch to light theme")
         else:
-            self.theme_action.setIcon(_make_icon('moon', 18))
+            self.theme_action.setIcon(_make_icon("moon", 18))
             self.theme_action.setToolTip("Switch to dark theme")
             self.theme_action.setStatusTip("Switch to dark theme")
 
@@ -599,23 +635,23 @@ class ModernToolBar(QToolBar):
     def set_status(self, message: str):
         """Compatibility shim — also drives the status pill color."""
         m = (message or "").lower()
-        if 'paus' in m:
-            self.status_pill.set_state('paused')
-        elif 'run' in m or 'simulat' in m:
-            self.status_pill.set_state('running')
-        elif 'error' in m or 'fail' in m:
-            self.status_pill.set_state('error')
+        if "paus" in m:
+            self.status_pill.set_state("paused")
+        elif "run" in m or "simulat" in m:
+            self.status_pill.set_state("running")
+        elif "error" in m or "fail" in m:
+            self.status_pill.set_state("error")
         else:
-            self.status_pill.set_state('idle', message if message else None)
+            self.status_pill.set_state("idle", message if message else None)
 
     def set_simulation_state(self, running: bool, paused: bool = False):
         self.transport.set_state(running, paused)
         if running and not paused:
-            self.status_pill.set_state('running')
+            self.status_pill.set_state("running")
         elif running and paused:
-            self.status_pill.set_state('paused')
+            self.status_pill.set_state("paused")
         else:
-            self.status_pill.set_state('idle')
+            self.status_pill.set_state("idle")
 
     def set_simulation_time(self, t: float, t_end: float = 10.0):
         """NEW — hook this up from your sim tick if you want live t-readout.

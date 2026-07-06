@@ -70,12 +70,21 @@ class FromFileBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "data_file": {"type": "string", "default": "",
-                          "doc": "Path to the data file (.csv/.npz/.mat/.txt)."},
-            "time_col": {"type": "string", "default": "t",
-                         "doc": "Time column: name or 0-based numeric index."},
-            "signal_col": {"type": "string", "default": "y",
-                           "doc": "Signal column: name or 0-based numeric index."},
+            "data_file": {
+                "type": "string",
+                "default": "",
+                "doc": "Path to the data file (.csv/.npz/.mat/.txt).",
+            },
+            "time_col": {
+                "type": "string",
+                "default": "t",
+                "doc": "Time column: name or 0-based numeric index.",
+            },
+            "signal_col": {
+                "type": "string",
+                "default": "y",
+                "doc": "Signal column: name or 0-based numeric index.",
+            },
             "interpolation": {
                 "type": "choice",
                 "default": "linear",
@@ -101,6 +110,7 @@ class FromFileBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw a document/data-file glyph in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Page outline with a folded corner.
         path.moveTo(0.30, 0.15)
@@ -149,6 +159,7 @@ class FromFileBlock(BaseBlock):
             load_timeseries,
             TimeseriesLoadError,
         )
+
         try:
             t_data, y_data = load_timeseries(
                 data_file,
@@ -201,13 +212,14 @@ class FromFileBlock(BaseBlock):
     # ------------------------------------------------------------------ execute
     def execute(self, time, inputs, params, **kwargs):
         if not self._ensure_loaded(params):
-            return {"E": True,
-                    "error": params.get("_load_error_", "FromFile load failed")}
+            return {"E": True, "error": params.get("_load_error_", "FromFile load failed")}
 
         t_data = params["_t_data_"]
         y_data = params["_y_data_"]
         value = self._sample(
-            float(time), t_data, y_data,
+            float(time),
+            t_data,
+            y_data,
             params.get("interpolation", "linear"),
             params.get("end_behavior", "hold"),
         )

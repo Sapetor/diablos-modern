@@ -7,7 +7,6 @@ from PyQt5.QtCore import QPoint, QRect
 from PyQt5.QtGui import QColor
 
 
-
 @pytest.mark.unit
 @pytest.mark.qt
 class TestSimulationModelInitialization:
@@ -21,17 +20,17 @@ class TestSimulationModelInitialization:
 
     def test_model_initializes_with_colors(self, simulation_model):
         """Test that model has default color palette."""
-        assert 'black' in simulation_model.colors
-        assert 'red' in simulation_model.colors
-        assert 'blue' in simulation_model.colors
-        assert isinstance(simulation_model.colors['black'], QColor)
+        assert "black" in simulation_model.colors
+        assert "red" in simulation_model.colors
+        assert "blue" in simulation_model.colors
+        assert isinstance(simulation_model.colors["black"], QColor)
 
     def test_model_loads_menu_blocks(self, simulation_model):
         """Test that model loads block types from blocks/ directory."""
         assert len(simulation_model.menu_blocks) > 0
         block_names = [mb.block_fn for mb in simulation_model.menu_blocks]
         # Check for some expected blocks
-        assert 'Step' in block_names or 'Sine' in block_names
+        assert "Step" in block_names or "Sine" in block_names
 
 
 @pytest.mark.unit
@@ -44,7 +43,7 @@ class TestAddBlock:
         # Find a block template
         step_block = None
         for mb in simulation_model.menu_blocks:
-            if mb.block_fn == 'Step':
+            if mb.block_fn == "Step":
                 step_block = mb
                 break
 
@@ -56,8 +55,8 @@ class TestAddBlock:
         new_block = simulation_model.add_block(step_block, pos)
 
         assert new_block is not None
-        assert new_block.block_fn == 'Step'
-        assert new_block.name == 'step0'
+        assert new_block.block_fn == "Step"
+        assert new_block.name == "step0"
         assert new_block in simulation_model.blocks_list
 
     def test_add_block_sets_dirty_flag(self, simulation_model):
@@ -77,7 +76,7 @@ class TestAddBlock:
         # Find a block type
         block_template = None
         for mb in simulation_model.menu_blocks:
-            if mb.block_fn == 'Step':
+            if mb.block_fn == "Step":
                 block_template = mb
                 break
 
@@ -87,8 +86,8 @@ class TestAddBlock:
         block1 = simulation_model.add_block(block_template, QPoint(100, 100))
         block2 = simulation_model.add_block(block_template, QPoint(200, 200))
 
-        assert block1.name == 'step0'
-        assert block2.name == 'step1'
+        assert block1.name == "step0"
+        assert block2.name == "step1"
         assert block1.sid == 0
         assert block2.sid == 1
 
@@ -104,10 +103,20 @@ class TestAddLine:
         simulation_model.blocks_list.append(sample_block)
 
         from lib.simulation.block import DBlock
+
         block2 = DBlock(
-            'TestBlock2', 1, QRect(300, 300, 100, 80), 'blue',
-            1, 1, 2, 'none', 'testblock2', {'gain': 1.0},
-            False, colors=simulation_model.colors
+            "TestBlock2",
+            1,
+            QRect(300, 300, 100, 80),
+            "blue",
+            1,
+            1,
+            2,
+            "none",
+            "testblock2",
+            {"gain": 1.0},
+            False,
+            colors=simulation_model.colors,
         )
         simulation_model.blocks_list.append(block2)
 
@@ -132,10 +141,20 @@ class TestAddLine:
         simulation_model.blocks_list.append(sample_block)
 
         from lib.simulation.block import DBlock
+
         block2 = DBlock(
-            'TestBlock2', 1, QRect(300, 300, 100, 80), 'blue',
-            1, 1, 2, 'none', 'testblock2', {}, False,
-            colors=simulation_model.colors
+            "TestBlock2",
+            1,
+            QRect(300, 300, 100, 80),
+            "blue",
+            1,
+            1,
+            2,
+            "none",
+            "testblock2",
+            {},
+            False,
+            colors=simulation_model.colors,
         )
         simulation_model.blocks_list.append(block2)
 
@@ -166,10 +185,20 @@ class TestRemoveBlock:
         simulation_model.blocks_list.append(sample_block)
 
         from lib.simulation.block import DBlock
+
         block2 = DBlock(
-            'TestBlock2', 1, QRect(300, 300, 100, 80), 'blue',
-            1, 1, 2, 'none', 'testblock2', {}, False,
-            colors=simulation_model.colors
+            "TestBlock2",
+            1,
+            QRect(300, 300, 100, 80),
+            "blue",
+            1,
+            1,
+            2,
+            "none",
+            "testblock2",
+            {},
+            False,
+            colors=simulation_model.colors,
         )
         simulation_model.blocks_list.append(block2)
 
@@ -255,7 +284,7 @@ class TestGetBlockByName:
 
     def test_get_block_by_name_returns_none_for_nonexistent(self, simulation_model):
         """Test that get_block_by_name returns None for non-existent block."""
-        found = simulation_model.get_block_by_name('nonexistent')
+        found = simulation_model.get_block_by_name("nonexistent")
         assert found is None
 
 
@@ -276,10 +305,20 @@ class TestIsPortAvailable:
         simulation_model.blocks_list.append(sample_block)
 
         from lib.simulation.block import DBlock
+
         block2 = DBlock(
-            'TestBlock2', 1, QRect(300, 300, 100, 80), 'blue',
-            1, 1, 2, 'none', 'testblock2', {}, False,
-            colors=simulation_model.colors
+            "TestBlock2",
+            1,
+            QRect(300, 300, 100, 80),
+            "blue",
+            1,
+            1,
+            2,
+            "none",
+            "testblock2",
+            {},
+            False,
+            colors=simulation_model.colors,
         )
         simulation_model.blocks_list.append(block2)
 
@@ -297,7 +336,9 @@ class TestIsPortAvailable:
 class TestGetDiagramStats:
     """Test diagram statistics retrieval."""
 
-    def test_get_diagram_stats_returns_correct_counts(self, simulation_model, sample_block, sample_line):
+    def test_get_diagram_stats_returns_correct_counts(
+        self, simulation_model, sample_block, sample_line
+    ):
         """Test that get_diagram_stats returns accurate statistics."""
         simulation_model.blocks_list.append(sample_block)
         simulation_model.line_list.append(sample_line)
@@ -305,7 +346,7 @@ class TestGetDiagramStats:
 
         stats = simulation_model.get_diagram_stats()
 
-        assert stats['blocks'] == 1
-        assert stats['lines'] == 1
-        assert stats['modified'] == True
-        assert stats['block_types'] >= 1
+        assert stats["blocks"] == 1
+        assert stats["lines"] == 1
+        assert stats["modified"] == True
+        assert stats["block_types"] >= 1

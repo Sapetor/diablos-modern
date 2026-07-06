@@ -24,9 +24,7 @@ State indexing: u[i,j] -> state[k] where k = i + j*Nx
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.param_templates import (
-    wave_speed_param, domain_params_2d, init_flag_param
-)
+from blocks.param_templates import wave_speed_param, domain_params_2d, init_flag_param
 from lib.engine.pde_helpers import bc_params_2d
 from lib.engine.pde_ops import wave_rhs_2d
 
@@ -85,27 +83,23 @@ class WaveEquation2DBlock(BaseBlock):
     def params(self):
         return {
             **wave_speed_param(default=1.0),
-            "damping": {
-                "type": "float",
-                "default": 0.0,
-                "doc": "Damping coefficient"
-            },
+            "damping": {"type": "float", "default": 0.0, "doc": "Damping coefficient"},
             **domain_params_2d(),
             **bc_params_2d(),
             "init_displacement": {
                 "type": "string",
                 "default": "0.0",
-                "doc": "Initial displacement: number, 'sinusoidal', 'gaussian', or 'radial'"
+                "doc": "Initial displacement: number, 'sinusoidal', 'gaussian', or 'radial'",
             },
             "init_velocity": {
                 "type": "string",
                 "default": "0.0",
-                "doc": "Initial velocity: number, 'sinusoidal', 'gaussian', or 'radial'"
+                "doc": "Initial velocity: number, 'sinusoidal', 'gaussian', or 'radial'",
             },
             "init_amplitude": {
                 "type": "float",
                 "default": 1.0,
-                "doc": "Amplitude for non-uniform initial conditions"
+                "doc": "Amplitude for non-uniform initial conditions",
             },
             **init_flag_param(),
         }
@@ -142,6 +136,7 @@ class WaveEquation2DBlock(BaseBlock):
         """Draw 2D wave equation icon - grid with wave pattern."""
         from PyQt5.QtGui import QPainterPath
         import math
+
         path = QPainterPath()
 
         # Draw grid pattern
@@ -165,13 +160,13 @@ class WaveEquation2DBlock(BaseBlock):
 
     def get_initial_state(self, params):
         """Return initial state vector [u, v] for the 2D field."""
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
-        init_disp = params.get('init_displacement', '0.0')
-        init_vel = params.get('init_velocity', '0.0')
-        amplitude = float(params.get('init_amplitude', 1.0))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
+        init_disp = params.get("init_displacement", "0.0")
+        init_vel = params.get("init_velocity", "0.0")
+        amplitude = float(params.get("init_amplitude", 1.0))
 
         x = np.linspace(0, Lx, Nx)
         y = np.linspace(0, Ly, Ny)
@@ -179,13 +174,13 @@ class WaveEquation2DBlock(BaseBlock):
 
         # Initialize displacement
         if isinstance(init_disp, str):
-            if init_disp.lower() == 'sinusoidal':
+            if init_disp.lower() == "sinusoidal":
                 # u = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode
                 u0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_disp.lower() == 'gaussian':
+            elif init_disp.lower() == "gaussian":
                 # Gaussian bump at center
-                u0 = amplitude * np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
-            elif init_disp.lower() == 'radial':
+                u0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
+            elif init_disp.lower() == "radial":
                 # Radial wave from corner
                 r = np.sqrt(X**2 + Y**2)
                 u0 = amplitude * np.exp(-100 * r**2)
@@ -200,11 +195,11 @@ class WaveEquation2DBlock(BaseBlock):
 
         # Initialize velocity
         if isinstance(init_vel, str):
-            if init_vel.lower() == 'sinusoidal':
+            if init_vel.lower() == "sinusoidal":
                 v0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_vel.lower() == 'gaussian':
-                v0 = amplitude * np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
-            elif init_vel.lower() == 'radial':
+            elif init_vel.lower() == "gaussian":
+                v0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
+            elif init_vel.lower() == "radial":
                 r = np.sqrt(X**2 + Y**2)
                 v0 = amplitude * np.exp(-100 * r**2)
             else:
@@ -220,8 +215,8 @@ class WaveEquation2DBlock(BaseBlock):
 
     def get_state_size(self, params):
         """Return the number of state variables (2*Nx*Ny)."""
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
         return 2 * Nx * Ny
 
     def execute(self, time, inputs, params, **kwargs):
@@ -233,10 +228,10 @@ class WaveEquation2DBlock(BaseBlock):
         blocks do the same). Without this the interpreter left the field frozen
         at its initial condition.
         """
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
 
-        state = kwargs.get('state', None)
+        state = kwargs.get("state", None)
         if state is None:
             state = self._interp_step(time, inputs, params)
         state = np.asarray(state, dtype=float)
@@ -248,27 +243,22 @@ class WaveEquation2DBlock(BaseBlock):
 
         energy = self._compute_energy(u_field, v_field, params)
 
-        return {
-            0: u_field,
-            1: v_field,
-            2: energy,
-            'E': False
-        }
+        return {0: u_field, 1: v_field, 2: energy, "E": False}
 
     def _interp_step(self, time, inputs, params):
         """Return the current interpreter-mode [u, v] state, then advance and
         persist it by one Forward-Euler step. The first call returns the initial
         condition unstepped so samples align with the compiled path."""
-        if params.get('_init_start_', True):
-            params['_interp_state_'] = self.get_initial_state(params)
-            params['_init_start_'] = False
-            return params['_interp_state_']
+        if params.get("_init_start_", True):
+            params["_interp_state_"] = self.get_initial_state(params)
+            params["_init_start_"] = False
+            return params["_interp_state_"]
 
-        state = np.asarray(params['_interp_state_'], dtype=float)
-        dtime = float(params.get('dtime', 0.01))
+        state = np.asarray(params["_interp_state_"], dtype=float)
+        dtime = float(params.get("dtime", 0.01))
         dstate = self.compute_derivatives(time, state, inputs, params)
         state = state + np.asarray(dstate, dtype=float) * dtime
-        params['_interp_state_'] = state
+        params["_interp_state_"] = state
         return state
 
     def compute_derivatives(self, time, state, inputs, params):
@@ -282,12 +272,12 @@ class WaveEquation2DBlock(BaseBlock):
         - du/dt = v
         - dv/dt = c²∇²u - damping*v + f
         """
-        c = float(params.get('c', 1.0))
-        damping = float(params.get('damping', 0.0))
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        c = float(params.get("c", 1.0))
+        damping = float(params.get("damping", 0.0))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
 
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)
@@ -298,10 +288,10 @@ class WaveEquation2DBlock(BaseBlock):
         bc_bottom = float(inputs.get(3, 0.0)) if inputs.get(3) is not None else 0.0
         bc_top = float(inputs.get(4, 0.0)) if inputs.get(4) is not None else 0.0
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
-        bc_type_bottom = params.get('bc_type_bottom', 'Dirichlet')
-        bc_type_top = params.get('bc_type_top', 'Dirichlet')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
+        bc_type_bottom = params.get("bc_type_bottom", "Dirichlet")
+        bc_type_top = params.get("bc_type_top", "Dirichlet")
 
         # Get force
         force = inputs.get(0, 0.0)
@@ -322,9 +312,22 @@ class WaveEquation2DBlock(BaseBlock):
 
         # Spatial discretisation + BC math is single-sourced in lib.engine.pde_ops.
         du_dt, dv_dt = wave_rhs_2d(
-            u, v, c, damping, dx, dy, force,
-            bc_type_left, bc_type_right, bc_type_bottom, bc_type_top,
-            bc_left, bc_right, bc_bottom, bc_top)
+            u,
+            v,
+            c,
+            damping,
+            dx,
+            dy,
+            force,
+            bc_type_left,
+            bc_type_right,
+            bc_type_bottom,
+            bc_type_top,
+            bc_left,
+            bc_right,
+            bc_bottom,
+            bc_top,
+        )
 
         # Return flattened derivatives [du_dt, dv_dt]
         return np.concatenate([du_dt.flatten(), dv_dt.flatten()])
@@ -336,11 +339,11 @@ class WaveEquation2DBlock(BaseBlock):
         Kinetic energy: 0.5 * ∫∫ v² dx dy
         Potential energy: 0.5 * c² * ∫∫ (|∇u|²) dx dy
         """
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
-        c = float(params.get('c', 1.0))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
+        c = float(params.get("c", 1.0))
 
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)

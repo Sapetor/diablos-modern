@@ -53,11 +53,7 @@ class VectorGainBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "gain": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Scalar multiplier"
-            },
+            "gain": {"type": "float", "default": 1.0, "doc": "Scalar multiplier"},
         }
 
     @property
@@ -71,12 +67,12 @@ class VectorGainBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
-            gain = float(params.get('gain', 1.0))
+            gain = float(params.get("gain", 1.0))
 
             y = gain * x
 
-            return {0: y, 'E': False}
+            return {0: y, "E": False}
 
         except Exception as e:
             logger.error(f"VectorGain error: {e}")
-            return {0: np.array([0.0]), 'E': True, 'error': str(e)}
+            return {0: np.array([0.0]), "E": True, "error": str(e)}

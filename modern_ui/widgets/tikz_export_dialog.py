@@ -10,11 +10,27 @@ Layout: options panel (left) | live preview (right) using QSplitter.
 import os
 import logging
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QCheckBox, QDoubleSpinBox, QLineEdit, QPushButton,
-    QFileDialog, QGroupBox, QRadioButton, QButtonGroup,
-    QTextEdit, QMessageBox, QApplication, QSplitter,
-    QDialogButtonBox, QWidget, QFrame, QScrollArea
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QCheckBox,
+    QDoubleSpinBox,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QGroupBox,
+    QRadioButton,
+    QButtonGroup,
+    QTextEdit,
+    QMessageBox,
+    QApplication,
+    QSplitter,
+    QDialogButtonBox,
+    QWidget,
+    QFrame,
+    QScrollArea,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -49,6 +65,7 @@ class TikZExportDialog(QDialog):
 
         # --- Compact info header ---
         from lib.export.tikz_exporter import TikZExporter
+
         exporter = TikZExporter(self.blocks_list, self.line_list)
         info = exporter.get_info()
         info_text = (
@@ -113,8 +130,12 @@ class TikZExportDialog(QDialog):
         self.fill_blocks_cb = QCheckBox("Category fill colors")
         self.fill_blocks_cb.setChecked(True)
 
-        for cb in (self.source_as_arrow_cb, self.sink_as_arrow_cb,
-                   self.show_signal_labels_cb, self.fill_blocks_cb):
+        for cb in (
+            self.source_as_arrow_cb,
+            self.sink_as_arrow_cb,
+            self.show_signal_labels_cb,
+            self.fill_blocks_cb,
+        ):
             style_layout.addWidget(cb)
 
         left.addWidget(style_group)
@@ -134,8 +155,7 @@ class TikZExportDialog(QDialog):
         self.include_sinks_cb = QCheckBox("Include sink blocks")
         self.include_sinks_cb.setChecked(True)
 
-        for cb in (self.show_usernames_cb, self.show_values_cb,
-                   self.include_sinks_cb):
+        for cb in (self.show_usernames_cb, self.show_values_cb, self.include_sinks_cb):
             content_layout.addWidget(cb)
 
         left.addWidget(content_group)
@@ -213,9 +233,7 @@ class TikZExportDialog(QDialog):
         btn_bar.addWidget(self.copy_btn)
         btn_bar.addStretch()
 
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Cancel | QDialogButtonBox.Save
-        )
+        button_box = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Save)
         button_box.button(QDialogButtonBox.Save).setText("Export")
         button_box.rejected.connect(self.reject)
         button_box.accepted.connect(self._export)
@@ -225,10 +243,16 @@ class TikZExportDialog(QDialog):
 
         # --- Wire option changes to preview ---
         self.format_btn_group.buttonClicked.connect(self._on_format_changed)
-        for cb in (self.include_sinks_cb, self.sink_as_arrow_cb,
-                   self.source_as_arrow_cb, self.show_usernames_cb,
-                   self.show_values_cb, self.show_signal_labels_cb,
-                   self.fill_blocks_cb, self.use_resizebox_cb):
+        for cb in (
+            self.include_sinks_cb,
+            self.sink_as_arrow_cb,
+            self.source_as_arrow_cb,
+            self.show_usernames_cb,
+            self.show_values_cb,
+            self.show_signal_labels_cb,
+            self.fill_blocks_cb,
+            self.use_resizebox_cb,
+        ):
             cb.stateChanged.connect(self._update_preview)
         self.page_width_spin.valueChanged.connect(self._update_preview)
 
@@ -238,22 +262,26 @@ class TikZExportDialog(QDialog):
 
     def _get_options(self):
         return {
-            'include_sinks': self.include_sinks_cb.isChecked(),
-            'sink_as_arrow': self.sink_as_arrow_cb.isChecked(),
-            'source_as_arrow': self.source_as_arrow_cb.isChecked(),
-            'show_usernames': self.show_usernames_cb.isChecked(),
-            'show_values': self.show_values_cb.isChecked(),
-            'show_signal_labels': self.show_signal_labels_cb.isChecked(),
-            'fill_blocks': self.fill_blocks_cb.isChecked(),
-            'use_resizebox': self.use_resizebox_cb.isChecked(),
-            'page_width_cm': self.page_width_spin.value(),
+            "include_sinks": self.include_sinks_cb.isChecked(),
+            "sink_as_arrow": self.sink_as_arrow_cb.isChecked(),
+            "source_as_arrow": self.source_as_arrow_cb.isChecked(),
+            "show_usernames": self.show_usernames_cb.isChecked(),
+            "show_values": self.show_values_cb.isChecked(),
+            "show_signal_labels": self.show_signal_labels_cb.isChecked(),
+            "fill_blocks": self.fill_blocks_cb.isChecked(),
+            "use_resizebox": self.use_resizebox_cb.isChecked(),
+            "page_width_cm": self.page_width_spin.value(),
         }
 
     def _on_format_changed(self, *_args):
         """Enable/disable options that don't apply to blox mode."""
         is_blox = self.blox_radio.isChecked()
-        for cb in (self.source_as_arrow_cb, self.sink_as_arrow_cb,
-                   self.fill_blocks_cb, self.include_sinks_cb):
+        for cb in (
+            self.source_as_arrow_cb,
+            self.sink_as_arrow_cb,
+            self.fill_blocks_cb,
+            self.include_sinks_cb,
+        ):
             cb.setEnabled(not is_blox)
         self._update_preview()
 
@@ -262,20 +290,22 @@ class TikZExportDialog(QDialog):
 
         if self.blox_radio.isChecked():
             from lib.export.blox_exporter import BloxExporter
+
             exporter = BloxExporter(self.blocks_list, self.line_list)
             result = exporter.export(options)
             if result is not None:
                 return result
             # Fallback to raw TikZ with a note
             from lib.export.tikz_exporter import TikZExporter
+
             tikz = TikZExporter(self.blocks_list, self.line_list)
             return (
-                '% Diagram topology too complex for blox macros.\n'
-                '% Falling back to raw TikZ.\n\n'
-                + tikz.export_document(options)
+                "% Diagram topology too complex for blox macros.\n"
+                "% Falling back to raw TikZ.\n\n" + tikz.export_document(options)
             )
 
         from lib.export.tikz_exporter import TikZExporter
+
         exporter = TikZExporter(self.blocks_list, self.line_list)
         if self.standalone_radio.isChecked():
             return exporter.export_document(options)
@@ -295,12 +325,11 @@ class TikZExportDialog(QDialog):
 
     def _browse_file(self):
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Save TikZ File", self.path_edit.text(),
-            "TeX files (*.tex);;All files (*)"
+            self, "Save TikZ File", self.path_edit.text(), "TeX files (*.tex);;All files (*)"
         )
         if filepath:
-            if not filepath.lower().endswith('.tex'):
-                filepath += '.tex'
+            if not filepath.lower().endswith(".tex"):
+                filepath += ".tex"
             self.path_edit.setText(filepath)
             self._path_confirmed_via_dialog = True
 
@@ -322,20 +351,21 @@ class TikZExportDialog(QDialog):
         # The save dialog already confirms overwrite; a typed/default path does not.
         if not self._path_confirmed_via_dialog and os.path.exists(filepath):
             reply = QMessageBox.question(
-                self, "Overwrite File?",
+                self,
+                "Overwrite File?",
                 f"The file already exists:\n{filepath}\n\nOverwrite it?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
             )
             if reply != QMessageBox.Yes:
                 return
 
         try:
             tikz_code = self._generate_tikz()
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(tikz_code)
             QMessageBox.information(
-                self, "Export Complete",
-                f"TikZ diagram exported to:\n{filepath}"
+                self, "Export Complete", f"TikZ diagram exported to:\n{filepath}"
             )
             self.accept()
         except Exception as e:

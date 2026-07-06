@@ -55,9 +55,11 @@ from PyQt5.QtGui import QColor
 # Helpers (mirrored from test_feedback_loop.py)
 # ---------------------------------------------------------------------------
 
+
 def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
     """Create a DBlock with minimal boilerplate."""
     from lib.simulation.block import DBlock
+
     return DBlock(
         block_fn=block_fn,
         sid=sid,
@@ -74,6 +76,7 @@ def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):
 def _make_line(sid, src, srcport, dst, dstport):
     """Create a DLine."""
     from lib.simulation.connection import DLine
+
     return DLine(
         sid=sid,
         srcblock=src,
@@ -94,14 +97,12 @@ def _run_compiled(blocks, lines, t_end=20.0):
     from scipy.integrate import solve_ivp
 
     compiler = SystemCompiler()
-    model_func, y0, state_map, block_matrices = compiler.compile_system(
-        blocks, blocks, lines
-    )
+    model_func, y0, state_map, block_matrices = compiler.compile_system(blocks, blocks, lines)
     sol = solve_ivp(
         model_func,
         (0, t_end),
         y0,
-        method='RK45',
+        method="RK45",
         t_eval=np.linspace(0, t_end, 2000),
         rtol=1e-8,
         atol=1e-10,
@@ -113,6 +114,7 @@ def _run_compiled(blocks, lines, t_end=20.0):
 # ---------------------------------------------------------------------------
 # Test class
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.regression
 class TestFeedthroughBug:
@@ -141,22 +143,24 @@ class TestFeedthroughBug:
         after the fix.
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',    0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn', 0, '', 1, 1, {'numerator': [2.0, 1.0], 'denominator': [1.0, 0.0]}),
-            _make_block('TranFn', 1, '', 1, 1, {'numerator': [1.0],       'denominator': [1.0, 1.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block(
+                "TranFn", 0, "", 1, 1, {"numerator": [2.0, 1.0], "denominator": [1.0, 0.0]}
+            ),
+            _make_block("TranFn", 1, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
         ]
         lines = [
-            _make_line(0, 'step0',   0, 'sum0',    0),
-            _make_line(1, 'sum0',    0, 'tranfn0',  0),
-            _make_line(2, 'tranfn0', 0, 'tranfn1',  0),
-            _make_line(3, 'tranfn1', 0, 'sum0',    1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "tranfn1", 0),
+            _make_line(3, "tranfn1", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=20.0)
 
-        assert 'tranfn1' in state_map, "plant TranFn should have compiled state"
-        start, _ = state_map['tranfn1']
+        assert "tranfn1" in state_map, "plant TranFn should have compiled state"
+        start, _ = state_map["tranfn1"]
         # D=0 plant: output = C*x = state
         final_value = sol.y[start, -1]
 
@@ -181,25 +185,27 @@ class TestFeedthroughBug:
         manifest in this test.
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',    0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn', 0, '', 1, 1, {'numerator': [2.0, 1.0], 'denominator': [1.0, 10.0]}),
-            _make_block('TranFn', 1, '', 1, 1, {'numerator': [1.0],       'denominator': [1.0,  1.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block(
+                "TranFn", 0, "", 1, 1, {"numerator": [2.0, 1.0], "denominator": [1.0, 10.0]}
+            ),
+            _make_block("TranFn", 1, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
         ]
         lines = [
-            _make_line(0, 'step0',   0, 'sum0',    0),
-            _make_line(1, 'sum0',    0, 'tranfn0',  0),
-            _make_line(2, 'tranfn0', 0, 'tranfn1',  0),
-            _make_line(3, 'tranfn1', 0, 'sum0',    1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "tranfn1", 0),
+            _make_line(3, "tranfn1", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=30.0)
 
-        assert 'tranfn1' in state_map
-        start, _ = state_map['tranfn1']
+        assert "tranfn1" in state_map
+        start, _ = state_map["tranfn1"]
         final_value = sol.y[start, -1]
 
-        expected_ss = 1.0 / 11.0   # ≈ 0.0909
+        expected_ss = 1.0 / 11.0  # ≈ 0.0909
         assert abs(final_value - expected_ss) < 0.005, (
             f"Lead+plant CL SS should be ~{expected_ss:.4f}, got {final_value:.4f}"
         )
@@ -219,21 +225,27 @@ class TestFeedthroughBug:
         by the PID executor before tranfn0 reads it.  Bug does not manifest here.
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('PID',    0, '', 2, 1, {'Kp': 2.0, 'Ki': 1.0, 'Kd': 0.0, 'N': 20.0,
-                                                 'u_min': -1e9, 'u_max': 1e9}),
-            _make_block('TranFn', 0, '', 1, 1, {'numerator': [1.0], 'denominator': [1.0, 1.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block(
+                "PID",
+                0,
+                "",
+                2,
+                1,
+                {"Kp": 2.0, "Ki": 1.0, "Kd": 0.0, "N": 20.0, "u_min": -1e9, "u_max": 1e9},
+            ),
+            _make_block("TranFn", 0, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
         ]
         lines = [
-            _make_line(0, 'step0',   0, 'pid0',   0),   # setpoint
-            _make_line(1, 'tranfn0', 0, 'pid0',   1),   # measurement (feedback)
-            _make_line(2, 'pid0',    0, 'tranfn0', 0),
+            _make_line(0, "step0", 0, "pid0", 0),  # setpoint
+            _make_line(1, "tranfn0", 0, "pid0", 1),  # measurement (feedback)
+            _make_line(2, "pid0", 0, "tranfn0", 0),
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=20.0)
 
-        assert 'tranfn0' in state_map
-        start, _ = state_map['tranfn0']
+        assert "tranfn0" in state_map
+        start, _ = state_map["tranfn0"]
         # D=0 plant: output = state
         final_value = sol.y[start, -1]
 
@@ -263,24 +275,26 @@ class TestFeedthroughBug:
         EXPECTED: FAIL before the feedthrough fix, PASS after the fix.
         """
         blocks = [
-            _make_block('Step',       0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',        0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn',     0, '', 1, 1, {'numerator': [2.0, 1.0], 'denominator': [1.0, 0.0]}),
-            _make_block('Saturation', 0, '', 1, 1, {'min': -100.0, 'max': 100.0}),
-            _make_block('TranFn',     1, '', 1, 1, {'numerator': [1.0], 'denominator': [1.0, 1.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block(
+                "TranFn", 0, "", 1, 1, {"numerator": [2.0, 1.0], "denominator": [1.0, 0.0]}
+            ),
+            _make_block("Saturation", 0, "", 1, 1, {"min": -100.0, "max": 100.0}),
+            _make_block("TranFn", 1, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
         ]
         lines = [
-            _make_line(0, 'step0',        0, 'sum0',        0),
-            _make_line(1, 'sum0',         0, 'tranfn0',      0),
-            _make_line(2, 'tranfn0',      0, 'saturation0',  0),
-            _make_line(3, 'saturation0',  0, 'tranfn1',      0),
-            _make_line(4, 'tranfn1',      0, 'sum0',        1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "saturation0", 0),
+            _make_line(3, "saturation0", 0, "tranfn1", 0),
+            _make_line(4, "tranfn1", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=20.0)
 
-        assert 'tranfn1' in state_map
-        start, _ = state_map['tranfn1']
+        assert "tranfn1" in state_map
+        start, _ = state_map["tranfn1"]
         final_value = sol.y[start, -1]
 
         expected_ss = 1.0
@@ -306,27 +320,26 @@ class TestFeedthroughBug:
         tf2ss([2,1],[1,10]) = A=[[-10]], B=[[1]], C=[[-19]], D=[[2]]
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1,
-                        {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',    0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn', 0, '', 1, 1,
-                        {'numerator': [2.0, 1.0], 'denominator': [1.0, 10.0]}),
-            _make_block('Gain',   0, '', 1, 1, {'gain': 1.0}),
-            _make_block('TranFn', 1, '', 1, 1,
-                        {'numerator': [1.0], 'denominator': [1.0, 1.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block(
+                "TranFn", 0, "", 1, 1, {"numerator": [2.0, 1.0], "denominator": [1.0, 10.0]}
+            ),
+            _make_block("Gain", 0, "", 1, 1, {"gain": 1.0}),
+            _make_block("TranFn", 1, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
         ]
 
         lines = [
-            _make_line(0, 'step0',   0, 'sum0',    0),
-            _make_line(1, 'sum0',    0, 'tranfn0', 0),
-            _make_line(2, 'tranfn0', 0, 'gain0',   0),
-            _make_line(3, 'gain0',   0, 'tranfn1', 0),
-            _make_line(4, 'tranfn1', 0, 'sum0',    1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "gain0", 0),
+            _make_line(3, "gain0", 0, "tranfn1", 0),
+            _make_line(4, "tranfn1", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=10.0)
 
-        start1, _ = state_map['tranfn1']
+        start1, _ = state_map["tranfn1"]
         final_output = sol.y[start1, -1]
 
         expected_ss = 1.0 / 11.0  # ~0.0909
@@ -346,20 +359,20 @@ class TestFeedthroughBug:
         Pre-population is exact for D=0 blocks; this test must always pass.
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1, {'value': 8.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',    0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn', 0, '', 1, 1, {'numerator': [1.0], 'denominator': [1.0, 0.2]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 8.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block("TranFn", 0, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 0.2]}),
         ]
         lines = [
-            _make_line(0, 'step0',   0, 'sum0',   0),
-            _make_line(1, 'sum0',    0, 'tranfn0', 0),
-            _make_line(2, 'tranfn0', 0, 'sum0',   1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=50.0)
 
-        assert 'tranfn0' in state_map
-        start, _ = state_map['tranfn0']
+        assert "tranfn0" in state_map
+        start, _ = state_map["tranfn0"]
         final_value = sol.y[start, -1]
 
         expected_ss = 8.0 / 1.2  # ≈ 6.667
@@ -384,24 +397,26 @@ class TestFeedthroughBug:
         the next reads.  Bug does not manifest.
         """
         blocks = [
-            _make_block('Step',   0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'}, b_type=0),
-            _make_block('Sum',    0, '', 2, 1, {'sign': '+-'}),
-            _make_block('TranFn', 0, '', 1, 1, {'numerator': [2.0, 1.0], 'denominator': [1.0, 0.0]}),
-            _make_block('TranFn', 1, '', 1, 1, {'numerator': [1.0],       'denominator': [1.0, 1.0]}),
-            _make_block('TranFn', 2, '', 1, 1, {'numerator': [1.0],       'denominator': [1.0, 0.0]}),
+            _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}, b_type=0),
+            _make_block("Sum", 0, "", 2, 1, {"sign": "+-"}),
+            _make_block(
+                "TranFn", 0, "", 1, 1, {"numerator": [2.0, 1.0], "denominator": [1.0, 0.0]}
+            ),
+            _make_block("TranFn", 1, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 1.0]}),
+            _make_block("TranFn", 2, "", 1, 1, {"numerator": [1.0], "denominator": [1.0, 0.0]}),
         ]
         lines = [
-            _make_line(0, 'step0',   0, 'sum0',    0),
-            _make_line(1, 'sum0',    0, 'tranfn0',  0),
-            _make_line(2, 'tranfn0', 0, 'tranfn1',  0),
-            _make_line(3, 'tranfn1', 0, 'tranfn2',  0),
-            _make_line(4, 'tranfn2', 0, 'sum0',    1),  # feedback
+            _make_line(0, "step0", 0, "sum0", 0),
+            _make_line(1, "sum0", 0, "tranfn0", 0),
+            _make_line(2, "tranfn0", 0, "tranfn1", 0),
+            _make_line(3, "tranfn1", 0, "tranfn2", 0),
+            _make_line(4, "tranfn2", 0, "sum0", 1),  # feedback
         ]
 
         sol, state_map, _ = _run_compiled(blocks, lines, t_end=30.0)
 
-        assert 'tranfn2' in state_map
-        start, _ = state_map['tranfn2']
+        assert "tranfn2" in state_map
+        start, _ = state_map["tranfn2"]
         # tranfn2 = 1/s (integrator TF): A=[[0]], B=[[1]], C=[[1]], D=[[0]]
         # output = C*x = state
         final_value = sol.y[start, -1]

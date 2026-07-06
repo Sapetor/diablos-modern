@@ -53,7 +53,6 @@ class DSim:
     :type plot_trange: int
 
     """
-    
 
     def __init__(self):
         logger.debug("Initializing DSim with MVC architecture")
@@ -64,6 +63,7 @@ class DSim:
         from lib.services.file_service import FileService
         from lib.services.run_history_service import RunHistoryService
         from lib.diagram_validator import DiagramValidator
+
         self.model = SimulationModel()
         self.engine = SimulationEngine(self.model)
         self.file_service = FileService(self.model)
@@ -114,7 +114,7 @@ class DSim:
         self.scope_plotter = ScopePlotter(self)
         self.outs = []
         self.plotty = None
-        
+
         # Run history service
         self.run_history_service = RunHistoryService()
         self.run_history_service.load_history()
@@ -146,7 +146,6 @@ class DSim:
         Syncs external ports with internal Inport/Outport blocks.
         """
         return self.subsystem_manager.exit_subsystem()
-
 
     def get_current_path(self):
         """
@@ -250,17 +249,16 @@ class DSim:
         """
         :purpose: Creates a button list with all the basic functions available
         """
-        new =  Button('_new_',     ( 40, 10, 40, 40))
-        load = Button('_load_',    (100, 10, 40, 40))
-        save = Button('_save_',    (160, 10, 40, 40))
-        sim =  Button('_play_',    (220, 10, 40, 40))
-        pause = Button('_pause_',  (280, 10, 40, 40))
-        stop = Button('_stop_',    (340, 10, 40, 40))
-        rplt = Button('_plot_',    (400, 10, 40, 40), active=False)
-        capt = Button('_capture_', (460, 10, 40, 40))
+        new = Button("_new_", (40, 10, 40, 40))
+        load = Button("_load_", (100, 10, 40, 40))
+        save = Button("_save_", (160, 10, 40, 40))
+        sim = Button("_play_", (220, 10, 40, 40))
+        pause = Button("_pause_", (280, 10, 40, 40))
+        stop = Button("_stop_", (340, 10, 40, 40))
+        rplt = Button("_plot_", (400, 10, 40, 40), active=False)
+        capt = Button("_capture_", (460, 10, 40, 40))
 
         self.buttons_list = [new, load, save, sim, pause, stop, rplt, capt]
-
 
     ##### ADD OR REMOVE BLOCKS AND LINES #####
 
@@ -269,6 +267,7 @@ class DSim:
         new_block = self.model.add_block(block, m_pos)
         self.dirty = self.model.dirty
         return new_block
+
     def add_line(self, srcData, dstData):
         """Add a connection line between two blocks. Delegates to model."""
         new_line = self.model.add_line(srcData, dstData)
@@ -300,26 +299,24 @@ class DSim:
         """
         # Sync parameters to file_service
         sim_params = {
-            'sim_time': self.sim_time,
-            'sim_dt': self.sim_dt,
-            'plot_trange': self.plot_trange,
-            'solver_method': self.solver_method,
-            'rtol': self.rtol,
-            'atol': self.atol,
+            "sim_time": self.sim_time,
+            "sim_dt": self.sim_dt,
+            "plot_trange": self.plot_trange,
+            "solver_method": self.solver_method,
+            "rtol": self.rtol,
+            "atol": self.atol,
         }
         self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
         self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
-        
+
         result = self.file_service.save(
-            autosave=autosave,
-            modern_ui_data=modern_ui_data,
-            sim_params=sim_params
+            autosave=autosave, modern_ui_data=modern_ui_data, sim_params=sim_params
         )
-        
+
         # Sync filename back for backward compatibility
         if result == 0 and not autosave:
             self.filename = self.file_service.filename
-            
+
         return result
 
     def serialize(self, modern_ui_data: Optional[Dict] = None) -> Dict[str, Any]:
@@ -328,12 +325,12 @@ class DSim:
         Used by DiagramService.
         """
         sim_params = {
-            'sim_time': self.sim_time,
-            'sim_dt': self.sim_dt,
-            'plot_trange': self.plot_trange,
-            'solver_method': self.solver_method,
-            'rtol': self.rtol,
-            'atol': self.atol,
+            "sim_time": self.sim_time,
+            "sim_dt": self.sim_dt,
+            "plot_trange": self.plot_trange,
+            "solver_method": self.solver_method,
+            "rtol": self.rtol,
+            "atol": self.atol,
         }
         return self.file_service.serialize(modern_ui_data, sim_params)
 
@@ -343,18 +340,17 @@ class DSim:
         Used by DiagramService.
         """
         sim_params = self.file_service.apply_loaded_data(data)
-        
+
         # Sync simulation parameters back to DSim
-        self.sim_time = sim_params.get('sim_time', 1.0)
-        self.sim_dt = sim_params.get('sim_dt', 0.01)
-        self.plot_trange = sim_params.get('plot_trange', 100)
-        self.solver_method = sim_params.get('solver_method', 'RK45')
-        self.rtol = sim_params.get('rtol', 1e-9)
-        self.atol = sim_params.get('atol', 1e-12)
+        self.sim_time = sim_params.get("sim_time", 1.0)
+        self.sim_dt = sim_params.get("sim_dt", 0.01)
+        self.plot_trange = sim_params.get("plot_trange", 100)
+        self.solver_method = sim_params.get("solver_method", "RK45")
+        self.rtol = sim_params.get("rtol", 1e-9)
+        self.atol = sim_params.get("atol", 1e-12)
         self.ss_count = 0
         self.filename = self.file_service.filename
         return sim_params
-
 
     def open(self) -> Optional[Dict]:
         """
@@ -364,17 +360,17 @@ class DSim:
             modern_ui_data dict if present in file, None otherwise
         """
         data = self.file_service.load()
-        
+
         if data is None:
             return None
-            
+
         version = data.get("version", "1.0")
         if version != "2.0":
             logger.warning(f"Loading file version {version}, current is 2.0")
-        
+
         # Apply loaded data using internal deserialize which handles syncing
         self.deserialize(data)
-        
+
         return data.get("modern_ui_data")
 
     def clear_all(self):
@@ -391,10 +387,10 @@ class DSim:
         self.only_one = False
         self.enable_line_selection = False
         self.ss_count = 0
-        self.filename = 'data.dat'
+        self.filename = "data.dat"
         self.sim_time = 1.0
         self.sim_dt = 0.01
-        self.solver_method = 'RK45'
+        self.solver_method = "RK45"
         self.rtol = 1e-9
         self.atol = 1e-12
         self.plot_trange = 100
@@ -402,7 +398,6 @@ class DSim:
 
         # The compiled RHS cached for the old diagram no longer applies.
         self.engine.clear_compile_cache()
-
 
     ##### DIAGRAM EXECUTION #####
 
@@ -412,7 +407,9 @@ class DSim:
         :description: The first step in order to be able to perform a network simulation, is to have the execution data. These are mainly simulation time and sampling period, but we also ask for variables needed for the graphs.
         """
         dialog = SimulationDialog(
-            self.sim_time, self.sim_dt, self.plot_trange,
+            self.sim_time,
+            self.sim_dt,
+            self.plot_trange,
             solver_method=self.solver_method,
             rtol=self.rtol,
             atol=self.atol,
@@ -420,14 +417,14 @@ class DSim:
         if dialog.exec_() == QDialog.Accepted:
             try:
                 values = dialog.get_values()
-                self.sim_time = values['sim_time']
-                self.sim_dt = values['sim_dt']
-                self.plot_trange = values['plot_trange']
-                self.dynamic_plot = values['dynamic_plot']
-                self.real_time = values['real_time']
-                self.solver_method = values.get('solver_method', self.solver_method)
-                self.rtol = values.get('rtol', self.rtol)
-                self.atol = values.get('atol', self.atol)
+                self.sim_time = values["sim_time"]
+                self.sim_dt = values["sim_dt"]
+                self.plot_trange = values["plot_trange"]
+                self.dynamic_plot = values["dynamic_plot"]
+                self.real_time = values["real_time"]
+                self.solver_method = values.get("solver_method", self.solver_method)
+                self.rtol = values.get("rtol", self.rtol)
+                self.atol = values.get("atol", self.atol)
                 return self.sim_time
             except ValueError:
                 logger.warning("Invalid input. Using default values.")
@@ -450,16 +447,18 @@ class DSim:
             # Resolve parameters using WorkspaceManager
             block.exec_params = workspace_manager.resolve_params(block.params)
             # Copy internal parameters that start with '_'
-            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith('_')})
+            block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
 
             # Dynamically set b_type for Transfer Functions (delegated to engine)
             self.engine.set_block_type(block)
 
-            block.exec_params['dtime'] = sim_dt
+            block.exec_params["dtime"] = sim_dt
 
             # Reload external data
             try:
-                if block.block_fn == 'External':  # Check explicitly or reload_external_data handles it
+                if (
+                    block.block_fn == "External"
+                ):  # Check explicitly or reload_external_data handles it
                     missing_file_flag = block.reload_external_data()
                     if missing_file_flag == 1:
                         msg = f"Missing external file for block: {block.name}"
@@ -473,7 +472,7 @@ class DSim:
                 return False
 
             # Recurse if subsystem
-            if getattr(block, 'block_type', '') == 'Subsystem':
+            if getattr(block, "block_type", "") == "Subsystem":
                 if self._resolve_block_params(block.sub_blocks, workspace_manager, sim_dt) is False:
                     return False
         return True
@@ -487,11 +486,15 @@ class DSim:
             logger.debug("Starting execution initialization...")
             # The class containing the functions for the execution is called
 
-            self.execution_stop = False                         # Prevent execution from stopping before executing in error
-            self.error_msg = ""                                 # Clear any previous error message
-            self.time_step = 0                                  # First iteration of the time which will be incrementing self.sim_dt seconds
-            self._timeline_list = [self.time_step]              # Accumulate as list, convert to np.array when done
-            self.timeline = np.array([self.time_step])          # Also keep np version for compatibility
+            self.execution_stop = False  # Prevent execution from stopping before executing in error
+            self.error_msg = ""  # Clear any previous error message
+            self.time_step = (
+                0  # First iteration of the time which will be incrementing self.sim_dt seconds
+            )
+            self._timeline_list = [
+                self.time_step
+            ]  # Accumulate as list, convert to np.array when done
+            self.timeline = np.array([self.time_step])  # Also keep np version for compatibility
 
             # Some parameters are initialized including the maximum simulation time.
             self.execution_time = self.execution_init_time()
@@ -518,14 +521,15 @@ class DSim:
             logger.debug("Resolving parameters for hierarchy...")
             _t1 = time.time()
             if not self._resolve_block_params(root_blocks, workspace_manager, self.sim_dt):
-                 return False
+                return False
             logger.debug(f"[TIMING] _resolve_block_params: {time.time() - _t1:.3f}s")
 
             logger.debug("Initializing execution...")
 
             # Sync simulation parameters to engine before initialization
             self.engine.update_sim_params(
-                self.sim_time, self.sim_dt,
+                self.sim_time,
+                self.sim_dt,
                 solver_method=self.solver_method,
                 rtol=self.rtol,
                 atol=self.atol,
@@ -542,7 +546,7 @@ class DSim:
             # self.global_computed_list is synced from the engine via property;
             # the engine owns the per-block computation checklist.
 
-            self.reset_execution_data() # Delegates to engine
+            self.reset_execution_data()  # Delegates to engine
             self.execution_time_start = time.time()
             logger.debug("Execution initialization complete")
         except Exception as e:
@@ -554,7 +558,9 @@ class DSim:
         _t3 = time.time()
 
         # Initialization of the progress bar
-        self.pbar = tqdm(desc='SIMULATION PROGRESS', total=int(self.execution_time/self.sim_dt), unit='itr')
+        self.pbar = tqdm(
+            desc="SIMULATION PROGRESS", total=int(self.execution_time / self.sim_dt), unit="itr"
+        )
         self.dirty = False
 
         # Identify memory blocks to correctly solve algebraic loops (delegated to engine)
@@ -593,7 +599,7 @@ class DSim:
 
         # Enable the plot button if there is at least one scope
         for block in self.blocks_list:
-            if block.block_fn == 'Scope':
+            if block.block_fn == "Scope":
                 self.buttons_list[6].active = True
 
         # The dynamic plot function is initialized, if the Boolean is active
@@ -612,7 +618,7 @@ class DSim:
         self.engine.last_solver_diagnostics = {}
         # FAST SOLVER CHECK
         # Check if fast solver is enabled (default True if attr missing)
-        use_fast = getattr(self, 'use_fast_solver', True)
+        use_fast = getattr(self, "use_fast_solver", True)
 
         _tb1 = time.time()
         compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
@@ -624,35 +630,32 @@ class DSim:
             t_span = (0.0, self.execution_time)
             _tb2 = time.time()
             success = self.engine.run_compiled_simulation(
-                self.blocks_list,
-                self.line_list,
-                t_span,
-                self.sim_dt
+                self.blocks_list, self.line_list, t_span, self.sim_dt
             )
             logger.debug(f"[TIMING] run_compiled_simulation: {time.time() - _tb2:.3f}s")
             if success:
                 logger.info("Fast simulation successful.")
-                
+
                 # Sync timeline from engine (Required for plotting)
                 self.timeline = self.engine.timeline
-                
+
                 # Finalize execution state
                 self.execution_initialized = False
-                
+
                 # Update progress bar to 100%
-                if hasattr(self, 'pbar') and self.pbar:
+                if hasattr(self, "pbar") and self.pbar:
                     self.pbar.n = self.pbar.total
                     self.pbar.last_print_n = self.pbar.total
                     self.pbar.refresh()
                     self.pbar.close()
-                
+
                 # Perform post-simulation tasks normally handled by loop
                 self.export_data()
                 try:
                     self._record_run_history()
                 except Exception as e:
                     logger.warning(f"Failed to record run history: {e}")
-                    
+
                 return
 
         logger.info("System not fully compilable. Using Interpreter Mode.")
@@ -701,7 +704,8 @@ class DSim:
             # interpreter state blocks (TransferFunction, PID, Integrator)
             # discretize/integrate at 0.01 regardless of the requested sim_dt.
             self.engine.update_sim_params(
-                sim_time, sim_dt,
+                sim_time,
+                sim_dt,
                 solver_method=self.solver_method,
                 rtol=self.rtol,
                 atol=self.atol,
@@ -730,7 +734,7 @@ class DSim:
             self.rk_counter += 1
 
             # Run batch (compiled or interpreter)
-            use_fast = getattr(self, 'use_fast_solver', True)
+            use_fast = getattr(self, "use_fast_solver", True)
             compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
 
             if use_fast and compilable:
@@ -776,7 +780,11 @@ class DSim:
                 self.time_step += self.sim_dt
                 self._timeline_list.append(self.time_step)
 
-            current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
+            current_blocks = (
+                self.engine.active_blocks_list
+                if self.engine.active_blocks_list
+                else self.blocks_list
+            )
 
             for block in current_blocks:
                 try:
@@ -787,15 +795,17 @@ class DSim:
                                 self.engine.propagate_outputs(block, held)
                             continue
                         out_value = self.engine.execute_block(block, output_only=True)
-                        if out_value is None or ('E' in out_value and out_value['E']):
-                            self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                        if out_value is None or ("E" in out_value and out_value["E"]):
+                            self.execution_failed(
+                                out_value.get("error", "Unknown") if out_value else "None"
+                            )
                             return
                         # set_held_output / schedule_next_execution are handled
                         # by the hierarchy loop's state-updating execute below.
                         self.engine.propagate_outputs(block, out_value)
 
                     if self.rk45_len and self.rk_counter != 0:
-                        block.params['_skip_'] = True
+                        block.params["_skip_"] = True
                 except Exception as e:
                     logger.error(f"Error executing block {block.name}: {str(e)}")
                     self.execution_failed(f"Error executing block {block.name}: {e}")
@@ -810,11 +820,13 @@ class DSim:
                         progressed = False
                         for block in current_blocks:
                             optional_inputs = set()
-                            if hasattr(block, 'block_instance') and block.block_instance:
-                                if hasattr(block.block_instance, 'optional_inputs'):
+                            if hasattr(block, "block_instance") and block.block_instance:
+                                if hasattr(block.block_instance, "optional_inputs"):
                                     optional_inputs = set(block.block_instance.optional_inputs)
                             required_ports = block.in_ports - len(optional_inputs)
-                            has_enough = block.data_recieved >= required_ports or block.in_ports == 0
+                            has_enough = (
+                                block.data_recieved >= required_ports or block.in_ports == 0
+                            )
 
                             if block.hierarchy == hier and has_enough and not block.computed_data:
                                 progressed = True
@@ -823,17 +835,25 @@ class DSim:
                                     self.engine.update_global_list(block.name, h_value=0)
                                     block.computed_data = True
                                     if block.name not in self.memory_blocks and block.b_type != 3:
-                                        held = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                        held = {
+                                            p: block.get_held_output(p)
+                                            for p in range(block.out_ports)
+                                        }
                                         self.engine.propagate_outputs(block, held)
                                     continue
 
                                 out_value = self.engine.execute_block(block)
                                 if block.name in self.memory_blocks:
-                                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                                        block.exec_params['output'] = block.exec_params['mem']
+                                    if (
+                                        block.block_fn == "Integrator"
+                                        and "mem" in block.exec_params
+                                    ):
+                                        block.exec_params["output"] = block.exec_params["mem"]
 
-                                if out_value is None or ('E' in out_value and out_value['E']):
-                                    self.execution_failed(out_value.get('error', 'Unknown') if out_value else 'None')
+                                if out_value is None or ("E" in out_value and out_value["E"]):
+                                    self.execution_failed(
+                                        out_value.get("error", "Unknown") if out_value else "None"
+                                    )
                                     return
 
                                 if block.effective_sample_time > 0:
@@ -919,7 +939,7 @@ class DSim:
                 self.rk_counter %= 4
                 if self.rk_counter in [1, 3]:
                     self.time_step += self.sim_dt / 2
-                    self.pbar.update(1/2)
+                    self.pbar.update(1 / 2)
                 elif self.rk_counter == 0:
                     self.time_step += self.sim_dt
                     self.pbar.update(1)
@@ -931,8 +951,12 @@ class DSim:
 
             # Use the active list from engine (flattened if needed)
             # Fallback to local list if engine not ready (though it should be)
-            current_blocks = self.engine.active_blocks_list if self.engine.active_blocks_list else self.blocks_list
-            
+            current_blocks = (
+                self.engine.active_blocks_list
+                if self.engine.active_blocks_list
+                else self.blocks_list
+            )
+
             for block in current_blocks:
                 try:
                     if block.name in self.memory_blocks:
@@ -940,15 +964,21 @@ class DSim:
                         if not block.should_execute(self.time_step):
                             # Propagate held outputs instead of executing
                             if block.b_type != 3:
-                                held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                held_outputs = {
+                                    p: block.get_held_output(p) for p in range(block.out_ports)
+                                }
                                 self.engine.propagate_outputs(block, held_outputs)
                             continue
 
                         # Execute memory blocks with output_only=True using engine
                         out_value = self.engine.execute_block(block, output_only=True)
 
-                        if out_value is None or ('E' in out_value and out_value['E']):
-                            self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
+                        if out_value is None or ("E" in out_value and out_value["E"]):
+                            self.execution_failed(
+                                out_value.get("error", "Unknown error")
+                                if out_value
+                                else "Block returned None"
+                            )
                             return
 
                         # Propagate outputs to children. set_held_output and
@@ -960,7 +990,7 @@ class DSim:
                         self.engine.propagate_outputs(block, out_value)
 
                     if self.rk45_len and self.rk_counter != 0:
-                        block.params['_skip_'] = True
+                        block.params["_skip_"] = True
                 except Exception as e:
                     logger.error(f"Error executing block {block.name}: {str(e)}")
                     self.execution_failed(f"Error executing block {block.name}: {e}")
@@ -987,14 +1017,20 @@ class DSim:
                         for block in current_blocks:
                             # Check if block has enough required inputs (accounting for optional inputs)
                             optional_inputs = set()
-                            if hasattr(block, 'block_instance') and block.block_instance:
-                                if hasattr(block.block_instance, 'optional_inputs'):
+                            if hasattr(block, "block_instance") and block.block_instance:
+                                if hasattr(block.block_instance, "optional_inputs"):
                                     optional_inputs = set(block.block_instance.optional_inputs)
                             required_ports = block.in_ports - len(optional_inputs)
-                            has_enough_inputs = block.data_recieved >= required_ports or block.in_ports == 0
+                            has_enough_inputs = (
+                                block.data_recieved >= required_ports or block.in_ports == 0
+                            )
 
                             # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
-                            if block.hierarchy == hier and has_enough_inputs and not block.computed_data:
+                            if (
+                                block.hierarchy == hier
+                                and has_enough_inputs
+                                and not block.computed_data
+                            ):
                                 progressed = True
                                 outer_progressed = True
                                 # Multi-rate: Check if discrete block should execute at this time
@@ -1003,7 +1039,10 @@ class DSim:
                                     self.engine.update_global_list(block.name, h_value=0)
                                     block.computed_data = True
                                     if block.name not in self.memory_blocks and block.b_type != 3:
-                                        held_outputs = {p: block.get_held_output(p) for p in range(block.out_ports)}
+                                        held_outputs = {
+                                            p: block.get_held_output(p)
+                                            for p in range(block.out_ports)
+                                        }
                                         self.engine.propagate_outputs(block, held_outputs)
                                     continue
 
@@ -1012,12 +1051,19 @@ class DSim:
 
                                 # After execution, for memory blocks, update the 'output' state for the next step
                                 if block.name in self.memory_blocks:
-                                    if block.block_fn == 'Integrator' and 'mem' in block.exec_params:
-                                        block.exec_params['output'] = block.exec_params['mem']
+                                    if (
+                                        block.block_fn == "Integrator"
+                                        and "mem" in block.exec_params
+                                    ):
+                                        block.exec_params["output"] = block.exec_params["mem"]
 
                                 # It is checked that the function has not delivered an error
-                                if out_value is None or ('E' in out_value and out_value['E']):
-                                    self.execution_failed(out_value.get('error', 'Unknown error') if out_value else 'Block returned None')
+                                if out_value is None or ("E" in out_value and out_value["E"]):
+                                    self.execution_failed(
+                                        out_value.get("error", "Unknown error")
+                                        if out_value
+                                        else "Block returned None"
+                                    )
                                     return
 
                                 # Multi-rate: Store outputs and schedule next execution for discrete blocks
@@ -1046,9 +1092,9 @@ class DSim:
 
             # It is checked if the total simulation (execution) time has been exceeded to end the loop
             if self.time_step > self.execution_time:  # seconds
-                self.timeline = np.array(self._timeline_list)       # Convert list to numpy array
-                self.execution_initialized = False                  # The execution loop is terminated
-                self.pbar.close()                                   # The progress bar ends
+                self.timeline = np.array(self._timeline_list)  # Convert list to numpy array
+                self.execution_initialized = False  # The execution loop is terminated
+                self.pbar.close()  # The progress bar ends
 
                 # Export
                 self.export_data()
@@ -1070,9 +1116,10 @@ class DSim:
                 logger.debug("*****EXECUTION DONE*****")
 
             self.rk_counter += 1
-        
+
         except Exception as e:
             import traceback
+
             logger.error(f"Error during execution loop: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             self.execution_failed(f"Error during execution loop: {e}")
@@ -1081,10 +1128,10 @@ class DSim:
         """
         :purpose: If an error is found while executing the graph, this function stops all the processes and resets values to the state before execution.
         """
-        self.execution_initialized = False   # Finishes the simulation execution
-        self.reset_memblocks()               # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
-        if hasattr(self, 'pbar'):
-            self.pbar.close()                    # Finishes the progress bar
+        self.execution_initialized = False  # Finishes the simulation execution
+        self.reset_memblocks()  # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
+        if hasattr(self, "pbar"):
+            self.pbar.close()  # Finishes the progress bar
         self.error_msg = msg
         logger.error("*****EXECUTION STOPPED*****")
 
@@ -1098,41 +1145,46 @@ class DSim:
         Logs warnings for potential dimension mismatches (non-fatal).
         """
         warnings = []
-        
+
         for line in self.line_list:
             if line.hidden:
                 continue
-                
+
             # Find source and destination blocks
             src_block = next((b for b in self.blocks_list if b.name == line.srcblock), None)
             dst_block = next((b for b in self.blocks_list if b.name == line.dstblock), None)
-            
+
             if not src_block or not dst_block:
                 continue
-            
+
             # Get expected output width from source block
             src_width = None
-            if hasattr(src_block, 'block_instance') and src_block.block_instance:
-                outputs = getattr(src_block.block_instance, 'outputs', [])
+            if hasattr(src_block, "block_instance") and src_block.block_instance:
+                outputs = getattr(src_block.block_instance, "outputs", [])
                 if line.srcport < len(outputs):
                     port_def = outputs[line.srcport]
                     if isinstance(port_def, dict):
-                        src_width = port_def.get('width', None)
-            
+                        src_width = port_def.get("width", None)
+
             # Get expected input width from destination block
             dst_width = None
-            if hasattr(dst_block, 'block_instance') and dst_block.block_instance:
+            if hasattr(dst_block, "block_instance") and dst_block.block_instance:
                 try:
-                    inputs = (dst_block.block_instance.get_inputs(dst_block.params) 
-                              if hasattr(dst_block.block_instance, 'get_inputs') 
-                              else getattr(dst_block.block_instance, 'inputs', []))
+                    inputs = (
+                        dst_block.block_instance.get_inputs(dst_block.params)
+                        if hasattr(dst_block.block_instance, "get_inputs")
+                        else getattr(dst_block.block_instance, "inputs", [])
+                    )
                     if line.dstport < len(inputs):
                         port_def = inputs[line.dstport]
                         if isinstance(port_def, dict):
-                            dst_width = port_def.get('width', None)
+                            dst_width = port_def.get("width", None)
                 except Exception:
-                    logger.debug("Could not determine destination port width for dimension check", exc_info=True)
-            
+                    logger.debug(
+                        "Could not determine destination port width for dimension check",
+                        exc_info=True,
+                    )
+
             # Check for dimension mismatch (only if both specify a width)
             if src_width is not None and dst_width is not None:
                 if src_width != dst_width and src_width != -1 and dst_width != -1:
@@ -1140,12 +1192,14 @@ class DSim:
                         f"Dimension mismatch: {src_block.name}[{line.srcport}] → "
                         f"{dst_block.name}[{line.dstport}] (width {src_width} → {dst_width})"
                     )
-        
+
         for warning in warnings:
             logger.warning(f"Signal dimension: {warning}")
-        
+
         if warnings:
-            logger.info(f"Signal dimension validation: {len(warnings)} potential mismatch(es) detected")
+            logger.info(
+                f"Signal dimension validation: {len(warnings)} potential mismatch(es) detected"
+            )
         else:
             logger.debug("Signal dimension validation: No mismatches detected")
 
@@ -1161,7 +1215,7 @@ class DSim:
         if selected_blocks is None:
             selected_blocks = [b for b in self.blocks_list if b.selected]
         return self.subsystem_manager.create_subsystem_from_selection(selected_blocks)
-        
+
     def update_global_list(self, block_name, h_value, h_assign=False):
         """Update the global execution list. Delegates to engine."""
         self.engine.update_global_list(block_name, h_value, h_assign)
@@ -1189,8 +1243,6 @@ class DSim:
     def get_outputs(self, block_name):
         """Get output connections for a block. Delegates to SimulationEngine."""
         return self.engine.get_outputs(block_name)
-
-
 
     def children_recognition(self, block_name, children_list):
         """Check if block_name is a child in the children_list. Delegates to engine."""
@@ -1227,58 +1279,59 @@ class DSim:
         # encountered. vec_dict maps label -> 1-D array of length len(timeline).
         vec_dict = {}
         export_toggle = False
-        out_format = 'npz'
+        out_format = "npz"
         for block in self.blocks_list:
-            if block.block_fn == 'Export':
+            if block.block_fn == "Export":
                 export_toggle = True
                 # Last Export block's format wins (diagrams typically have one).
-                out_format = str(block.params.get('format', 'npz')).lower()
-                labels = block.params['vec_labels']
-                vector = block.params['vector']
-                if block.params['vec_dim'] == 1:
+                out_format = str(block.params.get("format", "npz")).lower()
+                labels = block.params["vec_labels"]
+                vector = block.params["vector"]
+                if block.params["vec_dim"] == 1:
                     vec_dict[labels] = vector
-                elif block.params['vec_dim'] > 1:
-                    for i in range(block.params['vec_dim']):
+                elif block.params["vec_dim"] > 1:
+                    for i in range(block.params["vec_dim"]):
                         vec_dict[labels[i]] = vector[:, i]
         if not export_toggle:
             return
 
-        if out_format not in ('npz', 'csv', 'mat'):
-            logger.warning(
-                "Unknown export format '%s'; falling back to 'npz'.", out_format)
-            out_format = 'npz'
+        if out_format not in ("npz", "csv", "mat"):
+            logger.warning("Unknown export format '%s'; falling back to 'npz'.", out_format)
+            out_format = "npz"
 
         # Derive basename without assuming a fixed-length extension
         basename = os.path.splitext(self.filename)[0]
-        export_path = os.path.join('saves', basename)
+        export_path = os.path.join("saves", basename)
         # In frozen mode, redirect saves/ to a writable location (mirrors FileService)
-        if getattr(sys, 'frozen', False) and not os.path.isabs(export_path):
+        if getattr(sys, "frozen", False) and not os.path.isabs(export_path):
             from lib.app_paths import get_user_data_dir
+
             export_path = os.path.join(get_user_data_dir(), export_path)
         # Ensure the target directory exists before writing
-        os.makedirs(os.path.dirname(export_path) or '.', exist_ok=True)
+        os.makedirs(os.path.dirname(export_path) or ".", exist_ok=True)
 
         timeline = np.asarray(self.timeline)
 
-        if out_format == 'npz':
+        if out_format == "npz":
             np.savez(export_path, t=timeline, **vec_dict)
-            out_file = export_path + '.npz'
-        elif out_format == 'csv':
+            out_file = export_path + ".npz"
+        elif out_format == "csv":
             labels = list(vec_dict.keys())
             # Build (N, 1 + n_signals) matrix: time column first, then signals.
             columns = [timeline.reshape(-1)]
             for label in labels:
                 columns.append(np.asarray(vec_dict[label]).reshape(-1))
             data = np.column_stack(columns)
-            header = ','.join(['t'] + [str(label) for label in labels])
-            out_file = export_path + '.csv'
-            np.savetxt(out_file, data, delimiter=',', header=header, comments='')
+            header = ",".join(["t"] + [str(label) for label in labels])
+            out_file = export_path + ".csv"
+            np.savetxt(out_file, data, delimiter=",", header=header, comments="")
         else:  # 'mat'
             from scipy.io import savemat
-            mat_dict = {'t': timeline.reshape(-1)}
+
+            mat_dict = {"t": timeline.reshape(-1)}
             for label, value in vec_dict.items():
                 mat_dict[str(label)] = np.asarray(value).reshape(-1)
-            out_file = export_path + '.mat'
+            out_file = export_path + ".mat"
             savemat(out_file, mat_dict)
 
         logger.info("DATA EXPORTED TO " + out_file)
@@ -1331,7 +1384,7 @@ class DSim:
         # Run optimization
         result = opt_engine.run_optimization(blocks=root_blocks)
 
-        if result.get('success'):
+        if result.get("success"):
             logger.info("Optimization completed successfully!")
             logger.info(f"Optimal cost: {result.get('optimal_cost')}")
             logger.info(f"Optimal parameters: {result.get('optimal_params')}")
@@ -1395,9 +1448,9 @@ class DSim:
                     latex_eqs[name] = str(expr)
 
         return {
-            'equations': equations,
-            'latex': latex_eqs,
-            'input_symbols': input_symbols,
+            "equations": equations,
+            "latex": latex_eqs,
+            "input_symbols": input_symbols,
         }
 
     def extract_transfer_function(self, from_block, to_block):
@@ -1464,16 +1517,14 @@ class DSim:
 
         # Linearize
         result = linearizer.linearize_at_point(
-            operating_point=operating_point,
-            input_blocks=input_blocks,
-            output_blocks=output_blocks
+            operating_point=operating_point, input_blocks=input_blocks, output_blocks=output_blocks
         )
 
         if result is not None:
             # Add controllability/observability
-            A, B, C = result['A'], result['B'], result['C']
-            result['is_controllable'] = linearizer.is_controllable(A, B)
-            result['is_observable'] = linearizer.is_observable(A, C)
+            A, B, C = result["A"], result["B"], result["C"]
+            result["is_controllable"] = linearizer.is_controllable(A, B)
+            result["is_observable"] = linearizer.is_observable(A, C)
 
             logger.info(f"System linearized: {result['n_states']} states")
             logger.info(f"Stable: {result['is_stable']}")
@@ -1510,8 +1561,7 @@ class DSim:
 
         # Export to LaTeX
         latex_doc = sym_engine.export_equations_latex(
-            equations=result['equations'],
-            filename=filename
+            equations=result["equations"], filename=filename
         )
 
         if filename:
@@ -1547,18 +1597,14 @@ class DSim:
             return
 
         self.run_history_service.record_run(
-             timeline=timeline,
-             traces=traces,
-             sim_dt=self.sim_dt,
-             sim_time=self.sim_time
+            timeline=timeline, traces=traces, sim_dt=self.sim_dt, sim_time=self.sim_time
         )
-
 
     @property
     def run_history(self):
         """Delegated property for backward compatibility."""
         return self.run_history_service.history
-    
+
     @run_history.setter
     def run_history(self, value):
         self.run_history_service.history = value
@@ -1592,6 +1638,3 @@ class DSim:
         Delegates to ScopePlotter.
         """
         self.scope_plotter.dynamic_pyqtPlotScope(step)
-
-
-

@@ -12,8 +12,9 @@ from PyQt5.QtCore import QPoint, QRect
 logger = logging.getLogger(__name__)
 
 
-def bezier_control_points(start: QPoint, finish: QPoint,
-                          src_dir: int = 1, dst_dir: int = -1) -> Tuple[QPoint, QPoint]:
+def bezier_control_points(
+    start: QPoint, finish: QPoint, src_dir: int = 1, dst_dir: int = -1
+) -> Tuple[QPoint, QPoint]:
     """Cubic control points for a wire from ``start`` to ``finish``.
 
     The single source of truth shared by the live drag preview
@@ -52,8 +53,16 @@ class DLine:
         selected_segment: Index of selected segment (-1 if whole line selected)
     """
 
-    def __init__(self, sid: int, srcblock: str, srcport: int, dstblock: str, dstport: int,
-                 points: Union[List[QPoint], List[Tuple[int, int]]], hidden: bool = False) -> None:
+    def __init__(
+        self,
+        sid: int,
+        srcblock: str,
+        srcport: int,
+        dstblock: str,
+        dstport: int,
+        points: Union[List[QPoint], List[Tuple[int, int]]],
+        hidden: bool = False,
+    ) -> None:
         """
         Initialize a connection line between two blocks.
 
@@ -77,7 +86,9 @@ class DLine:
         self.srcbottom: int = 0
         self.dstbottom: int = 0
         self.points: List[QPoint] = [
-            QPoint(int(p.x()), int(p.y())) if isinstance(p, QPoint) else QPoint(int(p[0]), int(p[1]))
+            QPoint(int(p.x()), int(p.y()))
+            if isinstance(p, QPoint)
+            else QPoint(int(p[0]), int(p[1]))
             for p in points
         ]
         self.cptr: int = 0
@@ -87,7 +98,9 @@ class DLine:
         self.path: QPainterPath
         self.segments: List[QRect]
         self.routing_mode: str = "bezier"  # "bezier" or "orthogonal"
-        self.path, self.points, self.segments = self.create_trajectory(self.points[0], self.points[1], [])
+        self.path, self.points, self.segments = self.create_trajectory(
+            self.points[0], self.points[1], []
+        )
         self.color: QColor = QColor(0, 0, 0)  # Default to black
         self.label: str = ""  # Connection label for signal names
         self.signal_width: int = 1  # Signal width for MIMO (1=scalar, >1=vector)
@@ -111,18 +124,20 @@ class DLine:
             chosen so the standard, unflipped layout reduces exactly to the
             historic behaviour (``src_dir == +1``, ``dst_dir == -1``).
         """
-        src_dir = 1   # output exits to the right by default
+        src_dir = 1  # output exits to the right by default
         dst_dir = -1  # input entered from the left by default
         for block in blocks_list:
-            if block.name == self.srcblock and getattr(block, 'flipped', False):
+            if block.name == self.srcblock and getattr(block, "flipped", False):
                 # Flipped source: output port sits on the left edge.
                 src_dir = -1
-            if block.name == self.dstblock and getattr(block, 'flipped', False):
+            if block.name == self.dstblock and getattr(block, "flipped", False):
                 # Flipped destination: input port sits on the right edge.
                 dst_dir = 1
         return src_dir, dst_dir
 
-    def _create_orthogonal_route(self, start: QPoint, finish: QPoint, blocks_list: List) -> List[QPoint]:
+    def _create_orthogonal_route(
+        self, start: QPoint, finish: QPoint, blocks_list: List
+    ) -> List[QPoint]:
         """
         Create an orthogonal (Manhattan-style) route from start to finish, avoiding blocks.
 
@@ -144,12 +159,14 @@ class DLine:
             # Don't avoid source and destination blocks
             if block.name in [self.srcblock, self.dstblock]:
                 continue
-            obstacles.append(QRect(
-                block.left - margin,
-                block.top - margin,
-                block.width + 2 * margin,
-                block.height + 2 * margin
-            ))
+            obstacles.append(
+                QRect(
+                    block.left - margin,
+                    block.top - margin,
+                    block.width + 2 * margin,
+                    block.height + 2 * margin,
+                )
+            )
 
         # Derive the real outward stub direction from each port's orientation
         # instead of assuming output->+x / input->-x. This keeps feedback,
@@ -178,7 +195,9 @@ class DLine:
                 bottom_point = QPoint(out_point.x(), src_block.top + src_block.height + clearance)
                 in_point = QPoint(finish.x() + dst_dir * clearance, bottom_point.y())
 
-                waypoints.extend([out_point, bottom_point, in_point, QPoint(in_point.x(), finish.y())])
+                waypoints.extend(
+                    [out_point, bottom_point, in_point, QPoint(in_point.x(), finish.y())]
+                )
             else:
                 # Fallback: simple mid-point routing
                 mid_x = int((start.x() + finish.x()) / 2)
@@ -206,8 +225,8 @@ class DLine:
                 # Route around the obstacle
                 # Try routing above or below
                 route_above = True
-                min_obstacle_top = float('inf')
-                max_obstacle_bottom = float('-inf')
+                min_obstacle_top = float("inf")
+                max_obstacle_bottom = float("-inf")
 
                 for obstacle in obstacles:
                     if obstacle.left() <= mid_x <= obstacle.right():
@@ -215,7 +234,7 @@ class DLine:
                         max_obstacle_bottom = max(max_obstacle_bottom, obstacle.bottom())
 
                 # Decide whether to route above or below
-                if min_obstacle_top != float('inf'):
+                if min_obstacle_top != float("inf"):
                     space_above = min_obstacle_top - start.y()
                     space_below = finish.y() - max_obstacle_bottom
                     route_above = space_above > space_below
@@ -223,24 +242,28 @@ class DLine:
                 # Stub away from each port along its facing side.
                 src_stub_x = start.x() + src_dir * 20
                 dst_stub_x = finish.x() + dst_dir * 20
-                if route_above and min_obstacle_top != float('inf'):
+                if route_above and min_obstacle_top != float("inf"):
                     # Route above obstacles
                     detour_y = min_obstacle_top - margin
-                    waypoints.extend([
-                        QPoint(src_stub_x, start.y()),
-                        QPoint(src_stub_x, detour_y),
-                        QPoint(dst_stub_x, detour_y),
-                        QPoint(dst_stub_x, finish.y())
-                    ])
-                elif max_obstacle_bottom != float('-inf'):
+                    waypoints.extend(
+                        [
+                            QPoint(src_stub_x, start.y()),
+                            QPoint(src_stub_x, detour_y),
+                            QPoint(dst_stub_x, detour_y),
+                            QPoint(dst_stub_x, finish.y()),
+                        ]
+                    )
+                elif max_obstacle_bottom != float("-inf"):
                     # Route below obstacles
                     detour_y = max_obstacle_bottom + margin
-                    waypoints.extend([
-                        QPoint(src_stub_x, start.y()),
-                        QPoint(src_stub_x, detour_y),
-                        QPoint(dst_stub_x, detour_y),
-                        QPoint(dst_stub_x, finish.y())
-                    ])
+                    waypoints.extend(
+                        [
+                            QPoint(src_stub_x, start.y()),
+                            QPoint(src_stub_x, detour_y),
+                            QPoint(dst_stub_x, detour_y),
+                            QPoint(dst_stub_x, finish.y()),
+                        ]
+                    )
                 else:
                     # Fallback to simple routing
                     waypoints.extend([QPoint(mid_x, start.y()), QPoint(mid_x, finish.y())])
@@ -248,9 +271,9 @@ class DLine:
         waypoints.append(finish)
         return waypoints
 
-    def _create_bezier_path(self, start: QPoint, finish: QPoint,
-                            src_dir: int, dst_dir: int
-                            ) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
+    def _create_bezier_path(
+        self, start: QPoint, finish: QPoint, src_dir: int, dst_dir: int
+    ) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
         """
         Build a true cubic-bezier trajectory matching the live drag preview.
 
@@ -284,8 +307,13 @@ class DLine:
         segments = [QRect(start, finish).normalized()]
         return path, all_points, segments
 
-    def create_trajectory(self, start: QPoint, finish: QPoint, blocks_list: List,
-                         points: Optional[List[QPoint]] = None) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
+    def create_trajectory(
+        self,
+        start: QPoint,
+        finish: QPoint,
+        blocks_list: List,
+        points: Optional[List[QPoint]] = None,
+    ) -> Tuple[QPainterPath, List[QPoint], List[QRect]]:
         """
         Create a trajectory between start and finish points using the selected routing mode.
 
@@ -349,9 +377,9 @@ class DLine:
         if len(all_points) > 0:
             clean_points.append(all_points[0])
             for i in range(1, len(all_points) - 1):
-                p1 = all_points[i-1]
+                p1 = all_points[i - 1]
                 p2 = all_points[i]
-                p3 = all_points[i+1]
+                p3 = all_points[i + 1]
                 if (p1.x() == p2.x() == p3.x()) or (p1.y() == p2.y() == p3.y()):
                     continue
                 clean_points.append(p2)
@@ -391,7 +419,7 @@ class DLine:
                 # Check if direction changes (horizontal to vertical or vice versa)
                 this_is_horizontal = abs(dx) > abs(dy)
                 next_is_horizontal = abs(next_dx) > abs(next_dy)
-                should_curve_at_end = (this_is_horizontal != next_is_horizontal)
+                should_curve_at_end = this_is_horizontal != next_is_horizontal
 
             if should_curve_at_end:
                 # Calculate how much space we have for the curve
@@ -402,13 +430,13 @@ class DLine:
                     # Horizontal segment
                     pre_corner = QPoint(
                         next_point.x() - int(available_space * (1 if dx > 0 else -1)),
-                        next_point.y()
+                        next_point.y(),
                     )
                 else:
                     # Vertical segment
                     pre_corner = QPoint(
                         next_point.x(),
-                        next_point.y() - int(available_space * (1 if dy > 0 else -1))
+                        next_point.y() - int(available_space * (1 if dy > 0 else -1)),
                     )
 
                 path.lineTo(pre_corner)
@@ -417,19 +445,21 @@ class DLine:
                 # Peek at next segment to determine curve direction
                 next_segment_dx = next_dx
                 next_segment_dy = next_dy
-                next_available = min(max(abs(next_segment_dx), abs(next_segment_dy)) / 2, corner_radius)
+                next_available = min(
+                    max(abs(next_segment_dx), abs(next_segment_dy)) / 2, corner_radius
+                )
 
                 if abs(next_segment_dx) > abs(next_segment_dy):
                     # Next segment is horizontal
                     post_corner = QPoint(
                         next_point.x() + int(next_available * (1 if next_segment_dx > 0 else -1)),
-                        next_point.y()
+                        next_point.y(),
                     )
                 else:
                     # Next segment is vertical
                     post_corner = QPoint(
                         next_point.x(),
-                        next_point.y() + int(next_available * (1 if next_segment_dy > 0 else -1))
+                        next_point.y() + int(next_available * (1 if next_segment_dy > 0 else -1)),
                     )
 
                 # Create smooth quadratic curve through the corner
@@ -467,10 +497,12 @@ class DLine:
             if start and end:
                 # No-op when endpoints haven't actually moved: avoids discarding
                 # custom routing (autoroute, manual edits) on click-with-no-drag.
-                if (self.path is not None
-                        and len(self.points) >= 2
-                        and self.points[0] == start
-                        and self.points[-1] == end):
+                if (
+                    self.path is not None
+                    and len(self.points) >= 2
+                    and self.points[0] == start
+                    and self.points[-1] == end
+                ):
                     return
 
                 logger.debug(f"start: {start}, end: {end}")
@@ -483,13 +515,17 @@ class DLine:
                         start, end, blocks_list, points=self.points
                     )
                 else:
-                    self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
+                    self.path, self.points, self.segments = self.create_trajectory(
+                        start, end, blocks_list
+                    )
                     self.modified = False
 
-
-
-    def collision(self, m_coords: Union[QPoint, Tuple[int, int]], point_radius: int = 5,
-                  line_threshold: int = 5) -> Optional[Tuple[str, int]]:
+    def collision(
+        self,
+        m_coords: Union[QPoint, Tuple[int, int]],
+        point_radius: int = 5,
+        line_threshold: int = 5,
+    ) -> Optional[Tuple[str, int]]:
         if isinstance(m_coords, tuple):
             m_coords = QPoint(*m_coords)
 
@@ -501,10 +537,15 @@ class DLine:
         # Check for segment collision
         for i in range(len(self.points) - 1):
             p1 = self.points[i]
-            p2 = self.points[i+1]
+            p2 = self.points[i + 1]
 
             # Bounding box check
-            if not QRect(p1, p2).normalized().adjusted(-line_threshold, -line_threshold, line_threshold, line_threshold).contains(m_coords):
+            if (
+                not QRect(p1, p2)
+                .normalized()
+                .adjusted(-line_threshold, -line_threshold, line_threshold, line_threshold)
+                .contains(m_coords)
+            ):
                 continue
 
             # Distance from point to line segment
@@ -513,7 +554,7 @@ class DLine:
 
             # Use a single consistent metric (true Euclidean distance) in both
             # branches so the comparison against line_threshold has uniform units.
-            length_squared = v.x()**2 + v.y()**2
+            length_squared = v.x() ** 2 + v.y() ** 2
             if length_squared == 0:
                 dist = math.hypot(u.x(), u.y())
             else:
@@ -556,28 +597,28 @@ class DLine:
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
-        
+
         for k, v in self.__dict__.items():
-            if k == 'path':
+            if k == "path":
                 # Recreate path later or set to default
                 setattr(result, k, QPainterPath())
-            elif k == 'segments':
+            elif k == "segments":
                 # Segments are lists of QRect, which are picklable with PyQt5?
                 # QRect pickles fine.
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))
                 except Exception as e:
-                     # Fallback: leave collision geometry empty but surface the
-                     # failure so the copied line being unclickable is observable.
-                     logger.warning(f"Failed to deepcopy segments on {self.name}: {e}")
-                     setattr(result, k, [])
+                    # Fallback: leave collision geometry empty but surface the
+                    # failure so the copied line being unclickable is observable.
+                    logger.warning(f"Failed to deepcopy segments on {self.name}: {e}")
+                    setattr(result, k, [])
             else:
-                 try:
+                try:
                     setattr(result, k, copy.deepcopy(v, memo))
-                 except Exception as e:
+                except Exception as e:
                     # Ignore unpickleable UI assets, but log so silent data loss
                     # of a real attribute is observable.
                     logger.warning(f"Failed to deepcopy attribute '{k}' on {self.name}: {e}")
                     setattr(result, k, None)
-                    
+
         return result

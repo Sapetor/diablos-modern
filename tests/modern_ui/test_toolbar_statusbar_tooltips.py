@@ -28,6 +28,7 @@ def _qt(qapp):
 @pytest.fixture
 def toolbar():
     from modern_ui.widgets.modern_toolbar import ModernToolBar
+
     tb = ModernToolBar()
     yield tb
     tb.deleteLater()
@@ -36,6 +37,7 @@ def toolbar():
 # ---------------------------------------------------------------------------
 # toolbar — zoom rocker
 # ---------------------------------------------------------------------------
+
 
 class TestZoomRockerTooltips:
     def test_zoom_out_button_has_tooltip(self, toolbar):
@@ -53,6 +55,7 @@ class TestZoomRockerTooltips:
 # toolbar — command palette / search button
 # ---------------------------------------------------------------------------
 
+
 class TestCommandPaletteTooltip:
     def test_search_button_tooltip_non_empty(self, toolbar):
         assert toolbar.cmdk_btn.toolTip().strip()
@@ -66,6 +69,7 @@ class TestCommandPaletteTooltip:
 # toolbar — transport buttons
 # ---------------------------------------------------------------------------
 
+
 class TestTransportTooltips:
     def test_all_transport_buttons_have_tooltips(self, toolbar):
         t = toolbar.transport
@@ -77,12 +81,17 @@ class TestTransportTooltips:
 # toolbar — QActions carry status tips
 # ---------------------------------------------------------------------------
 
+
 class TestActionStatusTips:
     def test_actions_have_status_tips(self, toolbar):
         actions = (
-            toolbar.new_action, toolbar.open_action, toolbar.save_action,
-            toolbar.plot_action, toolbar.capture_action,
-            toolbar.auto_route_action, toolbar.theme_action,
+            toolbar.new_action,
+            toolbar.open_action,
+            toolbar.save_action,
+            toolbar.plot_action,
+            toolbar.capture_action,
+            toolbar.auto_route_action,
+            toolbar.theme_action,
         )
         for a in actions:
             assert a.statusTip().strip(), f"missing status tip on {a.text()!r}"
@@ -95,9 +104,11 @@ class TestActionStatusTips:
 # status bar — pills carry tooltips
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def window(qapp):
     from modern_ui.main_window import ModernDiaBloSWindow
+
     w = ModernDiaBloSWindow()
     yield w
     w.close()
@@ -111,7 +122,13 @@ class TestStatusBarPillTooltips:
         assert window.theme_status.toolTip() == "Click to toggle theme (Ctrl+T)"
 
     def test_core_pills_have_non_empty_tooltips(self, window):
-        for attr in ("status_pill", "file_status", "counts_status",
-                     "cursor_status", "zoom_status", "theme_status"):
+        for attr in (
+            "status_pill",
+            "file_status",
+            "counts_status",
+            "cursor_status",
+            "zoom_status",
+            "theme_status",
+        ):
             pill = getattr(window, attr)
             assert pill.toolTip().strip(), f"missing tooltip on {attr}"

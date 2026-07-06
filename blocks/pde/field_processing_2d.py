@@ -53,32 +53,16 @@ class FieldProbe2DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "x_position": {
-                "type": "float",
-                "default": 0.5,
-                "doc": "X probe position"
-            },
-            "y_position": {
-                "type": "float",
-                "default": 0.5,
-                "doc": "Y probe position"
-            },
+            "x_position": {"type": "float", "default": 0.5, "doc": "X probe position"},
+            "y_position": {"type": "float", "default": 0.5, "doc": "Y probe position"},
             "position_mode": {
                 "type": "string",
                 "default": "normalized",
                 "options": ["normalized", "absolute"],
-                "doc": "Position mode: 'absolute' or 'normalized'"
+                "doc": "Position mode: 'absolute' or 'normalized'",
             },
-            "Lx": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in x"
-            },
-            "Ly": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in y"
-            },
+            "Lx": {"type": "float", "default": 1.0, "doc": "Domain length in x"},
+            "Ly": {"type": "float", "default": 1.0, "doc": "Domain length in y"},
         }
 
     @property
@@ -102,6 +86,7 @@ class FieldProbe2DBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw 2D probe icon - crosshairs on grid."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
 
         # Grid
@@ -120,28 +105,28 @@ class FieldProbe2DBlock(BaseBlock):
         """Extract value from 2D field at specified position."""
         field = inputs.get(0, None)
         if field is None:
-            return {0: 0.0, 'E': False}
+            return {0: 0.0, "E": False}
 
         field = np.atleast_2d(field)
         if field.ndim != 2:
-            return {0: 0.0, 'E': False}
+            return {0: 0.0, "E": False}
 
         Ny, Nx = field.shape
 
         # Get position
         x_pos = inputs.get(1, None)
         if x_pos is None:
-            x_pos = float(params.get('x_position', 0.5))
+            x_pos = float(params.get("x_position", 0.5))
         y_pos = inputs.get(2, None)
         if y_pos is None:
-            y_pos = float(params.get('y_position', 0.5))
+            y_pos = float(params.get("y_position", 0.5))
 
-        position_mode = params.get('position_mode', 'normalized')
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
+        position_mode = params.get("position_mode", "normalized")
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
 
         # Convert to normalized coordinates
-        if position_mode == 'absolute':
+        if position_mode == "absolute":
             x_norm = x_pos / Lx
             y_norm = y_pos / Ly
         else:
@@ -166,12 +151,14 @@ class FieldProbe2DBlock(BaseBlock):
         dj = j_float - j0
 
         # Interpolate
-        val = (field[j0, i0] * (1 - di) * (1 - dj) +
-               field[j0, i1] * di * (1 - dj) +
-               field[j1, i0] * (1 - di) * dj +
-               field[j1, i1] * di * dj)
+        val = (
+            field[j0, i0] * (1 - di) * (1 - dj)
+            + field[j0, i1] * di * (1 - dj)
+            + field[j1, i0] * (1 - di) * dj
+            + field[j1, i1] * di * dj
+        )
 
-        return {0: float(val), 'E': False}
+        return {0: float(val), "E": False}
 
 
 class FieldScope2DBlock(BaseBlock):
@@ -213,45 +200,33 @@ class FieldScope2DBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "Lx": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in x [m]"
-            },
-            "Ly": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in y [m]"
-            },
+            "Lx": {"type": "float", "default": 1.0, "doc": "Domain length in x [m]"},
+            "Ly": {"type": "float", "default": 1.0, "doc": "Domain length in y [m]"},
             "colormap": {
                 "type": "string",
                 "default": "viridis",
-                "doc": "Colormap: viridis, hot, coolwarm, plasma, etc."
+                "doc": "Colormap: viridis, hot, coolwarm, plasma, etc.",
             },
-            "title": {
-                "type": "string",
-                "default": "2D Field",
-                "doc": "Plot title"
-            },
+            "title": {"type": "string", "default": "2D Field", "doc": "Plot title"},
             "clim_min": {
                 "type": "float",
                 "default": None,
-                "doc": "Color scale minimum (None for auto)"
+                "doc": "Color scale minimum (None for auto)",
             },
             "clim_max": {
                 "type": "float",
                 "default": None,
-                "doc": "Color scale maximum (None for auto)"
+                "doc": "Color scale maximum (None for auto)",
             },
             "sample_interval": {
                 "type": "int",
                 "default": 5,
-                "doc": "Store every N timesteps (reduces memory)"
+                "doc": "Store every N timesteps (reduces memory)",
             },
             "_init_start_": {
                 "type": "bool",
                 "default": True,
-                "doc": "Internal: initialization flag"
+                "doc": "Internal: initialization flag",
             },
         }
 
@@ -272,6 +247,7 @@ class FieldScope2DBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw 2D scope icon - heatmap pattern."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
 
         # Screen/frame
@@ -290,15 +266,15 @@ class FieldScope2DBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         """Store field snapshot for visualization."""
         # Initialize storage
-        if params.get('_init_start_', True):
-            params['_field_history_2d_'] = []
-            params['_time_history_'] = []
-            params['_sample_count_'] = 0
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_field_history_2d_"] = []
+            params["_time_history_"] = []
+            params["_sample_count_"] = 0
+            params["_init_start_"] = False
 
         field = inputs.get(0, None)
         if field is None:
-            return {'E': False}
+            return {"E": False}
 
         field = np.atleast_2d(field)
 
@@ -306,16 +282,16 @@ class FieldScope2DBlock(BaseBlock):
         # Use a frame index that starts at 0 and store when frame % interval == 0
         # so the t=0 initial field (frame 0) is always captured, matching the
         # engine replay path (simulation_engine.py: "if i % sample_interval == 0").
-        sample_interval = max(1, int(params.get('sample_interval', 5)))
-        frame_index = params.get('_sample_count_', 0)
+        sample_interval = max(1, int(params.get("sample_interval", 5)))
+        frame_index = params.get("_sample_count_", 0)
 
         if frame_index % sample_interval == 0:
-            params['_field_history_2d_'].append(field.copy())
-            params['_time_history_'].append(time)
+            params["_field_history_2d_"].append(field.copy())
+            params["_time_history_"].append(time)
 
-        params['_sample_count_'] = frame_index + 1
+        params["_sample_count_"] = frame_index + 1
 
-        return {'E': False}
+        return {"E": False}
 
 
 class FieldSliceBlock(BaseBlock):
@@ -359,23 +335,15 @@ class FieldSliceBlock(BaseBlock):
             "slice_direction": {
                 "type": "string",
                 "default": "x",
-                "doc": "Slice direction: 'x' (horizontal) or 'y' (vertical)"
+                "doc": "Slice direction: 'x' (horizontal) or 'y' (vertical)",
             },
             "slice_position": {
                 "type": "float",
                 "default": 0.5,
-                "doc": "Position of slice (normalized 0-1)"
+                "doc": "Position of slice (normalized 0-1)",
             },
-            "Lx": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in x"
-            },
-            "Ly": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Domain length in y"
-            },
+            "Lx": {"type": "float", "default": 1.0, "doc": "Domain length in x"},
+            "Ly": {"type": "float", "default": 1.0, "doc": "Domain length in y"},
         }
 
     @property
@@ -398,6 +366,7 @@ class FieldSliceBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw slice icon - grid with line through it."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
 
         # Grid
@@ -418,7 +387,7 @@ class FieldSliceBlock(BaseBlock):
         """Extract 1D slice from 2D field."""
         field = inputs.get(0, None)
         if field is None:
-            return {0: np.array([0.0]), 'E': False}
+            return {0: np.array([0.0]), "E": False}
 
         field = np.atleast_2d(field)
         Ny, Nx = field.shape
@@ -426,11 +395,11 @@ class FieldSliceBlock(BaseBlock):
         # Get slice position
         position = inputs.get(1, None)
         if position is None:
-            position = float(params.get('slice_position', 0.5))
+            position = float(params.get("slice_position", 0.5))
 
-        direction = params.get('slice_direction', 'x')
+        direction = params.get("slice_direction", "x")
 
-        if direction.lower() == 'x':
+        if direction.lower() == "x":
             # Horizontal slice (constant y)
             j = int(position * (Ny - 1))
             j = max(0, min(Ny - 1, j))
@@ -441,4 +410,4 @@ class FieldSliceBlock(BaseBlock):
             i = max(0, min(Nx - 1, i))
             slice_arr = field[:, i]
 
-        return {0: slice_arr, 'E': False}
+        return {0: slice_arr, "E": False}

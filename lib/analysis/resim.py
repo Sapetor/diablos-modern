@@ -40,10 +40,10 @@ def harvest_scope_signals(dsim):
     Scope buffers are reshaped and split per channel; duplicate signal names are
     disambiguated with a ``#n`` suffix.
     """
-    timeline = getattr(dsim, 'timeline', None)
+    timeline = getattr(dsim, "timeline", None)
     if timeline is None or len(np.atleast_1d(timeline)) == 0:
         return None
-    blocks = getattr(dsim.engine, 'active_blocks_list', None) or dsim.blocks_list
+    blocks = getattr(dsim.engine, "active_blocks_list", None) or dsim.blocks_list
     signals = {}
     seen = {}
 
@@ -56,15 +56,15 @@ def harvest_scope_signals(dsim):
         signals[name] = np.asarray(arr, dtype=float).ravel()
 
     for b in blocks:
-        if b.block_fn != 'Scope':
+        if b.block_fn != "Scope":
             continue
-        params = getattr(b, 'exec_params', None) or b.params
-        vec = params.get('vector')
+        params = getattr(b, "exec_params", None) or b.params
+        vec = params.get("vector")
         if vec is None:
             continue
         arr = np.asarray(vec, dtype=float)
-        vec_dim = int(params.get('vec_dim', 1) or 1)
-        labels = params.get('vec_labels')
+        vec_dim = int(params.get("vec_dim", 1) or 1)
+        labels = params.get("vec_labels")
         # Scope stores a flat concatenated buffer; reshape multi-channel data.
         if arr.ndim == 1 and vec_dim > 1 and arr.size % vec_dim == 0:
             arr = arr.reshape(-1, vec_dim)
@@ -72,7 +72,10 @@ def harvest_scope_signals(dsim):
             put(labels if isinstance(labels, str) else b.name, arr)
         else:
             for j in range(arr.shape[1]):
-                nm = (labels[j] if isinstance(labels, (list, tuple)) and j < len(labels)
-                      else f"{b.name}[{j}]")
+                nm = (
+                    labels[j]
+                    if isinstance(labels, (list, tuple)) and j < len(labels)
+                    else f"{b.name}[{j}]"
+                )
                 put(nm, arr[:, j])
-    return {'timeline': np.asarray(timeline, dtype=float), 'signals': signals}
+    return {"timeline": np.asarray(timeline, dtype=float), "signals": signals}

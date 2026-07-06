@@ -38,35 +38,35 @@ class SimulationModel:
 
         # Color palette for blocks
         self.colors: Dict[str, QColor] = {
-            'black': QColor(0, 0, 0),
-            'red': QColor(255, 0, 0),
-            'green': QColor(0, 255, 0),
-            'blue': QColor(0, 0, 255),
-            'yellow': QColor(255, 255, 0),
-            'magenta': QColor(255, 0, 255),
-            'cyan': QColor(0, 255, 255),
-            'purple': QColor(128, 0, 255),
-            'orange': QColor(255, 128, 0),
-            'aqua': QColor(0, 255, 128),
-            'pink': QColor(255, 0, 128),
-            'lime_green': QColor(128, 255, 0),
-            'light_blue': QColor(0, 128, 255),
-            'dark_red': QColor(128, 0, 0),
-            'dark_green': QColor(0, 128, 0),
-            'dark_blue': QColor(0, 0, 128),
-            'dark_gray': QColor(64, 64, 64),
-            'gray': QColor(128, 128, 128),
-            'light_gray': QColor(192, 192, 192),
-            'white': QColor(255, 255, 255)
+            "black": QColor(0, 0, 0),
+            "red": QColor(255, 0, 0),
+            "green": QColor(0, 255, 0),
+            "blue": QColor(0, 0, 255),
+            "yellow": QColor(255, 255, 0),
+            "magenta": QColor(255, 0, 255),
+            "cyan": QColor(0, 255, 255),
+            "purple": QColor(128, 0, 255),
+            "orange": QColor(255, 128, 0),
+            "aqua": QColor(0, 255, 128),
+            "pink": QColor(255, 0, 128),
+            "lime_green": QColor(128, 255, 0),
+            "light_blue": QColor(0, 128, 255),
+            "dark_red": QColor(128, 0, 0),
+            "dark_green": QColor(0, 128, 0),
+            "dark_blue": QColor(0, 0, 128),
+            "dark_gray": QColor(64, 64, 64),
+            "gray": QColor(128, 128, 128),
+            "light_gray": QColor(192, 192, 192),
+            "white": QColor(255, 255, 255),
         }
 
         # Data containers
-        self.menu_blocks: List[MenuBlocks] = []      # Available block types
-        self.blocks_list: List[DBlock] = []          # Instantiated blocks in diagram
-        self.line_list: List[DLine] = []             # Connections between blocks
+        self.menu_blocks: List[MenuBlocks] = []  # Available block types
+        self.blocks_list: List[DBlock] = []  # Instantiated blocks in diagram
+        self.line_list: List[DLine] = []  # Connections between blocks
 
         # State flags
-        self.dirty: bool = False                      # Has diagram been modified?
+        self.dirty: bool = False  # Has diagram been modified?
 
         # Load available block types
         self.load_all_blocks()
@@ -85,24 +85,24 @@ class SimulationModel:
 
         category_lower = category.lower() if isinstance(category, str) else str(category).lower()
 
-        if 'source' in category_lower:
-            return theme_manager.get_color('block_source')
-        elif 'math' in category_lower:
-            return theme_manager.get_color('block_process')
-        elif 'control' in category_lower:
-            return theme_manager.get_color('block_control')
-        elif 'sink' in category_lower:
-            return theme_manager.get_color('block_sink')
-        elif 'routing' in category_lower:
-            return theme_manager.get_color('block_routing')
-        elif 'analysis' in category_lower:
-            return theme_manager.get_color('block_analysis')
-        elif 'pde' in category_lower:
-            return theme_manager.get_color('block_pde')
-        elif 'optim' in category_lower:
-            return theme_manager.get_color('block_optimization')
+        if "source" in category_lower:
+            return theme_manager.get_color("block_source")
+        elif "math" in category_lower:
+            return theme_manager.get_color("block_process")
+        elif "control" in category_lower:
+            return theme_manager.get_color("block_control")
+        elif "sink" in category_lower:
+            return theme_manager.get_color("block_sink")
+        elif "routing" in category_lower:
+            return theme_manager.get_color("block_routing")
+        elif "analysis" in category_lower:
+            return theme_manager.get_color("block_analysis")
+        elif "pde" in category_lower:
+            return theme_manager.get_color("block_pde")
+        elif "optim" in category_lower:
+            return theme_manager.get_color("block_optimization")
         else:
-            return theme_manager.get_color('block_other')
+            return theme_manager.get_color("block_other")
 
     def load_all_blocks(self) -> None:
         """
@@ -118,29 +118,29 @@ class SimulationModel:
             # Determine I/O editability - only blocks that explicitly declare
             # io_editable get port editing; all others default to 'none'
             io_editable = block.io_editable
-            io_edit = io_editable if io_editable is not None else 'none'
+            io_edit = io_editable if io_editable is not None else "none"
 
             # Get block type
-            b_type = getattr(block, 'b_type', 2)
+            b_type = getattr(block, "b_type", 2)
 
             # Process parameters
             ex_params = {}
-            if hasattr(block, 'params') and block.params:
+            if hasattr(block, "params") and block.params:
                 for param_name, param_info in block.params.items():
-                    if isinstance(param_info, dict) and 'default' in param_info:
-                        ex_params[param_name] = param_info['default']
+                    if isinstance(param_info, dict) and "default" in param_info:
+                        ex_params[param_name] = param_info["default"]
                     else:
                         ex_params[param_name] = param_info
-            param_metadata = getattr(block, 'params', {})
+            param_metadata = getattr(block, "params", {})
 
             # Determine function name
-            if hasattr(block, 'fn_name'):
+            if hasattr(block, "fn_name"):
                 fn_name = block.fn_name
             else:
                 fn_name = block.block_name.lower()
 
             # Get category and determine theme-aware color
-            category = getattr(block, 'category', 'Other')
+            category = getattr(block, "category", "Other")
             block_color = self._get_category_color(category)
 
             # Get block-specific size from configuration
@@ -150,17 +150,17 @@ class SimulationModel:
                 block_fn=block.block_name,
                 fn_name=fn_name,
                 io_params={
-                    'inputs': len(block.inputs),
-                    'outputs': len(block.outputs),
-                    'b_type': b_type,
-                    'io_edit': io_edit
+                    "inputs": len(block.inputs),
+                    "outputs": len(block.outputs),
+                    "b_type": b_type,
+                    "io_edit": io_edit,
                 },
                 ex_params=ex_params,
                 b_color=block_color,
                 coords=block_size,  # Use configured block size
-                external=getattr(block, 'external', False),
+                external=getattr(block, "external", False),
                 block_class=block_class,
-                colors=self.colors
+                colors=self.colors,
             )
 
             # Store category on menu block for later reference
@@ -204,11 +204,13 @@ class SimulationModel:
 
         # Find next available ID for this block type. Names that do not match
         # the '<block_fn><int>' convention are skipped rather than raising.
-        id_list = [parsed
-                   for b_elem in self.blocks_list
-                   if b_elem.block_fn == block.block_fn
-                   for parsed in (self._parse_id_suffix(b_elem.name, len(b_elem.block_fn)),)
-                   if parsed is not None]
+        id_list = [
+            parsed
+            for b_elem in self.blocks_list
+            if b_elem.block_fn == block.block_fn
+            for parsed in (self._parse_id_suffix(b_elem.name, len(b_elem.block_fn)),)
+            if parsed is not None
+        ]
         sid = max(id_list) + 1 if id_list else 0
 
         try:
@@ -229,12 +231,22 @@ class SimulationModel:
             block_collision = QRect(mouse_x, mouse_y, width, height)
 
         # Create the block instance with category information
-        category = getattr(block, 'category', 'Other')
+        category = getattr(block, "category", "Other")
         new_block = DBlock(
-            block.block_fn, sid, block_collision, block.b_color,
-            block.ins, block.outs, block.b_type, block.io_edit,
-            block.fn_name, copy.deepcopy(block.params), block.external,
-            block_class=block.block_class, colors=self.colors, category=category
+            block.block_fn,
+            sid,
+            block_collision,
+            block.b_color,
+            block.ins,
+            block.outs,
+            block.b_type,
+            block.io_edit,
+            block.fn_name,
+            copy.deepcopy(block.params),
+            block.external,
+            block_class=block.block_class,
+            colors=self.colors,
+            category=category,
         )
 
         self.blocks_list.append(new_block)
@@ -248,25 +260,38 @@ class SimulationModel:
         For each From(tag) with no incoming line, connect the first matching Goto(tag).
         Also sync line labels to the configured signal name.
         """
+
         # Local neighbor helper to avoid dependency on DSim.get_neighbors
         def _get_neighbors(block_name):
             inputs = []
             outputs = []
             for line in self.line_list:
                 if line.dstblock == block_name:
-                    inputs.append({'srcblock': line.srcblock, 'srcport': line.srcport, 'dstport': line.dstport})
+                    inputs.append(
+                        {
+                            "srcblock": line.srcblock,
+                            "srcport": line.srcport,
+                            "dstport": line.dstport,
+                        }
+                    )
                 if line.srcblock == block_name:
-                    outputs.append({'dstblock': line.dstblock, 'srcport': line.srcport, 'dstport': line.dstport})
+                    outputs.append(
+                        {
+                            "dstblock": line.dstblock,
+                            "srcport": line.srcport,
+                            "dstport": line.dstport,
+                        }
+                    )
             return inputs, outputs
 
         # Collect goto blocks by tag
         goto_map = {}
         for b in self.blocks_list:
-            if b.block_fn == 'Goto':
-                tag = str(b.params.get('tag', ''))
+            if b.block_fn == "Goto":
+                tag = str(b.params.get("tag", ""))
                 # Ensure signal_name has fallback
-                if not b.params.get('signal_name'):
-                    b.params['signal_name'] = tag
+                if not b.params.get("signal_name"):
+                    b.params["signal_name"] = tag
                 if tag not in goto_map:
                     goto_map[tag] = []
                 goto_map[tag].append(b)
@@ -276,17 +301,17 @@ class SimulationModel:
 
         # For each From, ensure an incoming line from matching Goto
         for b in self.blocks_list:
-            if b.block_fn != 'From':
+            if b.block_fn != "From":
                 continue
-            tag = str(b.params.get('tag', ''))
+            tag = str(b.params.get("tag", ""))
             # Ensure signal_name fallback
-            if not b.params.get('signal_name'):
-                b.params['signal_name'] = tag
+            if not b.params.get("signal_name"):
+                b.params["signal_name"] = tag
 
             # Update labels on outgoing visible lines from From
             for line in self.line_list:
                 if line.srcblock == b.name:
-                    line.label = b.params.get('signal_name') or tag
+                    line.label = b.params.get("signal_name") or tag
 
             if tag not in goto_map:
                 continue
@@ -309,36 +334,38 @@ class SimulationModel:
 
             # Create hidden virtual line from goto input source to From block
             from lib.simulation.connection import DLine
+
             src_point = src_block.in_coords[0] if src_block.in_coords else src_block.rect.center()
             dst_point = b.in_coords[0] if b.in_coords else b.rect.center()
-            signal_name = b.params.get('signal_name') or b.params.get('tag', '')
+            signal_name = b.params.get("signal_name") or b.params.get("tag", "")
             # Use max(sid)+1 (mirroring add_line) to avoid duplicate line
             # names/sids when lines have been deleted; len(line_list) can
             # collide with an existing sid.
             vline_sid = max([ln.sid for ln in self.line_list] + [-1]) + 1
             vline = DLine(
                 sid=vline_sid,
-                srcblock=src_line['srcblock'],
-                srcport=src_line['srcport'],
+                srcblock=src_line["srcblock"],
+                srcport=src_line["srcport"],
                 dstblock=b.name,
                 dstport=0,
                 points=[src_point, dst_point],
-                hidden=True
+                hidden=True,
             )
             vline.label = signal_name
             self.line_list.append(vline)
 
         # Sync labels on incoming lines to Goto blocks as well
         for tag, gotos in goto_map.items():
-            label = (gotos[0].params.get('signal_name') or tag) if gotos else tag
+            label = (gotos[0].params.get("signal_name") or tag) if gotos else tag
             for g in gotos:
                 inputs, _ = _get_neighbors(g.name)
                 for line in self.line_list:
                     if line.dstblock == g.name:
                         line.label = label
 
-    def add_line(self, srcData: Optional[Tuple[str, int, QPoint]],
-                 dstData: Optional[Tuple[str, int, QPoint]]) -> Optional[DLine]:
+    def add_line(
+        self, srcData: Optional[Tuple[str, int, QPoint]], dstData: Optional[Tuple[str, int, QPoint]]
+    ) -> Optional[DLine]:
         """
         Add a connection line between two blocks.
 
@@ -358,18 +385,22 @@ class SimulationModel:
 
         # Find next available ID. Names not matching 'Line<int>' are skipped
         # rather than raising (len('Line') == 4).
-        id_list = [parsed
-                   for line in self.line_list
-                   for parsed in (self._parse_id_suffix(line.name, 4),)
-                   if parsed is not None]
+        id_list = [
+            parsed
+            for line in self.line_list
+            for parsed in (self._parse_id_suffix(line.name, 4),)
+            if parsed is not None
+        ]
         sid = max(id_list) + 1 if id_list else 0
 
         try:
             line = DLine(
                 sid,
-                srcblock=srcData[0], srcport=srcData[1],
-                dstblock=dstData[0], dstport=dstData[1],
-                points=(srcData[2], dstData[2])
+                srcblock=srcData[0],
+                srcport=srcData[1],
+                dstblock=dstData[0],
+                dstport=dstData[1],
+                points=(srcData[2], dstData[2]),
             )
             line.color = QColor(255, 0, 0)  # Red lines
 
@@ -391,7 +422,8 @@ class SimulationModel:
         self.blocks_list.remove(block)
         # Remove all lines connected to this block
         self.line_list = [
-            line for line in self.line_list
+            line
+            for line in self.line_list
             if not self._is_line_connected_to_block(line, block.name)
         ]
         self.dirty = True
@@ -472,8 +504,8 @@ class SimulationModel:
             Dictionary with keys: 'blocks', 'lines', 'modified', 'block_types'
         """
         return {
-            'blocks': len(self.blocks_list),
-            'lines': len(self.line_list),
-            'modified': self.dirty,
-            'block_types': len(set(b.block_fn for b in self.blocks_list))
+            "blocks": len(self.blocks_list),
+            "lines": len(self.line_list),
+            "modified": self.dirty,
+            "block_types": len(set(b.block_fn for b in self.blocks_list)),
         }

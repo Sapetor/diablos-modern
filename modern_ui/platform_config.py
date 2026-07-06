@@ -24,14 +24,10 @@ class PlatformConfig:
     def _detect_platform(self):
         """Detect platform and screen characteristics."""
         if QApplication.instance() is None:
-            raise RuntimeError(
-                "PlatformConfig requires an active QApplication with a display"
-            )
+            raise RuntimeError("PlatformConfig requires an active QApplication with a display")
         screen = QApplication.primaryScreen()
         if screen is None:
-            raise RuntimeError(
-                "PlatformConfig requires an active QApplication with a display"
-            )
+            raise RuntimeError("PlatformConfig requires an active QApplication with a display")
         self.device_ratio = screen.devicePixelRatio()
 
         screen_geometry = screen.availableGeometry()
@@ -39,25 +35,25 @@ class PlatformConfig:
         self.logical_height = screen_geometry.height()
 
         # Platform detection
-        self.is_macos = platform.system() == 'Darwin'
-        self.is_windows = platform.system() == 'Windows'
-        self.is_linux = platform.system() == 'Linux'
+        self.is_macos = platform.system() == "Darwin"
+        self.is_windows = platform.system() == "Windows"
+        self.is_linux = platform.system() == "Linux"
 
         # Specific screen configurations
         self.is_retina_small = (
-            self.is_macos and
-            self.device_ratio >= 1.9 and
-            self.logical_width < 1500
+            self.is_macos and self.device_ratio >= 1.9 and self.logical_width < 1500
         )
         self.is_high_dpi = self.device_ratio > 1.25
 
     def _log_configuration(self):
         """Log detected configuration."""
-        logger.info(f"Platform configuration: "
-                   f"platform={platform.system()}, "
-                   f"devicePixelRatio={self.device_ratio}, "
-                   f"logical={self.logical_width}×{self.logical_height}, "
-                   f"is_retina_small={self.is_retina_small}")
+        logger.info(
+            f"Platform configuration: "
+            f"platform={platform.system()}, "
+            f"devicePixelRatio={self.device_ratio}, "
+            f"logical={self.logical_width}×{self.logical_height}, "
+            f"is_retina_small={self.is_retina_small}"
+        )
 
     # Window sizing
 
@@ -258,22 +254,24 @@ class PlatformConfig:
         right_margin = 6
 
         required_width = (
-            blocks_width +
-            spacing_width +
-            category_padding_width +
-            container_padding_width +
-            extra_width +
-            right_margin
+            blocks_width
+            + spacing_width
+            + category_padding_width
+            + container_padding_width
+            + extra_width
+            + right_margin
         )
 
-        logger.info(f"Palette width calculation (logical pixels): "
-                   f"blocks=({block_size}+{widget_margin*2})×{columns}={blocks_width}px + "
-                   f"spacing={spacing_width}px + "
-                   f"category_pad={category_padding_width}px + "
-                   f"container_pad={container_padding_width}px + "
-                   f"scrollbar+borders={extra_width}px + "
-                   f"right_margin={right_margin}px = "
-                   f"{required_width}px")
+        logger.info(
+            f"Palette width calculation (logical pixels): "
+            f"blocks=({block_size}+{widget_margin * 2})×{columns}={blocks_width}px + "
+            f"spacing={spacing_width}px + "
+            f"category_pad={category_padding_width}px + "
+            f"container_pad={container_padding_width}px + "
+            f"scrollbar+borders={extra_width}px + "
+            f"right_margin={right_margin}px = "
+            f"{required_width}px"
+        )
 
         return required_width
 

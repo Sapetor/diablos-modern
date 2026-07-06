@@ -22,7 +22,9 @@ Run with:
         -p no:cacheprovider -o addopts=""
 """
 
-from __future__ import annotations  # PEP 604 `str | None` below must not be evaluated on Python 3.9 (CI)
+from __future__ import (
+    annotations,
+)  # PEP 604 `str | None` below must not be evaluated on Python 3.9 (CI)
 
 import re
 from pathlib import Path
@@ -32,10 +34,7 @@ import pytest
 from modern_ui.managers.command_palette_manager import palette_command_groups
 
 # menu_builder.py is the source of the *real* binding (QAction.setShortcut).
-_MENU_BUILDER = (
-    Path(__file__).resolve().parents[2]
-    / "modern_ui" / "builders" / "menu_builder.py"
-)
+_MENU_BUILDER = Path(__file__).resolve().parents[2] / "modern_ui" / "builders" / "menu_builder.py"
 
 
 def menu_shortcut_for(label_fragment: str, source: str) -> str | None:
@@ -90,8 +89,8 @@ class TestRegistryMatchesMenuBinding:
         source = _MENU_BUILDER.read_text(encoding="utf-8")
         menu_key = menu_shortcut_for("Tuning Panel", source)
 
-        assert menu_key == "Ctrl+Shift+T"      # guards the source of truth
-        assert registry_key == menu_key        # registry mirrors it (no drift)
+        assert menu_key == "Ctrl+Shift+T"  # guards the source of truth
+        assert registry_key == menu_key  # registry mirrors it (no drift)
 
     def test_no_view_command_carries_a_blank_for_a_bound_menu_key(self):
         # Defensive: any View command that menu_builder binds a shortcut for

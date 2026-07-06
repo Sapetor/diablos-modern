@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 class MonteCarloWorker(QThread):
     """Run a Monte-Carlo ensemble off the UI thread, reporting progress."""
 
-    progress = pyqtSignal(int, int)   # done, total
-    finished = pyqtSignal(object)     # ensemble-result dict
-    failed = pyqtSignal(str)          # error message
+    progress = pyqtSignal(int, int)  # done, total
+    finished = pyqtSignal(object)  # ensemble-result dict
+    failed = pyqtSignal(str)  # error message
 
     def __init__(self, dsim, selection, parent=None):
         """

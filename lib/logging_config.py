@@ -21,17 +21,18 @@ def setup_logging(config_path: Optional[str] = None) -> None:
     """
     if config_path is None:
         from lib.app_paths import resource_path
-        config_path = resource_path('config/logging.json')
+
+        config_path = resource_path("config/logging.json")
 
     if os.path.exists(config_path):
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = json.load(f)
             # Fix relative log file paths for frozen (PyInstaller) mode
-            for handler in config.get('handlers', {}).values():
-                fn = handler.get('filename')
+            for handler in config.get("handlers", {}).values():
+                fn = handler.get("filename")
                 if fn:
-                    handler['filename'] = _get_log_file_path(fn)
+                    handler["filename"] = _get_log_file_path(fn)
             logging.config.dictConfig(config)
             return
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:
@@ -41,7 +42,8 @@ def setup_logging(config_path: Optional[str] = None) -> None:
             _setup_default_logging()
             logging.getLogger(__name__).warning(
                 "Failed to load logging config from %s: %s; using default logging configuration.",
-                config_path, e
+                config_path,
+                e,
             )
             return
 
@@ -51,9 +53,9 @@ def setup_logging(config_path: Optional[str] = None) -> None:
 
 def _get_log_file_path(filename: str) -> str:
     """Resolve log file path, using a writable location in frozen mode."""
-    if getattr(sys, 'frozen', False) and not os.path.isabs(filename):
-        if sys.platform == 'darwin':
-            log_dir = os.path.expanduser('~/Library/Logs/DiaBloS')
+    if getattr(sys, "frozen", False) and not os.path.isabs(filename):
+        if sys.platform == "darwin":
+            log_dir = os.path.expanduser("~/Library/Logs/DiaBloS")
         else:
             log_dir = os.path.dirname(sys.executable)
         os.makedirs(log_dir, exist_ok=True)
@@ -65,22 +67,22 @@ def _setup_default_logging() -> None:
     """Setup default logging configuration if config file is unavailable."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(_get_log_file_path('diablos_modern.log')),
-            logging.StreamHandler(sys.stdout)
-        ]
+            logging.FileHandler(_get_log_file_path("diablos_modern.log")),
+            logging.StreamHandler(sys.stdout),
+        ],
     )
 
     # Set specific logger levels - reduce verbosity for simulation
     quiet_loggers = [
-        'lib.lib',
-        'lib.improvements',
-        'lib.engine',
-        'lib.engine.simulation_engine',
-        'lib.plotting',
-        'modern_ui.widgets.modern_canvas',
-        'modern_ui.renderers',
+        "lib.lib",
+        "lib.improvements",
+        "lib.engine",
+        "lib.engine.simulation_engine",
+        "lib.plotting",
+        "modern_ui.widgets.modern_canvas",
+        "modern_ui.renderers",
     ]
     for logger_name in quiet_loggers:
         logging.getLogger(logger_name).setLevel(logging.WARNING)

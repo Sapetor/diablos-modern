@@ -59,7 +59,7 @@ def test_deadband_zeroes_small_signal():
     p = {"start": -0.5, "end": 0.5}
     out = block.execute(0.0, {0: np.array([-0.4, 0.0, 0.6])}, p)[0]
     # Input -0.4: inside deadzone [-0.5, 0.5] -> 0.0
-    # Input 0.0: inside deadzone -> 0.0  
+    # Input 0.0: inside deadzone -> 0.0
     # Input 0.6: above end (0.5) -> 0.6 - 0.5 = 0.1
     assert np.allclose(out, [0.0, 0.0, 0.1])
 
@@ -67,18 +67,26 @@ def test_deadband_zeroes_small_signal():
 def test_switch_selects_true_branch():
     block = SwitchBlock()
     p = {"threshold": 0.0}
-    out = block.execute(0.0, {0: np.array([0.5]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
+    out = block.execute(0.0, {0: np.array([0.5]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][
+        0
+    ]
     assert out == 10.0  # ctrl>=thr -> first data input
-    out2 = block.execute(0.0, {0: np.array([-0.1]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[0][0]
+    out2 = block.execute(0.0, {0: np.array([-0.1]), 1: np.array([10.0]), 2: np.array([-10.0])}, p)[
+        0
+    ][0]
     assert out2 == -10.0
 
 
 def test_switch_index_mode_multiway():
     block = SwitchBlock()
     p = {"mode": "index", "n_inputs": 3}
-    out0 = block.execute(0.0, {0: np.array([0.1]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p)[0][0]
+    out0 = block.execute(
+        0.0, {0: np.array([0.1]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p
+    )[0][0]
     assert out0 == 1.0  # round(0.1)=0 -> in0
-    out2 = block.execute(0.0, {0: np.array([2.2]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p)[0][0]
+    out2 = block.execute(
+        0.0, {0: np.array([2.2]), 1: np.array([1.0]), 2: np.array([2.0]), 3: np.array([3.0])}, p
+    )[0][0]
     assert out2 == 3.0  # clamp to last
 
 
@@ -96,18 +104,24 @@ def test_link_goto_from_adds_line(simulation_model):
     from blocks.step import StepBlock
 
     # Create a source block that feeds into Goto
-    src = DBlock("Step", 0, QRect(0, 0, 70, 60), "green", block_class=StepBlock, in_ports=0, out_ports=1)
-    
+    src = DBlock(
+        "Step", 0, QRect(0, 0, 70, 60), "green", block_class=StepBlock, in_ports=0, out_ports=1
+    )
+
     # Create Goto block
-    goto = DBlock("Goto", 0, QRect(100, 0, 70, 60), "orange", block_class=GotoBlock, in_ports=1, out_ports=0)
-    goto.params['tag'] = "X"
-    
+    goto = DBlock(
+        "Goto", 0, QRect(100, 0, 70, 60), "orange", block_class=GotoBlock, in_ports=1, out_ports=0
+    )
+    goto.params["tag"] = "X"
+
     # Create From block
-    frm = DBlock("From", 0, QRect(200, 0, 70, 60), "orange", block_class=FromBlock, in_ports=0, out_ports=1)
-    frm.params['tag'] = "X"
+    frm = DBlock(
+        "From", 0, QRect(200, 0, 70, 60), "orange", block_class=FromBlock, in_ports=0, out_ports=1
+    )
+    frm.params["tag"] = "X"
 
     simulation_model.blocks_list = [src, goto, frm]
-    
+
     # Create the required line from source to Goto (link_goto_from needs this)
     line_to_goto = DLine(
         sid=0,
@@ -115,7 +129,7 @@ def test_link_goto_from_adds_line(simulation_model):
         srcport=0,
         dstblock=goto.name,
         dstport=0,
-        points=[QPoint(70, 30), QPoint(100, 30)]
+        points=[QPoint(70, 30), QPoint(100, 30)],
     )
     simulation_model.line_list = [line_to_goto]
 
@@ -124,7 +138,7 @@ def test_link_goto_from_adds_line(simulation_model):
     # Expect TWO lines: original line + virtual hidden line to From
     assert len(simulation_model.line_list) == 2
     # Find the new virtual line (hidden=True)
-    virtual_lines = [ln for ln in simulation_model.line_list if getattr(ln, 'hidden', False)]
+    virtual_lines = [ln for ln in simulation_model.line_list if getattr(ln, "hidden", False)]
     assert len(virtual_lines) == 1
     vline = virtual_lines[0]
     assert vline.srcblock == src.name  # Source of goto's input

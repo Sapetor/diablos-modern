@@ -43,14 +43,18 @@ class DisplayBlock(BaseBlock):
 
     @property
     def io_editable(self):
-        return 'input'
+        return "input"
 
     @property
     def params(self):
         return {
             "format": {"type": "string", "default": "%.3f", "doc": "Printf-style format string."},
             "label": {"type": "string", "default": "", "doc": "Optional label prefix."},
-            "_display_value_": {"type": "string", "default": "---", "doc": "Current displayed value (internal)."},
+            "_display_value_": {
+                "type": "string",
+                "default": "---",
+                "doc": "Current displayed value (internal).",
+            },
         }
 
     @property
@@ -73,12 +77,12 @@ class DisplayBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         fmt = params.get("format", "%.3f")
         label = params.get("label", "")
-        
+
         input_value = inputs.get(0, 0)
-        
+
         try:
             # Handle arrays - show first element or array summary
-            if hasattr(input_value, '__len__') and len(input_value) > 1:
+            if hasattr(input_value, "__len__") and len(input_value) > 1:
                 # For arrays, show first few values
                 vals = np.atleast_1d(input_value).flatten()
                 if len(vals) <= 3:
@@ -95,12 +99,12 @@ class DisplayBlock(BaseBlock):
                 f"'{fmt}' ({e}); showing raw value."
             )
             formatted = str(input_value)
-        
+
         # Add label prefix if specified
         if label:
             params["_display_value_"] = f"{label}: {formatted}"
         else:
             params["_display_value_"] = formatted
-        
+
         # Display blocks are pass-through (no output)
         return {0: np.atleast_1d(input_value)}

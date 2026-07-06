@@ -22,14 +22,14 @@ class TestAnimationExporter:
         n_times, Ny, Nx = 50, 20, 20
         field_data = np.random.rand(n_times, Ny, Nx)
         time_data = np.linspace(0, 5, n_times)
-        params = {'Lx': 1.0, 'Ly': 1.0, 'colormap': 'viridis', 'title': 'Test'}
+        params = {"Lx": 1.0, "Ly": 1.0, "colormap": "viridis", "title": "Test"}
 
-        exporter = AnimationExporter(field_data, time_data, params, dimension='2d')
+        exporter = AnimationExporter(field_data, time_data, params, dimension="2d")
 
         assert exporter.n_frames == n_times
         assert exporter.duration == pytest.approx(5.0)
-        assert exporter.grid_size == '20x20'
-        assert exporter.dimension == '2d'
+        assert exporter.grid_size == "20x20"
+        assert exporter.dimension == "2d"
 
     def test_init_1d_field(self):
         """Test initialization with 1D field data."""
@@ -39,14 +39,14 @@ class TestAnimationExporter:
         n_times, n_nodes = 100, 50
         field_data = np.random.rand(n_times, n_nodes)
         time_data = np.linspace(0, 10, n_times)
-        params = {'L': 1.0, 'colormap': 'viridis', 'title': 'Test 1D'}
+        params = {"L": 1.0, "colormap": "viridis", "title": "Test 1D"}
 
-        exporter = AnimationExporter(field_data, time_data, params, dimension='1d')
+        exporter = AnimationExporter(field_data, time_data, params, dimension="1d")
 
         assert exporter.n_frames == n_times
         assert exporter.duration == pytest.approx(10.0)
-        assert exporter.grid_size == '50'
-        assert exporter.dimension == '1d'
+        assert exporter.grid_size == "50"
+        assert exporter.dimension == "1d"
 
     def test_init_invalid_dimension_2d(self):
         """Test that 2D dimension with wrong shape raises error."""
@@ -58,7 +58,7 @@ class TestAnimationExporter:
         params = {}
 
         with pytest.raises(ValueError, match="2D field data must be 3D array"):
-            AnimationExporter(field_data, time_data, params, dimension='2d')
+            AnimationExporter(field_data, time_data, params, dimension="2d")
 
     def test_init_invalid_dimension_1d(self):
         """Test that 1D dimension with wrong shape raises error."""
@@ -70,7 +70,7 @@ class TestAnimationExporter:
         params = {}
 
         with pytest.raises(ValueError, match="1D field data must be 2D array"):
-            AnimationExporter(field_data, time_data, params, dimension='1d')
+            AnimationExporter(field_data, time_data, params, dimension="1d")
 
     def test_recommended_fps(self):
         """Test FPS recommendation for target duration."""
@@ -80,7 +80,7 @@ class TestAnimationExporter:
         time_data = np.linspace(0, 10, 100)
         params = {}
 
-        exporter = AnimationExporter(field_data, time_data, params, dimension='2d')
+        exporter = AnimationExporter(field_data, time_data, params, dimension="2d")
 
         # 100 frames / 5 second target = 20 fps
         assert exporter.get_recommended_fps(5.0) == 20
@@ -99,7 +99,7 @@ class TestAnimationExporter:
         time_data = np.linspace(0, 6, 60)
         params = {}
 
-        exporter = AnimationExporter(field_data, time_data, params, dimension='2d')
+        exporter = AnimationExporter(field_data, time_data, params, dimension="2d")
 
         # 60 frames at 15 fps = 4 seconds
         assert exporter.get_playback_duration(15) == pytest.approx(4.0)
@@ -114,10 +114,10 @@ class TestAnimationExporter:
         available = AnimationExporter.check_writers()
 
         assert isinstance(available, dict)
-        assert 'gif' in available
-        assert 'mp4' in available
-        assert isinstance(available['gif'], bool)
-        assert isinstance(available['mp4'], bool)
+        assert "gif" in available
+        assert "mp4" in available
+        assert isinstance(available["gif"], bool)
+        assert isinstance(available["mp4"], bool)
 
     def test_single_frame(self):
         """Test edge case: single frame animation."""
@@ -125,9 +125,9 @@ class TestAnimationExporter:
 
         field_data = np.random.rand(1, 20, 20)
         time_data = np.array([0.0])
-        params = {'Lx': 1.0, 'Ly': 1.0}
+        params = {"Lx": 1.0, "Ly": 1.0}
 
-        exporter = AnimationExporter(field_data, time_data, params, dimension='2d')
+        exporter = AnimationExporter(field_data, time_data, params, dimension="2d")
 
         assert exporter.n_frames == 1
         assert exporter.duration == 0.0
@@ -138,9 +138,9 @@ class TestAnimationExporter:
         from lib.plotting.animation_exporter import AnimationExporter
 
         field_data = np.random.rand(50, 20, 20)
-        params = {'Lx': 1.0, 'Ly': 1.0}
+        params = {"Lx": 1.0, "Ly": 1.0}
 
-        exporter = AnimationExporter(field_data, None, params, dimension='2d')
+        exporter = AnimationExporter(field_data, None, params, dimension="2d")
 
         assert exporter.n_frames == 50
         # Time data should default to frame indices
@@ -168,14 +168,9 @@ class TestAnimationExport:
             field_data[i] = decay * np.sin(np.pi * X) * np.sin(np.pi * Y)
 
         time_data = np.linspace(0, 1, n_times)
-        params = {
-            'Lx': 1.0,
-            'Ly': 1.0,
-            'colormap': 'viridis',
-            'title': 'Test Field'
-        }
+        params = {"Lx": 1.0, "Ly": 1.0, "colormap": "viridis", "title": "Test Field"}
 
-        return AnimationExporter(field_data, time_data, params, dimension='2d')
+        return AnimationExporter(field_data, time_data, params, dimension="2d")
 
     @pytest.fixture
     def sample_1d_exporter(self):
@@ -191,28 +186,25 @@ class TestAnimationExport:
             field_data[i] = decay * np.sin(np.pi * x)
 
         time_data = np.linspace(0, 1, n_times)
-        params = {
-            'L': 1.0,
-            'colormap': 'viridis',
-            'title': 'Test 1D Field'
-        }
+        params = {"L": 1.0, "colormap": "viridis", "title": "Test 1D Field"}
 
-        return AnimationExporter(field_data, time_data, params, dimension='1d')
+        return AnimationExporter(field_data, time_data, params, dimension="1d")
 
     def test_export_2d_gif(self, sample_2d_exporter):
         """Test exporting 2D animation as GIF."""
         from lib.plotting.animation_exporter import AnimationExporter
         import matplotlib
-        matplotlib.use('Agg')  # Non-interactive backend for testing
+
+        matplotlib.use("Agg")  # Non-interactive backend for testing
 
         available = AnimationExporter.check_writers()
-        if not available.get('gif', False):
+        if not available.get("gif", False):
             pytest.skip("Pillow not available for GIF export")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, 'test_2d.gif')
+            filepath = os.path.join(tmpdir, "test_2d.gif")
 
-            success = sample_2d_exporter.export(filepath, format='gif', fps=5, dpi=72)
+            success = sample_2d_exporter.export(filepath, format="gif", fps=5, dpi=72)
 
             assert success, "GIF export should succeed"
             assert os.path.exists(filepath), "GIF file should be created"
@@ -222,16 +214,17 @@ class TestAnimationExport:
         """Test exporting 1D animation as GIF."""
         from lib.plotting.animation_exporter import AnimationExporter
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
 
         available = AnimationExporter.check_writers()
-        if not available.get('gif', False):
+        if not available.get("gif", False):
             pytest.skip("Pillow not available for GIF export")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, 'test_1d.gif')
+            filepath = os.path.join(tmpdir, "test_1d.gif")
 
-            success = sample_1d_exporter.export(filepath, format='gif', fps=5, dpi=72)
+            success = sample_1d_exporter.export(filepath, format="gif", fps=5, dpi=72)
 
             assert success, "GIF export should succeed"
             assert os.path.exists(filepath), "GIF file should be created"
@@ -240,12 +233,13 @@ class TestAnimationExport:
     def test_export_invalid_format(self, sample_2d_exporter):
         """Test that invalid format returns False."""
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, 'test.avi')
+            filepath = os.path.join(tmpdir, "test.avi")
 
-            success = sample_2d_exporter.export(filepath, format='avi', fps=5, dpi=72)
+            success = sample_2d_exporter.export(filepath, format="avi", fps=5, dpi=72)
 
             assert not success, "Invalid format should return False"
 
@@ -253,16 +247,17 @@ class TestAnimationExport:
         """Test that export creates parent directories if needed."""
         from lib.plotting.animation_exporter import AnimationExporter
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
 
         available = AnimationExporter.check_writers()
-        if not available.get('gif', False):
+        if not available.get("gif", False):
             pytest.skip("Pillow not available for GIF export")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, 'subdir', 'nested', 'test.gif')
+            filepath = os.path.join(tmpdir, "subdir", "nested", "test.gif")
 
-            success = sample_2d_exporter.export(filepath, format='gif', fps=5, dpi=72)
+            success = sample_2d_exporter.export(filepath, format="gif", fps=5, dpi=72)
 
             assert success, "Export should succeed"
             assert os.path.exists(filepath), "File should be created in nested directory"
@@ -270,27 +265,29 @@ class TestAnimationExport:
     def test_create_animation_2d(self, sample_2d_exporter):
         """Test creating 2D animation object."""
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
         fig, anim = sample_2d_exporter.create_animation(fps=10, dpi=72)
 
         assert fig is not None
         assert anim is not None
-        assert hasattr(anim, 'save')
+        assert hasattr(anim, "save")
 
         plt.close(fig)
 
     def test_create_animation_1d(self, sample_1d_exporter):
         """Test creating 1D animation object."""
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
         fig, anim = sample_1d_exporter.create_animation(fps=10, dpi=72)
 
         assert fig is not None
         assert anim is not None
-        assert hasattr(anim, 'save')
+        assert hasattr(anim, "save")
 
         plt.close(fig)

@@ -37,8 +37,11 @@ class StateSpaceBlock(StateSpaceBaseBlock):
             "D": {"default": [[0.0]], "type": "list"},
             "init_conds": {"default": [0.0], "type": "list"},
             "_init_start_": {"default": True, "type": "bool"},
-            "sampling_time": {"default": -1.0, "type": "float",
-                             "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)"},
+            "sampling_time": {
+                "default": -1.0,
+                "type": "float",
+                "doc": "Sample time (-1=continuous, 0=inherited, >0=discrete)",
+            },
         }
 
     @property
@@ -61,53 +64,49 @@ class StateSpaceBlock(StateSpaceBaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute continuous state-space block (discretized for simulation)."""
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
-        if params.get('_init_start_', True):
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_init_start_"] = False
 
             # Validate matrices
             result = self._validate_state_space_matrices(
-                params['A'], params['B'], params['C'], params['D']
+                params["A"], params["B"], params["C"], params["D"]
             )
             if isinstance(result, dict):
                 return result
             A, B, C, D, n, m, p = result
 
             # Discretize continuous system
-            dtime = kwargs.get('dtime', params.get('dtime', 0.01))
+            dtime = kwargs.get("dtime", params.get("dtime", 0.01))
             try:
-                Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime, method='zoh')
+                Ad, Bd, Cd, Dd, _ = signal.cont2discrete((A, B, C, D), dtime, method="zoh")
             except Exception as e:
-                return {'E': True, 'error': f'Failed to discretize system: {e}'}
+                return {"E": True, "error": f"Failed to discretize system: {e}"}
 
-            params['_Ad_'] = Ad
-            params['_Bd_'] = Bd
-            params['_Cd_'] = Cd
-            params['_Dd_'] = Dd
-            params['_x_'] = self._initialize_state_vector(n, params.get('init_conds', [0.0]))
-            params['_n_states_'] = n
-            params['_n_inputs_'] = m
-            params['_n_outputs_'] = p
+            params["_Ad_"] = Ad
+            params["_Bd_"] = Bd
+            params["_Cd_"] = Cd
+            params["_Dd_"] = Dd
+            params["_x_"] = self._initialize_state_vector(n, params.get("init_conds", [0.0]))
+            params["_n_states_"] = n
+            params["_n_inputs_"] = m
+            params["_n_outputs_"] = p
 
         # Process input
-        u, err = self._process_input(inputs, params['_n_inputs_'], output_only)
+        u, err = self._process_input(inputs, params["_n_inputs_"], output_only)
         if err:
             return err
 
         # Compute output
-        y, err = self._compute_output(
-            params['_Cd_'], params['_Dd_'], params['_x_'], u
-        )
+        y, err = self._compute_output(params["_Cd_"], params["_Dd_"], params["_x_"], u)
         if err:
             return err
 
         # Update state
         if not output_only:
-            err = self._update_state(
-                params['_Ad_'], params['_Bd_'], params['_x_'], u, params
-            )
+            err = self._update_state(params["_Ad_"], params["_Bd_"], params["_x_"], u, params)
             if err:
                 return err
 
-        return {0: self._format_output(y), 'E': False}
+        return {0: self._format_output(y), "E": False}

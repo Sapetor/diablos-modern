@@ -173,7 +173,7 @@ def route_all_lines(lines, blocks) -> int:
     rerouted = 0
     block_index = {b.name: b for b in blocks}
     for line in lines:
-        if getattr(line, 'hidden', False):
+        if getattr(line, "hidden", False):
             continue
         new_pts = route_line(line, blocks, block_index=block_index)
         if not new_pts or len(new_pts) < 2:

@@ -4,8 +4,15 @@ Displays validation errors and warnings in a collapsible panel.
 
 import logging
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame, QMenu, QApplication
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QFrame,
+    QMenu,
+    QApplication,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QCursor
@@ -57,16 +64,16 @@ class ErrorItemWidget(QFrame):
 
     def _apply_styling(self):
         """Apply theme-aware styling."""
-        text_color = theme_manager.get_color('text_primary')
-        border_color = theme_manager.get_color('border_primary')
+        text_color = theme_manager.get_color("text_primary")
+        border_color = theme_manager.get_color("border_primary")
 
         # Different background for different severities (theme-aware)
         if self.error.severity == ErrorSeverity.ERROR:
-            accent = theme_manager.get_color('error_bg').name()
+            accent = theme_manager.get_color("error_bg").name()
         elif self.error.severity == ErrorSeverity.WARNING:
-            accent = theme_manager.get_color('warning_bg').name()
+            accent = theme_manager.get_color("warning_bg").name()
         else:
-            accent = theme_manager.get_color('info_bg').name()
+            accent = theme_manager.get_color("info_bg").name()
 
         self.setStyleSheet(f"""
             ErrorItemWidget {{
@@ -76,8 +83,8 @@ class ErrorItemWidget(QFrame):
                 margin: 2px 0px;
             }}
             ErrorItemWidget:hover {{
-                background-color: {theme_manager.get_color('surface_primary').name()};
-                border: 1px solid {theme_manager.get_color('accent_primary').name()};
+                background-color: {theme_manager.get_color("surface_primary").name()};
+                border: 1px solid {theme_manager.get_color("accent_primary").name()};
             }}
             QLabel {{
                 color: {text_color.name()};
@@ -103,9 +110,13 @@ class ErrorItemWidget(QFrame):
         """Copy the error message to clipboard."""
         logger.debug("Copying single error message to clipboard")
         clipboard = QApplication.clipboard()
-        severity_text = self.error.severity.name if hasattr(self.error.severity, 'name') else str(self.error.severity)
+        severity_text = (
+            self.error.severity.name
+            if hasattr(self.error.severity, "name")
+            else str(self.error.severity)
+        )
         text = f"[{severity_text}] {self.error.message}"
-        if hasattr(self.error, 'block_name') and self.error.block_name:
+        if hasattr(self.error, "block_name") and self.error.block_name:
             text += f" (Block: {self.error.block_name})"
         clipboard.setText(text)
         logger.debug(f"Copied to clipboard: {text[:50]}...")
@@ -189,16 +200,16 @@ class ErrorPanel(QWidget):
 
         # Soft elevation so the panel floats above the canvas. The panel itself
         # holds no other QGraphicsEffect, so this shadow is safe to attach here.
-        self.setGraphicsEffect(make_shadow('e2'))
+        self.setGraphicsEffect(make_shadow("e2"))
 
         # Initially hidden
         self.hide()
 
     def _apply_styling(self):
         """Apply theme-aware styling."""
-        bg_color = theme_manager.get_color('surface_primary')
-        text_color = theme_manager.get_color('text_primary')
-        border_color = theme_manager.get_color('border_primary')
+        bg_color = theme_manager.get_color("surface_primary")
+        text_color = theme_manager.get_color("text_primary")
+        border_color = theme_manager.get_color("border_primary")
 
         self.setStyleSheet(f"""
             ErrorPanel {{
@@ -217,8 +228,8 @@ class ErrorPanel(QWidget):
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background-color: {theme_manager.get_color('surface_secondary').name()};
-                border: 1px solid {theme_manager.get_color('accent_primary').name()};
+                background-color: {theme_manager.get_color("surface_secondary").name()};
+                border: 1px solid {theme_manager.get_color("accent_primary").name()};
             }}
             QScrollArea {{
                 border: none;
@@ -298,9 +309,11 @@ class ErrorPanel(QWidget):
 
         lines = []
         for error in self.errors:
-            severity_text = error.severity.name if hasattr(error.severity, 'name') else str(error.severity)
+            severity_text = (
+                error.severity.name if hasattr(error.severity, "name") else str(error.severity)
+            )
             text = f"[{severity_text}] {error.message}"
-            if hasattr(error, 'block_name') and error.block_name:
+            if hasattr(error, "block_name") and error.block_name:
                 text += f" (Block: {error.block_name})"
             lines.append(text)
 
@@ -313,4 +326,5 @@ class ErrorPanel(QWidget):
         original_text = self.copy_btn.text()
         self.copy_btn.setText("✓")
         from PyQt5.QtCore import QTimer
+
         QTimer.singleShot(1000, lambda: self.copy_btn.setText(original_text))

@@ -19,7 +19,10 @@ import logging
 import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.param_templates import (
-    diffusivity_param, domain_params_2d, init_flag_param, pde_2d_init_temp_param
+    diffusivity_param,
+    domain_params_2d,
+    init_flag_param,
+    pde_2d_init_temp_param,
 )
 from lib.engine.pde_helpers import bc_params_2d
 from lib.engine.pde_ops import heat_rhs_2d
@@ -113,6 +116,7 @@ class HeatEquation2DBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw 2D heat equation icon - grid with gradient."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
 
         # Draw grid pattern
@@ -132,25 +136,25 @@ class HeatEquation2DBlock(BaseBlock):
 
     def get_initial_state(self, params):
         """Return initial state vector for the 2D field."""
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
-        init_temp = params.get('init_temp', '0.0')
-        amplitude = float(params.get('init_amplitude', 1.0))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
+        init_temp = params.get("init_temp", "0.0")
+        amplitude = float(params.get("init_amplitude", 1.0))
 
         x = np.linspace(0, Lx, Nx)
         y = np.linspace(0, Ly, Ny)
         X, Y = np.meshgrid(x, y)  # Shape: (Ny, Nx)
 
         if isinstance(init_temp, str):
-            if init_temp.lower() == 'sinusoidal':
+            if init_temp.lower() == "sinusoidal":
                 # T = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode of Laplacian
                 T0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_temp.lower() == 'gaussian':
+            elif init_temp.lower() == "gaussian":
                 # Gaussian bump at center
-                T0 = amplitude * np.exp(-50 * ((X - Lx/2)**2 + (Y - Ly/2)**2))
-            elif init_temp.lower() == 'hot_spot':
+                T0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
+            elif init_temp.lower() == "hot_spot":
                 # Hot spot in corner
                 T0 = amplitude * np.exp(-100 * (X**2 + Y**2))
             else:
@@ -167,8 +171,8 @@ class HeatEquation2DBlock(BaseBlock):
 
     def get_state_size(self, params):
         """Return the number of state variables."""
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
         return Nx * Ny
 
     def execute(self, time, inputs, params, **kwargs):
@@ -181,10 +185,10 @@ class HeatEquation2DBlock(BaseBlock):
         the 2D blocks now do the same, so the interpreter no longer leaves the
         field frozen at its initial condition.
         """
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
 
-        state = kwargs.get('state', None)
+        state = kwargs.get("state", None)
         if state is None:
             state = self._interp_step(time, inputs, params)
 
@@ -193,7 +197,7 @@ class HeatEquation2DBlock(BaseBlock):
             0: T_field,
             1: float(np.mean(T_field)),
             2: float(np.max(T_field)),
-            'E': False,
+            "E": False,
         }
 
     def _interp_step(self, time, inputs, params):
@@ -203,16 +207,16 @@ class HeatEquation2DBlock(BaseBlock):
         compiled path (which records the IC at t=0). FTCS is only stable for
         dtime <= min(dx,dy)^2 / (4*alpha); beyond that the explicit update
         diverges -- use the compiled solver for stiff / fine grids."""
-        if params.get('_init_start_', True):
-            params['_interp_state_'] = self.get_initial_state(params)
-            params['_init_start_'] = False
-            return params['_interp_state_']
+        if params.get("_init_start_", True):
+            params["_interp_state_"] = self.get_initial_state(params)
+            params["_init_start_"] = False
+            return params["_interp_state_"]
 
-        state = np.asarray(params['_interp_state_'], dtype=float)
-        dtime = float(params.get('dtime', 0.01))
+        state = np.asarray(params["_interp_state_"], dtype=float)
+        dtime = float(params.get("dtime", 0.01))
         dstate = self.compute_derivatives(time, state, inputs, params)
         state = state + np.asarray(dstate, dtype=float) * dtime
-        params['_interp_state_'] = state
+        params["_interp_state_"] = state
         return state
 
     def compute_derivatives(self, time, state, inputs, params):
@@ -222,11 +226,11 @@ class HeatEquation2DBlock(BaseBlock):
         Uses 5-point stencil for Laplacian:
         ∇²T ≈ (T[i+1,j] + T[i-1,j] + T[i,j+1] + T[i,j-1] - 4*T[i,j]) / h²
         """
-        alpha = float(params.get('alpha', 0.01))
-        Lx = float(params.get('Lx', 1.0))
-        Ly = float(params.get('Ly', 1.0))
-        Nx = int(params.get('Nx', 20))
-        Ny = int(params.get('Ny', 20))
+        alpha = float(params.get("alpha", 0.01))
+        Lx = float(params.get("Lx", 1.0))
+        Ly = float(params.get("Ly", 1.0))
+        Nx = int(params.get("Nx", 20))
+        Ny = int(params.get("Ny", 20))
 
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)
@@ -237,10 +241,10 @@ class HeatEquation2DBlock(BaseBlock):
         bc_bottom = float(inputs.get(3, 0.0)) if inputs.get(3) is not None else 0.0
         bc_top = float(inputs.get(4, 0.0)) if inputs.get(4) is not None else 0.0
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
-        bc_type_bottom = params.get('bc_type_bottom', 'Dirichlet')
-        bc_type_top = params.get('bc_type_top', 'Dirichlet')
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
+        bc_type_bottom = params.get("bc_type_bottom", "Dirichlet")
+        bc_type_top = params.get("bc_type_top", "Dirichlet")
 
         # Get heat source
         q_src = inputs.get(0, 0.0)
@@ -258,8 +262,19 @@ class HeatEquation2DBlock(BaseBlock):
         # single-sourced in lib.engine.pde_ops (shared with the compiled kernel).
         T = state.reshape((Ny, Nx))
         dT_dt = heat_rhs_2d(
-            T, alpha, dx, dy, q_src,
-            bc_type_left, bc_type_right, bc_type_bottom, bc_type_top,
-            bc_left, bc_right, bc_bottom, bc_top)
+            T,
+            alpha,
+            dx,
+            dy,
+            q_src,
+            bc_type_left,
+            bc_type_right,
+            bc_type_bottom,
+            bc_type_top,
+            bc_left,
+            bc_right,
+            bc_bottom,
+            bc_top,
+        )
 
         return dT_dt.flatten()

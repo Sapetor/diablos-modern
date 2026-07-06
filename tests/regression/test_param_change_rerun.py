@@ -61,38 +61,38 @@ class TestParameterChangeRerun:
         """
         # Create blocks
         step_block = _make_block(
-            block_fn='Step',
+            block_fn="Step",
             sid=0,
-            username='Step',
+            username="Step",
             in_ports=0,
             out_ports=1,
-            params={'value': 1.0, 'delay': 0.0, 'type': 'up'},
+            params={"value": 1.0, "delay": 0.0, "type": "up"},
         )
 
         tranfn_block = _make_block(
-            block_fn='TranFn',
+            block_fn="TranFn",
             sid=1,
-            username='TranFn',
+            username="TranFn",
             in_ports=1,
             out_ports=1,
             params={
-                'numerator': [1.0],
-                'denominator': [1.0, 1.0],  # 1/(s+1), τ=1
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],  # 1/(s+1), τ=1
             },
         )
 
         scope_block = _make_block(
-            block_fn='Scope',
+            block_fn="Scope",
             sid=2,
-            username='Scope',
+            username="Scope",
             in_ports=1,
             out_ports=0,
-            params={'labels': 'output'},
+            params={"labels": "output"},
         )
 
         # Create connections
-        line1 = _make_line(sid=0, src='step0', srcport=0, dst='tranfn1', dstport=0)
-        line2 = _make_line(sid=1, src='tranfn1', srcport=0, dst='scope2', dstport=0)
+        line1 = _make_line(sid=0, src="step0", srcport=0, dst="tranfn1", dstport=0)
+        line2 = _make_line(sid=1, src="tranfn1", srcport=0, dst="scope2", dstport=0)
 
         blocks = [step_block, tranfn_block, scope_block]
         lines = [line1, line2]
@@ -101,26 +101,24 @@ class TestParameterChangeRerun:
         compiler = SystemCompiler()
         assert compiler.check_compilability(blocks), "Blocks should be compilable"
 
-        model_func, y0, state_map, block_matrices = compiler.compile_system(
-            blocks, blocks, lines
-        )
+        model_func, y0, state_map, block_matrices = compiler.compile_system(blocks, blocks, lines)
 
         t_span = (0, 10)
         t_eval = np.linspace(0, 10, 500)
-        sol1 = solve_ivp(model_func, t_span, y0, method='RK45', t_eval=t_eval)
+        sol1 = solve_ivp(model_func, t_span, y0, method="RK45", t_eval=t_eval)
 
         # Extract output (TranFn state)
         output1 = sol1.y[0, :]  # First state variable is TranFn output
 
         # Change denominator to [1.0, 0.5] (τ=2, slower response)
-        tranfn_block.params['denominator'] = [1.0, 0.5]
+        tranfn_block.params["denominator"] = [1.0, 0.5]
 
         # Re-compile and simulate with SAME block objects
         model_func2, y0_2, state_map2, block_matrices2 = compiler.compile_system(
             blocks, blocks, lines
         )
 
-        sol2 = solve_ivp(model_func2, t_span, y0_2, method='RK45', t_eval=t_eval)
+        sol2 = solve_ivp(model_func2, t_span, y0_2, method="RK45", t_eval=t_eval)
         output2 = sol2.y[0, :]
 
         # Verify outputs are different
@@ -161,15 +159,15 @@ class TestParameterChangeRerun:
         - First run: gain = 2.0 → integrator ramps at slope 2
         - Second run: gain = 5.0 → integrator ramps at slope 5
         """
-        step_block = _make_block('Step', 0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'})
-        gain_block = _make_block('Gain', 1, '', 1, 1, {'gain': 2.0})
-        integ_block = _make_block('Integrator', 2, '', 1, 1, {'init_conds': 0.0, 'method': 'RK45'})
-        scope_block = _make_block('Scope', 3, '', 1, 0, {'labels': 'output'})
+        step_block = _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"})
+        gain_block = _make_block("Gain", 1, "", 1, 1, {"gain": 2.0})
+        integ_block = _make_block("Integrator", 2, "", 1, 1, {"init_conds": 0.0, "method": "RK45"})
+        scope_block = _make_block("Scope", 3, "", 1, 0, {"labels": "output"})
 
         lines = [
-            _make_line(0, 'step0', 0, 'gain1', 0),
-            _make_line(1, 'gain1', 0, 'integrator2', 0),
-            _make_line(2, 'integrator2', 0, 'scope3', 0),
+            _make_line(0, "step0", 0, "gain1", 0),
+            _make_line(1, "gain1", 0, "integrator2", 0),
+            _make_line(2, "integrator2", 0, "scope3", 0),
         ]
         blocks = [step_block, gain_block, integ_block, scope_block]
 
@@ -180,21 +178,21 @@ class TestParameterChangeRerun:
 
         t_span = (0, 5)
         t_eval = np.linspace(0, 5, 100)
-        sol1 = solve_ivp(model_func, t_span, y0, method='RK45', t_eval=t_eval)
+        sol1 = solve_ivp(model_func, t_span, y0, method="RK45", t_eval=t_eval)
         final1 = sol1.y[0, -1]  # Integrator of 2.0 over 5s = 10.0
 
         # Change gain to 5.0
-        gain_block.params['gain'] = 5.0
+        gain_block.params["gain"] = 5.0
 
         # Re-compile and simulate
         model_func2, y0_2, _, _ = compiler.compile_system(blocks, blocks, lines)
-        sol2 = solve_ivp(model_func2, t_span, y0_2, method='RK45', t_eval=t_eval)
+        sol2 = solve_ivp(model_func2, t_span, y0_2, method="RK45", t_eval=t_eval)
         final2 = sol2.y[0, -1]  # Integrator of 5.0 over 5s = 25.0
 
         # Verify outputs are different and in correct ratio
         assert abs(final1 - 10.0) < 0.1, f"Gain=2 should give ~10.0, got {final1:.3f}"
         assert abs(final2 - 25.0) < 0.1, f"Gain=5 should give ~25.0, got {final2:.3f}"
-        assert abs(final2 / final1 - 2.5) < 0.1, f"Ratio should be ~2.5, got {final2/final1:.3f}"
+        assert abs(final2 / final1 - 2.5) < 0.1, f"Ratio should be ~2.5, got {final2 / final1:.3f}"
 
     def test_step_value_change(self, qapp):
         """
@@ -208,35 +206,35 @@ class TestParameterChangeRerun:
         """
         # Create blocks
         step_block = _make_block(
-            block_fn='Step',
+            block_fn="Step",
             sid=0,
-            username='Step',
+            username="Step",
             in_ports=0,
             out_ports=1,
-            params={'value': 1.0, 'delay': 0.0, 'type': 'up'},
+            params={"value": 1.0, "delay": 0.0, "type": "up"},
         )
 
         integrator_block = _make_block(
-            block_fn='Integrator',
+            block_fn="Integrator",
             sid=1,
-            username='Integrator',
+            username="Integrator",
             in_ports=1,
             out_ports=1,
-            params={'init_conds': 0.0, 'method': 'RK45'},
+            params={"init_conds": 0.0, "method": "RK45"},
         )
 
         scope_block = _make_block(
-            block_fn='Scope',
+            block_fn="Scope",
             sid=2,
-            username='Scope',
+            username="Scope",
             in_ports=1,
             out_ports=0,
-            params={'labels': 'output'},
+            params={"labels": "output"},
         )
 
         # Create connections
-        line1 = _make_line(sid=0, src='step0', srcport=0, dst='integrator1', dstport=0)
-        line2 = _make_line(sid=1, src='integrator1', srcport=0, dst='scope2', dstport=0)
+        line1 = _make_line(sid=0, src="step0", srcport=0, dst="integrator1", dstport=0)
+        line2 = _make_line(sid=1, src="integrator1", srcport=0, dst="scope2", dstport=0)
 
         blocks = [step_block, integrator_block, scope_block]
         lines = [line1, line2]
@@ -245,27 +243,25 @@ class TestParameterChangeRerun:
         compiler = SystemCompiler()
         assert compiler.check_compilability(blocks), "Blocks should be compilable"
 
-        model_func, y0, state_map, block_matrices = compiler.compile_system(
-            blocks, blocks, lines
-        )
+        model_func, y0, state_map, block_matrices = compiler.compile_system(blocks, blocks, lines)
 
         t_span = (0, 5)
         t_eval = np.linspace(0, 5, 100)
-        sol1 = solve_ivp(model_func, t_span, y0, method='RK45', t_eval=t_eval)
+        sol1 = solve_ivp(model_func, t_span, y0, method="RK45", t_eval=t_eval)
 
         # Extract integrator output (first state)
         output1 = sol1.y[0, :]
         final_value1 = output1[-1]
 
         # Change step value to 3.0
-        step_block.params['value'] = 3.0
+        step_block.params["value"] = 3.0
 
         # Re-compile and simulate
         model_func2, y0_2, state_map2, block_matrices2 = compiler.compile_system(
             blocks, blocks, lines
         )
 
-        sol2 = solve_ivp(model_func2, t_span, y0_2, method='RK45', t_eval=t_eval)
+        sol2 = solve_ivp(model_func2, t_span, y0_2, method="RK45", t_eval=t_eval)
         output2 = sol2.y[0, :]
         final_value2 = output2[-1]
 
@@ -294,15 +290,23 @@ class TestParameterChangeRerun:
         Since sol.y gives the raw state, we compute y=Cx+Du manually
         using the block_matrices returned by the compiler.
         """
-        step_block = _make_block('Step', 0, '', 0, 1, {'value': 1.0, 'delay': 0.0, 'type': 'up'})
-        tranfn_block = _make_block('TranFn', 1, '', 1, 1, {
-            'numerator': [1.0], 'denominator': [1.0, 1.0],
-        })
-        scope_block = _make_block('Scope', 2, '', 1, 0, {'labels': 'output'})
+        step_block = _make_block("Step", 0, "", 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"})
+        tranfn_block = _make_block(
+            "TranFn",
+            1,
+            "",
+            1,
+            1,
+            {
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
+            },
+        )
+        scope_block = _make_block("Scope", 2, "", 1, 0, {"labels": "output"})
 
         lines = [
-            _make_line(0, 'step0', 0, 'tranfn1', 0),
-            _make_line(1, 'tranfn1', 0, 'scope2', 0),
+            _make_line(0, "step0", 0, "tranfn1", 0),
+            _make_line(1, "tranfn1", 0, "scope2", 0),
         ]
         blocks = [step_block, tranfn_block, scope_block]
 
@@ -313,29 +317,35 @@ class TestParameterChangeRerun:
 
         t_span = (0, 10)
         t_eval = np.linspace(0, 10, 500)
-        sol1 = solve_ivp(model_func, t_span, y0, method='RK45', t_eval=t_eval)
+        sol1 = solve_ivp(model_func, t_span, y0, method="RK45", t_eval=t_eval)
 
         # Compute output y = C*x + D*u for TranFn
-        A1, B1, C1, D1 = block_matrices['tranfn1']
+        A1, B1, C1, D1 = block_matrices["tranfn1"]
         x1_final = sol1.y[0, -1]
         y1_final = float(C1[0, 0] * x1_final + D1[0, 0] * 1.0)
 
         # Change numerator to [2.0]
-        tranfn_block.params['numerator'] = [2.0]
+        tranfn_block.params["numerator"] = [2.0]
 
-        model_func2, y0_2, state_map2, block_matrices2 = compiler.compile_system(blocks, blocks, lines)
-        sol2 = solve_ivp(model_func2, t_span, y0_2, method='RK45', t_eval=t_eval)
+        model_func2, y0_2, state_map2, block_matrices2 = compiler.compile_system(
+            blocks, blocks, lines
+        )
+        sol2 = solve_ivp(model_func2, t_span, y0_2, method="RK45", t_eval=t_eval)
 
-        A2, B2, C2, D2 = block_matrices2['tranfn1']
+        A2, B2, C2, D2 = block_matrices2["tranfn1"]
         x2_final = sol2.y[0, -1]
         y2_final = float(C2[0, 0] * x2_final + D2[0, 0] * 1.0)
 
         # Verify C matrix changed
-        assert C1[0, 0] != C2[0, 0], f"C matrix should change: C1={C1[0,0]}, C2={C2[0,0]}"
+        assert C1[0, 0] != C2[0, 0], f"C matrix should change: C1={C1[0, 0]}, C2={C2[0, 0]}"
 
         # Verify output steady-state differs by factor of 2
-        assert np.isclose(y1_final, 1.0, atol=0.1), f"num=[1] output should be ~1.0, got {y1_final:.3f}"
-        assert np.isclose(y2_final, 2.0, atol=0.1), f"num=[2] output should be ~2.0, got {y2_final:.3f}"
+        assert np.isclose(y1_final, 1.0, atol=0.1), (
+            f"num=[1] output should be ~1.0, got {y1_final:.3f}"
+        )
+        assert np.isclose(y2_final, 2.0, atol=0.1), (
+            f"num=[2] output should be ~2.0, got {y2_final:.3f}"
+        )
 
     def test_multiple_parameter_changes(self, qapp):
         """
@@ -346,48 +356,48 @@ class TestParameterChangeRerun:
         """
         # Create blocks
         step_block = _make_block(
-            block_fn='Step',
+            block_fn="Step",
             sid=0,
-            username='Step',
+            username="Step",
             in_ports=0,
             out_ports=1,
-            params={'value': 1.0, 'delay': 0.0, 'type': 'up'},
+            params={"value": 1.0, "delay": 0.0, "type": "up"},
         )
 
         gain_block = _make_block(
-            block_fn='Gain',
+            block_fn="Gain",
             sid=1,
-            username='Gain',
+            username="Gain",
             in_ports=1,
             out_ports=1,
-            params={'gain': 1.0},
+            params={"gain": 1.0},
         )
 
         tranfn_block = _make_block(
-            block_fn='TranFn',
+            block_fn="TranFn",
             sid=2,
-            username='TranFn',
+            username="TranFn",
             in_ports=1,
             out_ports=1,
             params={
-                'numerator': [1.0],
-                'denominator': [1.0, 1.0],
+                "numerator": [1.0],
+                "denominator": [1.0, 1.0],
             },
         )
 
         scope_block = _make_block(
-            block_fn='Scope',
+            block_fn="Scope",
             sid=3,
-            username='Scope',
+            username="Scope",
             in_ports=1,
             out_ports=0,
-            params={'labels': 'output'},
+            params={"labels": "output"},
         )
 
         # Create connections
-        line1 = _make_line(sid=0, src='step0', srcport=0, dst='gain1', dstport=0)
-        line2 = _make_line(sid=1, src='gain1', srcport=0, dst='tranfn2', dstport=0)
-        line3 = _make_line(sid=2, src='tranfn2', srcport=0, dst='scope3', dstport=0)
+        line1 = _make_line(sid=0, src="step0", srcport=0, dst="gain1", dstport=0)
+        line2 = _make_line(sid=1, src="gain1", srcport=0, dst="tranfn2", dstport=0)
+        line3 = _make_line(sid=2, src="tranfn2", srcport=0, dst="scope3", dstport=0)
 
         blocks = [step_block, gain_block, tranfn_block, scope_block]
         lines = [line1, line2, line3]
@@ -396,26 +406,24 @@ class TestParameterChangeRerun:
         compiler = SystemCompiler()
         assert compiler.check_compilability(blocks), "Blocks should be compilable"
 
-        model_func, y0, state_map, block_matrices = compiler.compile_system(
-            blocks, blocks, lines
-        )
+        model_func, y0, state_map, block_matrices = compiler.compile_system(blocks, blocks, lines)
 
         t_span = (0, 10)
         t_eval = np.linspace(0, 10, 500)
-        sol1 = solve_ivp(model_func, t_span, y0, method='RK45', t_eval=t_eval)
+        sol1 = solve_ivp(model_func, t_span, y0, method="RK45", t_eval=t_eval)
 
         output1 = sol1.y[0, :]
 
         # Change both parameters
-        gain_block.params['gain'] = 3.0
-        tranfn_block.params['denominator'] = [1.0, 0.5]
+        gain_block.params["gain"] = 3.0
+        tranfn_block.params["denominator"] = [1.0, 0.5]
 
         # Re-compile and simulate
         model_func2, y0_2, state_map2, block_matrices2 = compiler.compile_system(
             blocks, blocks, lines
         )
 
-        sol2 = solve_ivp(model_func2, t_span, y0_2, method='RK45', t_eval=t_eval)
+        sol2 = solve_ivp(model_func2, t_span, y0_2, method="RK45", t_eval=t_eval)
         output2 = sol2.y[0, :]
 
         # Verify outputs are significantly different
@@ -427,9 +435,7 @@ class TestParameterChangeRerun:
             f"Outputs should be very different after multiple parameter changes. "
             f"Max diff: {max_diff:.6f}"
         )
-        assert mean_diff > 0.2, (
-            f"Mean difference should be substantial. Mean diff: {mean_diff:.6f}"
-        )
+        assert mean_diff > 0.2, f"Mean difference should be substantial. Mean diff: {mean_diff:.6f}"
 
         # Verify steady-state reflects parameter changes
         # First: gain=1, den=[1,1] → DC = 1*1/1 = 1.0
@@ -437,10 +443,10 @@ class TestParameterChangeRerun:
         # Note: sol.y[0] is the TranFn state. Output y = C*x + D*u.
         # For 1/(s+a): A=-a, C=1, so output ≈ state at steady state.
         # Compute actual output using block_matrices
-        A1, B1, C1, D1 = block_matrices['tranfn2']
+        A1, B1, C1, D1 = block_matrices["tranfn2"]
         y1_ss = float(C1[0, 0] * output1[-1])
 
-        A2, B2, C2, D2 = block_matrices2['tranfn2']
+        A2, B2, C2, D2 = block_matrices2["tranfn2"]
         y2_ss = float(C2[0, 0] * output2[-1])
 
         assert np.isclose(y1_ss, 1.0, atol=0.1), (

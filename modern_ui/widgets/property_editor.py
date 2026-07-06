@@ -18,10 +18,22 @@ import os
 import sys
 from collections import OrderedDict
 from PyQt5.QtWidgets import (
-    QAbstractSpinBox, QLabel, QLineEdit, QComboBox, QCheckBox,
-    QFrame, QFormLayout, QSpinBox, QDoubleSpinBox,
-    QVBoxLayout, QHBoxLayout, QToolButton, QWidget,
-    QSlider, QPushButton, QSizePolicy
+    QAbstractSpinBox,
+    QLabel,
+    QLineEdit,
+    QComboBox,
+    QCheckBox,
+    QFrame,
+    QFormLayout,
+    QSpinBox,
+    QDoubleSpinBox,
+    QVBoxLayout,
+    QHBoxLayout,
+    QToolButton,
+    QWidget,
+    QSlider,
+    QPushButton,
+    QSizePolicy,
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QColor, QFont, QPalette
@@ -31,25 +43,20 @@ from lib.workspace import WorkspaceManager
 logger = logging.getLogger(__name__)
 
 # Param grouping constants
-ADVANCED_PARAM_NAMES = frozenset({
-    'sampling_time', 'method', 'verify_mode'
-})
-LIMIT_PARAM_NAMES = frozenset({
-    'min', 'max', 'u_min', 'u_max', 'limit_output',
-    'rising_slew', 'falling_slew'
-})
-NO_SLIDER_PARAMS = frozenset({
-    'init_conds', 'init_temp', 'init_amplitude', 'N', 'Nx', 'Ny'
-})
+ADVANCED_PARAM_NAMES = frozenset({"sampling_time", "method", "verify_mode"})
+LIMIT_PARAM_NAMES = frozenset(
+    {"min", "max", "u_min", "u_max", "limit_output", "rising_slew", "falling_slew"}
+)
+NO_SLIDER_PARAMS = frozenset({"init_conds", "init_temp", "init_amplitude", "N", "Nx", "Ny"})
 
 # Sink-block scratch state (Scope/Export/FieldScope sample buffers).
 # Public-keyed so the simulation engine and plotter can share the convention,
 # but never user-editable, so we hide them from the property panel.
-_HIDDEN_SCRATCH_KEYS = frozenset({'vector', 'vec_dim', 'vec_labels'})
+_HIDDEN_SCRATCH_KEYS = frozenset({"vector", "vec_dim", "vec_labels"})
 
 
 def _is_internal_param(key: str) -> bool:
-    return key.startswith('_') or key in _HIDDEN_SCRATCH_KEYS
+    return key.startswith("_") or key in _HIDDEN_SCRATCH_KEYS
 
 
 class CollapsibleSection(QWidget):
@@ -96,8 +103,8 @@ class CollapsibleSection(QWidget):
     def update_theme(self, colors):
         self.toggle_btn.setStyleSheet(f"""
             QToolButton {{
-                background-color: {colors['surface_variant']};
-                color: {colors['text_primary']};
+                background-color: {colors["surface_variant"]};
+                color: {colors["text_primary"]};
                 border: none;
                 border-radius: 4px;
                 font-weight: bold;
@@ -106,7 +113,7 @@ class CollapsibleSection(QWidget):
                 padding: 6px 4px 6px 4px;
             }}
             QToolButton:hover {{
-                background-color: {colors['border']};
+                background-color: {colors["border"]};
             }}
         """)
 
@@ -194,34 +201,34 @@ class SliderSpinBox(QWidget):
     def update_theme(self, colors):
         self.spinbox.setStyleSheet(f"""
             QDoubleSpinBox {{
-                background-color: {colors['input_bg']};
-                color: {colors['text']};
-                border: 1px solid {colors['border']};
+                background-color: {colors["input_bg"]};
+                color: {colors["text"]};
+                border: 1px solid {colors["border"]};
                 border-radius: 4px;
                 padding: 2px 4px;
-                selection-background-color: {colors['accent']};
+                selection-background-color: {colors["accent"]};
                 selection-color: white;
             }}
             QDoubleSpinBox:focus {{
-                border: 2px solid {colors['accent']};
+                border: 2px solid {colors["accent"]};
                 padding: 1px 3px;
             }}
         """)
         self.slider.setStyleSheet(f"""
             QSlider::groove:horizontal {{
-                background: {colors['border']};
+                background: {colors["border"]};
                 height: 4px;
                 border-radius: 2px;
             }}
             QSlider::handle:horizontal {{
-                background: {colors['accent']};
+                background: {colors["accent"]};
                 width: 14px;
                 height: 14px;
                 margin: -5px 0;
                 border-radius: 7px;
             }}
             QSlider::sub-page:horizontal {{
-                background: {colors['accent']};
+                background: {colors["accent"]};
                 border-radius: 2px;
             }}
         """)
@@ -246,7 +253,7 @@ class PropertyEditor(QFrame):
 
         self.logger = logging.getLogger(__name__)
         self.block = None
-        self._widgets = {}   # key -> (editor, reset_btn, val_label)
+        self._widgets = {}  # key -> (editor, reset_btn, val_label)
         self._pin_btns = {}  # key -> QPushButton (only for params with sliders)
         self._defaults = {}  # key -> default value
         self._sections = []  # CollapsibleSection references
@@ -336,7 +343,7 @@ class PropertyEditor(QFrame):
         placeholder = QLabel("Select a block to view its properties.")
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
-        text_color = theme_manager.get_color('text_secondary').name()
+        text_color = theme_manager.get_color("text_secondary").name()
         placeholder.setStyleSheet(f"color: {text_color}; padding: 20px;")
         self._main_layout.addWidget(placeholder)
 
@@ -349,12 +356,12 @@ class PropertyEditor(QFrame):
         All values are best-effort read from dsim — missing data is hidden,
         not stubbed, so the view is honest about what's available.
         """
-        text_primary = theme_manager.get_color('text_primary').name()
-        text_secondary = theme_manager.get_color('text_secondary').name()
-        text_disabled = theme_manager.get_color('text_disabled').name()
-        success = theme_manager.get_color('success').name()
-        warning = theme_manager.get_color('warning').name()
-        error = theme_manager.get_color('error').name()
+        text_primary = theme_manager.get_color("text_primary").name()
+        text_secondary = theme_manager.get_color("text_secondary").name()
+        text_disabled = theme_manager.get_color("text_disabled").name()
+        success = theme_manager.get_color("success").name()
+        warning = theme_manager.get_color("warning").name()
+        error = theme_manager.get_color("error").name()
 
         # ── Header
         header = QWidget()
@@ -363,23 +370,31 @@ class PropertyEditor(QFrame):
         h_lay.setSpacing(2)
 
         eyebrow = QLabel("DIAGRAM")
-        ef = eyebrow.font(); ef.setPointSize(8); ef.setBold(True); eyebrow.setFont(ef)
+        ef = eyebrow.font()
+        ef.setPointSize(8)
+        ef.setBold(True)
+        eyebrow.setFont(ef)
         self._apply_label_color(eyebrow, text_disabled)
         h_lay.addWidget(eyebrow)
 
-        filepath = (getattr(self._dsim, 'current_filepath', None)
-                    or getattr(self._dsim, 'filepath', None))
-        name = (os.path.splitext(os.path.basename(filepath))[0]
-                if filepath else "untitled")
+        filepath = getattr(self._dsim, "current_filepath", None) or getattr(
+            self._dsim, "filepath", None
+        )
+        name = os.path.splitext(os.path.basename(filepath))[0] if filepath else "untitled"
         title = QLabel(name)
-        tf = title.font(); tf.setPointSize(13); tf.setBold(True); title.setFont(tf)
+        tf = title.font()
+        tf.setPointSize(13)
+        tf.setBold(True)
+        title.setFont(tf)
         self._apply_label_color(title, text_primary)
         h_lay.addWidget(title)
 
-        blocks = list(getattr(self._dsim, 'blocks_list', []) or [])
-        wires = list(getattr(self._dsim, 'line_list', []) or [])
+        blocks = list(getattr(self._dsim, "blocks_list", []) or [])
+        wires = list(getattr(self._dsim, "line_list", []) or [])
         sub = QLabel(f"{len(blocks)} blocks · {len(wires)} wires")
-        sf = sub.font(); sf.setPointSize(10); sub.setFont(sf)
+        sf = sub.font()
+        sf.setPointSize(10)
+        sub.setFont(sf)
         self._apply_label_color(sub, text_secondary)
         h_lay.addWidget(sub)
 
@@ -392,25 +407,26 @@ class PropertyEditor(QFrame):
         # Reflect the live DSim simulation parameters (set via the run dialog).
         solver_fields = []
         # Method
-        solver_fields.append(('solver', getattr(self._dsim, 'solver_method', 'RK45')))
+        solver_fields.append(("solver", getattr(self._dsim, "solver_method", "RK45")))
         # Step / duration
-        sim_dt = getattr(self._dsim, 'sim_dt', None)
-        sim_time = getattr(self._dsim, 'sim_time', None)
+        sim_dt = getattr(self._dsim, "sim_dt", None)
+        sim_time = getattr(self._dsim, "sim_time", None)
         if sim_dt is not None:
-            solver_fields.append(('step_size', f"{sim_dt} s"))
+            solver_fields.append(("step_size", f"{sim_dt} s"))
         if sim_time is not None:
-            solver_fields.append(('duration', f"{sim_time} s"))
+            solver_fields.append(("duration", f"{sim_time} s"))
         # Tolerances (relevant to adaptive solvers)
-        for attr, label in [('rtol', 'rtol'), ('atol', 'atol')]:
+        for attr, label in [("rtol", "rtol"), ("atol", "atol")]:
             if hasattr(self._dsim, attr):
                 solver_fields.append((label, str(getattr(self._dsim, attr))))
         # Fast solver
-        fast = getattr(self._main_window, 'use_fast_solver', False) if self._main_window else False
-        solver_fields.append(('fast_solver', "✓ on" if fast else "off"))
+        fast = getattr(self._main_window, "use_fast_solver", False) if self._main_window else False
+        solver_fields.append(("fast_solver", "✓ on" if fast else "off"))
 
         for k, v in solver_fields:
-            sec.addRow(self._mk_kv_label(k, text_secondary),
-                       self._mk_kv_value(v, text_primary, mono=True))
+            sec.addRow(
+                self._mk_kv_label(k, text_secondary), self._mk_kv_value(v, text_primary, mono=True)
+            )
         self._main_layout.addWidget(sec)
 
         # ── Workspace
@@ -428,8 +444,10 @@ class PropertyEditor(QFrame):
         else:
             # Show up to 12 — past that, link to the workspace editor
             for k, v in list(ws.items())[:12]:
-                wsec.addRow(self._mk_kv_label(k, text_secondary),
-                            self._mk_kv_value(str(v), text_primary, mono=True))
+                wsec.addRow(
+                    self._mk_kv_label(k, text_secondary),
+                    self._mk_kv_value(str(v), text_primary, mono=True),
+                )
             if len(ws) > 12:
                 more = QLabel(f"… +{len(ws) - 12} more")
                 self._apply_label_color(more, text_disabled)
@@ -438,25 +456,29 @@ class PropertyEditor(QFrame):
 
         # ── Recent runs
         history = []
-        plotter = getattr(self._dsim, 'scope_plotter', None)
+        plotter = getattr(self._dsim, "scope_plotter", None)
         if plotter is not None:
-            history = list(getattr(plotter, 'run_history', None)
-                           or getattr(self._dsim, 'run_history', None)
-                           or [])
+            history = list(
+                getattr(plotter, "run_history", None)
+                or getattr(self._dsim, "run_history", None)
+                or []
+            )
         if history:
             rsec = CollapsibleSection("Recent runs", expanded=False)
             self._sections.append(rsec)
             for i, run in enumerate(reversed(history[-4:])):
-                label = getattr(run, 'label', None) or f"Run {len(history) - i}"
-                rsec.addRow(self._mk_kv_label(str(label), text_secondary),
-                            self._mk_kv_value("", text_disabled, mono=True))
+                label = getattr(run, "label", None) or f"Run {len(history) - i}"
+                rsec.addRow(
+                    self._mk_kv_label(str(label), text_secondary),
+                    self._mk_kv_value("", text_disabled, mono=True),
+                )
             self._main_layout.addWidget(rsec)
 
         # ── Validation
         try:
             errors = []
-            validator = getattr(self._dsim, 'diagram_validator', None)
-            if validator is not None and hasattr(validator, 'validate'):
+            validator = getattr(self._dsim, "diagram_validator", None)
+            if validator is not None and hasattr(validator, "validate"):
                 errors = list(validator.validate() or [])
         except Exception as e:
             self.logger.debug("validator failed: %s", e)
@@ -465,15 +487,12 @@ class PropertyEditor(QFrame):
             vsec = CollapsibleSection("Validation", expanded=True)
             self._sections.append(vsec)
             for err in errors[:10]:
-                sev_raw = getattr(err, 'severity', None)
-                sev = (sev_raw.value if hasattr(sev_raw, 'value')
-                       else str(sev_raw or '')).lower()
-                color = (error if 'error' in sev else
-                         warning if 'warn' in sev else
-                         success)
+                sev_raw = getattr(err, "severity", None)
+                sev = (sev_raw.value if hasattr(sev_raw, "value") else str(sev_raw or "")).lower()
+                color = error if "error" in sev else warning if "warn" in sev else success
                 dot = QLabel("●")
                 dot.setStyleSheet(f"color: {color};")
-                msg = QLabel(getattr(err, 'message', str(err)))
+                msg = QLabel(getattr(err, "message", str(err)))
                 msg.setWordWrap(True)
                 msg.setStyleSheet(f"color: {text_primary}; font-size: 10pt;")
                 vsec.addRow(dot, msg)
@@ -537,9 +556,17 @@ class PropertyEditor(QFrame):
                 f.setWeight(QFont.Medium)
             else:
                 f.setPointSize(9)
-            if hasattr(f, 'setFamilies'):
-                f.setFamilies([primary, "Menlo", "Consolas",
-                               "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
+            if hasattr(f, "setFamilies"):
+                f.setFamilies(
+                    [
+                        primary,
+                        "Menlo",
+                        "Consolas",
+                        "JetBrains Mono",
+                        "DejaVu Sans Mono",
+                        "monospace",
+                    ]
+                )
             lbl.setFont(f)
         elif sys.platform.startswith("win"):
             f = lbl.font()
@@ -559,17 +586,21 @@ class PropertyEditor(QFrame):
         if self.block is None or self._dsim is None:
             return
         try:
-            lines = list(getattr(self._dsim, 'line_list', []) or [])
-            name = getattr(self.block, 'name', None)
+            lines = list(getattr(self._dsim, "line_list", []) or [])
+            name = getattr(self.block, "name", None)
             if not name:
                 return
             inbound = []
             outbound = []
             for line in lines:
-                src_name = getattr(line, 'srcblock', None) or getattr(getattr(line, 'src_block', None), 'name', None)
-                dst_name = getattr(line, 'dstblock', None) or getattr(getattr(line, 'dst_block', None), 'name', None)
-                src_port = getattr(line, 'srcport', getattr(line, 'src_port', 0))
-                dst_port = getattr(line, 'dstport', getattr(line, 'dst_port', 0))
+                src_name = getattr(line, "srcblock", None) or getattr(
+                    getattr(line, "src_block", None), "name", None
+                )
+                dst_name = getattr(line, "dstblock", None) or getattr(
+                    getattr(line, "dst_block", None), "name", None
+                )
+                src_port = getattr(line, "srcport", getattr(line, "src_port", 0))
+                dst_port = getattr(line, "dstport", getattr(line, "dst_port", 0))
                 if dst_name == name:
                     inbound.append((dst_port, src_name, src_port))
                 if src_name == name:
@@ -579,8 +610,8 @@ class PropertyEditor(QFrame):
 
             sec = CollapsibleSection("Connections", expanded=False)
             self._sections.append(sec)
-            text_secondary = theme_manager.get_color('text_secondary').name()
-            text_primary = theme_manager.get_color('text_primary').name()
+            text_secondary = theme_manager.get_color("text_secondary").name()
+            text_primary = theme_manager.get_color("text_primary").name()
 
             for port, peer, peer_port in sorted(inbound):
                 sec.addRow(
@@ -600,7 +631,7 @@ class PropertyEditor(QFrame):
     # ── Form creation ───────────────────────────────────────────
 
     def _create_form(self):
-        if not hasattr(self.block, 'params'):
+        if not hasattr(self.block, "params"):
             return
 
         self._create_block_header()
@@ -613,7 +644,7 @@ class PropertyEditor(QFrame):
         for group_name, group_keys in groups.items():
             if not group_keys:
                 continue
-            expanded = (group_name == 'Parameters')
+            expanded = group_name == "Parameters"
             section = CollapsibleSection(group_name, expanded=expanded)
             self._sections.append(section)
             for key in group_keys:
@@ -631,8 +662,8 @@ class PropertyEditor(QFrame):
         h_layout.setContentsMargins(0, 0, 0, 4)
         h_layout.setSpacing(4)
 
-        type_name = getattr(self.block, 'block_fn', None) or getattr(self.block, 'name', 'Block')
-        text_color = theme_manager.get_color('text_primary').name()
+        type_name = getattr(self.block, "block_fn", None) or getattr(self.block, "name", "Block")
+        text_color = theme_manager.get_color("text_primary").name()
         type_label = QLabel(type_name)
         type_label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 14px;")
         h_layout.addWidget(type_label)
@@ -640,10 +671,10 @@ class PropertyEditor(QFrame):
         info_row = QHBoxLayout()
         info_row.setSpacing(8)
 
-        category = getattr(self.block, 'category', None)
+        category = getattr(self.block, "category", None)
         if category:
             badge = QLabel(category)
-            block_color = getattr(self.block, 'color', 'gray')
+            block_color = getattr(self.block, "color", "gray")
             bg_hex = self._color_name_to_hex(block_color, alpha=0.25)
             fg_hex = self._color_name_to_hex(block_color)
             badge.setStyleSheet(f"""
@@ -656,11 +687,11 @@ class PropertyEditor(QFrame):
             """)
             info_row.addWidget(badge)
 
-        block_inst = getattr(self.block, 'block_instance', None)
+        block_inst = getattr(self.block, "block_instance", None)
         if block_inst:
-            n_in = len(getattr(block_inst, 'inputs', []))
-            n_out = len(getattr(block_inst, 'outputs', []))
-            sec_color = theme_manager.get_color('text_secondary').name()
+            n_in = len(getattr(block_inst, "inputs", []))
+            n_out = len(getattr(block_inst, "outputs", []))
+            sec_color = theme_manager.get_color("text_secondary").name()
             port_label = QLabel(f"{n_in} in \u2192 {n_out} out")
             port_label.setStyleSheet(f"color: {sec_color}; font-size: 11px;")
             info_row.addWidget(port_label)
@@ -677,7 +708,7 @@ class PropertyEditor(QFrame):
         self._main_layout.addWidget(header)
 
     def _create_name_field(self):
-        text_color = theme_manager.get_color('text_primary').name()
+        text_color = theme_manager.get_color("text_primary").name()
         row = QHBoxLayout()
         row.setSpacing(6)
 
@@ -696,13 +727,13 @@ class PropertyEditor(QFrame):
 
     def _create_port_count_field(self):
         """Add an Inputs / Outputs spinner for blocks that support variable port counts."""
-        io_edit = getattr(self.block, 'io_edit', 'none')
-        if io_edit in ('none', False, None):
+        io_edit = getattr(self.block, "io_edit", "none")
+        if io_edit in ("none", False, None):
             return
 
-        text_color = theme_manager.get_color('text_primary').name()
+        text_color = theme_manager.get_color("text_primary").name()
 
-        if io_edit in ('input', 'both'):
+        if io_edit in ("input", "both"):
             row = QHBoxLayout()
             row.setSpacing(6)
             label = QLabel("Inputs:")
@@ -713,13 +744,11 @@ class PropertyEditor(QFrame):
             sb.setRange(1, 20)
             sb.setValue(self.block.in_ports)
             self._apply_widget_sizing(sb)
-            sb.editingFinished.connect(
-                lambda: self._on_port_count_changed('_inputs_', sb.value())
-            )
+            sb.editingFinished.connect(lambda: self._on_port_count_changed("_inputs_", sb.value()))
             row.addWidget(sb, stretch=1)
             self._main_layout.addLayout(row)
 
-        if io_edit in ('output', 'both'):
+        if io_edit in ("output", "both"):
             row = QHBoxLayout()
             row.setSpacing(6)
             label = QLabel("Outputs:")
@@ -730,9 +759,7 @@ class PropertyEditor(QFrame):
             sb.setRange(1, 20)
             sb.setValue(self.block.out_ports)
             self._apply_widget_sizing(sb)
-            sb.editingFinished.connect(
-                lambda: self._on_port_count_changed('_outputs_', sb.value())
-            )
+            sb.editingFinished.connect(lambda: self._on_port_count_changed("_outputs_", sb.value()))
             row.addWidget(sb, stretch=1)
             self._main_layout.addLayout(row)
 
@@ -740,14 +767,14 @@ class PropertyEditor(QFrame):
         """Handle port count changes from the property editor."""
         if self.block is None:
             return
-        block_name = getattr(self.block, 'name', 'Unknown')
+        block_name = getattr(self.block, "name", "Unknown")
         self.property_changed.emit(block_name, prop_name, new_value)
 
     # ── Parameter categorization (#4) ───────────────────────────
 
     def _categorize_params(self, keys):
         groups = OrderedDict()
-        groups['Parameters'] = []
+        groups["Parameters"] = []
         for key in keys:
             meta = self._get_param_metadata(key)
             group = self._get_param_group(key, meta)
@@ -755,13 +782,13 @@ class PropertyEditor(QFrame):
         return OrderedDict((k, v) for k, v in groups.items() if v)
 
     def _get_param_group(self, key, meta):
-        if 'group' in meta:
-            return meta['group']
-        if key in ADVANCED_PARAM_NAMES or meta.get('advanced', False):
-            return 'Advanced'
-        if key in LIMIT_PARAM_NAMES or key.endswith('_min') or key.endswith('_max'):
-            return 'Limits'
-        return 'Parameters'
+        if "group" in meta:
+            return meta["group"]
+        if key in ADVANCED_PARAM_NAMES or meta.get("advanced", False):
+            return "Advanced"
+        if key in LIMIT_PARAM_NAMES or key.endswith("_min") or key.endswith("_max"):
+            return "Limits"
+        return "Parameters"
 
     # ── Parameter row ───────────────────────────────────────────
 
@@ -770,12 +797,12 @@ class PropertyEditor(QFrame):
         meta = self._get_param_metadata(key)
         group = self._get_param_group(key, meta)
 
-        text_color = theme_manager.get_color('text_primary').name()
+        text_color = theme_manager.get_color("text_primary").name()
         label = QLabel(f"{key.replace('_', ' ').title()}:")
         label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
 
         # Per-param tooltip (#2)
-        doc = meta.get('doc', '')
+        doc = meta.get("doc", "")
         if doc:
             label.setToolTip(doc)
 
@@ -784,7 +811,7 @@ class PropertyEditor(QFrame):
             editor.setToolTip(doc)
 
         # Default for reset (#6)
-        default = meta.get('default', value)
+        default = meta.get("default", value)
         self._defaults[key] = default
 
         reset_btn = QPushButton("\u21ba")
@@ -797,7 +824,7 @@ class PropertyEditor(QFrame):
         reset_btn_visible = self._value_differs(value, default)
 
         # Validation label (#7)
-        error_color = theme_manager.get_color('error').name()
+        error_color = theme_manager.get_color("error").name()
         val_label = QLabel("")
         val_label.setWordWrap(True)
         val_label.setStyleSheet(f"color: {error_color}; font-size: 11px; padding-left: 2px;")
@@ -805,8 +832,8 @@ class PropertyEditor(QFrame):
 
         pin_btn = None
         if isinstance(editor, SliderSpinBox):
-            accent = theme_manager.get_color('accent_primary').name()
-            pin_btn = QPushButton("\u25C9  Pin to tuning")
+            accent = theme_manager.get_color("accent_primary").name()
+            pin_btn = QPushButton("\u25c9  Pin to tuning")
             pin_btn.setFlat(True)
             pin_btn.setCursor(Qt.PointingHandCursor)
             pin_btn.setToolTip("Pin this parameter to the Tuning Panel")
@@ -838,11 +865,11 @@ class PropertyEditor(QFrame):
     # ── Widget factory ──────────────────────────────────────────
 
     def _create_editor_for_value(self, key, value, meta, group):
-        accepts_array = meta.get('accepts_array', False)
+        accepts_array = meta.get("accepts_array", False)
         # Enum parameters declare their allowed values under either 'choices'
         # (newer blocks) or 'options' (most blocks). Accept both so enum params
         # render as a QComboBox instead of silently degrading to a free-text box.
-        choices = meta.get('choices') or meta.get('options')
+        choices = meta.get("choices") or meta.get("options")
 
         # Boolean → QCheckBox
         if isinstance(value, bool):
@@ -856,9 +883,7 @@ class PropertyEditor(QFrame):
             cb = QComboBox()
             cb.addItems([str(c) for c in choices])
             cb.setCurrentText(str(value))
-            cb.currentTextChanged.connect(
-                lambda text, k=key: self._on_property_changed(k, text)
-            )
+            cb.currentTextChanged.connect(lambda text, k=key: self._on_property_changed(k, text))
             self._apply_widget_sizing(cb)
             return cb
 
@@ -868,8 +893,8 @@ class PropertyEditor(QFrame):
             # QSpinBox is backed by a C++ int, so cap the range at the 32-bit
             # signed limit to avoid overflow.
             qspin_limit = 2147483647
-            if 'range' in meta:
-                lo, hi = meta['range']
+            if "range" in meta:
+                lo, hi = meta["range"]
                 sb.setRange(int(lo), int(hi))
             else:
                 # Auto-expand so a default exceeding the nominal bound isn't
@@ -903,7 +928,7 @@ class PropertyEditor(QFrame):
 
             # Standard spinbox
             dsb = QDoubleSpinBox()
-            dsb.setRange(-float('inf'), float('inf'))
+            dsb.setRange(-float("inf"), float("inf"))
             dsb.setDecimals(4)
             dsb.setValue(value)
             submit = lambda: self._on_property_changed(key, dsb.value())
@@ -924,11 +949,11 @@ class PropertyEditor(QFrame):
     # ── Slider logic (#5) ──────────────────────────────────────
 
     def _should_show_slider(self, key, value, meta, group):
-        if 'range' in meta:
+        if "range" in meta:
             return True
-        if meta.get('no_slider', False) or key in NO_SLIDER_PARAMS:
+        if meta.get("no_slider", False) or key in NO_SLIDER_PARAMS:
             return False
-        if group == 'Advanced':
+        if group == "Advanced":
             return False
         # Slider eligibility is a property of the param, not its current value:
         # a tunable float that happens to be 0.0 still gets a slider (the range
@@ -939,8 +964,8 @@ class PropertyEditor(QFrame):
         return True
 
     def _get_slider_range(self, value, meta):
-        if 'range' in meta:
-            return list(meta['range'])
+        if "range" in meta:
+            return list(meta["range"])
         span = abs(value) * 10
         if span == 0:
             # value == 0 (or a degenerate magnitude) yields no usable span;
@@ -951,24 +976,22 @@ class PropertyEditor(QFrame):
     # ── Documentation section ──────────────────────────────────
 
     def _create_doc_section(self):
-        if not (hasattr(self.block, 'doc') and self.block.doc):
+        if not (hasattr(self.block, "doc") and self.block.doc):
             return
-        accent_color = theme_manager.get_color('accent_primary').name()
-        sec_color = theme_manager.get_color('text_secondary').name()
+        accent_color = theme_manager.get_color("accent_primary").name()
+        sec_color = theme_manager.get_color("text_secondary").name()
 
         section = CollapsibleSection("Documentation", expanded=False)
         self._sections.append(section)
 
         doc_label = QLabel(str(self.block.doc).strip())
         doc_label.setWordWrap(True)
-        doc_label.setStyleSheet(
-            f"color: {sec_color}; font-style: italic; margin-bottom: 4px;"
-        )
+        doc_label.setStyleSheet(f"color: {sec_color}; font-style: italic; margin-bottom: 4px;")
         section.content_layout.addRow("", doc_label)
 
         base_url = "https://github.com/Sapetor/diablos-modern/blob/main/docs/wiki"
-        cat_file = f"{getattr(self.block, 'category', 'Home')}.md".replace(' ', '-')
-        anchor = getattr(self.block, 'block_fn', 'Home').lower().replace(' ', '-')
+        cat_file = f"{getattr(self.block, 'category', 'Home')}.md".replace(" ", "-")
+        anchor = getattr(self.block, "block_fn", "Home").lower().replace(" ", "-")
         full_url = f"{base_url}/{cat_file}#{anchor}"
         link_label = QLabel(f'<a href="{full_url}">View Full Reference</a>')
         link_label.setOpenExternalLinks(True)
@@ -982,10 +1005,10 @@ class PropertyEditor(QFrame):
     def _get_param_metadata(self, key):
         if self.block is None:
             return {}
-        block_instance = getattr(self.block, 'block_instance', None)
+        block_instance = getattr(self.block, "block_instance", None)
         if block_instance is None:
             return {}
-        if hasattr(block_instance, 'params'):
+        if hasattr(block_instance, "params"):
             block_params = block_instance.params
             if key in block_params and isinstance(block_params[key], dict):
                 return block_params[key]
@@ -999,9 +1022,9 @@ class PropertyEditor(QFrame):
     def _color_name_to_hex(self, name, alpha=None):
         c = QColor(name)
         if not c.isValid():
-            c = QColor('#888888')
+            c = QColor("#888888")
         if alpha is not None:
-            surface = theme_manager.get_color('surface')
+            surface = theme_manager.get_color("surface")
             r = int(c.red() * alpha + surface.red() * (1 - alpha))
             g = int(c.green() * alpha + surface.green() * (1 - alpha))
             b = int(c.blue() * alpha + surface.blue() * (1 - alpha))
@@ -1104,11 +1127,12 @@ class PropertyEditor(QFrame):
 
     def _set_widget_error_border(self, widget, is_error):
         border_color = (
-            theme_manager.get_color('error').name() if is_error
-            else theme_manager.get_color('border_primary').name()
+            theme_manager.get_color("error").name()
+            if is_error
+            else theme_manager.get_color("border_primary").name()
         )
-        bg = theme_manager.get_color('surface_variant').name()
-        txt = theme_manager.get_color('text_primary').name()
+        bg = theme_manager.get_color("surface_variant").name()
+        txt = theme_manager.get_color("text_primary").name()
         target = widget.spinbox if isinstance(widget, SliderSpinBox) else widget
         if isinstance(target, QLineEdit):
             target.setStyleSheet(f"""
@@ -1137,21 +1161,21 @@ class PropertyEditor(QFrame):
             default = self._defaults.get(prop_name)
             reset_btn.setVisible(self._value_differs(new_value, default))
 
-        block_name = getattr(self.block, 'name', 'Unknown')
+        block_name = getattr(self.block, "name", "Unknown")
         self.logger.info(f"Property changed: {block_name}.{prop_name} = {new_value}")
         self.property_changed.emit(block_name, prop_name, new_value)
 
     def _on_name_changed(self, widget):
         if self.block is None:
             return
-        block_name = getattr(self.block, 'name', 'Unknown')
+        block_name = getattr(self.block, "name", "Unknown")
         new_name = widget.text().strip()
-        if new_name == '--' or new_name == '':
+        if new_name == "--" or new_name == "":
             self.block.username = block_name
             widget.setText(block_name)
         else:
             self.block.username = new_name
-        self.property_changed.emit(block_name, '_username_', self.block.username)
+        self.property_changed.emit(block_name, "_username_", self.block.username)
 
     # ── Reset to default (#6) ──────────────────────────────────
 
@@ -1196,7 +1220,7 @@ class PropertyEditor(QFrame):
                 return abs(value - default) > 1e-10
             result = value != default
             # numpy arrays return array from !=; coerce to scalar bool
-            if hasattr(result, '__len__'):
+            if hasattr(result, "__len__"):
                 return bool(any(result))
             return bool(result)
         except (TypeError, ValueError):
@@ -1228,13 +1252,13 @@ class PropertyEditor(QFrame):
                 self._rebuilding_theme = False
             return
 
-        bg = theme_manager.get_color('surface').name()
-        txt = theme_manager.get_color('text_primary').name()
-        sec = theme_manager.get_color('text_secondary').name()
-        border = theme_manager.get_color('border_primary').name()
-        input_bg = theme_manager.get_color('surface_variant').name()
-        accent = theme_manager.get_color('accent_primary').name()
-        error = theme_manager.get_color('error').name()
+        bg = theme_manager.get_color("surface").name()
+        txt = theme_manager.get_color("text_primary").name()
+        sec = theme_manager.get_color("text_secondary").name()
+        border = theme_manager.get_color("border_primary").name()
+        input_bg = theme_manager.get_color("surface_variant").name()
+        accent = theme_manager.get_color("accent_primary").name()
+        error = theme_manager.get_color("error").name()
 
         # Apply all input styling via the container stylesheet so it
         # cascades with (rather than replaces) the global QSS.
@@ -1284,9 +1308,14 @@ class PropertyEditor(QFrame):
         """)
 
         colors = {
-            'surface_variant': input_bg, 'text_primary': txt, 'text': txt,
-            'border_primary': border, 'border': border,
-            'accent': accent, 'input_bg': input_bg, 'error': error,
+            "surface_variant": input_bg,
+            "text_primary": txt,
+            "text": txt,
+            "border_primary": border,
+            "border": border,
+            "accent": accent,
+            "input_bg": input_bg,
+            "error": error,
         }
 
         for section in self._sections:
@@ -1305,9 +1334,7 @@ class PropertyEditor(QFrame):
                     border-color: {accent};
                 }}
             """)
-            val_label.setStyleSheet(
-                f"color: {error}; font-size: 11px; padding-left: 2px;"
-            )
+            val_label.setStyleSheet(f"color: {error}; font-size: 11px; padding-left: 2px;")
             if isinstance(editor, SliderSpinBox):
                 editor.update_theme(colors)
 
@@ -1316,7 +1343,7 @@ class PropertyEditor(QFrame):
             pin_btn.setStyleSheet(pin_qss)
 
     def sizeHint(self):
-        if self.block and hasattr(self.block, 'params'):
+        if self.block and hasattr(self.block, "params"):
             num_props = len([p for p in self.block.params if not _is_internal_param(p)])
             if num_props > 0:
                 row_height = 50

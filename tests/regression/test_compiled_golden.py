@@ -23,6 +23,7 @@ GOLDEN_REGEN=1:
 flag crosses into the Windows process.) Then review the diff and commit
 data/golden_compiled_traces.npz.
 """
+
 import os
 from pathlib import Path
 
@@ -37,20 +38,20 @@ GOLDEN_PATH = Path(__file__).parent / "data" / "golden_compiled_traces.npz"
 # Each must be compilable (so the compiler kernels are actually run) and produce
 # a numerically stable compiled trace (no blow-ups -> cross-platform robust).
 GOLDEN_EXAMPLES = [
-    "c01_tank_feedback.diablos",          # Gain, Step, Sum, TranFn (feedback)
-    "c02_vehicle_single_agent.diablos",   # Integrator, Step, TranFn
+    "c01_tank_feedback.diablos",  # Gain, Step, Sum, TranFn (feedback)
+    "c02_vehicle_single_agent.diablos",  # Integrator, Step, TranFn
     "c03_bode_frequency_response.diablos",  # Sine, TranFn
     "c05_mass_spring_state_space.diablos",  # StateSpace, Step
-    "c11_opinion_dynamics.diablos",       # Constant, StateSpace
-    "test_demux_logic.diablos",           # Constant, Demux, LogicalOperator
-    "c06_observer_estimation.diablos",    # Mux, StateSpace, Step, Sum
+    "c11_opinion_dynamics.diablos",  # Constant, StateSpace
+    "test_demux_logic.diablos",  # Constant, Demux, LogicalOperator
+    "c06_observer_estimation.diablos",  # Mux, StateSpace, Step, Sum
     "heat_equation_1d_verification.diablos",  # HeatEquation1D, Ramp, MathFunction, Gain, Sum
-    "heat_equation_demo.diablos",         # HeatEquation1D, FieldProbe
-    "wave_equation_demo.diablos",         # WaveEquation1D
-    "advection_equation_demo.diablos",    # AdvectionEquation1D
-    "diffusion_reaction_demo.diablos",    # DiffusionReaction1D
-    "heat_equation_2d_demo.diablos",      # HeatEquation2D, FieldProbe2D (2D PDE gap)
-    "pde_comparison_demo.diablos",        # Heat + Wave + Advection 1D together
+    "heat_equation_demo.diablos",  # HeatEquation1D, FieldProbe
+    "wave_equation_demo.diablos",  # WaveEquation1D
+    "advection_equation_demo.diablos",  # AdvectionEquation1D
+    "diffusion_reaction_demo.diablos",  # DiffusionReaction1D
+    "heat_equation_2d_demo.diablos",  # HeatEquation2D, FieldProbe2D (2D PDE gap)
+    "pde_comparison_demo.diablos",  # Heat + Wave + Advection 1D together
 ]
 
 # Cross-platform tolerance: goldens are generated on the local (Windows) venv and
@@ -63,6 +64,7 @@ ATOL = 1e-7
 def _ensure_qapp():
     from PyQt5.QtWidgets import QApplication
     import sys
+
     return QApplication.instance() or QApplication(sys.argv)
 
 
@@ -88,9 +90,7 @@ def _scope_traces(dsim):
         vec = params.get("vector")
         if vec is None:
             continue
-        traces[b.name] = np.asarray(vec, dtype=float).reshape(
-            -1, params.get("vec_dim", 1)
-        )
+        traces[b.name] = np.asarray(vec, dtype=float).reshape(-1, params.get("vec_dim", 1))
     return traces
 
 
@@ -112,8 +112,7 @@ def _golden_key(filename, scope_name):
 @pytest.mark.parametrize("filename", GOLDEN_EXAMPLES)
 def test_compiled_trace_matches_golden(filename, qapp):
     assert GOLDEN_PATH.exists(), (
-        f"Golden file {GOLDEN_PATH} missing -- regenerate with "
-        f"`python {Path(__file__).name}`."
+        f"Golden file {GOLDEN_PATH} missing -- regenerate with `python {Path(__file__).name}`."
     )
     golden = np.load(GOLDEN_PATH)
 
@@ -126,9 +125,7 @@ def test_compiled_trace_matches_golden(filename, qapp):
 
     for scope_name, actual in traces.items():
         key = _golden_key(filename, scope_name)
-        assert key in golden.files, (
-            f"No golden for {key}; regenerate the golden file."
-        )
+        assert key in golden.files, f"No golden for {key}; regenerate the golden file."
         expected = golden[key]
         assert actual.shape == expected.shape, (
             f"{key}: shape {actual.shape} != golden {expected.shape}"
@@ -174,5 +171,3 @@ def _regenerate():
             print(f"  {key}: shape={trace.shape} max|v|={float(np.max(np.abs(trace))):.3e}")
     np.savez_compressed(GOLDEN_PATH, **out)
     print(f"Wrote {len(out)} traces to {GOLDEN_PATH}")
-
-

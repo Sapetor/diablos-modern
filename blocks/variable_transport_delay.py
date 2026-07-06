@@ -59,10 +59,26 @@ class VariableTransportDelayBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "max_delay": {"type": "float", "default": 1.0, "doc": "Maximum delay τ (s); also the buffer retention window."},
-            "initial_value": {"type": "float", "default": 0.0, "doc": "Output before the requested sample exists."},
-            "_time_buffer_": {"type": "list", "default": [], "doc": "Internal time history (do not edit)."},
-            "_value_buffer_": {"type": "list", "default": [], "doc": "Internal value history (do not edit)."},
+            "max_delay": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "Maximum delay τ (s); also the buffer retention window.",
+            },
+            "initial_value": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "Output before the requested sample exists.",
+            },
+            "_time_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal time history (do not edit).",
+            },
+            "_value_buffer_": {
+                "type": "list",
+                "default": [],
+                "doc": "Internal value history (do not edit).",
+            },
             "_init_start_": {"type": "bool", "default": True, "doc": "Initialization flag."},
         }
 

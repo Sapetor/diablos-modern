@@ -64,40 +64,20 @@ class DataFitBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "data_file": {
-                "type": "string",
-                "default": "",
-                "doc": "Path to data file"
-            },
-            "time_col": {
-                "type": "string",
-                "default": "t",
-                "doc": "Time column name or index"
-            },
-            "signal_col": {
-                "type": "string",
-                "default": "y",
-                "doc": "Signal column name or index"
-            },
-            "fit_type": {
-                "type": "string",
-                "default": "MSE",
-                "doc": "Fit type: MSE, MAE, RMSE, R2"
-            },
-            "weight": {
-                "type": "float",
-                "default": 1.0,
-                "doc": "Weight in overall objective"
-            },
+            "data_file": {"type": "string", "default": "", "doc": "Path to data file"},
+            "time_col": {"type": "string", "default": "t", "doc": "Time column name or index"},
+            "signal_col": {"type": "string", "default": "y", "doc": "Signal column name or index"},
+            "fit_type": {"type": "string", "default": "MSE", "doc": "Fit type: MSE, MAE, RMSE, R2"},
+            "weight": {"type": "float", "default": 1.0, "doc": "Weight in overall objective"},
             "interpolation": {
                 "type": "string",
                 "default": "linear",
-                "doc": "Interpolation: linear, nearest, spline"
+                "doc": "Interpolation: linear, nearest, spline",
             },
             "_init_start_": {
                 "type": "bool",
                 "default": True,
-                "doc": "Internal: initialization flag"
+                "doc": "Internal: initialization flag",
             },
         }
 
@@ -121,6 +101,7 @@ class DataFitBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw data fit icon - data points with fitted curve."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw data points
         path.addEllipse(0.15, 0.55, 0.08, 0.08)
@@ -137,26 +118,26 @@ class DataFitBlock(BaseBlock):
         """Compare simulation output to measured data."""
 
         # Initialization
-        if params.get('_init_start_', True):
+        if params.get("_init_start_", True):
             self._load_data(params)
-            params['_accumulated_error_'] = 0.0
-            params['_n_points_'] = 0
-            params['_ss_tot_'] = 0.0  # For R² calculation
-            params['_ss_res_'] = 0.0
-            params['_init_start_'] = False
+            params["_accumulated_error_"] = 0.0
+            params["_n_points_"] = 0
+            params["_ss_tot_"] = 0.0  # For R² calculation
+            params["_ss_res_"] = 0.0
+            params["_init_start_"] = False
 
-        weight = float(params.get('weight', 1.0))
-        fit_type = params.get('fit_type', 'MSE')
+        weight = float(params.get("weight", 1.0))
+        fit_type = params.get("fit_type", "MSE")
 
         # Get measured data at current time
-        t_data = params.get('_time_data_', np.array([0.0]))
-        y_data = params.get('_signal_data_', np.array([0.0]))
+        t_data = params.get("_time_data_", np.array([0.0]))
+        y_data = params.get("_signal_data_", np.array([0.0]))
 
         if len(t_data) == 0 or len(y_data) == 0:
-            return {0: 0.0, 1: 0.0, 'E': False}
+            return {0: 0.0, 1: 0.0, "E": False}
 
         # Interpolate measured value
-        interpolation = params.get('interpolation', 'linear')
+        interpolation = params.get("interpolation", "linear")
 
         if time < t_data[0] or time > t_data[-1]:
             # Outside data range - extrapolate or return edge value
@@ -165,24 +146,25 @@ class DataFitBlock(BaseBlock):
             else:
                 measured = y_data[-1]
         else:
-            if interpolation == 'nearest':
+            if interpolation == "nearest":
                 idx = np.argmin(np.abs(t_data - time))
                 measured = y_data[idx]
-            elif interpolation == 'spline':
+            elif interpolation == "spline":
                 # Build the spline once and cache the callable; t_data/y_data are
                 # loaded once in _load_data() and never change, so rebuilding the
                 # spline on every timestep is wasteful. The cached callable lives in
                 # the (runtime) params dict alongside _time_data_/_signal_data_, which
                 # are never persisted to project files.
-                spline = params.get('_spline_')
+                spline = params.get("_spline_")
                 if spline is None:
                     try:
                         from scipy.interpolate import UnivariateSpline
+
                         spline = UnivariateSpline(t_data, y_data, s=0)
                     except Exception:
                         # Fall back to linear interpolation; sentinel avoids retrying.
                         spline = np.interp
-                    params['_spline_'] = spline
+                    params["_spline_"] = spline
                 if spline is np.interp:
                     measured = float(np.interp(time, t_data, y_data))
                 else:
@@ -200,53 +182,53 @@ class DataFitBlock(BaseBlock):
         error = signal - measured
 
         # Accumulate based on fit type
-        if fit_type.upper() == 'MSE':
-            params['_accumulated_error_'] = params.get('_accumulated_error_', 0.0) + error**2
-        elif fit_type.upper() == 'MAE':
-            params['_accumulated_error_'] = params.get('_accumulated_error_', 0.0) + abs(error)
-        elif fit_type.upper() == 'RMSE':
-            params['_accumulated_error_'] = params.get('_accumulated_error_', 0.0) + error**2
-        elif fit_type.upper() == 'R2':
+        if fit_type.upper() == "MSE":
+            params["_accumulated_error_"] = params.get("_accumulated_error_", 0.0) + error**2
+        elif fit_type.upper() == "MAE":
+            params["_accumulated_error_"] = params.get("_accumulated_error_", 0.0) + abs(error)
+        elif fit_type.upper() == "RMSE":
+            params["_accumulated_error_"] = params.get("_accumulated_error_", 0.0) + error**2
+        elif fit_type.upper() == "R2":
             # R² = 1 - SS_res / SS_tot
-            mean_y = params.get('_mean_y_', np.mean(y_data))
-            params['_ss_res_'] = params.get('_ss_res_', 0.0) + error**2
-            params['_ss_tot_'] = params.get('_ss_tot_', 0.0) + (measured - mean_y)**2
+            mean_y = params.get("_mean_y_", np.mean(y_data))
+            params["_ss_res_"] = params.get("_ss_res_", 0.0) + error**2
+            params["_ss_tot_"] = params.get("_ss_tot_", 0.0) + (measured - mean_y) ** 2
 
-        params['_n_points_'] = params.get('_n_points_', 0) + 1
+        params["_n_points_"] = params.get("_n_points_", 0) + 1
 
         # Return current accumulated error
-        accumulated = params.get('_accumulated_error_', 0.0)
-        n_points = params.get('_n_points_', 1)
+        accumulated = params.get("_accumulated_error_", 0.0)
+        n_points = params.get("_n_points_", 1)
 
-        if fit_type.upper() == 'MSE':
+        if fit_type.upper() == "MSE":
             current_error = accumulated / n_points if n_points > 0 else 0.0
-        elif fit_type.upper() == 'MAE':
+        elif fit_type.upper() == "MAE":
             current_error = accumulated / n_points if n_points > 0 else 0.0
-        elif fit_type.upper() == 'RMSE':
+        elif fit_type.upper() == "RMSE":
             current_error = np.sqrt(accumulated / n_points) if n_points > 0 else 0.0
-        elif fit_type.upper() == 'R2':
-            ss_res = params.get('_ss_res_', 0.0)
-            ss_tot = params.get('_ss_tot_', 1.0)
+        elif fit_type.upper() == "R2":
+            ss_res = params.get("_ss_res_", 0.0)
+            ss_tot = params.get("_ss_tot_", 1.0)
             r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
             current_error = 1 - r2  # Minimize 1 - R²
         else:
             current_error = accumulated / n_points if n_points > 0 else 0.0
 
-        return {0: current_error * weight, 1: measured, 'E': False}
+        return {0: current_error * weight, 1: measured, "E": False}
 
     def _load_data(self, params):
         """Load experimental data from file."""
-        data_file = params.get('data_file', '')
-        time_col = params.get('time_col', 't')
-        signal_col = params.get('signal_col', 'y')
+        data_file = params.get("data_file", "")
+        time_col = params.get("time_col", "t")
+        signal_col = params.get("signal_col", "y")
 
         # Invalidate any cached spline so it is rebuilt against the new data.
-        params.pop('_spline_', None)
+        params.pop("_spline_", None)
 
         if not data_file:
-            params['_time_data_'] = np.array([0.0, 1.0])
-            params['_signal_data_'] = np.array([0.0, 0.0])
-            params['_mean_y_'] = 0.0
+            params["_time_data_"] = np.array([0.0, 1.0])
+            params["_signal_data_"] = np.array([0.0, 0.0])
+            params["_mean_y_"] = 0.0
             return
 
         # Shared, validated loader (CSV / NPZ / MAT / text) -- see
@@ -256,35 +238,36 @@ class DataFitBlock(BaseBlock):
             load_timeseries,
             TimeseriesLoadError,
         )
+
         try:
             t_data, y_data = load_timeseries(data_file, time_col, signal_col)
-            params['_time_data_'] = np.atleast_1d(t_data).flatten()
-            params['_signal_data_'] = np.atleast_1d(y_data).flatten()
-            params['_mean_y_'] = np.mean(params['_signal_data_'])
+            params["_time_data_"] = np.atleast_1d(t_data).flatten()
+            params["_signal_data_"] = np.atleast_1d(y_data).flatten()
+            params["_mean_y_"] = np.mean(params["_signal_data_"])
             logger.info(f"DataFit: Loaded {len(t_data)} points from {data_file}")
 
         except TimeseriesLoadError as e:
             logger.error(f"DataFit: Failed to load data from {data_file}: {e}")
-            params['_time_data_'] = np.array([0.0, 1.0])
-            params['_signal_data_'] = np.array([0.0, 0.0])
-            params['_mean_y_'] = 0.0
+            params["_time_data_"] = np.array([0.0, 1.0])
+            params["_signal_data_"] = np.array([0.0, 0.0])
+            params["_mean_y_"] = 0.0
 
     def get_final_error(self, params):
         """Get the final fit error (called by optimizer after simulation)."""
-        fit_type = params.get('fit_type', 'MSE')
-        weight = float(params.get('weight', 1.0))
-        accumulated = params.get('_accumulated_error_', 0.0)
-        n_points = params.get('_n_points_', 1)
+        fit_type = params.get("fit_type", "MSE")
+        weight = float(params.get("weight", 1.0))
+        accumulated = params.get("_accumulated_error_", 0.0)
+        n_points = params.get("_n_points_", 1)
 
-        if fit_type.upper() == 'MSE':
+        if fit_type.upper() == "MSE":
             error = accumulated / n_points if n_points > 0 else 0.0
-        elif fit_type.upper() == 'MAE':
+        elif fit_type.upper() == "MAE":
             error = accumulated / n_points if n_points > 0 else 0.0
-        elif fit_type.upper() == 'RMSE':
+        elif fit_type.upper() == "RMSE":
             error = np.sqrt(accumulated / n_points) if n_points > 0 else 0.0
-        elif fit_type.upper() == 'R2':
-            ss_res = params.get('_ss_res_', 0.0)
-            ss_tot = params.get('_ss_tot_', 1.0)
+        elif fit_type.upper() == "R2":
+            ss_res = params.get("_ss_res_", 0.0)
+            ss_tot = params.get("_ss_tot_", 1.0)
             r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
             error = 1 - r2
         else:
@@ -294,8 +277,8 @@ class DataFitBlock(BaseBlock):
 
     def reset(self, params):
         """Reset for a new optimization iteration."""
-        params['_accumulated_error_'] = 0.0
-        params['_n_points_'] = 0
-        params['_ss_tot_'] = 0.0
-        params['_ss_res_'] = 0.0
-        params['_init_start_'] = True
+        params["_accumulated_error_"] = 0.0
+        params["_n_points_"] = 0
+        params["_ss_tot_"] = 0.0
+        params["_ss_res_"] = 0.0
+        params["_init_start_"] = True

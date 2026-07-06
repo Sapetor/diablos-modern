@@ -48,18 +48,21 @@ class ExperimentController:
         compiled ODE RHS, and shows a pole-zero / Bode / summary window.
         """
         from PyQt5.QtWidgets import QMessageBox, QDialog
+
         window = self.window
         if not window.dsim.blocks_list:
             QMessageBox.information(window, "Linearize & Analyze", "No blocks to analyze.")
             return
 
         from modern_ui.widgets.linearize_dialog import LinearizeDialog
+
         dlg = LinearizeDialog(window.dsim, parent=window)
         if dlg.exec_() != QDialog.Accepted:
             return
         sel = dlg.get_selection()
 
         from modern_ui.controllers.analysis_controller import AnalysisController
+
         result = AnalysisController(window.dsim).analyze(
             input_blocks=sel.get("input_blocks") or None,
             output_blocks=sel.get("output_blocks") or None,
@@ -67,6 +70,7 @@ class ExperimentController:
         )
 
         from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
+
         win = LinearizationResultWindow(result)  # top-level window
         self._retain_window(win)
 
@@ -78,16 +82,18 @@ class ExperimentController:
         copied and reused as a starting point for linearization.
         """
         from PyQt5.QtWidgets import QMessageBox
+
         window = self.window
         if not window.dsim.blocks_list:
-            QMessageBox.information(
-                window, "Find Operating Point", "No blocks to analyze.")
+            QMessageBox.information(window, "Find Operating Point", "No blocks to analyze.")
             return
 
         from modern_ui.controllers.analysis_controller import AnalysisController
+
         result = AnalysisController(window.dsim).find_trim()
 
         from modern_ui.widgets.operating_point_window import OperatingPointWindow
+
         win = OperatingPointWindow(result)  # top-level window
         self._retain_window(win)
 
@@ -103,25 +109,25 @@ class ExperimentController:
         """
         from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
         from PyQt5.QtCore import Qt
+
         window = self.window
         if not window.dsim.blocks_list:
             QMessageBox.information(window, "Monte Carlo", "No blocks to simulate.")
             return
         # Re-entrancy guard: one ensemble at a time (it mutates/restores diagram params).
-        if getattr(window, '_mc_worker', None) is not None:
-            QMessageBox.information(
-                window, "Monte Carlo", "A Monte-Carlo run is already running.")
+        if getattr(window, "_mc_worker", None) is not None:
+            QMessageBox.information(window, "Monte Carlo", "A Monte-Carlo run is already running.")
             return
 
         from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
+
         dlg = MonteCarloDialog(window.dsim, parent=window)
         if dlg.exec_() != QDialog.Accepted:
             return
         sel = dlg.get_selection()
         n_runs = int(sel.get("n_runs", 100))
 
-        progress = QProgressDialog(
-            "Running Monte-Carlo ensemble...", "Cancel", 0, n_runs, window)
+        progress = QProgressDialog("Running Monte-Carlo ensemble...", "Cancel", 0, n_runs, window)
         progress.setWindowTitle("Monte Carlo")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
@@ -130,13 +136,13 @@ class ExperimentController:
         progress.setValue(0)
 
         from modern_ui.widgets.monte_carlo_worker import MonteCarloWorker
+
         worker = MonteCarloWorker(window.dsim, sel, parent=window)
 
         def _on_progress(done, total):
             if progress.maximum() != total:
                 progress.setMaximum(total)
-            progress.setLabelText(
-                f"Running Monte-Carlo ensemble... ({done}/{total})")
+            progress.setLabelText(f"Running Monte-Carlo ensemble... ({done}/{total})")
             progress.setValue(done)
 
         def _on_finished(result):
@@ -147,8 +153,7 @@ class ExperimentController:
         def _on_failed(msg):
             progress.close()
             window._mc_worker = None
-            QMessageBox.critical(
-                window, "Monte Carlo", f"Monte-Carlo run failed:\n{msg}")
+            QMessageBox.critical(window, "Monte Carlo", f"Monte-Carlo run failed:\n{msg}")
 
         worker.progress.connect(_on_progress)
         worker.finished.connect(_on_finished)
@@ -166,6 +171,7 @@ class ExperimentController:
     def _show_ensemble_result(self, result):
         """Open a (retained) results window for a Monte-Carlo ensemble result."""
         from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
+
         win = EnsembleResultWindow(result)  # top-level window
         self._retain_window(win)
 
@@ -181,23 +187,27 @@ class ExperimentController:
         """
         from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
         from PyQt5.QtCore import Qt
+
         window = self.window
         if not window.dsim.blocks_list:
             QMessageBox.information(window, "Parameter Sweep", "No blocks to simulate.")
             return
         # Re-entrancy guard: one sweep at a time (it mutates/restores diagram params).
-        if getattr(window, '_sweep_worker', None) is not None:
+        if getattr(window, "_sweep_worker", None) is not None:
             QMessageBox.information(
-                window, "Parameter Sweep", "A parameter sweep is already running.")
+                window, "Parameter Sweep", "A parameter sweep is already running."
+            )
             return
 
         from modern_ui.widgets.parameter_sweep_dialog import (
-            ParameterSweepDialog, sweepable_blocks,
+            ParameterSweepDialog,
+            sweepable_blocks,
         )
+
         if not sweepable_blocks(window.dsim):
             QMessageBox.information(
-                window, "Parameter Sweep",
-                "No block exposes a numeric scalar parameter to sweep.")
+                window, "Parameter Sweep", "No block exposes a numeric scalar parameter to sweep."
+            )
             return
 
         dlg = ParameterSweepDialog(window.dsim, parent=window)
@@ -206,7 +216,8 @@ class ExperimentController:
         sel = dlg.get_selection()
         if any(not ax.get("param") for ax in sel.get("axes", [])):
             QMessageBox.information(
-                window, "Parameter Sweep", "Please choose a parameter for each axis.")
+                window, "Parameter Sweep", "Please choose a parameter for each axis."
+            )
             return
 
         # Total grid points = product of each axis's value count.
@@ -214,8 +225,7 @@ class ExperimentController:
         for ax in sel.get("axes", []):
             total *= max(1, len(ax.get("values", [])))
 
-        progress = QProgressDialog(
-            "Running parameter sweep...", "Cancel", 0, total, window)
+        progress = QProgressDialog("Running parameter sweep...", "Cancel", 0, total, window)
         progress.setWindowTitle("Parameter Sweep")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
@@ -224,6 +234,7 @@ class ExperimentController:
         progress.setValue(0)
 
         from modern_ui.widgets.parameter_sweep_worker import ParameterSweepWorker
+
         worker = ParameterSweepWorker(window.dsim, sel, parent=window)
 
         def _on_progress(done, total_):
@@ -240,8 +251,7 @@ class ExperimentController:
         def _on_failed(msg):
             progress.close()
             window._sweep_worker = None
-            QMessageBox.critical(
-                window, "Parameter Sweep", f"Parameter sweep failed:\n{msg}")
+            QMessageBox.critical(window, "Parameter Sweep", f"Parameter sweep failed:\n{msg}")
 
         worker.progress.connect(_on_progress)
         worker.finished.connect(_on_finished)
@@ -259,6 +269,7 @@ class ExperimentController:
     def _show_sweep_result(self, result):
         """Open a (retained) results window for a parameter-sweep result."""
         from modern_ui.widgets.sweep_result_window import SweepResultWindow
+
         win = SweepResultWindow(result)  # top-level window
         self._retain_window(win)
 
@@ -275,7 +286,7 @@ class ExperimentController:
         ``window._sweep_worker``); this reads and clears them there.
         """
         window = self.window
-        for attr in ('_mc_worker', '_sweep_worker'):
+        for attr in ("_mc_worker", "_sweep_worker"):
             worker = getattr(window, attr, None)
             if worker is None:
                 continue
@@ -283,8 +294,7 @@ class ExperimentController:
                 if worker.isRunning():
                     worker.cancel()  # cooperative stop, polled before each run
                     if not worker.wait(10000):  # bounded join (ms)
-                        logger.warning(
-                            "%s did not stop within timeout on close.", attr)
+                        logger.warning("%s did not stop within timeout on close.", attr)
             except RuntimeError:
                 # Underlying C++ QThread already deleted; nothing to join.
                 pass

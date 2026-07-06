@@ -21,11 +21,11 @@ class TestFieldScope2D:
 
         block = FieldScope2DBlock()
         params = {
-            'Lx': 1.0,
-            'Ly': 1.0,
-            'colormap': 'viridis',
-            'sample_interval': 1,
-            '_init_start_': True
+            "Lx": 1.0,
+            "Ly": 1.0,
+            "colormap": "viridis",
+            "sample_interval": 1,
+            "_init_start_": True,
         }
 
         # Create a test field
@@ -33,9 +33,9 @@ class TestFieldScope2D:
 
         block.execute(time=0.0, inputs={0: field}, params=params)
 
-        assert '_field_history_2d_' in params, "Should initialize field history"
-        assert '_time_history_' in params, "Should initialize time history"
-        assert params['_init_start_'] == False, "Init flag should be cleared"
+        assert "_field_history_2d_" in params, "Should initialize field history"
+        assert "_time_history_" in params, "Should initialize time history"
+        assert params["_init_start_"] == False, "Init flag should be cleared"
 
     def test_field_scope_2d_collects_snapshots(self):
         """Test FieldScope2D collects field snapshots over time."""
@@ -43,8 +43,8 @@ class TestFieldScope2D:
 
         block = FieldScope2DBlock()
         params = {
-            'sample_interval': 1,  # Store every frame
-            '_init_start_': True
+            "sample_interval": 1,  # Store every frame
+            "_init_start_": True,
         }
 
         # Simulate 5 timesteps with different fields
@@ -52,8 +52,8 @@ class TestFieldScope2D:
             field = np.full((10, 10), float(i))
             block.execute(time=i * 0.1, inputs={0: field}, params=params)
 
-        history = params['_field_history_2d_']
-        times = params['_time_history_']
+        history = params["_field_history_2d_"]
+        times = params["_time_history_"]
 
         assert len(history) == 5, f"Should have 5 snapshots, got {len(history)}"
         assert len(times) == 5, f"Should have 5 time values, got {len(times)}"
@@ -65,8 +65,8 @@ class TestFieldScope2D:
 
         block = FieldScope2DBlock()
         params = {
-            'sample_interval': 3,  # Store every 3rd frame
-            '_init_start_': True
+            "sample_interval": 3,  # Store every 3rd frame
+            "_init_start_": True,
         }
 
         # Simulate 10 timesteps
@@ -74,7 +74,7 @@ class TestFieldScope2D:
             field = np.full((5, 5), float(i))
             block.execute(time=i * 0.1, inputs={0: field}, params=params)
 
-        history = params['_field_history_2d_']
+        history = params["_field_history_2d_"]
 
         # With sample_interval=3, we get snapshots at frames 3, 6, 9 (0-indexed)
         # Frames are stored when frame_index % 3 == 0, i.e. frames 0, 3, 6, 9 --
@@ -87,27 +87,23 @@ class TestFieldScope2D:
         from blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
-        params = {
-            'sample_interval': 1,
-            '_init_start_': True
-        }
+        params = {"sample_interval": 1, "_init_start_": True}
 
         # Use non-square field
         field = np.random.rand(15, 20)  # Ny=15, Nx=20
         block.execute(time=0.0, inputs={0: field}, params=params)
 
-        stored_field = params['_field_history_2d_'][0]
-        assert stored_field.shape == (15, 20), f"Should preserve shape (15, 20), got {stored_field.shape}"
+        stored_field = params["_field_history_2d_"][0]
+        assert stored_field.shape == (15, 20), (
+            f"Should preserve shape (15, 20), got {stored_field.shape}"
+        )
 
     def test_field_scope_2d_time_mapping(self):
         """Test time values are correctly stored for slider mapping."""
         from blocks.pde.field_processing_2d import FieldScope2DBlock
 
         block = FieldScope2DBlock()
-        params = {
-            'sample_interval': 1,
-            '_init_start_': True
-        }
+        params = {"sample_interval": 1, "_init_start_": True}
 
         # Simulate with irregular time steps
         times = [0.0, 0.1, 0.25, 0.5, 1.0]
@@ -115,12 +111,12 @@ class TestFieldScope2D:
             field = np.ones((5, 5)) * t
             block.execute(time=t, inputs={0: field}, params=params)
 
-        stored_times = params['_time_history_']
+        stored_times = params["_time_history_"]
         assert stored_times == times, "Stored times should match input times"
 
         # Verify field values match times
         for i, t in enumerate(times):
-            stored_field = params['_field_history_2d_'][i]
+            stored_field = params["_field_history_2d_"][i]
             assert np.allclose(stored_field, t), f"Field at t={t} should have value {t}"
 
 
@@ -133,11 +129,7 @@ class TestFieldProbe2D:
         from blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
-        params = {
-            'x_position': 0.5,
-            'y_position': 0.5,
-            'position_mode': 'normalized'
-        }
+        params = {"x_position": 0.5, "y_position": 0.5, "position_mode": "normalized"}
 
         # Create field with known value at center
         field = np.zeros((11, 11))
@@ -152,11 +144,7 @@ class TestFieldProbe2D:
         from blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
-        params = {
-            'x_position': 0.0,
-            'y_position': 0.0,
-            'position_mode': 'normalized'
-        }
+        params = {"x_position": 0.0, "y_position": 0.0, "position_mode": "normalized"}
 
         field = np.zeros((10, 10))
         field[0, 0] = 5.0  # Bottom-left corner
@@ -170,17 +158,10 @@ class TestFieldProbe2D:
         from blocks.pde.field_processing_2d import FieldProbe2DBlock
 
         block = FieldProbe2DBlock()
-        params = {
-            'x_position': 0.5,
-            'y_position': 0.5,
-            'position_mode': 'normalized'
-        }
+        params = {"x_position": 0.5, "y_position": 0.5, "position_mode": "normalized"}
 
         # Create 2x2 field with different corner values
-        field = np.array([
-            [0.0, 2.0],
-            [2.0, 4.0]
-        ])
+        field = np.array([[0.0, 2.0], [2.0, 4.0]])
 
         result = block.execute(time=0.0, inputs={0: field}, params=params)
 
@@ -194,11 +175,11 @@ class TestFieldProbe2D:
 
         block = FieldProbe2DBlock()
         params = {
-            'x_position': 0.5,  # Absolute meters
-            'y_position': 0.5,
-            'position_mode': 'absolute',
-            'Lx': 1.0,
-            'Ly': 1.0
+            "x_position": 0.5,  # Absolute meters
+            "y_position": 0.5,
+            "position_mode": "absolute",
+            "Lx": 1.0,
+            "Ly": 1.0,
         }
 
         field = np.zeros((11, 11))
@@ -219,17 +200,12 @@ class TestFieldSlice:
 
         block = FieldSliceBlock()
         params = {
-            'slice_direction': 'x',
-            'slice_position': 0.5  # Middle row
+            "slice_direction": "x",
+            "slice_position": 0.5,  # Middle row
         }
 
         # Create field where each row has unique values
-        field = np.array([
-            [1, 1, 1, 1],
-            [2, 2, 2, 2],
-            [3, 3, 3, 3],
-            [4, 4, 4, 4]
-        ])
+        field = np.array([[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]])
 
         result = block.execute(time=0.0, inputs={0: field}, params=params)
 
@@ -243,17 +219,12 @@ class TestFieldSlice:
 
         block = FieldSliceBlock()
         params = {
-            'slice_direction': 'y',
-            'slice_position': 0.5  # Middle column
+            "slice_direction": "y",
+            "slice_position": 0.5,  # Middle column
         }
 
         # Create field where each column has unique values
-        field = np.array([
-            [1, 2, 3, 4],
-            [1, 2, 3, 4],
-            [1, 2, 3, 4],
-            [1, 2, 3, 4]
-        ])
+        field = np.array([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]])
 
         result = block.execute(time=0.0, inputs={0: field}, params=params)
 
@@ -270,11 +241,11 @@ class TestFieldSlice:
         field = np.arange(16).reshape(4, 4)
 
         # First row (position 0)
-        params = {'slice_direction': 'x', 'slice_position': 0.0}
+        params = {"slice_direction": "x", "slice_position": 0.0}
         result = block.execute(time=0.0, inputs={0: field}, params=params)
         assert np.allclose(result[0], field[0, :]), "Should get first row"
 
         # Last row (position 1)
-        params = {'slice_direction': 'x', 'slice_position': 1.0}
+        params = {"slice_direction": "x", "slice_position": 1.0}
         result = block.execute(time=0.0, inputs={0: field}, params=params)
         assert np.allclose(result[0], field[3, :]), "Should get last row"

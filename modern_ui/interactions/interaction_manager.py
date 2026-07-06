@@ -1,18 +1,20 @@
-
 import logging
 from enum import Enum
 from PyQt5.QtCore import Qt, QPoint
 
 logger = logging.getLogger(__name__)
 
+
 class State(Enum):
     """State enumeration for canvas interactions."""
+
     IDLE = "idle"
     DRAGGING = "dragging"
     DRAGGING_LINE_POINT = "dragging_line_point"
     DRAGGING_LINE_SEGMENT = "dragging_line_segment"
     CONNECTING = "connecting"
     RESIZING = "resizing"
+
 
 class InteractionManager:
     """
@@ -52,13 +54,13 @@ class InteractionManager:
         if event.button() == Qt.LeftButton:
             self._handle_left_click(pos, event.modifiers())
         elif event.button() == Qt.RightButton:
-            self.canvas._handle_right_click(pos) # Delegate back for context menu for now
-            
+            self.canvas._handle_right_click(pos)  # Delegate back for context menu for now
+
         self.canvas.update()
 
     def _handle_left_click(self, pos, modifiers):
         """Internal handler for left clicks."""
-        
+
         # 1. Check for resize handles FIRST on selected blocks
         for block in self.canvas.dsim.blocks_list:
             if block.selected:
@@ -128,7 +130,7 @@ class InteractionManager:
                 new_y = pos.y() - self.canvas.drag_offset.y()
 
                 # Snap to grid
-                if getattr(self.canvas, 'snap_enabled', True):
+                if getattr(self.canvas, "snap_enabled", True):
                     snapped_x = round(new_x / self.canvas.grid_size) * self.canvas.grid_size
                     snapped_y = round(new_y / self.canvas.grid_size) * self.canvas.grid_size
                 else:
@@ -139,25 +141,27 @@ class InteractionManager:
                 self.canvas.dragging_block.relocate_Block(QPoint(int(snapped_x), int(snapped_y)))
 
                 # Move other selected blocks relative to it
-                if hasattr(self.canvas, 'drag_offsets') and len(self.canvas.drag_offsets) > 1:
+                if hasattr(self.canvas, "drag_offsets") and len(self.canvas.drag_offsets) > 1:
                     for block, relative_offset in self.canvas.drag_offsets.items():
                         if block is not self.canvas.dragging_block:
                             block_x = snapped_x + relative_offset.x()
                             block_y = snapped_y + relative_offset.y()
                             block.relocate_Block(QPoint(int(block_x), int(block_y)))
 
-                self.canvas._update_line_positions() 
+                self.canvas._update_line_positions()
                 self.canvas.update()
-                
+
             elif self.canvas.state == State.RESIZING and self.canvas.resizing_block:
                 self.canvas._perform_resize(pos)
-                
+
             elif self.canvas.state == State.DRAGGING_LINE_POINT and self.canvas.dragging_item:
                 line, point_index = self.canvas.dragging_item
                 line.points[point_index] = pos
-                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.canvas.dsim.blocks_list, line.points)
+                line.path, line.points, line.segments = line.create_trajectory(
+                    line.points[0], line.points[-1], self.canvas.dsim.blocks_list, line.points
+                )
                 self.canvas.update()
-                
+
             elif self.canvas.state == State.DRAGGING_LINE_SEGMENT and self.canvas.dragging_item:
                 line, segment_index = self.canvas.dragging_item
                 p1 = line.points[segment_index]
@@ -182,24 +186,26 @@ class InteractionManager:
                     return
 
                 if is_horizontal:
-                    is_first_segment = (segment_index == 0)
-                    is_last_segment = (segment_index == len(line.points) - 2)
+                    is_first_segment = segment_index == 0
+                    is_last_segment = segment_index == len(line.points) - 2
                     if not is_first_segment:
                         line.points[segment_index].setY(pos.y())
                     if not is_last_segment:
                         line.points[segment_index + 1].setY(pos.y())
                 else:
-                    is_first_segment = (segment_index == 0)
-                    is_last_segment = (segment_index == len(line.points) - 2)
+                    is_first_segment = segment_index == 0
+                    is_last_segment = segment_index == len(line.points) - 2
                     if not is_first_segment:
                         line.points[segment_index].setX(pos.x())
                     if not is_last_segment:
                         line.points[segment_index + 1].setX(pos.x())
-                
-                line.path, line.points, line.segments = line.create_trajectory(line.points[0], line.points[-1], self.canvas.dsim.blocks_list, line.points)
+
+                line.path, line.points, line.segments = line.create_trajectory(
+                    line.points[0], line.points[-1], self.canvas.dsim.blocks_list, line.points
+                )
                 self.canvas.update()
-                
-            elif self.canvas.line_creation_state == 'start' and self.canvas.temp_line:
+
+            elif self.canvas.line_creation_state == "start" and self.canvas.temp_line:
                 self.canvas.temp_line = (self.canvas.temp_line[0], pos)
                 self.canvas.update()
         except Exception as e:
@@ -228,7 +234,7 @@ class InteractionManager:
             elif self.canvas.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
                 if self.canvas.dragging_item:
                     line, _ = self.canvas.dragging_item
-                    if hasattr(line, '_stub_created'):
+                    if hasattr(line, "_stub_created"):
                         del line._stub_created
                 self.canvas.state = State.IDLE
                 self.canvas.dragging_item = None

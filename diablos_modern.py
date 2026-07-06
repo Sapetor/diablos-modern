@@ -1,8 +1,10 @@
 import multiprocessing
+
 multiprocessing.freeze_support()  # Required for PyInstaller on macOS
 
 import sys
 import io
+
 # In frozen windowed mode (PyInstaller --noconsole), sys.stdout/stderr are None.
 # Redirect to devnull to prevent crashes from print() and tqdm.
 if sys.stdout is None:
@@ -32,11 +34,13 @@ from PyQt5.QtGui import QFont
 def _preload_heavy_modules():
     """Preload heavy modules in background thread to avoid first-simulation delay."""
     import time as _t
+
     _start = _t.time()
     try:
         # scipy.signal takes ~3s to import on first use
         from scipy import signal
         from scipy.integrate import solve_ivp  # noqa: F401
+
         # numpy should already be loaded, but ensure it's ready
         import numpy as np
 
@@ -67,6 +71,7 @@ from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
 # Setup logging from config file
 from lib.logging_config import setup_logging
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -91,20 +96,23 @@ def setup_application():
     # Load config and set font
     try:
         from lib.app_paths import resource_path, user_data_path
+
         # Read the user-writable config first (where _set_scaling persists the
         # scaling factor), falling back to the bundled default. Previously this
         # read only the read-only bundled resource, so a user's saved scaling
         # never took effect in frozen/packaged builds despite the restart prompt.
-        user_cfg = user_data_path('config/default_config.json')
-        cfg_path = user_cfg if os.path.exists(user_cfg) else resource_path('config/default_config.json')
-        with open(cfg_path, 'r') as f:
+        user_cfg = user_data_path("config/default_config.json")
+        cfg_path = (
+            user_cfg if os.path.exists(user_cfg) else resource_path("config/default_config.json")
+        )
+        with open(cfg_path, "r") as f:
             config = json.load(f)
-        scaling_factor = config.get('display', {}).get('scaling_factor', 1.0)
+        scaling_factor = config.get("display", {}).get("scaling_factor", 1.0)
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         scaling_factor = 1.0
 
     # Use platform-appropriate font
-    if sys.platform == 'darwin':
+    if sys.platform == "darwin":
         font = QFont(".AppleSystemUIFont", int(10 * scaling_factor))
     else:
         font = QFont("Segoe UI", int(10 * scaling_factor))
@@ -128,25 +136,26 @@ def main():
         # Restore persisted UI preferences (theme, palette, solid_fills)
         from lib.app_paths import user_data_path
         from modern_ui.themes.theme_manager import PALETTES
+
         try:
             _prefs_path = user_data_path("user_preferences.json")
-            with open(_prefs_path, 'r') as _f:
+            with open(_prefs_path, "r") as _f:
                 _prefs = json.load(_f)
 
             # Theme (dark / light) — default LIGHT for new installs
-            _theme_name = _prefs.get('theme')
-            if _theme_name in ('dark', 'light'):
+            _theme_name = _prefs.get("theme")
+            if _theme_name in ("dark", "light"):
                 theme_manager.set_theme(ThemeType(_theme_name))
             else:
                 theme_manager.set_theme(ThemeType.LIGHT)
 
             # Block palette
-            _palette_name = _prefs.get('block_palette')
+            _palette_name = _prefs.get("block_palette")
             if _palette_name and isinstance(_palette_name, str) and _palette_name in PALETTES:
                 theme_manager.set_palette(_palette_name)
 
             # Solid fills
-            _solid = _prefs.get('solid_fills')
+            _solid = _prefs.get("solid_fills")
             if isinstance(_solid, bool):
                 theme_manager.set_solid_fills(_solid)
 
@@ -163,25 +172,26 @@ def main():
         # When running as a .app bundle (Finder / open), macOS may not
         # register the process as a foreground GUI app.  Force it via the
         # Objective-C runtime before creating any windows.
-        if getattr(sys, 'frozen', False) and sys.platform == 'darwin':
+        if getattr(sys, "frozen", False) and sys.platform == "darwin":
             try:
                 import ctypes
                 import ctypes.util
-                objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library('objc'))
+
+                objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
                 objc.objc_getClass.restype = ctypes.c_void_p
                 objc.sel_registerName.restype = ctypes.c_void_p
                 objc.objc_msgSend.restype = ctypes.c_void_p
                 objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
                 NSApp = objc.objc_msgSend(
-                    objc.objc_getClass(b'NSApplication'),
-                    objc.sel_registerName(b'sharedApplication'),
+                    objc.objc_getClass(b"NSApplication"),
+                    objc.sel_registerName(b"sharedApplication"),
                 )
                 # setActivationPolicy: 0 = Regular (appears in Dock)
-                sel = objc.sel_registerName(b'setActivationPolicy:')
+                sel = objc.sel_registerName(b"setActivationPolicy:")
                 objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64]
                 objc.objc_msgSend(NSApp, sel, 0)
                 # activateIgnoringOtherApps: YES
-                sel = objc.sel_registerName(b'activateIgnoringOtherApps:')
+                sel = objc.sel_registerName(b"activateIgnoringOtherApps:")
                 objc.objc_msgSend(NSApp, sel, 1)
                 objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             except Exception:
@@ -196,26 +206,28 @@ def main():
         # Check for file argument (open diagram on startup)
         if len(sys.argv) > 1:
             file_path = sys.argv[1]
-            if os.path.isfile(file_path) and file_path.endswith('.diablos'):
+            if os.path.isfile(file_path) and file_path.endswith(".diablos"):
                 logger.info(f"Opening diagram from command line: {file_path}")
                 # Use QTimer to load after event loop starts
                 from PyQt5.QtCore import QTimer
+
                 def load_file():
                     try:
                         # Use the same loading path as the file dialog
-                        if hasattr(window, 'project_manager') and window.project_manager:
+                        if hasattr(window, "project_manager") and window.project_manager:
                             window.project_manager.diagram_service.load_diagram(file_path)
-                        elif hasattr(window, 'diagram_service') and window.diagram_service:
+                        elif hasattr(window, "diagram_service") and window.diagram_service:
                             window.diagram_service.load_diagram(file_path)
                         else:
                             # Fallback to old method
-                            if hasattr(window.dsim, 'file_service'):
+                            if hasattr(window.dsim, "file_service"):
                                 block_data = window.dsim.file_service.load(filepath=file_path)
                                 window.dsim.deserialize(block_data)
                         window.canvas.update()
                         logger.info(f"Diagram loaded: {file_path}")
                     except Exception as e:
                         logger.error(f"Failed to load diagram: {e}")
+
                 QTimer.singleShot(200, load_file)
 
         # Center window on screen
@@ -248,5 +260,6 @@ if __name__ == "__main__":
     # built, so agents/CI can simulate a diagram without a display.
     if len(sys.argv) > 1 and sys.argv[1] == "run":
         from lib.cli import main as cli_main
+
         sys.exit(cli_main(sys.argv[1:]))
     sys.exit(main())

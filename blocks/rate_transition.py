@@ -4,6 +4,7 @@ RateTransition block for multi-rate simulation.
 Provides safe signal transfer between blocks running at different sample rates.
 Handles both upsampling (slow→fast) and downsampling (fast→slow).
 """
+
 from blocks.base_block import BaseBlock
 import numpy as np
 import logging
@@ -44,13 +45,22 @@ class RateTransitionBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "output_sample_time": {"default": 0.1, "type": "float",
-                                   "doc": "Target output sample period (seconds)"},
-            "transition_mode": {"default": "ZOH", "type": "str",
-                              "options": ["ZOH", "Linear", "Filter", "Sample", "Average"]},
+            "output_sample_time": {
+                "default": 0.1,
+                "type": "float",
+                "doc": "Target output sample period (seconds)",
+            },
+            "transition_mode": {
+                "default": "ZOH",
+                "type": "str",
+                "options": ["ZOH", "Linear", "Filter", "Sample", "Average"],
+            },
             "filter_cutoff": {"default": 0.4, "type": "float"},  # Normalized cutoff for filter mode
-            "sampling_time": {"default": -1.0, "type": "float",
-                             "doc": "Block runs continuously (-1) for smooth output"},
+            "sampling_time": {
+                "default": -1.0,
+                "type": "float",
+                "doc": "Block runs continuously (-1) for smooth output",
+            },
             "_init_start_": {"default": True, "type": "bool"},
         }
 
@@ -85,6 +95,7 @@ class RateTransitionBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw rate transition icon (two different rates merging)."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw slow rate (wide steps) on left
         path.moveTo(0.1, 0.7)
@@ -105,100 +116,104 @@ class RateTransitionBlock(BaseBlock):
         """
         Rate transition: Convert signal between different sample rates.
         """
-        output_only = kwargs.get('output_only', False)
-        mode = str(params.get('transition_mode', 'ZOH'))
-
+        output_only = kwargs.get("output_only", False)
+        mode = str(params.get("transition_mode", "ZOH"))
 
         # Initialize on first call
-        if params.get('_init_start_', True):
+        if params.get("_init_start_", True):
             logger.info(f"RateTransition: Initializing at t={time}, mode={mode}")
-            params['_init_start_'] = False
-            params['_next_output_time_'] = 0.0
-            params['_held_value_'] = 0.0
-            params['_prev_value_'] = 0.0
-            params['_prev_time_'] = 0.0
-            params['_sample_buffer_'] = []
-            params['_filter_state_'] = 0.0
+            params["_init_start_"] = False
+            params["_next_output_time_"] = 0.0
+            params["_held_value_"] = 0.0
+            params["_prev_value_"] = 0.0
+            params["_prev_time_"] = 0.0
+            params["_sample_buffer_"] = []
+            params["_filter_state_"] = 0.0
             # Linear mode state
-            params['_linear_start_val_'] = 0.0
-            params['_linear_end_val_'] = 0.0
-            params['_linear_start_time_'] = 0.0
-            params['_linear_ramp_duration_'] = 0.1  # Default ramp duration
-            params['_linear_last_input_'] = None
+            params["_linear_start_val_"] = 0.0
+            params["_linear_end_val_"] = 0.0
+            params["_linear_start_time_"] = 0.0
+            params["_linear_ramp_duration_"] = 0.1  # Default ramp duration
+            params["_linear_last_input_"] = None
             # Initialize with input value if available
             val = inputs.get(0, 0.0)
-            if hasattr(val, '__iter__') and not isinstance(val, str):
+            if hasattr(val, "__iter__") and not isinstance(val, str):
                 val = np.atleast_1d(val)
-            elif hasattr(val, 'item'):
+            elif hasattr(val, "item"):
                 val = val.item()
-            params['_held_value_'] = val
-            params['_prev_value_'] = val
-            params['_linear_start_val_'] = val
-            params['_linear_end_val_'] = val
-            params['_linear_last_input_'] = val
+            params["_held_value_"] = val
+            params["_prev_value_"] = val
+            params["_linear_start_val_"] = val
+            params["_linear_end_val_"] = val
+            params["_linear_last_input_"] = val
 
-        output_sample_time = float(params.get('output_sample_time', 0.1))
-        mode = str(params.get('transition_mode', 'ZOH'))
-        filter_cutoff = float(params.get('filter_cutoff', 0.4))
+        output_sample_time = float(params.get("output_sample_time", 0.1))
+        mode = str(params.get("transition_mode", "ZOH"))
+        filter_cutoff = float(params.get("filter_cutoff", 0.4))
 
         # Get current input
-        val = inputs.get(0, params['_held_value_'])
-        if hasattr(val, '__iter__') and not isinstance(val, str):
+        val = inputs.get(0, params["_held_value_"])
+        if hasattr(val, "__iter__") and not isinstance(val, str):
             val = np.atleast_1d(val)
-        elif hasattr(val, 'item'):
+        elif hasattr(val, "item"):
             val = val.item()
 
         # Convert to float for comparison
         val_f = float(val) if not isinstance(val, np.ndarray) else float(np.atleast_1d(val).flat[0])
 
-
         # Continuous output mode (pass-through)
         if output_sample_time <= 0:
-            return {0: val, 'E': False}
+            return {0: val, "E": False}
 
         # Linear mode: Handle ramp interpolation
-        if mode == 'Linear' and not output_only:
-            last_input = params['_linear_last_input_']
+        if mode == "Linear" and not output_only:
+            last_input = params["_linear_last_input_"]
             if last_input is not None:
                 # Vector-aware change detection: start a new ramp if ANY channel
                 # changed. The old scalar check only compared channel 0, so a
                 # change confined to later channels of a vector signal was missed.
                 cur_arr = np.atleast_1d(np.asarray(val, dtype=float))
                 last_arr = np.atleast_1d(np.asarray(last_input, dtype=float))
-                changed = (cur_arr.shape != last_arr.shape) or bool(np.any(np.abs(cur_arr - last_arr) > 1e-9))
+                changed = (cur_arr.shape != last_arr.shape) or bool(
+                    np.any(np.abs(cur_arr - last_arr) > 1e-9)
+                )
 
                 if changed:
                     # Input changed! Start a new ramp from the current output
                     # position to the new input value. Estimate ramp duration
                     # from time since last change.
-                    ramp_duration = time - params['_linear_start_time_']
+                    ramp_duration = time - params["_linear_start_time_"]
                     if ramp_duration < 0.001:
                         ramp_duration = 0.1  # Default if too fast
 
-                    logger.info(f"RateTransition Linear: input changed at t={time:.3f} -> {val_f:.3f}")
-                    params['_linear_start_val_'] = params['_held_value_']  # Start from current output
-                    params['_linear_end_val_'] = val  # full vector endpoint -> ramp is element-wise
-                    params['_linear_start_time_'] = time
-                    params['_linear_ramp_duration_'] = ramp_duration
-                    params['_linear_last_input_'] = val
+                    logger.info(
+                        f"RateTransition Linear: input changed at t={time:.3f} -> {val_f:.3f}"
+                    )
+                    params["_linear_start_val_"] = params[
+                        "_held_value_"
+                    ]  # Start from current output
+                    params["_linear_end_val_"] = val  # full vector endpoint -> ramp is element-wise
+                    params["_linear_start_time_"] = time
+                    params["_linear_ramp_duration_"] = ramp_duration
+                    params["_linear_last_input_"] = val
 
         # Check if it's time to produce output
-        at_output_time = time >= params['_next_output_time_'] - 1e-9
+        at_output_time = time >= params["_next_output_time_"] - 1e-9
 
-        if not output_only and mode == 'Average':
+        if not output_only and mode == "Average":
             # Store sample in buffer for averaging (only Average mode consumes it)
-            params['_sample_buffer_'].append((time, val))
+            params["_sample_buffer_"].append((time, val))
             # Limit buffer size
-            if len(params['_sample_buffer_']) > 100:
-                params['_sample_buffer_'] = params['_sample_buffer_'][-50:]
+            if len(params["_sample_buffer_"]) > 100:
+                params["_sample_buffer_"] = params["_sample_buffer_"][-50:]
 
         # Compute output based on mode
-        if mode == 'Linear':
+        if mode == "Linear":
             # Linear interpolation: ramp from start_val to end_val
-            start_val = params['_linear_start_val_']
-            end_val = params['_linear_end_val_']
-            start_time = params['_linear_start_time_']
-            ramp_duration = params['_linear_ramp_duration_']
+            start_val = params["_linear_start_val_"]
+            end_val = params["_linear_end_val_"]
+            start_time = params["_linear_start_time_"]
+            ramp_duration = params["_linear_ramp_duration_"]
 
             if ramp_duration > 0 and time >= start_time:
                 # Calculate interpolation factor
@@ -208,59 +223,58 @@ class RateTransitionBlock(BaseBlock):
             else:
                 output_val = end_val
 
-
             if not output_only:
-                params['_held_value_'] = output_val
+                params["_held_value_"] = output_val
 
             # Schedule next output time
             if at_output_time and not output_only:
-                while params['_next_output_time_'] <= time + 1e-9:
-                    params['_next_output_time_'] += output_sample_time
+                while params["_next_output_time_"] <= time + 1e-9:
+                    params["_next_output_time_"] += output_sample_time
 
-            return {0: output_val, 'E': False}
+            return {0: output_val, "E": False}
 
         # Non-Linear modes only update at output times
         if at_output_time:
             if not output_only:
-                if mode == 'ZOH':
+                if mode == "ZOH":
                     output_val = val
 
-                elif mode == 'Sample':
+                elif mode == "Sample":
                     output_val = val
 
-                elif mode == 'Average':
-                    buffer = params['_sample_buffer_']
+                elif mode == "Average":
+                    buffer = params["_sample_buffer_"]
                     if buffer:
                         vals = [v for t, v in buffer]
                         if isinstance(vals[0], np.ndarray):
                             output_val = np.mean(vals, axis=0)
                         else:
                             output_val = np.mean([float(v) for v in vals])
-                        params['_sample_buffer_'] = []
+                        params["_sample_buffer_"] = []
                     else:
                         output_val = val
 
-                elif mode == 'Filter':
+                elif mode == "Filter":
                     alpha = min(1.0, max(0.01, 2.0 * np.pi * filter_cutoff * output_sample_time))
-                    prev_filter = params['_filter_state_']
+                    prev_filter = params["_filter_state_"]
                     if isinstance(val, np.ndarray):
                         if not isinstance(prev_filter, np.ndarray):
                             prev_filter = np.zeros_like(val)
                         output_val = alpha * val + (1 - alpha) * prev_filter
                     else:
                         output_val = alpha * float(val) + (1 - alpha) * float(prev_filter)
-                    params['_filter_state_'] = output_val
+                    params["_filter_state_"] = output_val
 
                 else:
                     output_val = val
 
-                params['_held_value_'] = output_val
-                params['_prev_value_'] = val
-                params['_prev_time_'] = time
+                params["_held_value_"] = output_val
+                params["_prev_value_"] = val
+                params["_prev_time_"] = time
 
-                while params['_next_output_time_'] <= time + 1e-9:
-                    params['_next_output_time_'] += output_sample_time
+                while params["_next_output_time_"] <= time + 1e-9:
+                    params["_next_output_time_"] += output_sample_time
 
-            return {0: params['_held_value_'], 'E': False}
+            return {0: params["_held_value_"], "E": False}
 
-        return {0: params['_held_value_'], 'E': False}
+        return {0: params["_held_value_"], "E": False}

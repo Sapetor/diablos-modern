@@ -5,8 +5,7 @@ from blocks.variable_transport_delay import VariableTransportDelayBlock
 from blocks.transport_delay import TransportDelayBlock
 
 
-def _run_variable(signal_fn, tau_fn, t_end=2.0, dt=0.01,
-                  max_delay=1.0, initial_value=0.0):
+def _run_variable(signal_fn, tau_fn, t_end=2.0, dt=0.01, max_delay=1.0, initial_value=0.0):
     """Drive VariableTransportDelay via an execute() loop.
 
     Returns (times, outputs) as numpy arrays of scalars.
@@ -54,8 +53,7 @@ class TestVariableTransportDelay:
         ramp = lambda t: t
         tau = 0.3
         dt = 0.01
-        times, var_out = _run_variable(ramp, lambda t: tau, t_end=2.0, dt=dt,
-                                       max_delay=1.0)
+        times, var_out = _run_variable(ramp, lambda t: tau, t_end=2.0, dt=dt, max_delay=1.0)
         fixed_out = _run_fixed(ramp, tau, t_end=2.0, dt=dt)
 
         # Same buffering/interpolation scheme => outputs should match closely.
@@ -88,11 +86,9 @@ class TestVariableTransportDelay:
         max_delay = 1.0
 
         # Small constant delay run.
-        times, out_small = _run_variable(ramp, lambda t: 0.1, t_end=2.0, dt=dt,
-                                         max_delay=max_delay)
+        times, out_small = _run_variable(ramp, lambda t: 0.1, t_end=2.0, dt=dt, max_delay=max_delay)
         # Larger constant delay run.
-        _, out_large = _run_variable(ramp, lambda t: 0.5, t_end=2.0, dt=dt,
-                                     max_delay=max_delay)
+        _, out_large = _run_variable(ramp, lambda t: 0.5, t_end=2.0, dt=dt, max_delay=max_delay)
 
         # In the steady region, a larger delay yields a smaller (more lagged)
         # output for a monotonically increasing ramp.
@@ -101,8 +97,7 @@ class TestVariableTransportDelay:
 
         # Effective delay for the time-varying run should track tau(t).
         tau_fn = lambda t: 0.1 + 0.2 * t  # grows from 0.1 toward larger lag
-        times, out_var = _run_variable(ramp, tau_fn, t_end=2.0, dt=dt,
-                                       max_delay=max_delay)
+        times, out_var = _run_variable(ramp, tau_fn, t_end=2.0, dt=dt, max_delay=max_delay)
         mask = times >= 0.5
         expected = times[mask] - np.array([min(tau_fn(t), max_delay) for t in times[mask]])
         assert np.allclose(out_var[mask], expected, atol=3 * dt)
@@ -114,8 +109,7 @@ class TestVariableTransportDelay:
         max_delay = 0.3
 
         # Request a huge tau; it must clamp to max_delay (0.3).
-        times, out_huge = _run_variable(ramp, lambda t: 5.0, t_end=2.0, dt=dt,
-                                        max_delay=max_delay)
+        times, out_huge = _run_variable(ramp, lambda t: 5.0, t_end=2.0, dt=dt, max_delay=max_delay)
         # Reference: a fixed delay exactly at max_delay.
         fixed_at_max = _run_fixed(ramp, max_delay, t_end=2.0, dt=dt)
 
@@ -138,8 +132,9 @@ class TestVariableTransportDelay:
         initial = 7.0
         ramp = lambda t: t + 100.0  # signal far from initial value
         # Large tau so target_time precedes the buffer start for early steps.
-        times, out = _run_variable(ramp, lambda t: 1.0, t_end=2.0, dt=0.01,
-                                   max_delay=1.0, initial_value=initial)
+        times, out = _run_variable(
+            ramp, lambda t: 1.0, t_end=2.0, dt=0.01, max_delay=1.0, initial_value=initial
+        )
         # At t=0 (and while target_time <= buffer start) output is initial_value.
         assert np.isclose(out[0], initial)
         # Early steps where target_time < 0 stay at initial_value.

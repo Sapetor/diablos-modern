@@ -19,8 +19,13 @@ def csv_file(tmp_path):
 
 
 def _params(csv, **ov):
-    p = {"data_file": csv, "time_col": "t", "signal_col": "y",
-         "interpolation": "linear", "end_behavior": "hold"}
+    p = {
+        "data_file": csv,
+        "time_col": "t",
+        "signal_col": "y",
+        "interpolation": "linear",
+        "end_behavior": "hold",
+    }
     p.update(ov)
     return p
 

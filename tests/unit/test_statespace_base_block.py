@@ -62,32 +62,30 @@ class TestValidateMatrices:
         result = block._validate_state_space_matrices(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [1.0], [1.0], [0.0]
         )
-        assert isinstance(result, dict) and result['E'] is True
-        assert 'square' in result['error']
+        assert isinstance(result, dict) and result["E"] is True
+        assert "square" in result["error"]
 
     def test_b_row_mismatch_errors(self, block):
         # A is 2x2 but B has only 1 row.
         result = block._validate_state_space_matrices(
             [[0.0, 1.0], [-1.0, -1.0]], [[1.0]], [[1.0, 0.0]], [[0.0]]
         )
-        assert isinstance(result, dict) and result['E'] is True
-        assert 'B matrix' in result['error']
+        assert isinstance(result, dict) and result["E"] is True
+        assert "B matrix" in result["error"]
 
     def test_c_column_mismatch_errors(self, block):
         # A is 2x2 but C has only 1 column.
         result = block._validate_state_space_matrices(
             [[0.0, 1.0], [-1.0, -1.0]], [[0.0], [1.0]], [[1.0]], [[0.0]]
         )
-        assert isinstance(result, dict) and result['E'] is True
-        assert 'C matrix' in result['error']
+        assert isinstance(result, dict) and result["E"] is True
+        assert "C matrix" in result["error"]
 
     def test_d_shape_mismatch_errors(self, block):
         # p=1, m=1 expected, but D is 2x1.
-        result = block._validate_state_space_matrices(
-            [[-1.0]], [[1.0]], [[1.0]], [[0.0], [0.0]]
-        )
-        assert isinstance(result, dict) and result['E'] is True
-        assert 'D matrix' in result['error']
+        result = block._validate_state_space_matrices([[-1.0]], [[1.0]], [[1.0]], [[0.0], [0.0]])
+        assert isinstance(result, dict) and result["E"] is True
+        assert "D matrix" in result["error"]
 
 
 @pytest.mark.unit
@@ -141,8 +139,8 @@ class TestProcessInput:
     def test_dimension_mismatch_errors(self, block):
         u, err = block._process_input({0: np.array([1.0, 2.0])}, 3)
         assert u is None
-        assert err['E'] is True
-        assert 'dimension mismatch' in err['error']
+        assert err["E"] is True
+        assert "dimension mismatch" in err["error"]
 
 
 @pytest.mark.unit
@@ -164,7 +162,7 @@ class TestComputeOutput:
         u = np.array([[0.0]])
         y, err = block._compute_output(C, D, x, u)
         assert y is None
-        assert err['E'] is True
+        assert err["E"] is True
 
 
 @pytest.mark.unit
@@ -178,7 +176,7 @@ class TestUpdateState:
         err = block._update_state(A, B, x, u, params)
         assert err is None
         # x_next = A x + B u = [2, 0] + [0, 3] = [2, 3]
-        assert np.allclose(params['_x_'].flatten(), [2.0, 3.0])
+        assert np.allclose(params["_x_"].flatten(), [2.0, 3.0])
 
     def test_incompatible_shapes_errors(self, block):
         A = np.array([[1.0, 0.0], [0.0, 1.0]])
@@ -187,8 +185,8 @@ class TestUpdateState:
         u = np.array([[1.0]])
         params = {}
         err = block._update_state(A, B, x, u, params)
-        assert err['E'] is True
-        assert '_x_' not in params
+        assert err["E"] is True
+        assert "_x_" not in params
 
 
 @pytest.mark.unit

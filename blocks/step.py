@@ -1,6 +1,6 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
+
 
 class StepBlock(BaseBlock):
     """
@@ -49,10 +49,26 @@ class StepBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "value": {"type": "float", "default": 1.0, "doc": "The value of the step (or impulse strength/area when type is 'impulse')."},
-            "delay": {"type": "float", "default": 0.0, "doc": "The delay of the step (half-period when type is 'pulse'; fire time when type is 'impulse')."},
-            "type": {"type": "string", "default": "up", "doc": "Waveform: up, down, pulse, constant, or impulse (Dirac-delta approximation, same as the Impulse block)."},
-            "pulse_start_up": {"type": "bool", "default": True, "doc": "If type is pulse, defines if it starts up or down."}
+            "value": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "The value of the step (or impulse strength/area when type is 'impulse').",
+            },
+            "delay": {
+                "type": "float",
+                "default": 0.0,
+                "doc": "The delay of the step (half-period when type is 'pulse'; fire time when type is 'impulse').",
+            },
+            "type": {
+                "type": "string",
+                "default": "up",
+                "doc": "Waveform: up, down, pulse, constant, or impulse (Dirac-delta approximation, same as the Impulse block).",
+            },
+            "pulse_start_up": {
+                "type": "bool",
+                "default": True,
+                "doc": "If type is pulse, defines if it starts up or down.",
+            },
         }
 
     @property
@@ -66,6 +82,7 @@ class StepBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw step signal icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Step signal: low -> high
         path.moveTo(0.1, 0.7)
@@ -83,48 +100,48 @@ class StepBlock(BaseBlock):
         params), and 0 elsewhere. Kept here as a same-file helper so the impulse
         shape is defined once for the Step block's 'impulse' branch.
         """
-        delay = float(params.get('delay', 0.0))
-        value = params.get('value', 1.0)
-        if not params.get('_impulse_fired', False) and time >= delay:
-            params['_impulse_fired'] = True
-            return {0: np.atleast_1d(np.array(value / dt, dtype=float)), 'E': False}
-        return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), 'E': False}
+        delay = float(params.get("delay", 0.0))
+        value = params.get("value", 1.0)
+        if not params.get("_impulse_fired", False) and time >= delay:
+            params["_impulse_fired"] = True
+            return {0: np.atleast_1d(np.array(value / dt, dtype=float)), "E": False}
+        return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), "E": False}
 
     def execute(self, time, inputs, params, **kwargs):
-        if params.get('_init_start_', True):
-            params['_step_old'] = time
-            params['_change_old'] = not params.get('pulse_start_up', True)
-            params['_impulse_fired'] = False
-            params['_init_start_'] = False
+        if params.get("_init_start_", True):
+            params["_step_old"] = time
+            params["_change_old"] = not params.get("pulse_start_up", True)
+            params["_impulse_fired"] = False
+            params["_init_start_"] = False
 
-        delay = float(params.get('delay', 0.0))
-        step_type = params.get('type', 'up')
+        delay = float(params.get("delay", 0.0))
+        step_type = params.get("type", "up")
 
-        if step_type == 'up':
+        if step_type == "up":
             change = True if time < delay else False
-        elif step_type == 'down':
+        elif step_type == "down":
             change = True if time > delay else False
-        elif step_type == 'pulse':
+        elif step_type == "pulse":
             if delay <= 0:
-                return {'E': True, 'error': "pulse 'delay' (half-period) must be positive"}
+                return {"E": True, "error": "pulse 'delay' (half-period) must be positive"}
             # Advance across every half-period boundary crossed since last call so
             # that large/variable timesteps do not skip toggles (mirrors PRBS).
-            while time - params['_step_old'] >= delay:
-                params['_step_old'] += delay
-                params['_change_old'] = not params['_change_old']
-            change = params['_change_old']
-        elif step_type == 'impulse':
-            dt = kwargs.get('dtime', params.get('dtime', 0.01))
+            while time - params["_step_old"] >= delay:
+                params["_step_old"] += delay
+                params["_change_old"] = not params["_change_old"]
+            change = params["_change_old"]
+        elif step_type == "impulse":
+            dt = kwargs.get("dtime", params.get("dtime", 0.01))
             return self._impulse_output(time, params, dt)
-        elif step_type == 'constant':
+        elif step_type == "constant":
             change = False
         else:
-            return {'E': True, 'error': f"unknown step type {step_type}"}
+            return {"E": True, "error": f"unknown step type {step_type}"}
 
-        value = params.get('value', 1.0)
+        value = params.get("value", 1.0)
         if change:
-            params['_change_old'] = True
-            return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), 'E': False}
+            params["_change_old"] = True
+            return {0: np.atleast_1d(np.zeros_like(np.array(value, dtype=float))), "E": False}
         else:
-            params['_change_old'] = False
-            return {0: np.atleast_1d(np.array(value, dtype=float)), 'E': False}
+            params["_change_old"] = False
+            return {0: np.atleast_1d(np.array(value, dtype=float)), "E": False}

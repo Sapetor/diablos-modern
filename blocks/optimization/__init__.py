@@ -30,9 +30,9 @@ from blocks.optimization.optimizer import OptimizerBlock
 from blocks.optimization.data_fit import DataFitBlock
 
 __all__ = [
-    'ParameterBlock',
-    'CostFunctionBlock',
-    'ConstraintBlock',
-    'OptimizerBlock',
-    'DataFitBlock',
+    "ParameterBlock",
+    "CostFunctionBlock",
+    "ConstraintBlock",
+    "OptimizerBlock",
+    "DataFitBlock",
 ]

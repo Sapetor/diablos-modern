@@ -229,9 +229,7 @@ class EnsembleResultWindow(QWidget):
 
         # Bold mean line on top.
         if mean.size and t.size == mean.size:
-            self.plot.plot(
-                t, mean, pen=pg.mkPen((200, 30, 30), width=3), name="mean"
-            )
+            self.plot.plot(t, mean, pen=pg.mkPen((200, 30, 30), width=3), name="mean")
 
     # -------------------------------------------------------------- histogram
     def _plot_histogram(self):
@@ -259,16 +257,20 @@ class EnsembleResultWindow(QWidget):
         centers = (edges[:-1] + edges[1:]) / 2.0
         width = (edges[1] - edges[0]) * 0.9 if edges.size > 1 else 1.0
         bars = pg.BarGraphItem(
-            x=centers, height=counts, width=width,
-            brush=pg.mkBrush(30, 90, 200, 150), pen=pg.mkPen((30, 90, 200), width=1),
+            x=centers,
+            height=counts,
+            width=width,
+            brush=pg.mkBrush(30, 90, 200, 150),
+            pen=pg.mkPen((30, 90, 200), width=1),
         )
         self.hist_plot.addItem(bars)
 
         # Mark the ensemble mean of the metric for quick reference.
         mu = float(np.mean(vals))
         self.hist_plot.addItem(
-            pg.InfiniteLine(pos=mu, angle=90,
-                            pen=pg.mkPen((200, 30, 30), width=2, style=Qt.DashLine))
+            pg.InfiniteLine(
+                pos=mu, angle=90, pen=pg.mkPen((200, 30, 30), width=2, style=Qt.DashLine)
+            )
         )
 
     def _metric_values(self, sig, metric):

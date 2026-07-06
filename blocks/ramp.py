@@ -1,6 +1,6 @@
-
 import numpy as np
 from blocks.base_block import BaseBlock
+
 
 class RampBlock(BaseBlock):
     """
@@ -41,7 +41,7 @@ class RampBlock(BaseBlock):
     def params(self):
         return {
             "slope": {"type": "float", "default": 1.0, "doc": "The slope of the ramp."},
-            "delay": {"type": "float", "default": 0.0, "doc": "The delay of the ramp."}
+            "delay": {"type": "float", "default": 0.0, "doc": "The delay of the ramp."},
         }
 
     @property
@@ -55,17 +55,18 @@ class RampBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw ramp signal icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         path.moveTo(0.1, 0.9)
         path.lineTo(0.9, 0.1)
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        slope = float(params['slope'])
-        delay = float(params['delay'])
+        slope = float(params["slope"])
+        delay = float(params["delay"])
         if slope == 0:
-            return {0: np.atleast_1d(np.array(0.0, dtype=float)), 'E': False}
+            return {0: np.atleast_1d(np.array(0.0, dtype=float)), "E": False}
         elif slope > 0:
-            return {0: np.atleast_1d(np.maximum(0, slope * (time - delay))), 'E': False}
+            return {0: np.atleast_1d(np.maximum(0, slope * (time - delay))), "E": False}
         else:  # slope < 0
-            return {0: np.atleast_1d(np.minimum(0, slope * (time - delay))), 'E': False}
+            return {0: np.atleast_1d(np.minimum(0, slope * (time - delay))), "E": False}

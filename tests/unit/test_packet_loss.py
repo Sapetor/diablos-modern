@@ -87,8 +87,7 @@ class TestPacketLoss:
 
     def test_loss_prob_one_always_holds(self):
         """loss_prob=1 => every packet dropped; hold keeps the initial value."""
-        params = _fresh_params(loss_prob=1.0, seed=42,
-                               drop_mode="hold", initial_value=2.0)
+        params = _fresh_params(loss_prob=1.0, seed=42, drop_mode="hold", initial_value=2.0)
         inputs = np.array([3.0, -1.5, 7.0, 0.25, 42.0])
         outputs, deliveries = _run(params, inputs)
         assert not any(deliveries)
@@ -111,8 +110,7 @@ class TestPacketLoss:
 
     def test_drop_mode_zero(self):
         """drop_mode='zero' outputs 0 on a dropped packet."""
-        params = _fresh_params(loss_prob=1.0, seed=42,
-                               drop_mode="zero", initial_value=9.0)
+        params = _fresh_params(loss_prob=1.0, seed=42, drop_mode="zero", initial_value=9.0)
         outputs, _ = _run(params, np.array([5.0, 5.0, 5.0]))
         for out in outputs:
             assert np.allclose(out, np.atleast_1d(0.0))
@@ -138,13 +136,16 @@ class TestPacketLoss:
         block = PacketLossBlock()
         dtime = 0.1
         # t=0 samples and delivers 10.0; t=0.1..0.4 should hold 10.0.
-        out0 = np.atleast_1d(block.execute(time=0.0, inputs={0: np.array([10.0])},
-                                           params=params, dtime=dtime)[0])
+        out0 = np.atleast_1d(
+            block.execute(time=0.0, inputs={0: np.array([10.0])}, params=params, dtime=dtime)[0]
+        )
         assert np.allclose(out0, [10.0])
         for k in range(1, 5):  # t = 0.1, 0.2, 0.3, 0.4
-            out = np.atleast_1d(block.execute(
-                time=k * dtime, inputs={0: np.array([99.0])},
-                params=params, dtime=dtime)[0])
+            out = np.atleast_1d(
+                block.execute(
+                    time=k * dtime, inputs={0: np.array([99.0])}, params=params, dtime=dtime
+                )[0]
+            )
             assert np.allclose(out, [10.0])  # held, not the new 99.0
 
     def test_default_loss_model_is_bernoulli(self):
@@ -184,19 +185,19 @@ class TestGilbertElliott:
         # GE: rarely enters the bad state (p_bg small) but stays a while
         # (p_gb small) dropping almost everything there -> bursts.
         ge_params = _fresh_params(
-            loss_model="gilbert_elliott", seed=7,
-            loss_prob=0.0,        # good state never drops
-            loss_prob_bad=1.0,    # bad state always drops
-            p_bg=0.02,            # good->bad
-            p_gb=0.1,             # bad->good (stays bad ~10 samples)
+            loss_model="gilbert_elliott",
+            seed=7,
+            loss_prob=0.0,  # good state never drops
+            loss_prob_bad=1.0,  # bad state always drops
+            p_bg=0.02,  # good->bad
+            p_gb=0.1,  # bad->good (stays bad ~10 samples)
         )
         _, ge_deliv = _run(ge_params, inputs)
         ge_drops = _drop_seq(ge_deliv)
         ge_rate = sum(ge_drops) / n
 
         # Bernoulli at the SAME average loss rate.
-        bern_params = _fresh_params(
-            loss_model="bernoulli", seed=7, loss_prob=ge_rate)
+        bern_params = _fresh_params(loss_model="bernoulli", seed=7, loss_prob=ge_rate)
         _, bern_deliv = _run(bern_params, inputs)
         bern_drops = _drop_seq(bern_deliv)
 
@@ -213,9 +214,13 @@ class TestGilbertElliott:
         n = 4000
         inputs = np.arange(1, n + 1, dtype=float)
         params = _fresh_params(
-            loss_model="gilbert_elliott", seed=11,
-            loss_prob=0.0, loss_prob_bad=1.0,
-            p_bg=0.03, p_gb=0.2)
+            loss_model="gilbert_elliott",
+            seed=11,
+            loss_prob=0.0,
+            loss_prob_bad=1.0,
+            p_bg=0.03,
+            p_gb=0.2,
+        )
         _, deliveries = _run(params, inputs)
         drops = _drop_seq(deliveries)
         total_drops = sum(drops)
@@ -233,8 +238,14 @@ class TestGilbertElliott:
     def test_ge_reproducible_with_fixed_seed(self):
         """Two fresh GE blocks with the same seed drop identically."""
         inputs = np.arange(1, 801, dtype=float)
-        kw = dict(loss_model="gilbert_elliott", seed=99,
-                  loss_prob=0.05, loss_prob_bad=0.95, p_bg=0.1, p_gb=0.4)
+        kw = dict(
+            loss_model="gilbert_elliott",
+            seed=99,
+            loss_prob=0.05,
+            loss_prob_bad=0.95,
+            p_bg=0.1,
+            p_gb=0.4,
+        )
         _, d1 = _run(_fresh_params(**kw), inputs)
         _, d2 = _run(_fresh_params(**kw), inputs)
         assert d1 == d2
@@ -242,8 +253,9 @@ class TestGilbertElliott:
     def test_ge_different_seed_differs(self):
         """Different seeds give a different GE drop pattern."""
         inputs = np.arange(1, 801, dtype=float)
-        base = dict(loss_model="gilbert_elliott",
-                    loss_prob=0.05, loss_prob_bad=0.95, p_bg=0.1, p_gb=0.4)
+        base = dict(
+            loss_model="gilbert_elliott", loss_prob=0.05, loss_prob_bad=0.95, p_bg=0.1, p_gb=0.4
+        )
         _, d1 = _run(_fresh_params(seed=1, **base), inputs)
         _, d2 = _run(_fresh_params(seed=2, **base), inputs)
         assert d1 != d2
@@ -252,9 +264,15 @@ class TestGilbertElliott:
         """GE reuses the existing drop_mode/hold logic: a held value repeats
         the last delivered packet on a dropped sample."""
         params = _fresh_params(
-            loss_model="gilbert_elliott", seed=3, drop_mode="hold",
-            loss_prob=0.0, loss_prob_bad=1.0, p_bg=0.5, p_gb=0.1,
-            initial_value=0.0)
+            loss_model="gilbert_elliott",
+            seed=3,
+            drop_mode="hold",
+            loss_prob=0.0,
+            loss_prob_bad=1.0,
+            p_bg=0.5,
+            p_gb=0.1,
+            initial_value=0.0,
+        )
         n = 300
         inputs = np.arange(1, n + 1, dtype=float)
         outputs, deliveries = _run(params, inputs)
@@ -275,7 +293,5 @@ class TestGilbertElliott:
         same drop pattern as a plain default-model run."""
         inputs = np.arange(1, 501, dtype=float)
         _, d_default = _run(_fresh_params(loss_prob=0.5, seed=42), inputs)
-        _, d_explicit = _run(
-            _fresh_params(loss_model="bernoulli", loss_prob=0.5, seed=42),
-            inputs)
+        _, d_explicit = _run(_fresh_params(loss_model="bernoulli", loss_prob=0.5, seed=42), inputs)
         assert d_default == d_explicit

@@ -63,17 +63,13 @@ class LinearSystemSolverBlock(BaseBlock):
                 "type": "choice",
                 "default": "direct",
                 "options": ["direct", "lstsq", "pinv"],
-                "doc": "Solution method"
+                "doc": "Solution method",
             },
-            "dimension": {
-                "type": "int",
-                "default": 2,
-                "doc": "System dimension (for reshaping A)"
-            },
+            "dimension": {"type": "int", "default": 2, "doc": "System dimension (for reshaping A)"},
             "regularization": {
                 "type": "float",
                 "default": 0.0,
-                "doc": "Tikhonov regularization (added to diagonal)"
+                "doc": "Tikhonov regularization (added to diagonal)",
             },
         }
 
@@ -90,9 +86,9 @@ class LinearSystemSolverBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            method = params.get('method', 'direct')
-            dimension = int(params.get('dimension', 2))
-            regularization = float(params.get('regularization', 0.0))
+            method = params.get("method", "direct")
+            dimension = int(params.get("dimension", 2))
+            regularization = float(params.get("regularization", 0.0))
 
             # Get A matrix - handles nested [[1,2],[3,4]] or flattened [1,2,3,4]
             A_input = inputs.get(0, np.eye(dimension))
@@ -132,9 +128,9 @@ class LinearSystemSolverBlock(BaseBlock):
             else:  # pinv
                 x = np.linalg.pinv(A) @ b
 
-            return {0: x, 'E': False}
+            return {0: x, "E": False}
 
         except Exception as e:
             logger.error(f"LinearSystemSolver error: {e}")
-            dimension = int(params.get('dimension', 2))
-            return {0: np.zeros(dimension), 'E': True, 'error': str(e)}
+            dimension = int(params.get("dimension", 2))
+            return {0: np.zeros(dimension), "E": True, "error": str(e)}

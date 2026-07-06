@@ -18,7 +18,10 @@ import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.pde._compat import as_scalar
 from blocks.param_templates import (
-    diffusivity_param, domain_params_1d, init_flag_param, robin_bc_params
+    diffusivity_param,
+    domain_params_1d,
+    init_flag_param,
+    robin_bc_params,
 )
 from lib.engine.pde_helpers import bc_params_1d
 from lib.engine.pde_ops import heat_rhs_1d, robin_boundary_value
@@ -82,7 +85,7 @@ class HeatEquation1DBlock(BaseBlock):
             "init_conds": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial conditions (scalar or list of N values)"
+                "doc": "Initial conditions (scalar or list of N values)",
             },
             **init_flag_param(),
         }
@@ -115,6 +118,7 @@ class HeatEquation1DBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw heat equation icon - temperature profile curve."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Draw a decaying temperature profile curve
         path.moveTo(0.1, 0.8)
@@ -129,20 +133,20 @@ class HeatEquation1DBlock(BaseBlock):
 
     def get_num_states(self, params):
         """Return number of states (= number of spatial nodes)."""
-        return int(params.get('N', 20))
+        return int(params.get("N", 20))
 
     def get_initial_conditions(self, params):
         """Return initial condition vector for the temperature field."""
-        N = int(params.get('N', 20))
-        L = float(params.get('L', 1.0))
-        ic = params.get('init_conds', [0.0])
+        N = int(params.get("N", 20))
+        L = float(params.get("L", 1.0))
+        ic = params.get("init_conds", [0.0])
 
         if isinstance(ic, str):
             x = np.linspace(0, L, N)
-            if ic.lower() in ('sin', 'sine'):
+            if ic.lower() in ("sin", "sine"):
                 return np.sin(np.pi * x / L)
-            elif ic.lower() == 'gaussian':
-                return np.exp(-100 * (x - L/2)**2)
+            elif ic.lower() == "gaussian":
+                return np.exp(-100 * (x - L / 2) ** 2)
             else:
                 return np.zeros(N)
 
@@ -162,7 +166,7 @@ class HeatEquation1DBlock(BaseBlock):
             return np.interp(x_new, x_old, ic_arr)
         else:
             # Downsample
-            indices = np.linspace(0, len(ic_arr)-1, N, dtype=int)
+            indices = np.linspace(0, len(ic_arr) - 1, N, dtype=int)
             return ic_arr[indices]
 
     def execute(self, time, inputs, params, **kwargs):
@@ -172,31 +176,31 @@ class HeatEquation1DBlock(BaseBlock):
         For the fast solver, this is only used during replay.
         The actual ODE integration is done by the SystemCompiler.
         """
-        output_only = kwargs.get('output_only', False)
+        output_only = kwargs.get("output_only", False)
 
         # Initialization
-        if params.get('_init_start_', True):
-            N = max(2, int(params.get('N', 20)))
-            params['N'] = N
-            params['T'] = self.get_initial_conditions(params)
-            params['_init_start_'] = False
-            params['dx'] = float(params.get('L', 1.0)) / (N - 1)
+        if params.get("_init_start_", True):
+            N = max(2, int(params.get("N", 20)))
+            params["N"] = N
+            params["T"] = self.get_initial_conditions(params)
+            params["_init_start_"] = False
+            params["dx"] = float(params.get("L", 1.0)) / (N - 1)
 
         if output_only:
-            T = params.get('T', np.zeros(int(params.get('N', 20))))
-            return {0: T, 1: np.mean(T), 'E': False}
+            T = params.get("T", np.zeros(int(params.get("N", 20))))
+            return {0: T, 1: np.mean(T), "E": False}
 
         # Get parameters
-        alpha = float(params.get('alpha', 1.0))
-        L = float(params.get('L', 1.0))
-        N = int(params.get('N', 20))
-        dx = params.get('dx', L / (N - 1))
-        dtime = float(params.get('dtime', 0.01))
+        alpha = float(params.get("alpha", 1.0))
+        L = float(params.get("L", 1.0))
+        N = int(params.get("N", 20))
+        dx = params.get("dx", L / (N - 1))
+        dtime = float(params.get("dtime", 0.01))
 
         # Get current state. Copy so boundary-condition algebra below does not
         # mutate the stored previous-state array in place (the BC updates assign
         # to T[0]/T[N-1] and would otherwise corrupt params['T'] mid-step).
-        T = np.array(params.get('T', np.zeros(N)), dtype=float)
+        T = np.array(params.get("T", np.zeros(N)), dtype=float)
 
         # Get inputs
         q_src = inputs.get(0, 0.0)
@@ -212,15 +216,14 @@ class HeatEquation1DBlock(BaseBlock):
                 if len(q_src) == 1:
                     q_src = np.full(N, q_src[0])
                 else:
-                    q_src = np.interp(np.linspace(0, 1, N),
-                                      np.linspace(0, 1, len(q_src)), q_src)
+                    q_src = np.interp(np.linspace(0, 1, N), np.linspace(0, 1, len(q_src)), q_src)
 
         # Boundary conditions
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
-        h_left = float(params.get('h_left', 10.0))
-        h_right = float(params.get('h_right', 10.0))
-        k = float(params.get('k_thermal', 1.0))
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
+        h_left = float(params.get("h_left", 10.0))
+        h_right = float(params.get("h_right", 10.0))
+        k = float(params.get("k_thermal", 1.0))
 
         # Spatial discretisation + boundary derivatives are single-sourced in
         # lib.engine.pde_ops. The interpreter integrates Dirichlet/Robin nodes
@@ -228,21 +231,31 @@ class HeatEquation1DBlock(BaseBlock):
         # 'hold' boundary mode: dT/dt = 0 at those nodes, ghost-node flux at
         # Neumann nodes. dT_dt is computed from the pre-update field T.
         dT_dt = heat_rhs_1d(
-            T, alpha, dx, q_src,
-            bc_type_left, bc_left_val, bc_type_right, bc_right_val,
-            h_left, h_right, k, boundary_mode='hold')
+            T,
+            alpha,
+            dx,
+            q_src,
+            bc_type_left,
+            bc_left_val,
+            bc_type_right,
+            bc_right_val,
+            h_left,
+            h_right,
+            k,
+            boundary_mode="hold",
+        )
 
         # Set Dirichlet/Robin boundary values directly on the field (dT_dt is 0
         # there, so the Forward Euler step below leaves them at these values).
-        if bc_type_left == 'Dirichlet':
+        if bc_type_left == "Dirichlet":
             T[0] = bc_left_val
-        elif bc_type_left == 'Robin':
+        elif bc_type_left == "Robin":
             T[0] = robin_boundary_value(T[1], bc_left_val, h_left, k, dx)
 
-        if bc_type_right == 'Dirichlet':
-            T[N-1] = bc_right_val
-        elif bc_type_right == 'Robin':
-            T[N-1] = robin_boundary_value(T[N-2], bc_right_val, h_right, k, dx)
+        if bc_type_right == "Dirichlet":
+            T[N - 1] = bc_right_val
+        elif bc_type_right == "Robin":
+            T[N - 1] = robin_boundary_value(T[N - 2], bc_right_val, h_right, k, dx)
 
         # Forward Euler time step (simple, for interpreter mode).
         # FTCS is only stable for dtime <= dx^2 / (2*alpha); beyond that the
@@ -250,22 +263,25 @@ class HeatEquation1DBlock(BaseBlock):
         # so the user can reduce dtime (or use the compiled solver).
         if alpha > 0:
             cfl_limit = dx * dx / (2.0 * alpha)
-            if dtime > cfl_limit and not params.get('_cfl_warned_', False):
+            if dtime > cfl_limit and not params.get("_cfl_warned_", False):
                 logger.warning(
                     "HeatEquation1D: interpreter dtime=%g exceeds FTCS "
                     "stability limit dx^2/(2*alpha)=%g (dx=%g, alpha=%g); "
                     "explicit Forward Euler may diverge. Reduce dtime or use "
                     "the compiled solver.",
-                    dtime, cfl_limit, dx, alpha,
+                    dtime,
+                    cfl_limit,
+                    dx,
+                    alpha,
                 )
-                params['_cfl_warned_'] = True
+                params["_cfl_warned_"] = True
         T_new = T + dT_dt * dtime
-        params['T'] = T_new
+        params["T"] = T_new
 
         # Compute outputs
         T_avg = np.mean(T_new)
 
-        return {0: T_new, 1: T_avg, 'E': False}
+        return {0: T_new, 1: T_avg, "E": False}
 
     def compute_derivatives(self, time, state, inputs, params):
         """
@@ -283,15 +299,15 @@ class HeatEquation1DBlock(BaseBlock):
             dT_dt: Time derivatives (N values)
         """
         T = state  # signature unified with the 2D PDE blocks
-        alpha = float(params.get('alpha', 1.0))
-        L = float(params.get('L', 1.0))
-        N = int(params.get('N', 20))
+        alpha = float(params.get("alpha", 1.0))
+        L = float(params.get("L", 1.0))
+        N = int(params.get("N", 20))
         dx = L / (N - 1)
 
         # Get inputs
-        q_src = inputs.get('q_src', 0.0)
-        bc_left_val = as_scalar(inputs.get('bc_left', 0.0))
-        bc_right_val = as_scalar(inputs.get('bc_right', 0.0))
+        q_src = inputs.get("q_src", 0.0)
+        bc_left_val = as_scalar(inputs.get("bc_left", 0.0))
+        bc_right_val = as_scalar(inputs.get("bc_right", 0.0))
 
         # Ensure q_src is array
         if isinstance(q_src, (int, float)):
@@ -301,18 +317,28 @@ class HeatEquation1DBlock(BaseBlock):
             if len(q_src) != N:
                 q_src = np.full(N, q_src[0] if len(q_src) > 0 else 0.0)
 
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
-        h_left = float(params.get('h_left', 10.0))
-        h_right = float(params.get('h_right', 10.0))
-        k = float(params.get('k_thermal', 1.0))
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
+        h_left = float(params.get("h_left", 10.0))
+        h_right = float(params.get("h_right", 10.0))
+        k = float(params.get("k_thermal", 1.0))
 
         # 'hold' boundary mode: Dirichlet/Robin nodes are algebraically
         # determined (dT/dt = 0), Neumann nodes use the ghost-node flux.
         return heat_rhs_1d(
-            T, alpha, dx, q_src,
-            bc_type_left, bc_left_val, bc_type_right, bc_right_val,
-            h_left, h_right, k, boundary_mode='hold')
+            T,
+            alpha,
+            dx,
+            q_src,
+            bc_type_left,
+            bc_left_val,
+            bc_type_right,
+            bc_right_val,
+            h_left,
+            h_right,
+            k,
+            boundary_mode="hold",
+        )
 
     def apply_boundary_conditions(self, T, params, inputs):
         """
@@ -323,28 +349,28 @@ class HeatEquation1DBlock(BaseBlock):
             Modified T array with BCs applied
         """
         N = len(T)
-        L = float(params.get('L', 1.0))
+        L = float(params.get("L", 1.0))
         dx = L / (N - 1)
 
-        bc_left_val = inputs.get('bc_left', 0.0)
-        bc_right_val = inputs.get('bc_right', 0.0)
-        bc_type_left = params.get('bc_type_left', 'Dirichlet')
-        bc_type_right = params.get('bc_type_right', 'Dirichlet')
+        bc_left_val = inputs.get("bc_left", 0.0)
+        bc_right_val = inputs.get("bc_right", 0.0)
+        bc_type_left = params.get("bc_type_left", "Dirichlet")
+        bc_type_right = params.get("bc_type_right", "Dirichlet")
 
         T_mod = T.copy()
 
-        if bc_type_left == 'Dirichlet':
+        if bc_type_left == "Dirichlet":
             T_mod[0] = bc_left_val
-        elif bc_type_left == 'Robin':
-            h = params.get('h_left', 10.0)
-            k = params.get('k_thermal', 1.0)
+        elif bc_type_left == "Robin":
+            h = params.get("h_left", 10.0)
+            k = params.get("k_thermal", 1.0)
             T_mod[0] = robin_boundary_value(T[1], bc_left_val, h, k, dx)
 
-        if bc_type_right == 'Dirichlet':
-            T_mod[N-1] = bc_right_val
-        elif bc_type_right == 'Robin':
-            h = params.get('h_right', 10.0)
-            k = params.get('k_thermal', 1.0)
-            T_mod[N-1] = robin_boundary_value(T[N-2], bc_right_val, h, k, dx)
+        if bc_type_right == "Dirichlet":
+            T_mod[N - 1] = bc_right_val
+        elif bc_type_right == "Robin":
+            h = params.get("h_right", 10.0)
+            k = params.get("k_thermal", 1.0)
+            T_mod[N - 1] = robin_boundary_value(T[N - 2], bc_right_val, h, k, dx)
 
         return T_mod

@@ -9,10 +9,12 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fresh_manager():
     """Return a new ThemeManager instance (independent of global singleton)."""
     # We must instantiate a QObject subclass, so a QApplication must exist.
     from modern_ui.themes.theme_manager import ThemeManager
+
     return ThemeManager()
 
 
@@ -21,6 +23,7 @@ def qt_app():
     """Ensure a QApplication exists for QObject construction."""
     import sys
     from PyQt5.QtWidgets import QApplication
+
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
@@ -31,6 +34,7 @@ def qt_app():
 # Default state
 # ---------------------------------------------------------------------------
 
+
 class TestDefaultPalette:
     def test_default_palette_is_tailwind(self):
         mgr = _fresh_manager()
@@ -39,6 +43,7 @@ class TestDefaultPalette:
     def test_default_theme_is_dark(self):
         mgr = _fresh_manager()
         from modern_ui.themes.theme_manager import ThemeType
+
         assert mgr.current_theme == ThemeType.DARK
 
     def test_solarized_dark_source_fill(self):
@@ -60,6 +65,7 @@ class TestDefaultPalette:
 # set_palette — Tailwind
 # ---------------------------------------------------------------------------
 
+
 class TestSetPaletteTailwind:
     def test_tailwind_dark_source_fill(self):
         mgr = _fresh_manager()
@@ -77,6 +83,7 @@ class TestSetPaletteTailwind:
     def test_tailwind_light_source_fill(self):
         """Switching theme to light with Tailwind palette gives light fill."""
         from modern_ui.themes.theme_manager import ThemeType
+
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
         mgr.set_theme(ThemeType.LIGHT)
@@ -85,6 +92,7 @@ class TestSetPaletteTailwind:
 
     def test_tailwind_light_control_border(self):
         from modern_ui.themes.theme_manager import ThemeType
+
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
         mgr.set_theme(ThemeType.LIGHT)
@@ -95,6 +103,7 @@ class TestSetPaletteTailwind:
 # ---------------------------------------------------------------------------
 # set_palette — Catppuccin
 # ---------------------------------------------------------------------------
+
 
 class TestSetPaletteCatppuccin:
     def test_catppuccin_dark_source_accent(self):
@@ -107,8 +116,17 @@ class TestSetPaletteCatppuccin:
         """All dark Catppuccin fills should be the Frappé base (#303446)."""
         mgr = _fresh_manager()
         mgr.set_palette("catppuccin")
-        cats = ["source", "process", "control", "sink", "routing",
-                "analysis", "pde", "optimization", "other"]
+        cats = [
+            "source",
+            "process",
+            "control",
+            "sink",
+            "routing",
+            "analysis",
+            "pde",
+            "optimization",
+            "other",
+        ]
         for cat in cats:
             color = mgr.get_color(f"block_{cat}")
             assert color.name().lower() == "#303446", (
@@ -118,11 +136,21 @@ class TestSetPaletteCatppuccin:
     def test_catppuccin_light_fill_uniform(self):
         """All light Catppuccin fills should be the Latte base (#eff1f5)."""
         from modern_ui.themes.theme_manager import ThemeType
+
         mgr = _fresh_manager()
         mgr.set_palette("catppuccin")
         mgr.set_theme(ThemeType.LIGHT)
-        cats = ["source", "process", "control", "sink", "routing",
-                "analysis", "pde", "optimization", "other"]
+        cats = [
+            "source",
+            "process",
+            "control",
+            "sink",
+            "routing",
+            "analysis",
+            "pde",
+            "optimization",
+            "other",
+        ]
         for cat in cats:
             color = mgr.get_color(f"block_{cat}")
             assert color.name().lower() == "#eff1f5", (
@@ -134,9 +162,11 @@ class TestSetPaletteCatppuccin:
 # Theme switch preserves palette context
 # ---------------------------------------------------------------------------
 
+
 class TestThemeAndPaletteInteraction:
     def test_dark_to_light_tailwind_source(self):
         from modern_ui.themes.theme_manager import ThemeType
+
         mgr = _fresh_manager()
         mgr.set_palette("tailwind")
         # dark first
@@ -158,6 +188,7 @@ class TestThemeAndPaletteInteraction:
 # Unknown palette fallback
 # ---------------------------------------------------------------------------
 
+
 class TestUnknownPaletteFallback:
     def test_unknown_palette_falls_back_to_default(self):
         mgr = _fresh_manager()
@@ -172,6 +203,7 @@ class TestUnknownPaletteFallback:
 # ---------------------------------------------------------------------------
 # Signal fires on set_palette
 # ---------------------------------------------------------------------------
+
 
 class TestSignalOnSetPalette:
     def test_theme_changed_emitted_on_set_palette(self):
@@ -190,6 +222,7 @@ class TestSignalOnSetPalette:
 
     def test_theme_changed_emitted_on_set_theme(self):
         from modern_ui.themes.theme_manager import ThemeType
+
         mgr = _fresh_manager()
         received = []
         mgr.theme_changed.connect(lambda v: received.append(v))
@@ -200,6 +233,7 @@ class TestSignalOnSetPalette:
 # ---------------------------------------------------------------------------
 # Solid fills feature
 # ---------------------------------------------------------------------------
+
 
 class TestSolidFills:
     def test_solid_fills_default_false(self):
@@ -275,13 +309,24 @@ class TestSolidFills:
 # All 9 categories defined in every palette × 2 themes
 # ---------------------------------------------------------------------------
 
+
 class TestPaletteCompleteness:
-    CATEGORIES = ["source", "process", "control", "sink", "routing",
-                  "analysis", "pde", "optimization", "other"]
+    CATEGORIES = [
+        "source",
+        "process",
+        "control",
+        "sink",
+        "routing",
+        "analysis",
+        "pde",
+        "optimization",
+        "other",
+    ]
     SUFFIXES = ["", "_border", "_accent"]
 
     def test_all_keys_present(self):
         from modern_ui.themes.theme_manager import PALETTES
+
         for palette_name, variants in PALETTES.items():
             for theme_name, colors in variants.items():
                 for cat in self.CATEGORIES:

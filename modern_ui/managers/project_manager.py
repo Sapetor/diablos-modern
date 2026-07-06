@@ -1,4 +1,3 @@
-
 import os
 import logging
 from PyQt5.QtWidgets import QMessageBox
@@ -7,10 +6,12 @@ from lib.services.diagram_service import DiagramService
 
 logger = logging.getLogger(__name__)
 
+
 class ProjectManager:
     """
     Manages project state, file operations, and autosave.
     """
+
     def __init__(self, main_window):
         self.window = main_window
         self.diagram_service = DiagramService(self.window)
@@ -18,7 +19,7 @@ class ProjectManager:
         # (user_data_path('config/.autosave.diablos')). Deriving a path from
         # main_window.__module__ resolved to <cwd>/autosave.json, which never
         # matched the real autosave file, so recovery/cleanup were no-ops.
-        self.autosave_path = user_data_path('config/.autosave.diablos')
+        self.autosave_path = user_data_path("config/.autosave.diablos")
 
         # Initialize diagram service with window context if needed
         # (MainWindow code passed self to DiagramService, so we pass window)
@@ -27,7 +28,7 @@ class ProjectManager:
         """Create new diagram."""
         if self.diagram_service:
             self.diagram_service.new_diagram()
-        elif hasattr(self.window.dsim, 'clear_all'):
+        elif hasattr(self.window.dsim, "clear_all"):
             self.window.dsim.clear_all()
         self.window.status_message.setText("New diagram created")
         # cleanup autosave on new? Maybe not necessary depending on logic
@@ -42,13 +43,13 @@ class ProjectManager:
             result = self.diagram_service.load_diagram()
             logger.info(f"load_diagram returned: {result is not None}")
             if result:
-                 self.window.status_message.setText("Diagram opened")
-                 # Single source of truth for the Recent Files menu is
-                 # RecentFilesManager (config/recent_files.json). Routing here
-                 # avoids a second, divergent QSettings-backed store writing the
-                 # same menu widget.
-                 if getattr(self.window, 'recent_files_manager', None):
-                     self.window.recent_files_manager.add(self.diagram_service.current_file)
+                self.window.status_message.setText("Diagram opened")
+                # Single source of truth for the Recent Files menu is
+                # RecentFilesManager (config/recent_files.json). Routing here
+                # avoids a second, divergent QSettings-backed store writing the
+                # same menu widget.
+                if getattr(self.window, "recent_files_manager", None):
+                    self.window.recent_files_manager.add(self.diagram_service.current_file)
         else:
             logger.warning("diagram_service is None!")
 
@@ -83,7 +84,7 @@ class ProjectManager:
                     "Recover Auto-save?",
                     "An auto-save file was found. Do you want to recover your previous session?",
                     QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes
+                    QMessageBox.Yes,
                 )
 
                 if reply == QMessageBox.Yes:
@@ -99,10 +100,10 @@ class ProjectManager:
         try:
             # Use diagram service to load
             if self.diagram_service:
-                 # DiagramService internally uses file_service.load
-                 # We might need to bypass dialog if we just want to load a specific file
-                 # DiagramService has load_diagram(filename) support
-                 self.diagram_service.load_diagram(self.autosave_path)
+                # DiagramService internally uses file_service.load
+                # We might need to bypass dialog if we just want to load a specific file
+                # DiagramService has load_diagram(filename) support
+                self.diagram_service.load_diagram(self.autosave_path)
 
             # Remove autosave file after successful recovery
             if os.path.exists(self.autosave_path):
@@ -115,7 +116,7 @@ class ProjectManager:
             QMessageBox.information(
                 self.window,
                 "Recovery Successful",
-                "Your diagram has been successfully recovered from the auto-save file."
+                "Your diagram has been successfully recovered from the auto-save file.",
             )
 
         except Exception as e:
@@ -124,11 +125,13 @@ class ProjectManager:
                 if os.path.exists(self.autosave_path):
                     os.remove(self.autosave_path)
             except OSError:
-                logger.debug("Failed to remove corrupt auto-save file during recovery cleanup", exc_info=True)
+                logger.debug(
+                    "Failed to remove corrupt auto-save file during recovery cleanup", exc_info=True
+                )
             QMessageBox.warning(
                 self.window,
                 "Recovery Failed",
-                f"Could not recover auto-save file. Starting fresh.\n\nError: {str(e)}"
+                f"Could not recover auto-save file. Starting fresh.\n\nError: {str(e)}",
             )
 
     def cleanup_autosave(self):

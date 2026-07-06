@@ -52,6 +52,7 @@ class RateLimiterBlock(BaseBlock):
     def draw_icon(self, block_rect):
         """Draw rate limiter icon in normalized 0-1 coordinates."""
         from PyQt5.QtGui import QPainterPath
+
         path = QPainterPath()
         # Step response with slew limit
         path.moveTo(0.15, 0.75)
@@ -67,8 +68,8 @@ class RateLimiterBlock(BaseBlock):
         # execute() twice per step -- an output_only pass to feed downstream and
         # a state-updating pass. Advancing _prev on both would double the
         # effective slew rate; only the state pass may step.
-        if kwargs.get('output_only', False) or 0 not in inputs:
-            held = params.get('_prev', np.atleast_1d(0.0))
+        if kwargs.get("output_only", False) or 0 not in inputs:
+            held = params.get("_prev", np.atleast_1d(0.0))
             return {0: np.atleast_1d(held)}
 
         dt = float(kwargs.get("dtime", params.get("dtime", 0.01)))
@@ -94,4 +95,3 @@ class RateLimiterBlock(BaseBlock):
         y = prev + delta
         params["_prev"] = y
         return {0: y}
-

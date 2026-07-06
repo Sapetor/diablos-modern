@@ -60,13 +60,9 @@ class StateVariableBlock(BaseBlock):
             "initial_value": {
                 "type": "list",
                 "default": [1.0, 1.0],
-                "doc": "Starting value (list for vector)"
+                "doc": "Starting value (list for vector)",
             },
-            "dimension": {
-                "type": "int",
-                "default": 2,
-                "doc": "Number of state variables"
-            },
+            "dimension": {"type": "int", "default": 2, "doc": "Number of state variables"},
         }
 
     @property
@@ -90,27 +86,27 @@ class StateVariableBlock(BaseBlock):
     def execute(self, time, inputs, params, **kwargs):
         try:
             # Initialize state on first call
-            if params.get('_init_start_', True):
-                initial = params.get('initial_value', [1.0, 1.0])
+            if params.get("_init_start_", True):
+                initial = params.get("initial_value", [1.0, 1.0])
                 if isinstance(initial, str):
                     try:
                         initial = safe_literal(initial)
                     except Exception:
                         initial = [1.0, 1.0]
-                params['_state_'] = np.array(initial, dtype=float)
-                params['_init_start_'] = False
+                params["_state_"] = np.array(initial, dtype=float)
+                params["_init_start_"] = False
 
             # Output current state
-            x_current = params['_state_'].copy()
+            x_current = params["_state_"].copy()
 
             # Accept next state for next iteration (if provided)
             x_next = inputs.get(0)
             if x_next is not None:
-                params['_state_'] = np.atleast_1d(x_next).astype(float)
+                params["_state_"] = np.atleast_1d(x_next).astype(float)
 
-            return {0: x_current, 'E': False}
+            return {0: x_current, "E": False}
 
         except Exception as e:
             logger.error(f"StateVariable error: {e}")
-            dimension = int(params.get('dimension', 2))
-            return {0: np.zeros(dimension), 'E': True, 'error': str(e)}
+            dimension = int(params.get("dimension", 2))
+            return {0: np.zeros(dimension), "E": True, "error": str(e)}
