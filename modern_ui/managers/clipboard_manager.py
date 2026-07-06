@@ -140,8 +140,15 @@ class ClipboardManager:
             if hasattr(self.canvas, "simulation_status_changed"):
                 self.canvas.simulation_status_changed.emit(f"Copy failed: {e}")
 
-    def paste_blocks(self):
-        """Paste blocks from clipboard."""
+    def paste_blocks(self, pos=None):
+        """Paste blocks from clipboard.
+
+        Args:
+            pos: Optional world-coordinate QPoint to paste at (context-menu
+                "paste here"): the first copied block's top-left lands on it.
+                When None (keyboard Ctrl+V), paste at a +30,+30 offset from
+                the copied position so pasted blocks don't overlap exactly.
+        """
         try:
             if not self.clipboard_blocks:
                 logger.info("Clipboard is empty")
@@ -155,8 +162,11 @@ class ClipboardManager:
             for block in self.dsim.blocks_list:
                 block.selected = False
 
-            # Paste offset (so pasted blocks don't overlap exactly)
-            paste_offset = QPoint(30, 30)
+            if pos is None:
+                paste_offset = QPoint(30, 30)
+            else:
+                first_coords = self.clipboard_blocks[0]["coords"]
+                paste_offset = QPoint(pos.x() - first_coords.x(), pos.y() - first_coords.y())
 
             # Create new blocks from clipboard
             pasted_blocks = []

@@ -1024,75 +1024,8 @@ class ModernCanvas(QWidget):
             self.update()
 
     def _paste_blocks(self, pos):
-        """Paste blocks from clipboard at specified position."""
-        try:
-            from lib.simulation.menu_block import MenuBlocks
-            from PyQt5.QtCore import QPoint
-
-            clipboard_blocks = self.clipboard_manager.clipboard_blocks
-            if not clipboard_blocks:
-                return
-
-            # Push undo state before pasting (snapshot must be the pre-paste
-            # state). If nothing is actually created we roll this back below so
-            # the user doesn't get a no-op 'Paste' entry on the undo stack.
-            self._push_undo("Paste")
-
-            # Calculate offset from first block's position to paste position
-            first_block_coords = clipboard_blocks[0]["coords"]
-            offset_x = pos.x() - first_block_coords.x()
-            offset_y = pos.y() - first_block_coords.y()
-
-            self._clear_selections()
-            created_count = 0
-            for block_data in clipboard_blocks:
-                # Calculate new position (center of block)
-                new_position = QPoint(
-                    block_data["coords"].x() + block_data["coords"].width() // 2 + offset_x,
-                    block_data["coords"].y() + block_data["coords"].height() // 2 + offset_y,
-                )
-
-                # Create MenuBlocks object from clipboard data
-                io_params = {
-                    "inputs": block_data["in_ports"],
-                    "outputs": block_data["out_ports"],
-                    "b_type": block_data["b_type"],
-                    "io_edit": block_data["io_edit"],
-                }
-
-                menu_block = MenuBlocks(
-                    block_fn=block_data["block_fn"],
-                    fn_name=block_data["fn_name"],
-                    io_params=io_params,
-                    ex_params=block_data["params"],
-                    b_color=block_data["color"],
-                    coords=(block_data["coords"].width(), block_data["coords"].height()),
-                    external=block_data["external"],
-                    block_class=block_data.get("block_class", None),
-                )
-                # Preserve category so add_block resolves the correct
-                # theme color (otherwise it defaults to 'Other' -> grey).
-                menu_block.category = block_data.get("category", "Other")
-
-                # Use add_block with the MenuBlocks object
-                new_block = self.dsim.add_block(menu_block, new_position)
-
-                if new_block:
-                    new_block.selected = True
-                    created_count += 1
-
-            if created_count:
-                logger.info(f"Pasted {created_count} blocks")
-                self.update()
-            else:
-                # Nothing was created: drop the no-op 'Paste' undo entry so the
-                # user isn't forced to undo twice for no visible change.
-                if self.history_manager.undo_stack:
-                    self.history_manager.undo_stack.pop()
-                logger.warning("Paste produced no new blocks; skipped undo entry")
-
-        except Exception as e:
-            logger.error(f"Error pasting blocks: {str(e)}")
+        """Paste blocks from clipboard at specified world position."""
+        self.clipboard_manager.paste_blocks(pos)
 
     def _show_block_properties(self, block):
         """Show properties dialog for a block."""
