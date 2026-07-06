@@ -39,7 +39,6 @@ from modern_ui.managers.clipboard_manager import ClipboardManager
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 from modern_ui.managers.connection_manager import ConnectionManager
 from modern_ui.managers.rendering_manager import RenderingManager
-from modern_ui.managers.drag_resize_manager import DragResizeManager
 from modern_ui.controllers.simulation_controller import SimulationController
 from modern_ui.widgets.canvas_state import CanvasState
 
@@ -105,14 +104,13 @@ class ModernCanvas(QWidget):
         self.zoom_pan_manager = ZoomPanManager(self)
         self.connection_manager = ConnectionManager(self)
         self.rendering_manager = RenderingManager(self)
-        self.drag_resize_manager = DragResizeManager(self)
 
         # Plain attribute set only in start_drag (never via canvas_state); guard
         # against AttributeError when _finish_drag reads it before any drag.
         self.dragging_block = None
 
         # Smart-alignment guide lines (canvas coords) active during a block
-        # drag; recomputed each move by DragResizeManager, drawn in paintEvent.
+        # drag; recomputed each move by InteractionManager, drawn in paintEvent.
         self._alignment_guides = []
 
         # Simulation lifecycle controller (re-emits status as our own signal)
@@ -522,7 +520,7 @@ class ModernCanvas(QWidget):
         edge) before the wires are recomputed against the final position.
         """
         if self.state == State.DRAGGING and self.dragging_block is not None:
-            self.drag_resize_manager.update_drag_alignment()
+            self.interaction_manager.update_drag_alignment()
         self.connection_manager.update_line_positions()
 
     def _reroute_affected_lines(self, block_names):
@@ -831,15 +829,15 @@ class ModernCanvas(QWidget):
 
     def start_drag(self, block, pos):
         """Start dragging a block (or multiple selected blocks)."""
-        return self.drag_resize_manager.start_drag(block, pos)
+        return self.interaction_manager.start_drag(block, pos)
 
     def _start_resize(self, block, handle, pos):
         """Start resizing a block."""
-        return self.drag_resize_manager._start_resize(block, handle, pos)
+        return self.interaction_manager._start_resize(block, handle, pos)
 
     def _perform_resize(self, pos):
         """Perform the resize operation based on current mouse position."""
-        return self.drag_resize_manager._perform_resize(pos)
+        return self.interaction_manager._perform_resize(pos)
 
     def mouseMoveEvent(self, event):
         """Handle mouse move events."""
@@ -861,11 +859,11 @@ class ModernCanvas(QWidget):
 
     def _finish_drag(self):
         """Finish dragging operation."""
-        return self.drag_resize_manager._finish_drag()
+        return self.interaction_manager._finish_drag()
 
     def _finish_resize(self):
         """Finish resizing operation."""
-        return self.drag_resize_manager._finish_resize()
+        return self.interaction_manager._finish_resize()
 
     def _cancel_line_creation(self):
         """Cancel line creation process."""

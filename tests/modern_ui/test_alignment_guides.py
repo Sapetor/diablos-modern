@@ -3,7 +3,7 @@ Tests for smart-alignment guides shown while dragging a block.
 
 The load-bearing part is the pure ``compute_alignment_guides`` geometry helper,
 so the bulk of these tests exercise it directly (no Qt, no canvas state). A
-couple of thin integration tests then confirm DragResizeManager applies the
+couple of thin integration tests then confirm InteractionManager applies the
 snap to real DBlocks and stashes the guide lines on the canvas, and that the
 overlay clears on drag finish.
 
@@ -122,7 +122,7 @@ class TestComputeAlignmentGuides:
 
 
 # ---------------------------------------------------------------------------
-# Integration: DragResizeManager applies the snap + stashes guides
+# Integration: InteractionManager applies the snap + stashes guides
 # ---------------------------------------------------------------------------
 
 
@@ -174,7 +174,7 @@ class TestDragManagerIntegration:
         mover.selected = True
 
         canvas.start_drag(mover, QPoint(103, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         # Snapped onto target's left edge.
         assert mover.left == 100
@@ -190,7 +190,7 @@ class TestDragManagerIntegration:
         mover.selected = True
 
         canvas.start_drag(mover, QPoint(400, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         assert mover.left == 400  # untouched
         assert canvas._alignment_guides == []
@@ -206,7 +206,7 @@ class TestDragManagerIntegration:
         mover.selected = True
 
         canvas.start_drag(mover, QPoint(103, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         assert mover.left == 103  # not moved -> stays grid-snapped
         # Guide still lights up at the neighbour's shared edge (x=100).
@@ -221,7 +221,7 @@ class TestDragManagerIntegration:
         mover.selected = True
 
         canvas.start_drag(mover, QPoint(103, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
         assert canvas._alignment_guides  # active mid-drag
 
         canvas._finish_drag()
@@ -237,7 +237,7 @@ class TestDragManagerIntegration:
 
         rel = partner.left - mover.left  # 197
         canvas.start_drag(mover, QPoint(103, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         assert mover.left == 100  # snapped by -3
         assert partner.left - mover.left == rel  # partner shifted by same delta

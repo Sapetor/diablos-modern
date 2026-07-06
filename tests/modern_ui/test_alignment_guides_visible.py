@@ -3,14 +3,14 @@ Tests for smart-alignment guides being VISIBLE regardless of grid snap.
 
 Grid snap defaults ON, and the old behaviour suppressed the alignment guides
 entirely whenever grid snap was on -- so the feature never showed out of the
-box. ``DragResizeManager.update_drag_alignment`` now ALWAYS computes the guides
+box. ``InteractionManager.update_drag_alignment`` now ALWAYS computes the guides
 from the dragged block's current rect and stashes them on the canvas so they
 display; it only APPLIES the snap nudge when grid snap is OFF (so the two snaps
 can't fight and knock the block off the grid).
 
 A tiny pure helper (``_should_apply_alignment_nudge``) captures the apply/skip
 decision so it is unit-testable without Qt; the integration tests then confirm
-the real DragResizeManager honours it.
+the real InteractionManager honours it.
 
 Run with:
     QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg python -m pytest \
@@ -50,7 +50,7 @@ class TestShouldApplyAlignmentNudge:
 
 
 # ---------------------------------------------------------------------------
-# Integration: DragResizeManager shows guides regardless of grid snap
+# Integration: InteractionManager shows guides regardless of grid snap
 # ---------------------------------------------------------------------------
 
 
@@ -106,7 +106,7 @@ class TestGuidesVisibleRegardlessOfGridSnap:
         assert canvas.snap_enabled is True
         _, mover = _setup_near_drag(canvas)
 
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         # Block stays grid-snapped (no alignment nudge applied)...
         assert mover.left == 103
@@ -119,7 +119,7 @@ class TestGuidesVisibleRegardlessOfGridSnap:
         canvas.snap_enabled = False
         _, mover = _setup_near_drag(canvas)
 
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         # With grid snap off the nudge IS applied: block lands on the edge...
         assert mover.left == 100
@@ -137,7 +137,7 @@ class TestGuidesVisibleRegardlessOfGridSnap:
         mover.selected = True
         canvas.start_drag(mover, QPoint(400, 300))
 
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         assert mover.left == 400
         assert canvas._alignment_guides == []
@@ -146,7 +146,7 @@ class TestGuidesVisibleRegardlessOfGridSnap:
         assert canvas.snap_enabled is True
         _, mover = _setup_near_drag(canvas)
 
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
         assert canvas._alignment_guides  # visible mid-drag even with grid on
 
         canvas._finish_drag()
@@ -164,7 +164,7 @@ class TestGuidesVisibleRegardlessOfGridSnap:
 
         partner_left_before = partner.left
         canvas.start_drag(mover, QPoint(103, 300))
-        canvas.drag_resize_manager.update_drag_alignment()
+        canvas.interaction_manager.update_drag_alignment()
 
         assert mover.left == 103  # mover untouched
         assert partner.left == partner_left_before  # partner untouched
