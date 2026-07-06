@@ -695,23 +695,15 @@ class ModernCanvas(QWidget):
                 # Early return - but still reset state below via finally
                 return
 
-            # Create QRect from start and end points
-            # Normalize the rectangle (in case user dragged from bottom-right to top-left)
+            # Normalize the rectangle (in case user dragged from bottom-right
+            # to top-left); the block-intersection pass lives in
+            # SelectionManager so there is a single implementation of it.
             x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
             y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
             x2 = max(self.selection_rect_start.x(), self.selection_rect_end.x())
             y2 = max(self.selection_rect_start.y(), self.selection_rect_end.y())
 
-            selection_rect = QRect(x1, y1, x2 - x1, y2 - y1)
-
-            # Select all blocks whose rectangles intersect with the selection rectangle
-            selected_count = 0
-            for block in getattr(self.dsim, "blocks_list", []):
-                if hasattr(block, "rect") and selection_rect.intersects(block.rect):
-                    block.selected = True
-                    selected_count += 1
-
-            logger.info(f"Rectangle selection completed: {selected_count} block(s) selected")
+            self.selection_manager.finalize_rect_selection(QRect(x1, y1, x2 - x1, y2 - y1))
         except Exception as e:
             logger.error(f"Error finalizing rectangle selection: {str(e)}")
         finally:
