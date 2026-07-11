@@ -45,6 +45,7 @@ class MenuBuilder:
 
         # Export submenu
         export_menu = file_menu.addMenu("E&xport")
+        export_menu.addAction("Export as &Image...", self.window.export_image)
         export_menu.addAction("Export as Ti&kZ...", self.window.export_tikz)
 
         file_menu.addSeparator()
@@ -107,6 +108,8 @@ class MenuBuilder:
         elif hasattr(self.window, "canvas") and hasattr(self.window.canvas, "_select_all_blocks"):
             # Fallback if method missing in window
             edit_menu.addAction("Select &All\tCtrl+A", self.window.canvas._select_all_blocks)
+
+        edit_menu.addAction("Copy Diagram as &Image", self.window.copy_diagram_image)
 
         edit_menu.addSeparator()
 

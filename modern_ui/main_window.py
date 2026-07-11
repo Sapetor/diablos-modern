@@ -384,6 +384,46 @@ class ModernDiaBloSWindow(QMainWindow):
 
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
 
+    def _notify(self, status, toast=None):
+        """Set the status-bar message and (optionally) show a toast."""
+        self.status_message.setText(status)
+        if toast and hasattr(self, "toast"):
+            self.toast.show_message(toast)
+
+    def export_image(self):
+        """Export the diagram as a PNG or SVG image (content only, no chrome)."""
+        from modern_ui.tools.diagram_image_exporter import export_diagram_to_file
+        from modern_ui.tools.file_dialogs import ask_save_path
+
+        if not self.dsim.blocks_list and not self.dsim.line_list:
+            self.status_message.setText("Nothing to export")
+            return
+
+        path = ask_save_path(
+            self,
+            "Export as Image",
+            os.path.join(os.getcwd(), "diagram.png"),
+            [("PNG Image (*.png)", ".png"), ("SVG Image (*.svg)", ".svg")],
+        )
+        if not path:
+            return
+
+        if export_diagram_to_file(self.canvas, path):
+            name = os.path.basename(path)
+            self._notify(f"Exported image: {name}", f"\U0001f5bc️ Exported {name}")
+        else:
+            logger.warning("Failed to export diagram image to %s", path)
+            self.status_message.setText("Image export failed")
+
+    def copy_diagram_image(self):
+        """Copy the diagram to the clipboard as an image (content only)."""
+        from modern_ui.tools.diagram_image_exporter import copy_diagram_to_clipboard
+
+        if copy_diagram_to_clipboard(self.canvas):
+            self._notify("Diagram copied to clipboard", "\U0001f5bc️ Copied diagram")
+        else:
+            self.status_message.setText("Nothing to copy")
+
     # Analysis/experiment facades -> ExperimentController (see controllers/experiment_controller.py)
     def linearize_and_analyze(self):
         """Linearize the diagram at an operating point and show analysis."""

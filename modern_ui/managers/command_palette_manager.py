@@ -56,7 +56,9 @@ _FILE_COMMANDS: list[tuple[str, str]] = [
     ("Save diagram", "Ctrl+S"),
     ("Load workspace…", ""),
     ("Show plots", ""),
+    ("Export as image…", ""),
     ("Export as TikZ…", ""),
+    ("Copy diagram as image", ""),
 ]
 
 
@@ -138,7 +140,9 @@ class CommandPaletteManager:
             window.save_diagram,
             window.load_workspace,
             window.show_plots,
+            window.export_image,
             window.export_tikz,
+            window.copy_diagram_image,
         ]
         for badge, table, callbacks in [
             ("sim", _SIM_COMMANDS, sim_callbacks),

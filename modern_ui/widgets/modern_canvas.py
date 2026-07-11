@@ -373,10 +373,8 @@ class ModernCanvas(QWidget):
                 self._draw_empty_hint(painter)
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
-            # This ensures ports appear on top of connection lines
-            self._render_blocks(painter, draw_ports=False)
-            self._render_lines(painter)
-            self._render_ports(painter)
+            # (ordering owned by RenderingManager, shared with image export)
+            self.rendering_manager.render_content(painter)
 
             # Smart-alignment guides while dragging a block. Drawn in SCENE
             # space (the pan/zoom transform is still active) so the hairlines
@@ -498,18 +496,6 @@ class ModernCanvas(QWidget):
             painter.restore()
 
     # ===== Rendering Methods =====
-
-    def _render_blocks(self, painter, draw_ports=True):
-        """Render all blocks to canvas."""
-        self.rendering_manager.render_blocks(painter, draw_ports)
-
-    def _render_lines(self, painter):
-        """Render all connection lines."""
-        self.rendering_manager.render_lines(painter)
-
-    def _render_ports(self, painter):
-        """Render all ports on top of lines for better visibility."""
-        self.rendering_manager.render_ports(painter)
 
     def _update_line_positions(self):
         """Update line positions after block movement.

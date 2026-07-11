@@ -4,6 +4,7 @@ Orchestrates rendering of blocks, connections, and visual indicators.
 """
 
 import logging
+from contextlib import contextmanager
 from typing import List, Any, TYPE_CHECKING
 from PyQt5.QtCore import QRect, QPoint, Qt
 from PyQt5.QtGui import QPainter, QPen, QColor
@@ -26,6 +27,45 @@ class RenderingManager:
         self.dsim = canvas.dsim
 
     # ==================== Block Rendering ====================
+
+    def render_content(self, painter: QPainter) -> None:
+        """Render the diagram content trio in canonical order.
+
+        Blocks (without ports) -> lines -> ports on top, so ports stay visible
+        over connection lines. Single source for both the canvas ``paintEvent``
+        and offscreen exporters, so exported output can never drift from the
+        on-screen look.
+        """
+        self.render_blocks(painter, draw_ports=False)
+        self.render_lines(painter)
+        self.render_ports(painter)
+
+    @contextmanager
+    def decorations_suppressed(self):
+        """Temporarily clear selection/hover styling consumed by the content
+        trio, so :meth:`render_content` draws bare diagram content (used by
+        image export). Restores the exact prior state on exit, even on error --
+        it never mutates the user's diagram permanently."""
+        blocks = list(self.dsim.blocks_list)
+        lines = list(self.dsim.line_list)
+        saved_blocks = [(b, b.selected) for b in blocks]
+        saved_lines = [(line, line.selected, line.selected_segment) for line in lines]
+        saved_hover = self.canvas.hovered_port
+        try:
+            for b in blocks:
+                b.selected = False
+            for line in lines:
+                line.selected = False
+                line.selected_segment = -1
+            self.canvas.hovered_port = None
+            yield
+        finally:
+            for b, sel in saved_blocks:
+                b.selected = sel
+            for line, sel, seg in saved_lines:
+                line.selected = sel
+                line.selected_segment = seg
+            self.canvas.hovered_port = saved_hover
 
     def render_blocks(self, painter: QPainter, draw_ports: bool = True) -> None:
         """Render all blocks to canvas."""
