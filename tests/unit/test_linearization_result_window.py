@@ -14,7 +14,7 @@ Run offscreen:
 import numpy as np
 import pytest
 
-from PyQt5.QtWidgets import QWidget, QTabWidget
+from PyQt5.QtWidgets import QWidget, QTabWidget, QPushButton, QApplication
 
 from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
 
@@ -170,3 +170,56 @@ class TestLinearizationResultWindow:
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
         assert tabs.count() == 5
+
+
+def _export_buttons(win):
+    return {b.text(): b for b in win.findChildren(QPushButton)}
+
+
+@pytest.mark.unit
+class TestLinearizationExportBar:
+    def test_export_bar_present_when_ok(self, qapp):
+        win = LinearizationResultWindow(_sample_ok_result())
+        btns = _export_buttons(win)
+        assert "Copy as Python" in btns
+        assert "Copy as MATLAB" in btns
+        assert "Save Data..." in btns
+
+    def test_export_bar_absent_when_not_ok(self, qapp):
+        win = LinearizationResultWindow({"ok": False, "error": "nope"})
+        btns = _export_buttons(win)
+        assert "Copy as Python" not in btns
+        assert "Save Data..." not in btns
+
+    def test_copy_python_puts_code_on_clipboard(self, qapp):
+        win = LinearizationResultWindow(_sample_ok_result())
+        _export_buttons(win)["Copy as Python"].click()
+        text = QApplication.clipboard().text()
+        assert text.startswith("# Linearized state-space model")
+        assert "import numpy as np" in text
+        assert "control.ss(A, B, C, D)" in text
+
+    def test_copy_matlab_puts_code_on_clipboard(self, qapp):
+        win = LinearizationResultWindow(_sample_ok_result())
+        _export_buttons(win)["Copy as MATLAB"].click()
+        text = QApplication.clipboard().text()
+        assert text.lstrip().startswith("%")
+        assert "sys = ss(A, B, C, D);" in text
+
+    def test_save_data_writes_loadable_file(self, qapp, tmp_path, monkeypatch):
+        from PyQt5.QtWidgets import QFileDialog
+
+        out = tmp_path / "exported.mat"
+        monkeypatch.setattr(
+            QFileDialog,
+            "getSaveFileName",
+            staticmethod(lambda *a, **k: (str(out), "MAT-file (*.mat)")),
+        )
+        win = LinearizationResultWindow(_sample_ok_result())
+        _export_buttons(win)["Save Data..."].click()
+
+        assert out.exists()
+        from scipy.io import loadmat
+
+        loaded = loadmat(str(out))
+        assert np.array_equal(loaded["A"], np.array(_sample_ok_result()["A"]))

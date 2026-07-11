@@ -28,18 +28,26 @@ Result-dict contract (see the feature spec)::
     }
 """
 
+import os
+from functools import partial
+
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QTabWidget,
     QLabel,
     QPlainTextEdit,
+    QPushButton,
+    QApplication,
+    QMessageBox,
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
+from lib.analysis import linearization_export
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 
 
@@ -87,6 +95,61 @@ class LinearizationResultWindow(QWidget):
             "Impulse",
         )
         self.tabs.addTab(self._build_summary_tab(), "Summary")
+
+        self._build_export_bar(layout)
+
+    # -------------------------------------------------------------- export bar
+    def _build_export_bar(self, layout):
+        """Horizontal export bar (below the tabs, visible on every tab)."""
+        bar = QHBoxLayout()
+
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(
+            f"color: {theme_manager.get_color('success').name()}; font-size: {TYPE['caption']}pt;"
+        )
+        bar.addWidget(self.status_label)
+        bar.addStretch(1)
+
+        for label, formatter in (
+            ("Copy as Python", linearization_export.to_python_code),
+            ("Copy as MATLAB", linearization_export.to_matlab_code),
+        ):
+            btn = QPushButton(label)
+            btn.clicked.connect(partial(self._copy_code, formatter, label.split()[-1]))
+            bar.addWidget(btn)
+
+        save_btn = QPushButton("Save Data...")
+        save_btn.clicked.connect(self._save_data)
+        bar.addWidget(save_btn)
+
+        layout.addLayout(bar)
+
+    def _flash(self, message):
+        """Show brief confirmation text that clears itself after a moment."""
+        self.status_label.setText(message)
+        QTimer.singleShot(2500, lambda: self.status_label.setText(""))
+
+    def _copy_code(self, formatter, language):
+        QApplication.clipboard().setText(formatter(self.result))
+        self._flash(f"Copied {language} to clipboard")
+
+    def _save_data(self):
+        from modern_ui.tools.file_dialogs import ask_save_path
+
+        path = ask_save_path(
+            self,
+            "Save Linearized Model",
+            "linearized_model.mat",
+            [("MAT-file (*.mat)", ".mat"), ("NumPy archive (*.npz)", ".npz")],
+        )
+        if not path:
+            return
+        try:
+            linearization_export.save_data(self.result, path)
+        except Exception as exc:  # pragma: no cover - defensive
+            QMessageBox.warning(self, "Save failed", str(exc))
+            return
+        self._flash(f"Saved {os.path.basename(path)}")
 
     # ------------------------------------------------------------------ error
     def _build_error_view(self, layout):
