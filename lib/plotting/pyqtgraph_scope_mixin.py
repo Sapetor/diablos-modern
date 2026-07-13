@@ -133,9 +133,17 @@ class _PyQtGraphScopeMixin:
             # reference (see _close_plotty for the full rationale).
             self._close_plotty()
 
+            # Stash this run's flattened data (deep copies) and get the held
+            # previous run (None on the first run ever) for the overlay.
+            previous_run = self._stash_run(t_arr, flat_labels, flat_vectors, flat_step_modes)
+
             # Use step mode for discrete/ZOH signals to keep values constant between samples
             self.plotty = SignalPlot(
-                self.dsim.sim_dt, flat_labels, len(self.dsim.timeline), step_mode=flat_step_modes
+                self.dsim.sim_dt,
+                flat_labels,
+                len(self.dsim.timeline),
+                step_mode=flat_step_modes,
+                previous_run=previous_run,
             )
             # Null out both references when the C++ QWidget is destroyed to avoid
             # RuntimeError on the next simulation run.

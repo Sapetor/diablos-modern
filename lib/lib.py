@@ -366,6 +366,9 @@ class DSim:
         Deserialize diagram state from dict.
         Used by DiagramService.
         """
+        # A different diagram is replacing the current one: drop the scope
+        # data held for the "Previous run" overlay (see clear_all).
+        self.scope_plotter.reset_held_runs()
         sim_params = self.file_service.apply_loaded_data(data)
 
         # Sync simulation parameters back to DSim
@@ -403,6 +406,10 @@ class DSim:
     def clear_all(self):
         """Clear all blocks and lines from the diagram. Delegates to model."""
         self.model.clear_all()
+        # Drop the scope data held for the "Previous run" overlay: it belongs
+        # to the diagram being discarded, and overlaying it onto the next
+        # diagram would silently mix unrelated signals.
+        self.scope_plotter.reset_held_runs()
         # Update references
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list

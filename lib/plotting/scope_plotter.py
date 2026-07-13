@@ -22,6 +22,12 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         # (and retaining their Qt windows, widgets and captured data arrays)
         # across simulation runs.
         self._open_figs = []
+        # Held scope data for the SignalPlot "Previous run" overlay. Each is a
+        # dict {"sig", "timeline_obj", "t", "labels", "vectors", "step_modes"}
+        # (see _stash_run). Kept here rather than on the SignalPlot because the
+        # plot window is destroyed and rebuilt on every plot.
+        self._prev_run = None
+        self._current_run = None
         # Sync to dsim for backward compatibility
         if hasattr(self.dsim, "plotty"):
             self.dsim.plotty = None
@@ -84,6 +90,45 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
             self.plotty = None
             if hasattr(self.dsim, "plotty"):
                 self.dsim.plotty = None
+
+    def _stash_run(self, t_arr, labels, vectors, step_modes):
+        """Remember this run's flattened scope data and return the previous run's.
+
+        Called by pyqtPlotScope before rebuilding the SignalPlot window. Runs
+        are identified by the identity of ``dsim.timeline``: every fresh run
+        reassigns/rebuilds the timeline object while "Plot Again" (and the
+        interpreter path, where pyqtPlotScope can fire twice per run) reuses
+        it, so re-plotting the same run never rotates the stash. The stashed
+        ``timeline_obj`` reference keeps the compared object alive, so a new
+        run's timeline can never be allocated at the recycled address of the
+        old one (which would make ``id()`` collide and skip the rotation).
+        Deep copies are taken because the engine reset clears and blocks
+        reuse/append the exec_params vectors on the next run.
+        """
+        timeline_obj = self.dsim.timeline
+        sig = id(timeline_obj)
+        if self._current_run is None or self._current_run["sig"] != sig:
+            self._prev_run = self._current_run
+            self._current_run = {
+                "sig": sig,
+                "timeline_obj": timeline_obj,
+                "t": np.asarray(t_arr, dtype=float).copy(),
+                "labels": list(labels),
+                "vectors": [np.asarray(v, dtype=float).copy() for v in vectors],
+                "step_modes": list(step_modes),
+            }
+        return self._prev_run
+
+    def reset_held_runs(self):
+        """Forget the held previous/current run data.
+
+        Called when the diagram is replaced (File > New / File > Open via
+        DSim.clear_all): the stash belongs to the old diagram, and overlaying
+        its traces onto a different model would silently mix unrelated
+        signals.
+        """
+        self._prev_run = None
+        self._current_run = None
 
     def plot_again(self):
         """

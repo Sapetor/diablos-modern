@@ -12,7 +12,7 @@ from datetime import datetime
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -40,12 +40,17 @@ class SignalPlot(QWidget):
     :param dt: Sampling time of the system.
     :param labels: List of names of the vectors.
     :param xrange: Maximum number of elements to plot in axis x.
+    :param previous_run: Optional held data from the previous completed run,
+        a dict with keys "t", "labels", "vectors", "step_modes". When given,
+        dimmed dashed overlay curves are created (hidden until the
+        "Previous run" checkbox is ticked).
     :type dt: float
     :type labels: list
     :type xrange: int
+    :type previous_run: dict or None
     """
 
-    def __init__(self, dt, labels, xrange, step_mode=False):
+    def __init__(self, dt, labels, xrange, step_mode=False, previous_run=None):
         super().__init__()
         self.dt = dt
         self.step_mode = step_mode
@@ -53,6 +58,8 @@ class SignalPlot(QWidget):
         self.xrange = xrange * self.dt
         self.plot_items = []
         self.curves = []
+        self.previous_run = previous_run
+        self.prev_curves = []
 
         # Store data for export
         self.labels = labels
@@ -108,6 +115,7 @@ class SignalPlot(QWidget):
             curve = plot_widget.plot(pen=pen, stepMode=self.curve_step_modes[idx])
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
+            self.prev_curves.append(self._create_prev_curve(plot_widget, idx))
 
         self._reflow_grid()
 
@@ -117,10 +125,25 @@ class SignalPlot(QWidget):
 
         main_layout.addSpacing(10)
 
+        bottom_layout = QHBoxLayout()
+        self.prev_run_checkbox = QCheckBox("Previous run")
+        self.prev_run_checkbox.setToolTip("Overlay the previous run's traces (dimmed, dashed)")
+        self.prev_run_checkbox.setChecked(False)
+        self.prev_run_checkbox.setEnabled(any(c is not None for c in self.prev_curves))
+        self.prev_run_checkbox.toggled.connect(self._on_prev_run_toggled)
+        bottom_layout.addWidget(self.prev_run_checkbox)
+        bottom_layout.addStretch()
+
         self.export_button = QPushButton("Export to CSV...")
         self.export_button.setToolTip("Export plot data to CSV file")
         self.export_button.clicked.connect(self.export_to_csv)
-        main_layout.addWidget(self.export_button)
+        bottom_layout.addWidget(self.export_button)
+
+        self.export_figure_button = QPushButton("Export Figure...")
+        self.export_figure_button.setToolTip("Export a publication-quality figure (PDF/PNG/SVG)")
+        self.export_figure_button.clicked.connect(self.export_figure)
+        bottom_layout.addWidget(self.export_figure_button)
+        main_layout.addLayout(bottom_layout)
 
         self._apply_theme()
         theme_manager.theme_changed.connect(self._apply_theme)
@@ -196,6 +219,9 @@ class SignalPlot(QWidget):
             QLabel {{
                 color: {fg};
             }}
+            QCheckBox {{
+                color: {fg};
+            }}
             QPushButton {{
                 background-color: {surface};
                 color: {fg};
@@ -226,6 +252,9 @@ class SignalPlot(QWidget):
             # Update curve color for the new theme
             if idx < len(self.curves):
                 self.curves[idx].setPen(pg.mkPen(color=self._curve_color(idx), width=2))
+            # Keep previous-run overlays dimmed/dashed in the new theme
+            if idx < len(self.prev_curves) and self.prev_curves[idx] is not None:
+                self.prev_curves[idx].setPen(self._prev_pen(idx))
 
     def _reflow_grid(self):
         for plot in self.plot_items:
@@ -251,6 +280,71 @@ class SignalPlot(QWidget):
         for plot in self.plot_items:
             plot.setMinimumHeight(self._min_plot_height)
 
+    def _prev_pen(self, idx):
+        """Dimmed dashed pen for the previous-run overlay in subplot ``idx``."""
+        return pg.mkPen(color=self._curve_color(idx) + "66", width=1, style=Qt.DashLine)
+
+    def _previous_trace(self, idx):
+        """Return (y, step) of the held-run trace for subplot ``idx``, or None.
+
+        Matches by label first (the previous run may have signals in a
+        different order), falling back to the same index; held traces with no
+        match are ignored.
+        """
+        if not self.previous_run:
+            return None
+        prev_labels = self.previous_run.get("labels") or []
+        prev_vectors = self.previous_run.get("vectors") or []
+        prev_steps = self.previous_run.get("step_modes") or []
+
+        label = self.labels[idx] if idx < len(self.labels) else None
+        if isinstance(label, str) and label in prev_labels:
+            # Duplicate labels (e.g. two scopes left at the same default name)
+            # must not all map to the first occurrence: pair the k-th live
+            # occurrence of the label with the k-th held occurrence.
+            occurrence = self.labels[:idx].count(label)
+            matches = [i for i, prev in enumerate(prev_labels) if prev == label]
+            match = matches[min(occurrence, len(matches) - 1)]
+        elif idx < len(prev_vectors):
+            match = idx
+        else:
+            return None
+        if match >= len(prev_vectors):
+            return None
+        step = bool(prev_steps[match]) if match < len(prev_steps) else False
+        return prev_vectors[match], step
+
+    def _create_prev_curve(self, plot_widget, idx):
+        """Add the previous-run overlay curve to ``plot_widget`` (hidden).
+
+        Returns the curve, or None when there is no held trace for this
+        subplot. The overlay is drawn behind the current curve (z = -1) and
+        stays hidden until the "Previous run" checkbox is ticked.
+        """
+        trace = self._previous_trace(idx)
+        if trace is None:
+            return None
+        y_data, step = trace
+        y_data = np.asarray(y_data, dtype=float)
+        if y_data.ndim > 1 and y_data.shape[1] == 1:
+            y_data = y_data.flatten()
+        prev_t = self.previous_run.get("t")
+        if prev_t is None or y_data.size == 0:
+            return None
+        prev_t = np.asarray(prev_t, dtype=float)
+        if prev_t.size == 0:
+            return None
+        curve = plot_widget.plot(pen=self._prev_pen(idx), stepMode=step)
+        curve.setZValue(-1)
+        curve.setData(self._align_time(prev_t, len(y_data), step), y_data)
+        curve.setVisible(False)
+        return curve
+
+    def _on_prev_run_toggled(self, checked):
+        for curve in self.prev_curves:
+            if curve is not None:
+                curve.setVisible(checked)
+
     def _expand_step_modes(self, step_mode, count):
         """Normalize step_mode (bool or list) into a list matching the plot count."""
         if isinstance(step_mode, (list, tuple, np.ndarray)):
@@ -263,6 +357,19 @@ class SignalPlot(QWidget):
         elif len(modes) > count:
             modes = modes[:count]
         return modes
+
+    def _align_time(self, t, y_len, step_mode):
+        """Return an x-array aligned to ``y_len`` samples.
+
+        stepMode=True curves need len(x) == len(y) + 1; normal curves need
+        equal lengths. Shorter time arrays are padded with t[-1] + dt.
+        """
+        target = y_len + 1 if step_mode else y_len
+        if len(t) == target:
+            return t
+        if len(t) > target:
+            return t[:target]
+        return np.append(t, [t[-1] + self.dt] * (target - len(t)))
 
     def loop(self, new_t, new_y):
         """Updates the time and scope vectors and plot them."""
@@ -280,35 +387,44 @@ class SignalPlot(QWidget):
                     step_mode = (
                         self.curve_step_modes[i] if i < len(self.curve_step_modes) else False
                     )
-                    if step_mode:
-                        # For stepMode=True, x must be len(y) + 1
-                        if len(new_t) == len(y_data):
-                            t_step = np.append(new_t, new_t[-1] + self.dt)
-                        elif len(new_t) > len(y_data):
-                            t_step = new_t[: len(y_data) + 1]
-                        else:
-                            t_step = np.append(
-                                new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t) + 1)
-                            )
-                        curve.setData(t_step, y_data)
-                    else:
-                        # For normal plotting, x and y must have same length
-                        if len(new_t) == len(y_data):
-                            t_step = new_t
-                        elif len(new_t) > len(y_data):
-                            t_step = new_t[: len(y_data)]
-                        else:
-                            t_step = np.append(
-                                new_t, [new_t[-1] + self.dt] * (len(y_data) - len(new_t))
-                            )
-                        curve.setData(t_step, y_data)
+                    curve.setData(self._align_time(new_t, len(y_data), step_mode), y_data)
         except Exception as e:
             logger.error(f"Error updating plot: {e}")
 
-    def export_to_csv(self):
-        """Export plot data to CSV file with user selection of which scopes to include."""
+    def _require_export_data(self):
+        """Return True when there is run data to export; warn otherwise."""
         if self.timeline is None or self.data_vectors is None:
             QMessageBox.warning(self, "No Data", "No plot data available to export.")
+            return False
+        return True
+
+    def _flash_export_success(self, button, filepath):
+        """Show a transient success message on ``button``, restoring it after 3 s.
+
+        The restore timer is parented to ``button`` so it is destroyed with the
+        widget if the plot window closes before it fires — otherwise the lambda
+        would touch a deleted C++ QPushButton and raise RuntimeError in the
+        event loop. (PyQt5 does not expose QTimer.singleShot's context-object
+        overload, so a parented timer is the way to get that guarantee.)
+        """
+        original_text = button.text()
+        button.setText(f"✓ Exported to {os.path.basename(filepath)}")
+        button.setEnabled(False)
+
+        timer = QTimer(button)
+        timer.setSingleShot(True)
+        timer.timeout.connect(
+            lambda: (
+                button.setText(original_text),
+                button.setEnabled(True),
+            )
+        )
+        timer.timeout.connect(timer.deleteLater)
+        timer.start(3000)
+
+    def export_to_csv(self):
+        """Export plot data to CSV file with user selection of which scopes to include."""
+        if not self._require_export_data():
             return
 
         # Create scope selection dialog
@@ -385,29 +501,12 @@ class SignalPlot(QWidget):
 
         # Export data to CSV
         try:
+            traces = self._collect_figure_traces(selected_indices)
+            header = ["time"] + [trace["name"] for trace in traces]
+            column_data = [trace["y"] for trace in traces]
+
             with open(filepath, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
-
-                header = ["time"]
-                column_data = []
-
-                for idx in selected_indices:
-                    label = self.labels[idx]
-                    vector = self.data_vectors[idx]
-
-                    if isinstance(label, list):
-                        for i, sig_label in enumerate(label):
-                            header.append(sig_label)
-                            if len(vector.shape) > 1:
-                                column_data.append(vector[:, i])
-                            else:
-                                column_data.append(vector)
-                    else:
-                        header.append(label)
-                        column_data.append(
-                            vector.flatten() if hasattr(vector, "flatten") else vector
-                        )
-
                 writer.writerow(header)
 
                 num_rows = len(self.timeline)
@@ -424,18 +523,92 @@ class SignalPlot(QWidget):
                 f"Plot data exported to {filepath} ({num_rows} rows, {len(header)} columns)"
             )
 
-            original_text = self.export_button.text()
-            self.export_button.setText(f"✓ Exported to {os.path.basename(filepath)}")
-            self.export_button.setEnabled(False)
-
-            QTimer.singleShot(
-                3000,
-                lambda: (
-                    self.export_button.setText(original_text),
-                    self.export_button.setEnabled(True),
-                ),
-            )
+            self._flash_export_success(self.export_button, filepath)
 
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", f"Failed to export data:\n{str(e)}")
             logger.error(f"Failed to export plot data: {e}")
+
+    _FIGURE_FILTERS = [
+        ("PDF (*.pdf)", ".pdf"),
+        ("PNG image (*.png)", ".png"),
+        ("SVG (*.svg)", ".svg"),
+    ]
+
+    def _collect_figure_traces(self, indices=None):
+        """Return the run data for ``indices`` (default: all) as trace dicts.
+
+        Single source for the label flattening shared by export_to_csv and
+        export_figure. A list label means one multi-column vector holding
+        several signals (live-plot path); a plain string label maps 1:1 to a
+        1-D vector, except that a multi-column vector is split per column with
+        comma-separated label parts naming the columns (mirroring
+        pyqtPlotScope). Each trace is a {"name", "y", "step"} dict with 1-D
+        ``y`` (the same shape ScopePlotter.get_scope_traces produces).
+        """
+        if indices is None:
+            indices = range(len(self.labels))
+        traces = []
+        for idx in indices:
+            if idx >= len(self.data_vectors):
+                continue
+            label = self.labels[idx]
+            vector = np.asarray(self.data_vectors[idx], dtype=float)
+            step = self.curve_step_modes[idx] if idx < len(self.curve_step_modes) else False
+            if isinstance(label, list):
+                names = list(label)
+            elif vector.ndim > 1 and vector.shape[1] > 1:
+                # Multi-signal vector with a plain string label: split per
+                # column instead of emitting one interleaved 2-D trace.
+                parts = [part.strip() for part in str(label).split(",")]
+                names = [
+                    parts[i] if i < len(parts) else f"Signal {i}" for i in range(vector.shape[1])
+                ]
+            else:
+                traces.append({"name": label, "y": vector.ravel(), "step": step})
+                continue
+            for i, name in enumerate(names):
+                y = vector[:, i] if vector.ndim > 1 else vector
+                traces.append({"name": name, "y": y, "step": step})
+        return traces
+
+    def export_figure(self):
+        """Export the current run as a publication-quality figure (PDF/PNG/SVG)."""
+        if not self._require_export_data():
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"plot_figure_{timestamp}.pdf"
+
+        filepath, selected = QFileDialog.getSaveFileName(
+            self,
+            "Export Publication Figure",
+            default_filename,
+            ";;".join(f for f, _ in self._FIGURE_FILTERS),
+        )
+        if not filepath:
+            return
+        if not os.path.splitext(filepath)[1]:
+            filepath += next(
+                (ext for f, ext in self._FIGURE_FILTERS if f == selected),
+                self._FIGURE_FILTERS[0][1],
+            )
+
+        try:
+            from lib.plotting.publication_figure import build_publication_figure
+
+            fig = build_publication_figure(
+                np.asarray(self.timeline, dtype=float), self._collect_figure_traces()
+            )
+            if filepath.lower().endswith(".png"):
+                fig.savefig(filepath, dpi=300)
+            else:
+                fig.savefig(filepath)
+
+            logger.info(f"Publication figure exported to {filepath}")
+
+            self._flash_export_success(self.export_figure_button, filepath)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Failed to export figure:\n{str(e)}")
+            logger.error(f"Failed to export figure: {e}")
