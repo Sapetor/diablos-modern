@@ -15,6 +15,7 @@ from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
+from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -1440,88 +1441,18 @@ class SimulationEngine:
         was recorded (e.g. the interpreter path ran)."""
         if not self.last_solver_diagnostics:
             return ""
-        return self._format_solver_diagnostics_for_log(self.last_solver_diagnostics)
+        return format_diagnostics_for_log(self.last_solver_diagnostics)
 
-    @staticmethod
-    def _solver_attr(sol, name, default=None):
-        return getattr(sol, name, default)
+    def _record_solver_diagnostics(self, **kwargs) -> None:
+        """Store a compact, UI/log-friendly summary of the compiled run.
 
-    def _record_solver_diagnostics(
-        self,
-        *,
-        sol,
-        success,
-        method_requested,
-        method_used,
-        backend,
-        t_span,
-        dt,
-        rtol,
-        atol,
-        n_states,
-        n_blocks,
-        n_lines,
-        compile_cache_hit,
-        compile_time,
-        solve_time,
-        replay_time,
-        total_time,
-        fallback_reason=None,
-        failure_stage=None,
-        output_range=None,
-    ) -> None:
-        """Store a compact, UI/log-friendly summary of the compiled run."""
-        times = getattr(sol, "t", None)
-        n_time_points = 0 if times is None else len(times)
-        diagnostics = {
-            "success": bool(success),
-            "failure_stage": failure_stage,
-            "message": str(self._solver_attr(sol, "message", "") or ""),
-            "status": self._solver_attr(sol, "status", None),
-            "backend": backend,
-            "method_requested": method_requested,
-            "method_used": method_used,
-            "fallback_reason": fallback_reason,
-            "rtol": rtol,
-            "atol": atol,
-            "t_start": float(t_span[0]),
-            "t_end": float(t_span[1]),
-            "dt": float(dt),
-            "n_states": int(n_states),
-            "n_blocks": int(n_blocks),
-            "n_lines": int(n_lines),
-            "n_time_points": int(n_time_points),
-            "n_output_steps": max(0, int(n_time_points) - 1),
-            "nfev": self._solver_attr(sol, "nfev", None),
-            "njev": self._solver_attr(sol, "njev", None),
-            "nlu": self._solver_attr(sol, "nlu", None),
-            "compile_cache_hit": bool(compile_cache_hit),
-            "compile_cache_hits_total": int(self.compile_cache_hits),
-            "compile_cache_misses_total": int(self.compile_cache_misses),
-            "compile_wall_time": float(compile_time),
-            "solve_wall_time": float(solve_time),
-            "replay_wall_time": float(replay_time),
-            "total_wall_time": float(total_time),
-            "output_range": output_range,
-        }
-        self.last_solver_diagnostics = diagnostics
-
-    @staticmethod
-    def _format_solver_diagnostics_for_log(diagnostics: Dict[str, Any]) -> str:
-        cache = "hit" if diagnostics.get("compile_cache_hit") else "miss"
-        nfev = diagnostics.get("nfev")
-        nfev_text = "n/a" if nfev is None else str(nfev)
-        return (
-            f"method={diagnostics.get('method_used')} "
-            f"backend={diagnostics.get('backend')} "
-            f"states={diagnostics.get('n_states')} "
-            f"points={diagnostics.get('n_time_points')} "
-            f"nfev={nfev_text} "
-            f"cache={cache} "
-            f"compile={diagnostics.get('compile_wall_time', 0.0):.4f}s "
-            f"solve={diagnostics.get('solve_wall_time', 0.0):.4f}s "
-            f"replay={diagnostics.get('replay_wall_time', 0.0):.4f}s "
-            f"total={diagnostics.get('total_wall_time', 0.0):.4f}s"
+        Thin wrapper over :func:`lib.engine.solver_diagnostics.build_diagnostics`
+        that injects the engine's running compile-cache counters.
+        """
+        self.last_solver_diagnostics = build_diagnostics(
+            compile_cache_hits_total=self.compile_cache_hits,
+            compile_cache_misses_total=self.compile_cache_misses,
+            **kwargs,
         )
 
     def _replay_compiled_signals(
@@ -2311,7 +2242,7 @@ class SimulationEngine:
             )
             logger.info(
                 "Compiled solver diagnostics: %s",
-                self._format_solver_diagnostics_for_log(self.last_solver_diagnostics),
+                format_diagnostics_for_log(self.last_solver_diagnostics),
             )
 
             return True
