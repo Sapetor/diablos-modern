@@ -222,8 +222,17 @@ performance items with a safe fix are now **fixed** (see
   state), and the trivially small main-window managers
   (`window_setup_manager`, `view_actions_manager`, `property_controller`,
   ...) which the 2026-06-13 review rated severity-low.
-- [ ] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
-  (move shared theming into `lib`), instead of function-local imports.
+- [x] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
+  (move shared theming into `lib`), instead of function-local imports — done
+  2026-07-18: the design-token/theme system moved to `lib/theming/theme_manager.py`
+  (only stdlib+PyQt5 deps); `modern_ui/themes/theme_manager.py` is now a
+  backward-compat shim re-exporting the same singleton so all ~71 consumer sites
+  are untouched. The 5 `lib/` modules (`plotting/signal_plot.py` — the sole
+  module-level offender — `models/simulation_model.py`, `services/diagram_service.py`,
+  `simulation/menu_block.py`) now import from `lib.theming`. `grep modern_ui lib/`
+  is clean except the genuine `AnimationExportDialog` UI-widget import in
+  `field_scope_mixin.py` (a real UI dependency, left function-local; inverting the
+  plotting layer itself is a separate, larger move).
 - [x] Add compiled-vs-interpreted equivalence tests for each compiled stateful
   block (RateLimiter, PID, TransportDelay, Selector) and an all-Neumann 2D PDE
   corner integration test — done 2026-07-05: `tests/regression/test_equiv_*.py`.

@@ -42,7 +42,7 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
 
     # Theme-aware styling — replaces hardcoded light-mode colors so the
     # dialog reads correctly in dark mode too.
-    from modern_ui.themes.theme_manager import theme_manager
+    from lib.theming.theme_manager import theme_manager
 
     qss = """
         QFileDialog {

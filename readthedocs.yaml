@@ -7,18 +7,14 @@ build:
   tools:
     python: "3.9"
 
-# Build from the docs/ directory with Sphinx
-sphinx:
-  configuration: docs/conf.py
+# Build with MkDocs (the project's maintained doc system: mkdocs.yml, Material theme)
+mkdocs:
+  configuration: mkdocs.yml
 
 # Explicitly set the version of Python and its requirements
 python:
   install:
     - requirements: docs/requirements.txt
-
-# Add warning block to prevent outputs with issues
-sphinx:
-  fail_on_warning: false
 
 formats:
   - pdf

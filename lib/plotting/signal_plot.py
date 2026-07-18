@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from modern_ui.themes.theme_manager import theme_manager, ThemeType
+from lib.theming.theme_manager import theme_manager, ThemeType
 
 logger = logging.getLogger(__name__)
 

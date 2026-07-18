@@ -3,7 +3,7 @@ site_description: Documentation for DiaBloS Modern - A block diagram simulation 
 site_author: DiaBloS Project
 
 repo_name: diablos-modern
-repo_url: https://github.com/diablos-project/diablos-modern
+repo_url: https://github.com/Sapetor/diablos-modern
 
 theme:
   name: material
@@ -84,4 +84,4 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/diablos-project/diablos-modern
+      link: https://github.com/Sapetor/diablos-modern

@@ -1,9 +1,8 @@
 # File: docs/requirements.txt
 
-sphinx_bootstrap_theme
-myst-parser
-furo
-sphinx-remove-toctrees
+mkdocs
+mkdocs-material
+mkdocstrings[python]
 
 numpy
 tqdm

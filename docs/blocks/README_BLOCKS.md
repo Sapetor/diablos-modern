@@ -107,8 +107,8 @@ This directory contains comprehensive documentation of the DiaBloS block system.
 - 76 active blocks
 - 9 categories
 - 3 subdirectory packages
-- 675 passing tests
-- 57% unit test coverage
+- 1,800+ passing tests
+- The majority of blocks have unit tests
 
 **Code Organization**:
 - 47 top-level blocks (simple, math, control, routing)
@@ -301,7 +301,7 @@ This is a well-designed, maintainable block system with:
 - Reusable parameter templates
 - Safe input extraction helpers
 - Automatic block discovery
-- 675 tests (57% coverage)
+- 1,800+ tests (the majority of blocks have unit tests)
 - Comprehensive documentation
 
 Start with the appropriate document based on your task, follow the checklists, and you'll be adding blocks confidently in no time.
@@ -310,5 +310,5 @@ Start with the appropriate document based on your task, follow the checklists, a
 
 **Last Updated**: February 5, 2026
 **Block Count**: 76 active blocks
-**Test Count**: 675 passing tests
+**Test Count**: 1,800+ passing tests
 **System Status**: Excellent health

@@ -30,7 +30,7 @@ git clone https://github.com/Sapetor/diablos-modern.git
 cd diablos-modern
 
 # Install runtime dependencies
-pip install numpy matplotlib tk tqdm pyqtgraph pyqt5 scipy
+pip install numpy matplotlib tqdm pyqtgraph pyqt5 scipy Pillow
 
 # Install development dependencies
 pip install -r requirements-dev.txt

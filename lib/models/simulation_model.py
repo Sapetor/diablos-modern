@@ -81,7 +81,7 @@ class SimulationModel:
         Returns:
             QColor from theme manager for the category
         """
-        from modern_ui.themes.theme_manager import theme_manager
+        from lib.theming.theme_manager import theme_manager
 
         category_lower = category.lower() if isinstance(category, str) else str(category).lower()
 

@@ -51,7 +51,7 @@ class MenuBlocks:
 
     def draw_menublock(self, painter, pos):
         # Lazy import to avoid circular dependency
-        from modern_ui.themes.theme_manager import theme_manager
+        from lib.theming.theme_manager import theme_manager
 
         self.collision = QRect(40, 80 + 40 * pos, self.side_length[0], self.side_length[1])
         painter.fillRect(self.collision, self.b_color)

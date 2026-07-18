@@ -228,18 +228,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def _init_state_management(self):
         """Initialize state management from improved version."""
-        from enum import Enum, auto
-
-        class State(Enum):
-            IDLE = auto()
-            DRAGGING = auto()
-            CONNECTING = auto()
-            CONFIGURING = auto()
-
         # State management
-        # State management
-        self.State = State
-        self.state = State.IDLE
         self.dragging_block = None
         self.drag_offset = None
 

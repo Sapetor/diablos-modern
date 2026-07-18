@@ -604,7 +604,7 @@ def test_heat_equation_1d():
 | **Code Reuse** | Excellent | Parameter templates reduce duplication |
 | **Documentation** | Good | Every block has doc, could link to wiki |
 | **Consistency** | Good | Minor naming inconsistencies, negligible |
-| **Test Coverage** | Good | 675 tests, 57% block coverage |
+| **Test Coverage** | Good | 1,800+ tests, majority of blocks covered |
 | **Performance** | Good | No slowdowns from reflection-based loading |
 
 ---
