@@ -4,7 +4,6 @@ Handles simulation initialization, execution loops, and diagram analysis.
 """
 
 import logging
-import hashlib
 import time as time_module
 from typing import List, Dict, Tuple, Any, Optional, Union
 import numpy as np
@@ -16,6 +15,7 @@ from lib.engine.flattener import Flattener
 from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
+from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -25,45 +25,8 @@ SCIPY_SOLVER_METHODS = ("RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA")
 # Fixed-step schemes integrated in-house (use the simulation step dt).
 FIXED_STEP_METHODS = ("Euler", "RK4")
 
-# Runtime/history keys that must not invalidate the compiled-system cache.
-# The compiler only needs user-facing/resolved parameters and port metadata;
-# these values are written during interpreted initialization or post-solve
-# replay and would otherwise make every repeat run look structurally new.
-_COMPILE_CACHE_ALLOWED_INTERNAL_KEYS = frozenset({"_inputs_", "_outputs_"})
-_COMPILE_CACHE_IGNORED_PARAM_KEYS = frozenset(
-    {
-        "_source_params_fingerprint",
-        "_init_start_",
-        "_rng",
-        "_prev",
-        "_x_",
-        "_held_output_",
-        "_held_value_",
-        "_last_value_",
-        "_last_time_",
-        "_next_sample_time_",
-        "_current_value_",
-        "_sample_index_",
-        "_time_buffer_",
-        "_value_buffer_",
-        "_vector_buf",
-        "_vector_len",
-        "_field_history_",
-        "_field_history_2d_",
-        "_time_history_",
-        "_replay_state_",
-        "_replay_pending_",
-        "_replay_hyst_state_",
-        "vector",
-        "vec_dim",
-        "vec_labels",
-        "mem",
-        "mem_list",
-        "mem_len",
-        "output",
-        "aux",
-    }
-)
+# Compiled-system cache fingerprinting (key-set constants + the normalize/
+# fingerprint functions) lives in lib/engine/compile_cache.py.
 
 # Canonical fn-names whose compiled kernel executor is reused verbatim by the
 # post-solve replay loop (instead of a duplicated inline computation), so the
@@ -603,7 +566,7 @@ class SimulationEngine:
         stays consistent.
         """
         cached = getattr(block, "exec_params", None)
-        params_fp = self._source_params_fingerprint(block.params)
+        params_fp = source_params_fingerprint(block.params)
         cached_fp = cached.get("_source_params_fingerprint") if cached else None
         if cached and cached.get("dtime") == dt and cached_fp == params_fp:
             return
@@ -1309,98 +1272,6 @@ class SimulationEngine:
         """Check if the system can be compiled."""
         return self.compiler.check_compilability(blocks)
 
-    @classmethod
-    def _normalize_cache_value(cls, value):
-        """Convert parameter values to stable, hashable cache-key fragments."""
-        if isinstance(value, np.ndarray):
-            arr = np.asarray(value)
-            if arr.dtype == object:
-                return (
-                    "ndarray-object",
-                    tuple(arr.shape),
-                    tuple(cls._normalize_cache_value(x) for x in arr.ravel().tolist()),
-                )
-            contiguous = np.ascontiguousarray(arr)
-            digest = hashlib.blake2b(contiguous.tobytes(), digest_size=16).hexdigest()
-            return ("ndarray", tuple(contiguous.shape), str(contiguous.dtype), digest)
-        if isinstance(value, np.generic):
-            return cls._normalize_cache_value(value.item())
-        if isinstance(value, float):
-            if np.isnan(value):
-                return ("float", "nan")
-            if np.isinf(value):
-                return ("float", "inf" if value > 0 else "-inf")
-            return value
-        if isinstance(value, dict):
-            return tuple(
-                (str(k), cls._normalize_cache_value(v))
-                for k, v in sorted(value.items(), key=lambda item: str(item[0]))
-            )
-        if isinstance(value, (list, tuple)):
-            return tuple(cls._normalize_cache_value(v) for v in value)
-        if isinstance(value, set):
-            return tuple(
-                sorted(
-                    (cls._normalize_cache_value(v) for v in value),
-                    key=repr,
-                )
-            )
-        try:
-            hash(value)
-            return value
-        except TypeError:
-            return (value.__class__.__name__, repr(value))
-
-    @classmethod
-    def _compile_param_items(cls, params):
-        """Return cache-relevant parameter items, excluding runtime history."""
-        items = []
-        for key, value in sorted((params or {}).items(), key=lambda item: str(item[0])):
-            key_s = str(key)
-            if key_s in _COMPILE_CACHE_IGNORED_PARAM_KEYS:
-                continue
-            if key_s.startswith("_") and key_s not in _COMPILE_CACHE_ALLOWED_INTERNAL_KEYS:
-                continue
-            items.append((key_s, cls._normalize_cache_value(value)))
-        return tuple(items)
-
-    @classmethod
-    def _source_params_fingerprint(cls, params):
-        """Fingerprint raw block params for exec_params stale-cache detection."""
-        return cls._compile_param_items(params)
-
-    def _compiled_system_fingerprint(self, blocks, sorted_blocks, lines, dt):
-        """Build a conservative cache key for compile_system outputs."""
-        block_fp = []
-        for block in blocks:
-            block_fp.append(
-                (
-                    getattr(block, "name", ""),
-                    getattr(block, "block_fn", ""),
-                    canonical_fn(getattr(block, "block_fn", "")),
-                    int(getattr(block, "in_ports", 0) or 0),
-                    int(getattr(block, "out_ports", 0) or 0),
-                    int(getattr(block, "b_type", 0) or 0),
-                    int(getattr(block, "hierarchy", -1)),
-                    float(getattr(block, "effective_sample_time", -1.0)),
-                    self._compile_param_items(getattr(block, "params", {})),
-                    self._compile_param_items(getattr(block, "exec_params", {}) or {}),
-                )
-            )
-
-        line_fp = tuple(
-            (
-                getattr(line, "srcblock", None),
-                int(getattr(line, "srcport", 0) or 0),
-                getattr(line, "dstblock", None),
-                int(getattr(line, "dstport", 0) or 0),
-                bool(getattr(line, "hidden", False)),
-            )
-            for line in lines
-        )
-        order_fp = tuple(getattr(block, "name", "") for block in sorted_blocks)
-        return (float(dt), tuple(block_fp), order_fp, line_fp)
-
     def clear_compile_cache(self) -> None:
         """Drop the cached compiled RHS, state map, and replay executors."""
         self._compiled_system_cache_key = None
@@ -1408,7 +1279,7 @@ class SimulationEngine:
 
     def _compile_system_cached(self, blocks, sorted_blocks, lines, dt):
         """Compile the current diagram, reusing the previous compile on a hit."""
-        key = self._compiled_system_fingerprint(blocks, sorted_blocks, lines, dt)
+        key = compiled_system_fingerprint(blocks, sorted_blocks, lines, dt)
         if key == self._compiled_system_cache_key and self._compiled_system_cache_value:
             self.compile_cache_hits += 1
             model_func, y0, state_map, block_matrices, block_executors = (
