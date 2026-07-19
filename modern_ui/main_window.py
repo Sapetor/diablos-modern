@@ -227,19 +227,8 @@ class ModernDiaBloSWindow(QMainWindow):
         self.experiment_controller = ExperimentController(self)
 
     def _init_state_management(self):
-        """Initialize state management from improved version."""
-        # State management
-        self.dragging_block = None
-        self.drag_offset = None
-
-        # Initialize Services
+        """Expose the project manager's diagram service on the window."""
         self.diagram_service = self.project_manager.diagram_service
-
-        # Connection management
-        self.line_creation_state = None
-        self.line_start_block = None
-        self.line_start_port = None
-        self.temp_line = None
 
     # Window/menubar/toolbar facades -> WindowSetupManager (see managers/window_setup_manager.py)
     def _setup_window(self):
