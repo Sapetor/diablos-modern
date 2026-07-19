@@ -127,7 +127,7 @@ class InteractionManager:
             return
 
         # 5. Cancel any ongoing line creation if clicking on empty area
-        if self.canvas.line_creation_state:
+        if self.canvas.connection_manager.connection_state.creation_state:
             self.canvas._cancel_line_creation()
         else:
             # 6. Rectangle Selection
@@ -245,8 +245,12 @@ class InteractionManager:
                 )
                 self.canvas.update()
 
-            elif self.canvas.line_creation_state == "start" and self.canvas.temp_line:
-                self.canvas.temp_line = (self.canvas.temp_line[0], pos)
+            elif (
+                self.canvas.connection_manager.connection_state.creation_state == "start"
+                and self.canvas.connection_manager.connection_state.temp_line
+            ):
+                conn_state = self.canvas.connection_manager.connection_state
+                conn_state.temp_line = (conn_state.temp_line[0], pos)
                 self.canvas.update()
         except Exception as e:
             # Reset interaction state so a failure mid-drag does not leave the
@@ -263,7 +267,7 @@ class InteractionManager:
                 self.canvas.setCursor(Qt.ArrowCursor)
 
             # Finalize rectangle selection
-            if self.canvas.is_rect_selecting and event.button() == Qt.LeftButton:
+            if self.selection.is_selecting and event.button() == Qt.LeftButton:
                 self.canvas._finalize_rect_selection()
                 return
 
@@ -352,7 +356,7 @@ class InteractionManager:
                 return
 
             # Keep the snap tolerance constant in screen pixels across zoom.
-            zoom = self.canvas.zoom_factor or 1.0
+            zoom = self.canvas.zoom_pan_manager.state.zoom_factor or 1.0
             threshold = _ALIGNMENT_THRESHOLD_PX / zoom
 
             snap_dx, snap_dy, guide_lines = compute_alignment_guides(

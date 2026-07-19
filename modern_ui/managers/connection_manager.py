@@ -74,18 +74,22 @@ class ConnectionManager:
             block_name = getattr(block, "name", "Unknown")
             logger.debug(f"Port clicked on block {block_name}, port: {port_type}{port_index}")
 
-            if self.canvas.line_creation_state is None:
+            if self.connection_state.creation_state is None:
                 if port_type == "o":  # Start line from output port
                     self.canvas.state = State.CONNECTING
-                    self.canvas.line_creation_state = "start"
-                    self.canvas.line_start_block = block
-                    self.canvas.line_start_port = port_index
+                    self.connection_state.creation_state = "start"
+                    self.connection_state.start_block = block
+                    self.connection_state.start_port = port_index
                     # Get the output port coordinates
                     if hasattr(block, "out_coords") and port_index < len(block.out_coords):
                         start_point = block.out_coords[port_index]
-                        self.canvas.temp_line = (start_point, pos)
+                        self.connection_state.temp_line = (start_point, pos)
+                    # Setting creation_state via the canvas proxy used to re-evaluate
+                    # the idle-glow timer; replicate that side effect now that the
+                    # owned connection state is written directly.
+                    self.canvas._evaluate_animation_state()
                     logger.info(f"Started line creation from {block_name} output port {port_index}")
-            elif self.canvas.line_creation_state == "start":
+            elif self.connection_state.creation_state == "start":
                 if port_type == "i":  # End line at input port
                     logger.info(f"Completing line to {block_name} input port {port_index}")
                     self.finish_line_creation(block, port_index)
@@ -186,7 +190,7 @@ class ConnectionManager:
     def finish_line_creation(self, end_block: Any, end_port: int) -> None:
         """Complete line creation between two blocks."""
         try:
-            start_block_name = getattr(self.canvas.line_start_block, "name", "Unknown")
+            start_block_name = getattr(self.connection_state.start_block, "name", "Unknown")
             end_block_name = getattr(end_block, "name", "Unknown")
             logger.debug(f"Finishing line creation from {start_block_name} to {end_block_name}")
 
@@ -195,10 +199,12 @@ class ConnectionManager:
                 start_coords = None
                 end_coords = None
                 if hasattr(
-                    self.canvas.line_start_block, "out_coords"
-                ) and self.canvas.line_start_port < len(self.canvas.line_start_block.out_coords):
-                    start_coords = self.canvas.line_start_block.out_coords[
-                        self.canvas.line_start_port
+                    self.connection_state.start_block, "out_coords"
+                ) and self.connection_state.start_port < len(
+                    self.connection_state.start_block.out_coords
+                ):
+                    start_coords = self.connection_state.start_block.out_coords[
+                        self.connection_state.start_port
                     ]
                 if hasattr(end_block, "in_coords") and end_port < len(end_block.in_coords):
                     end_coords = end_block.in_coords[end_port]
@@ -206,8 +212,8 @@ class ConnectionManager:
                 if start_coords and end_coords:
                     # Validate connection before creating
                     is_valid, validation_errors = self.validate_connection(
-                        self.canvas.line_start_block,
-                        self.canvas.line_start_port,
+                        self.connection_state.start_block,
+                        self.connection_state.start_port,
                         end_block,
                         end_port,
                     )
@@ -225,17 +231,17 @@ class ConnectionManager:
 
                     # Create line using DSim's add_line method
                     new_line = self.dsim.add_line(
-                        (start_block_name, self.canvas.line_start_port, start_coords),
+                        (start_block_name, self.connection_state.start_port, start_coords),
                         (end_block_name, end_port, end_coords),
                     )
                     if new_line:
                         # Set the default routing mode for the new connection
-                        new_line.routing_mode = self.canvas.default_routing_mode
+                        new_line.routing_mode = self.connection_state.default_routing_mode
                         logger.info(
-                            f"Line created: {start_block_name} -> {end_block_name} (routing: {self.canvas.default_routing_mode})"
+                            f"Line created: {start_block_name} -> {end_block_name} (routing: {self.connection_state.default_routing_mode})"
                         )
                         # If Goto/From involved, relink to sync labels/virtual lines
-                        if getattr(self.canvas.line_start_block, "block_fn", "") in (
+                        if getattr(self.connection_state.start_block, "block_fn", "") in (
                             "Goto",
                             "From",
                         ) or getattr(end_block, "block_fn", "") in ("Goto", "From"):
@@ -244,7 +250,9 @@ class ConnectionManager:
                             except Exception as e:
                                 logger.warning(f"Could not relink Goto/From after connection: {e}")
                         self.update_line_positions()
-                        self.canvas.connection_created.emit(self.canvas.line_start_block, end_block)
+                        self.canvas.connection_created.emit(
+                            self.connection_state.start_block, end_block
+                        )
                     else:
                         logger.warning("Failed to create line")
                 else:
@@ -259,10 +267,11 @@ class ConnectionManager:
         from modern_ui.interactions.interaction_manager import State
 
         try:
-            self.canvas.line_creation_state = None
-            self.canvas.line_start_block = None
-            self.canvas.line_start_port = None
-            self.canvas.temp_line = None
+            self.connection_state.end_connection()
+            # Clearing creation_state via the canvas proxy used to re-evaluate the
+            # idle-glow timer; replicate that side effect after clearing the owned
+            # connection state directly.
+            self.canvas._evaluate_animation_state()
             self.canvas.state = State.IDLE
             self.canvas.update()
             logger.debug("Line creation cancelled")
@@ -301,13 +310,13 @@ class ConnectionManager:
             if collision_type == "point":
                 self.canvas.state = State.DRAGGING_LINE_POINT
                 self.canvas.dragging_item = (line, collision_index)
-                self.canvas.drag_offset = pos
+                self.canvas.interaction_manager.drag.offset = pos
                 line.selected_segment = -1  # A point is selected, not a segment
                 logger.info(f"Dragging point {collision_index} of line {line_name}")
             elif collision_type == "segment":
                 self.canvas.state = State.DRAGGING_LINE_SEGMENT
                 self.canvas.dragging_item = (line, collision_index)
-                self.canvas.drag_offset = pos
+                self.canvas.interaction_manager.drag.offset = pos
                 line.selected_segment = collision_index  # A segment is selected
                 logger.info(f"Dragging segment {collision_index} of line {line_name}")
             else:  # "line" or None

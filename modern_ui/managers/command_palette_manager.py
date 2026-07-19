@@ -216,8 +216,14 @@ class CommandPaletteManager:
         # Check if mouse is within canvas bounds
         if canvas.rect().contains(canvas_widget_pos):
             # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int((canvas_widget_pos.x() - canvas.pan_offset.x()) / canvas.zoom_factor)
-            canvas_y = int((canvas_widget_pos.y() - canvas.pan_offset.y()) / canvas.zoom_factor)
+            canvas_x = int(
+                (canvas_widget_pos.x() - canvas.zoom_pan_manager.state.pan_offset.x())
+                / canvas.zoom_pan_manager.state.zoom_factor
+            )
+            canvas_y = int(
+                (canvas_widget_pos.y() - canvas.zoom_pan_manager.state.pan_offset.y())
+                / canvas.zoom_pan_manager.state.zoom_factor
+            )
             canvas_pos = QPoint(canvas_x, canvas_y)
         else:
             # Fallback: add at center of visible canvas area
@@ -225,8 +231,14 @@ class CommandPaletteManager:
             center_y = canvas.height() // 2
 
             # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int((center_x - canvas.pan_offset.x()) / canvas.zoom_factor)
-            canvas_y = int((center_y - canvas.pan_offset.y()) / canvas.zoom_factor)
+            canvas_x = int(
+                (center_x - canvas.zoom_pan_manager.state.pan_offset.x())
+                / canvas.zoom_pan_manager.state.zoom_factor
+            )
+            canvas_y = int(
+                (center_y - canvas.zoom_pan_manager.state.pan_offset.y())
+                / canvas.zoom_pan_manager.state.zoom_factor
+            )
             canvas_pos = QPoint(canvas_x, canvas_y)
 
         # Add the block using the canvas method
