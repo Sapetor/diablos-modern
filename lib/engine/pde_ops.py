@@ -291,6 +291,31 @@ def wave_rhs_1d(
     return du_dt, dv_dt
 
 
+def wave_energy_1d(u, v, params):
+    """Total 1D wave energy = kinetic + potential.
+
+    Single source of truth for the WaveEquation1D ``energy`` diagnostic output,
+    shared by the block's ``execute()`` (interpreter path) and the compiled
+    solver's post-solve replay so the two paths report the same value.
+
+    kinetic = 0.5 * integral(v^2) dx;
+    potential = 0.5 * c^2 * integral((du/dx)^2) dx (central-difference gradient).
+
+    Args:
+        u, v: length-N displacement and velocity fields.
+        params: block params (reads ``L`` and ``c``; ``N`` inferred from ``u``).
+    """
+    N = len(u)
+    L = float(params.get("L", 1.0))
+    c = float(params.get("c", 1.0))
+    dx = L / (N - 1)
+
+    kinetic = 0.5 * np.sum(v**2) * dx
+    du_dx = np.gradient(u, dx)
+    potential = 0.5 * c**2 * np.sum(du_dx**2) * dx
+    return kinetic + potential
+
+
 def wave_rhs_2d(
     u,
     v,

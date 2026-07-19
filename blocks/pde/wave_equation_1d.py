@@ -23,7 +23,7 @@ from blocks.base_block import BaseBlock
 from blocks.pde._compat import as_scalar
 from blocks.param_templates import wave_speed_param, domain_params_1d, init_flag_param
 from lib.engine.pde_helpers import bc_params_1d
-from lib.engine.pde_ops import wave_rhs_1d
+from lib.engine.pde_ops import wave_rhs_1d, wave_energy_1d
 
 logger = logging.getLogger(__name__)
 
@@ -262,20 +262,12 @@ class WaveEquation1DBlock(BaseBlock):
         return {0: u_new, 1: v_new, 2: energy, "E": False}
 
     def _compute_energy(self, u, v, params):
-        """Compute total wave energy (kinetic + potential)."""
-        N = len(u)
-        L = float(params.get("L", 1.0))
-        c = float(params.get("c", 1.0))
-        dx = L / (N - 1)
+        """Compute total wave energy (kinetic + potential).
 
-        # Kinetic energy: 0.5 * ∫ v² dx
-        kinetic = 0.5 * np.sum(v**2) * dx
-
-        # Potential energy: 0.5 * c² * ∫ (∂u/∂x)² dx
-        du_dx = np.gradient(u, dx)
-        potential = 0.5 * c**2 * np.sum(du_dx**2) * dx
-
-        return kinetic + potential
+        Delegates to the shared ``pde_ops.wave_energy_1d`` so the interpreter
+        and compiled-replay paths report identical energy.
+        """
+        return wave_energy_1d(u, v, params)
 
     def compute_derivatives(self, time, state, inputs, params):
         """

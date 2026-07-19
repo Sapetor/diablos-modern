@@ -17,6 +17,7 @@ from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.engine import graph_analysis
+from lib.engine.pde_ops import wave_energy_1d
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -1304,11 +1305,14 @@ class SimulationEngine:
                         v = state[N:]  # Velocity field
                         out_val = u
                         current_signals[b_name + "_out1"] = v  # v_field
-                        # Energy = 0.5 * (kinetic + potential)
-                        L = float(block.params.get("L", 1.0))
-                        dx = L / (N - 1)
-                        energy = 0.5 * np.sum(v**2) * dx  # Simplified
-                        current_signals[b_name + "_out2"] = float(energy)
+                        # Full kinetic+potential energy, single-sourced with the
+                        # block's execute() via pde_ops.wave_energy_1d so the
+                        # solve/replay path reports the same energy the
+                        # interpreter does (was a kinetic-only "Simplified"
+                        # inline that diverged from the block output).
+                        current_signals[b_name + "_out2"] = float(
+                            wave_energy_1d(u, v, block.params)
+                        )
                     else:
                         out_val = np.zeros(N)
 
