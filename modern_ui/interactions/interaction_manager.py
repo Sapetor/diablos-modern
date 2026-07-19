@@ -38,10 +38,10 @@ class InteractionManager:
 
     def __init__(self, canvas):
         self.canvas = canvas
-        # Transient gesture state is owned here; the canvas re-exposes it through
-        # the selection_*/hovered_*/drag_*/resize_* property proxies so external
-        # call sites are unchanged. (The interaction FSM enum still lives on the
-        # canvas as ``canvas.state``, exposed below via ``self.state``.)
+        # Transient gesture state is owned here; callers reach it as
+        # ``canvas.interaction_manager.selection/hover/drag/resize`` (there is no
+        # longer a flat canvas proxy layer). The interaction FSM enum still lives
+        # on the canvas as ``canvas.state``, exposed below via ``self.state``.
         self.selection = SelectionState()
         self.hover = HoverState()
         self.drag = DragState()
@@ -63,9 +63,8 @@ class InteractionManager:
     def reset_gesture_state(self):
         """Clear all transient gesture state (selection/hover/drag/resize).
 
-        The canvas-level reset paths (``CanvasState.reset_all`` /
-        ``reset_interaction_state``) delegate here so gesture state clears
-        with the rest of the canvas.
+        This is the single place a full gesture reset happens now that the
+        gesture slices are owned here rather than on a shared canvas state.
         """
         self.selection.clear()
         self.hover.clear()
@@ -81,11 +80,22 @@ class InteractionManager:
         self.hover.clear()
         self.canvas._evaluate_animation_state()
 
+    def set_hovered_port(self, value):
+        """Set the hovered port and re-evaluate the idle-glow animation gate.
+
+        The hovered port is one of the states that gates the canvas glow timer,
+        so writing it must re-evaluate that gate (this replaces the side effect
+        the old canvas ``hovered_port`` proxy setter carried).
+        """
+        self.hover.port = value
+        self.canvas._evaluate_animation_state()
+
     def handle_mouse_press(self, event):
         """Handle mouse press events from the canvas."""
         if event.button() == Qt.MiddleButton:
-            self.canvas.panning = True
-            self.canvas.last_pan_pos = event.pos()
+            zp = self.canvas.zoom_pan_manager.state
+            zp.is_panning = True
+            zp.last_pan_pos = event.pos()
             self.canvas.setCursor(Qt.ClosedHandCursor)
             return
 
@@ -145,10 +155,11 @@ class InteractionManager:
     def handle_mouse_move(self, event):
         """Handle mouse move events with hover detection."""
         try:
-            if self.canvas.panning:
-                delta = event.pos() - self.canvas.last_pan_pos
-                self.canvas.pan_offset += delta
-                self.canvas.last_pan_pos = event.pos()
+            zp = self.canvas.zoom_pan_manager.state
+            if zp.is_panning:
+                delta = event.pos() - zp.last_pan_pos
+                zp.pan_offset += delta
+                zp.last_pan_pos = event.pos()
                 self.canvas.update()
                 return
 
@@ -263,7 +274,7 @@ class InteractionManager:
         """Handle mouse release events."""
         try:
             if event.button() == Qt.MiddleButton:
-                self.canvas.panning = False
+                self.canvas.zoom_pan_manager.state.is_panning = False
                 self.canvas.setCursor(Qt.ArrowCursor)
 
             # Finalize rectangle selection

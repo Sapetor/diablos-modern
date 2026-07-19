@@ -66,23 +66,25 @@ class TestAnimationTimerGating:
     def test_idle_canvas_timer_inactive(self, canvas):
         # Freshly built, nothing hovered / dragging / running: must be OFF so an
         # idle (possibly huge) diagram never repaints continuously.
-        assert canvas.hovered_port is None
-        assert not canvas.line_creation_state
+        assert canvas.interaction_manager.hover.port is None
+        assert not canvas.connection_manager.connection_state.creation_state
         assert not canvas.is_simulation_running()
         assert not canvas._animation_timer.isActive()
 
     def test_hovered_port_starts_and_clearing_stops(self, canvas):
-        canvas.hovered_port = (_StubPortBlock(), 0, True)
+        canvas.interaction_manager.set_hovered_port((_StubPortBlock(), 0, True))
         assert canvas._animation_timer.isActive()
 
-        canvas.hovered_port = None
+        canvas.interaction_manager.set_hovered_port(None)
         assert not canvas._animation_timer.isActive()
 
     def test_connection_drag_starts_and_clearing_stops(self, canvas):
-        canvas.line_creation_state = "start"
+        canvas.connection_manager.connection_state.creation_state = "start"
+        canvas._evaluate_animation_state()
         assert canvas._animation_timer.isActive()
 
-        canvas.line_creation_state = None
+        canvas.connection_manager.connection_state.creation_state = None
+        canvas._evaluate_animation_state()
         assert not canvas._animation_timer.isActive()
 
     def test_running_simulation_starts_and_stopping_stops(self, canvas, monkeypatch):
@@ -103,10 +105,10 @@ class TestAnimationTimerGating:
         running = {"v": True}
         monkeypatch.setattr(canvas, "is_simulation_running", lambda: running["v"])
         canvas._evaluate_animation_state()
-        canvas.hovered_port = (_StubPortBlock(), 0, True)
+        canvas.interaction_manager.set_hovered_port((_StubPortBlock(), 0, True))
         assert canvas._animation_timer.isActive()
 
-        canvas.hovered_port = None  # sim still running
+        canvas.interaction_manager.set_hovered_port(None)  # sim still running
         assert canvas._animation_timer.isActive()
 
         running["v"] = False

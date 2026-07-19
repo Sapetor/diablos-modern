@@ -72,8 +72,8 @@ class TestDrag:
         # Simulate a mouse move of (+50, +30) using the recorded drag_offset,
         # exactly as InteractionManager.handle_mouse_move does.
         new_pos = QPoint(150, 130)
-        nx = new_pos.x() - canvas.drag_offset.x()
-        ny = new_pos.y() - canvas.drag_offset.y()
+        nx = new_pos.x() - canvas.interaction_manager.drag.offset.x()
+        ny = new_pos.y() - canvas.interaction_manager.drag.offset.y()
         block.relocate_Block(QPoint(int(nx), int(ny)))
 
         canvas._finish_drag()
@@ -98,7 +98,7 @@ class TestDrag:
         # replicating the handle_mouse_move group-move logic.
         snapped_x, snapped_y = 220, 250
         b1.relocate_Block(QPoint(snapped_x, snapped_y))
-        for blk, off in canvas.drag_offsets.items():
+        for blk, off in canvas.interaction_manager.drag.offsets.items():
             if blk is not b1:
                 blk.relocate_Block(QPoint(snapped_x + off.x(), snapped_y + off.y()))
 
@@ -190,7 +190,7 @@ class TestResize:
 
         assert block.width >= min_w
         assert block.height >= expected_min_h
-        assert canvas.resize_at_limit is True
+        assert canvas.interaction_manager.resize.at_limit is True
 
     def test_finish_resize_pushes_undo_past_threshold(self, canvas):
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
@@ -205,8 +205,8 @@ class TestResize:
 
         assert after == before + 1, "Undo should be pushed for resize >= threshold"
         # State cleared after finish.
-        assert canvas.resizing_block is None
-        assert canvas.resize_handle is None
+        assert canvas.interaction_manager.resize.block is None
+        assert canvas.interaction_manager.resize.handle is None
 
     def test_finish_resize_no_undo_below_threshold(self, canvas):
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))

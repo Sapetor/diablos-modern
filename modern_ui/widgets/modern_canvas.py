@@ -40,7 +40,7 @@ from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 from modern_ui.managers.connection_manager import ConnectionManager
 from modern_ui.managers.rendering_manager import RenderingManager
 from modern_ui.controllers.simulation_controller import SimulationController
-from modern_ui.widgets.canvas_state import CanvasState
+from modern_ui.widgets.canvas_state import GridState
 
 logger = logging.getLogger(__name__)
 
@@ -76,11 +76,14 @@ class ModernCanvas(QWidget):
         # Simulation configuration
         self.sim_config = SimulationConfig()
 
-        # State management - Unified state object
-        self.canvas_state = CanvasState()
+        # Grid display/snap state — the one canvas-owned state slice. Every other
+        # slice lives with its owning manager (zoom/pan → ZoomPanManager, the
+        # gesture slices selection/hover/drag/resize → InteractionManager,
+        # connection creation → ConnectionManager, validation → RenderingManager);
+        # the canvas reaches them through those managers, not a shared aggregate.
+        self.grid = GridState()
 
-        # Connection routing default lives in ConnectionManager's ConnectionState
-        # (exposed via the default_routing_mode proxy below).
+        # Connection routing default lives in ConnectionManager's ConnectionState.
 
         # Live overlay toggles (View → Live overlay submenu)
         self.show_live_chips = True
@@ -105,22 +108,7 @@ class ModernCanvas(QWidget):
         self.connection_manager = ConnectionManager(self)
         self.rendering_manager = RenderingManager(self)
 
-        # The gesture slices (selection/hover/drag/resize) are owned by
-        # InteractionManager; wire the back-reference so CanvasState's reset
-        # paths can delegate gesture clearing to it.
-        self.canvas_state.interaction_manager = self.interaction_manager
-
-        # Connection-creation state is owned by ConnectionManager; wire the
-        # back-reference so CanvasState's reset paths can delegate connection
-        # clearing to it.
-        self.canvas_state.connection_manager = self.connection_manager
-
-        # Validation state is owned by RenderingManager (which computes it); wire
-        # the back-reference so CanvasState's reset paths can delegate validation
-        # clearing to it.
-        self.canvas_state.rendering_manager = self.rendering_manager
-
-        # Plain attribute set only in start_drag (never via canvas_state); guard
+        # Plain attribute set only in start_drag; guard
         # against AttributeError when _finish_drag reads it before any drag.
         self.dragging_block = None
 
@@ -299,8 +287,8 @@ class ModernCanvas(QWidget):
         however large — never repaints continuously.
         """
         return bool(
-            self.hovered_port is not None
-            or self.line_creation_state
+            self.interaction_manager.hover.port is not None
+            or self.connection_manager.connection_state.creation_state
             or self.is_simulation_running()
         )
 
@@ -398,13 +386,15 @@ class ModernCanvas(QWidget):
                 self.canvas_renderer.draw_alignment_guides(painter, self._alignment_guides)
 
             # Draw temporary connection line (with enhanced preview)
-            if self.line_creation_state == "start" and self.temp_line:
-                start_point, end_point = self.temp_line
+            conn_state = self.connection_manager.connection_state
+            hover = self.interaction_manager.hover
+            if conn_state.creation_state == "start" and conn_state.temp_line:
+                start_point, end_point = conn_state.temp_line
 
                 # Check if hovering over valid target port
                 is_valid_target = False
-                if self.hovered_port:
-                    hovered_block, port_idx, is_output = self.hovered_port
+                if hover.port:
+                    hovered_block, port_idx, is_output = hover.port
                     # Valid if hovering over an input port (not output)
                     if not is_output:
                         is_valid_target = True
@@ -414,9 +404,10 @@ class ModernCanvas(QWidget):
                 )
 
             # Draw rectangle selection
-            if self.is_rect_selecting and self.selection_rect_start and self.selection_rect_end:
+            selection = self.interaction_manager.selection
+            if selection.is_selecting and selection.rect_start and selection.rect_end:
                 self.canvas_renderer.draw_selection_rect(
-                    painter, self.selection_rect_start, self.selection_rect_end
+                    painter, selection.rect_start, selection.rect_end
                 )
 
             # Draw hover effects. Pass our glow_pulse_alpha so the renderer can
@@ -424,16 +415,17 @@ class ModernCanvas(QWidget):
             # (it resolves to a stable alpha when idle).
             self.canvas_renderer.draw_hover_effects(
                 painter,
-                self.hovered_port,
-                self.hovered_block,
-                self.hovered_line,
+                hover.port,
+                hover.block,
+                hover.line,
                 pulse_alpha=self.glow_pulse_alpha,
             )
 
             # Draw validation error indicators
-            if self.show_validation_errors:
+            validation = self.rendering_manager.validation_state
+            if validation.show_errors:
                 self.canvas_renderer.draw_validation_errors(
-                    painter, self.blocks_with_errors, self.blocks_with_warnings
+                    painter, validation.blocks_with_errors, validation.blocks_with_warnings
                 )
 
             # Draw routing tag HUD (Goto/From overview)
@@ -552,10 +544,8 @@ class ModernCanvas(QWidget):
     def mouseDoubleClickEvent(self, event):
         """Handle mouse double-click events."""
         # Force reset of any pending selection/drag state that might have started on press
-        # RESET CANVAS ATTRIBUTES DIRECTLY
-        self.is_rect_selecting = False
-        self.selection_rect_start = None
-        self.selection_rect_end = None
+        # RESET GESTURE STATE DIRECTLY (owned by InteractionManager)
+        self.interaction_manager.selection.clear()
         self.state = State.IDLE
         self.update()
 
@@ -598,8 +588,8 @@ class ModernCanvas(QWidget):
                         logger.info(f"Entered subsystem: {clicked_block.name}")
 
                         # Reset view to ensure blocks are visible
-                        self.pan_offset = QPoint(0, 0)
-                        self.zoom_factor = 1.0
+                        self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
+                        self.zoom_pan_manager.state.zoom_factor = 1.0
                         self.zoom_to_fit()
 
                         self.scope_changed.emit(self.dsim.get_current_path())
@@ -629,11 +619,9 @@ class ModernCanvas(QWidget):
         from PyQt5.QtWidgets import QApplication
 
         if not (QApplication.mouseButtons() & Qt.LeftButton):
-            if self.is_rect_selecting:
+            if self.interaction_manager.selection.is_selecting:
                 logger.debug("Resetting rect selection on focus return (no mouse button pressed)")
-                self.is_rect_selecting = False
-                self.selection_rect_start = None
-                self.selection_rect_end = None
+                self.interaction_manager.selection.clear()
                 self.update()
 
     def navigate_scope_by_path(self, path_str):
@@ -644,8 +632,8 @@ class ModernCanvas(QWidget):
             self.update()
 
             # Reset view
-            self.pan_offset = QPoint(0, 0)
-            self.zoom_factor = 1.0
+            self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
+            self.zoom_pan_manager.state.zoom_factor = 1.0
             self.zoom_to_fit()
 
             self.scope_changed.emit(self.dsim.get_current_path())
@@ -684,34 +672,33 @@ class ModernCanvas(QWidget):
             line.selected = False
             if hasattr(line, "selected_segment"):
                 line.selected_segment = -1
-        self.source_block_for_connection = None
+        self.connection_manager.connection_state.source_block = None
         if had_selection:
             self.block_selected.emit(None)
         self.update()
 
     def _finalize_rect_selection(self):
         """Finalize rectangle selection and select blocks within the rectangle."""
+        selection = self.interaction_manager.selection
         try:
-            if not self.selection_rect_start or not self.selection_rect_end:
+            if not selection.rect_start or not selection.rect_end:
                 # Early return - but still reset state below via finally
                 return
 
             # Normalize the rectangle (in case user dragged from bottom-right
             # to top-left); the block-intersection pass lives in
             # SelectionManager so there is a single implementation of it.
-            x1 = min(self.selection_rect_start.x(), self.selection_rect_end.x())
-            y1 = min(self.selection_rect_start.y(), self.selection_rect_end.y())
-            x2 = max(self.selection_rect_start.x(), self.selection_rect_end.x())
-            y2 = max(self.selection_rect_start.y(), self.selection_rect_end.y())
+            x1 = min(selection.rect_start.x(), selection.rect_end.x())
+            y1 = min(selection.rect_start.y(), selection.rect_end.y())
+            x2 = max(selection.rect_start.x(), selection.rect_end.x())
+            y2 = max(selection.rect_start.y(), selection.rect_end.y())
 
             self.selection_manager.finalize_rect_selection(QRect(x1, y1, x2 - x1, y2 - y1))
         except Exception as e:
             logger.error(f"Error finalizing rectangle selection: {str(e)}")
         finally:
             # Always reset rectangle selection state, even on early return or exception
-            self.is_rect_selecting = False
-            self.selection_rect_start = None
-            self.selection_rect_end = None
+            selection.clear()
             self.update()
 
     def _handle_block_click(self, block, pos):
@@ -719,15 +706,18 @@ class ModernCanvas(QWidget):
         try:
             logger.debug(f"Block clicked: {getattr(block, 'fn_name', 'Unknown')}")
 
+            # Connection-creation state is owned by ConnectionManager.
+            conn_state = self.connection_manager.connection_state
+
             modifiers = QApplication.keyboardModifiers()
 
             # NEW: Connection logic with Ctrl+Click (only when a source is already selected)
             if (
                 (modifiers & Qt.ControlModifier)
-                and self.source_block_for_connection
-                and self.source_block_for_connection is not block
+                and conn_state.source_block
+                and conn_state.source_block is not block
             ):
-                source_block = self.source_block_for_connection
+                source_block = conn_state.source_block
                 target_block = block
 
                 if source_block.out_ports > 0:
@@ -760,13 +750,13 @@ class ModernCanvas(QWidget):
                         logger.info(
                             f"Creating connection from {source_block.name} to {target_block.name}"
                         )
-                        self.line_start_block = source_block
-                        self.line_start_port = source_port_index
+                        conn_state.start_block = source_block
+                        conn_state.start_port = source_port_index
                         self._finish_line_creation(target_block, target_port_index)
                         # Make target block selected and source for next connection
-                        self.source_block_for_connection.selected = False
+                        conn_state.source_block.selected = False
                         target_block.selected = True
-                        self.source_block_for_connection = target_block
+                        conn_state.source_block = target_block
                         self.update()
                     else:
                         logger.warning(
@@ -784,7 +774,7 @@ class ModernCanvas(QWidget):
                 # Ctrl+Click (when no source block): Toggle selection
                 block.toggle_selection()
                 if block.selected:
-                    self.source_block_for_connection = block
+                    conn_state.source_block = block
                 logger.info(f"Toggled selection for {block.name}")
             else:
                 # Normal click: If clicking on unselected block, clear all and select only this block
@@ -797,7 +787,7 @@ class ModernCanvas(QWidget):
                     logger.info(
                         f"Clicked on already-selected block {block.name}, keeping selection for drag"
                     )
-                self.source_block_for_connection = block  # Set source for connection
+                conn_state.source_block = block  # Set source for connection
 
             # Start dragging the block (or all selected blocks)
             self.start_drag(block, pos)
@@ -871,7 +861,7 @@ class ModernCanvas(QWidget):
 
             if event.key() == Qt.Key_Escape:
                 # Cancel any ongoing operations
-                if self.line_creation_state:
+                if self.connection_manager.connection_state.creation_state:
                     self._cancel_line_creation()
                 elif self.state == State.DRAGGING:
                     self._finish_drag()
@@ -885,8 +875,8 @@ class ModernCanvas(QWidget):
                     elif self.dsim.current_subsystem:
                         # Exit subsystem if no selection and inside one
                         self.dsim.exit_subsystem()
-                        self.pan_offset = QPoint(0, 0)
-                        self.zoom_factor = 1.0
+                        self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
+                        self.zoom_pan_manager.state.zoom_factor = 1.0
                         self.zoom_to_fit()
                         self.scope_changed.emit(self.dsim.get_current_path())
                     self.update()
@@ -1397,276 +1387,49 @@ class ModernCanvas(QWidget):
         self.update()
 
     # =========================================================================
-    # Backward-compatible properties delegating to canvas_state
-    # These allow existing code to work while migrating to the new state object
+    # Canvas-owned conveniences
+    # -------------------------------------------------------------------------
+    # State lives with its owning manager: zoom/pan on ZoomPanManager, the
+    # gesture slices (selection/hover/drag/resize) on InteractionManager,
+    # connection-creation state on ConnectionManager, and validation state on
+    # RenderingManager. Managers and external code read/write those managers
+    # directly. The canvas keeps only the grid slice (``self.grid``) plus a
+    # couple of read-only view getters below, for consumers where reaching
+    # through the manager would be awkward (save-state persistence, the minimap,
+    # and view-fit math).
     # =========================================================================
 
-    # Zoom/Pan properties — state owned by ZoomPanManager
+    # Read-only zoom/pan view getters — state owned by ZoomPanManager; writes go
+    # through ``self.zoom_pan_manager.state``.
     @property
     def zoom_factor(self):
         return self.zoom_pan_manager.state.zoom_factor
-
-    @zoom_factor.setter
-    def zoom_factor(self, value):
-        self.zoom_pan_manager.state.zoom_factor = value
-
-    @property
-    def zoom_level(self):
-        return self.zoom_pan_manager.state.zoom_factor
-
-    @zoom_level.setter
-    def zoom_level(self, value):
-        self.zoom_pan_manager.state.zoom_factor = value
 
     @property
     def pan_offset(self):
         return self.zoom_pan_manager.state.pan_offset
 
-    @pan_offset.setter
-    def pan_offset(self, value):
-        self.zoom_pan_manager.state.pan_offset = value
-
-    @property
-    def panning(self):
-        return self.zoom_pan_manager.state.is_panning
-
-    @panning.setter
-    def panning(self, value):
-        self.zoom_pan_manager.state.is_panning = value
-
-    @property
-    def last_pan_pos(self):
-        return self.zoom_pan_manager.state.last_pan_pos
-
-    @last_pan_pos.setter
-    def last_pan_pos(self, value):
-        self.zoom_pan_manager.state.last_pan_pos = value
-
-    # Grid properties
+    # Grid display/snap — the one canvas-owned state slice (read + write).
     @property
     def grid_visible(self):
-        return self.canvas_state.grid.visible
+        return self.grid.visible
 
     @grid_visible.setter
     def grid_visible(self, value):
-        self.canvas_state.grid.visible = value
+        self.grid.visible = value
 
     @property
     def grid_size(self):
-        return self.canvas_state.grid.size
+        return self.grid.size
 
     @grid_size.setter
     def grid_size(self, value):
-        self.canvas_state.grid.size = value
+        self.grid.size = value
 
     @property
     def snap_enabled(self):
-        return self.canvas_state.grid.snap_enabled
+        return self.grid.snap_enabled
 
     @snap_enabled.setter
     def snap_enabled(self, value):
-        self.canvas_state.grid.snap_enabled = value
-
-    # Selection properties — state owned by InteractionManager
-    @property
-    def selection_rect_start(self):
-        return self.interaction_manager.selection.rect_start
-
-    @selection_rect_start.setter
-    def selection_rect_start(self, value):
-        self.interaction_manager.selection.rect_start = value
-
-    @property
-    def selection_rect_end(self):
-        return self.interaction_manager.selection.rect_end
-
-    @selection_rect_end.setter
-    def selection_rect_end(self, value):
-        self.interaction_manager.selection.rect_end = value
-
-    @property
-    def is_rect_selecting(self):
-        return self.interaction_manager.selection.is_selecting
-
-    @is_rect_selecting.setter
-    def is_rect_selecting(self, value):
-        self.interaction_manager.selection.is_selecting = value
-
-    # Hover properties — state owned by InteractionManager
-    @property
-    def hovered_block(self):
-        return self.interaction_manager.hover.block
-
-    @hovered_block.setter
-    def hovered_block(self, value):
-        self.interaction_manager.hover.block = value
-
-    @property
-    def hovered_port(self):
-        return self.interaction_manager.hover.port
-
-    @hovered_port.setter
-    def hovered_port(self, value):
-        self.interaction_manager.hover.port = value
-        # Drive the idle-OFF glow timer: starts on the first hover, stops when
-        # the port (and other gated states) clear.
-        self._evaluate_animation_state()
-
-    @property
-    def hovered_line(self):
-        return self.interaction_manager.hover.line
-
-    @hovered_line.setter
-    def hovered_line(self, value):
-        self.interaction_manager.hover.line = value
-
-    # Drag properties — state owned by InteractionManager
-    @property
-    def drag_offset(self):
-        return self.interaction_manager.drag.offset
-
-    @drag_offset.setter
-    def drag_offset(self, value):
-        self.interaction_manager.drag.offset = value
-
-    @property
-    def drag_offsets(self):
-        return self.interaction_manager.drag.offsets
-
-    @drag_offsets.setter
-    def drag_offsets(self, value):
-        self.interaction_manager.drag.offsets = value
-
-    @property
-    def drag_start_positions(self):
-        return self.interaction_manager.drag.start_positions
-
-    @drag_start_positions.setter
-    def drag_start_positions(self, value):
-        self.interaction_manager.drag.start_positions = value
-
-    # Resize properties — state owned by InteractionManager
-    @property
-    def resizing_block(self):
-        return self.interaction_manager.resize.block
-
-    @resizing_block.setter
-    def resizing_block(self, value):
-        self.interaction_manager.resize.block = value
-
-    @property
-    def resize_handle(self):
-        return self.interaction_manager.resize.handle
-
-    @resize_handle.setter
-    def resize_handle(self, value):
-        self.interaction_manager.resize.handle = value
-
-    @property
-    def resize_start_rect(self):
-        return self.interaction_manager.resize.start_rect
-
-    @resize_start_rect.setter
-    def resize_start_rect(self, value):
-        self.interaction_manager.resize.start_rect = value
-
-    @property
-    def resize_start_pos(self):
-        return self.interaction_manager.resize.start_pos
-
-    @resize_start_pos.setter
-    def resize_start_pos(self, value):
-        self.interaction_manager.resize.start_pos = value
-
-    @property
-    def resize_at_limit(self):
-        return self.interaction_manager.resize.at_limit
-
-    @resize_at_limit.setter
-    def resize_at_limit(self, value):
-        self.interaction_manager.resize.at_limit = value
-
-    # Connection properties — state owned by ConnectionManager
-    @property
-    def line_creation_state(self):
-        return self.connection_manager.connection_state.creation_state
-
-    @line_creation_state.setter
-    def line_creation_state(self, value):
-        self.connection_manager.connection_state.creation_state = value
-        # A connection drag is one of the gated states; (re)evaluate the timer
-        # when it begins ('start') or clears (None).
-        self._evaluate_animation_state()
-
-    @property
-    def line_start_block(self):
-        return self.connection_manager.connection_state.start_block
-
-    @line_start_block.setter
-    def line_start_block(self, value):
-        self.connection_manager.connection_state.start_block = value
-
-    @property
-    def line_start_port(self):
-        return self.connection_manager.connection_state.start_port
-
-    @line_start_port.setter
-    def line_start_port(self, value):
-        self.connection_manager.connection_state.start_port = value
-
-    @property
-    def temp_line(self):
-        return self.connection_manager.connection_state.temp_line
-
-    @temp_line.setter
-    def temp_line(self, value):
-        self.connection_manager.connection_state.temp_line = value
-
-    @property
-    def source_block_for_connection(self):
-        return self.connection_manager.connection_state.source_block
-
-    @source_block_for_connection.setter
-    def source_block_for_connection(self, value):
-        self.connection_manager.connection_state.source_block = value
-
-    @property
-    def default_routing_mode(self):
-        return self.connection_manager.connection_state.default_routing_mode
-
-    @default_routing_mode.setter
-    def default_routing_mode(self, value):
-        self.connection_manager.connection_state.default_routing_mode = value
-
-    # Validation properties (state owned by RenderingManager, which computes it)
-    @property
-    def validation_errors(self):
-        return self.rendering_manager.validation_state.errors
-
-    @validation_errors.setter
-    def validation_errors(self, value):
-        self.rendering_manager.validation_state.errors = value
-
-    @property
-    def blocks_with_errors(self):
-        return self.rendering_manager.validation_state.blocks_with_errors
-
-    @blocks_with_errors.setter
-    def blocks_with_errors(self, value):
-        self.rendering_manager.validation_state.blocks_with_errors = value
-
-    @property
-    def blocks_with_warnings(self):
-        return self.rendering_manager.validation_state.blocks_with_warnings
-
-    @blocks_with_warnings.setter
-    def blocks_with_warnings(self, value):
-        self.rendering_manager.validation_state.blocks_with_warnings = value
-
-    @property
-    def show_validation_errors(self):
-        return self.rendering_manager.validation_state.show_errors
-
-    @show_validation_errors.setter
-    def show_validation_errors(self, value):
-        self.rendering_manager.validation_state.show_errors = value
+        self.grid.snap_enabled = value

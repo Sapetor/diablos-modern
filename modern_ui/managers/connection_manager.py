@@ -37,9 +37,8 @@ class ConnectionManager:
     def end_connection(self) -> None:
         """Clear connection-creation state.
 
-        The canvas-level reset paths (``CanvasState.reset_all`` /
-        ``reset_interaction_state``) delegate here so connection state clears
-        with the rest of the canvas.
+        Connection-creation state is owned here (no shared canvas state); this
+        is the manager-level entry point for clearing it.
         """
         self.connection_state.end_connection()
 

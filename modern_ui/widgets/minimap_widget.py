@@ -250,7 +250,7 @@ class MinimapWidget(QWidget):
         new_pan_y = canvas_height / 2 - diagram_y * zoom_factor
 
         # Update canvas pan offset
-        self.canvas.pan_offset = QPoint(int(new_pan_x), int(new_pan_y))
+        self.canvas.zoom_pan_manager.state.pan_offset = QPoint(int(new_pan_x), int(new_pan_y))
         self.canvas.update()
 
         # Emit signal for any additional handling

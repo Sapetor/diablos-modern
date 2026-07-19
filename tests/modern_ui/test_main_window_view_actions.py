@@ -46,8 +46,8 @@ def _restore_canvas_view(window):
         list(getattr(c.dsim, "blocks_list", []) or []),
     )
     yield
-    c.zoom_factor = saved[0]
-    c.pan_offset = saved[1]
+    c.zoom_pan_manager.state.zoom_factor = saved[0]
+    c.zoom_pan_manager.state.pan_offset = saved[1]
     if saved[2] is not None:
         c.grid_visible = saved[2]
     c.dsim.blocks_list[:] = saved[3]

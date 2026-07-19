@@ -16,10 +16,10 @@ class TestInteractionManager(unittest.TestCase):
             p
         )  # Identity transform for simplicity
 
-        # Default boolean flags to False so checks don't return early
-        self.mock_canvas.panning = False
-        self.mock_canvas.is_rect_selecting = False
-        self.mock_canvas.snap_enabled = True  # Default to true for safety
+        # Default boolean flags to False so checks don't return early. Pan state
+        # is owned by ZoomPanManager now, so seed it on the mock's manager.
+        self.mock_canvas.zoom_pan_manager.state.is_panning = False
+        self.mock_canvas.snap_enabled = True  # Grid stays canvas-owned; true for safety
 
         self.manager = InteractionManager(self.mock_canvas)
 
@@ -62,8 +62,8 @@ class TestInteractionManager(unittest.TestCase):
 
         self.manager.handle_mouse_press(mock_event)
 
-        self.assertTrue(self.mock_canvas.panning)
-        self.assertEqual(self.mock_canvas.last_pan_pos, QPoint(50, 50))
+        self.assertTrue(self.mock_canvas.zoom_pan_manager.state.is_panning)
+        self.assertEqual(self.mock_canvas.zoom_pan_manager.state.last_pan_pos, QPoint(50, 50))
 
     @patch("modern_ui.interactions.interaction_manager.logger")
     def test_mouse_move_dragging_block(self, mock_logger):

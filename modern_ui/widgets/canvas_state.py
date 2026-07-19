@@ -1,8 +1,21 @@
 """
-Canvas State Management for DiaBloS
+Canvas State Dataclasses for DiaBloS
 
-Consolidates all canvas state into organized dataclasses for cleaner
-state management and easier debugging.
+Each dataclass here is a self-contained state slice owned by whichever component
+is responsible for it — there is no longer a single ``CanvasState`` aggregate on
+the canvas. Ownership:
+
+* ``ZoomPanState``   -> ``ZoomPanManager`` (``manager.state``)
+* ``SelectionState`` / ``HoverState`` / ``DragState`` / ``ResizeState``
+  -> ``InteractionManager`` (``manager.selection`` / ``.hover`` / ``.drag`` /
+  ``.resize``)
+* ``ConnectionState`` -> ``ConnectionManager`` (``manager.connection_state``)
+* ``ValidationState`` -> ``RenderingManager`` (``manager.validation_state``)
+* ``GridState``      -> the canvas itself (``ModernCanvas.grid``), the one slice
+  that stays canvas-owned.
+
+The managers import the slice they own from this module and construct it in their
+own ``__init__``; nothing wires the slices together.
 """
 
 from dataclasses import dataclass, field
@@ -222,60 +235,3 @@ class ValidationState:
     def add_warning(self, block: Any):
         """Add a block with warnings."""
         self.blocks_with_warnings.add(block)
-
-
-@dataclass
-class CanvasState:
-    """
-    Unified state container for the ModernCanvas.
-
-    Groups all canvas state into logical sub-states for cleaner
-    management and easier debugging/serialization.
-    """
-
-    grid: GridState = field(default_factory=GridState)
-
-    # Back-reference to the gesture-state owner, wired by ModernCanvas after the
-    # manager is constructed. The gesture slices (selection/hover/drag/resize)
-    # live on InteractionManager; the reset paths below delegate to it so a
-    # canvas-level reset still clears the same total state.
-    interaction_manager: Any = field(default=None, repr=False, compare=False)
-
-    # Back-reference to the connection-state owner, wired by ModernCanvas after
-    # the manager is constructed. ConnectionState lives on ConnectionManager;
-    # the reset paths below delegate to it so a canvas-level reset still clears
-    # connection-creation state.
-    connection_manager: Any = field(default=None, repr=False, compare=False)
-
-    # Back-reference to the validation-state owner, wired by ModernCanvas after
-    # the manager is constructed. ValidationState lives on RenderingManager
-    # (which computes it); the reset paths below delegate to it so a canvas-level
-    # reset still clears validation state.
-    rendering_manager: Any = field(default=None, repr=False, compare=False)
-
-    def reset_all(self):
-        """Reset all state to defaults.
-
-        Zoom/pan state lives in ``ZoomPanManager`` (reset via
-        ``ZoomPanManager.reset_view``), the gesture slices
-        (selection/hover/drag/resize) live in ``InteractionManager`` (reset via
-        ``InteractionManager.reset_gesture_state``), connection-creation
-        state lives in ``ConnectionManager`` (reset via
-        ``ConnectionManager.end_connection``), and validation state lives in
-        ``RenderingManager`` (reset via ``ValidationState.clear``), so those are
-        cleared through their owning manager rather than from fields here.
-        """
-        self.grid = GridState()
-        if self.interaction_manager is not None:
-            self.interaction_manager.reset_gesture_state()
-        if self.connection_manager is not None:
-            self.connection_manager.end_connection()
-        if self.rendering_manager is not None:
-            self.rendering_manager.validation_state.clear()
-
-    def reset_interaction_state(self):
-        """Reset transient interaction state (hover, drag, resize, selection)."""
-        if self.interaction_manager is not None:
-            self.interaction_manager.reset_gesture_state()
-        if self.connection_manager is not None:
-            self.connection_manager.end_connection()

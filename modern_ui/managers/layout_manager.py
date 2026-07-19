@@ -179,7 +179,9 @@ class LayoutManager:
         window.canvas = ModernCanvas(window.dsim)
 
         # Set default routing mode for new connections
-        window.canvas.default_routing_mode = window.default_routing_mode
+        window.canvas.connection_manager.connection_state.default_routing_mode = (
+            window.default_routing_mode
+        )
 
         # Get platform configuration
         config = get_platform_config()

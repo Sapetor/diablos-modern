@@ -283,7 +283,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
             # Pass the setting to the canvas
             if hasattr(self, "canvas"):
-                self.canvas.default_routing_mode = mode
+                self.canvas.connection_manager.connection_state.default_routing_mode = mode
 
             logger.info(f"Default connection routing mode set to: {mode}")
 
@@ -810,7 +810,9 @@ class ModernDiaBloSWindow(QMainWindow):
             # Calculate new pan offset to center the error (using QPoint)
             new_offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
             new_offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
-            self.canvas.pan_offset = QPoint(int(new_offset_x), int(new_offset_y))
+            self.canvas.zoom_pan_manager.state.pan_offset = QPoint(
+                int(new_offset_x), int(new_offset_y)
+            )
 
             # Update canvas to show the changes
             self.canvas.update()

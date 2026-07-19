@@ -115,7 +115,7 @@ class RenderingManager:
         """
         if self._suppress_hover:
             return None
-        hovered = getattr(self.canvas, "hovered_port", None)
+        hovered = self.canvas.interaction_manager.hover.port
         if not hovered:
             return None
         hover_block, port_idx, is_output = hovered
@@ -245,8 +245,8 @@ class RenderingManager:
                 if new_hovered_port:
                     break
 
-            if new_hovered_port != self.canvas.hovered_port:
-                self.canvas.hovered_port = new_hovered_port
+            if new_hovered_port != self.canvas.interaction_manager.hover.port:
+                self.canvas.interaction_manager.set_hovered_port(new_hovered_port)
                 needs_repaint = True
 
                 # Show tooltip for hovered port
@@ -279,25 +279,26 @@ class RenderingManager:
                 self.canvas.setCursor(Qt.ArrowCursor)
 
         # Check for hovered block (if no port is hovered)
+        hover = self.canvas.interaction_manager.hover
         if not new_hovered_port:
             new_hovered_block = self.canvas._get_clicked_block(pos)
-            if new_hovered_block != self.canvas.hovered_block:
-                self.canvas.hovered_block = new_hovered_block
+            if new_hovered_block != hover.block:
+                hover.block = new_hovered_block
                 needs_repaint = True
         else:
-            if self.canvas.hovered_block is not None:
-                self.canvas.hovered_block = None
+            if hover.block is not None:
+                hover.block = None
                 needs_repaint = True
 
         # Check for hovered line (if no block/port is hovered)
-        if not new_hovered_port and not self.canvas.hovered_block:
+        if not new_hovered_port and not hover.block:
             line_result, _ = self.canvas._get_clicked_line(pos)
-            if line_result != self.canvas.hovered_line:
-                self.canvas.hovered_line = line_result
+            if line_result != hover.line:
+                hover.line = line_result
                 needs_repaint = True
         else:
-            if self.canvas.hovered_line is not None:
-                self.canvas.hovered_line = None
+            if hover.line is not None:
+                hover.line = None
                 needs_repaint = True
 
         if needs_repaint:

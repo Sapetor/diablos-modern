@@ -217,11 +217,16 @@ performance items with a safe fix are now **fixed** (see
   into `ConnectionManager` (killing the manager→canvas validation callback),
   and single-sourced the rect-selection block pass in `SelectionManager`.
   Canvas managers 9→8; all moves behavior-preserving behind the GUI suite.
-  Remaining (separate, larger design rounds): the 63 `canvas_state`
-  property proxies (state ownership still inverted — managers mutate canvas
-  state), and the trivially small main-window managers
-  (`window_setup_manager`, `view_actions_manager`, `property_controller`,
-  ...) which the 2026-06-13 review rated severity-low.
+  Done 2026-07-19: the 63 `canvas_state` property proxies removed — each state
+  slice now lives with its owning manager (zoom/pan → ZoomPanManager, gesture
+  → InteractionManager, connection → ConnectionManager, validation →
+  RenderingManager), `CanvasState` dissolved with grid the one canvas-owned
+  slice (`ModernCanvas.grid`); the canvas keeps only read-only `zoom_factor`/
+  `pan_offset` getters plus the grid getters/setters. See
+  `tasks/canvas_state_ownership_scope.md` for the measured data and plan.
+  Remaining (separate, larger design rounds): the trivially small main-window
+  managers (`window_setup_manager`, `view_actions_manager`,
+  `property_controller`, ...) which the 2026-06-13 review rated severity-low.
 - [x] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
   (move shared theming into `lib`), instead of function-local imports — done
   2026-07-18: the design-token/theme system moved to `lib/theming/theme_manager.py`
