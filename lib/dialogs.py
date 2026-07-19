@@ -9,54 +9,17 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QMessageBox,
 )
-from PyQt5.QtCore import Qt
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class ParamDialog(QDialog):
-    def __init__(self, name, params, parent=None):
-        super().__init__(parent)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setModal(True)
-
-        logger.debug(f"Initializing ParamDialog for {name}")
-        self.params = params
-        self.setWindowTitle(f"{name} Parameters")
-        self.layout = QVBoxLayout()
-        self.entries = {}
-
-        for key, value in params.items():
-            self.layout.addWidget(QLabel(key))
-            if key in ["numerator", "denominator"]:
-                entry = QLineEdit(", ".join(map(str, value)))
-            else:
-                entry = QLineEdit(str(value))
-            self.layout.addWidget(entry)
-            self.entries[key] = entry
-
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(self.accept)
-        self.layout.addWidget(ok_button)
-
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(self.reject)
-        self.layout.addWidget(cancel_button)
-
-        self.setLayout(self.layout)
-
-    def get_values(self):
-        values = {}
-        for key, entry in self.entries.items():
-            if key in ["numerator", "denominator"]:
-                try:
-                    values[key] = list(map(float, entry.text().split(",")))
-                except ValueError:
-                    pass  # Ignore errors while typing
-            else:
-                values[key] = entry.text()
-        return values
+# NOTE: the legacy free-text ParamDialog (a stringly-typed editor that ignored
+# each param's declared type/options schema) was removed — the modern app edits
+# parameters exclusively through modern_ui/widgets/property_editor.py, which
+# renders schema-aware widgets (QCheckBox/QComboBox/QSpinBox/QDoubleSpinBox) and
+# validates free-text entries on commit. PortDialog and SimulationDialog below
+# are still used (port-edit context menu / simulation setup).
 
 
 class PortDialog(QDialog):

@@ -9,7 +9,7 @@ import math
 import numpy as np
 from PyQt5.QtGui import QColor, QFont, QPixmap
 from PyQt5.QtCore import QRect, QPoint
-from lib.dialogs import ParamDialog, PortDialog
+from lib.dialogs import PortDialog
 
 logger = logging.getLogger(__name__)
 
@@ -629,46 +629,12 @@ class DBlock:
             logger.warning(f"Failed to convert parameter lists to arrays: {e}")
             return out
 
-    def change_params(self):
-        logger.info(f"change_params called for block {self.name}")
-        # Always show dialog so users can rename the block (Name field)
-        ed_dict = {"Name": self.username}
-        for key, value in self.initial_params.items():
-            if not (key.startswith("_") and key.endswith("_")):
-                ed_dict[key] = self.params.get(key, value)  # Use current value if available
-
-        dialog = ParamDialog(self.name, ed_dict)
-        if dialog.exec_():
-            new_inputs = dialog.get_values()
-
-            if new_inputs["Name"] == "--":
-                self.username = self.name
-            else:
-                self.username = new_inputs["Name"]
-            new_inputs.pop("Name")
-
-            if new_inputs:
-                for key, value in new_inputs.items():
-                    if key in self.params:
-                        self.params[key] = value
-                        self.initial_params[key] = value
-
-                # Update port count if the block reconfigures ports from params
-                self._refresh_dynamic_ports()
-
-        if self.external:
-            self.load_external_data(params_reset=False)
-
-        self._refresh_tranfn_btype()
-
-        logger.debug(f"Final parameters for {self.name}: {self.params}")
-
     def _refresh_dynamic_ports(self) -> None:
         """Recompute input port count from the block's dynamic ``get_inputs``.
 
         Blocks that support dynamic port configuration recompute their input
         count from current params; when it changes, update geometry/ports.
-        Shared by ``__init__``, ``change_params`` and ``update_params``.
+        Shared by ``__init__`` and ``update_params``.
         """
         if not (self.block_instance and hasattr(self.block_instance, "get_inputs")):
             return
@@ -693,8 +659,8 @@ class DBlock:
 
         A strictly proper transfer function (more poles than zeros) is a state
         block (b_type 1); otherwise it has direct feedthrough (b_type 2). Also
-        flags the block for re-initialization. Shared by ``change_params`` and
-        ``update_params``.
+        flags the block for re-initialization. Shared by ``update_params`` and
+        block construction.
         """
         if self.block_fn != "TranFn":
             return
