@@ -27,8 +27,8 @@ class ZoomPanManager:
         self.canvas = canvas
         self.dsim = canvas.dsim
 
-        # Zoom and Pan state — owned here; the canvas re-exposes it through
-        # zoom_factor / pan_offset / panning / last_pan_pos property proxies.
+        # Zoom and Pan state — owned here; the canvas keeps read-only
+        # zoom_factor / pan_offset getters for outside consumers.
         self.state = ZoomPanState()
 
     def _clamp_zoom(self, factor):
@@ -139,8 +139,7 @@ class ZoomPanManager:
 
     def reset_view(self):
         """Reset zoom and pan to default values."""
-        self.state.zoom_factor = 1.0
-        self.state.pan_offset = QPoint(0, 0)
+        self.state.reset()
         self.canvas.update()
         logger.info("View reset to defaults")
 

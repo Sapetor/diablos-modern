@@ -5,7 +5,7 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 import logging
 import math
 from PyQt5.QtWidgets import QWidget, QApplication
-from PyQt5.QtCore import Qt, QPoint, QRect, QTimer, QEvent, pyqtSignal
+from PyQt5.QtCore import Qt, QRect, QTimer, QEvent, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen
 
 # Import DSim and helper modules
@@ -588,8 +588,7 @@ class ModernCanvas(QWidget):
                         logger.info(f"Entered subsystem: {clicked_block.name}")
 
                         # Reset view to ensure blocks are visible
-                        self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
-                        self.zoom_pan_manager.state.zoom_factor = 1.0
+                        self.zoom_pan_manager.reset_view()
                         self.zoom_to_fit()
 
                         self.scope_changed.emit(self.dsim.get_current_path())
@@ -632,8 +631,7 @@ class ModernCanvas(QWidget):
             self.update()
 
             # Reset view
-            self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
-            self.zoom_pan_manager.state.zoom_factor = 1.0
+            self.zoom_pan_manager.reset_view()
             self.zoom_to_fit()
 
             self.scope_changed.emit(self.dsim.get_current_path())
@@ -681,23 +679,16 @@ class ModernCanvas(QWidget):
         """Finalize rectangle selection and select blocks within the rectangle."""
         selection = self.interaction_manager.selection
         try:
-            if not selection.rect_start or not selection.rect_end:
-                # Early return - but still reset state below via finally
-                return
-
-            # Normalize the rectangle (in case user dragged from bottom-right
-            # to top-left); the block-intersection pass lives in
+            # end_selection() normalizes the rect (drag direction agnostic) and
+            # clears the slice; the block-intersection pass lives in
             # SelectionManager so there is a single implementation of it.
-            x1 = min(selection.rect_start.x(), selection.rect_end.x())
-            y1 = min(selection.rect_start.y(), selection.rect_end.y())
-            x2 = max(selection.rect_start.x(), selection.rect_end.x())
-            y2 = max(selection.rect_start.y(), selection.rect_end.y())
-
-            self.selection_manager.finalize_rect_selection(QRect(x1, y1, x2 - x1, y2 - y1))
+            rect = selection.end_selection()
+            if rect is not None:
+                self.selection_manager.finalize_rect_selection(rect)
         except Exception as e:
             logger.error(f"Error finalizing rectangle selection: {str(e)}")
         finally:
-            # Always reset rectangle selection state, even on early return or exception
+            # Covers the exception path (idempotent after end_selection).
             selection.clear()
             self.update()
 
@@ -875,8 +866,7 @@ class ModernCanvas(QWidget):
                     elif self.dsim.current_subsystem:
                         # Exit subsystem if no selection and inside one
                         self.dsim.exit_subsystem()
-                        self.zoom_pan_manager.state.pan_offset = QPoint(0, 0)
-                        self.zoom_pan_manager.state.zoom_factor = 1.0
+                        self.zoom_pan_manager.reset_view()
                         self.zoom_to_fit()
                         self.scope_changed.emit(self.dsim.get_current_path())
                     self.update()

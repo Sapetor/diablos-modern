@@ -28,19 +28,18 @@ class ConnectionManager:
     def __init__(self, canvas: "ModernCanvas"):
         self.canvas = canvas
         self.dsim = canvas.dsim
-        # Connection-creation state is owned here; the canvas re-exposes it
-        # through the line_creation_state / line_start_block / line_start_port /
-        # temp_line / source_block_for_connection / default_routing_mode property
-        # proxies so external call sites are unchanged.
+        # Connection-creation state is owned here; callers reach it as
+        # ``canvas.connection_manager.connection_state``.
         self.connection_state = ConnectionState()
 
     def end_connection(self) -> None:
-        """Clear connection-creation state.
+        """Clear connection-creation state and re-evaluate the idle-glow gate.
 
-        Connection-creation state is owned here (no shared canvas state); this
-        is the manager-level entry point for clearing it.
+        The manager-level entry point for clearing the state: ``creation_state``
+        gates the canvas glow timer, so clearing it must re-evaluate that gate.
         """
         self.connection_state.end_connection()
+        self.canvas._evaluate_animation_state()
 
     # ==================== Port Click Detection ====================
 
@@ -83,9 +82,7 @@ class ConnectionManager:
                     if hasattr(block, "out_coords") and port_index < len(block.out_coords):
                         start_point = block.out_coords[port_index]
                         self.connection_state.temp_line = (start_point, pos)
-                    # Setting creation_state via the canvas proxy used to re-evaluate
-                    # the idle-glow timer; replicate that side effect now that the
-                    # owned connection state is written directly.
+                    # creation_state gates the idle-glow timer; re-evaluate it.
                     self.canvas._evaluate_animation_state()
                     logger.info(f"Started line creation from {block_name} output port {port_index}")
             elif self.connection_state.creation_state == "start":
@@ -266,11 +263,7 @@ class ConnectionManager:
         from modern_ui.interactions.interaction_manager import State
 
         try:
-            self.connection_state.end_connection()
-            # Clearing creation_state via the canvas proxy used to re-evaluate the
-            # idle-glow timer; replicate that side effect after clearing the owned
-            # connection state directly.
-            self.canvas._evaluate_animation_state()
+            self.end_connection()
             self.canvas.state = State.IDLE
             self.canvas.update()
             logger.debug("Line creation cancelled")

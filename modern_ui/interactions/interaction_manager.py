@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtCore import Qt, QPoint
 
 from modern_ui.renderers.canvas_renderer import compute_alignment_guides
 from modern_ui.widgets.canvas_state import (
@@ -59,17 +59,6 @@ class InteractionManager:
         """Transition to a new state."""
         logger.debug(f"State transition: {self.state} -> {new_state}")
         self.state = new_state
-
-    def reset_gesture_state(self):
-        """Clear all transient gesture state (selection/hover/drag/resize).
-
-        This is the single place a full gesture reset happens now that the
-        gesture slices are owned here rather than on a shared canvas state.
-        """
-        self.selection.clear()
-        self.hover.clear()
-        self.drag.end_drag()
-        self.resize.end_resize()
 
     def clear_hover(self):
         """Clear hover tracking (block/port/line).
@@ -141,10 +130,7 @@ class InteractionManager:
             self.canvas._cancel_line_creation()
         else:
             # 6. Rectangle Selection
-            # Start rectangle selection
-            self.selection.is_selecting = True
-            self.selection.rect_start = pos
-            self.selection.rect_end = pos
+            self.selection.start_selection(pos)
 
             # Clear existing selection unless Shift is held
             if not (modifiers & Qt.ShiftModifier):
@@ -256,13 +242,11 @@ class InteractionManager:
                 )
                 self.canvas.update()
 
-            elif (
-                self.canvas.connection_manager.connection_state.creation_state == "start"
-                and self.canvas.connection_manager.connection_state.temp_line
-            ):
+            else:
                 conn_state = self.canvas.connection_manager.connection_state
-                conn_state.temp_line = (conn_state.temp_line[0], pos)
-                self.canvas.update()
+                if conn_state.creation_state == "start" and conn_state.temp_line:
+                    conn_state.temp_line = (conn_state.temp_line[0], pos)
+                    self.canvas.update()
         except Exception as e:
             # Reset interaction state so a failure mid-drag does not leave the
             # canvas stuck in a dragging/resizing state.
@@ -304,26 +288,17 @@ class InteractionManager:
 
     # ==================== Block drag & resize ====================
     # Persistent drag/resize state lives in self.drag / self.resize (owned here);
-    # the canvas re-exposes it through its drag_*/resize_* property proxies.
+    # callers reach it as ``canvas.interaction_manager.drag`` / ``.resize``.
 
     def start_drag(self, block, pos):
         """Start dragging a block (or multiple selected blocks)."""
         try:
             self.canvas.state = State.DRAGGING
             self.canvas.dragging_block = block
-            # Calculate drag offset based on block's top-left corner
-            self.drag.offset = QPoint(pos.x() - block.left, pos.y() - block.top)
-
-            # Store RELATIVE offsets from the clicked block to all other selected blocks
-            # This maintains relative positions when dragging multiple blocks
-            self.drag.offsets = {}
-            self.drag.start_positions = {}  # Track starting positions for undo threshold
-            for b in self.canvas.dsim.blocks_list:
-                if b.selected:
-                    # Store offset from clicked block to this block
-                    self.drag.offsets[b] = QPoint(b.left - block.left, b.top - block.top)
-                    # Store starting position
-                    self.drag.start_positions[b] = (b.left, b.top)
+            # Record the clicked block's mouse offset plus relative offsets and
+            # start positions (undo threshold) for every selected block.
+            selected = [b for b in self.canvas.dsim.blocks_list if b.selected]
+            self.drag.start_drag(block, pos, selected)
 
             # Smart-alignment guides are recomputed on every move; start clean.
             self.canvas._alignment_guides = []
@@ -367,7 +342,7 @@ class InteractionManager:
                 return
 
             # Keep the snap tolerance constant in screen pixels across zoom.
-            zoom = self.canvas.zoom_pan_manager.state.zoom_factor or 1.0
+            zoom = self.canvas.zoom_factor or 1.0
             threshold = _ALIGNMENT_THRESHOLD_PX / zoom
 
             snap_dx, snap_dy, guide_lines = compute_alignment_guides(
@@ -396,10 +371,7 @@ class InteractionManager:
         """Start resizing a block."""
         try:
             self.canvas.state = State.RESIZING
-            self.resize.block = block
-            self.resize.handle = handle
-            self.resize.start_pos = pos
-            self.resize.start_rect = QRect(block.left, block.top, block.width, block.height)
+            self.resize.start_resize(block, handle, pos)
 
             logger.debug(f"Started resizing block {block.name} from handle {handle}")
         except Exception as e:
@@ -527,8 +499,7 @@ class InteractionManager:
                 # Reset drag state
                 self.canvas.state = State.IDLE
                 self.canvas.dragging_block = None
-                self.drag.offset = None
-                self.drag.start_positions = {}
+                self.drag.end_drag()
                 self.canvas._alignment_guides = []  # clear smart-alignment overlay
                 self.canvas._update_line_positions()
                 if moved_significantly:
@@ -568,11 +539,7 @@ class InteractionManager:
 
                 # Reset resize state
                 self.canvas.state = State.IDLE
-                self.resize.block = None
-                self.resize.handle = None
-                self.resize.start_rect = None
-                self.resize.start_pos = None
-                self.resize.at_limit = False
+                self.resize.end_resize()
                 self.canvas.setCursor(Qt.ArrowCursor)
 
                 # Ensure lines are updated after resize

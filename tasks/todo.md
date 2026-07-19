@@ -227,6 +227,19 @@ performance items with a safe fix are now **fixed** (see
   Remaining (separate, larger design rounds): the trivially small main-window
   managers (`window_setup_manager`, `view_actions_manager`,
   `property_controller`, ...) which the 2026-06-13 review rated severity-low.
+  Post-merge cleanup 2026-07-19 (4-agent /simplify pass): managers now call the
+  slice-dataclass transition methods instead of inlining them, `end_connection()`
+  carries the idle-glow gate re-eval, dead `reset_gesture_state()` deleted,
+  stale proxy-era comments fixed. Deferred polish (low severity, needs its own
+  round): semantic pan lifecycle on ZoomPanManager (`begin_pan/pan_by/end_pan` —
+  middle-button pan writes `state.is_panning` from InteractionManager) and a
+  `center_on(world_point)` to dedup the pan-centering math (main_window
+  center-on-error / fit-to-window / minimap click); `drag.offset` doubles as an
+  absolute click pos for line point/segment drags (dedicated field or
+  `start_line_item_drag()` API); `dragging_block`/`dragging_item` still plain
+  canvas attrs outside `DragState`; `interaction_manager.state` (FSM proxy) vs
+  `zoom_pan_manager.state` (owned slice) naming collision;
+  `_evaluate_animation_state` is cross-manager API but underscore-private.
 - [x] Break the `lib/` ↔ `modern_ui/` import layering via dependency inversion
   (move shared theming into `lib`), instead of function-local imports — done
   2026-07-18: the design-token/theme system moved to `lib/theming/theme_manager.py`

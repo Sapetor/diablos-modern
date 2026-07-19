@@ -149,8 +149,7 @@ class HistoryManager:
             self.dsim.line_list.clear()
 
             # Clear hover state (old objects are now invalid) through the owner.
-            if hasattr(self.canvas, "interaction_manager"):
-                self.canvas.interaction_manager.clear_hover()
+            self.canvas.interaction_manager.clear_hover()
 
             # Clear validation errors when state is restored (undo/redo)
             if hasattr(self.canvas, "clear_validation"):

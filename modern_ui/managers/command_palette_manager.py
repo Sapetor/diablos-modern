@@ -213,33 +213,13 @@ class CommandPaletteManager:
         # Convert to canvas widget coordinates
         canvas_widget_pos = canvas.mapFromGlobal(global_pos)
 
-        # Check if mouse is within canvas bounds
+        # Convert to world coordinates (undo pan and zoom) via the shared
+        # helper; fall back to the center of the visible canvas area when the
+        # mouse is outside the canvas.
         if canvas.rect().contains(canvas_widget_pos):
-            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int(
-                (canvas_widget_pos.x() - canvas.zoom_pan_manager.state.pan_offset.x())
-                / canvas.zoom_pan_manager.state.zoom_factor
-            )
-            canvas_y = int(
-                (canvas_widget_pos.y() - canvas.zoom_pan_manager.state.pan_offset.y())
-                / canvas.zoom_pan_manager.state.zoom_factor
-            )
-            canvas_pos = QPoint(canvas_x, canvas_y)
+            canvas_pos = canvas.screen_to_world(canvas_widget_pos)
         else:
-            # Fallback: add at center of visible canvas area
-            center_x = canvas.width() // 2
-            center_y = canvas.height() // 2
-
-            # Convert screen coordinates to canvas coordinates (undo pan and zoom)
-            canvas_x = int(
-                (center_x - canvas.zoom_pan_manager.state.pan_offset.x())
-                / canvas.zoom_pan_manager.state.zoom_factor
-            )
-            canvas_y = int(
-                (center_y - canvas.zoom_pan_manager.state.pan_offset.y())
-                / canvas.zoom_pan_manager.state.zoom_factor
-            )
-            canvas_pos = QPoint(canvas_x, canvas_y)
+            canvas_pos = canvas.screen_to_world(QPoint(canvas.width() // 2, canvas.height() // 2))
 
         # Add the block using the canvas method
         canvas.add_block_from_palette(menu_block, canvas_pos)

@@ -27,31 +27,21 @@ class ViewActionsManager:
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.set_zoom(factor)
-            window.zoom_status.setText(
-                f"zoom {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%"
-            )
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
 
     def zoom_in(self):
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.zoom_in()
-            window.zoom_status.setText(
-                f"zoom {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%"
-            )
-            window.toast.show_message(
-                f"🔍 Zoom: {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%", 1500
-            )
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
+            window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
 
     def zoom_out(self):
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.zoom_out()
-            window.zoom_status.setText(
-                f"zoom {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%"
-            )
-            window.toast.show_message(
-                f"🔍 Zoom: {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%", 1500
-            )
+            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
+            window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
 
     def toggle_grid(self):
         """Toggle grid visibility."""
@@ -130,13 +120,11 @@ class ViewActionsManager:
         center_y = (min_y + max_y) / 2
 
         # Calculate pan offset to center the diagram
-        offset_x = canvas_width / 2 - center_x * window.canvas.zoom_pan_manager.state.zoom_factor
-        offset_y = canvas_height / 2 - center_y * window.canvas.zoom_pan_manager.state.zoom_factor
+        offset_x = canvas_width / 2 - center_x * window.canvas.zoom_factor
+        offset_y = canvas_height / 2 - center_y * window.canvas.zoom_factor
         window.canvas.zoom_pan_manager.state.pan_offset = QPoint(int(offset_x), int(offset_y))
 
         # Update display
         window.canvas.update()
-        window.zoom_status.setText(
-            f"zoom {int(window.canvas.zoom_pan_manager.state.zoom_factor * 100)}%"
-        )
+        window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
         window.status_message.setText(f"Fit {len(blocks)} block(s) to window")

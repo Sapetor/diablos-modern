@@ -31,9 +31,8 @@ class RenderingManager:
         # pass (see decorations_suppressed) without mutating interaction state.
         self._suppress_hover = False
         # Rendering owns the diagram-validation state because it also computes
-        # it (run_validation runs the validator). The canvas re-exposes these as
-        # the validation_errors / blocks_with_errors / blocks_with_warnings /
-        # show_validation_errors proxies.
+        # it (run_validation runs the validator); callers reach it as
+        # ``canvas.rendering_manager.validation_state``.
         self.validation_state = ValidationState()
 
     # ==================== Block Rendering ====================
@@ -152,10 +151,8 @@ class RenderingManager:
 
     def clear_validation(self) -> None:
         """Clear validation errors and hide indicators."""
-        self.validation_state.errors = []
-        self.validation_state.blocks_with_errors = set()
-        self.validation_state.blocks_with_warnings = set()
-        self.validation_state.show_errors = False
+        self.validation_state.clear()
+        self.validation_state.show_errors = False  # clear() deliberately leaves this
         self.canvas.update()
 
     def draw_block_error_indicator(
