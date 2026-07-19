@@ -16,6 +16,7 @@ from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
+from lib.engine import graph_analysis
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -637,180 +638,47 @@ class SimulationEngine:
             self.error_msg = f"Block '{block.name}' failed: {e}"
             return False
 
+    def _active_line_source(self):
+        """Lines to analyze: the active (post-init) list once execution is set
+        up, else the model's edit-time list — mirrors the pre-extraction
+        ``use_active`` selection the graph queries shared."""
+        use_active = len(self.active_blocks_list) > 0
+        return self.active_line_list if use_active else self.model.line_list
+
     def check_diagram_integrity(self):
-        """
-        Verify that all block ports are properly connected.
+        """Verify that all block ports are properly connected.
 
         Returns:
             bool: True if diagram is valid, False otherwise
         """
-        logger.debug("Checking diagram integrity")
-        error_trigger = False
-
-        # Use active lists (fallback to model if not initialized, but ideally active)
         blocks_to_check = (
             self.active_blocks_list if self.active_blocks_list else self.model.blocks_list
         )
-        # get_neighbors already uses active_line_list
-
-        for block in blocks_to_check:
-            inputs, outputs = self.get_neighbors(block.name)
-
-            # Get optional inputs from block instance (if available)
-            optional_inputs = set()
-            if hasattr(block, "block_instance") and block.block_instance:
-                if hasattr(block.block_instance, "optional_inputs"):
-                    optional_inputs = set(block.block_instance.optional_inputs)
-
-            # Get optional outputs from block instance (if available)
-            optional_outputs = set()
-            if hasattr(block, "block_instance") and block.block_instance:
-                if hasattr(block.block_instance, "optional_outputs"):
-                    optional_outputs = set(block.block_instance.optional_outputs)
-                # Also check requires_outputs property
-                if hasattr(block.block_instance, "requires_outputs"):
-                    if not block.block_instance.requires_outputs:
-                        optional_outputs = set(range(block.out_ports))
-
-            # Reject multiple wires landing on the same input port: propagate_outputs
-            # overwrites input_queue[dstport] per connection, so extra wires would
-            # silently last-write-win with no error surfaced to the user.
-            dst_counts = {}
-            for tupla in inputs:
-                dst_counts[tupla["dstport"]] = dst_counts.get(tupla["dstport"], 0) + 1
-            duplicated = sorted(p for p, c in dst_counts.items() if c > 1)
-            if duplicated:
-                logger.error(
-                    f"ERROR. MULTIPLE CONNECTIONS INTO SAME INPUT PORT: "
-                    f"{block.name} PORT(S): {duplicated}"
-                )
-                error_trigger = True
-
-            # Check input ports
-            required_in_ports = block.in_ports - len(optional_inputs)
-            connected_required_inputs = sum(
-                1 for t in inputs if t["dstport"] not in optional_inputs
-            )
-
-            if required_in_ports == 1 and connected_required_inputs < 1:
-                logger.error(f"ERROR. UNLINKED INPUT IN BLOCK: {block.name}")
-                error_trigger = True
-            elif required_in_ports > 1 or (block.in_ports > 1 and required_in_ports > 0):
-                in_vector = np.zeros(block.in_ports)
-                for tupla in inputs:
-                    in_vector[tupla["dstport"]] += 1
-                # Find unlinked ports that are NOT optional
-                unlinked = [
-                    i
-                    for i in range(block.in_ports)
-                    if in_vector[i] == 0 and i not in optional_inputs
-                ]
-                if len(unlinked) > 0:
-                    logger.error(
-                        f"ERROR. UNLINKED INPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}"
-                    )
-                    error_trigger = True
-
-            # Check output ports
-            required_out_ports = block.out_ports - len(optional_outputs)
-            connected_required_outputs = sum(
-                1 for t in outputs if t["srcport"] not in optional_outputs
-            )
-
-            if required_out_ports == 1 and connected_required_outputs < 1:
-                logger.error(f"ERROR. UNLINKED OUTPUT PORT: {block.name}")
-                error_trigger = True
-            elif required_out_ports > 1 or (block.out_ports > 1 and required_out_ports > 0):
-                out_vector = np.zeros(block.out_ports)
-                for tupla in outputs:
-                    out_vector[tupla["srcport"]] += 1
-                # Find unlinked ports that are NOT optional
-                unlinked = [
-                    i
-                    for i in range(block.out_ports)
-                    if out_vector[i] == 0 and i not in optional_outputs
-                ]
-                if len(unlinked) > 0:
-                    logger.error(
-                        f"ERROR. UNLINKED OUTPUT(S) IN BLOCK: {block.name} PORT(S): {unlinked}"
-                    )
-                    error_trigger = True
-
-        if error_trigger:
-            logger.error("Diagram integrity check failed.")
-            return False
-        logger.debug("NO ISSUES FOUND IN DIAGRAM")
-        return True
+        return graph_analysis.check_diagram_integrity(blocks_to_check, self._active_line_source())
 
     def get_neighbors(self, block_name):
-        """
-        Get all input and output connections for a block.
-
-        Args:
-            block_name: Name of the block
+        """Get all input and output connections for a block.
 
         Returns:
             tuple: (inputs, outputs) where each is a list of connection dicts
         """
-        inputs = []
-        outputs = []
-
-        # Use active_line_list if active_blocks_list is populated (implies execution setup)
-        # Otherwise fallback to model list logic
-        use_active = len(self.active_blocks_list) > 0
-        line_source = self.active_line_list if use_active else self.model.line_list
-
-        for line in line_source:
-            if line.dstblock == block_name:
-                inputs.append(
-                    {"srcblock": line.srcblock, "srcport": line.srcport, "dstport": line.dstport}
-                )
-            if line.srcblock == block_name:
-                outputs.append(
-                    {"dstblock": line.dstblock, "srcport": line.srcport, "dstport": line.dstport}
-                )
-
-        return inputs, outputs
+        return graph_analysis.get_neighbors(block_name, self._active_line_source())
 
     def get_outputs(self, block_name):
-        """
-        Get all output connections for a block.
-
-        Args:
-            block_name: Name of the block
+        """Get all output connections for a block.
 
         Returns:
             list: Output connections
         """
-        outputs = []
-        # Use active_line_list if active_blocks_list is populated
-        use_active = len(self.active_blocks_list) > 0
-        line_source = self.active_line_list if use_active else self.model.line_list
-
-        for line in line_source:
-            if line.srcblock == block_name:
-                outputs.append(
-                    {"dstblock": line.dstblock, "srcport": line.srcport, "dstport": line.dstport}
-                )
-        return outputs
+        return graph_analysis.get_outputs(block_name, self._active_line_source())
 
     def get_max_hierarchy(self):
-        """
-        Find the maximum hierarchy level in the diagram.
+        """Find the maximum hierarchy level in the diagram.
 
         Returns:
             int: Maximum hierarchy value
         """
-        max_h = -1
-        # Use active_blocks_list
-        for block in self.active_blocks_list:
-            if block.hierarchy > max_h:
-                max_h = block.hierarchy
-        return max_h
-
-    # detect_algebraic_loops doesn't access lists directly, uses get_outputs
-
-    # children_recognition uses get_outputs
+        return graph_analysis.get_max_hierarchy(self.active_blocks_list)
 
     def reset_execution_data(self) -> None:
         """Reset execution state for all blocks.
@@ -884,9 +752,7 @@ class SimulationEngine:
                         del block.exec_params[stale_key]
 
     def detect_algebraic_loops(self, uncomputed_blocks):
-        """
-        Detect if there are algebraic loops in uncomputed blocks using
-        topological sort (Kahn's algorithm).
+        """Detect algebraic loops among uncomputed blocks (Kahn's algorithm).
 
         Args:
             uncomputed_blocks: List of blocks that haven't been computed
@@ -895,41 +761,12 @@ class SimulationEngine:
             tuple: (is_algebraic: bool, cycle_nodes: list) - True if loop detected,
                    with list of block names involved in the cycle
         """
-        if len(uncomputed_blocks) == 0:
-            return False, []
-
-        logger.debug("Checking for algebraic loops...")
-        logger.debug(f"Uncomputed blocks: {[b.name for b in uncomputed_blocks]}")
-
-        uncomputed_block_names = {block.name for block in uncomputed_blocks}
-
-        # Build the graph only with uncomputed blocks
-        graph = {block.name: [] for block in uncomputed_blocks}
-        for block in uncomputed_blocks:
-            children = self.get_outputs(block.name)
-            for child_info in children:
-                child_name = child_info["dstblock"]
-                if child_name in uncomputed_block_names:
-                    graph[block.name].append(child_name)
-
-        # Topological sort (Kahn). Any node left in a cycle has unresolved
-        # dependencies -> a non-empty `cycle_nodes` means an algebraic loop.
-        _order, cycle_nodes = kahn_topological_order((b.name for b in uncomputed_blocks), graph)
-
-        if cycle_nodes:
-            # Check if the cycle contains any memory blocks
-            has_memory_block = any(node in self.memory_blocks for node in cycle_nodes)
-
-            if not has_memory_block:
-                logger.error("ALGEBRAIC LOOP DETECTED")
-                logger.error(f"Blocks involved: {cycle_nodes}")
-                return True, cycle_nodes
-
-        return False, []
+        return graph_analysis.detect_algebraic_loops(
+            uncomputed_blocks, self._active_line_source(), self.memory_blocks
+        )
 
     def children_recognition(self, block_name, children_list):
-        """
-        Recursively find all children (downstream blocks) of a block.
+        """Recursively find all children (downstream blocks) of a block.
 
         Args:
             block_name: Name of the parent block
@@ -938,15 +775,9 @@ class SimulationEngine:
         Returns:
             list: Updated children list
         """
-        outputs = self.get_outputs(block_name)
-
-        for output in outputs:
-            child_name = output["dstblock"]
-            if child_name not in children_list:
-                children_list.append(child_name)
-                self.children_recognition(child_name, children_list)
-
-        return children_list
+        return graph_analysis.children_recognition(
+            block_name, children_list, self._active_line_source()
+        )
 
     def update_sim_params(
         self,
@@ -1234,19 +1065,12 @@ class SimulationEngine:
     def _children_recognition(
         self, block_name: str, children_list: List[Dict]
     ) -> Tuple[bool, List[Dict]]:
-        """
-        Check if block_name is in the children list.
+        """Check if block_name is in the children list.
 
         Returns:
             Tuple of (is_child, matching_connections)
         """
-        child_ports = []
-        for child in children_list:
-            if child.get("dstblock") == block_name:
-                child_ports.append(child)
-        if not child_ports:
-            return False, []
-        return True, child_ports
+        return graph_analysis.is_child_of(block_name, children_list)
 
     def check_global_list(self) -> bool:
         """Check if all blocks have been computed."""
