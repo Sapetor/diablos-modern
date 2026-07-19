@@ -233,7 +233,6 @@ class CanvasState:
     management and easier debugging/serialization.
     """
 
-    zoom_pan: ZoomPanState = field(default_factory=ZoomPanState)
     grid: GridState = field(default_factory=GridState)
     selection: SelectionState = field(default_factory=SelectionState)
     hover: HoverState = field(default_factory=HoverState)
@@ -243,8 +242,12 @@ class CanvasState:
     validation: ValidationState = field(default_factory=ValidationState)
 
     def reset_all(self):
-        """Reset all state to defaults."""
-        self.zoom_pan.reset()
+        """Reset all state to defaults.
+
+        Zoom/pan state now lives in ``ZoomPanManager`` (see
+        ``ZoomPanManager.reset_view``) and is reset through the manager, so it
+        is intentionally not touched here.
+        """
         self.grid = GridState()
         self.selection.clear()
         self.hover.clear()

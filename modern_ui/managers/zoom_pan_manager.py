@@ -6,6 +6,8 @@ Handles view transformation, zooming, and panning operations.
 import logging
 from PyQt5.QtCore import Qt, QPoint
 
+from modern_ui.widgets.canvas_state import ZoomPanState
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,9 +27,9 @@ class ZoomPanManager:
         self.canvas = canvas
         self.dsim = canvas.dsim
 
-        # Zoom and Pan state
-        self.zoom_factor = 1.0
-        self.pan_offset = QPoint(0, 0)
+        # Zoom and Pan state — owned here; the canvas re-exposes it through
+        # zoom_factor / pan_offset / panning / last_pan_pos property proxies.
+        self.state = ZoomPanState()
 
     def _clamp_zoom(self, factor):
         """Constrain a proposed zoom factor to the supported range."""
@@ -44,8 +46,8 @@ class ZoomPanManager:
         """
         # zoom_factor is clamped to >= MIN_ZOOM everywhere it is set, but guard
         # against a zero/negative value defensively to avoid division crashes.
-        zoom = self.zoom_factor if self.zoom_factor > 0 else 1.0
-        return (pos - self.pan_offset) / zoom
+        zoom = self.state.zoom_factor if self.state.zoom_factor > 0 else 1.0
+        return (pos - self.state.pan_offset) / zoom
 
     def world_to_screen(self, pos):
         """Converts world coordinates to screen coordinates.
@@ -56,15 +58,15 @@ class ZoomPanManager:
         Returns:
             QPoint: Screen coordinates
         """
-        return pos * self.zoom_factor + self.pan_offset
+        return pos * self.state.zoom_factor + self.state.pan_offset
 
     def zoom_in(self):
         """Zoom in by 10%, centered on canvas."""
-        self._zoom_around_center(self.zoom_factor * 1.1)
+        self._zoom_around_center(self.state.zoom_factor * 1.1)
 
     def zoom_out(self):
         """Zoom out by 10%, centered on canvas."""
-        self._zoom_around_center(self.zoom_factor / 1.1)
+        self._zoom_around_center(self.state.zoom_factor / 1.1)
 
     def _zoom_around_center(self, new_factor):
         """Zoom while keeping the canvas center fixed."""
@@ -82,14 +84,12 @@ class ZoomPanManager:
         # World point under the anchor before zoom
         world_anchor = self.screen_to_world(screen_pos)
         # Apply new zoom
-        self.zoom_factor = new_factor
-        self.canvas.zoom_factor = new_factor
+        self.state.zoom_factor = new_factor
         # Adjust pan so the same world point stays under the anchor
-        self.pan_offset = QPoint(
+        self.state.pan_offset = QPoint(
             int(screen_pos.x() - world_anchor.x() * new_factor),
             int(screen_pos.y() - world_anchor.y() * new_factor),
         )
-        self.canvas.pan_offset = self.pan_offset
         self.canvas.update()
 
     def set_zoom(self, factor):
@@ -99,8 +99,7 @@ class ZoomPanManager:
             factor (float): New zoom factor
         """
         factor = self._clamp_zoom(factor)
-        self.zoom_factor = factor
-        self.canvas.zoom_factor = factor  # Keep canvas.zoom_factor in sync
+        self.state.zoom_factor = factor
         self.canvas.update()
 
     def zoom_to_fit(self):
@@ -130,21 +129,18 @@ class ZoomPanManager:
         canvas_center_x = self.canvas.width() / 2
         canvas_center_y = self.canvas.height() / 2
 
-        self.pan_offset = QPoint(
+        self.state.pan_offset = QPoint(
             int(canvas_center_x - bbox_center_x * target_zoom),
             int(canvas_center_y - bbox_center_y * target_zoom),
         )
-        self.canvas.pan_offset = self.pan_offset
 
         self.set_zoom(target_zoom)
         logger.info(f"Zoomed to fit: {len(self.dsim.blocks_list)} blocks")
 
     def reset_view(self):
         """Reset zoom and pan to default values."""
-        self.zoom_factor = 1.0
-        self.pan_offset = QPoint(0, 0)
-        self.canvas.zoom_factor = 1.0
-        self.canvas.pan_offset = QPoint(0, 0)
+        self.state.zoom_factor = 1.0
+        self.state.pan_offset = QPoint(0, 0)
         self.canvas.update()
         logger.info("View reset to defaults")
 
@@ -164,7 +160,7 @@ class ZoomPanManager:
         """
         if event.gestureType() != Qt.ZoomNativeGesture:
             return False
-        new_factor = self.zoom_factor * (1.0 + event.value())
+        new_factor = self.state.zoom_factor * (1.0 + event.value())
         self.zoom_at(event.pos(), new_factor)
         return True
 
@@ -183,9 +179,9 @@ class ZoomPanManager:
         if modifiers & (Qt.ControlModifier | Qt.MetaModifier):
             # Zoom mode — zoom toward mouse cursor (clamped via zoom_at)
             if event.angleDelta().y() > 0:
-                new_factor = self.zoom_factor * 1.1
+                new_factor = self.state.zoom_factor * 1.1
             else:
-                new_factor = self.zoom_factor / 1.1
+                new_factor = self.state.zoom_factor / 1.1
             self.zoom_at(event.pos(), new_factor)
             return
         else:
@@ -198,8 +194,7 @@ class ZoomPanManager:
             pan_delta = QPoint(int(delta_x * scroll_sensitivity), int(delta_y * scroll_sensitivity))
 
             # Apply panning offset
-            self.pan_offset += pan_delta
-            self.canvas.pan_offset = self.pan_offset  # Keep canvas.pan_offset in sync
+            self.state.pan_offset += pan_delta
             self.canvas.update()
 
-            logger.debug(f"Canvas panned by {pan_delta}, new offset: {self.pan_offset}")
+            logger.debug(f"Canvas panned by {pan_delta}, new offset: {self.state.pan_offset}")

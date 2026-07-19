@@ -67,22 +67,22 @@ class TestZoomClamping:
         mgr = ZoomPanManager(_FakeCanvas())
         for _ in range(500):
             mgr.zoom_out()
-        assert mgr.zoom_factor == pytest.approx(ZoomPanManager.MIN_ZOOM)
-        # Canvas mirror stays in sync.
-        assert mgr.canvas.zoom_factor == pytest.approx(ZoomPanManager.MIN_ZOOM)
+        # zoom_factor is owned by the manager's state slice, which the canvas
+        # re-exposes through its zoom_factor proxy (single source of truth).
+        assert mgr.state.zoom_factor == pytest.approx(ZoomPanManager.MIN_ZOOM)
 
     def test_repeated_zoom_in_hits_ceiling(self):
         mgr = ZoomPanManager(_FakeCanvas())
         for _ in range(500):
             mgr.zoom_in()
-        assert mgr.zoom_factor == pytest.approx(ZoomPanManager.MAX_ZOOM)
+        assert mgr.state.zoom_factor == pytest.approx(ZoomPanManager.MAX_ZOOM)
 
     def test_set_zoom_clamps_both_ends(self):
         mgr = ZoomPanManager(_FakeCanvas())
         mgr.set_zoom(1e-9)
-        assert mgr.zoom_factor == pytest.approx(ZoomPanManager.MIN_ZOOM)
+        assert mgr.state.zoom_factor == pytest.approx(ZoomPanManager.MIN_ZOOM)
         mgr.set_zoom(1e9)
-        assert mgr.zoom_factor == pytest.approx(ZoomPanManager.MAX_ZOOM)
+        assert mgr.state.zoom_factor == pytest.approx(ZoomPanManager.MAX_ZOOM)
 
     def test_pan_offset_stays_in_int32_range_after_runaway(self):
         """The crash itself: tiny zoom -> huge world coords -> QPoint int overflow.
@@ -94,13 +94,13 @@ class TestZoomClamping:
         for _ in range(1000):
             mgr.zoom_out()
         # QPoint stores 32-bit ints; assert well within range.
-        assert abs(mgr.pan_offset.x()) < 2**31
-        assert abs(mgr.pan_offset.y()) < 2**31
+        assert abs(mgr.state.pan_offset.x()) < 2**31
+        assert abs(mgr.state.pan_offset.y()) < 2**31
 
     def test_screen_to_world_safe_when_zoom_zero(self):
         """Defensive guard: a zero zoom factor must not divide-by-zero."""
         mgr = ZoomPanManager(_FakeCanvas())
-        mgr.zoom_factor = 0.0
+        mgr.state.zoom_factor = 0.0
         # Should fall back to 1.0 internally rather than raise.
         world = mgr.screen_to_world(QPoint(100, 100))
         assert world == QPoint(100, 100)
@@ -111,8 +111,8 @@ class TestZoomClamping:
         mgr = ZoomPanManager(_FakeCanvas())
         for _ in range(500):
             mgr.handle_wheel_event(_WheelEvent(-120, Qt.ControlModifier))
-        assert mgr.zoom_factor >= ZoomPanManager.MIN_ZOOM
-        assert abs(mgr.pan_offset.x()) < 2**31
+        assert mgr.state.zoom_factor >= ZoomPanManager.MIN_ZOOM
+        assert abs(mgr.state.pan_offset.x()) < 2**31
 
 
 @pytest.mark.unit
@@ -138,8 +138,8 @@ class TestNativeGesture:
         for _ in range(1000):
             handled = mgr.handle_native_gesture(_Gesture(-0.05))
             assert handled is True
-        assert mgr.zoom_factor >= ZoomPanManager.MIN_ZOOM
-        assert abs(mgr.pan_offset.x()) < 2**31
+        assert mgr.state.zoom_factor >= ZoomPanManager.MIN_ZOOM
+        assert abs(mgr.state.pan_offset.x()) < 2**31
 
     def test_non_zoom_gesture_ignored(self):
         from PyQt5.QtCore import Qt

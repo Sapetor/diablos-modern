@@ -1386,46 +1386,46 @@ class ModernCanvas(QWidget):
     # These allow existing code to work while migrating to the new state object
     # =========================================================================
 
-    # Zoom/Pan properties
+    # Zoom/Pan properties — state owned by ZoomPanManager
     @property
     def zoom_factor(self):
-        return self.canvas_state.zoom_pan.zoom_factor
+        return self.zoom_pan_manager.state.zoom_factor
 
     @zoom_factor.setter
     def zoom_factor(self, value):
-        self.canvas_state.zoom_pan.zoom_factor = value
+        self.zoom_pan_manager.state.zoom_factor = value
 
     @property
     def zoom_level(self):
-        return self.canvas_state.zoom_pan.zoom_factor
+        return self.zoom_pan_manager.state.zoom_factor
 
     @zoom_level.setter
     def zoom_level(self, value):
-        self.canvas_state.zoom_pan.zoom_factor = value
+        self.zoom_pan_manager.state.zoom_factor = value
 
     @property
     def pan_offset(self):
-        return self.canvas_state.zoom_pan.pan_offset
+        return self.zoom_pan_manager.state.pan_offset
 
     @pan_offset.setter
     def pan_offset(self, value):
-        self.canvas_state.zoom_pan.pan_offset = value
+        self.zoom_pan_manager.state.pan_offset = value
 
     @property
     def panning(self):
-        return self.canvas_state.zoom_pan.is_panning
+        return self.zoom_pan_manager.state.is_panning
 
     @panning.setter
     def panning(self, value):
-        self.canvas_state.zoom_pan.is_panning = value
+        self.zoom_pan_manager.state.is_panning = value
 
     @property
     def last_pan_pos(self):
-        return self.canvas_state.zoom_pan.last_pan_pos
+        return self.zoom_pan_manager.state.last_pan_pos
 
     @last_pan_pos.setter
     def last_pan_pos(self, value):
-        self.canvas_state.zoom_pan.last_pan_pos = value
+        self.zoom_pan_manager.state.last_pan_pos = value
 
     # Grid properties
     @property
