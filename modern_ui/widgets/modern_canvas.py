@@ -115,6 +115,11 @@ class ModernCanvas(QWidget):
         # clearing to it.
         self.canvas_state.connection_manager = self.connection_manager
 
+        # Validation state is owned by RenderingManager (which computes it); wire
+        # the back-reference so CanvasState's reset paths can delegate validation
+        # clearing to it.
+        self.canvas_state.rendering_manager = self.rendering_manager
+
         # Plain attribute set only in start_drag (never via canvas_state); guard
         # against AttributeError when _finish_drag reads it before any drag.
         self.dragging_block = None
@@ -1633,35 +1638,35 @@ class ModernCanvas(QWidget):
     def default_routing_mode(self, value):
         self.connection_manager.connection_state.default_routing_mode = value
 
-    # Validation properties
+    # Validation properties (state owned by RenderingManager, which computes it)
     @property
     def validation_errors(self):
-        return self.canvas_state.validation.errors
+        return self.rendering_manager.validation_state.errors
 
     @validation_errors.setter
     def validation_errors(self, value):
-        self.canvas_state.validation.errors = value
+        self.rendering_manager.validation_state.errors = value
 
     @property
     def blocks_with_errors(self):
-        return self.canvas_state.validation.blocks_with_errors
+        return self.rendering_manager.validation_state.blocks_with_errors
 
     @blocks_with_errors.setter
     def blocks_with_errors(self, value):
-        self.canvas_state.validation.blocks_with_errors = value
+        self.rendering_manager.validation_state.blocks_with_errors = value
 
     @property
     def blocks_with_warnings(self):
-        return self.canvas_state.validation.blocks_with_warnings
+        return self.rendering_manager.validation_state.blocks_with_warnings
 
     @blocks_with_warnings.setter
     def blocks_with_warnings(self, value):
-        self.canvas_state.validation.blocks_with_warnings = value
+        self.rendering_manager.validation_state.blocks_with_warnings = value
 
     @property
     def show_validation_errors(self):
-        return self.canvas_state.validation.show_errors
+        return self.rendering_manager.validation_state.show_errors
 
     @show_validation_errors.setter
     def show_validation_errors(self, value):
-        self.canvas_state.validation.show_errors = value
+        self.rendering_manager.validation_state.show_errors = value

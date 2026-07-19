@@ -10,6 +10,8 @@ from PyQt5.QtCore import QRect, QPoint, Qt
 from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QToolTip
 
+from modern_ui.widgets.canvas_state import ValidationState
+
 if TYPE_CHECKING:
     from modern_ui.widgets.modern_canvas import ModernCanvas
 
@@ -28,6 +30,11 @@ class RenderingManager:
         # When True, hover decoration is suppressed for the duration of a draw
         # pass (see decorations_suppressed) without mutating interaction state.
         self._suppress_hover = False
+        # Rendering owns the diagram-validation state because it also computes
+        # it (run_validation runs the validator). The canvas re-exposes these as
+        # the validation_errors / blocks_with_errors / blocks_with_warnings /
+        # show_validation_errors proxies.
+        self.validation_state = ValidationState()
 
     # ==================== Block Rendering ====================
 
@@ -124,20 +131,20 @@ class RenderingManager:
             from lib.diagram_validator import DiagramValidator
 
             validator = DiagramValidator(self.dsim)
-            self.canvas.validation_errors = validator.validate()
+            self.validation_state.errors = validator.validate()
 
             # Update sets of blocks with errors/warnings
-            self.canvas.blocks_with_errors = validator.get_blocks_with_errors()
-            self.canvas.blocks_with_warnings = validator.get_blocks_with_warnings()
+            self.validation_state.blocks_with_errors = validator.get_blocks_with_errors()
+            self.validation_state.blocks_with_warnings = validator.get_blocks_with_warnings()
 
             # Enable error visualization
-            self.canvas.show_validation_errors = True
+            self.validation_state.show_errors = True
 
             # Trigger repaint
             self.canvas.update()
 
-            logger.info(f"Validation complete: {len(self.canvas.validation_errors)} issues found")
-            return self.canvas.validation_errors
+            logger.info(f"Validation complete: {len(self.validation_state.errors)} issues found")
+            return self.validation_state.errors
 
         except Exception as e:
             logger.error(f"Error running validation: {str(e)}")
@@ -145,10 +152,10 @@ class RenderingManager:
 
     def clear_validation(self) -> None:
         """Clear validation errors and hide indicators."""
-        self.canvas.validation_errors = []
-        self.canvas.blocks_with_errors = set()
-        self.canvas.blocks_with_warnings = set()
-        self.canvas.show_validation_errors = False
+        self.validation_state.errors = []
+        self.validation_state.blocks_with_errors = set()
+        self.validation_state.blocks_with_warnings = set()
+        self.validation_state.show_errors = False
         self.canvas.update()
 
     def draw_block_error_indicator(

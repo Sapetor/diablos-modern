@@ -234,7 +234,6 @@ class CanvasState:
     """
 
     grid: GridState = field(default_factory=GridState)
-    validation: ValidationState = field(default_factory=ValidationState)
 
     # Back-reference to the gesture-state owner, wired by ModernCanvas after the
     # manager is constructed. The gesture slices (selection/hover/drag/resize)
@@ -248,23 +247,31 @@ class CanvasState:
     # connection-creation state.
     connection_manager: Any = field(default=None, repr=False, compare=False)
 
+    # Back-reference to the validation-state owner, wired by ModernCanvas after
+    # the manager is constructed. ValidationState lives on RenderingManager
+    # (which computes it); the reset paths below delegate to it so a canvas-level
+    # reset still clears validation state.
+    rendering_manager: Any = field(default=None, repr=False, compare=False)
+
     def reset_all(self):
         """Reset all state to defaults.
 
         Zoom/pan state lives in ``ZoomPanManager`` (reset via
         ``ZoomPanManager.reset_view``), the gesture slices
         (selection/hover/drag/resize) live in ``InteractionManager`` (reset via
-        ``InteractionManager.reset_gesture_state``), and connection-creation
+        ``InteractionManager.reset_gesture_state``), connection-creation
         state lives in ``ConnectionManager`` (reset via
-        ``ConnectionManager.end_connection``), so those are cleared through
-        their owning manager rather than from fields here.
+        ``ConnectionManager.end_connection``), and validation state lives in
+        ``RenderingManager`` (reset via ``ValidationState.clear``), so those are
+        cleared through their owning manager rather than from fields here.
         """
         self.grid = GridState()
         if self.interaction_manager is not None:
             self.interaction_manager.reset_gesture_state()
         if self.connection_manager is not None:
             self.connection_manager.end_connection()
-        self.validation.clear()
+        if self.rendering_manager is not None:
+            self.rendering_manager.validation_state.clear()
 
     def reset_interaction_state(self):
         """Reset transient interaction state (hover, drag, resize, selection)."""
