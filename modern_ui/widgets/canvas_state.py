@@ -234,7 +234,6 @@ class CanvasState:
     """
 
     grid: GridState = field(default_factory=GridState)
-    connection: ConnectionState = field(default_factory=ConnectionState)
     validation: ValidationState = field(default_factory=ValidationState)
 
     # Back-reference to the gesture-state owner, wired by ModernCanvas after the
@@ -243,23 +242,33 @@ class CanvasState:
     # canvas-level reset still clears the same total state.
     interaction_manager: Any = field(default=None, repr=False, compare=False)
 
+    # Back-reference to the connection-state owner, wired by ModernCanvas after
+    # the manager is constructed. ConnectionState lives on ConnectionManager;
+    # the reset paths below delegate to it so a canvas-level reset still clears
+    # connection-creation state.
+    connection_manager: Any = field(default=None, repr=False, compare=False)
+
     def reset_all(self):
         """Reset all state to defaults.
 
         Zoom/pan state lives in ``ZoomPanManager`` (reset via
-        ``ZoomPanManager.reset_view``) and the gesture slices
+        ``ZoomPanManager.reset_view``), the gesture slices
         (selection/hover/drag/resize) live in ``InteractionManager`` (reset via
-        ``InteractionManager.reset_gesture_state``), so those are cleared
-        through their owning manager rather than from fields here.
+        ``InteractionManager.reset_gesture_state``), and connection-creation
+        state lives in ``ConnectionManager`` (reset via
+        ``ConnectionManager.end_connection``), so those are cleared through
+        their owning manager rather than from fields here.
         """
         self.grid = GridState()
         if self.interaction_manager is not None:
             self.interaction_manager.reset_gesture_state()
-        self.connection.end_connection()
+        if self.connection_manager is not None:
+            self.connection_manager.end_connection()
         self.validation.clear()
 
     def reset_interaction_state(self):
         """Reset transient interaction state (hover, drag, resize, selection)."""
         if self.interaction_manager is not None:
             self.interaction_manager.reset_gesture_state()
-        self.connection.end_connection()
+        if self.connection_manager is not None:
+            self.connection_manager.end_connection()

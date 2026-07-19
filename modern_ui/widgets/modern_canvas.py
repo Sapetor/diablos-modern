@@ -79,8 +79,8 @@ class ModernCanvas(QWidget):
         # State management - Unified state object
         self.canvas_state = CanvasState()
 
-        # Connection routing default
-        self.default_routing_mode = "bezier"
+        # Connection routing default lives in ConnectionManager's ConnectionState
+        # (exposed via the default_routing_mode proxy below).
 
         # Live overlay toggles (View → Live overlay submenu)
         self.show_live_chips = True
@@ -109,6 +109,11 @@ class ModernCanvas(QWidget):
         # InteractionManager; wire the back-reference so CanvasState's reset
         # paths can delegate gesture clearing to it.
         self.canvas_state.interaction_manager = self.interaction_manager
+
+        # Connection-creation state is owned by ConnectionManager; wire the
+        # back-reference so CanvasState's reset paths can delegate connection
+        # clearing to it.
+        self.canvas_state.connection_manager = self.connection_manager
 
         # Plain attribute set only in start_drag (never via canvas_state); guard
         # against AttributeError when _finish_drag reads it before any drag.
@@ -1576,49 +1581,57 @@ class ModernCanvas(QWidget):
     def resize_at_limit(self, value):
         self.interaction_manager.resize.at_limit = value
 
-    # Connection properties
+    # Connection properties — state owned by ConnectionManager
     @property
     def line_creation_state(self):
-        return self.canvas_state.connection.creation_state
+        return self.connection_manager.connection_state.creation_state
 
     @line_creation_state.setter
     def line_creation_state(self, value):
-        self.canvas_state.connection.creation_state = value
+        self.connection_manager.connection_state.creation_state = value
         # A connection drag is one of the gated states; (re)evaluate the timer
         # when it begins ('start') or clears (None).
         self._evaluate_animation_state()
 
     @property
     def line_start_block(self):
-        return self.canvas_state.connection.start_block
+        return self.connection_manager.connection_state.start_block
 
     @line_start_block.setter
     def line_start_block(self, value):
-        self.canvas_state.connection.start_block = value
+        self.connection_manager.connection_state.start_block = value
 
     @property
     def line_start_port(self):
-        return self.canvas_state.connection.start_port
+        return self.connection_manager.connection_state.start_port
 
     @line_start_port.setter
     def line_start_port(self, value):
-        self.canvas_state.connection.start_port = value
+        self.connection_manager.connection_state.start_port = value
 
     @property
     def temp_line(self):
-        return self.canvas_state.connection.temp_line
+        return self.connection_manager.connection_state.temp_line
 
     @temp_line.setter
     def temp_line(self, value):
-        self.canvas_state.connection.temp_line = value
+        self.connection_manager.connection_state.temp_line = value
 
     @property
     def source_block_for_connection(self):
-        return self.canvas_state.connection.source_block
+        return self.connection_manager.connection_state.source_block
 
     @source_block_for_connection.setter
     def source_block_for_connection(self, value):
-        self.canvas_state.connection.source_block = value
+        self.connection_manager.connection_state.source_block = value
+
+    @property
+    def default_routing_mode(self):
+        return self.connection_manager.connection_state.default_routing_mode
+
+    @default_routing_mode.setter
+    def default_routing_mode(self, value):
+        self.connection_manager.connection_state.default_routing_mode = value
 
     # Validation properties
     @property

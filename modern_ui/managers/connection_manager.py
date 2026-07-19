@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt
 
 from lib.improvements import ValidationHelper
+from modern_ui.widgets.canvas_state import ConnectionState
 
 if TYPE_CHECKING:
     from modern_ui.widgets.modern_canvas import ModernCanvas
@@ -27,6 +28,20 @@ class ConnectionManager:
     def __init__(self, canvas: "ModernCanvas"):
         self.canvas = canvas
         self.dsim = canvas.dsim
+        # Connection-creation state is owned here; the canvas re-exposes it
+        # through the line_creation_state / line_start_block / line_start_port /
+        # temp_line / source_block_for_connection / default_routing_mode property
+        # proxies so external call sites are unchanged.
+        self.connection_state = ConnectionState()
+
+    def end_connection(self) -> None:
+        """Clear connection-creation state.
+
+        The canvas-level reset paths (``CanvasState.reset_all`` /
+        ``reset_interaction_state``) delegate here so connection state clears
+        with the rest of the canvas.
+        """
+        self.connection_state.end_connection()
 
     # ==================== Port Click Detection ====================
 
