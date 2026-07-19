@@ -3,6 +3,12 @@ from enum import Enum
 from PyQt5.QtCore import Qt, QPoint, QRect
 
 from modern_ui.renderers.canvas_renderer import compute_alignment_guides
+from modern_ui.widgets.canvas_state import (
+    DragState,
+    HoverState,
+    ResizeState,
+    SelectionState,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +38,14 @@ class InteractionManager:
 
     def __init__(self, canvas):
         self.canvas = canvas
-        # All interaction context (dragging/connection/resize state) is owned by
-        # the canvas (see ModernCanvas); the handlers below read it from there so
-        # the canvas remains the single source of truth.
+        # Transient gesture state is owned here; the canvas re-exposes it through
+        # the selection_*/hovered_*/drag_*/resize_* property proxies so external
+        # call sites are unchanged. (The interaction FSM enum still lives on the
+        # canvas as ``canvas.state``, exposed below via ``self.state``.)
+        self.selection = SelectionState()
+        self.hover = HoverState()
+        self.drag = DragState()
+        self.resize = ResizeState()
 
     @property
     def state(self):
@@ -48,6 +59,27 @@ class InteractionManager:
         """Transition to a new state."""
         logger.debug(f"State transition: {self.state} -> {new_state}")
         self.state = new_state
+
+    def reset_gesture_state(self):
+        """Clear all transient gesture state (selection/hover/drag/resize).
+
+        The canvas-level reset paths (``CanvasState.reset_all`` /
+        ``reset_interaction_state``) delegate here so gesture state clears
+        with the rest of the canvas.
+        """
+        self.selection.clear()
+        self.hover.clear()
+        self.drag.end_drag()
+        self.resize.end_resize()
+
+    def clear_hover(self):
+        """Clear hover tracking (block/port/line).
+
+        Mirrors the side effect of the canvas ``hovered_port`` proxy setter by
+        re-evaluating the idle-glow animation gate once the hover clears.
+        """
+        self.hover.clear()
+        self.canvas._evaluate_animation_state()
 
     def handle_mouse_press(self, event):
         """Handle mouse press events from the canvas."""
@@ -100,9 +132,9 @@ class InteractionManager:
         else:
             # 6. Rectangle Selection
             # Start rectangle selection
-            self.canvas.is_rect_selecting = True
-            self.canvas.selection_rect_start = pos
-            self.canvas.selection_rect_end = pos
+            self.selection.is_selecting = True
+            self.selection.rect_start = pos
+            self.selection.rect_end = pos
 
             # Clear existing selection unless Shift is held
             if not (modifiers & Qt.ShiftModifier):
@@ -123,19 +155,19 @@ class InteractionManager:
             pos = self.canvas.screen_to_world(event.pos())
 
             # Update hover states (only when not dragging/selecting)
-            if self.canvas.state == State.IDLE and not self.canvas.is_rect_selecting:
+            if self.canvas.state == State.IDLE and not self.selection.is_selecting:
                 self.canvas._update_hover_states(pos)
 
             # Update rectangle selection
-            if self.canvas.is_rect_selecting:
-                self.canvas.selection_rect_end = pos
+            if self.selection.is_selecting:
+                self.selection.rect_end = pos
                 self.canvas.update()
                 return
 
             if self.canvas.state == State.DRAGGING and self.canvas.dragging_block:
                 # Update drag
-                new_x = pos.x() - self.canvas.drag_offset.x()
-                new_y = pos.y() - self.canvas.drag_offset.y()
+                new_x = pos.x() - self.drag.offset.x()
+                new_y = pos.y() - self.drag.offset.y()
 
                 # Snap to grid
                 if getattr(self.canvas, "snap_enabled", True):
@@ -149,8 +181,8 @@ class InteractionManager:
                 self.canvas.dragging_block.relocate_Block(QPoint(int(snapped_x), int(snapped_y)))
 
                 # Move other selected blocks relative to it
-                if hasattr(self.canvas, "drag_offsets") and len(self.canvas.drag_offsets) > 1:
-                    for block, relative_offset in self.canvas.drag_offsets.items():
+                if len(self.drag.offsets) > 1:
+                    for block, relative_offset in self.drag.offsets.items():
                         if block is not self.canvas.dragging_block:
                             block_x = snapped_x + relative_offset.x()
                             block_y = snapped_y + relative_offset.y()
@@ -159,7 +191,7 @@ class InteractionManager:
                 self.canvas._update_line_positions()
                 self.canvas.update()
 
-            elif self.canvas.state == State.RESIZING and self.canvas.resizing_block:
+            elif self.canvas.state == State.RESIZING and self.resize.block:
                 self.canvas._perform_resize(pos)
 
             elif self.canvas.state == State.DRAGGING_LINE_POINT and self.canvas.dragging_item:
@@ -256,8 +288,8 @@ class InteractionManager:
             self.canvas.dragging_item = None
 
     # ==================== Block drag & resize ====================
-    # All persistent state lives on the canvas (drag/resize properties backed
-    # by canvas_state); these methods read and write it through self.canvas.
+    # Persistent drag/resize state lives in self.drag / self.resize (owned here);
+    # the canvas re-exposes it through its drag_*/resize_* property proxies.
 
     def start_drag(self, block, pos):
         """Start dragging a block (or multiple selected blocks)."""
@@ -265,23 +297,23 @@ class InteractionManager:
             self.canvas.state = State.DRAGGING
             self.canvas.dragging_block = block
             # Calculate drag offset based on block's top-left corner
-            self.canvas.drag_offset = QPoint(pos.x() - block.left, pos.y() - block.top)
+            self.drag.offset = QPoint(pos.x() - block.left, pos.y() - block.top)
 
             # Store RELATIVE offsets from the clicked block to all other selected blocks
             # This maintains relative positions when dragging multiple blocks
-            self.canvas.drag_offsets = {}
-            self.canvas.drag_start_positions = {}  # Track starting positions for undo threshold
+            self.drag.offsets = {}
+            self.drag.start_positions = {}  # Track starting positions for undo threshold
             for b in self.canvas.dsim.blocks_list:
                 if b.selected:
                     # Store offset from clicked block to this block
-                    self.canvas.drag_offsets[b] = QPoint(b.left - block.left, b.top - block.top)
+                    self.drag.offsets[b] = QPoint(b.left - block.left, b.top - block.top)
                     # Store starting position
-                    self.canvas.drag_start_positions[b] = (b.left, b.top)
+                    self.drag.start_positions[b] = (b.left, b.top)
 
             # Smart-alignment guides are recomputed on every move; start clean.
             self.canvas._alignment_guides = []
 
-            logger.debug(f"Started dragging {len(self.canvas.drag_offsets)} block(s)")
+            logger.debug(f"Started dragging {len(self.drag.offsets)} block(s)")
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
 
@@ -314,7 +346,7 @@ class InteractionManager:
             other_rects = [
                 (b.left, b.top, b.width, b.height)
                 for b in self.canvas.dsim.blocks_list
-                if b is not block and b not in self.canvas.drag_offsets
+                if b is not block and b not in self.drag.offsets
             ]
             if not other_rects:
                 return
@@ -334,8 +366,8 @@ class InteractionManager:
                 # Move the dragged block onto the snapped edge, then shift the
                 # rest of the selection by the same delta to stay rigid.
                 block.relocate_Block(QPoint(int(block.left + snap_dx), int(block.top + snap_dy)))
-                if len(self.canvas.drag_offsets) > 1:
-                    for b in self.canvas.drag_offsets:
+                if len(self.drag.offsets) > 1:
+                    for b in self.drag.offsets:
                         if b is not block:
                             b.relocate_Block(QPoint(int(b.left + snap_dx), int(b.top + snap_dy)))
 
@@ -349,10 +381,10 @@ class InteractionManager:
         """Start resizing a block."""
         try:
             self.canvas.state = State.RESIZING
-            self.canvas.resizing_block = block
-            self.canvas.resize_handle = handle
-            self.canvas.resize_start_pos = pos
-            self.canvas.resize_start_rect = QRect(block.left, block.top, block.width, block.height)
+            self.resize.block = block
+            self.resize.handle = handle
+            self.resize.start_pos = pos
+            self.resize.start_rect = QRect(block.left, block.top, block.width, block.height)
 
             logger.debug(f"Started resizing block {block.name} from handle {handle}")
         except Exception as e:
@@ -361,16 +393,16 @@ class InteractionManager:
     def _perform_resize(self, pos):
         """Perform the resize operation based on current mouse position."""
         try:
-            if not self.canvas.resizing_block or not self.canvas.resize_handle:
+            if not self.resize.block or not self.resize.handle:
                 return
 
-            block = self.canvas.resizing_block
-            handle = self.canvas.resize_handle
-            start_rect = self.canvas.resize_start_rect
+            block = self.resize.block
+            handle = self.resize.handle
+            start_rect = self.resize.start_rect
 
             # Calculate delta from start position
-            delta_x = pos.x() - self.canvas.resize_start_pos.x()
-            delta_y = pos.y() - self.canvas.resize_start_pos.y()
+            delta_x = pos.x() - self.resize.start_pos.x()
+            delta_y = pos.y() - self.resize.start_pos.y()
 
             # Calculate new position and size based on handle
             new_left = start_rect.left()
@@ -423,7 +455,7 @@ class InteractionManager:
             # Visual feedback: change cursor when at limit
             if at_width_limit or at_height_limit:
                 self.canvas.setCursor(Qt.ForbiddenCursor)
-                self.canvas.resize_at_limit = True
+                self.resize.at_limit = True
             else:
                 # Restore appropriate resize cursor
                 cursor_map = {
@@ -437,7 +469,7 @@ class InteractionManager:
                     "right": Qt.SizeHorCursor,
                 }
                 self.canvas.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
-                self.canvas.resize_at_limit = False
+                self.resize.at_limit = False
 
             # Update block position and size
             block.left = new_left
@@ -464,7 +496,7 @@ class InteractionManager:
                 moved_significantly = False
                 move_threshold = 5  # pixels
 
-                for block, start_pos in self.canvas.drag_start_positions.items():
+                for block, start_pos in self.drag.start_positions.items():
                     start_left, start_top = start_pos
                     distance = abs(block.left - start_left) + abs(block.top - start_top)
                     if distance >= move_threshold:
@@ -473,15 +505,15 @@ class InteractionManager:
 
                 if moved_significantly:
                     self.canvas._push_undo("Move")
-                    moved_block_names = {b.name for b in self.canvas.drag_start_positions}
+                    moved_block_names = {b.name for b in self.drag.start_positions}
                 else:
                     logger.debug("Block moved less than threshold, not capturing undo")
 
                 # Reset drag state
                 self.canvas.state = State.IDLE
                 self.canvas.dragging_block = None
-                self.canvas.drag_offset = None
-                self.canvas.drag_start_positions = {}
+                self.drag.offset = None
+                self.drag.start_positions = {}
                 self.canvas._alignment_guides = []  # clear smart-alignment overlay
                 self.canvas._update_line_positions()
                 if moved_significantly:
@@ -493,14 +525,14 @@ class InteractionManager:
     def _finish_resize(self):
         """Finish resizing operation."""
         try:
-            if self.canvas.resizing_block and self.canvas.resize_start_rect:
+            if self.resize.block and self.resize.start_rect:
                 logger.debug(
-                    f"Finished resizing block: {getattr(self.canvas.resizing_block, 'fn_name', 'Unknown')}"
+                    f"Finished resizing block: {getattr(self.resize.block, 'fn_name', 'Unknown')}"
                 )
 
                 # Only push undo if block actually resized significantly (threshold: 5 pixels)
-                block = self.canvas.resizing_block
-                start_rect = self.canvas.resize_start_rect
+                block = self.resize.block
+                start_rect = self.resize.start_rect
                 resize_threshold = 5  # pixels
 
                 # Check if size or position changed significantly
@@ -521,11 +553,11 @@ class InteractionManager:
 
                 # Reset resize state
                 self.canvas.state = State.IDLE
-                self.canvas.resizing_block = None
-                self.canvas.resize_handle = None
-                self.canvas.resize_start_rect = None
-                self.canvas.resize_start_pos = None
-                self.canvas.resize_at_limit = False
+                self.resize.block = None
+                self.resize.handle = None
+                self.resize.start_rect = None
+                self.resize.start_pos = None
+                self.resize.at_limit = False
                 self.canvas.setCursor(Qt.ArrowCursor)
 
                 # Ensure lines are updated after resize

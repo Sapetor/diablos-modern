@@ -25,6 +25,9 @@ class RenderingManager:
     def __init__(self, canvas: "ModernCanvas"):
         self.canvas = canvas
         self.dsim = canvas.dsim
+        # When True, hover decoration is suppressed for the duration of a draw
+        # pass (see decorations_suppressed) without mutating interaction state.
+        self._suppress_hover = False
 
     # ==================== Block Rendering ====================
 
@@ -50,14 +53,16 @@ class RenderingManager:
         lines = list(self.dsim.line_list)
         saved_blocks = [(b, b.selected) for b in blocks]
         saved_lines = [(line, line.selected, line.selected_segment) for line in lines]
-        saved_hover = self.canvas.hovered_port
+        # Suppress hover decoration via a draw-time flag rather than mutating the
+        # shared interaction state: _hovered_port_for returns None while set, so
+        # the content trio's draw calls receive hovered_port=None all the same.
+        self._suppress_hover = True
         try:
             for b in blocks:
                 b.selected = False
             for line in lines:
                 line.selected = False
                 line.selected_segment = -1
-            self.canvas.hovered_port = None
             yield
         finally:
             for b, sel in saved_blocks:
@@ -65,7 +70,7 @@ class RenderingManager:
             for line, sel, seg in saved_lines:
                 line.selected = sel
                 line.selected_segment = seg
-            self.canvas.hovered_port = saved_hover
+            self._suppress_hover = False
 
     def render_blocks(self, painter: QPainter, draw_ports: bool = True) -> None:
         """Render all blocks to canvas."""
@@ -101,6 +106,8 @@ class RenderingManager:
         across all blocks; the renderer only needs to know which of *this*
         block's ports (if any) is hovered, so reduce it to the per-block pair.
         """
+        if self._suppress_hover:
+            return None
         hovered = getattr(self.canvas, "hovered_port", None)
         if not hovered:
             return None

@@ -70,7 +70,9 @@ class TestInteractionManager(unittest.TestCase):
         # Setup state
         self.mock_canvas.state = State.DRAGGING
         self.mock_canvas.dragging_block = MagicMock()
-        self.mock_canvas.drag_offset = QPointF(10, 10)
+        # Drag state now lives on the manager (owner of the gesture slices),
+        # which the canvas re-exposes through its drag_offset proxy.
+        self.manager.drag.offset = QPointF(10, 10)
         self.mock_canvas.snap_enabled = False
 
         mock_event = MagicMock()

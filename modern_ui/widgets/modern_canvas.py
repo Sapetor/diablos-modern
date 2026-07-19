@@ -105,6 +105,11 @@ class ModernCanvas(QWidget):
         self.connection_manager = ConnectionManager(self)
         self.rendering_manager = RenderingManager(self)
 
+        # The gesture slices (selection/hover/drag/resize) are owned by
+        # InteractionManager; wire the back-reference so CanvasState's reset
+        # paths can delegate gesture clearing to it.
+        self.canvas_state.interaction_manager = self.interaction_manager
+
         # Plain attribute set only in start_drag (never via canvas_state); guard
         # against AttributeError when _finish_drag reads it before any drag.
         self.dragging_block = None
@@ -1452,124 +1457,124 @@ class ModernCanvas(QWidget):
     def snap_enabled(self, value):
         self.canvas_state.grid.snap_enabled = value
 
-    # Selection properties
+    # Selection properties — state owned by InteractionManager
     @property
     def selection_rect_start(self):
-        return self.canvas_state.selection.rect_start
+        return self.interaction_manager.selection.rect_start
 
     @selection_rect_start.setter
     def selection_rect_start(self, value):
-        self.canvas_state.selection.rect_start = value
+        self.interaction_manager.selection.rect_start = value
 
     @property
     def selection_rect_end(self):
-        return self.canvas_state.selection.rect_end
+        return self.interaction_manager.selection.rect_end
 
     @selection_rect_end.setter
     def selection_rect_end(self, value):
-        self.canvas_state.selection.rect_end = value
+        self.interaction_manager.selection.rect_end = value
 
     @property
     def is_rect_selecting(self):
-        return self.canvas_state.selection.is_selecting
+        return self.interaction_manager.selection.is_selecting
 
     @is_rect_selecting.setter
     def is_rect_selecting(self, value):
-        self.canvas_state.selection.is_selecting = value
+        self.interaction_manager.selection.is_selecting = value
 
-    # Hover properties
+    # Hover properties — state owned by InteractionManager
     @property
     def hovered_block(self):
-        return self.canvas_state.hover.block
+        return self.interaction_manager.hover.block
 
     @hovered_block.setter
     def hovered_block(self, value):
-        self.canvas_state.hover.block = value
+        self.interaction_manager.hover.block = value
 
     @property
     def hovered_port(self):
-        return self.canvas_state.hover.port
+        return self.interaction_manager.hover.port
 
     @hovered_port.setter
     def hovered_port(self, value):
-        self.canvas_state.hover.port = value
+        self.interaction_manager.hover.port = value
         # Drive the idle-OFF glow timer: starts on the first hover, stops when
         # the port (and other gated states) clear.
         self._evaluate_animation_state()
 
     @property
     def hovered_line(self):
-        return self.canvas_state.hover.line
+        return self.interaction_manager.hover.line
 
     @hovered_line.setter
     def hovered_line(self, value):
-        self.canvas_state.hover.line = value
+        self.interaction_manager.hover.line = value
 
-    # Drag properties
+    # Drag properties — state owned by InteractionManager
     @property
     def drag_offset(self):
-        return self.canvas_state.drag.offset
+        return self.interaction_manager.drag.offset
 
     @drag_offset.setter
     def drag_offset(self, value):
-        self.canvas_state.drag.offset = value
+        self.interaction_manager.drag.offset = value
 
     @property
     def drag_offsets(self):
-        return self.canvas_state.drag.offsets
+        return self.interaction_manager.drag.offsets
 
     @drag_offsets.setter
     def drag_offsets(self, value):
-        self.canvas_state.drag.offsets = value
+        self.interaction_manager.drag.offsets = value
 
     @property
     def drag_start_positions(self):
-        return self.canvas_state.drag.start_positions
+        return self.interaction_manager.drag.start_positions
 
     @drag_start_positions.setter
     def drag_start_positions(self, value):
-        self.canvas_state.drag.start_positions = value
+        self.interaction_manager.drag.start_positions = value
 
-    # Resize properties
+    # Resize properties — state owned by InteractionManager
     @property
     def resizing_block(self):
-        return self.canvas_state.resize.block
+        return self.interaction_manager.resize.block
 
     @resizing_block.setter
     def resizing_block(self, value):
-        self.canvas_state.resize.block = value
+        self.interaction_manager.resize.block = value
 
     @property
     def resize_handle(self):
-        return self.canvas_state.resize.handle
+        return self.interaction_manager.resize.handle
 
     @resize_handle.setter
     def resize_handle(self, value):
-        self.canvas_state.resize.handle = value
+        self.interaction_manager.resize.handle = value
 
     @property
     def resize_start_rect(self):
-        return self.canvas_state.resize.start_rect
+        return self.interaction_manager.resize.start_rect
 
     @resize_start_rect.setter
     def resize_start_rect(self, value):
-        self.canvas_state.resize.start_rect = value
+        self.interaction_manager.resize.start_rect = value
 
     @property
     def resize_start_pos(self):
-        return self.canvas_state.resize.start_pos
+        return self.interaction_manager.resize.start_pos
 
     @resize_start_pos.setter
     def resize_start_pos(self, value):
-        self.canvas_state.resize.start_pos = value
+        self.interaction_manager.resize.start_pos = value
 
     @property
     def resize_at_limit(self):
-        return self.canvas_state.resize.at_limit
+        return self.interaction_manager.resize.at_limit
 
     @resize_at_limit.setter
     def resize_at_limit(self, value):
-        self.canvas_state.resize.at_limit = value
+        self.interaction_manager.resize.at_limit = value
 
     # Connection properties
     @property

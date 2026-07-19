@@ -148,14 +148,9 @@ class HistoryManager:
             self.dsim.blocks_list.clear()
             self.dsim.line_list.clear()
 
-            # Clear hover state (old objects are now invalid)
-            # Accessing canvas attributes directly
-            if hasattr(self.canvas, "hovered_block"):
-                self.canvas.hovered_block = None
-            if hasattr(self.canvas, "hovered_line"):
-                self.canvas.hovered_line = None
-            if hasattr(self.canvas, "hovered_port"):
-                self.canvas.hovered_port = None
+            # Clear hover state (old objects are now invalid) through the owner.
+            if hasattr(self.canvas, "interaction_manager"):
+                self.canvas.interaction_manager.clear_hover()
 
             # Clear validation errors when state is restored (undo/redo)
             if hasattr(self.canvas, "clear_validation"):
