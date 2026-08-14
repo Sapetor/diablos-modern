@@ -121,6 +121,26 @@ class BaseBlock(ABC):
         return getattr(self, "category", "Other") not in ["Sinks", "Other"]
 
     @property
+    def output_is_post_update(self) -> bool:
+        """
+        Whether execute() returns the state AFTER this step's state update.
+
+        Most stateful blocks compute their output from the pre-update state
+        (y = Cx + Du, then x <- Ax + Bu), so the value returned by execute()
+        is the output belonging to the current instant.  A block that instead
+        returns the freshly advanced state (the Integrator returns x[k+1])
+        must not have that value held between discrete samples: when the
+        block is gated to a sample time, holding x[k+1] across
+        [kTs, (k+1)Ts) makes the trace lead the true sampled response by a
+        full sample period.  Override to True and the engine will hold the
+        output_only value (the pre-update state) instead.
+
+        Returns:
+            True if execute() returns the post-update state, False otherwise.
+        """
+        return False
+
+    @property
     def io_editable(self) -> Optional[str]:
         """
         Whether the block supports user-editable port counts.

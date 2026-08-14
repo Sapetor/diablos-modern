@@ -446,8 +446,7 @@ class SimulationEngine:
 
                     # Memory block special output update
                     if block.name in self.memory_blocks:
-                        if block.block_fn == "Integrator" and "mem" in block.exec_params:
-                            block.exec_params["output"] = block.exec_params["mem"]
+                        self.sync_integrator_output(block)
 
                     self.update_global_list(block.name, h_value=h_count, h_assign=True)
                     block.computed_data = True
@@ -458,9 +457,7 @@ class SimulationEngine:
                     # would still see _next_execution_time=0 and run the
                     # block at t=dt instead of waiting for t=Ts.
                     if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                        for port, value in out_value.items():
-                            if isinstance(port, int):
-                                block.set_held_output(port, value)
+                        self.stamp_held_outputs(block, out_value)
                         block.schedule_next_execution(self.time_step)
 
                     if block.name not in self.memory_blocks and block.b_type != 3:
@@ -511,6 +508,15 @@ class SimulationEngine:
         """
         for block in blocks_to_exec:
             if block.name in self.memory_blocks:
+                # Capture the output belonging to t=0 before the state is
+                # advanced: for a discrete-rate block this is the value held
+                # across the first sample interval [0, Ts).
+                pre_update_value = None
+                if block.effective_sample_time > 0:
+                    pre = self.execute_block(block, output_only=True)
+                    if isinstance(pre, dict) and not pre.get("E"):
+                        pre_update_value = pre
+
                 out_value = self.execute_block(block)
                 if out_value is False:
                     return False
@@ -518,8 +524,7 @@ class SimulationEngine:
                     self.error_msg = out_value.get("error", "State advance failed")
                     logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
                     return False
-                if block.block_fn == "Integrator" and "mem" in block.exec_params:
-                    block.exec_params["output"] = block.exec_params["mem"]
+                self.sync_integrator_output(block)
                 # For discrete blocks, sync the DBlock-level sample schedule
                 # with the block-internal sample state so the simulation
                 # loop's should_execute() agrees with the block's own
@@ -527,9 +532,7 @@ class SimulationEngine:
                 # block's "next sample" is still at t=0 and would call
                 # execute every dt instead of every Ts.
                 if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                    for port, value in out_value.items():
-                        if isinstance(port, int):
-                            block.set_held_output(port, value)
+                    self.stamp_held_outputs(block, out_value, pre_update_value)
                     block.schedule_next_execution(self.time_step)
         return True
 
@@ -556,6 +559,56 @@ class SimulationEngine:
             if h_assign:
                 g_block["hierarchy"] = h_value
 
+    def stamp_held_outputs(
+        self,
+        block: DBlock,
+        out_value: Any,
+        pre_update_value: Optional[Dict[int, Any]] = None,
+    ) -> None:
+        """Store the outputs a discrete-rate block emits until its next sample.
+
+        Between sample instants the loop propagates these held values, so they
+        must be the outputs belonging to the instant that just fired.  Most
+        stateful blocks return exactly that from execute() (they compute
+        y = Cx + Du before advancing x), but a block declaring
+        ``output_is_post_update`` returns the advanced state instead; holding
+        that would make its staircase lead the true sampled response by a full
+        sample period.  For those, ``pre_update_value`` — the output_only
+        result captured *before* the state advance — is held instead.
+        """
+        source = out_value
+        instance = getattr(block, "block_instance", None)
+        if instance is not None and getattr(instance, "output_is_post_update", False):
+            if pre_update_value is None:
+                # No pre-update output available: keep whatever is already
+                # held rather than stamping the advanced state.
+                return
+            source = pre_update_value
+        if not isinstance(source, dict):
+            return
+        for port, value in source.items():
+            if isinstance(port, int):
+                block.set_held_output(port, value)
+
+    @staticmethod
+    def sync_integrator_output(block) -> None:
+        """Publish an Integrator's freshly advanced state as its reported output.
+
+        The copy is the whole point.  Every in-place integration method
+        (FWD_EULER / BWD_EULER / TUSTIN / RK45 all do ``params["mem"] += ...``)
+        mutates the state array in place, so binding "output" to the same object
+        made the reported output track the state instead of lagging it by one
+        step -- shifting every sample of those methods one step early (the
+        integral of a unit step read t + dtime).  SOLVE_IVP rebinds "mem" to a
+        fresh array on each call and so never exhibited it.
+        """
+        if getattr(block, "block_fn", None) != "Integrator":
+            return
+        exec_params = getattr(block, "exec_params", None)
+        if not exec_params or "mem" not in exec_params:
+            return
+        exec_params["output"] = np.array(exec_params["mem"], copy=True)
+
     def _resolve_block_params(
         self, block: DBlock, dt: float, workspace_manager: Optional[WorkspaceManager] = None
     ) -> None:
@@ -567,17 +620,22 @@ class SimulationEngine:
         initialize_execution and run_compiled_simulation so the cache-skip logic
         stays consistent.
         """
+        # Blocks gated to a discrete rate integrate over their own sample
+        # period, not the base step (see DBlock.execution_step).  Before
+        # propagate_sample_times() has run this is still dt, so the stamp is
+        # refreshed there once the effective rates are known.
+        step = block.execution_step(dt)
         cached = getattr(block, "exec_params", None)
         params_fp = source_params_fingerprint(block.params)
         cached_fp = cached.get("_source_params_fingerprint") if cached else None
-        if cached and cached.get("dtime") == dt and cached_fp == params_fp:
+        if cached and cached.get("dtime") == step and cached_fp == params_fp:
             return
         if workspace_manager is None:
             workspace_manager = WorkspaceManager()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
-        block.exec_params["dtime"] = dt
+        block.exec_params["dtime"] = step
         block.exec_params["_source_params_fingerprint"] = params_fp
 
     def execute_block(
@@ -599,7 +657,7 @@ class SimulationEngine:
                 kwargs["output_only"] = True
                 if block.block_fn == "Integrator":
                     kwargs["next_add_in_memory"] = False
-                    kwargs["dtime"] = self.sim_dt
+                    kwargs["dtime"] = block.execution_step(self.sim_dt)
 
             if block.external:
                 # The External block is an unimplemented stub (see blocks/external.py).
@@ -1011,6 +1069,18 @@ class SimulationEngine:
                 line.discrete_signal = True
             else:
                 line.discrete_signal = False
+
+        # Phase 4: Stamp each block's own execution step into exec_params.
+        # Blocks gated to a discrete rate are only executed every Ts seconds,
+        # so the dtime they integrate with must be Ts, not the base solver
+        # step — otherwise a continuous block given sampling_time=Ts advances
+        # dt per sample and runs Ts/dt times too slowly.  This runs after the
+        # rates are resolved (including inheritance), and before any block is
+        # executed, so init-time discretisations (TranFn/StateSpace
+        # cont2discrete) see the correct step.
+        for block in self.active_blocks_list:
+            if getattr(block, "exec_params", None):
+                block.exec_params["dtime"] = block.execution_step(self.sim_dt)
 
         # Log resolved sample times
         discrete_blocks = [

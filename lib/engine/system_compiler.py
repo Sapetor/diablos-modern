@@ -10,6 +10,26 @@ from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
 logger = logging.getLogger(__name__)
 
 
+def _declared_sample_time(block) -> float:
+    """Sample time declared on a block: >0 = discrete rate, <=0 = continuous.
+
+    Mirrors ``DBlock.resolve_sample_time`` but tolerates blocks that predate
+    it (and unparseable workspace-variable strings), since this runs before
+    the engine resolves params.
+    """
+    resolver = getattr(block, "resolve_sample_time", None)
+    if callable(resolver):
+        try:
+            return resolver()
+        except (TypeError, ValueError):
+            return -1.0
+    params = getattr(block, "params", {}) or {}
+    try:
+        return float(params.get("sampling_time", params.get("sample_time", -1.0)))
+    except (TypeError, ValueError):
+        return -1.0
+
+
 class SystemCompiler:
     """
     Compiles a block diagram into a flat numerical function for fast ODE solving.
@@ -128,6 +148,18 @@ class SystemCompiler:
             if b_type == "Step" and getattr(block, "params", {}).get("type") == "impulse":
                 logger.debug(
                     f"Block {block.name} (Step/impulse) is not compilable; using interpreter."
+                )
+                return False
+
+            # A block gated to a discrete rate (sampling_time > 0) is a
+            # sampled-data element: it must hold its output between sample
+            # instants and advance its state once per Ts.  The compiled ODE
+            # RHS has no notion of sample instants and would silently run the
+            # block as a purely continuous one, so the whole diagram falls
+            # back to the interpreter, which honours the rate.
+            if _declared_sample_time(block) > 0:
+                logger.debug(
+                    f"Block {block.name} ({b_type}) has a discrete sample time; using interpreter."
                 )
                 return False
 

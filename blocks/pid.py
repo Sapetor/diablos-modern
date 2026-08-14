@@ -124,10 +124,17 @@ class PIDBlock(BaseBlock):
             return {}
 
     def execute(self, time, inputs, params, **kwargs):
-        # Output-only path: when inputs are missing (e.g. memory-block pre-population
-        # in Loop 1), return the last computed output without mutating state. The
-        # PID's actual integration happens in the normal Loop 2 execute call.
-        if 0 not in inputs or 1 not in inputs:
+        # Output-only path: when the caller asks for output only, or inputs are
+        # missing (e.g. memory-block pre-population in Loop 1), return the last
+        # computed output without mutating state. The PID's actual integration
+        # happens in the normal Loop 2 execute call.
+        #
+        # The output_only flag must be honoured explicitly: PID is a memory
+        # block, so the simulation loop's first pass calls it with
+        # output_only=True while input_queue still holds the previous step's
+        # inputs. Testing only for missing inputs let that pass integrate a
+        # second time, doubling Ki's contribution on every timestep.
+        if kwargs.get("output_only", False) or 0 not in inputs or 1 not in inputs:
             return {0: np.atleast_1d(params.get("_last_output_", 0.0))}
 
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
