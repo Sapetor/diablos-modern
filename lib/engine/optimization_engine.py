@@ -188,11 +188,38 @@ class OptimizationEngine:
 
         return np.clip(value, lower, upper)
 
+    @staticmethod
+    def runtime_params(block):
+        """The params dict a block actually wrote to during the simulation.
+
+        SimulationEngine.execute_block passes ``block.exec_params`` to
+        execute(), so every accumulator a block updates during a run — a cost
+        function's ``_accumulated_cost_``, a constraint's ``_violation_`` —
+        lands there, never in ``block.params``.  Reading the results back off
+        ``block.params`` therefore returned the pre-run value: the objective
+        was a constant 0.0 for every parameter vector, so the optimizer
+        "converged" immediately and handed back its starting point.
+
+        Config the user typed (weights, bounds, method) is still read from
+        ``block.params``; exec_params is the workspace-resolved copy of it plus
+        the runtime state, so it is the right dict for a result readback.
+        """
+        exec_params = getattr(block, "exec_params", None)
+        return exec_params if exec_params else block.params
+
     def reset_blocks(self):
-        """Reset all optimization blocks for a new simulation."""
+        """Reset all optimization blocks for a new simulation.
+
+        Both dicts are reset: prepare_execution currently rebuilds exec_params
+        from params on every iteration, which would carry the reset across on
+        its own, but relying on that makes the reset silently dependent on a
+        detail of an unrelated method.
+        """
         for block in self.cost_function_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
                 block.block_instance.reset(block.params)
+                if getattr(block, "exec_params", None):
+                    block.block_instance.reset(block.exec_params)
             else:
                 block.params["_accumulated_cost_"] = 0.0
                 block.params["_init_start_"] = True
@@ -220,17 +247,18 @@ class OptimizationEngine:
 
         for block in self.cost_function_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                cost = block.block_instance.get_final_cost(block.params)
+                cost = block.block_instance.get_final_cost(self.runtime_params(block))
             else:
-                weight = float(block.params.get("weight", 1.0))
-                accumulated = block.params.get("_accumulated_cost_", 0.0)
+                rt = self.runtime_params(block)
+                weight = float(rt.get("weight", 1.0))
+                accumulated = rt.get("_accumulated_cost_", 0.0)
                 cost = accumulated * weight
 
             total_cost += cost
 
         for block in self.data_fit_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                cost = block.block_instance.get_final_error(block.params)
+                cost = block.block_instance.get_final_error(self.runtime_params(block))
             else:
                 cost = 0.0
 
@@ -249,7 +277,9 @@ class OptimizationEngine:
 
         for block in self.constraint_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                ctype, value = block.block_instance.get_constraint_value(block.params)
+                ctype, value = block.block_instance.get_constraint_value(
+                    self.runtime_params(block)
+                )
             else:
                 # Default constraint computation
                 ctype = "ineq"
@@ -270,10 +300,11 @@ class OptimizationEngine:
 
         for block in self.constraint_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                penalty += block.block_instance.get_penalty(block.params)
+                penalty += block.block_instance.get_penalty(self.runtime_params(block))
             else:
-                penalty_weight = float(block.params.get("penalty_weight", 1000.0))
-                violation = block.params.get("_violation_", 0.0)
+                rt = self.runtime_params(block)
+                penalty_weight = float(rt.get("penalty_weight", 1000.0))
+                violation = rt.get("_violation_", 0.0)
                 penalty += penalty_weight * violation**2
 
         return penalty
