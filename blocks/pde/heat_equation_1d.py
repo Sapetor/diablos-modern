@@ -185,6 +185,12 @@ class HeatEquation1DBlock(BaseBlock):
             params["T"] = self.get_initial_conditions(params)
             params["_init_start_"] = False
             params["dx"] = float(params.get("L", 1.0)) / (N - 1)
+            # Re-arm the CFL warning for this run.  reset_memblocks() only
+            # re-sets _init_start_ and drops _prev/mem/output, and an unchanged
+            # re-run is served from the cached exec_params, so a flag left set
+            # here would silence the warning for every later run in the process
+            # -- the second run of a diverging diagram would look clean.
+            params["_cfl_warned_"] = False
 
         if output_only:
             T = params.get("T", np.zeros(int(params.get("N", 20))))
