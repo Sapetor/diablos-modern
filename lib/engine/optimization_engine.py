@@ -536,14 +536,12 @@ class OptimizationEngine:
             if hasattr(info["block"], "exec_params"):
                 info["block"].exec_params["value"] = float(value)
 
-        # Store results in optimizer block
-        if hasattr(self.optimizer_block, "block_instance") and self.optimizer_block.block_instance:
-            self.optimizer_block.block_instance.store_results(self.optimizer_block.params, result)
-        else:
-            self.optimizer_block.params["_optimal_cost_"] = float(result.fun)
-            self.optimizer_block.params["_n_iterations_"] = self.n_evaluations
-            self.optimizer_block.params["_converged_"] = bool(result.success)
-
+        # Results are returned to the caller below, not stashed on the block: a
+        # previous writeback of _optimal_cost_/_n_iterations_/_converged_ into
+        # optimizer_block.params was never read by anything.  '_'-prefixed keys
+        # are hidden from the property editor and excluded from saving_params,
+        # and the block reads exec_params when it executes -- so the values were
+        # invisible, unpersisted, and in the dict no reader would have used.
         logger.info("Optimization complete!")
         logger.info(f"Optimal cost: {result.fun:.6g}")
         logger.info(f"Optimal parameters: {optimal_params}")
