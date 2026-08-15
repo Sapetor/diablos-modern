@@ -115,9 +115,7 @@ class TestEveryReaderSharesOneImplementation:
         root = Path(__file__).parent.parent.parent
         idiom = re.compile(r'getattr\(\s*\w+\s*,\s*["\']exec_params["\'].*\bor\b.*params')
         offenders = []
-        for path in list((root / "lib").rglob("*.py")) + list(
-            (root / "modern_ui").rglob("*.py")
-        ):
+        for path in list((root / "lib").rglob("*.py")) + list((root / "modern_ui").rglob("*.py")):
             if path.name == "block_params.py":
                 continue  # the one legitimate implementation
             for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):

@@ -25,9 +25,7 @@ from pathlib import Path
 
 import pytest
 
-EXAMPLE = (
-    Path(__file__).parent.parent.parent / "examples" / "optimization_basic_demo.diablos"
-)
+EXAMPLE = Path(__file__).parent.parent.parent / "examples" / "optimization_basic_demo.diablos"
 
 
 def _load(sim_time=2.0):

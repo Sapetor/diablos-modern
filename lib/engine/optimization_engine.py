@@ -277,9 +277,7 @@ class OptimizationEngine:
 
         for block in self.constraint_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                ctype, value = block.block_instance.get_constraint_value(
-                    self.runtime_params(block)
-                )
+                ctype, value = block.block_instance.get_constraint_value(self.runtime_params(block))
             else:
                 # Default constraint computation
                 ctype = "ineq"

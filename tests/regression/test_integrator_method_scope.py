@@ -49,7 +49,9 @@ class TestCompiledSolverAnnouncesTheOverride:
         with caplog.at_level(logging.WARNING, logger="lib.engine.simulation_engine"):
             dsim, _ = _run("FWD_EULER", use_fast=True)
         assert dsim.last_solver_type == "Fast (Compiled)"
-        hits = [r for r in caplog.records if "Per-block Integrator method ignored" in r.getMessage()]
+        hits = [
+            r for r in caplog.records if "Per-block Integrator method ignored" in r.getMessage()
+        ]
         assert len(hits) == 1
         message = hits[0].getMessage()
         assert "Simulation settings" in message

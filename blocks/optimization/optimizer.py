@@ -174,4 +174,3 @@ class OptimizerBlock(BaseBlock):
             "mutation": float(params.get("mutation", 0.8)),
             "recombination": float(params.get("recombination", 0.7)),
         }
-

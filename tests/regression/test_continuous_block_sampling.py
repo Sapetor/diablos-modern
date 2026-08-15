@@ -256,9 +256,7 @@ class TestPidOutputOnly:
         pid = dsim.add_block(menu["pid"], QPoint(300, 100))
         scope = dsim.add_block(menu["scope"], QPoint(500, 100))
         const.params["value"] = 0.0
-        pid.params.update(
-            {"Kp": 0.0, "Ki": 1.0, "Kd": 0.0, "sampling_time": sampling_time}
-        )
+        pid.params.update({"Kp": 0.0, "Ki": 1.0, "Kd": 0.0, "sampling_time": sampling_time})
         dsim.add_line((step.name, 0, step.out_coords[0]), (pid.name, 0, pid.in_coords[0]))
         dsim.add_line((const.name, 0, const.out_coords[0]), (pid.name, 1, pid.in_coords[1]))
         dsim.add_line((pid.name, 0, pid.out_coords[0]), (scope.name, 0, scope.in_coords[0]))

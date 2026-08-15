@@ -80,8 +80,9 @@ class TestZohEdgesLandOnSampleInstants:
 
     def test_first_sample_is_taken_at_t0(self, qapp):
         """A held value of 0 at t=0 would be the same lag, one sample earlier."""
-        _, y = _run("constant", {"value": 5.0}, "zero_order_hold",
-                    {"sampling_time": 0.2}, 0.1, sim_time=0.4)
+        _, y = _run(
+            "constant", {"value": 5.0}, "zero_order_hold", {"sampling_time": 0.2}, 0.1, sim_time=0.4
+        )
         assert np.allclose(y, 5.0)
 
 
@@ -112,11 +113,13 @@ class TestPidIntegralStartsAtZero:
 
         block = PIDBlock()
         params = {"Kp": 0.0, "Ki": 1.0, "Kd": 0.0, "dtime": 0.1, "_init_start_": True}
-        first = block.execute(time=0.0, inputs={0: np.array([1.0]), 1: np.array([0.0])},
-                              params=params)
+        first = block.execute(
+            time=0.0, inputs={0: np.array([1.0]), 1: np.array([0.0])}, params=params
+        )
         assert float(np.ravel(first[0])[0]) == pytest.approx(0.0)
-        second = block.execute(time=0.1, inputs={0: np.array([1.0]), 1: np.array([0.0])},
-                               params=params)
+        second = block.execute(
+            time=0.1, inputs={0: np.array([1.0]), 1: np.array([0.0])}, params=params
+        )
         assert float(np.ravel(second[0])[0]) == pytest.approx(0.1)
 
 
