@@ -309,8 +309,8 @@ and characterizes where they do not. The known, by-design differences:
 | Aspect | Compiled path | Interpreter path |
 | --- | --- | --- |
 | Time integration | Adaptive RK45 over each step (`solve_ivp`) | Single fixed-step update per `sim_dt` (Forward Euler for PDEs; per-block discretization for LTI blocks) |
-| Algebraic loops | Resolved by pre-populating D=0 state blocks and ordering sources → algebraic → strictly-proper | One-sample feedback delay through the memory-block loop |
-| Coverage | Only blocks with a `@kernel` builder (`check_compilability()` gates it); non-compilable diagrams fall back | Every block, via `block.execute()` |
+| Algebraic loops | Resolved by pre-populating D=0 state blocks and ordering sources → algebraic → strictly-proper | One-sample feedback delay through strictly-proper memory blocks (feedthrough ones refresh their consumers within the step) |
+| Coverage | Only blocks with a `@kernel` builder and no block gated to a sample time (`check_compilability()` gates both); non-compilable diagrams fall back | Every block, via `block.execute()` |
 | Determinism | Byte-deterministic across runs (golden-master friendly) | Depends on step size; convergent as `sim_dt → 0` |
 
 Consequences worth knowing when reading or comparing traces:
@@ -320,13 +320,16 @@ Consequences worth knowing when reading or comparing traces:
   O(0.1) on an O(1) signal because of the feedback-delay and derivative-kick
   differences above. Do not assert tight trajectory equality across paths.
 - **Step size reaches the blocks.** Interpreter state blocks discretize at the
-  actual `sim_dt`. (This relies on `engine.sim_dt` being synced before
+  actual `sim_dt`, or at their own sample period when gated to a discrete rate
+  (`DBlock.execution_step()`, stamped into `exec_params['dtime']`). (This relies on `engine.sim_dt` being synced before
   `initialize_execution`; `run_tuning_simulation` and `execution_init` both do
   this via `update_sim_params` — a past bug pinned them to the default 0.01.)
 - **Memory blocks run twice per step.** The interpreter executes memory blocks
   (Integrator, RateLimiter, PID, …) with `output_only=True` to feed downstream
   consumers, then again to advance state. A block's `execute()` **must not**
-  advance state on the `output_only` pass.
+  advance state on the `output_only` pass. Memory blocks with direct feedthrough
+  (`b_type == 2`: ZeroOrderHold, RateLimiter, PID) then re-propagate the value
+  they just computed, since the `output_only` value is stale for them.
 - **PDE blocks self-integrate in the interpreter.** 1D and 2D PDE blocks step
   their own field with Forward Euler and persist it in `params`
   (`_interp_step` / `params['T']`), reusing the same spatial operators as the

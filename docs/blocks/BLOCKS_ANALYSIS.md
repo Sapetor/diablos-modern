@@ -322,7 +322,7 @@ params = {
 **Complexity**: Medium - Multiple integration methods
 
 **Key Features**:
-- 5 integration methods (FWD_EULER, BWD_EULER, TUSTIN, RK45, SOLVE_IVP)
+- 5 integration methods (FWD_EULER, BWD_EULER, TUSTIN, RK45, SOLVE_IVP), honoured by the interpreted solver only — the compiled solver integrates the whole diagram with the method from Simulation settings
 - State management with InitStateManager
 - Symbolic execution for equation extraction
 - Optional output limiting

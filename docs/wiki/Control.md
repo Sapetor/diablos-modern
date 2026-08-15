@@ -97,7 +97,7 @@ Digital Modern Control (MIMO).
 | `C` | list | `[[1.0]]` |  |
 | `D` | list | `[[0.0]]` |  |
 | `init_conds` | list | `[0.0]` |  |
-| `sampling_time` | float | `-1.0` |  |
+| `sampling_time` | float | `0.0` | Sample period in seconds (0=inherit from the upstream rate, >0=fixed rate). A discrete state recursion has no continuous-time meaning, so -1 is not a useful setting here: with no rate to inherit the block advances one sample per solver step and its response then depends on the simulation step size. |
 
 **Ports**: 1 In, 1 Out
 
@@ -112,7 +112,7 @@ Represents a discrete-time linear time-invariant system as a transfer function i
 |------|------|---------|-------------|
 | `numerator` | list | `[1.0, 0.0]` |  |
 | `denominator` | list | `[1.0, -0.5]` |  |
-| `sampling_time` | float | `-1.0` |  |
+| `sampling_time` | float | `0.0` | Sample period in seconds (0=inherit from the upstream rate, >0=fixed rate). A z-domain block has no continuous-time meaning, so -1 is not a useful setting here: with no rate to inherit the block advances one sample per solver step and its response then depends on the simulation step size. |
 
 **Ports**: 1 In, 1 Out
 
@@ -157,7 +157,9 @@ y(t) = y(0) + integral(u(t) dt)
 Parameters:
 - Initial Condition: Value of the output at start time.
 - Limit Output: Enable saturation limits on the integral.
-- Method: Integration method (e.g., RK45, Forward Euler).
+- Method: Integration method (e.g., RK45, Forward Euler), used by the
+  interpreted solver only; the compiled solver integrates the whole
+  diagram with the method from Simulation settings.
 
 Usage:
 Fundamental block for building dynamic system models.
@@ -165,8 +167,10 @@ Fundamental block for building dynamic system models.
 #### Parameters
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `init_conds` | float | `0.0` |  |
-| `method` | string | `SOLVE_IVP` |  |
+| `init_conds` | float | `0.0` | Initial condition value |
+| `method` | string | `SOLVE_IVP` | Integration method, applied by the interpreted solver only. The compiled (fast) solver assembles the whole diagram into one ODE system and integrates it with the solver method set in Simulation settings, which offers Euler and RK4 as well. |
+| `ivp_method` | string | `RK45` | scipy ODE solver used when Method is SOLVE_IVP |
+| `sampling_time` | float | `-1.0` | Sample time (-1=continuous, 0=inherited, >0=discrete) |
 
 **Ports**: 1 In, 1 Out
 

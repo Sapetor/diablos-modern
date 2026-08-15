@@ -115,11 +115,18 @@ During simulation initialization:
 1. Explicit sample times are resolved from block parameters
 2. Inherited rates (`sampling_time = 0`) propagate from fastest connected input
 3. Discrete blocks schedule their execution times
+4. A block that declares `requires_sample_time` (the z-domain blocks, whose
+   recursion has no continuous-time meaning) logs a warning if no rate could be
+   resolved for it: it would otherwise advance one sample per solver step, so
+   its response would depend on the simulation step size
 
 ### Held Outputs
 
 When a discrete block skips execution (not at sample time):
 - Its held outputs from the last execution are propagated to downstream blocks
+  (for a block whose `execute()` returns the *advanced* state — the Integrator
+  returns x[k+1] — the pre-update value is held instead, so the trace does not
+  lead the true sampled response by a sample period)
 - This ensures continuous blocks always have valid inputs
 
 ## See Also

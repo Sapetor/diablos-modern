@@ -91,7 +91,9 @@ class IntegratorBlock(BaseBlock):
             "\n\nParameters:"
             "\n- Initial Condition: Value of the output at start time."
             "\n- Limit Output: Enable saturation limits on the integral."
-            "\n- Method: Integration method (e.g., RK45, Forward Euler)."
+            "\n- Method: Integration method (e.g., RK45, Forward Euler), used by the"
+            "\n  interpreted solver only; the compiled solver integrates the whole"
+            "\n  diagram with the method from Simulation settings."
             "\n\nUsage:"
             "\nFundamental block for building dynamic system models."
         )

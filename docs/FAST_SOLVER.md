@@ -15,10 +15,10 @@ This approach typically yields **10x-100x speedups** compared to the standard In
 4.  **Replay**: The solver's output ($\mathbf{y}$ over time) is "replayed" through the topological graph to reconstruct intermediate signals for `Scope` blocks.
 
 ## Supported Blocks
-The following blocks are fully supported in Fast Solver mode. If a diagram contains *only* these blocks, it will automatically run in Fast Mode.
+The following blocks are fully supported in Fast Solver mode. If a diagram contains *only* these blocks, and none of them is gated to a discrete rate (`sampling_time > 0`), it will automatically run in Fast Mode.
 
 ### Linear Dynamics
-*   **Integrator**: Core state element.
+*   **Integrator**: Core state element. Its per-block `method` is an interpreter-only setting: the compiled path integrates the assembled system with the solver method from Simulation settings, and logs a warning when it discards a non-default per-block method.
 *   **TransferFcn**: Automatically converted to State-Space. Supports identifying inputs.
 *   **StateSpace**: Executed using vector-matrix multiplication.
 
@@ -69,7 +69,7 @@ Systems without any states (e.g., `Ramp` -> `Gain` -> `Scope`) do not require an
 4.  Executing the **Replay Loop** to compute all algebraic signals at each time step.
 
 ### Mixed Mode / Fallback
-If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. This is slower but guarantees compatibility.
+If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. This is slower but guarantees compatibility. A block with a discrete sample time (`sampling_time > 0`) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.
 
 ## Troubleshooting
 
