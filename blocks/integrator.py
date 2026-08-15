@@ -58,7 +58,16 @@ class IntegratorBlock(BaseBlock):
     def params(self):
         return {
             **init_conds_param(default=0.0, doc="Initial condition value"),
-            **method_param(INTEGRATOR_METHODS, default="SOLVE_IVP", doc="Integration method"),
+            **method_param(
+                INTEGRATOR_METHODS,
+                default="SOLVE_IVP",
+                doc=(
+                    "Integration method, applied by the interpreted solver only. "
+                    "The compiled (fast) solver assembles the whole diagram into one "
+                    "ODE system and integrates it with the solver method set in "
+                    "Simulation settings, which offers Euler and RK4 as well."
+                ),
+            ),
             **method_param(
                 SOLVE_IVP_METHODS,
                 default="RK45",

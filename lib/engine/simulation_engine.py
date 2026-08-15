@@ -1837,6 +1837,32 @@ class SimulationEngine:
         compile_cache_hit = False
         method_requested = getattr(self, "solver_method", "RK45") or "RK45"
         method_used = method_requested
+
+        # This path assembles the whole diagram into a single ODE system and
+        # integrates it with one scheme, so an Integrator's per-block "method"
+        # has no meaning here — asking for Euler in one integrator and RK4 in
+        # another is not expressible in one state vector.  It applies only to
+        # the interpreter, which steps each block itself.  The equivalent
+        # control for this path is the solver method in Simulation settings,
+        # which offers Euler and RK4 too.  Say so rather than silently
+        # discarding a setting the user deliberately changed.
+        scan_blocks = self.active_blocks_list or getattr(self.model, "blocks_list", []) or []
+        ignored_methods = sorted(
+            block.name
+            for block in scan_blocks
+            if getattr(block, "block_fn", "") == "Integrator"
+            and str((getattr(block, "params", None) or {}).get("method", "SOLVE_IVP"))
+            not in ("SOLVE_IVP", "")
+        )
+        if ignored_methods:
+            logger.warning(
+                f"Per-block Integrator method ignored by the compiled solver for "
+                f"{', '.join(ignored_methods)}: this run integrates the whole diagram "
+                f"with '{method_requested}' from Simulation settings. The per-block "
+                f"method applies to the interpreted solver only — pick the scheme in "
+                f"Simulation settings (it offers Euler and RK4), or turn off the fast "
+                f"solver to step each block with its own method."
+            )
         backend = None
         fallback_reason = None
         rtol = getattr(self, "rtol", 1e-9)
