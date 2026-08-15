@@ -997,6 +997,23 @@ class DSim:
                                     )
                                     block.schedule_next_execution(self.time_step)
 
+                                # A memory block with direct feedthrough — a ZOH
+                                # at a sample instant outputs the value it just
+                                # sampled — had only its *stale* held value
+                                # delivered, by the first loop's output_only
+                                # pass; the propagation below skips memory
+                                # blocks entirely, so the fresh sample did not
+                                # reach consumers until the next step and the
+                                # staircase edges lagged by one solver step.
+                                # Refresh the already-counted input queues in
+                                # place, before consumers at later hierarchy
+                                # levels run.  Strictly-proper memory blocks
+                                # (b_type 1) are untouched: their output really
+                                # does depend only on past inputs, so the first
+                                # loop's value is the correct one.
+                                if block.name in self.memory_blocks and block.b_type == 2:
+                                    self.engine.propagate_outputs(block, out_value, count=False)
+
                                 # The computed_data booleans are updated in the global list as well as in the block itself
                                 self.engine.update_global_list(block.name, h_value=0)
                                 block.computed_data = True

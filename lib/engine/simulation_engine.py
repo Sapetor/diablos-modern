@@ -1116,13 +1116,22 @@ class SimulationEngine:
             logger.info(f"DISCRETE CONNECTIONS: {discrete_lines}")
         logger.debug("Sample time propagation complete")
 
-    def propagate_outputs(self, block: DBlock, out_value: Dict[int, Any]) -> None:
+    def propagate_outputs(
+        self, block: DBlock, out_value: Dict[int, Any], count: bool = True
+    ) -> None:
         """
         Propagate block outputs to connected downstream blocks.
 
         Args:
             block: Source block
             out_value: Output values from the block
+            count: Whether this delivery counts as a new input arrival. Pass
+                False to overwrite a value already delivered this step without
+                re-counting it: a feedthrough memory block seeds its consumers
+                with a stale held value early in the step and then refreshes
+                them once it has actually sampled. Counting twice would inflate
+                data_recieved and let a multi-input consumer fire before all of
+                its real inputs had arrived.
         """
         children = self.get_outputs(block.name)
         # Use active blocks if execution initialized (flattened copies), otherwise model (fallback)
@@ -1148,9 +1157,10 @@ class SimulationEngine:
                             f"{tuple_child['dstport']}; skipping propagation."
                         )
                         continue
-                    mblock.data_recieved += 1
                     mblock.input_queue[tuple_child["dstport"]] = out_value[srcport]
-                    block.data_sent += 1
+                    if count:
+                        mblock.data_recieved += 1
+                        block.data_sent += 1
 
     def _children_recognition(
         self, block_name: str, children_list: List[Dict]

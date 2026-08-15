@@ -142,7 +142,8 @@ class PIDBlock(BaseBlock):
         meas = float(np.atleast_1d(inputs.get(1, 0.0))[0])
         e = sp - meas
 
-        if params.get("_init_start_", True):
+        first_call = bool(params.get("_init_start_", True))
+        if first_call:
             params["_int"] = 0.0
             params["_d_state"] = 0.0
             params["_prev_e"] = e
@@ -153,8 +154,14 @@ class PIDBlock(BaseBlock):
         Kd = float(params.get("Kd", 0.0))
         N = float(params.get("N", 20.0))
 
-        # Integral update
-        params["_int"] += e * dt
+        # Integral update.  Nothing accrues on the first call: no time has
+        # elapsed at t0, and integrating a whole step there makes the reported
+        # integral lead the true one by one dt for the entire run (Ki=1 on a
+        # unit error read 3.01 over a 3 s run).  This was masked for as long as
+        # the simulation loop delivered the PID's output one step late, which
+        # cancelled it exactly; see tests/regression/test_feedthrough_memory.py.
+        if not first_call:
+            params["_int"] += e * dt
 
         # Derivative with first-order filter (bandwidth ~ N*Kd)
         de = (e - params["_prev_e"]) / dt
