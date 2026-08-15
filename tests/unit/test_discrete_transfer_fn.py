@@ -26,7 +26,11 @@ class TestDiscreteTransferFunction:
 
         assert params["numerator"]["default"] == [1.0, 0.0]
         assert params["denominator"]["default"] == [1.0, -0.5]
-        assert params["sampling_time"]["default"] == -1.0
+        # 0 = inherit the upstream rate. It is deliberately not -1 ("continuous"):
+        # a z-domain recursion has no continuous-time reading, and that default
+        # made the block advance one sample per solver step, so its response
+        # changed with sim_dt. See tests/regression/test_discrete_block_sample_time.py.
+        assert params["sampling_time"]["default"] == 0.0
         assert params["_init_start_"]["default"] is True
 
     def test_unity_gain(self):

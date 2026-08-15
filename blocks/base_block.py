@@ -141,6 +141,24 @@ class BaseBlock(ABC):
         return False
 
     @property
+    def requires_sample_time(self) -> bool:
+        """
+        Whether this block is meaningless without a sample period.
+
+        A block whose whole behaviour is a recursion in the sample index k
+        (DiscreteTransferFunction, DiscreteStateSpace) has no continuous-time
+        interpretation: if no rate can be resolved for it, it advances one k
+        per solver step, so its physical response silently changes when the
+        user changes sim_dt.  The engine warns once per such block at
+        initialization when its rate resolves to continuous, instead of
+        quietly producing a solver-step-dependent answer.
+
+        Returns:
+            True if the block needs a resolved sample time to be well defined.
+        """
+        return False
+
+    @property
     def io_editable(self) -> Optional[str]:
         """
         Whether the block supports user-editable port counts.

@@ -31,9 +31,25 @@ class DiscreteStateSpaceBlock(StateSpaceBaseBlock):
             "C": {"default": [[1.0]], "type": "list"},
             "D": {"default": [[0.0]], "type": "list"},
             "init_conds": {"default": [0.0], "type": "list"},
-            "sampling_time": {"default": -1.0, "type": "float"},
+            "sampling_time": {
+                "default": 0.0,
+                "type": "float",
+                "doc": (
+                    "Sample period in seconds (0=inherit from the upstream rate, "
+                    ">0=fixed rate). A discrete state recursion has no "
+                    "continuous-time meaning, so -1 is not a useful setting here: "
+                    "with no rate to inherit the block advances one sample per "
+                    "solver step and its response then depends on the simulation "
+                    "step size."
+                ),
+            },
             "_init_start_": {"default": True, "type": "bool"},
         }
+
+    @property
+    def requires_sample_time(self):
+        """Pure discrete state recursion — undefined without a resolved rate."""
+        return True
 
     @property
     def doc(self):

@@ -1070,6 +1070,25 @@ class SimulationEngine:
             else:
                 line.discrete_signal = False
 
+        # Phase 3b: Warn about blocks that need a rate but did not get one.
+        # These are pure sample-index recursions; with nothing to inherit they
+        # fall back to one sample per solver step, which means the same diagram
+        # gives a different physical response when sim_dt changes.  That used
+        # to happen silently — it is the app's one remaining place where a
+        # solver setting alters the modelled system rather than its accuracy.
+        for block in self.active_blocks_list:
+            instance = getattr(block, "block_instance", None)
+            if instance is None or not getattr(instance, "requires_sample_time", False):
+                continue
+            if block.effective_sample_time <= 0:
+                logger.warning(
+                    f"{block.name} ({block.block_fn}) has no resolved sample time: "
+                    f"no upstream discrete rate to inherit and none set. It will "
+                    f"advance one sample per solver step ({self.sim_dt}s), so its "
+                    f"response depends on the simulation step size. Set its "
+                    f"'sampling_time' to the intended period in seconds."
+                )
+
         # Phase 4: Stamp each block's own execution step into exec_params.
         # Blocks gated to a discrete rate are only executed every Ts seconds,
         # so the dtime they integrate with must be Ts, not the base solver
