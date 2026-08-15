@@ -808,24 +808,49 @@ class DSim:
             if self.execution_pause:
                 return
 
+            # The run ends by clearing execution_initialized (see the end-of-run
+            # check below), at which point reset_memblocks() has already re-armed
+            # every block. Re-executing would append samples past the horizon
+            # computed from re-initialised state, so stop doing work — but keep
+            # advancing the clock, so a caller driving the loop on a time
+            # comparison rather than on execution_initialized still terminates
+            # instead of spinning forever.
+            if not self.execution_initialized:
+                self.time_step += self.sim_dt
+                return
+
             self.reset_execution_data()
+
+            # True when this call advanced a whole step and recorded a sample —
+            # the only point at which the horizon check below can decide the
+            # run is complete (see the end-of-run check).
+            sample_recorded = False
 
             if self.rk45_len:
                 self.rk_counter %= 4
+                # RK4 evaluates its four stages at t, t+h/2, t+h/2, t+h and
+                # completes the state update on the last one, so a whole cycle
+                # must advance the clock by exactly one sim_dt: +0, +h/2, +0,
+                # +h/2.  Sub-step 0 is the *start* of a step and must not
+                # advance time — it publishes the state the previous cycle
+                # finished computing, which is the sample for this grid point.
+                # It used to add a full sim_dt here, so each four-call cycle
+                # advanced 2*sim_dt while the integrator advanced one h, and
+                # every RK45 trace came out stretched 2x in time (the integral
+                # of a unit step reached only 0.5 at t=1.0).
                 if self.rk_counter in [1, 3]:
                     self.time_step += self.sim_dt / 2
-                    if interactive:
-                        self.pbar.update(1 / 2)
                 elif self.rk_counter == 0:
-                    self.time_step += self.sim_dt
                     if interactive:
                         self.pbar.update(1)
                     self._timeline_list.append(self.time_step)
+                    sample_recorded = True
             else:
                 self.time_step += self.sim_dt
                 if interactive:
                     self.pbar.update(1)
                 self._timeline_list.append(self.time_step)
+                sample_recorded = True
 
             # Use the active list from engine (flattened if needed)
             # Fallback to local list if engine not ready (though it should be)
@@ -835,8 +860,30 @@ class DSim:
                 else self.blocks_list
             )
 
+            # Outputs memory blocks reported *before* this step's state update,
+            # keyed by block name.  Needed by the hierarchy loop below to hold
+            # the right value for discrete-rate blocks whose execute() returns
+            # the advanced state (see SimulationEngine.stamp_held_outputs).
+            pre_update_outputs = {}
+
             for block in current_blocks:
                 try:
+                    if self.rk45_len:
+                        # Sinks (Scope / Export) must record one sample per RK4
+                        # cycle, not one per stage evaluation.  The flag has to
+                        # be written to exec_params, which is the dict execute()
+                        # actually receives; block.params is kept in sync
+                        # because a cache-miss re-resolve re-copies '_'-prefixed
+                        # keys from it (SimulationEngine._resolve_block_params).
+                        # Writing it to params alone left it invisible to the
+                        # blocks — exec_params is normally served from cache —
+                        # so every sub-step was recorded: 21 scope samples
+                        # against a 6-entry timeline.
+                        skip = self.rk_counter != 0
+                        block.params["_skip_"] = skip
+                        if getattr(block, "exec_params", None) is not None:
+                            block.exec_params["_skip_"] = skip
+
                     if block.name in self.memory_blocks:
                         # Multi-rate: Check if discrete block should execute at this time
                         if not block.should_execute(self.time_step):
@@ -859,6 +906,9 @@ class DSim:
                             )
                             return
 
+                        if block.effective_sample_time > 0:
+                            pre_update_outputs[block.name] = out_value
+
                         # Propagate outputs to children. set_held_output and
                         # schedule_next_execution are NOT called here — the
                         # hierarchy loop runs the state-updating execute and
@@ -867,8 +917,6 @@ class DSim:
                         # leaving downstream consumers stuck on the initial state.
                         self.engine.propagate_outputs(block, out_value)
 
-                    if self.rk45_len and self.rk_counter != 0:
-                        block.params["_skip_"] = True
                 except Exception as e:
                     logger.error(f"Error executing block {block.name}: {str(e)}")
                     self.execution_failed(f"Error executing block {block.name}: {e}")
@@ -929,11 +977,7 @@ class DSim:
 
                                 # After execution, for memory blocks, update the 'output' state for the next step
                                 if block.name in self.memory_blocks:
-                                    if (
-                                        block.block_fn == "Integrator"
-                                        and "mem" in block.exec_params
-                                    ):
-                                        block.exec_params["output"] = block.exec_params["mem"]
+                                    self.engine.sync_integrator_output(block)
 
                                 # It is checked that the function has not delivered an error
                                 if out_value is None or ("E" in out_value and out_value["E"]):
@@ -946,10 +990,29 @@ class DSim:
 
                                 # Multi-rate: Store outputs and schedule next execution for discrete blocks
                                 if block.effective_sample_time > 0:
-                                    for port, value in out_value.items():
-                                        if isinstance(port, int):
-                                            block.set_held_output(port, value)
+                                    self.engine.stamp_held_outputs(
+                                        block,
+                                        out_value,
+                                        pre_update_outputs.get(block.name),
+                                    )
                                     block.schedule_next_execution(self.time_step)
+
+                                # A memory block with direct feedthrough — a ZOH
+                                # at a sample instant outputs the value it just
+                                # sampled — had only its *stale* held value
+                                # delivered, by the first loop's output_only
+                                # pass; the propagation below skips memory
+                                # blocks entirely, so the fresh sample did not
+                                # reach consumers until the next step and the
+                                # staircase edges lagged by one solver step.
+                                # Refresh the already-counted input queues in
+                                # place, before consumers at later hierarchy
+                                # levels run.  Strictly-proper memory blocks
+                                # (b_type 1) are untouched: their output really
+                                # does depend only on past inputs, so the first
+                                # loop's value is the correct one.
+                                if block.name in self.memory_blocks and block.b_type == 2:
+                                    self.engine.propagate_outputs(block, out_value, count=False)
 
                                 # The computed_data booleans are updated in the global list as well as in the block itself
                                 self.engine.update_global_list(block.name, h_value=0)
@@ -969,8 +1032,29 @@ class DSim:
                 # The dynamic plot function is called to save the new data, if active
                 self.dynamic_pyqtPlotScope(step=1)
 
-            # It is checked if the total simulation (execution) time has been exceeded to end the loop
-            if self.time_step > self.execution_time:  # seconds
+            # End of run.  Stop once the last sample that fits inside the
+            # horizon has been produced, rather than after computing one step
+            # past it: the old `time_step > execution_time` test could only
+            # fire on a step already beyond the end, so a 3.0 s run at
+            # dt=0.01 emitted 302 samples ending at t=3.01.  This matches the
+            # compiled solver's grid (arange(0, T+dt, dt) clipped to <= T),
+            # so both solvers now return the same timeline.  The tolerance
+            # absorbs the drift of accumulating sim_dt; the original test is
+            # kept as a backstop for calls that did not record a sample (RK45
+            # sub-steps, which advance time in halves).
+            # Only a call that recorded a sample may end the run: RK45
+            # sub-steps land between grid points and accumulate the drift of
+            # adding sim_dt/2, so the last one of a cycle can test as just past
+            # the horizon and terminate before the cycle's sample is recorded,
+            # dropping the final grid point.  What remains of the old test is a
+            # runaway guard, with a full sim_dt of margin so it cannot fire
+            # mid-cycle.
+            end_of_run = self.time_step > self.execution_time + self.sim_dt
+            if sample_recorded:
+                next_step = self.time_step + self.sim_dt
+                end_of_run = next_step > self.execution_time + self.sim_dt * 1e-6
+
+            if end_of_run:  # seconds
                 self.timeline = np.array(self._timeline_list)  # Convert list to numpy array
                 self.execution_initialized = False  # The execution loop is terminated
                 if interactive:

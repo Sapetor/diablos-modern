@@ -7,7 +7,6 @@ but controls the OptimizationEngine.
 """
 
 import logging
-import numpy as np
 from blocks.base_block import BaseBlock
 
 logger = logging.getLogger(__name__)
@@ -105,22 +104,6 @@ class OptimizerBlock(BaseBlock):
                 "default": 0.7,
                 "doc": "Recombination rate for differential_evolution",
             },
-            # Results storage
-            "_optimal_cost_": {
-                "type": "float",
-                "default": np.inf,
-                "doc": "Internal: Best cost found",
-            },
-            "_n_iterations_": {
-                "type": "int",
-                "default": 0,
-                "doc": "Internal: Number of function evaluations",
-            },
-            "_converged_": {
-                "type": "bool",
-                "default": False,
-                "doc": "Internal: Did optimizer converge",
-            },
         }
 
     @property
@@ -192,22 +175,3 @@ class OptimizerBlock(BaseBlock):
             "recombination": float(params.get("recombination", 0.7)),
         }
 
-    def store_results(self, params, result):
-        """
-        Store optimization results.
-
-        Args:
-            params: Block params dict
-            result: scipy.optimize result object
-        """
-        params["_optimal_cost_"] = float(result.fun) if hasattr(result, "fun") else np.inf
-        params["_n_iterations_"] = int(result.nfev) if hasattr(result, "nfev") else 0
-        params["_converged_"] = bool(result.success) if hasattr(result, "success") else False
-
-    def get_results(self, params):
-        """Get stored optimization results."""
-        return {
-            "optimal_cost": params.get("_optimal_cost_", np.inf),
-            "n_evaluations": params.get("_n_iterations_", 0),
-            "converged": params.get("_converged_", False),
-        }

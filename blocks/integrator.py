@@ -40,6 +40,13 @@ class IntegratorBlock(BaseBlock):
         return 1
 
     @property
+    def output_is_post_update(self):
+        """execute() returns params['mem'] *after* integrating this step, i.e.
+        x[k+1].  The value to hold between samples is the pre-update state
+        (params['output'], what the output_only path returns)."""
+        return True
+
+    @property
     def category(self):
         return "Control"
 
@@ -51,7 +58,16 @@ class IntegratorBlock(BaseBlock):
     def params(self):
         return {
             **init_conds_param(default=0.0, doc="Initial condition value"),
-            **method_param(INTEGRATOR_METHODS, default="SOLVE_IVP", doc="Integration method"),
+            **method_param(
+                INTEGRATOR_METHODS,
+                default="SOLVE_IVP",
+                doc=(
+                    "Integration method, applied by the interpreted solver only. "
+                    "The compiled (fast) solver assembles the whole diagram into one "
+                    "ODE system and integrates it with the solver method set in "
+                    "Simulation settings, which offers Euler and RK4 as well."
+                ),
+            ),
             **method_param(
                 SOLVE_IVP_METHODS,
                 default="RK45",
@@ -139,6 +155,15 @@ class IntegratorBlock(BaseBlock):
                 params["RK45_Klist"] = [0, 0, 0, 0]
 
         if output_only:
+            if params.get("method") == "RK45" and params.get("nb_loop", 0) != 0:
+                # Mid-cycle: publish the RK4 stage state (x_n + K1/2, then
+                # x_n + K2/2, then x_n + K3) so the rest of the diagram
+                # evaluates the derivative at the stage point.  Publishing the
+                # step's start state here instead made all four stages see the
+                # same state: K1 = K2 = K3 = K4, and the weighted average
+                # (K1 + 2K2 + 2K3 + K4)/6 collapses to K1 -- forward Euler at
+                # four times the cost.
+                return {0: params["aux"], "E": False}
             result = {0: params.get("output", params["mem"]), "E": False}
             return result
 

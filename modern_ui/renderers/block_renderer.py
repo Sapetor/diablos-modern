@@ -21,6 +21,7 @@ from PyQt5.QtGui import (
 )
 from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
+from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
 
@@ -698,7 +699,7 @@ class BlockRenderer:
         elif block.block_fn == "Exp":
             self._draw_centered_text(block, painter, "eˣ", italic=True, size_delta=4)
         elif block.block_fn == "Display":
-            params_source = getattr(block, "exec_params", block.params) or block.params
+            params_source = runtime_params(block)
             display_val = params_source.get("_display_value_", "---")
             # Dynamic character limit based on block width (approx 8 pixels per char)
             block_width = getattr(block, "width", 80)

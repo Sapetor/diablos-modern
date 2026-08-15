@@ -34,6 +34,8 @@ from typing import Any
 
 import numpy as np
 
+from lib.engine.block_params import runtime_params
+
 
 # ---------------------------------------------------------------------------
 # Unconditional memory blocks
@@ -76,7 +78,7 @@ def _params_source(block: Any) -> dict:
     """Prefer resolved exec_params; fall back to raw params for callers
     that haven't run resolve_params yet (e.g. ValidationHelper which is
     invoked during canvas validation)."""
-    return getattr(block, "exec_params", None) or getattr(block, "params", {}) or {}
+    return runtime_params(block)
 
 
 def is_strictly_proper_tf(block: Any) -> bool:

@@ -18,6 +18,8 @@ import numpy as np
 from typing import List, Dict, Tuple, Callable
 from scipy import optimize
 
+from lib.engine.block_params import runtime_params
+
 logger = logging.getLogger(__name__)
 
 
@@ -188,11 +190,36 @@ class OptimizationEngine:
 
         return np.clip(value, lower, upper)
 
+    # The params dict a block actually wrote to during the simulation.
+    #
+    # SimulationEngine.execute_block passes ``block.exec_params`` to execute(),
+    # so every accumulator a block updates during a run — a cost function's
+    # ``_accumulated_cost_``, a constraint's ``_violation_`` — lands there,
+    # never in ``block.params``.  Reading the results back off ``block.params``
+    # therefore returned the pre-run value: the objective was a constant 0.0
+    # for every parameter vector, so the optimizer "converged" immediately and
+    # handed back its starting point.
+    #
+    # Config the user typed (weights, bounds, method) is still read from
+    # ``block.params``; exec_params is the workspace-resolved copy of it plus
+    # the runtime state, so it is the right dict for a result readback.
+    # Exposed as a class attribute so existing call sites keep working; the
+    # implementation is shared with the other readers (see lib/engine/block_params).
+    runtime_params = staticmethod(runtime_params)
+
     def reset_blocks(self):
-        """Reset all optimization blocks for a new simulation."""
+        """Reset all optimization blocks for a new simulation.
+
+        Both dicts are reset: prepare_execution currently rebuilds exec_params
+        from params on every iteration, which would carry the reset across on
+        its own, but relying on that makes the reset silently dependent on a
+        detail of an unrelated method.
+        """
         for block in self.cost_function_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
                 block.block_instance.reset(block.params)
+                if getattr(block, "exec_params", None):
+                    block.block_instance.reset(block.exec_params)
             else:
                 block.params["_accumulated_cost_"] = 0.0
                 block.params["_init_start_"] = True
@@ -220,17 +247,18 @@ class OptimizationEngine:
 
         for block in self.cost_function_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                cost = block.block_instance.get_final_cost(block.params)
+                cost = block.block_instance.get_final_cost(self.runtime_params(block))
             else:
-                weight = float(block.params.get("weight", 1.0))
-                accumulated = block.params.get("_accumulated_cost_", 0.0)
+                rt = self.runtime_params(block)
+                weight = float(rt.get("weight", 1.0))
+                accumulated = rt.get("_accumulated_cost_", 0.0)
                 cost = accumulated * weight
 
             total_cost += cost
 
         for block in self.data_fit_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                cost = block.block_instance.get_final_error(block.params)
+                cost = block.block_instance.get_final_error(self.runtime_params(block))
             else:
                 cost = 0.0
 
@@ -249,7 +277,9 @@ class OptimizationEngine:
 
         for block in self.constraint_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                ctype, value = block.block_instance.get_constraint_value(block.params)
+                ctype, value = block.block_instance.get_constraint_value(
+                    self.runtime_params(block)
+                )
             else:
                 # Default constraint computation
                 ctype = "ineq"
@@ -270,10 +300,11 @@ class OptimizationEngine:
 
         for block in self.constraint_blocks:
             if hasattr(block, "block_instance") and block.block_instance:
-                penalty += block.block_instance.get_penalty(block.params)
+                penalty += block.block_instance.get_penalty(self.runtime_params(block))
             else:
-                penalty_weight = float(block.params.get("penalty_weight", 1000.0))
-                violation = block.params.get("_violation_", 0.0)
+                rt = self.runtime_params(block)
+                penalty_weight = float(rt.get("penalty_weight", 1000.0))
+                violation = rt.get("_violation_", 0.0)
                 penalty += penalty_weight * violation**2
 
         return penalty
@@ -505,14 +536,12 @@ class OptimizationEngine:
             if hasattr(info["block"], "exec_params"):
                 info["block"].exec_params["value"] = float(value)
 
-        # Store results in optimizer block
-        if hasattr(self.optimizer_block, "block_instance") and self.optimizer_block.block_instance:
-            self.optimizer_block.block_instance.store_results(self.optimizer_block.params, result)
-        else:
-            self.optimizer_block.params["_optimal_cost_"] = float(result.fun)
-            self.optimizer_block.params["_n_iterations_"] = self.n_evaluations
-            self.optimizer_block.params["_converged_"] = bool(result.success)
-
+        # Results are returned to the caller below, not stashed on the block: a
+        # previous writeback of _optimal_cost_/_n_iterations_/_converged_ into
+        # optimizer_block.params was never read by anything.  '_'-prefixed keys
+        # are hidden from the property editor and excluded from saving_params,
+        # and the block reads exec_params when it executes -- so the values were
+        # invisible, unpersisted, and in the dict no reader would have used.
         logger.info("Optimization complete!")
         logger.info(f"Optimal cost: {result.fun:.6g}")
         logger.info(f"Optimal parameters: {optimal_params}")

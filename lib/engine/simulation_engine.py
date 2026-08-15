@@ -16,6 +16,7 @@ from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
+from lib.engine.block_params import push_down_internal_params
 from lib.engine import graph_analysis
 from lib.engine.pde_ops import wave_energy_1d
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
@@ -446,8 +447,7 @@ class SimulationEngine:
 
                     # Memory block special output update
                     if block.name in self.memory_blocks:
-                        if block.block_fn == "Integrator" and "mem" in block.exec_params:
-                            block.exec_params["output"] = block.exec_params["mem"]
+                        self.sync_integrator_output(block)
 
                     self.update_global_list(block.name, h_value=h_count, h_assign=True)
                     block.computed_data = True
@@ -458,9 +458,7 @@ class SimulationEngine:
                     # would still see _next_execution_time=0 and run the
                     # block at t=dt instead of waiting for t=Ts.
                     if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                        for port, value in out_value.items():
-                            if isinstance(port, int):
-                                block.set_held_output(port, value)
+                        self.stamp_held_outputs(block, out_value)
                         block.schedule_next_execution(self.time_step)
 
                     if block.name not in self.memory_blocks and block.b_type != 3:
@@ -511,6 +509,15 @@ class SimulationEngine:
         """
         for block in blocks_to_exec:
             if block.name in self.memory_blocks:
+                # Capture the output belonging to t=0 before the state is
+                # advanced: for a discrete-rate block this is the value held
+                # across the first sample interval [0, Ts).
+                pre_update_value = None
+                if block.effective_sample_time > 0:
+                    pre = self.execute_block(block, output_only=True)
+                    if isinstance(pre, dict) and not pre.get("E"):
+                        pre_update_value = pre
+
                 out_value = self.execute_block(block)
                 if out_value is False:
                     return False
@@ -518,8 +525,7 @@ class SimulationEngine:
                     self.error_msg = out_value.get("error", "State advance failed")
                     logger.error(f"Loop 3 state advance failed for {block.name}: {self.error_msg}")
                     return False
-                if block.block_fn == "Integrator" and "mem" in block.exec_params:
-                    block.exec_params["output"] = block.exec_params["mem"]
+                self.sync_integrator_output(block)
                 # For discrete blocks, sync the DBlock-level sample schedule
                 # with the block-internal sample state so the simulation
                 # loop's should_execute() agrees with the block's own
@@ -527,9 +533,7 @@ class SimulationEngine:
                 # block's "next sample" is still at t=0 and would call
                 # execute every dt instead of every Ts.
                 if block.effective_sample_time > 0 and isinstance(out_value, dict):
-                    for port, value in out_value.items():
-                        if isinstance(port, int):
-                            block.set_held_output(port, value)
+                    self.stamp_held_outputs(block, out_value, pre_update_value)
                     block.schedule_next_execution(self.time_step)
         return True
 
@@ -556,6 +560,56 @@ class SimulationEngine:
             if h_assign:
                 g_block["hierarchy"] = h_value
 
+    def stamp_held_outputs(
+        self,
+        block: DBlock,
+        out_value: Any,
+        pre_update_value: Optional[Dict[int, Any]] = None,
+    ) -> None:
+        """Store the outputs a discrete-rate block emits until its next sample.
+
+        Between sample instants the loop propagates these held values, so they
+        must be the outputs belonging to the instant that just fired.  Most
+        stateful blocks return exactly that from execute() (they compute
+        y = Cx + Du before advancing x), but a block declaring
+        ``output_is_post_update`` returns the advanced state instead; holding
+        that would make its staircase lead the true sampled response by a full
+        sample period.  For those, ``pre_update_value`` — the output_only
+        result captured *before* the state advance — is held instead.
+        """
+        source = out_value
+        instance = getattr(block, "block_instance", None)
+        if instance is not None and getattr(instance, "output_is_post_update", False):
+            if pre_update_value is None:
+                # No pre-update output available: keep whatever is already
+                # held rather than stamping the advanced state.
+                return
+            source = pre_update_value
+        if not isinstance(source, dict):
+            return
+        for port, value in source.items():
+            if isinstance(port, int):
+                block.set_held_output(port, value)
+
+    @staticmethod
+    def sync_integrator_output(block) -> None:
+        """Publish an Integrator's freshly advanced state as its reported output.
+
+        The copy is the whole point.  Every in-place integration method
+        (FWD_EULER / BWD_EULER / TUSTIN / RK45 all do ``params["mem"] += ...``)
+        mutates the state array in place, so binding "output" to the same object
+        made the reported output track the state instead of lagging it by one
+        step -- shifting every sample of those methods one step early (the
+        integral of a unit step read t + dtime).  SOLVE_IVP rebinds "mem" to a
+        fresh array on each call and so never exhibited it.
+        """
+        if getattr(block, "block_fn", None) != "Integrator":
+            return
+        exec_params = getattr(block, "exec_params", None)
+        if not exec_params or "mem" not in exec_params:
+            return
+        exec_params["output"] = np.array(exec_params["mem"], copy=True)
+
     def _resolve_block_params(
         self, block: DBlock, dt: float, workspace_manager: Optional[WorkspaceManager] = None
     ) -> None:
@@ -567,17 +621,28 @@ class SimulationEngine:
         initialize_execution and run_compiled_simulation so the cache-skip logic
         stays consistent.
         """
+        # Blocks gated to a discrete rate integrate over their own sample
+        # period, not the base step (see DBlock.execution_step).  Before
+        # propagate_sample_times() has run this is still dt, so the stamp is
+        # refreshed there once the effective rates are known.
+        step = block.execution_step(dt)
         cached = getattr(block, "exec_params", None)
         params_fp = source_params_fingerprint(block.params)
         cached_fp = cached.get("_source_params_fingerprint") if cached else None
-        if cached and cached.get("dtime") == dt and cached_fp == params_fp:
+        if cached and cached.get("dtime") == step and cached_fp == params_fp:
+            # The cache hit skips the '_'-prefixed copy below, and '_' keys are
+            # excluded from the fingerprint, so a mid-run write to params would
+            # otherwise never reach the block.  Refresh the narrow set that the
+            # engine/UI legitimately push down (see block_params.PUSH_DOWN_KEYS);
+            # a blanket copy here would clobber the state the block owns.
+            push_down_internal_params(block)
             return
         if workspace_manager is None:
             workspace_manager = WorkspaceManager()
         block.exec_params = workspace_manager.resolve_params(block.params)
         # Copy internal parameters (those starting with '_')
         block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
-        block.exec_params["dtime"] = dt
+        block.exec_params["dtime"] = step
         block.exec_params["_source_params_fingerprint"] = params_fp
 
     def execute_block(
@@ -599,7 +664,7 @@ class SimulationEngine:
                 kwargs["output_only"] = True
                 if block.block_fn == "Integrator":
                     kwargs["next_add_in_memory"] = False
-                    kwargs["dtime"] = self.sim_dt
+                    kwargs["dtime"] = block.execution_step(self.sim_dt)
 
             if block.external:
                 # The External block is an unimplemented stub (see blocks/external.py).
@@ -1012,6 +1077,37 @@ class SimulationEngine:
             else:
                 line.discrete_signal = False
 
+        # Phase 3b: Warn about blocks that need a rate but did not get one.
+        # These are pure sample-index recursions; with nothing to inherit they
+        # fall back to one sample per solver step, which means the same diagram
+        # gives a different physical response when sim_dt changes.  That used
+        # to happen silently — it is the app's one remaining place where a
+        # solver setting alters the modelled system rather than its accuracy.
+        for block in self.active_blocks_list:
+            instance = getattr(block, "block_instance", None)
+            if instance is None or not getattr(instance, "requires_sample_time", False):
+                continue
+            if block.effective_sample_time <= 0:
+                logger.warning(
+                    f"{block.name} ({block.block_fn}) has no resolved sample time: "
+                    f"no upstream discrete rate to inherit and none set. It will "
+                    f"advance one sample per solver step ({self.sim_dt}s), so its "
+                    f"response depends on the simulation step size. Set its "
+                    f"'sampling_time' to the intended period in seconds."
+                )
+
+        # Phase 4: Stamp each block's own execution step into exec_params.
+        # Blocks gated to a discrete rate are only executed every Ts seconds,
+        # so the dtime they integrate with must be Ts, not the base solver
+        # step — otherwise a continuous block given sampling_time=Ts advances
+        # dt per sample and runs Ts/dt times too slowly.  This runs after the
+        # rates are resolved (including inheritance), and before any block is
+        # executed, so init-time discretisations (TranFn/StateSpace
+        # cont2discrete) see the correct step.
+        for block in self.active_blocks_list:
+            if getattr(block, "exec_params", None):
+                block.exec_params["dtime"] = block.execution_step(self.sim_dt)
+
         # Log resolved sample times
         discrete_blocks = [
             (b.name, b.effective_sample_time)
@@ -1027,13 +1123,22 @@ class SimulationEngine:
             logger.info(f"DISCRETE CONNECTIONS: {discrete_lines}")
         logger.debug("Sample time propagation complete")
 
-    def propagate_outputs(self, block: DBlock, out_value: Dict[int, Any]) -> None:
+    def propagate_outputs(
+        self, block: DBlock, out_value: Dict[int, Any], count: bool = True
+    ) -> None:
         """
         Propagate block outputs to connected downstream blocks.
 
         Args:
             block: Source block
             out_value: Output values from the block
+            count: Whether this delivery counts as a new input arrival. Pass
+                False to overwrite a value already delivered this step without
+                re-counting it: a feedthrough memory block seeds its consumers
+                with a stale held value early in the step and then refreshes
+                them once it has actually sampled. Counting twice would inflate
+                data_recieved and let a multi-input consumer fire before all of
+                its real inputs had arrived.
         """
         children = self.get_outputs(block.name)
         # Use active blocks if execution initialized (flattened copies), otherwise model (fallback)
@@ -1059,9 +1164,10 @@ class SimulationEngine:
                             f"{tuple_child['dstport']}; skipping propagation."
                         )
                         continue
-                    mblock.data_recieved += 1
                     mblock.input_queue[tuple_child["dstport"]] = out_value[srcport]
-                    block.data_sent += 1
+                    if count:
+                        mblock.data_recieved += 1
+                        block.data_sent += 1
 
     def _children_recognition(
         self, block_name: str, children_list: List[Dict]
@@ -1738,6 +1844,32 @@ class SimulationEngine:
         compile_cache_hit = False
         method_requested = getattr(self, "solver_method", "RK45") or "RK45"
         method_used = method_requested
+
+        # This path assembles the whole diagram into a single ODE system and
+        # integrates it with one scheme, so an Integrator's per-block "method"
+        # has no meaning here — asking for Euler in one integrator and RK4 in
+        # another is not expressible in one state vector.  It applies only to
+        # the interpreter, which steps each block itself.  The equivalent
+        # control for this path is the solver method in Simulation settings,
+        # which offers Euler and RK4 too.  Say so rather than silently
+        # discarding a setting the user deliberately changed.
+        scan_blocks = self.active_blocks_list or getattr(self.model, "blocks_list", []) or []
+        ignored_methods = sorted(
+            block.name
+            for block in scan_blocks
+            if getattr(block, "block_fn", "") == "Integrator"
+            and str((getattr(block, "params", None) or {}).get("method", "SOLVE_IVP"))
+            not in ("SOLVE_IVP", "")
+        )
+        if ignored_methods:
+            logger.warning(
+                f"Per-block Integrator method ignored by the compiled solver for "
+                f"{', '.join(ignored_methods)}: this run integrates the whole diagram "
+                f"with '{method_requested}' from Simulation settings. The per-block "
+                f"method applies to the interpreted solver only — pick the scheme in "
+                f"Simulation settings (it offers Euler and RK4), or turn off the fast "
+                f"solver to step each block with its own method."
+            )
         backend = None
         fallback_reason = None
         rtol = getattr(self, "rtol", 1e-9)

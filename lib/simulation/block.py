@@ -249,6 +249,27 @@ class DBlock:
         """
         self._held_outputs[port] = value
 
+    def execution_step(self, sim_dt: float) -> float:
+        """
+        Time increment this block advances on each of its executions.
+
+        A block gated to a discrete rate (``effective_sample_time > 0``) is
+        only executed every Ts seconds, so the step it must integrate over is
+        Ts — not the base solver step.  Continuous blocks run every step and
+        advance by ``sim_dt``.  This is what gets stamped into
+        ``exec_params['dtime']``, which Integrator/TranFn/StateSpace/PID use
+        as their step size.
+
+        Args:
+            sim_dt: Base simulation step size
+
+        Returns:
+            float: Ts for discrete-rate blocks, sim_dt otherwise
+        """
+        if self.effective_sample_time > 0:
+            return self.effective_sample_time
+        return sim_dt
+
     def reset_sample_time_state(self) -> None:
         """Reset sample time execution state for a new simulation run."""
         self._next_execution_time = 0.0

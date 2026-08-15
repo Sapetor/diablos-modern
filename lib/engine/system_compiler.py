@@ -6,8 +6,29 @@ from scipy import signal
 from lib.engine.pde_helpers import parse_pde_initial_condition, parse_pde_2d_initial_condition
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
+from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
+
+
+def _declared_sample_time(block) -> float:
+    """Sample time declared on a block: >0 = discrete rate, <=0 = continuous.
+
+    Mirrors ``DBlock.resolve_sample_time`` but tolerates blocks that predate
+    it (and unparseable workspace-variable strings), since this runs before
+    the engine resolves params.
+    """
+    resolver = getattr(block, "resolve_sample_time", None)
+    if callable(resolver):
+        try:
+            return resolver()
+        except (TypeError, ValueError):
+            return -1.0
+    params = getattr(block, "params", {}) or {}
+    try:
+        return float(params.get("sampling_time", params.get("sample_time", -1.0)))
+    except (TypeError, ValueError):
+        return -1.0
 
 
 class SystemCompiler:
@@ -131,6 +152,18 @@ class SystemCompiler:
                 )
                 return False
 
+            # A block gated to a discrete rate (sampling_time > 0) is a
+            # sampled-data element: it must hold its output between sample
+            # instants and advance its state once per Ts.  The compiled ODE
+            # RHS has no notion of sample instants and would silently run the
+            # block as a purely continuous one, so the whole diagram falls
+            # back to the interpreter, which honours the rate.
+            if _declared_sample_time(block) > 0:
+                logger.debug(
+                    f"Block {block.name} ({b_type}) has a discrete sample time; using interpreter."
+                )
+                return False
+
             # Accept the block if its name matches the allowlist directly or
             # via case correction (TitleCase, e.g. Sine; or UPPER, e.g. PID).
             if (
@@ -163,7 +196,7 @@ class SystemCompiler:
 
         # Use resolved params if available (exec_params), otherwise fall back to params
         # This ensures workspace variables are properly resolved
-        params = getattr(block, "exec_params", None) or block.params
+        params = runtime_params(block)
 
         # Pre-resolve Inputs
         # We need a list of source keys to fetch from 'signals'
@@ -258,7 +291,7 @@ class SystemCompiler:
             # (and therefore the D!=0 vs D=0 classification for execution
             # ordering) whenever a state block is parameterised by a workspace
             # variable. Same convention used by the PDE branches below.
-            sparams = getattr(block, "exec_params", None) or block.params
+            sparams = runtime_params(block)
 
             if fn == "Integrator":
                 ic = np.array(sparams.get("init_conds", 0.0), dtype=float)
@@ -358,7 +391,7 @@ class SystemCompiler:
 
             elif fn == "Heatequation1D":
                 # HeatEquation1D has N states (one per spatial node)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 20))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -372,7 +405,7 @@ class SystemCompiler:
 
             elif fn == "Waveequation1D":
                 # WaveEquation1D has 2N states (N displacement + N velocity)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 50))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, 2 * N)
@@ -391,7 +424,7 @@ class SystemCompiler:
 
             elif fn == "Advectionequation1D":
                 # AdvectionEquation1D has N states
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 50))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -405,7 +438,7 @@ class SystemCompiler:
 
             elif fn == "Diffusionreaction1D":
                 # DiffusionReaction1D has N states
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 30))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -421,7 +454,7 @@ class SystemCompiler:
 
             elif fn == "Heatequation2D":
                 # HeatEquation2D has Nx*Ny states (one per spatial node)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 20))
                 Ny = int(pde_params.get("Ny", 20))
                 Lx = float(pde_params.get("Lx", 1.0))
@@ -440,7 +473,7 @@ class SystemCompiler:
 
             elif fn == "Waveequation2D":
                 # WaveEquation2D has 2*Nx*Ny states (displacement u + velocity v)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 20))
                 Ny = int(pde_params.get("Ny", 20))
                 n_states = 2 * Nx * Ny
@@ -455,7 +488,7 @@ class SystemCompiler:
 
             elif fn == "Advectionequation2D":
                 # AdvectionEquation2D has Nx*Ny states (concentration field)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 30))
                 Ny = int(pde_params.get("Ny", 30))
                 n_states = Nx * Ny
