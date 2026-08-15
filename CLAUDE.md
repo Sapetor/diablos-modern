@@ -107,7 +107,7 @@ In addition to those subdirs (and `tests/profiling/`), ~15 `test_*.py` files liv
 
 **CI**: `.github/workflows/ci.yml` runs the suite on a Python **3.9 + 3.12** matrix (ubuntu-latest) per push/PR. 3.9 is the baseline (matches the local/readthedocs env), so avoid 3.10+-only syntax -- code that passes locally on a newer Python can still break the 3.9 leg. A separate `lint` job runs `ruff check .`.
 
-**Linting**: `ruff check .` (config in `pyproject.toml`, targets py39) is the lint gate -- run it before pushing. Ruff is the project's linter/formatter (replaces black/pylint, in `requirements-dev.txt`); the rule set keeps pyflakes + error checks and silences high-volume stylistic E7xx (see `pyproject.toml`). `ruff format` is available but not yet enforced in CI.
+**Linting**: `ruff check .` (config in `pyproject.toml`, targets py39) is the lint gate -- run it before pushing. Ruff is the project's linter/formatter (replaces black/pylint, in `requirements-dev.txt`); the rule set keeps pyflakes + error checks and silences high-volume stylistic E7xx (see `pyproject.toml`). **`ruff format --check .` is also a CI gate** (since the repo was fully formatted in 2026-07) -- run both `ruff check .` and `ruff format --check .` before pushing, or the lint job fails on formatting alone. CI pins `ruff==0.15.18` because formatter output shifts between releases; match that version locally. On WSL, `ruff` is not on the PATH -- invoke it through the Windows venv as `.venv-win/Scripts/python.exe -m ruff`.
 
 ### Test Pattern
 
