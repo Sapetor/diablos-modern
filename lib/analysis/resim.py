@@ -17,6 +17,8 @@ heatmaps speak about *the same* metric definitions.
 
 import numpy as np
 
+from lib.engine.block_params import runtime_params
+
 
 # Per-run outcome metrics. Each maps an ensemble matrix ``M`` of shape
 # (n_runs, L) -- one row per run -- to a length-``n_runs`` vector holding one
@@ -58,7 +60,7 @@ def harvest_scope_signals(dsim):
     for b in blocks:
         if b.block_fn != "Scope":
             continue
-        params = getattr(b, "exec_params", None) or b.params
+        params = runtime_params(b)
         vec = params.get("vector")
         if vec is None:
             continue

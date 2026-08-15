@@ -18,6 +18,8 @@ import numpy as np
 from typing import List, Dict, Tuple, Callable
 from scipy import optimize
 
+from lib.engine.block_params import runtime_params
+
 logger = logging.getLogger(__name__)
 
 
@@ -188,24 +190,22 @@ class OptimizationEngine:
 
         return np.clip(value, lower, upper)
 
-    @staticmethod
-    def runtime_params(block):
-        """The params dict a block actually wrote to during the simulation.
-
-        SimulationEngine.execute_block passes ``block.exec_params`` to
-        execute(), so every accumulator a block updates during a run — a cost
-        function's ``_accumulated_cost_``, a constraint's ``_violation_`` —
-        lands there, never in ``block.params``.  Reading the results back off
-        ``block.params`` therefore returned the pre-run value: the objective
-        was a constant 0.0 for every parameter vector, so the optimizer
-        "converged" immediately and handed back its starting point.
-
-        Config the user typed (weights, bounds, method) is still read from
-        ``block.params``; exec_params is the workspace-resolved copy of it plus
-        the runtime state, so it is the right dict for a result readback.
-        """
-        exec_params = getattr(block, "exec_params", None)
-        return exec_params if exec_params else block.params
+    # The params dict a block actually wrote to during the simulation.
+    #
+    # SimulationEngine.execute_block passes ``block.exec_params`` to execute(),
+    # so every accumulator a block updates during a run — a cost function's
+    # ``_accumulated_cost_``, a constraint's ``_violation_`` — lands there,
+    # never in ``block.params``.  Reading the results back off ``block.params``
+    # therefore returned the pre-run value: the objective was a constant 0.0
+    # for every parameter vector, so the optimizer "converged" immediately and
+    # handed back its starting point.
+    #
+    # Config the user typed (weights, bounds, method) is still read from
+    # ``block.params``; exec_params is the workspace-resolved copy of it plus
+    # the runtime state, so it is the right dict for a result readback.
+    # Exposed as a class attribute so existing call sites keep working; the
+    # implementation is shared with the other readers (see lib/engine/block_params).
+    runtime_params = staticmethod(runtime_params)
 
     def reset_blocks(self):
         """Reset all optimization blocks for a new simulation.

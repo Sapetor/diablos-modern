@@ -16,6 +16,7 @@ from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
+from lib.engine.block_params import push_down_internal_params
 from lib.engine import graph_analysis
 from lib.engine.pde_ops import wave_energy_1d
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
@@ -629,6 +630,12 @@ class SimulationEngine:
         params_fp = source_params_fingerprint(block.params)
         cached_fp = cached.get("_source_params_fingerprint") if cached else None
         if cached and cached.get("dtime") == step and cached_fp == params_fp:
+            # The cache hit skips the '_'-prefixed copy below, and '_' keys are
+            # excluded from the fingerprint, so a mid-run write to params would
+            # otherwise never reach the block.  Refresh the narrow set that the
+            # engine/UI legitimately push down (see block_params.PUSH_DOWN_KEYS);
+            # a blanket copy here would clobber the state the block owns.
+            push_down_internal_params(block)
             return
         if workspace_manager is None:
             workspace_manager = WorkspaceManager()

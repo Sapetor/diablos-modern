@@ -6,6 +6,7 @@ from scipy import signal
 from lib.engine.pde_helpers import parse_pde_initial_condition, parse_pde_2d_initial_condition
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
+from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,7 @@ class SystemCompiler:
 
         # Use resolved params if available (exec_params), otherwise fall back to params
         # This ensures workspace variables are properly resolved
-        params = getattr(block, "exec_params", None) or block.params
+        params = runtime_params(block)
 
         # Pre-resolve Inputs
         # We need a list of source keys to fetch from 'signals'
@@ -290,7 +291,7 @@ class SystemCompiler:
             # (and therefore the D!=0 vs D=0 classification for execution
             # ordering) whenever a state block is parameterised by a workspace
             # variable. Same convention used by the PDE branches below.
-            sparams = getattr(block, "exec_params", None) or block.params
+            sparams = runtime_params(block)
 
             if fn == "Integrator":
                 ic = np.array(sparams.get("init_conds", 0.0), dtype=float)
@@ -390,7 +391,7 @@ class SystemCompiler:
 
             elif fn == "Heatequation1D":
                 # HeatEquation1D has N states (one per spatial node)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 20))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -404,7 +405,7 @@ class SystemCompiler:
 
             elif fn == "Waveequation1D":
                 # WaveEquation1D has 2N states (N displacement + N velocity)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 50))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, 2 * N)
@@ -423,7 +424,7 @@ class SystemCompiler:
 
             elif fn == "Advectionequation1D":
                 # AdvectionEquation1D has N states
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 50))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -437,7 +438,7 @@ class SystemCompiler:
 
             elif fn == "Diffusionreaction1D":
                 # DiffusionReaction1D has N states
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 N = int(pde_params.get("N", 30))
                 L = float(pde_params.get("L", 1.0))
                 state_map[b_name] = (current_state_idx, N)
@@ -453,7 +454,7 @@ class SystemCompiler:
 
             elif fn == "Heatequation2D":
                 # HeatEquation2D has Nx*Ny states (one per spatial node)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 20))
                 Ny = int(pde_params.get("Ny", 20))
                 Lx = float(pde_params.get("Lx", 1.0))
@@ -472,7 +473,7 @@ class SystemCompiler:
 
             elif fn == "Waveequation2D":
                 # WaveEquation2D has 2*Nx*Ny states (displacement u + velocity v)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 20))
                 Ny = int(pde_params.get("Ny", 20))
                 n_states = 2 * Nx * Ny
@@ -487,7 +488,7 @@ class SystemCompiler:
 
             elif fn == "Advectionequation2D":
                 # AdvectionEquation2D has Nx*Ny states (concentration field)
-                pde_params = getattr(block, "exec_params", None) or block.params
+                pde_params = runtime_params(block)
                 Nx = int(pde_params.get("Nx", 30))
                 Ny = int(pde_params.get("Ny", 30))
                 n_states = Nx * Ny
