@@ -1,0 +1,192 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 20.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Integrator",
+            "sid": 0,
+            "username": "infection_prob_x",
+            "coords_left": 470,
+            "coords_top": 230,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#be185d",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": [0.30, 0.05, 0.05, 0.05, 0.05, 0.05],
+                "method": "RK45",
+                "_init_start_": true,
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 1,
+            "username": "adjacency_Ax",
+            "coords_left": 250,
+            "coords_top": 350,
+            "coords_width": 50,
+            "coords_height": 40,
+            "coords_height_base": 40,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#ca8a04",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[0,1,1,0,0,0],[1,0,1,1,0,0],[1,1,0,0,1,0],[0,1,0,0,1,1],[0,0,1,1,0,1],[0,0,0,1,1,0]]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Function",
+            "sid": 2,
+            "username": "sis_rhs",
+            "coords_left": 250,
+            "coords_top": 230,
+            "coords_width": 60,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#15803d",
+            "b_type": 2,
+            "io_edit": "input",
+            "fn_name": "function",
+            "params": {
+                "expression": "0.5*u[0]*(1-u[1]) - 1.0*u[1]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 3,
+            "username": "prevalence",
+            "coords_left": 660,
+            "coords_top": 210,
+            "coords_width": 50,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#7f1d1d",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "person 1,person 2,person 3,person 4,person 5,person 6"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "function2",
+            "srcport": 0,
+            "dstblock": "integrator0",
+            "dstport": 0,
+            "points": [
+                [310, 250],
+                [470, 250]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "matrixgain1",
+            "dstport": 0,
+            "points": [
+                [520, 250],
+                [560, 250],
+                [560, 450],
+                [180, 450],
+                [180, 370],
+                [250, 370]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "matrixgain1",
+            "srcport": 0,
+            "dstblock": "function2",
+            "dstport": 0,
+            "points": [
+                [300, 370],
+                [400, 370],
+                [400, 290],
+                [230, 290],
+                [230, 242],
+                [250, 242]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "function2",
+            "dstport": 1,
+            "points": [
+                [520, 250],
+                [540, 250],
+                [540, 150],
+                [210, 150],
+                [210, 258],
+                [250, 258]
+            ],
+            "cptr": 0,
+            "selected": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "integrator0",
+            "srcport": 0,
+            "dstblock": "scope3",
+            "dstport": 0,
+            "points": [
+                [520, 250],
+                [660, 235]
+            ],
+            "cptr": 0,
+            "selected": false
+        }
+    ],
+    "version": "2.0"
+}
