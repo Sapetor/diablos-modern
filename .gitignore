@@ -102,3 +102,6 @@ ghkey.pub
 .claude/
 MULTI/
 user_preferences.json
+
+# Exported plot data
+plot_data_*.csv
