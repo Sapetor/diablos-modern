@@ -744,8 +744,11 @@ class ModernCanvas(QWidget):
                         conn_state.start_block = source_block
                         conn_state.start_port = source_port_index
                         self._finish_line_creation(target_block, target_port_index)
-                        # Make target block selected and source for next connection
-                        conn_state.source_block.selected = False
+                        # finish_line_creation() always ends in cancel_line_creation(),
+                        # which clears the whole connection state -- so conn_state.source_block
+                        # is None by now. Deselect via the local ref, then re-arm the state
+                        # with the target as the source for the next Ctrl+Click.
+                        source_block.selected = False
                         target_block.selected = True
                         conn_state.source_block = target_block
                         self.update()
