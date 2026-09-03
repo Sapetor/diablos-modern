@@ -23,8 +23,8 @@ from blocks.param_templates import (
     init_flag_param,
     robin_bc_params,
 )
-from lib.engine.pde_helpers import bc_params_1d
-from lib.engine.pde_ops import heat_rhs_1d, robin_boundary_value
+from lib.engine.pde_helpers import bc_params_1d, parse_pde_initial_condition
+from lib.engine.pde_ops import heat_rhs_1d, is_periodic, robin_boundary_value
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,8 @@ class HeatEquation1DBlock(BaseBlock):
     Boundary conditions:
     - Dirichlet: T(boundary) = value
     - Neumann: ∂T/∂x(boundary) = value
-    - Robin: -k∂T/∂x = h(T - T_inf)
+    - Robin: -k∂T/∂n = h(T - T_inf), n the outward normal
+    - Periodic: the N nodes wrap as a ring (set on either end)
     """
 
     @property
@@ -64,12 +65,22 @@ class HeatEquation1DBlock(BaseBlock):
             "\n- alpha: Thermal diffusivity [m²/s]"
             "\n- L: Domain length [m]"
             "\n- N: Number of spatial nodes"
-            "\n- bc_type_left/right: 'Dirichlet', 'Neumann', or 'Robin'"
-            "\n- init_conds: Initial temperature distribution"
+            "\n- bc_type_left/right: 'Dirichlet', 'Neumann', 'Robin', or 'Periodic'"
+            "\n  ('Periodic' on either end wraps the whole rod into a ring;"
+            "\n  the opposite end's BC type and value are then ignored)"
+            "\n- h_left/h_right, k_thermal: Robin coefficients (static defaults)"
+            "\n- init_conds: Initial temperature -- a number, a list, or one of"
+            "\n  'sine', 'gaussian', 'uniform', 'step', 'linear', 'random'"
+            "\n- seed: Seed for the 'random' IC (0 = not reproducible)"
             "\n\nInputs:"
             "\n- q_src: Heat source term (scalar or array)"
-            "\n- bc_left: Left boundary value"
-            "\n- bc_right: Right boundary value"
+            "\n- bc_left: Left boundary value (Dirichlet value, Neumann flux,"
+            "\n  or Robin ambient temperature T_inf -- time-varying)"
+            "\n- bc_right: Right boundary value (same meaning)"
+            "\n- h_left, h_right: OPTIONAL time-varying Robin coefficients."
+            "\n  Leave them unconnected to use the h_left / h_right params."
+            "\n  Both execution paths read these per time step, so a Robin"
+            "\n  boundary can model a fan switching on mid-run."
             "\n\nOutputs:"
             "\n- T_field: Full temperature field (N values)"
             "\n- T_avg: Average temperature (scalar)"
@@ -85,7 +96,15 @@ class HeatEquation1DBlock(BaseBlock):
             "init_conds": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial conditions (scalar or list of N values)",
+                "doc": (
+                    "Initial conditions: scalar, list of N values, or one of "
+                    "'sine', 'gaussian', 'uniform', 'step', 'linear', 'random'"
+                ),
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "Random seed for the 'random' initial condition (0 = random).",
             },
             **init_flag_param(),
         }
@@ -96,6 +115,8 @@ class HeatEquation1DBlock(BaseBlock):
             {"name": "q_src", "type": "array", "doc": "Heat source term"},
             {"name": "bc_left", "type": "float", "doc": "Left boundary value"},
             {"name": "bc_right", "type": "float", "doc": "Right boundary value"},
+            {"name": "h_left", "type": "float", "doc": "Left Robin coefficient (optional)"},
+            {"name": "h_right", "type": "float", "doc": "Right Robin coefficient (optional)"},
         ]
 
     @property
@@ -107,8 +128,13 @@ class HeatEquation1DBlock(BaseBlock):
 
     @property
     def optional_inputs(self):
-        """Input 0 (q_src) is optional - heat source defaults to 0."""
-        return [0]
+        """q_src (0) and the Robin coefficient ports (3, 4) are optional.
+
+        The h ports default to the ``h_left`` / ``h_right`` params when left
+        unconnected, so diagrams saved before those ports existed (in_ports=3)
+        keep working unchanged.
+        """
+        return [0, 3, 4]
 
     @property
     def optional_outputs(self):
@@ -136,38 +162,36 @@ class HeatEquation1DBlock(BaseBlock):
         return int(params.get("N", 20))
 
     def get_initial_conditions(self, params):
-        """Return initial condition vector for the temperature field."""
-        N = int(params.get("N", 20))
-        L = float(params.get("L", 1.0))
-        ic = params.get("init_conds", [0.0])
+        """Return initial condition vector for the temperature field.
 
-        if isinstance(ic, str):
-            x = np.linspace(0, L, N)
-            if ic.lower() in ("sin", "sine"):
-                return np.sin(np.pi * x / L)
-            elif ic.lower() == "gaussian":
-                return np.exp(-100 * (x - L / 2) ** 2)
-            else:
-                return np.zeros(N)
+        Delegates to the shared ``parse_pde_initial_condition`` so the
+        interpreter and the compiled path (which calls the same helper from
+        ``SystemCompiler.compile_system``) build the SAME field -- including a
+        seeded 'random' one. This block used to carry its own copy of the
+        parsing, which recognised fewer patterns and gave 'gaussian' a narrower
+        width (exp(-100 r^2)) than the compiled path's exp(-50 r^2).
+        """
+        return parse_pde_initial_condition(
+            params.get("init_conds", [0.0]),
+            int(params.get("N", 20)),
+            float(params.get("L", 1.0)),
+            pde_type="heat",
+            seed=params.get("seed", 0),
+        )
 
-        if isinstance(ic, (int, float)):
-            return np.full(N, float(ic))
+    @staticmethod
+    def _robin_coeffs(params, h_left_in, h_right_in):
+        """Resolve the Robin h coefficients, input port overriding param.
 
-        ic_arr = np.array(ic, dtype=float).flatten()
-
-        if len(ic_arr) == 1:
-            return np.full(N, ic_arr[0])
-        elif len(ic_arr) == N:
-            return ic_arr
-        elif len(ic_arr) < N:
-            # Interpolate to N points
-            x_old = np.linspace(0, 1, len(ic_arr))
-            x_new = np.linspace(0, 1, N)
-            return np.interp(x_new, x_old, ic_arr)
-        else:
-            # Downsample
-            indices = np.linspace(0, len(ic_arr) - 1, N, dtype=int)
-            return ic_arr[indices]
+        ``None`` means "port not connected" -- the static param then applies.
+        Called on every time step / RHS evaluation, never cached, so a connected
+        port makes the coefficient genuinely time-varying.
+        """
+        h_left = float(params.get("h_left", 10.0)) if h_left_in is None else as_scalar(h_left_in)
+        h_right = (
+            float(params.get("h_right", 10.0)) if h_right_in is None else as_scalar(h_right_in)
+        )
+        return h_left, h_right
 
     def execute(self, time, inputs, params, **kwargs):
         """
@@ -227,8 +251,7 @@ class HeatEquation1DBlock(BaseBlock):
         # Boundary conditions
         bc_type_left = params.get("bc_type_left", "Dirichlet")
         bc_type_right = params.get("bc_type_right", "Dirichlet")
-        h_left = float(params.get("h_left", 10.0))
-        h_right = float(params.get("h_right", 10.0))
+        h_left, h_right = self._robin_coeffs(params, inputs.get(3), inputs.get(4))
         k = float(params.get("k_thermal", 1.0))
 
         # Spatial discretisation + boundary derivatives are single-sourced in
@@ -253,6 +276,8 @@ class HeatEquation1DBlock(BaseBlock):
 
         # Set Dirichlet/Robin boundary values directly on the field (dT_dt is 0
         # there, so the Forward Euler step below leaves them at these values).
+        # A periodic rod has no boundary node to pin -- heat_rhs_1d gives both
+        # end nodes a real wrapped stencil, so leave the field alone.
         if bc_type_left == "Dirichlet":
             T[0] = bc_left_val
         elif bc_type_left == "Robin":
@@ -325,8 +350,7 @@ class HeatEquation1DBlock(BaseBlock):
 
         bc_type_left = params.get("bc_type_left", "Dirichlet")
         bc_type_right = params.get("bc_type_right", "Dirichlet")
-        h_left = float(params.get("h_left", 10.0))
-        h_right = float(params.get("h_right", 10.0))
+        h_left, h_right = self._robin_coeffs(params, inputs.get("h_left"), inputs.get("h_right"))
         k = float(params.get("k_thermal", 1.0))
 
         # 'hold' boundary mode: Dirichlet/Robin nodes are algebraically
@@ -351,6 +375,9 @@ class HeatEquation1DBlock(BaseBlock):
         Apply boundary conditions to the temperature field.
         Called during ODE solution to enforce Dirichlet/Robin BCs.
 
+        A periodic rod is returned untouched: both end nodes are genuine degrees
+        of freedom there, not slaved boundary values.
+
         Returns:
             Modified T array with BCs applied
         """
@@ -364,19 +391,20 @@ class HeatEquation1DBlock(BaseBlock):
         bc_type_right = params.get("bc_type_right", "Dirichlet")
 
         T_mod = T.copy()
+        if is_periodic(bc_type_left, bc_type_right):
+            return T_mod
+
+        k = float(params.get("k_thermal", 1.0))
+        h_left, h_right = self._robin_coeffs(params, inputs.get("h_left"), inputs.get("h_right"))
 
         if bc_type_left == "Dirichlet":
             T_mod[0] = bc_left_val
         elif bc_type_left == "Robin":
-            h = params.get("h_left", 10.0)
-            k = params.get("k_thermal", 1.0)
-            T_mod[0] = robin_boundary_value(T[1], bc_left_val, h, k, dx)
+            T_mod[0] = robin_boundary_value(T[1], bc_left_val, h_left, k, dx)
 
         if bc_type_right == "Dirichlet":
             T_mod[N - 1] = bc_right_val
         elif bc_type_right == "Robin":
-            h = params.get("h_right", 10.0)
-            k = params.get("k_thermal", 1.0)
-            T_mod[N - 1] = robin_boundary_value(T[N - 2], bc_right_val, h, k, dx)
+            T_mod[N - 1] = robin_boundary_value(T[N - 2], bc_right_val, h_right, k, dx)
 
         return T_mod

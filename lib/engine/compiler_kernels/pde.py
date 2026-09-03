@@ -23,6 +23,20 @@ from lib.engine.pde_ops import (
 )
 
 
+def _as_scalar(value, default):
+    """Coerce a signal-dict value to a float, falling back to ``default``.
+
+    Signals arrive as scalars or 1-element arrays depending on the upstream
+    block; ``None`` means the port produced nothing this step. Used for the
+    optional Robin-coefficient ports, where "nothing" must mean "keep the
+    static param" rather than "0".
+    """
+    if value is None:
+        return default
+    arr = np.asarray(value, dtype=float).reshape(-1)
+    return float(arr[0]) if arr.size else default
+
+
 @kernel("Heatequation1D")
 def build_heatequation1d(ctx):
     b_name = ctx.b_name
@@ -43,6 +57,10 @@ def build_heatequation1d(ctx):
     q_src_key = input_sources[0] if len(input_sources) > 0 else None
     bc_left_key = input_sources[1] if len(input_sources) > 1 else None
     bc_right_key = input_sources[2] if len(input_sources) > 2 else None
+    # Optional time-varying Robin coefficients. An unconnected port yields a
+    # None key, and the static h_left / h_right params apply instead.
+    h_left_key = input_sources[3] if len(input_sources) > 3 else None
+    h_right_key = input_sources[4] if len(input_sources) > 4 else None
 
     def exec_heat1d(
         t,
@@ -61,6 +79,8 @@ def build_heatequation1d(ctx):
         _q_key=q_src_key,
         _bc_l_key=bc_left_key,
         _bc_r_key=bc_right_key,
+        _h_l_key=h_left_key,
+        _h_r_key=h_right_key,
     ):
         T = y[_start : _start + _N]
 
@@ -68,6 +88,10 @@ def build_heatequation1d(ctx):
         q_src = signals.get(_q_key, 0.0) if _q_key else 0.0
         bc_left_val = signals.get(_bc_l_key, 0.0) if _bc_l_key else 0.0
         bc_right_val = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
+        # Read the Robin coefficients afresh each RHS evaluation so a connected
+        # source drives them in time; signals are recomputed per solver step.
+        h_left_val = _as_scalar(signals.get(_h_l_key), _h_left) if _h_l_key else _h_left
+        h_right_val = _as_scalar(signals.get(_h_r_key), _h_right) if _h_r_key else _h_right
 
         # Ensure q_src is array
         if isinstance(q_src, (int, float)):
@@ -90,8 +114,8 @@ def build_heatequation1d(ctx):
             bc_left_val,
             _bc_type_right,
             bc_right_val,
-            _h_left,
-            _h_right,
+            h_left_val,
+            h_right_val,
             _k,
             boundary_mode="penalty",
         )
@@ -304,12 +328,22 @@ def build_heatequation2d(ctx):
     bc_type_right = params.get("bc_type_right", "Dirichlet")
     bc_type_bottom = params.get("bc_type_bottom", "Dirichlet")
     bc_type_top = params.get("bc_type_top", "Dirichlet")
+    h_left = float(params.get("h_left", 10.0))
+    h_right = float(params.get("h_right", 10.0))
+    h_bottom = float(params.get("h_bottom", 10.0))
+    h_top = float(params.get("h_top", 10.0))
+    k_thermal = float(params.get("k_thermal", 1.0))
 
     q_src_key = input_sources[0] if len(input_sources) > 0 else None
     bc_left_key = input_sources[1] if len(input_sources) > 1 else None
     bc_right_key = input_sources[2] if len(input_sources) > 2 else None
     bc_bottom_key = input_sources[3] if len(input_sources) > 3 else None
     bc_top_key = input_sources[4] if len(input_sources) > 4 else None
+    # Optional per-edge time-varying Robin coefficients; unconnected -> params.
+    h_left_key = input_sources[5] if len(input_sources) > 5 else None
+    h_right_key = input_sources[6] if len(input_sources) > 6 else None
+    h_bottom_key = input_sources[7] if len(input_sources) > 7 else None
+    h_top_key = input_sources[8] if len(input_sources) > 8 else None
 
     def exec_heat2d(
         t,
@@ -326,11 +360,20 @@ def build_heatequation2d(ctx):
         _bc_type_right=bc_type_right,
         _bc_type_bottom=bc_type_bottom,
         _bc_type_top=bc_type_top,
+        _h_left=h_left,
+        _h_right=h_right,
+        _h_bottom=h_bottom,
+        _h_top=h_top,
+        _k=k_thermal,
         _q_key=q_src_key,
         _bc_l_key=bc_left_key,
         _bc_r_key=bc_right_key,
         _bc_b_key=bc_bottom_key,
         _bc_t_key=bc_top_key,
+        _h_l_key=h_left_key,
+        _h_r_key=h_right_key,
+        _h_b_key=h_bottom_key,
+        _h_t_key=h_top_key,
     ):
         n_states = _Nx * _Ny
         T_flat = y[_start : _start + n_states]
@@ -342,6 +385,11 @@ def build_heatequation2d(ctx):
         bc_right = signals.get(_bc_r_key, 0.0) if _bc_r_key else 0.0
         bc_bottom = signals.get(_bc_b_key, 0.0) if _bc_b_key else 0.0
         bc_top = signals.get(_bc_t_key, 0.0) if _bc_t_key else 0.0
+        # Re-read every RHS evaluation so a connected source varies them in time.
+        h_l = _as_scalar(signals.get(_h_l_key), _h_left) if _h_l_key else _h_left
+        h_r = _as_scalar(signals.get(_h_r_key), _h_right) if _h_r_key else _h_right
+        h_b = _as_scalar(signals.get(_h_b_key), _h_bottom) if _h_b_key else _h_bottom
+        h_t = _as_scalar(signals.get(_h_t_key), _h_top) if _h_t_key else _h_top
 
         # Ensure q_src is scalar (simplified)
         if isinstance(q_src, np.ndarray):
@@ -363,6 +411,11 @@ def build_heatequation2d(ctx):
             bc_right,
             bc_bottom,
             bc_top,
+            h_l,
+            h_r,
+            h_b,
+            h_t,
+            _k,
         )
 
         # Output: temperature field (2D), average, max

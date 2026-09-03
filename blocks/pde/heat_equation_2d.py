@@ -18,13 +18,14 @@ State indexing: T[i,j] -> state[k] where k = i + j*Nx
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import as_scalar, as_scalar_opt
 from blocks.param_templates import (
     diffusivity_param,
     domain_params_2d,
     init_flag_param,
     pde_2d_init_temp_param,
 )
-from lib.engine.pde_helpers import bc_params_2d
+from lib.engine.pde_helpers import bc_params_2d, parse_pde_2d_initial_condition
 from lib.engine.pde_ops import heat_rhs_2d
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ class HeatEquation2DBlock(BaseBlock):
     Boundary conditions (for each edge):
     - Dirichlet: T(boundary) = value
     - Neumann: ∂T/∂n(boundary) = value (normal derivative)
+    - Robin: -k∂T/∂n = h_edge(T - T_inf), per-edge h, T_inf from the bc_* port
+    - Periodic: wraps a whole axis (left/right -> x, bottom/top -> y)
     """
 
     @property
@@ -64,11 +67,21 @@ class HeatEquation2DBlock(BaseBlock):
             "\n- alpha: Thermal diffusivity [m²/s]"
             "\n- Lx, Ly: Domain dimensions [m]"
             "\n- Nx, Ny: Number of nodes in x and y"
-            "\n- bc_type_*: Boundary conditions (Dirichlet/Neumann)"
-            "\n- init_temp: Initial temperature"
+            "\n- bc_type_*: 'Dirichlet', 'Neumann', 'Robin', or 'Periodic' per edge"
+            "\n  ('Periodic' on the left OR right wraps x; on the bottom OR top"
+            "\n  wraps y; the opposite edge's setting is then ignored)"
+            "\n- h_left/h_right/h_bottom/h_top, k_thermal: per-edge Robin coeffs"
+            "\n- init_temp: Initial temperature -- a number or one of 'sinusoidal',"
+            "\n  'gaussian', 'hot_spot', 'radial', 'linear', 'step', 'random',"
+            "\n  'checkerboard'"
+            "\n- seed: Seed for the 'random' IC (0 = not reproducible)"
             "\n\nInputs:"
             "\n- q_src: Heat source (scalar or Nx×Ny array)"
-            "\n- bc_left, bc_right, bc_bottom, bc_top: BC values"
+            "\n- bc_left, bc_right, bc_bottom, bc_top: BC values (for a Robin"
+            "\n  edge this is the ambient temperature T_inf, so it is already"
+            "\n  time-varying)"
+            "\n- h_left, h_right, h_bottom, h_top: OPTIONAL time-varying Robin"
+            "\n  coefficients; unconnected ports fall back to the h_* params."
             "\n\nOutputs:"
             "\n- T_field: Temperature field (Nx×Ny array)"
             "\n- T_avg: Average temperature"
@@ -80,10 +93,19 @@ class HeatEquation2DBlock(BaseBlock):
         return {
             **diffusivity_param(default=0.01),
             **domain_params_2d(),
-            **bc_params_2d(),
+            **bc_params_2d(include_robin=True),
             **pde_2d_init_temp_param(),
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "Random seed for the 'random' initial condition (0 = random).",
+            },
             **init_flag_param(),
         }
+
+    # Input-port index of each edge's optional Robin-coefficient port, in the
+    # order the edges appear in the BC ports above.
+    _H_PORTS = {"h_left": 5, "h_right": 6, "h_bottom": 7, "h_top": 8}
 
     @property
     def inputs(self):
@@ -93,12 +115,18 @@ class HeatEquation2DBlock(BaseBlock):
             {"name": "bc_right", "type": "float", "doc": "Right boundary value"},
             {"name": "bc_bottom", "type": "float", "doc": "Bottom boundary value"},
             {"name": "bc_top", "type": "float", "doc": "Top boundary value"},
+            {"name": "h_left", "type": "float", "doc": "Left Robin coefficient (optional)"},
+            {"name": "h_right", "type": "float", "doc": "Right Robin coefficient (optional)"},
+            {"name": "h_bottom", "type": "float", "doc": "Bottom Robin coefficient (optional)"},
+            {"name": "h_top", "type": "float", "doc": "Top Robin coefficient (optional)"},
         ]
 
     @property
     def optional_inputs(self):
-        """All inputs are optional - default to 0."""
-        return [0, 1, 2, 3, 4]
+        """All inputs are optional - default to 0 (or, for the h ports, to the
+        matching h_* param), so diagrams saved with the original five ports load
+        and run unchanged."""
+        return [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
     @property
     def outputs(self):
@@ -135,39 +163,41 @@ class HeatEquation2DBlock(BaseBlock):
         return path
 
     def get_initial_state(self, params):
-        """Return initial state vector for the 2D field."""
-        Nx = int(params.get("Nx", 20))
-        Ny = int(params.get("Ny", 20))
-        Lx = float(params.get("Lx", 1.0))
-        Ly = float(params.get("Ly", 1.0))
-        init_temp = params.get("init_temp", "0.0")
-        amplitude = float(params.get("init_amplitude", 1.0))
+        """Return initial state vector for the 2D field.
 
-        x = np.linspace(0, Lx, Nx)
-        y = np.linspace(0, Ly, Ny)
-        X, Y = np.meshgrid(x, y)  # Shape: (Ny, Nx)
-
-        if isinstance(init_temp, str):
-            if init_temp.lower() == "sinusoidal":
-                # T = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode of Laplacian
-                T0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_temp.lower() == "gaussian":
-                # Gaussian bump at center
-                T0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
-            elif init_temp.lower() == "hot_spot":
-                # Hot spot in corner
-                T0 = amplitude * np.exp(-100 * (X**2 + Y**2))
-            else:
-                # Try to parse as number
-                try:
-                    T0 = np.full((Ny, Nx), float(init_temp))
-                except ValueError:
-                    T0 = np.zeros((Ny, Nx))
-        else:
-            T0 = np.full((Ny, Nx), float(init_temp))
-
+        Delegates to the shared ``parse_pde_2d_initial_condition`` -- the same
+        helper ``SystemCompiler.compile_system`` uses to seed the compiled
+        state -- so both paths start from an identical field, including a seeded
+        'random' one.
+        """
+        T0 = parse_pde_2d_initial_condition(
+            params.get("init_temp", "0.0"),
+            int(params.get("Nx", 20)),
+            int(params.get("Ny", 20)),
+            float(params.get("Lx", 1.0)),
+            float(params.get("Ly", 1.0)),
+            float(params.get("init_amplitude", 1.0)),
+            seed=params.get("seed", 0),
+        )
         # State is flattened 2D array in row-major order
         return T0.flatten()
+
+    def _robin_coeffs(self, params, inputs):
+        """Resolve the four per-edge Robin h coefficients for this step.
+
+        A connected ``h_*`` input port (indices in ``_H_PORTS``) overrides the
+        matching static param; an unconnected one reads ``None`` and falls back.
+        Re-resolved on every call, so a connected port is genuinely
+        time-varying.
+        """
+        resolved = []
+        for name in ("h_left", "h_right", "h_bottom", "h_top"):
+            port_val = inputs.get(self._H_PORTS[name])
+            if port_val is None:
+                resolved.append(float(params.get(name, 10.0)))
+            else:
+                resolved.append(as_scalar(port_val))
+        return resolved
 
     def get_state_size(self, params):
         """Return the number of state variables."""
@@ -235,11 +265,14 @@ class HeatEquation2DBlock(BaseBlock):
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)
 
-        # Get boundary conditions
-        bc_left = float(inputs.get(1, 0.0)) if inputs.get(1) is not None else 0.0
-        bc_right = float(inputs.get(2, 0.0)) if inputs.get(2) is not None else 0.0
-        bc_bottom = float(inputs.get(3, 0.0)) if inputs.get(3) is not None else 0.0
-        bc_top = float(inputs.get(4, 0.0)) if inputs.get(4) is not None else 0.0
+        # Get boundary conditions. Signals arrive as 1-element arrays from a
+        # connected source, so coerce via as_scalar -- a bare float() raises
+        # "only 0-dimensional arrays can be converted to Python scalars" under
+        # NumPy 2.x and silently took element 0 under 1.x.
+        bc_left = as_scalar_opt(inputs.get(1))
+        bc_right = as_scalar_opt(inputs.get(2))
+        bc_bottom = as_scalar_opt(inputs.get(3))
+        bc_top = as_scalar_opt(inputs.get(4))
 
         bc_type_left = params.get("bc_type_left", "Dirichlet")
         bc_type_right = params.get("bc_type_right", "Dirichlet")
@@ -260,6 +293,7 @@ class HeatEquation2DBlock(BaseBlock):
 
         # Reshape state to 2D. Spatial discretisation + boundary conditions are
         # single-sourced in lib.engine.pde_ops (shared with the compiled kernel).
+        h_left, h_right, h_bottom, h_top = self._robin_coeffs(params, inputs)
         T = state.reshape((Ny, Nx))
         dT_dt = heat_rhs_2d(
             T,
@@ -275,6 +309,11 @@ class HeatEquation2DBlock(BaseBlock):
             bc_right,
             bc_bottom,
             bc_top,
+            h_left,
+            h_right,
+            h_bottom,
+            h_top,
+            float(params.get("k_thermal", 1.0)),
         )
 
         return dT_dt.flatten()

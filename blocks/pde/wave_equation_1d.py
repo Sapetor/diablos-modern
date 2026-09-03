@@ -22,7 +22,7 @@ import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.pde._compat import as_scalar
 from blocks.param_templates import wave_speed_param, domain_params_1d, init_flag_param
-from lib.engine.pde_helpers import bc_params_1d
+from lib.engine.pde_helpers import bc_params_1d, companion_seed, parse_pde_initial_condition
 from lib.engine.pde_ops import wave_rhs_1d, wave_energy_1d
 
 logger = logging.getLogger(__name__)
@@ -59,9 +59,12 @@ class WaveEquation1DBlock(BaseBlock):
             "\n- damping: Damping coefficient (0 = undamped)"
             "\n- L: Domain length [m]"
             "\n- N: Number of spatial nodes"
-            "\n- bc_type_left/right: 'Dirichlet' or 'Neumann'"
-            "\n- init_displacement: Initial displacement"
-            "\n- init_velocity: Initial velocity"
+            "\n- bc_type_left/right: 'Dirichlet', 'Neumann', or 'Periodic'"
+            "\n  ('Periodic' on either end wraps the string into a ring, so a"
+            "\n  pulse leaving one end re-enters at the other)"
+            "\n- init_displacement / init_velocity: a number, a list, or one of"
+            "\n  'sine', 'gaussian', 'uniform', 'step', 'linear', 'random'"
+            "\n- seed: Seed for the 'random' IC (0 = not reproducible)"
             "\n\nInputs:"
             "\n- force: External force term (scalar or array)"
             "\n- bc_left: Left boundary value"
@@ -82,12 +85,20 @@ class WaveEquation1DBlock(BaseBlock):
             "init_displacement": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial displacement (scalar, list, or 'gaussian', 'sine')",
+                "doc": (
+                    "Initial displacement: scalar, list, or one of 'gaussian', "
+                    "'sine', 'uniform', 'step', 'linear', 'random'"
+                ),
             },
             "init_velocity": {
                 "type": "list",
                 "default": [0.0],
-                "doc": "Initial velocity (scalar or list)",
+                "doc": "Initial velocity (scalar, list, or the same named patterns)",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "Random seed for the 'random' initial condition (0 = random).",
             },
             **init_flag_param(),
         }
@@ -138,48 +149,24 @@ class WaveEquation1DBlock(BaseBlock):
         return 2 * N
 
     def get_initial_conditions(self, params):
-        """Return initial condition vector [u, v]."""
+        """Return initial condition vector [u, v].
+
+        Delegates to the shared ``parse_pde_initial_condition`` -- the same
+        helper ``SystemCompiler.compile_system`` uses -- so the interpreter and
+        the compiled path start from an identical state. The velocity field
+        takes a ``companion_seed`` so a 'random' displacement and a 'random'
+        velocity are independent rather than the same array.
+        """
         N = int(params.get("N", 50))
         L = float(params.get("L", 1.0))
+        seed = params.get("seed", 0)
 
-        # Initial displacement
-        init_u = params.get("init_displacement", [0.0])
-
-        if isinstance(init_u, str):
-            x = np.linspace(0, L, N)
-            if init_u.lower() == "gaussian":
-                # Gaussian pulse centered at L/2
-                u0 = np.exp(-100 * (x - L / 2) ** 2)
-            elif init_u.lower() in ("sin", "sine"):
-                # Single sine mode
-                u0 = np.sin(np.pi * x / L)
-            else:
-                u0 = np.zeros(N)
-        elif isinstance(init_u, (int, float)):
-            u0 = np.full(N, float(init_u))
-        else:
-            u0 = np.array(init_u, dtype=float).flatten()
-            if len(u0) == 1:
-                u0 = np.full(N, u0[0])
-            elif len(u0) != N:
-                # Interpolate
-                x_old = np.linspace(0, 1, len(u0))
-                x_new = np.linspace(0, 1, N)
-                u0 = np.interp(x_new, x_old, u0)
-
-        # Initial velocity
-        init_v = params.get("init_velocity", [0.0])
-
-        if isinstance(init_v, (int, float)):
-            v0 = np.full(N, float(init_v))
-        else:
-            v0 = np.array(init_v, dtype=float).flatten()
-            if len(v0) == 1:
-                v0 = np.full(N, v0[0])
-            elif len(v0) != N:
-                x_old = np.linspace(0, 1, len(v0))
-                x_new = np.linspace(0, 1, N)
-                v0 = np.interp(x_new, x_old, v0)
+        u0 = parse_pde_initial_condition(
+            params.get("init_displacement", [0.0]), N, L, pde_type="wave", seed=seed
+        )
+        v0 = parse_pde_initial_condition(
+            params.get("init_velocity", [0.0]), N, L, pde_type="wave", seed=companion_seed(seed)
+        )
 
         # Combine into state vector [u, v]
         return np.concatenate([u0, v0])

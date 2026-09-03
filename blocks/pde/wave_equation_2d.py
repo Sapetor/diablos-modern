@@ -24,8 +24,9 @@ State indexing: u[i,j] -> state[k] where k = i + j*Nx
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.pde._compat import as_scalar_opt
 from blocks.param_templates import wave_speed_param, domain_params_2d, init_flag_param
-from lib.engine.pde_helpers import bc_params_2d
+from lib.engine.pde_helpers import bc_params_2d, companion_seed, parse_pde_2d_initial_condition
 from lib.engine.pde_ops import wave_rhs_2d
 
 logger = logging.getLogger(__name__)
@@ -67,9 +68,13 @@ class WaveEquation2DBlock(BaseBlock):
             "\n- damping: Damping coefficient (0 = undamped)"
             "\n- Lx, Ly: Domain dimensions [m]"
             "\n- Nx, Ny: Number of nodes in x and y"
-            "\n- bc_type_*: Boundary conditions (Dirichlet/Neumann)"
-            "\n- init_displacement: Initial displacement"
-            "\n- init_velocity: Initial velocity"
+            "\n- bc_type_*: 'Dirichlet', 'Neumann', or 'Periodic' per edge"
+            "\n  ('Periodic' on the left OR right wraps x; on the bottom OR top"
+            "\n  wraps y; the opposite edge's setting is then ignored)"
+            "\n- init_displacement: Initial displacement (number, 'sinusoidal',"
+            "\n  'gaussian', 'radial', 'linear', 'step', 'random', 'checkerboard')"
+            "\n- init_velocity: Initial velocity (same named patterns)"
+            "\n- seed: Seed for the 'random' IC (0 = not reproducible)"
             "\n\nInputs:"
             "\n- force: External force term (scalar or Nx×Ny array)"
             "\n- bc_left, bc_right, bc_bottom, bc_top: BC values"
@@ -89,17 +94,25 @@ class WaveEquation2DBlock(BaseBlock):
             "init_displacement": {
                 "type": "string",
                 "default": "0.0",
-                "doc": "Initial displacement: number, 'sinusoidal', 'gaussian', or 'radial'",
+                "doc": (
+                    "Initial displacement: number, 'sinusoidal', 'gaussian', "
+                    "'radial', 'linear', 'step', 'random', or 'checkerboard'"
+                ),
             },
             "init_velocity": {
                 "type": "string",
                 "default": "0.0",
-                "doc": "Initial velocity: number, 'sinusoidal', 'gaussian', or 'radial'",
+                "doc": "Initial velocity: number or the same named patterns",
             },
             "init_amplitude": {
                 "type": "float",
                 "default": 1.0,
                 "doc": "Amplitude for non-uniform initial conditions",
+            },
+            "seed": {
+                "type": "int",
+                "default": 0,
+                "doc": "Random seed for the 'random' initial condition (0 = random).",
             },
             **init_flag_param(),
         }
@@ -159,56 +172,33 @@ class WaveEquation2DBlock(BaseBlock):
         return path
 
     def get_initial_state(self, params):
-        """Return initial state vector [u, v] for the 2D field."""
+        """Return initial state vector [u, v] for the 2D field.
+
+        Delegates to the shared ``parse_pde_2d_initial_condition``. The compiled
+        path seeds its state by calling THIS method, so there is one
+        implementation for both paths; the velocity field takes a
+        ``companion_seed`` so a 'random' displacement and a 'random' velocity
+        are independent rather than the same array.
+        """
         Nx = int(params.get("Nx", 20))
         Ny = int(params.get("Ny", 20))
         Lx = float(params.get("Lx", 1.0))
         Ly = float(params.get("Ly", 1.0))
-        init_disp = params.get("init_displacement", "0.0")
-        init_vel = params.get("init_velocity", "0.0")
         amplitude = float(params.get("init_amplitude", 1.0))
+        seed = params.get("seed", 0)
 
-        x = np.linspace(0, Lx, Nx)
-        y = np.linspace(0, Ly, Ny)
-        X, Y = np.meshgrid(x, y)  # Shape: (Ny, Nx)
-
-        # Initialize displacement
-        if isinstance(init_disp, str):
-            if init_disp.lower() == "sinusoidal":
-                # u = A * sin(πx/Lx) * sin(πy/Ly) - eigenmode
-                u0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_disp.lower() == "gaussian":
-                # Gaussian bump at center
-                u0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
-            elif init_disp.lower() == "radial":
-                # Radial wave from corner
-                r = np.sqrt(X**2 + Y**2)
-                u0 = amplitude * np.exp(-100 * r**2)
-            else:
-                # Try to parse as number
-                try:
-                    u0 = np.full((Ny, Nx), float(init_disp))
-                except ValueError:
-                    u0 = np.zeros((Ny, Nx))
-        else:
-            u0 = np.full((Ny, Nx), float(init_disp))
-
-        # Initialize velocity
-        if isinstance(init_vel, str):
-            if init_vel.lower() == "sinusoidal":
-                v0 = amplitude * np.sin(np.pi * X / Lx) * np.sin(np.pi * Y / Ly)
-            elif init_vel.lower() == "gaussian":
-                v0 = amplitude * np.exp(-50 * ((X - Lx / 2) ** 2 + (Y - Ly / 2) ** 2))
-            elif init_vel.lower() == "radial":
-                r = np.sqrt(X**2 + Y**2)
-                v0 = amplitude * np.exp(-100 * r**2)
-            else:
-                try:
-                    v0 = np.full((Ny, Nx), float(init_vel))
-                except ValueError:
-                    v0 = np.zeros((Ny, Nx))
-        else:
-            v0 = np.full((Ny, Nx), float(init_vel))
+        u0 = parse_pde_2d_initial_condition(
+            params.get("init_displacement", "0.0"), Nx, Ny, Lx, Ly, amplitude, seed=seed
+        )
+        v0 = parse_pde_2d_initial_condition(
+            params.get("init_velocity", "0.0"),
+            Nx,
+            Ny,
+            Lx,
+            Ly,
+            amplitude,
+            seed=companion_seed(seed),
+        )
 
         # State is [u_flat, v_flat] in row-major order
         return np.concatenate([u0.flatten(), v0.flatten()])
@@ -282,11 +272,13 @@ class WaveEquation2DBlock(BaseBlock):
         dx = Lx / (Nx - 1)
         dy = Ly / (Ny - 1)
 
-        # Get boundary conditions
-        bc_left = float(inputs.get(1, 0.0)) if inputs.get(1) is not None else 0.0
-        bc_right = float(inputs.get(2, 0.0)) if inputs.get(2) is not None else 0.0
-        bc_bottom = float(inputs.get(3, 0.0)) if inputs.get(3) is not None else 0.0
-        bc_top = float(inputs.get(4, 0.0)) if inputs.get(4) is not None else 0.0
+        # Get boundary conditions. A connected source emits a 1-element array,
+        # which a bare float() cannot convert under NumPy 2.x; as_scalar_opt
+        # also maps an unconnected (None) port to 0.0 rather than NaN.
+        bc_left = as_scalar_opt(inputs.get(1))
+        bc_right = as_scalar_opt(inputs.get(2))
+        bc_bottom = as_scalar_opt(inputs.get(3))
+        bc_top = as_scalar_opt(inputs.get(4))
 
         bc_type_left = params.get("bc_type_left", "Dirichlet")
         bc_type_right = params.get("bc_type_right", "Dirichlet")

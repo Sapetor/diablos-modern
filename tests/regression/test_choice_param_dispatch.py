@@ -176,6 +176,36 @@ def _field_probe_2d():
     return FieldProbe2DBlock()
 
 
+def _heat_1d():
+    from blocks.pde.heat_equation_1d import HeatEquation1DBlock
+
+    return HeatEquation1DBlock()
+
+
+def _heat_2d():
+    from blocks.pde.heat_equation_2d import HeatEquation2DBlock
+
+    return HeatEquation2DBlock()
+
+
+def _wave_1d():
+    from blocks.pde.wave_equation_1d import WaveEquation1DBlock
+
+    return WaveEquation1DBlock()
+
+
+def _wave_2d():
+    from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+
+    return WaveEquation2DBlock()
+
+
+def _diffusion_reaction_1d():
+    from blocks.pde.diffusion_reaction_1d import DiffusionReaction1DBlock
+
+    return DiffusionReaction1DBlock()
+
+
 # Keyed by block_name so the coverage test can cross-reference the live library.
 SPECS = {
     "MathFunction": _spec(_math_function, inputs={0: np.array([0.5])}),
@@ -215,6 +245,14 @@ SPECS = {
     "FieldProbe": _spec(_field_probe, inputs={0: np.array([0.0, 1.0, 2.0, 3.0, 4.0])}),
     "FieldMax": _spec(_field_max, inputs={0: np.array([1.0, 2.0, 3.0])}),
     "FieldProbe2D": _spec(_field_probe_2d, inputs={0: np.ones((4, 4))}),
+    # PDE blocks: bc_type_* became dropdowns (Dirichlet/Neumann/Robin/Periodic)
+    # in PDE Phase 1. Small grids + a tiny dt keep the explicit interpreter step
+    # stable so one execute() reaches the BC dispatch for every edge type.
+    "HeatEquation1D": _spec(_heat_1d, params={"N": 8}, dtime=1e-4),
+    "HeatEquation2D": _spec(_heat_2d, params={"Nx": 5, "Ny": 5}, dtime=1e-4),
+    "WaveEquation1D": _spec(_wave_1d, params={"N": 8}, dtime=1e-4),
+    "WaveEquation2D": _spec(_wave_2d, params={"Nx": 5, "Ny": 5}, dtime=1e-4),
+    "DiffusionReaction1D": _spec(_diffusion_reaction_1d, params={"N": 8}, dtime=1e-4),
 }
 
 

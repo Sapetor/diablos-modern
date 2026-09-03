@@ -77,7 +77,12 @@ class DiffusionReaction1DBlock(BaseBlock):
             "k": {"type": "float", "default": 0.1, "doc": "Reaction rate constant"},
             "n": {"type": "int", "default": 1, "doc": "Reaction order (1 or 2)"},
             **domain_params_1d(default_length=1.0, default_nodes=30),
-            **bc_params_1d(left_default="Dirichlet", right_default="Neumann", include_robin=False),
+            **bc_params_1d(
+                left_default="Dirichlet",
+                right_default="Neumann",
+                include_robin=False,
+                options=["Dirichlet", "Neumann", "Robin"],
+            ),
             "h_mass_transfer": {
                 "type": "float",
                 "default": 1.0,

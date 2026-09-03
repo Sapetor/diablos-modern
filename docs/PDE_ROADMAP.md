@@ -7,8 +7,14 @@
 DiaBloS PDE blocks use **Method of Lines (MOL)**:
 - Spatial discretization → system of ODEs → scipy `solve_ivp`
 - **Domains**: Rectangular only (`[0,Lx] × [0,Ly]`)
-- **BCs**: Dirichlet, Neumann (Robin partial in 1D)
+- **BCs**: Dirichlet, Neumann, Robin (1D and 2D, per-edge `h`), Periodic (per axis)
 - **Meshes**: Structured uniform grids only
+
+The spatial discretisation and BC math for every family live in
+`lib/engine/pde_ops.py`, which both the interpreter blocks (`blocks/pde/`) and
+the compiled kernels (`lib/engine/compiler_kernels/pde.py`) call. Initial
+conditions are single-sourced the same way through `lib/engine/pde_helpers.py`.
+Adding a BC or an IC in one place therefore reaches both execution paths.
 
 ### Existing PDE Blocks
 
@@ -23,25 +29,66 @@ DiaBloS PDE blocks use **Method of Lines (MOL)**:
 
 ## Enhancement Phases
 
-### Phase 1: Quick Wins (Low Effort)
+### Phase 1: Quick Wins (Low Effort) — ✅ DONE
 
-**1.1 Periodic Boundary Conditions**
-- Pattern already exists in `AdvectionEquation1D`
-- Copy to: HeatEquation1D/2D, WaveEquation1D/2D
-- Add `bc_type: 'Periodic'` option to params
+**1.1 Periodic Boundary Conditions** — ✅ done
+- Added to HeatEquation1D/2D and WaveEquation1D/2D, matching the
+  `AdvectionEquation1D` pattern.
+- Selecting `'Periodic'` on **either** end wraps that whole axis; the opposite
+  edge's BC type and value are ignored (`pde_ops.is_periodic`). In 2D the axes
+  are independent, so x-periodic + Dirichlet top/bottom (a channel) is valid.
+- The N nodes wrap as a **ring**: the two endpoints stay distinct degrees of
+  freedom, so the effective period is `N·dx`, not `L = (N-1)·dx`. This matches
+  the pre-existing advection convention and makes the discrete Laplacian
+  circulant — which is what conserves total heat exactly.
+- Implemented in `lib/engine/pde_ops.py`, so the interpreter and compiled paths
+  are equivalent by construction. The non-periodic branches were left
+  bit-identical so the pinned golden traces did not move.
 
-**1.2 Dynamic BC Coefficients**
-- Current: Fixed `h_left`, `h_right` params for Robin
-- Change: Add optional input ports for time-varying coefficients
-- Files: `heat_equation_1d.py`, `heat_equation_2d.py`
+**1.2 Dynamic BC Coefficients** — ✅ done
+- The Robin **ambient temperature** `T_inf` was already an input port (`bc_*`),
+  hence already time-varying. What was static was `h`.
+- HeatEquation1D gained optional input ports `h_left` (3), `h_right` (4);
+  HeatEquation2D gained `h_left` (5), `h_right` (6), `h_bottom` (7),
+  `h_top` (8). An unconnected port falls back to the matching param, so
+  diagrams saved with the old port count load and run unchanged.
+- Both paths re-read the ports on every RHS evaluation, so no compilability
+  restriction was needed — the compiled solver supports input-driven `h`
+  fully (the ports are ordinary signals, evaluated per solver step).
 
-**1.3 More Initial Condition Templates**
-- Add: `'linear'`, `'step'`, `'random'`, `'checkerboard'`
-- Location: `get_initial_state()` methods
+**1.3 More Initial Condition Templates** — ✅ done
+- 1D: `'linear'`, `'step'`, `'random'` (plus the existing `'sine'`,
+  `'gaussian'`, `'uniform'`).
+- 2D: `'linear'`, `'step'`, `'random'`, `'checkerboard'`, `'radial'` (plus
+  `'sinusoidal'`, `'gaussian'`, `'hot_spot'`).
+- `'random'` is seeded by a new `seed` param following the `blocks/noise.py`
+  convention (`0` = entropy / not reproducible). The wave blocks build two
+  fields from one seed, so the velocity field uses `companion_seed()` to stay
+  independent of the displacement field.
+- The block `get_initial_conditions()` / `get_initial_state()` methods now
+  delegate to `pde_helpers.parse_pde_*_initial_condition`, the same helpers the
+  compiler uses. Previously each block carried its own copy; HeatEquation1D's
+  copy recognised fewer patterns and used a narrower `'gaussian'`
+  (`exp(-100 r²)` vs the compiled path's `exp(-50 r²)`), so the interpreter and
+  the compiled path started from different fields.
 
-**1.4 Robin BC for 2D**
-- Currently only in 1D blocks
-- Extend to HeatEquation2D with per-edge h coefficients
+**1.4 Robin BC for 2D** — ✅ done
+- HeatEquation2D supports `'Robin'` on any edge, with per-edge `h_left`,
+  `h_right`, `h_bottom`, `h_top` and a shared `k_thermal`.
+- Convention is the outward normal, `-k ∂T/∂n = h (T − T_inf)`, so a positive
+  `h` cools an over-ambient plate on every edge.
+- The 2D form folds the convective flux into the **Neumann ghost-node stencil**
+  rather than the penalty formulation the 1D block uses. The two agree in
+  steady state (`T → T_inf` for `h > 0`) and the flux form is as stable as a
+  Neumann edge, so it survives the interpreter's Forward-Euler step where a
+  penalty term would not. 1D keeps its penalty/hold form because the
+  compiled-golden traces pin it.
+
+**Verification**: `tests/unit/test_pde_phase1.py` (52 cases: operator-level
+periodic/Robin/IC behaviour, conservation, seeded reproducibility) and
+`tests/regression/test_equiv_pde_phase1.py` (compiled-vs-interpreted
+equivalence for periodic heat 1D/2D, periodic wave 1D, and a Robin plate driven
+by a ramped ambient temperature).
 
 ---
 
@@ -191,7 +238,7 @@ blocks/mesh/
 
 | Phase | Complexity | New Files | Modified Files |
 |-------|------------|-----------|----------------|
-| 1     | Low        | 0         | 6-8            |
+| 1 ✅  | Low        | 2 (tests) | 8              |
 | 2     | Medium     | 4-5       | 4-6            |
 | 3     | High       | 8-10      | 10+            |
 | 4     | Very High  | 15+       | Many           |
@@ -200,9 +247,15 @@ blocks/mesh/
 
 ## Verification Strategy
 
-**Phase 1**:
-- Unit tests for periodic BCs (compare to analytical solutions)
-- Existing verification examples still pass
+**Phase 1** (done):
+- `tests/unit/test_pde_phase1.py` -- operator-level checks: wrapped end-node
+  stencils, exact conservation on a periodic ring, Robin steady state reaching
+  ambient on all four edges, per-edge `h` independence, `h = 0` degenerating to
+  an insulated edge, and seeded-`'random'` reproducibility.
+- `tests/regression/test_equiv_pde_phase1.py` -- compiled-vs-interpreted
+  equivalence per new BC, plus a dynamic-ambient Robin plate.
+- `tests/regression/test_compiled_golden.py` unchanged: the non-periodic
+  branches were deliberately left bit-identical, so no golden data moved.
 
 **Phase 2**:
 - Curvilinear mesh: Solve on annulus, compare to analytical
@@ -224,8 +277,12 @@ blocks/mesh/
 - Phase 2: Mesh abstraction layer (1-2 weeks)
 - Phase 3: Full unstructured support (weeks to months)
 
-**Recommended starting point**: Phase 1 quick wins, then Phase 2 mesh abstraction to enable future flexibility without breaking existing functionality.
+**Recommended starting point**: Phase 1 is complete. Phase 2's mesh
+abstraction is the next step, and it inherits a useful precondition from Phase
+1: all spatial-operator and IC math is already funnelled through
+`lib/engine/pde_ops.py` and `lib/engine/pde_helpers.py`, so the mesh interface
+has exactly two seams to replace rather than one per block per execution path.
 
 ---
 
-*Last updated: February 2026*
+*Last updated: September 2026 (Phase 1 completed)*

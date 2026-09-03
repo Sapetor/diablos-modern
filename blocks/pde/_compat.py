@@ -20,6 +20,19 @@ trapezoid = getattr(np, "trapezoid", None) or np.trapz
 def as_scalar(value, default=0.0):
     """Return ``value`` as a Python float, taking the first element if it is
     an array. Works identically on NumPy 1.x and 2.x.
+
+    NB: ``as_scalar(None)`` is NaN, because ``np.asarray(None, dtype=float)`` is
+    NaN. For an optional input port -- where "no signal" must mean "use the
+    default" -- reach for :func:`as_scalar_opt` instead.
     """
     arr = np.asarray(value, dtype=float).reshape(-1)
     return float(arr[0]) if arr.size else float(default)
+
+
+def as_scalar_opt(value, default=0.0):
+    """``as_scalar`` for an OPTIONAL port: a missing signal yields ``default``.
+
+    An unconnected port reads as ``None``, which must be screened out before
+    coercion (see the NaN note on :func:`as_scalar`).
+    """
+    return float(default) if value is None else as_scalar(value, default)

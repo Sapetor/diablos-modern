@@ -32,6 +32,83 @@ def robin_boundary_value(T_neighbor, bc_val, h, k, dx):
     return (k * T_neighbor / dx + h * bc_val) / (k / dx + h)
 
 
+def is_periodic(bc_type_a, bc_type_b):
+    """True when the axis spanned by the two opposite edges is periodic.
+
+    Periodicity is a property of a whole axis, not of one edge, so selecting
+    ``'Periodic'`` on EITHER end wraps that axis and the opposite edge's BC type
+    and value are ignored. The UI keeps one BC selector per edge (so that
+    Dirichlet/Neumann/Robin stay independently selectable), hence this "either
+    end wins" rule rather than requiring both to be set.
+    """
+    return bc_type_a == "Periodic" or bc_type_b == "Periodic"
+
+
+def robin_flux_low(T_edge, bc_val, h, k):
+    """Outward-normal-consistent ``dT/dn_axis`` at a LOW edge (x=0 / y=0).
+
+    Robin states ``-k dT/dn = h (T - T_inf)`` with ``n`` the OUTWARD normal. At a
+    low edge the outward normal is ``-axis``, so ``dT/daxis = (h/k)(T - T_inf)``.
+    Feeding this into the Neumann ghost-node stencil gives the Robin stencil, so
+    a Robin edge costs nothing beyond a per-node flux evaluation and (unlike the
+    1D penalty formulation) stays as stable as a Neumann edge.
+    """
+    return (h / k) * (T_edge - bc_val)
+
+
+def robin_flux_high(T_edge, bc_val, h, k):
+    """Outward-normal-consistent ``dT/dn_axis`` at a HIGH edge (x=Lx / y=Ly).
+
+    There the outward normal is ``+axis``, so ``dT/daxis = -(h/k)(T - T_inf)``.
+    """
+    return -(h / k) * (T_edge - bc_val)
+
+
+def _d2_dx2_full(F, dx, periodic, bc_type_left, bc_type_right, bc_left, bc_right, h_l, h_r, k):
+    """Full-grid ``d2F/dx2`` for an (Ny, Nx) field, boundary COLUMNS included.
+
+    Used only by the *periodic* 2D paths (``_heat_rhs_2d_periodic`` /
+    ``_wave_rhs_2d_periodic``); the all-non-periodic paths keep their original
+    per-edge loops so their floating-point results stay bit-identical to before
+    (the compiled-golden traces pin them).
+
+    ``periodic`` wraps the axis with ``np.roll`` -- a circulant Laplacian whose
+    columns sum to zero, which is what makes total heat exactly conserved.
+    Otherwise the boundary columns get the Neumann/Robin ghost-node stencil; a
+    Dirichlet column's value here is a placeholder the caller overwrites with
+    the penalty term.
+    """
+    dx_sq = dx * dx
+    if periodic:
+        return (np.roll(F, -1, axis=1) - 2.0 * F + np.roll(F, 1, axis=1)) / dx_sq
+
+    Fxx = np.empty_like(F)
+    Fxx[:, 1:-1] = (F[:, 2:] - 2.0 * F[:, 1:-1] + F[:, :-2]) / dx_sq
+    flux_l = robin_flux_low(F[:, 0], bc_left, h_l, k) if bc_type_left == "Robin" else bc_left
+    Fxx[:, 0] = (2.0 * F[:, 1] - 2.0 * F[:, 0] - 2.0 * dx * flux_l) / dx_sq
+    flux_r = robin_flux_high(F[:, -1], bc_right, h_r, k) if bc_type_right == "Robin" else bc_right
+    Fxx[:, -1] = (2.0 * F[:, -2] - 2.0 * F[:, -1] + 2.0 * dx * flux_r) / dx_sq
+    return Fxx
+
+
+def _d2_dy2_full(F, dy, periodic, bc_type_bottom, bc_type_top, bc_bottom, bc_top, h_b, h_t, k):
+    """Full-grid ``d2F/dy2`` for an (Ny, Nx) field, boundary ROWS included.
+
+    y-axis twin of :func:`_d2_dx2_full`; see there for the conventions.
+    """
+    dy_sq = dy * dy
+    if periodic:
+        return (np.roll(F, -1, axis=0) - 2.0 * F + np.roll(F, 1, axis=0)) / dy_sq
+
+    Fyy = np.empty_like(F)
+    Fyy[1:-1, :] = (F[2:, :] - 2.0 * F[1:-1, :] + F[:-2, :]) / dy_sq
+    flux_b = robin_flux_low(F[0, :], bc_bottom, h_b, k) if bc_type_bottom == "Robin" else bc_bottom
+    Fyy[0, :] = (2.0 * F[1, :] - 2.0 * F[0, :] - 2.0 * dy * flux_b) / dy_sq
+    flux_t = robin_flux_high(F[-1, :], bc_top, h_t, k) if bc_type_top == "Robin" else bc_top
+    Fyy[-1, :] = (2.0 * F[-2, :] - 2.0 * F[-1, :] + 2.0 * dy * flux_t) / dy_sq
+    return Fyy
+
+
 def _fill_neumann_corners(arr, ny, nx, left_open, right_open, bottom_open, top_open):
     """Assign 2D-PDE corner derivatives for the all-Neumann case.
 
@@ -76,16 +153,25 @@ def heat_rhs_1d(
         alpha: thermal diffusivity.
         dx: grid spacing.
         q_src: length-N heat-source array.
-        bc_type_left/right: 'Dirichlet', 'Neumann', or 'Robin'.
+        bc_type_left/right: 'Dirichlet', 'Neumann', 'Robin', or 'Periodic'.
         bc_val_left/right: prescribed boundary value (Dirichlet value, Neumann
-            flux, or Robin ambient temperature).
+            flux, or Robin ambient temperature). Ignored when periodic.
         h_left/h_right, k_thermal: Robin convection / conduction coefficients.
+            These are plain arguments, so a caller may pass a time-varying value
+            read from an input port -- nothing here caches them.
         boundary_mode: how Dirichlet & Robin boundaries drive the RHS:
             * 'penalty' -- ``dT/dt = PENALTY (target - T_b)`` (compiled path,
               which integrates the boundary node as a stiff ODE), or
             * 'hold' -- ``dT/dt = 0`` at Dirichlet/Robin nodes (interpreter,
               which instead sets the boundary value on the field directly).
-            Neumann boundaries are identical in both modes (ghost-node flux).
+            Neumann and Periodic boundaries are identical in both modes.
+
+    Periodic wraps the N nodes as a ring (node 0's left neighbour is node N-1),
+    matching ``advection_rhs_1d``. The two endpoints stay DISTINCT degrees of
+    freedom, so the effective period is ``N*dx`` rather than ``L = (N-1)*dx``;
+    the resulting circulant Laplacian has zero column sums, which conserves
+    total heat exactly when there is no source. Setting EITHER end to
+    'Periodic' wraps the axis (see :func:`is_periodic`).
 
     Returns:
         A new length-N ``dT_dt`` array.
@@ -97,6 +183,11 @@ def heat_rhs_1d(
     # Interior nodes: central difference (vectorized; identical to the per-node
     # stencil but avoids the Python loop in the ODE RHS).
     dT_dt[1:-1] = alpha * (T[2:] - 2 * T[1:-1] + T[:-2]) / dx_sq + q_src[1:-1]
+
+    if is_periodic(bc_type_left, bc_type_right):
+        dT_dt[0] = alpha * (T[1] - 2 * T[0] + T[N - 1]) / dx_sq + q_src[0]
+        dT_dt[N - 1] = alpha * (T[0] - 2 * T[N - 1] + T[N - 2]) / dx_sq + q_src[N - 1]
+        return dT_dt
 
     # Left boundary
     if bc_type_left == "Dirichlet":
@@ -141,6 +232,11 @@ def heat_rhs_2d(
     bc_right,
     bc_bottom,
     bc_top,
+    h_left=0.0,
+    h_right=0.0,
+    h_bottom=0.0,
+    h_top=0.0,
+    k_thermal=1.0,
 ):
     """dT/dt for the 2D heat equation ``T_t = alpha (T_xx + T_yy) + q``.
 
@@ -149,17 +245,59 @@ def heat_rhs_2d(
         alpha: thermal diffusivity.
         dx, dy: grid spacing in x and y.
         q_src: heat source -- a scalar or an (Ny, Nx) array.
-        bc_type_*: 'Dirichlet' or 'Neumann' per edge.
-        bc_left/right/bottom/top: prescribed edge value (Dirichlet value or
-            Neumann normal flux).
+        bc_type_*: 'Dirichlet', 'Neumann', 'Robin', or 'Periodic' per edge.
+        bc_left/right/bottom/top: prescribed edge value (Dirichlet value,
+            Neumann normal flux, or Robin ambient temperature).
+        h_left/h_right/h_bottom/h_top: per-edge Robin convection coefficients;
+            ``k_thermal`` is the conductivity. Plain arguments, so a caller may
+            pass values read from input ports and vary them in time.
 
     Dirichlet edges use the penalty method (both execution paths agree in 2D);
     Neumann edges use the ghost-node flux stencil. All-Neumann corners left
     unset by the edge loops are filled from their edge neighbors.
 
+    Robin edges reuse the Neumann ghost-node stencil with the flux evaluated
+    from the current edge temperature (:func:`robin_flux_low` /
+    :func:`robin_flux_high`), NOT the penalty formulation the 1D block uses.
+    The two agree in steady state (``T -> T_inf`` for ``h > 0``), but the flux
+    form is as stable as a Neumann edge, so it survives the interpreter's
+    Forward-Euler step where a 2D penalty term would not. The 1D block keeps its
+    penalty/hold formulation because the compiled-golden traces pin it.
+
+    Periodic wraps a whole AXIS: 'Periodic' on the left or right edge wraps x,
+    on the bottom or top edge wraps y, and the opposite edge's type is then
+    ignored. The axes are independent, so x-periodic with Dirichlet top/bottom
+    (a channel) is valid.
+
     Returns:
         A new (Ny, Nx) ``dT_dt`` array.
     """
+    periodic_x = is_periodic(bc_type_left, bc_type_right)
+    periodic_y = is_periodic(bc_type_bottom, bc_type_top)
+    if periodic_x or periodic_y:
+        return _heat_rhs_2d_periodic(
+            T,
+            alpha,
+            dx,
+            dy,
+            q_src,
+            bc_type_left,
+            bc_type_right,
+            bc_type_bottom,
+            bc_type_top,
+            bc_left,
+            bc_right,
+            bc_bottom,
+            bc_top,
+            h_left,
+            h_right,
+            h_bottom,
+            h_top,
+            k_thermal,
+            periodic_x,
+            periodic_y,
+        )
+
     Ny, Nx = T.shape
     dT_dt = np.zeros((Ny, Nx))
     dx_sq = dx * dx
@@ -177,13 +315,22 @@ def heat_rhs_2d(
         + q_int
     )
 
+    # Robin edges reuse the Neumann stencil with a temperature-dependent flux;
+    # the branch is hoisted out of each loop so the Neumann arithmetic below is
+    # unchanged (bit-identical to before this Robin support was added).
+    robin_l = bc_type_left == "Robin"
+    robin_r = bc_type_right == "Robin"
+    robin_b = bc_type_bottom == "Robin"
+    robin_t = bc_type_top == "Robin"
+
     # Left boundary (i=0)
     if bc_type_left == "Dirichlet":
         for j in range(Ny):
             dT_dt[j, 0] = PENALTY * (bc_left - T[j, 0])
-    else:  # Neumann
+    else:  # Neumann or Robin
         for j in range(1, Ny - 1):
-            d2Tdx2 = (2 * T[j, 1] - 2 * T[j, 0] - 2 * dx * bc_left) / dx_sq
+            flux = robin_flux_low(T[j, 0], bc_left, h_left, k_thermal) if robin_l else bc_left
+            d2Tdx2 = (2 * T[j, 1] - 2 * T[j, 0] - 2 * dx * flux) / dx_sq
             d2Tdy2 = (T[j + 1, 0] - 2 * T[j, 0] + T[j - 1, 0]) / dy_sq
             q = q_src[j, 0] if q_is_arr else q_src
             dT_dt[j, 0] = alpha * (d2Tdx2 + d2Tdy2) + q
@@ -192,9 +339,12 @@ def heat_rhs_2d(
     if bc_type_right == "Dirichlet":
         for j in range(Ny):
             dT_dt[j, Nx - 1] = PENALTY * (bc_right - T[j, Nx - 1])
-    else:  # Neumann
+    else:  # Neumann or Robin
         for j in range(1, Ny - 1):
-            d2Tdx2 = (2 * T[j, Nx - 2] - 2 * T[j, Nx - 1] + 2 * dx * bc_right) / dx_sq
+            flux = (
+                robin_flux_high(T[j, Nx - 1], bc_right, h_right, k_thermal) if robin_r else bc_right
+            )
+            d2Tdx2 = (2 * T[j, Nx - 2] - 2 * T[j, Nx - 1] + 2 * dx * flux) / dx_sq
             d2Tdy2 = (T[j + 1, Nx - 1] - 2 * T[j, Nx - 1] + T[j - 1, Nx - 1]) / dy_sq
             q = q_src[j, Nx - 1] if q_is_arr else q_src
             dT_dt[j, Nx - 1] = alpha * (d2Tdx2 + d2Tdy2) + q
@@ -203,10 +353,11 @@ def heat_rhs_2d(
     if bc_type_bottom == "Dirichlet":
         for i in range(Nx):
             dT_dt[0, i] = PENALTY * (bc_bottom - T[0, i])
-    else:  # Neumann
+    else:  # Neumann or Robin
         for i in range(1, Nx - 1):
+            flux = robin_flux_low(T[0, i], bc_bottom, h_bottom, k_thermal) if robin_b else bc_bottom
             d2Tdx2 = (T[0, i + 1] - 2 * T[0, i] + T[0, i - 1]) / dx_sq
-            d2Tdy2 = (2 * T[1, i] - 2 * T[0, i] - 2 * dy * bc_bottom) / dy_sq
+            d2Tdy2 = (2 * T[1, i] - 2 * T[0, i] - 2 * dy * flux) / dy_sq
             q = q_src[0, i] if q_is_arr else q_src
             dT_dt[0, i] = alpha * (d2Tdx2 + d2Tdy2) + q
 
@@ -214,10 +365,11 @@ def heat_rhs_2d(
     if bc_type_top == "Dirichlet":
         for i in range(Nx):
             dT_dt[Ny - 1, i] = PENALTY * (bc_top - T[Ny - 1, i])
-    else:  # Neumann
+    else:  # Neumann or Robin
         for i in range(1, Nx - 1):
+            flux = robin_flux_high(T[Ny - 1, i], bc_top, h_top, k_thermal) if robin_t else bc_top
             d2Tdx2 = (T[Ny - 1, i + 1] - 2 * T[Ny - 1, i] + T[Ny - 1, i - 1]) / dx_sq
-            d2Tdy2 = (2 * T[Ny - 2, i] - 2 * T[Ny - 1, i] + 2 * dy * bc_top) / dy_sq
+            d2Tdy2 = (2 * T[Ny - 2, i] - 2 * T[Ny - 1, i] + 2 * dy * flux) / dy_sq
             q = q_src[Ny - 1, i] if q_is_arr else q_src
             dT_dt[Ny - 1, i] = alpha * (d2Tdx2 + d2Tdy2) + q
 
@@ -236,6 +388,85 @@ def heat_rhs_2d(
     return dT_dt
 
 
+def _heat_rhs_2d_periodic(
+    T,
+    alpha,
+    dx,
+    dy,
+    q_src,
+    bc_type_left,
+    bc_type_right,
+    bc_type_bottom,
+    bc_type_top,
+    bc_left,
+    bc_right,
+    bc_bottom,
+    bc_top,
+    h_left,
+    h_right,
+    h_bottom,
+    h_top,
+    k_thermal,
+    periodic_x,
+    periodic_y,
+):
+    """``heat_rhs_2d`` for grids with at least one periodic axis.
+
+    Fully vectorized rather than edge-looped, because a wrapped axis has no
+    "boundary" line to special-case: every node uses the same stencil. A
+    non-periodic axis still gets its Neumann/Robin ghost node (from
+    :func:`_d2_dx2_full` / :func:`_d2_dy2_full`) or, for Dirichlet, has its
+    boundary line overwritten with the penalty term below.
+
+    Corners need no separate fill here: an x-periodic corner already gets a real
+    x-stencil from the wrap and a real y-stencil from its own y-edge treatment,
+    which is strictly better than the neighbour-averaging fallback the
+    all-Neumann path uses.
+    """
+    Txx = _d2_dx2_full(
+        T,
+        dx,
+        periodic_x,
+        bc_type_left,
+        bc_type_right,
+        bc_left,
+        bc_right,
+        h_left,
+        h_right,
+        k_thermal,
+    )
+    Tyy = _d2_dy2_full(
+        T,
+        dy,
+        periodic_y,
+        bc_type_bottom,
+        bc_type_top,
+        bc_bottom,
+        bc_top,
+        h_bottom,
+        h_top,
+        k_thermal,
+    )
+    dT_dt = alpha * (Txx + Tyy) + q_src
+
+    # Dirichlet lines on the non-periodic axes, applied last and over the full
+    # line (corners included) -- same precedence as the edge-looped path, whose
+    # Dirichlet loops also run the full index range in the order left, right,
+    # bottom, top.
+    if not periodic_x:
+        if bc_type_left == "Dirichlet":
+            dT_dt[:, 0] = PENALTY * (bc_left - T[:, 0])
+        if bc_type_right == "Dirichlet":
+            dT_dt[:, -1] = PENALTY * (bc_right - T[:, -1])
+    if not periodic_y:
+        if bc_type_bottom == "Dirichlet":
+            dT_dt[0, :] = PENALTY * (bc_bottom - T[0, :])
+        if bc_type_top == "Dirichlet":
+            dT_dt[-1, :] = PENALTY * (bc_top - T[-1, :])
+
+    return dT_dt
+
+
 def wave_rhs_1d(
     u, v, c, damping, dx, force, bc_type_left, bc_val_left, bc_type_right, bc_val_right
 ):
@@ -250,14 +481,19 @@ def wave_rhs_1d(
         damping: velocity damping coefficient.
         dx: grid spacing.
         force: length-N forcing array.
-        bc_type_left/right: 'Dirichlet' or 'Neumann'.
+        bc_type_left/right: 'Dirichlet', 'Neumann', or 'Periodic'.
         bc_val_left/right: prescribed boundary value (Dirichlet value or Neumann
-            flux).
+            flux). Ignored when periodic.
 
     Unlike the heat family, both execution paths hold Dirichlet nodes the same
     way here (``du/dt = dv/dt = 0`` at the node; the interpreter's ``execute``
     additionally sets the field value directly), so no boundary-mode kwarg is
     needed. Neumann boundaries use the ghost-node flux stencil.
+
+    Periodic wraps the N nodes as a ring, exactly as in :func:`heat_rhs_1d`:
+    the endpoints stay distinct degrees of freedom, so a pulse leaving the right
+    edge re-enters at the left after travelling ``N*dx``. Setting EITHER end to
+    'Periodic' wraps the axis.
 
     Returns:
         A ``(du_dt, dv_dt)`` tuple of freshly allocated length-N arrays.
@@ -271,6 +507,13 @@ def wave_rhs_1d(
 
     # Interior (vectorized; matches the compiled kernel's associativity)
     dv_dt[1:-1] = c_sq * (u[2:] - 2 * u[1:-1] + u[:-2]) / dx_sq - damping * v[1:-1] + force[1:-1]
+
+    if is_periodic(bc_type_left, bc_type_right):
+        dv_dt[0] = c_sq * (u[1] - 2 * u[0] + u[N - 1]) / dx_sq - damping * v[0] + force[0]
+        dv_dt[N - 1] = (
+            c_sq * (u[0] - 2 * u[N - 1] + u[N - 2]) / dx_sq - damping * v[N - 1] + force[N - 1]
+        )
+        return du_dt, dv_dt
 
     # Left boundary
     if bc_type_left == "Dirichlet":
@@ -343,18 +586,45 @@ def wave_rhs_2d(
         damping: velocity damping coefficient.
         dx, dy: grid spacing in x and y.
         force: forcing -- a scalar or an (Ny, Nx) array.
-        bc_type_*: 'Dirichlet' or 'Neumann' per edge.
+        bc_type_*: 'Dirichlet', 'Neumann', or 'Periodic' per edge.
         bc_left/right/bottom/top: prescribed edge value (Dirichlet value or
-            Neumann normal flux).
+            Neumann normal flux). Ignored on a periodic axis.
 
     Both execution paths agree in 2D: Dirichlet edges use the penalty method
     (``du/dt = PENALTY (target - u)``, ``dv/dt = 0``) and Neumann edges use the
     ghost-node flux stencil, so no boundary-mode kwarg is needed. All-Neumann
     corners left unset by the edge loops are filled from their edge neighbors.
 
+    Periodic wraps a whole axis (left/right -> x, bottom/top -> y) exactly as in
+    :func:`heat_rhs_2d`; the axes are independent. There is no Robin option for
+    the wave family.
+
     Returns:
         A ``(du_dt, dv_dt)`` tuple of freshly allocated (Ny, Nx) arrays.
     """
+    periodic_x = is_periodic(bc_type_left, bc_type_right)
+    periodic_y = is_periodic(bc_type_bottom, bc_type_top)
+    if periodic_x or periodic_y:
+        return _wave_rhs_2d_periodic(
+            u,
+            v,
+            c,
+            damping,
+            dx,
+            dy,
+            force,
+            bc_type_left,
+            bc_type_right,
+            bc_type_bottom,
+            bc_type_top,
+            bc_left,
+            bc_right,
+            bc_bottom,
+            bc_top,
+            periodic_x,
+            periodic_y,
+        )
+
     Ny, Nx = u.shape
     c_sq = c * c
     dx_sq = dx * dx
@@ -435,6 +705,60 @@ def wave_rhs_2d(
         bc_type_bottom != "Dirichlet",
         bc_type_top != "Dirichlet",
     )
+
+    return du_dt, dv_dt
+
+
+def _wave_rhs_2d_periodic(
+    u,
+    v,
+    c,
+    damping,
+    dx,
+    dy,
+    force,
+    bc_type_left,
+    bc_type_right,
+    bc_type_bottom,
+    bc_type_top,
+    bc_left,
+    bc_right,
+    bc_bottom,
+    bc_top,
+    periodic_x,
+    periodic_y,
+):
+    """``wave_rhs_2d`` for grids with at least one periodic axis.
+
+    Structured exactly like :func:`_heat_rhs_2d_periodic` (see there for why the
+    periodic case is vectorized instead of edge-looped, and why corners need no
+    separate fill). The wave family has no Robin option, so the ghost-node flux
+    on a non-periodic axis is always the prescribed Neumann gradient.
+    """
+    uxx = _d2_dx2_full(
+        u, dx, periodic_x, bc_type_left, bc_type_right, bc_left, bc_right, 0.0, 0.0, 1.0
+    )
+    uyy = _d2_dy2_full(
+        u, dy, periodic_y, bc_type_bottom, bc_type_top, bc_bottom, bc_top, 0.0, 0.0, 1.0
+    )
+
+    du_dt = v.copy()
+    dv_dt = c * c * (uxx + uyy) - damping * v + force
+
+    if not periodic_x:
+        if bc_type_left == "Dirichlet":
+            du_dt[:, 0] = PENALTY * (bc_left - u[:, 0])
+            dv_dt[:, 0] = 0.0
+        if bc_type_right == "Dirichlet":
+            du_dt[:, -1] = PENALTY * (bc_right - u[:, -1])
+            dv_dt[:, -1] = 0.0
+    if not periodic_y:
+        if bc_type_bottom == "Dirichlet":
+            du_dt[0, :] = PENALTY * (bc_bottom - u[0, :])
+            dv_dt[0, :] = 0.0
+        if bc_type_top == "Dirichlet":
+            du_dt[-1, :] = PENALTY * (bc_top - u[-1, :])
+            dv_dt[-1, :] = 0.0
 
     return du_dt, dv_dt
 

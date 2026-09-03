@@ -3,7 +3,11 @@ import numpy as np
 from typing import List, Callable, Dict, Any, Tuple
 from lib.simulation.block import DBlock
 from scipy import signal
-from lib.engine.pde_helpers import parse_pde_initial_condition, parse_pde_2d_initial_condition
+from lib.engine.pde_helpers import (
+    companion_seed,
+    parse_pde_2d_initial_condition,
+    parse_pde_initial_condition,
+)
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
 from lib.engine.block_params import runtime_params
@@ -398,7 +402,9 @@ class SystemCompiler:
 
                 # Get initial conditions using helper
                 ic = pde_params.get("init_conds", [0.0])
-                ic_flat = parse_pde_initial_condition(ic, N, L, pde_type="heat")
+                ic_flat = parse_pde_initial_condition(
+                    ic, N, L, pde_type="heat", seed=pde_params.get("seed", 0)
+                )
 
                 y0_list.extend(ic_flat)
                 current_state_idx += N
@@ -412,11 +418,19 @@ class SystemCompiler:
 
                 # Initial displacement using helper
                 init_u = pde_params.get("init_displacement", [0.0])
-                u0 = parse_pde_initial_condition(init_u, N, L, pde_type="wave")
+                u0 = parse_pde_initial_condition(
+                    init_u, N, L, pde_type="wave", seed=pde_params.get("seed", 0)
+                )
 
                 # Initial velocity using helper
                 init_v = pde_params.get("init_velocity", [0.0])
-                v0 = parse_pde_initial_condition(init_v, N, L, pde_type="wave")
+                v0 = parse_pde_initial_condition(
+                    init_v,
+                    N,
+                    L,
+                    pde_type="wave",
+                    seed=companion_seed(pde_params.get("seed", 0)),
+                )
 
                 y0_list.extend(u0)
                 y0_list.extend(v0)
@@ -465,7 +479,9 @@ class SystemCompiler:
                 # Get initial temperature using 2D helper
                 init_temp = pde_params.get("init_temp", "0.0")
                 amplitude = float(pde_params.get("init_amplitude", 1.0))
-                T0 = parse_pde_2d_initial_condition(init_temp, Nx, Ny, Lx, Ly, amplitude)
+                T0 = parse_pde_2d_initial_condition(
+                    init_temp, Nx, Ny, Lx, Ly, amplitude, seed=pde_params.get("seed", 0)
+                )
 
                 ic_flat = T0.flatten()
                 y0_list.extend(ic_flat)

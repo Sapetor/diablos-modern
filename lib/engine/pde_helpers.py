@@ -6,9 +6,41 @@ parameter specs for PDE blocks.
 
 import logging
 import numpy as np
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def ic_rng(seed: Union[int, float, str, None]) -> np.random.Generator:
+    """RNG for the 'random' initial conditions, seeded like every other block.
+
+    Follows the ``blocks/noise.py`` convention: ``seed == 0`` (or an unparseable
+    value) means "entropy-seeded, not reproducible"; any other integer gives a
+    reproducible field. Both execution paths build the initial condition through
+    this helper, so a seeded 'random' IC produces the SAME field interpreted and
+    compiled.
+    """
+    try:
+        s = int(seed)
+    except (TypeError, ValueError):
+        s = 0
+    return np.random.default_rng(s if s != 0 else None)
+
+
+def companion_seed(seed: Union[int, float, str, None]) -> int:
+    """Sub-seed for the SECOND random field of a two-field IC.
+
+    The wave blocks build a displacement AND a velocity field from one ``seed``
+    param. Handing both the same seed would make them identical arrays; this
+    offsets the second so they are independent, while preserving the ``0 means
+    entropy / not reproducible`` convention. Both execution paths call this, so
+    a seeded wave IC is reproducible interpreted and compiled.
+    """
+    try:
+        s = int(seed)
+    except (TypeError, ValueError):
+        s = 0
+    return 0 if s == 0 else s + 1
 
 
 def parse_pde_initial_condition(
@@ -16,11 +48,13 @@ def parse_pde_initial_condition(
     N: int,
     L: float = 1.0,
     pde_type: str = "heat",
+    seed: Union[int, float, str, None] = 0,
 ) -> np.ndarray:
     """
     Parse initial conditions for PDE blocks.
 
-    Handles: scalar, array, or string ('gaussian', 'sine', 'uniform', 'step', 'linear', etc.)
+    Handles: scalar, array, or string ('gaussian', 'sine', 'uniform', 'step',
+    'linear', 'random').
 
     Args:
         ic_spec: Initial condition specification - can be:
@@ -30,6 +64,7 @@ def parse_pde_initial_condition(
         N: Number of spatial grid points
         L: Domain length (default 1.0)
         pde_type: Type of PDE ('heat', 'wave', 'advection', 'diffusion_reaction')
+        seed: Seed for the 'random' pattern (0 = entropy / not reproducible)
 
     Returns:
         np.ndarray of shape (N,) containing initial condition values
@@ -63,6 +98,11 @@ def parse_pde_initial_condition(
 
         elif ic_lower == "linear":
             return 1 - x / L
+
+        elif ic_lower == "random":
+            # Uniform noise in [0, 1) -- a rough field that smooths visibly
+            # under diffusion. Reproducible whenever ``seed`` is non-zero.
+            return ic_rng(seed).random(N)
 
         else:
             # Try to parse as a number
@@ -102,9 +142,13 @@ def parse_pde_2d_initial_condition(
     Lx: float = 1.0,
     Ly: float = 1.0,
     amplitude: float = 1.0,
+    seed: Union[int, float, str, None] = 0,
 ) -> np.ndarray:
     """
     Parse initial conditions for 2D PDE blocks.
+
+    Named patterns: 'sinusoidal', 'gaussian', 'hot_spot', 'radial', 'linear',
+    'step', 'random', 'checkerboard'. All are scaled by ``amplitude``.
 
     Args:
         ic_spec: Initial condition specification (string, scalar, or array)
@@ -113,6 +157,7 @@ def parse_pde_2d_initial_condition(
         Lx: Domain length in x direction
         Ly: Domain length in y direction
         amplitude: Amplitude multiplier for IC pattern
+        seed: Seed for the 'random' pattern (0 = entropy / not reproducible)
 
     Returns:
         np.ndarray of shape (Ny, Nx) containing initial condition values
@@ -135,6 +180,30 @@ def parse_pde_2d_initial_condition(
         elif ic_lower == "hot_spot":
             # Hot spot in corner
             return amplitude * np.exp(-100 * (X**2 + Y**2))
+
+        elif ic_lower == "radial":
+            # Radial pulse from the (0,0) corner (WaveEquation2D's pattern)
+            return amplitude * np.exp(-100 * (X**2 + Y**2))
+
+        elif ic_lower == "linear":
+            # Ramp along x: amplitude at x=0 falling to 0 at x=Lx
+            return amplitude * (1 - X / Lx)
+
+        elif ic_lower == "step":
+            # Hot left quarter of the plate, cold elsewhere
+            return amplitude * np.where(X < Lx / 4, 1.0, 0.0)
+
+        elif ic_lower == "random":
+            # Uniform noise in [0, amplitude); reproducible for non-zero seed.
+            return amplitude * ic_rng(seed).random((Ny, Nx))
+
+        elif ic_lower == "checkerboard":
+            # Alternating +/- amplitude on adjacent nodes -- the highest spatial
+            # frequency the grid can represent, so it decays fastest under
+            # diffusion (a good stiffness / stability probe).
+            i = np.arange(Nx)[None, :]
+            j = np.arange(Ny)[:, None]
+            return amplitude * np.where((i + j) % 2 == 0, 1.0, -1.0)
 
         else:
             # Try to parse as number
@@ -180,7 +249,10 @@ ParamDict = Dict[str, Dict[str, Any]]
 
 
 def bc_params_1d(
-    left_default: str = "Dirichlet", right_default: str = "Dirichlet", include_robin: bool = True
+    left_default: str = "Dirichlet",
+    right_default: str = "Dirichlet",
+    include_robin: bool = True,
+    options: Optional[List[str]] = None,
 ) -> ParamDict:
     """
     Create 1D boundary condition parameters.
@@ -189,20 +261,32 @@ def bc_params_1d(
         left_default: Default BC type for left boundary
         right_default: Default BC type for right boundary
         include_robin: Include Robin BC coefficients (h_left, h_right, k_thermal)
+        options: Dropdown choices for the two ``bc_type_*`` params (drives the
+            QComboBox in the property editor). Defaults to Dirichlet/Neumann,
+            plus Robin when ``include_robin``, plus Periodic. Pass an explicit
+            list for blocks whose ``execute()`` dispatches a different set.
 
     Returns:
         Parameter dict with BC type definitions and optionally Robin coefficients
     """
+    if options is None:
+        options = ["Dirichlet", "Neumann"]
+        if include_robin:
+            options.append("Robin")
+        options.append("Periodic")
+    choices = ", ".join(options)
     params = {
         "bc_type_left": {
             "type": "string",
             "default": left_default,
-            "doc": "Left BC type: Dirichlet, Neumann, or Robin",
+            "options": list(options),
+            "doc": "Left BC type: " + choices,
         },
         "bc_type_right": {
             "type": "string",
             "default": right_default,
-            "doc": "Right BC type: Dirichlet, Neumann, or Robin",
+            "options": list(options),
+            "doc": "Right BC type: " + choices,
         },
     }
 
@@ -230,35 +314,95 @@ def bc_params_1d(
     return params
 
 
-def bc_params_2d(default_type: str = "Dirichlet") -> ParamDict:
+def bc_params_2d(default_type: str = "Dirichlet", include_robin: bool = False) -> ParamDict:
     """
     Create 2D boundary condition parameters.
 
+    'Periodic' wraps a whole axis: set it on the left OR right edge to wrap x,
+    on the bottom OR top edge to wrap y. The opposite edge's type is then
+    ignored, and the two axes are independent (x-periodic + Dirichlet top/bottom
+    is a valid channel).
+
     Args:
         default_type: Default BC type for all boundaries
+        include_robin: Also emit the per-edge Robin coefficients
+            (h_left/h_right/h_bottom/h_top, k_thermal). Only the heat family
+            supports Robin; the wave family leaves this False.
 
     Returns:
         Parameter dict with BC type definitions for all four edges
     """
-    return {
+    options = ["Dirichlet", "Neumann"]
+    if include_robin:
+        options.append("Robin")
+    options.append("Periodic")
+    choices = ", ".join(options)
+    params = {
         "bc_type_left": {
             "type": "string",
             "default": default_type,
-            "doc": "Left BC: Dirichlet or Neumann",
+            "options": list(options),
+            "doc": "Left BC: " + choices,
         },
         "bc_type_right": {
             "type": "string",
             "default": default_type,
-            "doc": "Right BC: Dirichlet or Neumann",
+            "options": list(options),
+            "doc": "Right BC: " + choices,
         },
         "bc_type_bottom": {
             "type": "string",
             "default": default_type,
-            "doc": "Bottom BC: Dirichlet or Neumann",
+            "options": list(options),
+            "doc": "Bottom BC: " + choices,
         },
         "bc_type_top": {
             "type": "string",
             "default": default_type,
-            "doc": "Top BC: Dirichlet or Neumann",
+            "options": list(options),
+            "doc": "Top BC: " + choices,
         },
     }
+
+    if include_robin:
+        params.update(robin_bc_params_2d())
+
+    return params
+
+
+def robin_bc_params_2d(default_h: float = 10.0, default_k: float = 1.0) -> ParamDict:
+    """
+    Per-edge Robin coefficients for the 2D heat block.
+
+    Robin BC: ``-k dT/dn = h (T - T_inf)`` with ``n`` the OUTWARD normal, so a
+    positive ``h`` always cools a plate that is hotter than ambient, on every
+    edge. ``T_inf`` is the edge's ``bc_*`` value (already an input port, hence
+    already time-varying); each edge gets its own ``h`` so, for example, a
+    forced-convection edge and a still-air edge can coexist on one plate.
+
+    Args:
+        default_h: Default convective coefficient for every edge
+        default_k: Default thermal conductivity
+
+    Returns:
+        Parameter dict with h_left, h_right, h_bottom, h_top, k_thermal
+    """
+    params: ParamDict = {
+        edge_param: {
+            "type": "float",
+            "default": default_h,
+            "doc": f"{edge_label} Robin coefficient h (heat transfer coeff)",
+        }
+        for edge_param, edge_label in (
+            ("h_left", "Left"),
+            ("h_right", "Right"),
+            ("h_bottom", "Bottom"),
+            ("h_top", "Top"),
+        )
+    }
+    params["k_thermal"] = {
+        "type": "float",
+        "default": default_k,
+        "doc": "Thermal conductivity for Robin BC [W/(m·K)]",
+    }
+    return params
