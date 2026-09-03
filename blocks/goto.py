@@ -52,6 +52,10 @@ class GotoBlock(BaseBlock):
     def outputs(self):
         return []
 
+    @property
+    def shape(self):
+        return "tag"
+
     def draw_icon(self, block_rect):
         """Goto uses tag text rendering - handled in DBlock switch."""
         return None

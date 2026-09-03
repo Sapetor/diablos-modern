@@ -162,6 +162,7 @@ class FileService:
             # discards the saved bends.
             "modified": getattr(line, "modified", False),
             "routing_mode": getattr(line, "routing_mode", "bezier"),
+            "auto_routed": getattr(line, "auto_routed", False),
         }
 
     def save_to_file(self, data: Dict[str, Any], filename: str) -> bool:
@@ -603,6 +604,7 @@ class FileService:
         saved_mode = line_data.get("routing_mode")
         if saved_mode:
             line.routing_mode = saved_mode
+        line.auto_routed = bool(line_data.get("auto_routed", False))
         if line_data.get("modified") and len(points) > 1:
             line.modified = True
             saved_qpoints = [

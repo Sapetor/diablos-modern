@@ -231,13 +231,62 @@ class CanvasRenderer:
         finally:
             painter.restore()
 
-    def draw_temp_line(self, painter: QPainter, start: QPoint, end: QPoint, is_valid_target: bool):
-        """Draw the temporary connection line during drag-and-drop."""
+    @staticmethod
+    def preview_path(
+        start: QPoint, end: QPoint, routing_mode: str = "bezier", reverse: bool = False
+    ) -> QPainterPath:
+        """Path of the in-progress wire from the anchored port to the cursor.
+
+        ``start`` is the port the drag began on and ``end`` the cursor (or the
+        snapped target port). With ``reverse`` the drag began on an *input*
+        port, so the wire is oriented cursor -> port to keep the same shape it
+        will have once committed. The bezier branch shares
+        ``bezier_control_points`` with DLine so the committed wire matches the
+        preview exactly; the orthogonal branch mirrors DLine's simple
+        forward L-route (stub, vertical, stub).
+        """
+        src, dst = (end, start) if reverse else (start, end)
+        path = QPainterPath(src)
+        if routing_mode == "orthogonal":
+            if src.x() <= dst.x():
+                mid_x = (src.x() + dst.x()) // 2
+                path.lineTo(QPoint(mid_x, src.y()))
+                path.lineTo(QPoint(mid_x, dst.y()))
+            else:
+                # Feedback layout: stub out, drop halfway, come back in.
+                mid_y = (src.y() + dst.y()) // 2
+                path.lineTo(QPoint(src.x() + 20, src.y()))
+                path.lineTo(QPoint(src.x() + 20, mid_y))
+                path.lineTo(QPoint(dst.x() - 20, mid_y))
+                path.lineTo(QPoint(dst.x() - 20, dst.y()))
+            path.lineTo(dst)
+        else:
+            cp1, cp2 = bezier_control_points(src, dst)
+            path.cubicTo(cp1, cp2, dst)
+        return path
+
+    def draw_temp_line(
+        self,
+        painter: QPainter,
+        start: QPoint,
+        end: QPoint,
+        is_valid_target: bool,
+        routing_mode: str = "bezier",
+        reverse: bool = False,
+        is_invalid_target: bool = False,
+    ):
+        """Draw the temporary connection line during drag-and-drop.
+
+        Colour encodes the drop target: accent while free-dragging, success
+        green over a port the wire may connect to, error red over a port it
+        may not (already wired, same block, ...).
+        """
         if not painter or not painter.isActive():
             return
 
-        # Choose color based on validity
-        if is_valid_target:
+        if is_invalid_target:
+            line_color = theme_manager.get_color("connection_error")
+        elif is_valid_target:
             line_color = theme_manager.get_color("success")  # Green for valid
         else:
             line_color = theme_manager.get_color("accent_primary")  # Blue for dragging
@@ -250,23 +299,22 @@ class CanvasRenderer:
             # Draw with solid line (not dashed) to avoid shadow artifacts
             pen = QPen(line_color, 2, Qt.SolidLine)
             pen.setCapStyle(Qt.RoundCap)
+            pen.setJoinStyle(Qt.RoundJoin)
             painter.setPen(pen)
 
             # Explicitly set no brush to prevent fill artifacts
             painter.setBrush(Qt.NoBrush)
 
-            # Draw curved Bezier preview. Control points come from the shared
-            # helper so the preview and the committed wire (DLine) never desync.
-            path = QPainterPath()
-            path.moveTo(start)
-            cp1, cp2 = bezier_control_points(start, end)
-            path.cubicTo(cp1, cp2, end)
-            painter.drawPath(path)
+            painter.drawPath(self.preview_path(start, end, routing_mode, reverse))
 
             # Draw endpoint indicator
             painter.setBrush(line_color)
             painter.setPen(Qt.NoPen)
-            painter.drawEllipse(end, 4, 4)
+            painter.drawEllipse(
+                end,
+                5 if (is_valid_target or is_invalid_target) else 4,
+                5 if (is_valid_target or is_invalid_target) else 4,
+            )
         finally:
             painter.restore()
 

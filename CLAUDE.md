@@ -79,7 +79,7 @@ class ScaleBlock(BaseBlock):               # class convention: <BlockName>Block 
 
 Note: `PortDefinition` (in `base_block.py`) is a type alias for `Dict[str, str]` used only in annotations -- ports are plain `{"name": ..., "type": ...}` dicts, never `PortDefinition(...)`. The `params` **property** returns a nested spec dict, while the `params` passed to `execute()` is the flattened `{name: value}` map.
 
-Optional overrides: `category` (port-requirement defaults: Sources make inputs optional, Sinks/Other make outputs optional -- via `requires_inputs`/`requires_outputs` in `base_block.py`), `requires_inputs`/`requires_outputs` (override directly when `category` isn't enough), `optional_inputs`, `optional_outputs`, `draw_icon()`, `symbolic_execute()`.
+Optional overrides: `category` (port-requirement defaults: Sources make inputs optional, Sinks/Other make outputs optional -- via `requires_inputs`/`requires_outputs` in `base_block.py`), `requires_inputs`/`requires_outputs` (override directly when `category` isn't enough), `optional_inputs`, `optional_outputs`, `shape` (outline: `rect`/`triangle`/`circle`/`tag`, see `resolve_block_shape` in `block_renderer.py`), `draw_icon()`, `symbolic_execute()`.
 
 **Critical rule**: All block state that persists across time steps must be stored in `params` (e.g., `params['_t_old_']`), never on `self`. The engine's `reset_memblocks()` (`lib/engine/simulation_engine.py:713`) sets `_init_start_ = True` in each block's `params` and `exec_params` and clears stale `exec_params` accumulators (`_prev`, `mem`, `output`); it never touches instance attributes, so state stored on `self` survives resets invisibly and leaks between runs.
 

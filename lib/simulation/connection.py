@@ -51,7 +51,15 @@ class DLine:
         selected: Whether line is currently selected
         modified: Whether line path has been manually modified
         selected_segment: Index of selected segment (-1 if whole line selected)
+        auto_routed: True when the waypoints were produced by the auto-router
     """
+
+    # Corner fillet radii (px) for Manhattan-style polylines, per routing mode.
+    BEZIER_CORNER_RADIUS = 20
+    ORTHOGONAL_CORNER_RADIUS = 10
+
+    # Number of samples used to flatten a cubic for hit-testing.
+    _BEZIER_HIT_SAMPLES = 24
 
     def __init__(
         self,
@@ -98,6 +106,14 @@ class DLine:
         self.path: QPainterPath
         self.segments: List[QRect]
         self.routing_mode: str = "bezier"  # "bezier" or "orthogonal"
+        # True when the current waypoints came from the A* auto-router rather
+        # than the user's hand; such wires are re-routed automatically when an
+        # attached block moves, hand-bent wires are not.
+        self.auto_routed: bool = False
+        # Flattened polyline used for hover/click hit-testing, rebuilt lazily
+        # whenever the geometry version changes (see ``_hit_segments``).
+        self._hit_cache: Optional[Tuple[int, List[Tuple[float, float, float, float, int]]]] = None
+        self._geometry_version: int = 0
         self.path, self.points, self.segments = self.create_trajectory(
             self.points[0], self.points[1], []
         )
@@ -326,6 +342,10 @@ class DLine:
         Returns:
             Tuple of (QPainterPath, waypoints, collision segments)
         """
+        # Any recomputation invalidates the cached hit-test polyline.
+        self._geometry_version += 1
+        self._hit_cache = None
+
         all_points = []
         if self.modified and points and len(points) > 1:
             all_points = points
@@ -392,11 +412,16 @@ class DLine:
 
         # Radius for smooth corner fillets on Manhattan-style routes. The
         # forward bezier route returns earlier as a true cubic, so corner
-        # rounding now only ever runs for orthogonal routes, user-modified
-        # custom waypoints, and the bezier feedback (route-around) layout --
-        # all of which are genuinely orthogonal. Round those corners only when
-        # the line is not in orthogonal mode (i.e. bezier feedback / modified).
-        corner_radius = 20 if self.routing_mode == "bezier" else 0
+        # rounding only ever runs for orthogonal routes, user-modified custom
+        # waypoints, and the bezier feedback (route-around) layout -- all of
+        # which are genuinely orthogonal. Bezier-mode polylines get generous
+        # fillets to match the "curvy" look; orthogonal mode keeps a small
+        # radius so corners still read as right angles.
+        corner_radius = (
+            self.BEZIER_CORNER_RADIUS
+            if self.routing_mode == "bezier"
+            else self.ORTHOGONAL_CORNER_RADIUS
+        )
 
         for i in range(len(all_points) - 1):
             current = all_points[i]
@@ -506,19 +531,131 @@ class DLine:
                     return
 
                 logger.debug(f"start: {start}, end: {end}")
-                self.points[0] = start
-                self.points[-1] = end
-                if self.modified and len(self.points) > 2:
-                    # Preserve user-customised waypoints (autoroute, manual drag)
-                    # by replaying them through create_trajectory with new endpoints.
-                    self.path, self.points, self.segments = self.create_trajectory(
-                        start, end, blocks_list, points=self.points
-                    )
-                else:
-                    self.path, self.points, self.segments = self.create_trajectory(
-                        start, end, blocks_list
-                    )
-                    self.modified = False
+                self._apply_endpoints(start, end, blocks_list)
+
+    def _apply_endpoints(self, start: QPoint, end: QPoint, blocks_list: List) -> None:
+        """Move the wire ends to ``start``/``end`` and rebuild the path.
+
+        Custom waypoints (manual bends, auto-routed paths) are preserved; the
+        first and last segments are kept axis-aligned when they were, so a
+        Manhattan route stays Manhattan while its blocks are nudged around.
+        """
+        if self.modified and len(self.points) > 2:
+            old_start, old_end = self.points[0], self.points[-1]
+            first, last = self.points[1], self.points[-2]
+            if first.y() == old_start.y() and first.x() != old_start.x():
+                first.setY(start.y())
+            elif first.x() == old_start.x() and first.y() != old_start.y():
+                first.setX(start.x())
+            if last.y() == old_end.y() and last.x() != old_end.x():
+                last.setY(end.y())
+            elif last.x() == old_end.x() and last.y() != old_end.y():
+                last.setX(end.x())
+            self.points[0] = start
+            self.points[-1] = end
+            # Preserve user-customised waypoints (autoroute, manual drag) by
+            # replaying them through create_trajectory with new endpoints.
+            self.path, self.points, self.segments = self.create_trajectory(
+                start, end, blocks_list, points=self.points
+            )
+        else:
+            self.points[0] = start
+            self.points[-1] = end
+            self.path, self.points, self.segments = self.create_trajectory(start, end, blocks_list)
+            self.modified = False
+
+    def reroute(self, blocks_list: List) -> bool:
+        """Force a rebuild of the path from the current block positions.
+
+        Unlike ``update_line`` this never short-circuits when the endpoints
+        are unchanged, so it is the right call after creating a wire, changing
+        its routing mode or resetting a manual route. Custom waypoints are
+        kept when ``modified`` is set. Returns False when either endpoint block
+        is missing.
+        """
+        if self.hidden:
+            return False
+        start = end = None
+        for block in blocks_list:
+            if block.name == self.srcblock and self.srcport < len(block.out_coords):
+                start = block.out_coords[self.srcport]
+            if block.name == self.dstblock and self.dstport < len(block.in_coords):
+                end = block.in_coords[self.dstport]
+        if start is None or end is None:
+            return False
+        self._apply_endpoints(QPoint(start), QPoint(end), blocks_list)
+        return True
+
+    def reset_routing(self, blocks_list: List) -> None:
+        """Discard custom waypoints and re-run the default router for the mode."""
+        self.modified = False
+        self.auto_routed = False
+        self.selected_segment = -1
+        self.reroute(blocks_list)
+
+    def mark_manual_edit(self) -> None:
+        """Record that the user bent this wire by hand."""
+        self.modified = True
+        self.auto_routed = False
+
+    # ------------------------------------------------------------------
+    # Hit-testing
+    # ------------------------------------------------------------------
+
+    def _hit_segments(self) -> List[Tuple[float, float, float, float, int]]:
+        """Flattened straight pieces of the drawn path for hit-testing.
+
+        Each entry is ``(x1, y1, x2, y2, logical_segment_index)``. Manhattan
+        polylines map 1:1 onto ``points``; a cubic bezier is sampled so that
+        clicking anywhere on the curve (not just its chord) registers, and
+        every sample maps to logical segment 0.
+        """
+        cached = self._hit_cache
+        if cached is not None and cached[0] == self._geometry_version:
+            return cached[1]
+
+        pieces: List[Tuple[float, float, float, float, int]] = []
+        path = getattr(self, "path", None)
+        is_cubic = (
+            len(self.points) == 2
+            and path is not None
+            and not path.isEmpty()
+            and any(path.elementAt(i).isCurveTo() for i in range(path.elementCount()))
+        )
+        if is_cubic:
+            n = self._BEZIER_HIT_SAMPLES
+            prev = path.pointAtPercent(0.0)
+            for k in range(1, n + 1):
+                cur = path.pointAtPercent(k / n)
+                pieces.append((prev.x(), prev.y(), cur.x(), cur.y(), 0))
+                prev = cur
+        else:
+            for i in range(len(self.points) - 1):
+                p1, p2 = self.points[i], self.points[i + 1]
+                pieces.append((float(p1.x()), float(p1.y()), float(p2.x()), float(p2.y()), i))
+        self._hit_cache = (self._geometry_version, pieces)
+        return pieces
+
+    @staticmethod
+    def _distance_to_piece(px: float, py: float, piece) -> float:
+        x1, y1, x2, y2, _idx = piece
+        vx, vy = x2 - x1, y2 - y1
+        ux, uy = px - x1, py - y1
+        length_squared = vx * vx + vy * vy
+        if length_squared == 0:
+            return math.hypot(ux, uy)
+        t = max(0.0, min(1.0, (ux * vx + uy * vy) / length_squared))
+        return math.hypot(px - (x1 + t * vx), py - (y1 + t * vy))
+
+    def distance_to(self, m_coords: Union[QPoint, Tuple[int, int]]) -> float:
+        """Shortest distance from a scene point to the drawn wire."""
+        if isinstance(m_coords, tuple):
+            m_coords = QPoint(*m_coords)
+        px, py = float(m_coords.x()), float(m_coords.y())
+        pieces = self._hit_segments()
+        if not pieces:
+            return float("inf")
+        return min(self._distance_to_piece(px, py, piece) for piece in pieces)
 
     def collision(
         self,
@@ -526,45 +663,39 @@ class DLine:
         point_radius: int = 5,
         line_threshold: int = 5,
     ) -> Optional[Tuple[str, int]]:
+        """Hit-test a scene point against this wire.
+
+        Returns ``("point", i)`` when a draggable waypoint is under the cursor,
+        ``("segment", i)`` when the drawn wire is (``i`` indexes ``points``),
+        or ``None``. The two endpoints sit on ports and are never reported as
+        draggable points.
+        """
         if isinstance(m_coords, tuple):
             m_coords = QPoint(*m_coords)
 
-        # Check for point collision
-        for i, point in enumerate(self.points):
-            if (m_coords - point).manhattanLength() <= point_radius:
+        # Check for waypoint collision (interior points only; ports own the ends)
+        for i in range(1, len(self.points) - 1):
+            if (m_coords - self.points[i]).manhattanLength() <= point_radius:
                 return ("point", i)
 
-        # Check for segment collision
-        for i in range(len(self.points) - 1):
-            p1 = self.points[i]
-            p2 = self.points[i + 1]
-
-            # Bounding box check
+        # Check the drawn wire itself (curves are sampled, see _hit_segments)
+        px, py = float(m_coords.x()), float(m_coords.y())
+        best_idx = None
+        best_dist = float("inf")
+        for piece in self._hit_segments():
+            x1, y1, x2, y2, idx = piece
             if (
-                not QRect(p1, p2)
-                .normalized()
-                .adjusted(-line_threshold, -line_threshold, line_threshold, line_threshold)
-                .contains(m_coords)
+                px < min(x1, x2) - line_threshold
+                or px > max(x1, x2) + line_threshold
+                or py < min(y1, y2) - line_threshold
+                or py > max(y1, y2) + line_threshold
             ):
                 continue
-
-            # Distance from point to line segment
-            v = p2 - p1
-            u = m_coords - p1
-
-            # Use a single consistent metric (true Euclidean distance) in both
-            # branches so the comparison against line_threshold has uniform units.
-            length_squared = v.x() ** 2 + v.y() ** 2
-            if length_squared == 0:
-                dist = math.hypot(u.x(), u.y())
-            else:
-                t = max(0, min(1, QPoint.dotProduct(u, v) / length_squared))
-                proj_dx = m_coords.x() - (p1.x() + t * v.x())
-                proj_dy = m_coords.y() - (p1.y() + t * v.y())
-                dist = math.hypot(proj_dx, proj_dy)
-
-            if dist <= line_threshold:
-                return ("segment", i)
+            dist = self._distance_to_piece(px, py, piece)
+            if dist < best_dist:
+                best_dist, best_idx = dist, idx
+        if best_idx is not None and best_dist <= line_threshold:
+            return ("segment", best_idx)
 
         return None
 
@@ -579,6 +710,7 @@ class DLine:
             self.routing_mode = mode
             # Force recalculation of path when mode changes
             self.modified = False
+            self.auto_routed = False
 
     def toggle_routing_mode(self) -> None:
         """Toggle between bezier and orthogonal routing modes."""
@@ -588,6 +720,7 @@ class DLine:
             self.routing_mode = "bezier"
         # Force recalculation of path when mode changes
         self.modified = False
+        self.auto_routed = False
 
     def __deepcopy__(self, memo):
         """
@@ -602,6 +735,9 @@ class DLine:
             if k == "path":
                 # Recreate path later or set to default
                 setattr(result, k, QPainterPath())
+            elif k == "_hit_cache":
+                # Derived from the (dropped) path; rebuilt lazily on demand.
+                setattr(result, k, None)
             elif k == "segments":
                 # Segments are lists of QRect, which are picklable with PyQt5?
                 # QRect pickles fine.

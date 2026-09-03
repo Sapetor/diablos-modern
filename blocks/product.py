@@ -72,16 +72,13 @@ class ProductBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
-    def draw_icon(self, block_rect):
-        """Draw multiplication X symbol in normalized 0-1 coordinates."""
-        from PyQt5.QtGui import QPainterPath
+    @property
+    def shape(self):
+        return "circle"
 
-        path = QPainterPath()
-        path.moveTo(0.2, 0.2)
-        path.lineTo(0.8, 0.8)
-        path.moveTo(0.2, 0.8)
-        path.lineTo(0.8, 0.2)
-        return path
+    def draw_icon(self, block_rect):
+        """Product draws a x / / glyph at each input port (see BlockRenderer)."""
+        return None
 
     def symbolic_execute(self, inputs, params):
         """

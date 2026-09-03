@@ -189,6 +189,13 @@ class ConnectionState:
     temp_line: Any = None  # Temporary line being drawn
     source_block: Any = None  # Source block for the connection
     default_routing_mode: str = "bezier"  # Default routing mode for new connections
+    # True when the wire was started from an *input* port and will be finished
+    # on an output port (the committed line is still output -> input).
+    reverse: bool = False
+    # Scene position of the press that started the wire, used to tell a
+    # click-click gesture from a press-drag-release gesture.
+    press_pos: Any = None
+    dragged: bool = False  # Set once the cursor moved away from press_pos
 
     def start_connection(self, block: Any, port: int, state: str = "creating"):
         """Begin creating a new connection."""
@@ -204,6 +211,9 @@ class ConnectionState:
         self.start_port = None
         self.temp_line = None
         self.source_block = None
+        self.reverse = False
+        self.press_pos = None
+        self.dragged = False
 
     @property
     def is_creating(self) -> bool:

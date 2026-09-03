@@ -1,7 +1,7 @@
 import collections
 import copy
 import logging
-from PyQt5.QtCore import QRect
+from PyQt5.QtCore import QPoint, QRect
 from PyQt5.QtGui import QColor
 
 # Import DBlock/DSim dependencies for restoration
@@ -24,6 +24,23 @@ class HistoryManager:
         self.max_undo_steps = 50
         self.undo_stack = collections.deque(maxlen=self.max_undo_steps)
         self.redo_stack = collections.deque()
+
+    def capture_snapshot(self):
+        """Snapshot the current diagram so it can be pushed later.
+
+        Use this at the *start* of a drag-style gesture and hand the result to
+        ``push_snapshot`` once the gesture turns out to have changed something,
+        so the undo entry holds the pre-gesture state.
+        """
+        return self._capture_state()
+
+    def push_snapshot(self, state, description="Action"):
+        """Push a previously captured snapshot onto the undo stack."""
+        if not state:
+            return
+        self.undo_stack.append({"state": state, "description": description})
+        self.redo_stack.clear()
+        logger.debug(f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})")
 
     def push_undo(self, description="Action"):
         """Push current state to undo stack."""
@@ -129,6 +146,11 @@ class HistoryManager:
                     if hasattr(line, "routing_mode")
                     else "bezier",
                     "label": line.label if hasattr(line, "label") else "",
+                    # Custom routing (manual bends / auto-routed paths) must
+                    # survive undo/redo, so snapshot the waypoints too.
+                    "points": [(p.x(), p.y()) for p in getattr(line, "points", [])],
+                    "modified": bool(getattr(line, "modified", False)),
+                    "auto_routed": bool(getattr(line, "auto_routed", False)),
                 }
                 state["lines"].append(line_data)
 
@@ -252,8 +274,22 @@ class HistoryManager:
                             line.routing_mode = line_data["routing_mode"]
                         if "label" in line_data:
                             line.label = line_data["label"]
-                        # Recalculate path with restored routing mode (if canvas has block list reference)
-                        line.update_line(self.dsim.blocks_list)
+                        line.auto_routed = bool(line_data.get("auto_routed", False))
+                        saved_points = line_data.get("points") or []
+                        if line_data.get("modified") and len(saved_points) > 2:
+                            # Replay the snapshotted waypoints between the
+                            # rebuilt ports so bends come back exactly.
+                            pts = [QPoint(int(x), int(y)) for x, y in saved_points]
+                            pts[0] = QPoint(src_port_pos)
+                            pts[-1] = QPoint(dst_port_pos)
+                            line.modified = True
+                            line.path, line.points, line.segments = line.create_trajectory(
+                                pts[0], pts[-1], self.dsim.blocks_list, points=pts
+                            )
+                        else:
+                            # Recalculate the default path for the restored
+                            # routing mode against the rebuilt blocks.
+                            line.reroute(self.dsim.blocks_list)
 
                 except Exception as e:
                     logger.error(

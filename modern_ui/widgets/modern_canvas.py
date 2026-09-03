@@ -391,16 +391,30 @@ class ModernCanvas(QWidget):
             if conn_state.creation_state == "start" and conn_state.temp_line:
                 start_point, end_point = conn_state.temp_line
 
-                # Check if hovering over valid target port
+                # Classify the hovered port: snap the preview onto it and colour
+                # the wire by whether dropping there would be accepted.
                 is_valid_target = False
+                is_invalid_target = False
                 if hover.port:
                     hovered_block, port_idx, is_output = hover.port
-                    # Valid if hovering over an input port (not output)
-                    if not is_output:
-                        is_valid_target = True
+                    verdict = self.connection_manager.target_validity(
+                        hovered_block, "o" if is_output else "i", port_idx
+                    )
+                    if verdict is not None:
+                        coords = hovered_block.out_coords if is_output else hovered_block.in_coords
+                        if port_idx < len(coords):
+                            end_point = coords[port_idx]
+                        is_valid_target = verdict
+                        is_invalid_target = not verdict
 
                 self.canvas_renderer.draw_temp_line(
-                    painter, start_point, end_point, is_valid_target
+                    painter,
+                    start_point,
+                    end_point,
+                    is_valid_target,
+                    routing_mode=conn_state.default_routing_mode,
+                    reverse=conn_state.reverse,
+                    is_invalid_target=is_invalid_target,
                 )
 
             # Draw rectangle selection
@@ -517,12 +531,24 @@ class ModernCanvas(QWidget):
         self.connection_manager.update_line_positions()
 
     def _reroute_affected_lines(self, block_names):
-        """Re-run A* routing on lines connected to the given block names."""
+        """Re-run A* routing on auto-routed orthogonal wires touching ``block_names``.
+
+        Only wires that are in orthogonal mode and were laid out by the router
+        (or never bent by hand) are recomputed, so a block move keeps bezier
+        wires curved and leaves hand-made bends alone (their end segments are
+        already adjusted by ``DLine.update_line``).
+        """
         try:
             from lib.simulation.wire_router import route_all_lines
 
             lines = self.dsim.line_list
-            affected = [l for l in lines if l.srcblock in block_names or l.dstblock in block_names]
+            affected = [
+                line
+                for line in lines
+                if (line.srcblock in block_names or line.dstblock in block_names)
+                and getattr(line, "routing_mode", "bezier") == "orthogonal"
+                and (getattr(line, "auto_routed", False) or not getattr(line, "modified", False))
+            ]
             if affected:
                 route_all_lines(affected, self.dsim.blocks_list)
                 self.dsim.dirty = True
@@ -555,7 +581,12 @@ class ModernCanvas(QWidget):
 
                 # Check if double-clicked on empty space (not on block or line)
                 clicked_block = self._get_clicked_block(pos)
-                clicked_line, _ = self._get_clicked_line(pos)
+                clicked_line, line_hit = self._get_clicked_line(pos)
+
+                # Double-clicking a bend handle removes that bend.
+                if clicked_line and not clicked_block and line_hit and line_hit[0] == "point":
+                    if self.connection_manager.remove_waypoint(clicked_line, line_hit[1]):
+                        return
 
                 if clicked_block:
                     logger.info(

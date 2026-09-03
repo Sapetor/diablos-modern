@@ -19,11 +19,112 @@ from PyQt5.QtGui import (
     QFont,
     QFontMetrics,
 )
-from PyQt5.QtCore import Qt, QRect, QPoint, QPointF
+from PyQt5.QtCore import Qt, QRect, QRectF, QPoint, QPointF
 from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
 from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
+
+# Outline shapes the renderer knows how to draw (see BaseBlock.shape).
+BLOCK_SHAPES = ("rect", "triangle", "circle", "tag")
+
+# Shape used when a block carries no block_instance (legacy / stub blocks in
+# tests), keyed by block_fn. Everything else falls back to a rounded rect.
+_SHAPE_FALLBACK_BY_FN = {
+    "Gain": "triangle",
+    "MatrixGain": "triangle",
+    "Sum": "circle",
+    "Product": "circle",
+    "Goto": "tag",
+    "From": "tag",
+}
+
+# A circle only reads well with a handful of ports on its curved edge; past
+# this the block is drawn as a rounded rectangle instead.
+_CIRCLE_MAX_INPUTS = 3
+
+# Corner radius of the rounded-rectangle outline.
+_RECT_RADIUS = 12
+
+
+def resolve_block_shape(block) -> str:
+    """Return the outline shape token to draw for ``block``.
+
+    Reads ``block.block_instance.shape`` (BaseBlock hook) and applies the
+    port-count fallback for circles, so every drawing routine (body, shadow,
+    hover, export) agrees on the same outline.
+    """
+    instance = getattr(block, "block_instance", None)
+    shape = None
+    if instance is not None:
+        try:
+            shape = getattr(instance, "shape", None)
+        except Exception:  # a broken property must never break painting
+            shape = None
+    if not shape:
+        shape = _SHAPE_FALLBACK_BY_FN.get(getattr(block, "block_fn", ""), "rect")
+    if shape not in BLOCK_SHAPES:
+        shape = "rect"
+    if shape == "circle":
+        if getattr(block, "in_ports", 0) > _CIRCLE_MAX_INPUTS or getattr(block, "out_ports", 0) > 1:
+            shape = "rect"
+    return shape
+
+
+def block_outline_path(block, shape: str, offset: int = 0, expand: int = 0) -> QPainterPath:
+    """Build the outline of ``block`` as a QPainterPath.
+
+    ``offset`` shifts the outline (shadow layers) and ``expand`` grows it
+    outward by that many pixels; both default to the exact block outline.
+    The triangle and tag shapes mirror when the block is flipped.
+    """
+    left = block.left + offset - expand
+    top = block.top + offset - expand
+    width = block.width + 2 * expand
+    height = block.height + 2 * expand
+    right = left + width
+    bottom = top + height
+    mid_y = top + height / 2.0
+    flipped = bool(getattr(block, "flipped", False))
+
+    path = QPainterPath()
+    if shape == "triangle":
+        poly = QPolygonF()
+        if not flipped:
+            poly.append(QPointF(left, top))
+            poly.append(QPointF(right, mid_y))
+            poly.append(QPointF(left, bottom))
+        else:
+            poly.append(QPointF(right, top))
+            poly.append(QPointF(left, mid_y))
+            poly.append(QPointF(right, bottom))
+        path.addPolygon(poly)
+        path.closeSubpath()
+    elif shape == "circle":
+        path.addEllipse(QPointF(left + width / 2.0, mid_y), width / 2.0, height / 2.0)
+    elif shape == "tag":
+        # Pentagon whose point follows the signal flow (right unless flipped).
+        tip = min(height / 2.0, width * 0.3)
+        poly = QPolygonF()
+        if not flipped:
+            poly.append(QPointF(left, top))
+            poly.append(QPointF(right - tip, top))
+            poly.append(QPointF(right, mid_y))
+            poly.append(QPointF(right - tip, bottom))
+            poly.append(QPointF(left, bottom))
+        else:
+            poly.append(QPointF(right, top))
+            poly.append(QPointF(left + tip, top))
+            poly.append(QPointF(left, mid_y))
+            poly.append(QPointF(left + tip, bottom))
+            poly.append(QPointF(right, bottom))
+        path.addPolygon(poly)
+        path.closeSubpath()
+    else:
+        radius = _RECT_RADIUS + expand
+        path.addRoundedRect(QRectF(left, top, width, height), radius, radius)
+    return path
+
 
 _CATEGORY_KEY_MAP = (
     ("source", "block_source"),
@@ -175,23 +276,8 @@ class BlockRenderer:
         painter.setBrush(gradient)
         painter.setPen(QPen(border_color, 3 if block.selected else 2.5))
 
-        if block.block_fn == "Gain":
-            # Draw a triangle for the Gain block
-            points = QPolygonF()
-            if not block.flipped:
-                points.append(QPoint(block.left, block.top))
-                points.append(QPoint(block.left + block.width, int(block.top + block.height / 2)))
-                points.append(QPoint(block.left, block.top + block.height))
-            else:
-                points.append(QPoint(block.left + block.width, block.top))
-                points.append(QPoint(block.left, int(block.top + block.height / 2)))
-                points.append(QPoint(block.left + block.width, block.top + block.height))
-            painter.drawPolygon(points)
-        else:
-            radius = 12
-            painter.drawRoundedRect(
-                QRect(block.left, block.top, block.width, block.height), radius, radius
-            )
+        shape = resolve_block_shape(block)
+        painter.drawPath(block_outline_path(block, shape))
 
         # Draw block-specific icon
         icon_pen = QPen(theme_manager.get_color("block_icon_color"), 2)
@@ -270,68 +356,21 @@ class BlockRenderer:
 
         Stacks the _SOFT_SHADOW_LAYERS recipe (growing offset/spread, fading
         alpha) into a few plain fills so the result reads as soft elevation
-        without any per-pixel blur. The shadow tracks the block outline: a
-        triangle for the Gain block, a rounded rectangle otherwise. The base
-        color/alpha come from the active theme's 'block_shadow' token so
-        light/dark themes stay consistent.
+        without any per-pixel blur. The shadow tracks the block outline
+        (triangle, circle, tag or rounded rectangle -- see
+        ``resolve_block_shape``). The base color/alpha come from the active
+        theme's 'block_shadow' token so light/dark themes stay consistent.
         """
         base_shadow = theme_manager.get_color("block_shadow")
         base_alpha = base_shadow.alpha()
+        shape = resolve_block_shape(block)
 
         painter.setPen(Qt.NoPen)
-        radius = 12
-        is_gain = block.block_fn == "Gain"
-
         for offset, expand, alpha_scale in self._SOFT_SHADOW_LAYERS:
             layer_color = QColor(base_shadow)
             layer_color.setAlpha(int(base_alpha * alpha_scale))
             painter.setBrush(layer_color)
-
-            if is_gain:
-                # Shadow for the Gain triangle, grown outward by `expand`.
-                shadow_points = QPolygonF()
-                if not block.flipped:
-                    shadow_points.append(
-                        QPoint(block.left + offset - expand, block.top + offset - expand)
-                    )
-                    shadow_points.append(
-                        QPoint(
-                            block.left + block.width + offset + expand,
-                            int(block.top + block.height / 2) + offset,
-                        )
-                    )
-                    shadow_points.append(
-                        QPoint(
-                            block.left + offset - expand, block.top + block.height + offset + expand
-                        )
-                    )
-                else:
-                    shadow_points.append(
-                        QPoint(
-                            block.left + block.width + offset + expand, block.top + offset - expand
-                        )
-                    )
-                    shadow_points.append(
-                        QPoint(
-                            block.left + offset - expand, int(block.top + block.height / 2) + offset
-                        )
-                    )
-                    shadow_points.append(
-                        QPoint(
-                            block.left + block.width + offset + expand,
-                            block.top + block.height + offset + expand,
-                        )
-                    )
-                painter.drawPolygon(shadow_points)
-            else:
-                # Shadow for the rounded rectangle, grown outward by `expand`.
-                shadow_rect = QRect(
-                    block.left + offset - expand,
-                    block.top + offset - expand,
-                    block.width + 2 * expand,
-                    block.height + 2 * expand,
-                )
-                painter.drawRoundedRect(shadow_rect, radius + expand, radius + expand)
+            painter.drawPath(block_outline_path(block, shape, offset=offset, expand=expand))
 
     def draw_ports(self, block, painter: Optional[QPainter], hovered_port=None) -> None:
         """Draw input and output ports with modern styling.
@@ -682,10 +721,13 @@ class BlockRenderer:
             path.quadTo(0.3, 0.2, 0.5, 0.6)
             path.quadTo(0.7, 1.0, 0.9, 0.6)
         elif block.block_fn == "Sum":
-            sign_text = block.params.get("sign", "++")
-            if isinstance(sign_text, dict):
-                sign_text = sign_text.get("default", "++")
-            self._draw_centered_text(block, painter, str(sign_text), size_delta=4)
+            self._draw_port_glyphs(block, painter, self._sum_signs(block))
+        elif block.block_fn == "Product":
+            self._draw_port_glyphs(block, painter, self._product_ops(block))
+        elif block.block_fn in ("Gain", "MatrixGain"):
+            self._draw_gain_value(block, painter)
+        elif block.block_fn in ("Goto", "From"):
+            self._draw_centered_text(block, painter, self._tag_text(block), bold=True, size_delta=2)
         elif block.block_fn == "Noise":
             path.moveTo(0.1, 0.5)
             path.lineTo(0.2, 0.3)
@@ -932,6 +974,136 @@ class BlockRenderer:
                 path.lineTo(x + bar_w, 0.80)
         elif block.block_fn == "MathFunction":
             self._draw_centered_text(block, painter, "f(u)", italic=True, size_delta=4)
+
+    # --- Shape-specific decorations (Gain value, Sum signs, tags) ---
+
+    @staticmethod
+    def _param_value(block, name, default):
+        """Read a block parameter, unwrapping a raw spec dict if present."""
+        params = getattr(block, "params", None) or {}
+        value = params.get(name, default)
+        if isinstance(value, dict):
+            value = value.get("default", default)
+        return value
+
+    @classmethod
+    def _sum_signs(cls, block):
+        signs = str(cls._param_value(block, "sign", "++"))
+        return [c if c in "+-" else "+" for c in signs]
+
+    @classmethod
+    def _product_ops(cls, block):
+        ops = str(cls._param_value(block, "ops", "**"))
+        return ["\u00f7" if c == "/" else "\u00d7" for c in ops]
+
+    @classmethod
+    def _tag_text(cls, block):
+        tag = str(cls._param_value(block, "tag", "A")).strip() or "A"
+        return f"[{tag}]"
+
+    @staticmethod
+    def gain_label(value, digits: int = 4) -> str:
+        """Short text for a gain value: a number, or K / [K] for vectors / matrices.
+
+        Scalars are printed with up to ``digits`` significant digits and fall
+        back to ``K`` when they would not fit inside the triangle.
+        """
+        import numpy as np
+
+        raw = value
+        if isinstance(raw, dict):
+            raw = raw.get("default", 1.0)
+        try:
+            if isinstance(raw, str):
+                from lib.safe_eval import safe_literal
+
+                text = raw.strip()
+                if not text:
+                    return "K"
+                raw = safe_literal(text)
+            arr = np.array(raw, dtype=float)
+        except Exception:
+            return "K"
+        if arr.size == 1:
+            v = float(arr.reshape(-1)[0])
+            if not np.isfinite(v):
+                return "K"
+            text = f"{v:.{max(1, digits)}g}"
+            return text if len(text) <= 7 else "K"
+        if arr.ndim >= 2:
+            return "[K]"
+        return "K"
+
+    def _draw_gain_value(self, block, painter):
+        """Draw the gain value inside the triangle, biased toward its wide side."""
+        value = self._param_value(block, "gain", 1.0)
+        font = painter.font()
+        orig_size = font.pointSize()
+        orig_bold = font.bold()
+        font.setBold(True)
+        base_size = max(8, min(13, int(block.height * 0.26)))
+        max_width = block.width * 0.55
+        # Try progressively shorter renderings (fewer significant digits) and
+        # slightly smaller fonts until the text fits the wide half of the
+        # triangle; the generic K is the last resort.
+        text = "K"
+        size = base_size
+        for candidate in (
+            self.gain_label(value, 4),
+            self.gain_label(value, 3),
+            self.gain_label(value, 2),
+            "K",
+        ):
+            fitted = False
+            for size in range(base_size, max(7, base_size - 4) - 1, -1):
+                font.setPointSize(size)
+                if QFontMetrics(font).horizontalAdvance(candidate) <= max_width:
+                    fitted = True
+                    break
+            if fitted or candidate == "K":
+                text = candidate
+                break
+        if text == "K":
+            size = base_size
+        font.setPointSize(size)
+        painter.setFont(font)
+        painter.setPen(theme_manager.get_color("block_icon_color"))
+        # The triangle is widest at its flat (input) side, so centre the text
+        # at 40% of the width from that side.
+        if not getattr(block, "flipped", False):
+            rect = QRect(
+                block.left + int(block.width * 0.1), block.top, int(block.width * 0.6), block.height
+            )
+        else:
+            rect = QRect(
+                block.left + int(block.width * 0.3), block.top, int(block.width * 0.6), block.height
+            )
+        painter.drawText(rect, Qt.AlignCenter, text)
+        font.setPointSize(orig_size)
+        font.setBold(orig_bold)
+        painter.setFont(font)
+
+    def _draw_port_glyphs(self, block, painter, glyphs):
+        """Draw one glyph just inside each input port (Sum signs, Product ops)."""
+        coords = getattr(block, "in_coords", None) or []
+        if not coords or not glyphs:
+            return
+        font = painter.font()
+        orig_size = font.pointSize()
+        orig_bold = font.bold()
+        font.setPointSize(max(9, min(14, int(block.height * 0.28))))
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(theme_manager.get_color("block_icon_color"))
+        inset = 13
+        box = 18
+        for glyph, pos in zip(glyphs, coords):
+            cx = pos.x() + (inset if not getattr(block, "flipped", False) else -inset)
+            rect = QRect(int(cx - box / 2), int(pos.y() - box / 2), box, box)
+            painter.drawText(rect, Qt.AlignCenter, glyph)
+        font.setPointSize(orig_size)
+        font.setBold(orig_bold)
+        painter.setFont(font)
 
     # --- Helper methods for common icon patterns ---
 

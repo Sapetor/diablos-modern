@@ -62,11 +62,15 @@ class MatrixGainBlock(BaseBlock):
         return [{"name": "out", "type": "any"}]
 
     @property
+    def shape(self):
+        return "triangle"
+
+    @property
     def use_port_grid_snap(self):
         return False
 
     def draw_icon(self, block_rect):
-        """Triangle with 'M' subscript — handled by block renderer for triangle shape."""
+        """Triangle with the gain value drawn inside (see BlockRenderer)."""
         return None
 
     def execute(self, time, inputs, params, **kwargs):

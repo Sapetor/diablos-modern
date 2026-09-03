@@ -21,7 +21,12 @@ python diablos_modern.py
 Drag blocks from the palette onto the canvas.
 
 ### 2. Connect Blocks
-Click an output port and drag to an input port.
+Press an output port, drag to an input port and release. You can also click
+the output port, let go, and click the input port; or start from a free input
+port and finish on an output port. While you drag, the preview turns green
+over a port that will accept the wire and red over one that will not (already
+connected, same block). Press **Esc**, or release on empty canvas, to cancel.
+See [Wires](#wires) for routing, bending and auto-routing.
 
 ### 3. Configure Parameters
 Click a block, then edit its parameters in the property editor.
@@ -519,6 +524,41 @@ DiaBloS supports vector and matrix signals:
 
 ---
 
+## Wires
+
+A wire always runs from an output port to an input port; an output may feed
+any number of inputs, an input accepts one wire.
+
+### Routing modes
+
+- **Bezier (curved)** wires are smooth curves that leave and enter ports
+  horizontally. They stay curved when you move blocks.
+- **Orthogonal (Manhattan)** wires are laid out by an obstacle-avoiding
+  router that keeps clear of blocks and their names. Auto-routed wires are
+  re-routed whenever a block they touch is moved or resized.
+
+Pick the mode for new wires in **View → Default Connection Routing**, or
+right-click a wire → **Routing** to change one wire.
+
+### Bending wires by hand
+
+- **Drag a segment** to move it; dragging a straight or curved wire turns it
+  into a three-segment bend first.
+- **Drag a bend handle** (the small circles on a selected wire) to move that
+  corner. Handles snap to the grid when grid snapping is on.
+- **Double-click a bend handle** to remove it.
+- Hand-bent wires keep their bends when blocks move; only the end segments
+  follow the ports.
+- Right-click → **Reset routing** discards the bends; **Auto-route wire**
+  lets the router lay the wire out again.
+- **Auto-route wires** (toolbar, or right-click the canvas) routes every wire
+  at once.
+
+Crossing wires show a small gap where one passes over the other. Bend and
+move edits are undoable with **Ctrl+Z**.
+
+---
+
 ## Alignment Tools
 
 Keep your diagrams tidy with alignment and distribution tools.
@@ -586,7 +626,7 @@ Everything here lives in the **View** menu. The first three are written to
 - **UI Scale** offers 100%, 125% and 150% for high-DPI screens.
 - **Default Connection Routing** chooses *Bezier (Curved)* or
   *Orthogonal (Manhattan)* for new connections. Right-click an existing
-  connection → **Toggle Routing Mode** to change just that one.
+  connection → **Routing** to change just that one (see [Wires](#wires)).
 - **Live overlay → Output value chips** shows each port's current value on the
   canvas during a run (on by default).
 - **Show Grid** (**Ctrl+Shift+G**) toggles the canvas grid.
@@ -612,7 +652,8 @@ Autosave is a safety net, not a substitute for **Ctrl+S**.
 
 - **Flip blocks**: Right-click → Flip
 - **Resize blocks**: Drag corner handles
-- **Toggle routing**: Right-click connection → Toggle Routing Mode
+- **Toggle routing**: Right-click connection → Routing
+- **Straighten a wire**: Right-click connection → Reset routing
 - **Test incrementally**: Build and test small sections first
 - **Use minimap**: For large diagrams, enable minimap for quick navigation
 - **Step through**: Use F8 to debug simulations step-by-step

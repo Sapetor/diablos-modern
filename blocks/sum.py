@@ -66,6 +66,10 @@ class SumBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    @property
+    def shape(self):
+        return "circle"
+
     def draw_icon(self, block_rect):
         """Sum block icon is the sign text - handled specially in draw_Block."""
         # Sum uses text rendering, so we return None and let the switch handle it

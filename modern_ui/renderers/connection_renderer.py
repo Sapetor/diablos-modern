@@ -9,7 +9,7 @@ import logging
 import numpy as np
 from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF, QFontMetrics
 
-from PyQt5.QtCore import Qt, QPoint, QRect
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRect
 from modern_ui.themes.theme_manager import theme_manager, get_ui_font, get_mono_font, TYPE
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,20 @@ class ConnectionRenderer:
     # Base alpha of the selected-connection outer glow (the value modulated by
     # the canvas phase while a simulation/connection drag keeps the timer live).
     _ACTIVE_GLOW_BASE_ALPHA = 40
+
+    # Extra width (px) of the canvas-coloured halo painted under every wire.
+    # Where a later-drawn wire crosses an earlier one it cuts a small gap into
+    # it, so crossings read as "over/under" rather than as junctions. Set to 0
+    # to disable.
+    CROSSING_GAP = 3.0
+
+    # Distance (px) the arrowhead tip is pulled back from the port centre so
+    # it stays visible in front of the port disc (ports paint on top of wires).
+    ARROW_PORT_INSET = 7
+
+    # Arrowhead length (px) along the wire and half-angle of its sides.
+    ARROW_SIZE = 10
+    ARROW_HALF_ANGLE = math.pi / 7
 
     def _glow_alpha(self, base_alpha: int) -> int:
         """Resolve a glow alpha, applying the canvas pulse callable if set."""
@@ -161,6 +175,20 @@ class ConnectionRenderer:
             base_width = 2.0 if getattr(line, "signal_width", 1) <= 1 else 3.5
             line_width = base_width + 0.5 if is_selected else base_width
 
+            # Crossing gap: a halo in the canvas colour under the wire so it
+            # visibly passes over wires drawn before it.
+            if self.CROSSING_GAP > 0:
+                halo_pen = QPen(
+                    theme_manager.get_color("canvas_background"),
+                    line_width + self.CROSSING_GAP,
+                    Qt.SolidLine,
+                    Qt.FlatCap,
+                    Qt.RoundJoin,
+                )
+                painter.setPen(halo_pen)
+                painter.setBrush(Qt.NoBrush)
+                painter.drawPath(line.path)
+
             # Draw subtle glow/shadow for selected connections
             if is_selected:
                 # Draw outer glow — alpha gently pulses with the canvas phase
@@ -206,10 +234,12 @@ class ConnectionRenderer:
                     painter.setPen(highlight_pen)
                     painter.drawLine(p1, p2)
 
-            # Draw intermediate points if the whole line is selected
-            if line.selected and line.selected_segment == -1:
-                painter.setBrush(active_connection_color)
-                # Skip first and last points (ports)
+            # Draw waypoint handles when the line is selected (skip the two
+            # port endpoints, which are not draggable).
+            if line.selected:
+                handle_fill = QColor(theme_manager.get_color("canvas_background"))
+                painter.setBrush(handle_fill)
+                painter.setPen(QPen(active_connection_color, 2))
                 for point in line.points[1:-1]:
                     painter.drawEllipse(point, 4, 4)
 
@@ -228,14 +258,25 @@ class ConnectionRenderer:
             # Restore painter state
             painter.restore()
 
+    @staticmethod
+    def label_anchor(line) -> QPoint:
+        """Scene point where the wire label is centred: halfway along the path."""
+        path = getattr(line, "path", None)
+        if path is not None and not path.isEmpty() and path.length() > 0:
+            mid = path.pointAtPercent(0.5)
+            return QPoint(int(mid.x()), int(mid.y()))
+        pts = getattr(line, "points", None) or []
+        if len(pts) >= 2:
+            a, b = pts[0], pts[-1]
+            return QPoint((a.x() + b.x()) // 2, (a.y() + b.y()) // 2)
+        return QPoint(0, 0)
+
     def _draw_label(self, line, painter: QPainter):
-        """Draw the connection label at the midpoint of the line."""
+        """Draw the connection label at the midpoint of the drawn path."""
         if len(line.points) < 2:
             return
 
-        # Find midpoint of the line
-        mid_index = len(line.points) // 2
-        label_pos = line.points[mid_index]
+        label_pos = self.label_anchor(line)
 
         # Draw label background (canonical UI stack instead of fixed Arial)
         font = get_ui_font(TYPE["body"])
@@ -277,30 +318,38 @@ class ConnectionRenderer:
         if not line.path or line.path.isEmpty():
             return
 
-        arrow_size = 10
+        arrow_size = self.ARROW_SIZE
+        length = line.path.length()
+        if length <= 0:
+            return
 
         end_point = line.path.pointAtPercent(1.0)
-        if line.path.length() > 0:
-            point_before_end = line.path.pointAtPercent(1.0 - (arrow_size / line.path.length()))
-        else:
-            point_before_end = end_point
+        point_before_end = line.path.pointAtPercent(max(0.0, 1.0 - (arrow_size / length)))
 
-        # Calculate angle
+        # Direction of the final approach
         dx = end_point.x() - point_before_end.x()
         dy = end_point.y() - point_before_end.y()
         angle = math.atan2(dy, dx)  # Angle in radians
 
-        # Arrowhead points
-        arrow_p1 = end_point + QPoint(
-            int(-arrow_size * math.cos(angle - math.pi / 6)),
-            int(-arrow_size * math.sin(angle - math.pi / 6)),
-        )
-        arrow_p2 = end_point + QPoint(
-            int(-arrow_size * math.cos(angle + math.pi / 6)),
-            int(-arrow_size * math.sin(angle + math.pi / 6)),
+        # Pull the tip back so it is not hidden under the port disc, but never
+        # further than the wire is long.
+        inset = min(self.ARROW_PORT_INSET, max(0.0, length - arrow_size))
+        tip = QPointF(
+            end_point.x() - inset * math.cos(angle), end_point.y() - inset * math.sin(angle)
         )
 
-        arrow_polygon = QPolygonF([end_point, arrow_p1, arrow_p2])
+        # Arrowhead points
+        half = self.ARROW_HALF_ANGLE
+        arrow_p1 = QPointF(
+            tip.x() - arrow_size * math.cos(angle - half),
+            tip.y() - arrow_size * math.sin(angle - half),
+        )
+        arrow_p2 = QPointF(
+            tip.x() - arrow_size * math.cos(angle + half),
+            tip.y() - arrow_size * math.sin(angle + half),
+        )
+
+        arrow_polygon = QPolygonF([tip, arrow_p1, arrow_p2])
 
         painter.setBrush(color)  # Fill arrowhead with line color
         painter.setPen(Qt.NoPen)  # No border for arrowhead

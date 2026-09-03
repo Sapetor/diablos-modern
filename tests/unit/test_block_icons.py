@@ -37,6 +37,7 @@ LEGACY_TEXT_ICONS = {
     "MathFunction",
     "MatrixGain",
     "PID",
+    "Product",  # per-port x / / glyphs, like Sum's signs
     "StateSpace",
     "Sum",
     "TranFn",

@@ -195,10 +195,17 @@ class BaseBlock(ABC):
     @property
     def fn_name(self): ...          # Only some blocks (e.g. statespace) override this
     
+    @property
+    def shape(self): ...            # Optional outline: "rect" (default), "triangle", "circle", "tag"
+
     def draw_icon(self, block_rect):  # Optional: custom icon
         """Return QPainterPath in 0-1 normalized coordinates, or None for fallback."""
         ...
 ```
+
+`BlockRenderer` resolves the outline through `resolve_block_shape()` (a
+circle falls back to a rectangle above three inputs) and draws body, shadow
+and hover from the same `block_outline_path()`.
 
 **Block types include**:
 - **Sources**: Step, Ramp, Sine, Noise, Exponential

@@ -193,7 +193,11 @@ class InteractionManager:
 
             elif self.canvas.state == State.DRAGGING_LINE_POINT and self.canvas.dragging_item:
                 line, point_index = self.canvas.dragging_item
-                line.points[point_index] = pos
+                if not (0 < point_index < len(line.points) - 1):
+                    return
+                snapped = self._snap_point(pos)
+                line.points[point_index] = snapped
+                line.mark_manual_edit()
                 line.path, line.points, line.segments = line.create_trajectory(
                     line.points[0], line.points[-1], self.canvas.dsim.blocks_list, line.points
                 )
@@ -201,26 +205,56 @@ class InteractionManager:
 
             elif self.canvas.state == State.DRAGGING_LINE_SEGMENT and self.canvas.dragging_item:
                 line, segment_index = self.canvas.dragging_item
-                p1 = line.points[segment_index]
-                p2 = line.points[segment_index + 1]
-                is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
+                pos = self._snap_point(pos)
 
-                # Split segment logic
+                # A two-point wire (straight or bezier) has no bendable middle
+                # yet: turn it into a three-segment Manhattan route whose
+                # vertical middle segment follows the cursor.
                 if len(line.points) == 2:
-                    if is_horizontal:
-                        new_point = QPoint(int(p1.x() + (p2.x() - p1.x()) // 2), int(pos.y()))
-                        new_index = 1 if pos.y() > p1.y() else 0
-                    else:
-                        new_point = QPoint(int(pos.x()), int(p1.y() + (p2.y() - p1.y()) // 2))
-                        new_index = 1 if pos.x() > p1.x() else 0
-                    line.points.insert(1, new_point)
-                    self.canvas.dragging_item = (line, new_index)
-                    segment_index = new_index
+                    a, b = line.points[0], line.points[-1]
+                    mid_x = int(pos.x())
+                    line.points = [a, QPoint(mid_x, a.y()), QPoint(mid_x, b.y()), b]
+                    segment_index = 1
+                    self.canvas.dragging_item = (line, segment_index)
+                    line.selected_segment = segment_index
 
                 # Defensive guard: dragging_item may originate elsewhere with a
                 # stale index after points were inserted/removed.
                 if not (0 <= segment_index < len(line.points) - 1):
                     return
+
+                p1 = line.points[segment_index]
+                p2 = line.points[segment_index + 1]
+                is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
+
+                # Dragging the first or last segment would detach it from its
+                # port: insert a short stub so the drag moves a free segment.
+                if segment_index == 0:
+                    stub = QPoint(p1.x() + (20 if p2.x() >= p1.x() else -20), p1.y())
+                    if is_horizontal:
+                        line.points.insert(1, QPoint(stub))
+                        line.points.insert(2, QPoint(stub.x(), p2.y()))
+                    else:
+                        line.points.insert(1, QPoint(p1.x() + 20, p1.y()))
+                    segment_index = 1
+                    self.canvas.dragging_item = (line, segment_index)
+                    line.selected_segment = segment_index
+                    p1 = line.points[segment_index]
+                    p2 = line.points[segment_index + 1]
+                    is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
+                elif segment_index == len(line.points) - 2:
+                    stub = QPoint(p2.x() + (-20 if p1.x() <= p2.x() else 20), p2.y())
+                    if is_horizontal:
+                        line.points.insert(segment_index + 1, QPoint(stub.x(), p1.y()))
+                        line.points.insert(segment_index + 2, QPoint(stub))
+                    else:
+                        line.points.insert(segment_index + 1, QPoint(p2.x() - 20, p2.y()))
+                    self.canvas.dragging_item = (line, segment_index)
+                    line.selected_segment = segment_index
+                    p1 = line.points[segment_index]
+                    p2 = line.points[segment_index + 1]
+                    is_horizontal = abs(p1.x() - p2.x()) > abs(p1.y() - p2.y())
+                line.mark_manual_edit()
 
                 if is_horizontal:
                     is_first_segment = segment_index == 0
@@ -243,8 +277,13 @@ class InteractionManager:
                 self.canvas.update()
 
             else:
-                conn_state = self.canvas.connection_manager.connection_state
+                conn_mgr = self.canvas.connection_manager
+                conn_state = conn_mgr.connection_state
                 if conn_state.creation_state == "start" and conn_state.temp_line:
+                    conn_mgr.note_drag(pos)
+                    # Keep port hover live while wiring so the preview can
+                    # snap to (and validate) the port under the cursor.
+                    self.canvas._update_hover_states(pos)
                     conn_state.temp_line = (conn_state.temp_line[0], pos)
                     self.canvas.update()
         except Exception as e:
@@ -271,13 +310,13 @@ class InteractionManager:
             elif self.canvas.state == State.RESIZING:
                 self.canvas._finish_resize()
             elif self.canvas.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
-                if self.canvas.dragging_item:
-                    line, _ = self.canvas.dragging_item
-                    if hasattr(line, "_stub_created"):
-                        del line._stub_created
-                self.canvas.state = State.IDLE
-                self.canvas.dragging_item = None
-                self.canvas.update()
+                self._finish_line_bend()
+            elif event.button() == Qt.LeftButton:
+                conn_mgr = self.canvas.connection_manager
+                if conn_mgr.connection_state.creation_state == "start":
+                    pos = self.canvas.screen_to_world(event.pos())
+                    conn_mgr.try_finish_at(pos)
+                    self.canvas.update()
 
         except Exception as e:
             # Reset interaction state so a failure during release does not leave
@@ -285,6 +324,40 @@ class InteractionManager:
             logger.error(f"Error in handle_mouse_release: {str(e)}", exc_info=True)
             self.canvas.state = State.IDLE
             self.canvas.dragging_item = None
+
+    # ==================== Wire bending ====================
+
+    def _snap_point(self, pos):
+        """Snap a scene point to the grid when grid snapping is on."""
+        if not getattr(self.canvas, "snap_enabled", True):
+            return QPoint(int(pos.x()), int(pos.y()))
+        g = self.canvas.grid_size or 1
+        return QPoint(int(round(pos.x() / g) * g), int(round(pos.y() / g) * g))
+
+    def begin_line_bend(self, line):
+        """Snapshot the diagram before a waypoint/segment drag (for undo)."""
+        self._bend_pre_state = self.canvas.history_manager.capture_snapshot()
+        self._bend_start_points = [QPoint(p) for p in getattr(line, "points", [])]
+
+    def _finish_line_bend(self):
+        """Commit a waypoint/segment drag: push undo if the wire really changed."""
+        try:
+            if self.canvas.dragging_item:
+                line, _ = self.canvas.dragging_item
+                if hasattr(line, "_stub_created"):
+                    del line._stub_created
+                before = getattr(self, "_bend_start_points", None)
+                if before is not None and list(line.points) != before:
+                    self.canvas.history_manager.push_snapshot(
+                        getattr(self, "_bend_pre_state", None), "Bend wire"
+                    )
+                    self.canvas.dsim.dirty = True
+        finally:
+            self._bend_pre_state = None
+            self._bend_start_points = None
+            self.canvas.state = State.IDLE
+            self.canvas.dragging_item = None
+            self.canvas.update()
 
     # ==================== Block drag & resize ====================
     # Persistent drag/resize state lives in self.drag / self.resize (owned here);
@@ -299,6 +372,9 @@ class InteractionManager:
             # start positions (undo threshold) for every selected block.
             selected = [b for b in self.canvas.dsim.blocks_list if b.selected]
             self.drag.start_drag(block, pos, selected)
+            # Snapshot the pre-move diagram so the undo entry (pushed on
+            # release, only if the blocks really moved) restores it.
+            self._drag_pre_state = self.canvas.history_manager.capture_snapshot()
 
             # Smart-alignment guides are recomputed on every move; start clean.
             self.canvas._alignment_guides = []
@@ -372,6 +448,7 @@ class InteractionManager:
         try:
             self.canvas.state = State.RESIZING
             self.resize.start_resize(block, handle, pos)
+            self._resize_pre_state = self.canvas.history_manager.capture_snapshot()
 
             logger.debug(f"Started resizing block {block.name} from handle {handle}")
         except Exception as e:
@@ -491,12 +568,15 @@ class InteractionManager:
                         break
 
                 if moved_significantly:
-                    self.canvas._push_undo("Move")
+                    self.canvas.history_manager.push_snapshot(
+                        getattr(self, "_drag_pre_state", None), "Move"
+                    )
                     moved_block_names = {b.name for b in self.drag.start_positions}
                 else:
                     logger.debug("Block moved less than threshold, not capturing undo")
 
                 # Reset drag state
+                self._drag_pre_state = None
                 self.canvas.state = State.IDLE
                 self.canvas.dragging_block = None
                 self.drag.end_drag()
@@ -531,9 +611,12 @@ class InteractionManager:
                     size_change >= resize_threshold or pos_change >= resize_threshold
                 )
                 if resized_significantly:
-                    self.canvas._push_undo("Resize")
+                    self.canvas.history_manager.push_snapshot(
+                        getattr(self, "_resize_pre_state", None), "Resize"
+                    )
                 else:
                     logger.debug("Block resized less than threshold, not capturing undo")
+                self._resize_pre_state = None
 
                 resized_name = block.name
 

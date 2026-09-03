@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 GRID_SIZE = 10
 BLOCK_MARGIN = 8
+# Extra clearance below each block so routes do not run through the block
+# name drawn under it (see BlockRenderer.draw_block: 28 px text band).
+LABEL_CLEARANCE = 20
 TURN_PENALTY = 4
 PORT_STUB = 20
 
@@ -30,7 +33,9 @@ def _inflate(rect: QRect, margin: int) -> QRect:
 def _block_obstacles(blocks) -> List[QRect]:
     rects: List[QRect] = []
     for b in blocks:
-        rects.append(_inflate(QRect(b.left, b.top, b.width, b.height), BLOCK_MARGIN))
+        rects.append(
+            _inflate(QRect(b.left, b.top, b.width, b.height + LABEL_CLEARANCE), BLOCK_MARGIN)
+        )
     return rects
 
 
@@ -184,7 +189,13 @@ def route_all_lines(lines, blocks) -> int:
             continue
         start = src.out_coords[line.srcport]
         end = dst.in_coords[line.dstport]
+        # The result is a Manhattan route, so the wire becomes an orthogonal,
+        # auto-routed one: it is re-routed when its blocks move and its
+        # context-menu routing radio reflects what is drawn.
+        line.routing_mode = "orthogonal"
         line.modified = True
+        line.auto_routed = True
+        line.selected_segment = -1
         path, pts, segs = line.create_trajectory(start, end, blocks, points=new_pts)
         line.path = path
         line.points = pts

@@ -59,6 +59,10 @@ class GainBlock(BaseBlock):
         return [{"name": "out", "type": "any"}]
 
     @property
+    def shape(self):
+        return "triangle"
+
+    @property
     def use_port_grid_snap(self):
         """
         Gain block uses triangular shape, so ports should not snap to grid
@@ -67,7 +71,7 @@ class GainBlock(BaseBlock):
         return False
 
     def draw_icon(self, block_rect):
-        """Gain uses triangular shape - handled specially in DBlock.draw_Block."""
+        """Gain is a triangle with the gain value drawn inside (see BlockRenderer)."""
         return None
 
     def symbolic_execute(self, inputs, params):

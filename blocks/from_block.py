@@ -52,6 +52,10 @@ class FromBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    @property
+    def shape(self):
+        return "tag"
+
     def draw_icon(self, block_rect):
         """From uses tag text rendering - handled in DBlock switch."""
         return None

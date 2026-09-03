@@ -540,6 +540,22 @@ class MenuManager:
             )
             rg.addAction(a)
 
+        conn_mgr = getattr(self.canvas, "connection_manager", None)
+        if conn_mgr is not None:
+            _build_kbd_row(
+                menu,
+                "Auto-route wire",
+                "",
+                on_trigger=lambda: conn_mgr.auto_route_line(line),
+            )
+            _build_kbd_row(
+                menu,
+                "Reset routing",
+                "",
+                enabled=bool(getattr(line, "modified", False)),
+                on_trigger=lambda: conn_mgr.reset_line_routing(line),
+            )
+
         if hasattr(self.canvas, "_highlight_connection_path"):
             menu.addSeparator()
             _build_kbd_row(

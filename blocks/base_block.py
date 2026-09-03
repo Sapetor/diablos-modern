@@ -80,6 +80,24 @@ class BaseBlock(ABC):
         pass
 
     @property
+    def shape(self) -> str:
+        """
+        Outline shape the canvas renderer draws for this block.
+
+        Supported values:
+            "rect"     - rounded rectangle (default)
+            "triangle" - amplifier triangle pointing toward the output (Gain)
+            "circle"   - ellipse inscribed in the block rect (Sum, Product);
+                         the renderer falls back to "rect" when the block has
+                         too many ports for a circle to look right
+            "tag"      - pentagon pointing along the signal flow (Goto/From)
+
+        Returns:
+            Shape token; unknown tokens are drawn as "rect".
+        """
+        return "rect"
+
+    @property
     def use_port_grid_snap(self) -> bool:
         """
         Whether port positions should snap to grid.

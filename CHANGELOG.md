@@ -2,6 +2,23 @@
 
 All notable changes to DiaBloS will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Drag-to-connect**: press an output port, drag, release on an input port. Click-click still works, a wire can be started from a free input port, and the preview snaps to the hovered port and turns green/red for accepted/rejected targets.
+- **Wire editing**: right-click a wire for **Auto-route wire** and **Reset routing**; double-click a bend handle to remove it; dragging a straight or curved wire creates a proper three-segment bend; bends snap to the grid.
+- **Block shapes**: blocks declare an outline via `BaseBlock.shape`. MatrixGain is now a triangle like Gain and both show their gain value inside; Sum and Product are circles (up to three inputs) with a `+`/`-` or `×`/`÷` glyph at each input port; Goto/From are pointed tags showing `[tag]`.
+
+### Changed
+- Block moves no longer convert bezier wires into Manhattan routes. Bezier wires stay curved; only orthogonal, auto-routed wires are re-routed, and hand-bent wires keep their bends (end segments stay axis-aligned). **Auto-route** switches the routed wires to orthogonal mode so the routing menu reflects what is drawn.
+- Orthogonal wires have small rounded corners; the router keeps clear of block name labels.
+- Arrowheads sit in front of the port disc instead of under it, wire labels sit at the true midpoint of the drawn path, and crossing wires show an over/under gap.
+
+### Fixed
+- Clicking or hovering a curved wire tested the straight chord between its ports, so clicks on the curve often missed (and clicks on empty space along the chord selected it).
+- A freshly created wire was never routed with block knowledge, so feedback and obstacle-avoiding routes only appeared after a block was moved; changing a wire's routing mode from the menu had the same problem.
+- Undo of a block move or resize needed two Ctrl+Z presses (the undo entry was pushed after the move). Wire bends and hand-made routes now survive undo/redo.
+
 ## [1.0.0] - 2026-09-03
 
 First tagged release. Everything below landed after the 2026-01-29 development

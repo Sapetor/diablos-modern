@@ -53,15 +53,22 @@ def test_bezier_route_contains_cubic_segments():
     assert _count_curve_segments(path) >= 1
 
 
-def test_orthogonal_route_has_no_cubic_segments():
-    """The orthogonal route stays purely straight-segment (no cubicTo)."""
+def _is_axis_aligned(points) -> bool:
+    return all(a.x() == b.x() or a.y() == b.y() for a, b in zip(points, points[1:]))
+
+
+def test_orthogonal_route_is_axis_aligned():
+    """The orthogonal route is a Manhattan polyline: every waypoint pair
+    shares an x or a y. (Corners get a small fillet when drawn, so the path
+    may contain curve elements; the *waypoints* are what pin the contract.)"""
     start, finish = QPoint(100, 100), QPoint(300, 160)
     line = _make_line(0, start, finish)
     line.routing_mode = "orthogonal"
 
-    path, _points, _segments = line.create_trajectory(start, finish, [])
+    _path, points, _segments = line.create_trajectory(start, finish, [])
 
-    assert _count_curve_segments(path) == 0
+    assert len(points) >= 3
+    assert _is_axis_aligned(points)
 
 
 def test_bezier_distinct_from_orthogonal():
@@ -73,11 +80,14 @@ def test_bezier_distinct_from_orthogonal():
 
     ortho_line = _make_line(1, start, finish)
     ortho_line.routing_mode = "orthogonal"
-    ortho_path, _, _ = ortho_line.create_trajectory(start, finish, [])
+    ortho_path, ortho_points, _ = ortho_line.create_trajectory(start, finish, [])
 
-    # The bezier route curves; the orthogonal route does not.
+    # The bezier route is a single cubic between two waypoints; the
+    # orthogonal route is an axis-aligned polyline with interior waypoints.
     assert _count_curve_segments(bezier_path) >= 1
-    assert _count_curve_segments(ortho_path) == 0
+    assert bezier_line.points == [start, finish]
+    assert len(ortho_points) >= 3
+    assert _is_axis_aligned(ortho_points)
     assert bezier_path != ortho_path
 
 
