@@ -44,7 +44,10 @@ def update_block_loader(modules, path=BLOCK_LOADER):
     with open(path, "r") as f:
         content = f.read()
 
-    items = ",\n".join(f"    '{m}'" for m in modules)
+    # Double quotes to match `ruff format`, which is a CI gate: emitting single
+    # quotes here left block_loader.py dirty after every build with a diff that
+    # was pure quote churn, and committing it failed `ruff format --check`.
+    items = ",\n".join(f'    "{m}"' for m in modules)
     new_list = f"_BLOCK_MODULES = [\n{items},\n]"
 
     updated = re.sub(
