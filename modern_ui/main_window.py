@@ -362,6 +362,56 @@ class ModernDiaBloSWindow(QMainWindow):
 
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
 
+    def export_python_script(self):
+        """Export the diagram as a self-contained numpy/scipy simulation script."""
+        from PyQt5.QtWidgets import QMessageBox
+
+        from lib.export.python_codegen import CodegenError, PythonCodeGenerator
+        from modern_ui.tools.file_dialogs import ask_save_path
+
+        if not self.dsim.blocks_list:
+            QMessageBox.information(self, "Export Python Script", "No blocks to export.")
+            return
+
+        diagram_name = os.path.basename(getattr(self.dsim, "filename", "") or "model.diablos")
+        default_path = os.path.join(os.getcwd(), os.path.splitext(diagram_name)[0] + ".py")
+        path = ask_save_path(
+            self,
+            "Export as Python Script",
+            default_path,
+            [("Python Script (*.py)", ".py")],
+        )
+        if not path:
+            return
+
+        try:
+            source = PythonCodeGenerator.from_dsim(self.dsim, diagram_name=diagram_name).generate()
+        except CodegenError as exc:
+            # Unsupported blocks / algebraic loops: say which, don't write a
+            # half-working script.
+            QMessageBox.warning(self, "Export Python Script", str(exc))
+            self.status_message.setText("Python export failed")
+            return
+        except Exception as exc:  # noqa: BLE001 - surface any generator failure
+            logger.warning("Python script export failed", exc_info=True)
+            QMessageBox.critical(
+                self, "Export Python Script", f"Could not generate the script:\n{exc}"
+            )
+            self.status_message.setText("Python export failed")
+            return
+
+        try:
+            with open(path, "w", encoding="utf-8") as fp:
+                fp.write(source)
+        except OSError as exc:
+            logger.warning("Could not write %s: %s", path, exc)
+            QMessageBox.critical(self, "Export Python Script", f"Could not write the file:\n{exc}")
+            self.status_message.setText("Python export failed")
+            return
+
+        name = os.path.basename(path)
+        self._notify(f"Exported Python script: {name}", f"\U0001f40d Exported {name}")
+
     def _notify(self, status, toast=None):
         """Set the status-bar message and (optionally) show a toast."""
         self.status_message.setText(status)

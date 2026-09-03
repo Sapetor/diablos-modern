@@ -58,6 +58,7 @@ _FILE_COMMANDS: list[tuple[str, str]] = [
     ("Show plots", ""),
     ("Export as image…", ""),
     ("Export as TikZ…", ""),
+    ("Export as Python script…", ""),
     ("Copy diagram as image", ""),
 ]
 
@@ -142,6 +143,7 @@ class CommandPaletteManager:
             window.show_plots,
             window.export_image,
             window.export_tikz,
+            window.export_python_script,
             window.copy_diagram_image,
         ]
         for badge, table, callbacks in [

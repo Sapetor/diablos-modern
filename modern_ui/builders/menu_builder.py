@@ -47,6 +47,7 @@ class MenuBuilder:
         export_menu = file_menu.addMenu("E&xport")
         export_menu.addAction("Export as &Image...", self.window.export_image)
         export_menu.addAction("Export as Ti&kZ...", self.window.export_tikz)
+        export_menu.addAction("Export as &Python Script...", self.window.export_python_script)
 
         file_menu.addSeparator()
 
