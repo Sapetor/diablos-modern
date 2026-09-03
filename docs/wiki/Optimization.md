@@ -12,11 +12,24 @@ The optimization workflow consists of:
 
 ## How to Run Optimization
 
-1. Load or create a diagram with optimization blocks
-2. Run the simulation normally first to verify it works
-3. Click **Tools → Run Optimization** (or press `Ctrl+Shift+O`)
-4. The optimizer will iterate, running simulations with different parameter values
-5. Results are displayed in the console and parameter blocks are updated
+There is currently **no menu entry** for this family in the modern UI. The
+optimizer is driven programmatically through `DSim.run_optimization()`
+(`lib/lib.py`), which collects the Parameter / CostFunction / Constraint /
+Optimizer blocks in the diagram and hands them to
+`lib/engine/optimization_engine.py`:
+
+```python
+result = dsim.run_optimization()
+if result["success"]:
+    print(result["optimal_cost"], result["optimal_params"])
+```
+
+The optimizer iterates, re-running the simulation with different parameter
+values, and writes the optimal values back into the Parameter blocks.
+
+To build an optimization algorithm you can *see* running on the canvas, use the
+[optimization primitives](Optimization-Primitives.md) instead - there one
+simulation step is one algorithm iteration.
 
 ---
 

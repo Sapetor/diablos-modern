@@ -502,7 +502,7 @@ self.my_service = MyService(self.model)
 
 ## Testing
 
-See [tests/README.md](../tests/README.md) for testing documentation.
+See [tests/README.md](https://github.com/Sapetor/diablos-modern/blob/main/tests/README.md) for testing documentation.
 
 Tests are organized by component:
 - `tests/unit/test_simulation_model.py` - Model layer tests

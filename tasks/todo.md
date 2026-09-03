@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: February 2026
+> Last updated: September 2026
 
 ---
 
@@ -42,15 +42,23 @@
   - Fixed blocks: demux.py, sigproduct.py, pid.py
   - All blocks now return `{0: value, 'E': False}` or `{'E': True, 'error': msg}`
 
-### PDE Phase 1: Quick Wins (from PDE_ROADMAP.md)
-- [ ] **Periodic BCs** - Add to HeatEquation1D/2D, WaveEquation1D/2D
-  - Pattern exists in `AdvectionEquation1D`
-- [ ] **Dynamic BC coefficients** - Time-varying Robin BC via input ports
-  - Files: `heat_equation_1d.py`, `heat_equation_2d.py`
-- [ ] **More initial conditions** - Add 'linear', 'step', 'random', 'checkerboard'
-  - Location: `get_initial_state()` methods
-- [ ] **Robin BC for 2D** - Extend from 1D to HeatEquation2D
-  - Per-edge h coefficients
+### PDE Phase 1: Quick Wins (from PDE_ROADMAP.md) — DONE (September 2026)
+- [x] **Periodic BCs** - Added to HeatEquation1D/2D and WaveEquation1D/2D
+  - Implemented in `lib/engine/pde_ops.py` (`is_periodic`), so the interpreter
+    blocks and `lib/engine/compiler_kernels/pde.py` are equivalent by construction
+  - Periodic on either end wraps that whole axis; the N nodes wrap as a ring
+- [x] **Dynamic BC coefficients** - Time-varying Robin `h` via input ports
+  - `heat_equation_1d.py`: `h_left` (3), `h_right` (4);
+    `heat_equation_2d.py`: `h_left` (5), `h_right` (6), `h_bottom` (7), `h_top` (8)
+  - Unconnected ports fall back to the matching param, so old diagrams load unchanged
+- [x] **More initial conditions** - 1D `linear`/`step`/`random`;
+  2D `linear`/`step`/`random`/`checkerboard`/`radial`
+  - Single-sourced in `lib/engine/pde_helpers.py` (`parse_pde_*_initial_condition`),
+    which the blocks and the compiler both call; `random` takes a `seed`
+- [x] **Robin BC for 2D** - HeatEquation2D supports Robin on any edge with
+  per-edge `h_left`/`h_right`/`h_bottom`/`h_top` and a shared `k_thermal`
+- Tests: `tests/unit/test_pde_phase1.py`, `tests/regression/test_equiv_pde_phase1.py`
+- Details: `docs/PDE_ROADMAP.md` (Phase 1), `docs/wiki/PDE.md`
 
 ---
 
@@ -77,14 +85,14 @@
 - [x] **Diagram-to-LaTeX/TikZ export** — Export block diagrams as TikZ figures for papers and lecture notes. Saves hours of redrawing diagrams for ACC/IFAC publications. File > Export > Export as TikZ... with live preview, clipboard copy, and configurable options.
 
 ### Research & Data
-- [ ] **Data Import block** — Read time-series from CSV/MAT files as a source signal. Essential for comparing simulation against experimental data (e.g., QCar2) or model fitting.
-- [ ] **Linearization tool** — Select input/output points in a diagram, compute the linearized transfer function, and generate Bode plot + pole-zero map. Ties together existing BodeMagnitude/BodePhase blocks.
-- [ ] **Code generation** — "Export as standalone Python script" so a diagram becomes a self-contained `.py` file. Useful for sharing with collaborators who don't have DiaBloS installed.
+- [x] **Data Import block** — `blocks/from_file.py` (`FromFile`, category Sources) replays a recorded CSV/NPZ/MAT/TXT time-series as a driving signal, interpolated (`linear`/`zoh`/`nearest`) onto the sim grid with `hold`/`loop` end behavior; parsed data cached in `params`. Shared reader: `lib/services/timeseries_loader.py` (`load_timeseries`, `allow_pickle=False`), also used by `blocks/optimization/data_fit.py`. Companions: `blocks/lookup_table.py` (1-D/2-D static maps). Tests: `tests/unit/test_from_file.py` (13), `test_timeseries_loader.py` (10), `test_lookup_table.py` (16).
+- [x] **Linearization tool** — `lib/analysis/linearizer.py` computes A/B/C/D by finite differences over the compiled ODE RHS; `modern_ui/controllers/analysis_controller.py` assembles the result dict (poles/zeros, Bode, margins, step/impulse, controllability/observability). UI: Analysis > **Linearize & Analyze...** (`modern_ui/widgets/linearize_dialog.py` → `linearization_result_window.py`, 5 tabs + Python/MATLAB/.mat/.npz export via `lib/analysis/linearization_export.py`) and Analysis > **Find Operating Point (Trim)...** (`operating_point_window.py`). The BodeMag/BodePhase/Nyquist/RootLocus/LQR blocks remain the per-block path (`lib/analysis/analyzers/`).
+- [x] **Code generation** — File > Export > **Export as Python Script...** (`MainWindow.export_python_script`) and the `export-python` CLI subcommand emit a self-contained numpy+scipy `.py` via `lib/export/python_codegen.py`. The script mirrors the compiled solver (one `rhs(t, x)` under `solve_ivp`, same three-group order) and its `--out` CSV/NPZ matches `python -m lib.cli run` column-for-column. Supported set: `SUPPORTED_BLOCK_NAMES` (19 blocks); unsupported blocks, discrete sample times and algebraic loops raise `CodegenUnsupportedError`/`CodegenError` instead of emitting broken code. Tests: `tests/unit/test_python_codegen.py`, `tests/modern_ui/test_export_python_menu.py`.
 
 ### UI Polish
 - [x] **Dark mode fixes** — Fixed invalid theme key lookups (`accent`, `block_fill`, `connection_line` → proper keys). Property editor "Documentation" title, command palette, minimap all now use correct theme colors. Error panel severity backgrounds are theme-aware. Canvas selection rect, connection preview, and error indicators use theme colors. Block renderer icons use `block_icon_color` theme key.
 - [x] **Compact toolbar** — Switched to `ToolButtonIconOnly` with `setIconSize(20,20)`, 14px emoji font, 70px zoom slider. Removed redundant status label (main status bar already exists). Theme button always visible at default window size on macOS. Theme also accessible via View > Toggle Theme (Ctrl+T).
-- [ ] **Minimap** — Small overview panel showing the full diagram with a viewport rectangle, helpful for navigating large diagrams.
+- [x] **Minimap** — `modern_ui/widgets/minimap_widget.py`: dockable overview panel (left/right) with a viewport rectangle; click to pan, drag for continuous panning. View > Minimap or `Ctrl+Shift+M` (`MainWindow.toggle_minimap`). Coverage: `tests/modern_ui/test_main_window_view_actions.py`.
 
 ---
 
@@ -112,7 +120,61 @@
 
 ---
 
+## Follow-ups (flagged September 2026)
+
+- [ ] **PDE BC params should be dropdowns.** `bc_type_left` / `bc_type_right`
+  (and the 2D edge equivalents) are still `{"type": "string"}`, so the property
+  editor shows a free-text field even though only four values are valid. Convert
+  them to `{"type": "choice", "options": [...]}` including the new **Periodic**
+  and **Robin** entries, and register them in
+  `tests/regression/test_choice_param_dispatch.py` so the dropdown options and
+  the runtime dispatch cannot drift apart.
+- [ ] **Compiled-path ordering bug in `examples/pid_control_loop.json`.** On the
+  compiled path a 1-port PID is ordered *before* the Sum that feeds it (the PID
+  is a hierarchy-0 memory block), so the loop error is read as zero and the
+  whole loop freezes at zero. Investigate the middle-group ordering in
+  `lib/engine/system_compiler.py` (see `_is_d0_state_block` / `state_fns` and
+  the three-group order documented in CLAUDE.md); a feedthrough PID belongs in
+  the algebraic middle group *after* its upstream Sum in topological order.
+- [ ] **`lib/ui/button.py` is vestigial.** Only the `.active` flags are read
+  anywhere; the rest of the console-script button abstraction is dead. Collapse
+  it into whatever still needs the flag (or delete it outright) once the
+  remaining call sites are confirmed.
+
+---
+
 ## Completed
+
+### September 2026 — 1.0.0 release campaign
+- [x] **Release infrastructure** - `pyproject.toml` gained a `[project]` table
+  that is the single source of truth for the version; `modern_ui/__init__.py`
+  reads it back via `importlib.metadata` and the main-window title shows it
+  (`modern_ui/managers/window_setup_manager.py:WINDOW_TITLE`); `diablos.spec`
+  and `tools/build.sh` parse the same value so the macOS bundle version and the
+  DMG filename match the tag (`dist/DiaBloS-<version>-arm64.dmg`).
+  `.github/workflows/release.yml` builds a macOS arm64 DMG and a Windows x64 zip
+  on every `v*` tag and publishes them as a GitHub release.
+- [x] **`draw_icon()` for 25 previously icon-less blocks** - Abs, Assert,
+  BodeMag, CompareToConstant, Delay, DiscreteStateSpace, Exponential, External,
+  LogicalOperator, LQR, RelationalOperator, Terminator, TransportDelay,
+  VariableTransportDelay and all 11 optimization primitives. Tests:
+  `tests/unit/test_block_icons.py`.
+- [x] **PDE Phase 1** - periodic BCs, dynamic Robin `h` ports, 2D Robin, and the
+  new initial-condition presets (see the PDE Phase 1 section above).
+- [x] **Python code generation** - `lib/export/python_codegen.py`, the
+  File > Export > Export as Python Script... menu entry, and the
+  `export-python` CLI subcommand (see Feature Ideas > Code generation).
+- [x] **Docs reconciliation** - `docs/USER_MANUAL.md` extended to cover solver
+  selection, scopes/FieldScope, the Analysis menu, tuning, experiments, exports,
+  the headless CLI, PDE/optimization blocks, autosave and appearance;
+  `mkdocs.yml` nav repaired (`wiki/Optimization-Primitives.md`) and extended
+  with the architecture/developer/manual/fast-solver/building/roadmap pages;
+  README test count and release/CLI/codegen mentions refreshed; CHANGELOG
+  cut over to `[1.0.0]`.
+- [x] **Hygiene** - `QFont.setFamilies` guarded behind `hasattr` in
+  `lib/theming/theme_manager.py` (it needs Qt >= 5.13; the `QFont(family)`
+  constructor is the fallback); the dead one-shot codemod
+  `tools/integrate_variable_editor.py` deleted.
 
 ### February 2026
 - [x] **7-Phase Improvement Plan** - Comprehensive code quality improvements
@@ -149,6 +211,7 @@
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | **1.0.0 release campaign**: release infra (`[project]` table in `pyproject.toml` as the single version source, read back by `modern_ui/__init__.py` and parsed by `diablos.spec`/`tools/build.sh`; `.github/workflows/release.yml` builds a versioned macOS arm64 DMG + Windows x64 zip on `v*` tags); `draw_icon()` for 25 icon-less blocks (`tests/unit/test_block_icons.py`); PDE Phase 1 (periodic BCs, dynamic Robin `h` ports, 2D Robin, new IC presets); standalone Python script export (`lib/export/python_codegen.py`, File > Export > Export as Python Script..., `export-python` CLI subcommand); docs reconciliation (USER_MANUAL, mkdocs nav, README, CHANGELOG 1.0.0); hygiene (`QFont.setFamilies` hasattr guard for Qt < 5.13, dead `tools/integrate_variable_editor.py` removed). |
 | 2026-07-12 | Added **Scope "Previous run" overlay + publication figure export** (implemented via multi-agent workflow, then hand-verified). Overlay: `ScopePlotter` stashes each run's timeline+vectors (`_stash_run`, rotation keyed on timeline object identity; held runs dropped by `reset_held_runs()` from both `DSim.clear_all()` and `deserialize()`); `SignalPlot` gains a "Previous run" checkbox (disabled until a second run exists) drawing dimmed/dashed alpha-66 curves behind the live ones. Figure export: "Export Figure..." button renders a matplotlib (Agg, no pyplot) publication figure via new `lib/plotting/publication_figure.py` (serif fonts, Time (s) axis, legend, grid, `step(where='post')` for step traces) to PDF/PNG(300dpi)/SVG; CSV+figure export share `_collect_figure_traces`. Hand-verification caught a workflow bug: success feedback used PyQt5-unavailable `QTimer.singleShot(msec, obj, callback)` overload → every successful export raised and popped a false "Export Failed" dialog (masked in tests by conftest's QMessageBox neutralization); fixed with a button-parented QTimer. Tests: `test_signal_plot.py` (23), `test_scope_plotter_prev_run.py`, `test_publication_figure.py` (10), `tests/integration/test_prev_run_overlay.py` (interpreter+compiled). |
 | 2026-07-11 | Added **Linearized-model export** to LinearizationResultWindow: "Copy as Python" (numpy + python-control snippet), "Copy as MATLAB", and "Save Data..." (.mat via scipy.io / .npz) buttons below the tabs (ok-results only). Formatting/serialization lives Qt-free in `lib/analysis/linearization_export.py` (full repr-precision round-trip, `ss()` only when A/B/C non-empty with zero-D synthesis, `tf()` only when num/den non-empty, `import control` omitted when unused). Tests: `tests/unit/test_linearization_export.py` (17) + export-bar tests in `test_linearization_result_window.py` (5). |
 | 2026-07-11 | Added **Export diagram as image**: File > Export > Export as Image... (PNG at 3x, SVG via QSvgGenerator) and Edit > Copy Diagram as Image (clipboard), plus command-palette entries. New `modern_ui/tools/diagram_image_exporter.py` renders the chrome-free content trio (blocks/lines/ports) against the theme background, framed by the true content bounding rect (Bezier wire bows covered via `line.path.boundingRect()`), independent of zoom/pan; selection/hover state suppressed during render and restored in a `finally`. Tests: `tests/modern_ui/test_diagram_image_export.py` (15). |

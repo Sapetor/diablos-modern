@@ -431,7 +431,7 @@ def test_something(simulation_model, simulation_engine):
     assert result == expected
 ```
 
-See [tests/README.md](../tests/README.md) for comprehensive testing guide.
+See [tests/README.md](https://github.com/Sapetor/diablos-modern/blob/main/tests/README.md) for comprehensive testing guide.
 
 ## Code Style
 

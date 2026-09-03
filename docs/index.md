@@ -10,14 +10,20 @@ DiaBloS allows you to create, connect, and simulate dynamic systems using a visu
 - **Simulation Engine**: ODE integration with scipy for accurate simulation
 - **PDE Support**: 1D and 2D partial differential equation blocks
 - **Optimization Primitives**: Visual building blocks for optimization algorithms
-- **Control System Analysis**: Bode plots, root locus, Nyquist diagrams
+- **Control System Analysis**: linearization with Bode, Nyquist, root locus, pole-zero and step/impulse views, plus trim solving
+- **Experiments**: seeded Monte Carlo ensembles and 1-D/2-D parameter sweeps
+- **Export**: TikZ, PNG/SVG images, and a standalone numpy + scipy Python script
+- **Headless CLI**: simulate a diagram or export it as a script without the GUI
 
 ## Quick Links
 
 - [Installation](getting-started/installation.md)
 - [Quick Start Guide](getting-started/quickstart.md)
-- [API Reference](api/lib.md)
+- [User Manual](USER_MANUAL.md)
 - [Block Reference](user-guide/block-reference.md)
+- [Fast Solver (compiled mode)](FAST_SOLVER.md)
+- [Architecture](ARCHITECTURE.md) / [Developer Guide](DEVELOPER_GUIDE.md)
+- [API Reference](api/lib.md)
 
 ## Architecture
 

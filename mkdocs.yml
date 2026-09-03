@@ -43,28 +43,39 @@ nav:
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
+      - User Manual: USER_MANUAL.md
   - User Guide:
       - Creating Diagrams: user-guide/creating-diagrams.md
       - Running Simulations: user-guide/running-simulations.md
       - Block Reference: user-guide/block-reference.md
-  - API Reference:
-      - Core Library: api/lib.md
-      - Simulation Engine: api/engine.md
-      - Blocks: api/blocks.md
-      - UI Widgets: api/widgets.md
-  - Wiki:
-      - Home: wiki/Home.md
-      - PDE: wiki/PDE.md
-      - Optimization: wiki/Optimization.md
-      - Optimization Primitives: wiki/Optimization_Primitives.md
+      - Variable Editor: VARIABLE_EDITOR_GUIDE.md
+      - Fast Solver: FAST_SOLVER.md
+  - Block Reference:
+      - Overview: wiki/Home.md
       - Examples: wiki/Examples.md
       - Sources: wiki/Sources.md
       - Sinks: wiki/Sinks.md
       - Math: wiki/Math.md
       - Control: wiki/Control.md
       - Routing: wiki/Routing.md
+      - Other: wiki/Other.md
+      - Multi-Rate: wiki/Multi-Rate.md
+      - PDE: wiki/PDE.md
+      - Optimization: wiki/Optimization.md
+      - Optimization Primitives: wiki/Optimization-Primitives.md
       - Subsystems: wiki/Subsystems_Architecture.md
       - Modern UI: wiki/ModernUI_Architecture.md
+  - Development:
+      - Architecture: ARCHITECTURE.md
+      - Developer Guide: DEVELOPER_GUIDE.md
+      - Block Symbol Drawing: SYMBOL_DRAWING_GUIDE.md
+      - Building & Packaging: building.md
+      - PDE Roadmap: PDE_ROADMAP.md
+  - API Reference:
+      - Core Library: api/lib.md
+      - Simulation Engine: api/engine.md
+      - Blocks: api/blocks.md
+      - UI Widgets: api/widgets.md
 
 markdown_extensions:
   - pymdownx.highlight:

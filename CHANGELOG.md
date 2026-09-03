@@ -2,7 +2,88 @@
 
 All notable changes to DiaBloS will be documented in this file.
 
-## [Unreleased] - 2026-01-29
+## [1.0.0] - 2026-09-03
+
+First tagged release. Everything below landed after the 2026-01-29 development
+log at the end of this file. Prebuilt apps (macOS arm64 DMG, Windows x64 zip)
+are published on the GitHub Releases page.
+
+### Added
+
+**Analysis & experiments**
+- **Linearize & Analyze** (Analysis menu): numeric linearization of the compiled ODE (A/B/C/D by finite differences), with pole-zero map, Bode plot, gain/phase margins and a summary of stability, time constants, oscillatory modes, controllability and observability.
+- **Step / Impulse response** tabs in the linearization window whenever a SISO transfer function is available.
+- **Find Operating Point (Trim)** (Analysis menu): solves `f(0, y) = 0` on the compiled right-hand side and shows the equilibrium state.
+- **Linearized-model export**: Copy as Python (numpy + python-control), Copy as MATLAB, and Save Data as `.mat` / `.npz`.
+- **Monte Carlo ensembles** (Analysis menu): threaded, cancellable, seeded runs with mean/percentile bands and per-run outcome histograms. Every block exposing a `seed` derives its sub-seed from one master seed, so an ensemble is reproducible from a single number.
+- **Parameter sweeps, 1-D and 2-D** (Analysis menu): response-family and metric-vs-parameter views for 1-D, an outcome-metric heatmap for 2-D.
+- **Stochastic blocks** for ensembles: PacketLoss (Gilbert-Elliott bursty loss), NetworkChannel, RandomSource.
+- **Live parameter tuning**: pin a parameter from the property editor, drag a slider in the Parameter Tuning Panel (`Ctrl+Shift+T`), and watch scope plots redraw from a debounced headless re-simulation.
+
+**Export & automation**
+- **Export as Python Script** (File > Export, and the `export-python` CLI subcommand): writes the diagram as a self-contained numpy + scipy script that mirrors the compiled solver, with its own `--time` / `--dt` / `--out` / `--no-plot` CLI. Unsupported blocks, discrete sample times and algebraic loops are reported instead of producing broken code.
+- **Headless CLI**: `python diablos_modern.py run diagram.diablos -o out.csv [--time --dt --solver interpreter]` simulates without the GUI and exports Scope traces to CSV or NPZ.
+- **Export as TikZ** (File > Export): publication-ready TikZ with live preview, standalone/snippet modes and clipboard copy.
+- **Export as Image** (File > Export): chrome-free PNG (3x) or SVG of the diagram content, plus **Copy Diagram as Image** in the Edit menu.
+- **Publication figure export** from scope windows: serif matplotlib figures to PDF, PNG (300 dpi) or SVG.
+- **Previous-run overlay** in scope windows: the previous run's traces drawn dimmed and dashed behind the live ones.
+
+**Blocks**
+- PDE family (1D/2D heat, wave, advection; diffusion-reaction) with FieldScope / FieldScope2D visualisation and GIF/MP4 animation export, plus a symbolic computation layer.
+- Optimization primitives (ObjectiveFunction, NumericalGradient, VectorPerturb, StateVariable, VectorGain, VectorSum, LinearSystemSolver, RootFinder, ResidualNorm, Momentum, Adam) for building optimization algorithms as diagrams.
+- **Function** block: a sandboxed Python expression of the inputs `u[i]` / `u1..` and time `t`, with a variable number of input ports.
+- Logic blocks: RelationalOperator, CompareToConstant, LogicalOperator.
+- **FromFile** data-import source (CSV / NPZ / MAT / TXT time-series with linear/zoh/nearest interpolation and hold/loop end behaviour) and **LookupTable1D / LookupTable2D**.
+- LQR block and analyzer; MatrixGain; Impulse and Chirp sources; AgentScope multi-agent trajectory view.
+- Multi-rate simulation support with RateTransition and FirstOrderHold.
+- `draw_icon()` glyphs for 25 previously icon-less blocks; every registered block now defines its own icon, apart from a documented set whose glyph is painter-drawn text (`1/s`, `B(s)/A(s)`, `PID`, ...).
+
+**Simulation**
+- **Solver selection** in the Simulation Configuration dialog: RK45, RK23, DOP853, Radau, BDF, LSODA plus fixed-step RK4 and Euler, with rtol/atol fields. The choice is saved in the `.diablos` file.
+- Fast-solver coverage extended to WaveGenerator, Noise, MathFunction, Selector, Hysteresis, Demux and the logic blocks, and to recursive **subsystem flattening**.
+- Compiled-system cache and solver diagnostics reported in the status bar after a run.
+- PDE Phase 1: **periodic** boundary conditions on the heat and wave families, **Robin BCs in 2D** with per-edge coefficients, **time-varying Robin `h`** through optional input ports, and new initial-condition presets (`linear`, `step`, `random`, `checkerboard`, `radial`), all single-sourced so the interpreter and compiled paths agree.
+
+**UI**
+- Keyboard-shortcuts reference dialog (**F1**), generated from the same table the command palette uses.
+- Command palette keyboard navigation, plus palette Favorites and Recently-used sections.
+- Smart alignment guides while dragging blocks; auto-route wires via a grid A* router; block rename.
+- Block-palette colour schemes (Solarized, Tailwind, Catppuccin Frappé), a Solid Block Fills toggle, and persisted theme/palette preferences.
+- Live overlay of output value chips on the canvas during a run.
+- Discoverability pass: empty-canvas hint, Help menu, tooltips, parameter units, first-run guidance.
+
+**Packaging & CI**
+- PyInstaller packaging with a macOS DMG installer (arm64 and x86_64) and Windows/Ubuntu build instructions.
+- Release workflow: pushing a `v*` tag builds and publishes a macOS arm64 DMG and a Windows x64 zip as a GitHub release. The app version is single-sourced from `pyproject.toml` and shown in the window title.
+- GitHub Actions CI on a Python 3.9 + 3.12 matrix, headless, with coverage, a `ruff check` gate and a `ruff format --check` gate.
+- New example diagrams: SIS epidemics, Kuramoto synchronisation, distributed subgradient.
+
+### Changed
+- The compiled fast solver is the default and the numerically accurate path; the interpreter is the fixed-step full-coverage fallback. The two-engine contract is documented in `docs/ARCHITECTURE.md`.
+- All 13 `eval()` call sites replaced by `lib/safe_eval.py`, an allowlist AST interpreter; the External block's exec path is disabled and `.npz` loading no longer allows pickle.
+- Design-token theming (spacing, radius, type scale, elevation, canonical fonts) applied across the UI, with the theme system moved into `lib/theming` so `lib/` no longer imports `modern_ui/`.
+- `ruff` adopted as the linter and formatter (replacing black/pylint); the whole repository reformatted.
+- numpy / scipy / PyQt5 upper bounds pinned for reproducible installs.
+- `.diablos` is the default file dialog format and extension.
+- Simulink/MATLAB references removed from the codebase and UI text.
+
+### Fixed
+- Compiled solver: closed-loop feedthrough (`D != 0`) bug; state blocks now run after algebraic blocks; `t_eval` floating-point overshoot; feedback loops previously ignored; `SgProd` name mismatch; vector-signal safety in the Product, MathFunction, Exponential, Deadband, Switch, PID and Hysteresis kernels; workspace variables resolved in algebraic executors.
+- Interpreter: sampled-block timing, simulation horizon and RK45 stepping; RateLimiter slewing at twice the configured rate; state blocks integrating at a fixed 0.01 s regardless of `sim_dt`; Selector comma-list indices; 2D PDE blocks never actually integrating.
+- Discrete / sampled-data: z-domain blocks default to an inherited sample rate; feedthrough memory blocks deliver their fresh output within the same step; discrete transfer functions no longer output zero when `sampling_time > 0`.
+- WaveEquation1D energy divergence between solve and replay; advection numerical diffusion (second-order upwind); the PDE CFL warning now re-arms on each run.
+- Subsystems: children lost on save/reload, port sync from internal Inport/Outport blocks, port scaling on resize, naming collisions, and crashes when simulating copied subsystems.
+- Copy/paste: lost connections, `QPainterPath` pickling errors, and block category preserved through copy/paste, undo/redo and duplicate.
+- Algebraic-loop detection: false positives after undo/redo, memory blocks inside subsystems, and stateful-block classification.
+- Canvas: runaway-zoom crash, source block left selected after a Ctrl+Click chained connect, stray rectangle selection, duplicate block creation, and alignment guides suppressed by grid snapping.
+- Platform: invisible text cursor on macOS arm64 (Fusion style), multi-monitor popup placement, Windows 11 title-bar flash, Windows dark-mode contrast.
+- Scope and Export buffers went from O(n^2) to amortized O(1) per step; experiment worker threads are cancelled and joined on close.
+- Goto/From virtual lines are persisted to disk; Demux honours user-added outputs and scalar inputs; PRBS no longer outputs a constant zero; the Noise block no longer hangs the solver; startup crash from auto-route wire ordering.
+- Accidentally committed SSH keys removed from the repository.
+
+---
+
+## Pre-1.0 development log - 2026-01-29
 
 ### New UI/UX Features
 
