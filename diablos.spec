@@ -13,16 +13,47 @@ Output:
 import sys
 import os
 import platform
+import re
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 ARCH = platform.machine()  # 'arm64' or 'x86_64'
 
+PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
+
+
+def _project_version(default='1.0.0'):
+    """Read `[project] version` out of pyproject.toml (the single source of truth).
+
+    Parsed with a regex rather than tomllib so the spec works on the 3.9 build
+    env too (tomllib is 3.11+). tools/build.sh reads the same key, so the DMG
+    name and CFBundleShortVersionString can never drift apart.
+    """
+    path = os.path.join(PROJECT_ROOT, 'pyproject.toml')
+    try:
+        with open(path, 'r', encoding='utf-8') as fh:
+            in_project = False
+            for line in fh:
+                stripped = line.strip()
+                if stripped.startswith('['):
+                    in_project = stripped == '[project]'
+                    continue
+                if in_project:
+                    match = re.match(r'^version\s*=\s*["\'](.+?)["\']', stripped)
+                    if match:
+                        return match.group(1)
+    except OSError:
+        pass
+    return default
+
+
+VERSION = _project_version()
+
 # --- Hidden imports ---
 # Blocks are loaded dynamically via importlib (lib/block_loader.py),
 # so PyInstaller can't discover them through static analysis.
 # Auto-scanned from blocks/ directory at build time.
-sys.path.insert(0, os.path.dirname(os.path.abspath(SPEC)))
+sys.path.insert(0, PROJECT_ROOT)
 from tools.sync_block_registry import scan_block_modules
 hidden_imports_blocks = scan_block_modules()
 
@@ -138,7 +169,8 @@ if sys.platform == 'darwin':
         bundle_identifier=f'com.diablos.modern.{ARCH}',
         info_plist={
             'CFBundleDisplayName': f'DiaBloS ({ARCH})',
-            'CFBundleShortVersionString': '2.0.0',
+            'CFBundleShortVersionString': VERSION,
+            'CFBundleVersion': VERSION,
             'NSHighResolutionCapable': True,
             'CFBundleDocumentTypes': [
                 {

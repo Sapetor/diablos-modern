@@ -89,8 +89,10 @@ def setup_application():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     # Create application
     app = QApplication(sys.argv)
+    from modern_ui import __version__
+
     app.setApplicationName("DiaBloS Modern")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion(__version__)
     app.setOrganizationName("DiaBloS Project")
 
     # Load config and set font
@@ -255,11 +257,21 @@ def main():
         return 1
 
 
-if __name__ == "__main__":
-    # Headless subcommands (e.g. `run`) dispatch to the CLI before any GUI is
-    # built, so agents/CI can simulate a diagram without a display.
-    if len(sys.argv) > 1 and sys.argv[1] == "run":
+def entry(argv=None):
+    """Process entry point shared by ``python diablos_modern.py`` and the
+    ``diablos`` console script.
+
+    Headless subcommands (``run``, ``export-python``) dispatch to the CLI before
+    any GUI is built, so agents/CI can simulate or export a diagram without a
+    display.
+    """
+    argv = sys.argv if argv is None else argv
+    if len(argv) > 1 and argv[1] in ("run", "export-python"):
         from lib.cli import main as cli_main
 
-        sys.exit(cli_main(sys.argv[1:]))
-    sys.exit(main())
+        return cli_main(argv[1:])
+    return main()
+
+
+if __name__ == "__main__":
+    sys.exit(entry())

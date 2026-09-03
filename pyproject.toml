@@ -1,7 +1,85 @@
-# Tooling configuration for DiaBloS Modern.
-# This project is not pip-packaged (runtime deps live in requirements*.txt and
-# packaging is handled by diablos.spec / PyInstaller); this file exists purely
-# to configure developer tooling — currently Ruff (lint + format).
+# Packaging + tooling configuration for DiaBloS Modern.
+#
+# The `[project]` table below is the single source of truth for the version:
+# `modern_ui/__init__.py` reads it back through `importlib.metadata`, and
+# `diablos.spec` / `tools/build.sh` parse it so the macOS bundle version and
+# the DMG filename always match the release tag.
+#
+# Distribution to end users is still PyInstaller (`diablos.spec`,
+# `tools/build.sh`); the pip metadata exists so `pip install -e .` works for
+# development and so there is one canonical version string.
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diablos-modern"
+version = "1.0.0"
+description = "Simulink-style block diagram simulation tool built with Python and PyQt5"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [{ name = "DiaBloS Development Team" }]
+keywords = ["simulation", "block-diagram", "control-systems", "pyqt5", "simulink"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+
+# Mirrors requirements.txt. Upper bounds guard reproducibility against
+# breaking major releases of the numerically-sensitive core.
+dependencies = [
+    "numpy>=1.20.0,<3.0",
+    "matplotlib>=3.3.0",
+    "tqdm>=4.60.0",
+    "pyqtgraph>=0.12.0",
+    "PyQt5>=5.15.0,<5.16",
+    "scipy>=1.6.0,<2.0",
+    "Pillow>=8.0.0",
+]
+
+[project.optional-dependencies]
+# Mirrors requirements-dev.txt.
+dev = [
+    "pytest>=7.0.0",
+    "pytest-qt>=4.2.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.1.0",
+    "ruff>=0.6.0",
+    "mypy>=1.0.0",
+    "PyQt5-stubs>=5.15.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Sapetor/diablos-modern"
+Repository = "https://github.com/Sapetor/diablos-modern"
+
+[project.scripts]
+diablos = "diablos_modern:entry"
+
+[tool.setuptools]
+# The GUI entry point lives at the repo root, not inside a package.
+py-modules = ["diablos_modern"]
+
+[tool.setuptools.packages.find]
+# `lib/`, `blocks/` and `config/` have no `__init__.py` (they are imported as
+# implicit namespace packages), so namespace discovery is required; only
+# `modern_ui/` is a regular package.
+namespaces = true
+include = ["lib*", "modern_ui*", "blocks*", "config*"]
+exclude = ["*__pycache__*"]
+
+[tool.setuptools.package-data]
+"config" = ["*.json"]
+"modern_ui" = ["icons/*"]
 
 [tool.ruff]
 # 3.9 is the supported baseline (CI matrix + readthedocs); do not let Ruff

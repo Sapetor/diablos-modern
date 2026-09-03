@@ -1,0 +1,159 @@
+name: Release
+
+# Cutting a release is `git tag vX.Y.Z && git push --tags` (after bumping
+# `[project] version` in pyproject.toml, which is the single source of truth
+# for the app version, the macOS bundle version and the artifact filenames).
+on:
+  push:
+    tags:
+      - "v*"
+  # Allows a dry run against a branch; the release step is skipped unless a
+  # tag triggered the run.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    name: Build macOS (arm64)
+    runs-on: macos-latest # arm64 since macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      # tools/build.sh syncs the block registry, runs PyInstaller and builds the
+      # DMG with hdiutil. It reads the version out of pyproject.toml itself, so
+      # the output is dist/DiaBloS-<version>-arm64.dmg.
+      - name: Build app bundle and DMG
+        run: |
+          chmod +x tools/build.sh
+          ./tools/build.sh
+
+      - name: List build output
+        run: ls -lh dist
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        # bash on both OSes so there is one shell dialect in this file.
+        shell: bash
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      # tools/build.sh is macOS-only (hdiutil), so run its portable steps here.
+      - name: Read version from pyproject.toml
+        id: version
+        run: |
+          VERSION=$(sed -n '/^\[project\]/,/^\[/{ s/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p; }' pyproject.toml | head -1)
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: could not read [project] version from pyproject.toml" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build with PyInstaller
+        run: |
+          python tools/sync_block_registry.py
+          pyinstaller --noconfirm diablos.spec
+
+      # PyInstaller emits the one-folder layout dist/DiaBloS/ (DiaBloS.exe plus
+      # its runtime); ship the whole folder zipped. 7z ships on the runner image.
+      - name: Zip the app folder
+        run: |
+          cd dist
+          7z a -tzip "DiaBloS-${{ steps.version.outputs.version }}-windows-x64.zip" DiaBloS
+          ls -lh
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only publish for real tag pushes; workflow_dispatch runs stop at the
+    # uploaded build artifacts.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List release assets
+        shell: bash
+        run: ls -lhR artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.dmg
+            artifacts/*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            DiaBloS Modern ${{ github.ref_name }}
+
+            **macOS (Apple Silicon):** download the `.dmg`, drag the app to
+            Applications, then clear the quarantine flag on this unsigned build:
+
+            ```
+            xattr -rd com.apple.quarantine /Applications/DiaBloS-arm64.app
+            ```
+
+            **Windows:** download the `.zip`, extract the whole `DiaBloS` folder
+            and run `DiaBloS.exe`. SmartScreen may warn about the unsigned
+            binary -- choose "More info" then "Run anyway".
+
+            See CHANGELOG.md for what changed.

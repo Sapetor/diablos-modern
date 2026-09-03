@@ -10,14 +10,27 @@
 #   2. Run PyInstaller to produce the app bundle
 #   3. Package into a DMG with Applications shortcut
 #
-# The DMG is named by architecture: DiaBloS-arm64.dmg or DiaBloS-x86_64.dmg
+# The DMG is named by version + architecture, e.g. DiaBloS-1.0.0-arm64.dmg.
+# The version is read from `[project] version` in pyproject.toml -- the single
+# source of truth, which diablos.spec also reads for CFBundleShortVersionString.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Detect architecture from the active Python
 ARCH=$(python -c "import platform; print(platform.machine())")
-DMG_NAME="DiaBloS-${ARCH}.dmg"
 
+# Read `version` from the [project] table of pyproject.toml -- the single
+# source of truth that diablos.spec also parses. Pure sed so it works the same
+# under the 3.9 x86_64 conda env and the 3.12 arm64 venv.
+VERSION=$(sed -n '/^\[project\]/,/^\[/{ s/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p; }' pyproject.toml | head -1)
+if [ -z "${VERSION}" ]; then
+  echo "ERROR: could not read [project] version from pyproject.toml" >&2
+  exit 1
+fi
+
+DMG_NAME="DiaBloS-${VERSION}-${ARCH}.dmg"
+
+echo "==> Version:      ${VERSION}"
 echo "==> Architecture: ${ARCH}"
 echo "==> Syncing block registry..."
 python tools/sync_block_registry.py
@@ -33,7 +46,7 @@ STAGING=$(mktemp -d)
 cp -R dist/"${APP_NAME}" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 rm -f "dist/${DMG_NAME}"
-hdiutil create -volname "DiaBloS (${ARCH})" -srcfolder "$STAGING" -ov -format UDZO "dist/${DMG_NAME}"
+hdiutil create -volname "DiaBloS ${VERSION} (${ARCH})" -srcfolder "$STAGING" -ov -format UDZO "dist/${DMG_NAME}"
 rm -rf "$STAGING"
 
 echo "==> Done."

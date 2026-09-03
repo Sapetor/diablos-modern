@@ -24,6 +24,7 @@ from PyQt5.QtCore import QRect
 
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.platform_config import get_platform_config
+from modern_ui import __version__
 from modern_ui.themes.theme_manager import get_ui_font, TYPE
 
 
@@ -51,7 +52,10 @@ def _restore_screen_geometry(window):
 class TestSetupWindow:
     def test_title_objectname_font(self, window):
         window._setup_window()
-        assert window.windowTitle() == "DiaBloS - Modern Block Diagram Simulator"
+        # The title carries the single-sourced version (pyproject.toml ->
+        # modern_ui.__version__), so assert against it rather than a literal.
+        assert window.windowTitle() == f"DiaBloS Modern {__version__} - Block Diagram Simulator"
+        assert __version__ in window.windowTitle()
         assert window.objectName() == "ModernMainWindow"
         # The base font now comes from the canonical UI stack (get_ui_font),
         # not a hardcoded "Segoe UI" that was wrong on macOS/Linux.

@@ -8,7 +8,7 @@ DiaBloS can be packaged as a standalone app using PyInstaller. Users don't need 
 # arm64 -- RECOMMENDED for releases (fast, working cursor)
 source ~/.venvs/diablos-arm64/bin/activate
 ./tools/build.sh
-# Output: dist/DiaBloS-arm64.app + dist/DiaBloS-arm64.dmg (72MB)
+# Output: dist/DiaBloS-arm64.app + dist/DiaBloS-1.0.0-arm64.dmg (72MB)
 
 # x86_64 (Rosetta) -- fallback for older Intel Macs.
 # Built from the x86_64 conda env under Rosetta (PyInstaller bundles the
@@ -17,7 +17,7 @@ arch -x86_64 /bin/bash -c '
   source ~/opt/anaconda3/etc/profile.d/conda.sh
   conda activate diablos_x86
   ./tools/build.sh'
-# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-x86_64.dmg (~117MB)
+# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-1.0.0-x86_64.dmg (~117MB)
 
 # Move DMG out of vault and clean up
 mv dist/DiaBloS-*.dmg ~/Desktop/
@@ -25,6 +25,8 @@ rm -rf dist/DiaBloS-*.app build/
 ```
 
 `tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation. App names include the architecture (`DiaBloS-arm64.app`, `DiaBloS-x86_64.app`) so both can coexist in `/Applications`.
+
+Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth, also read back at runtime by `modern_ui.__version__` (via `importlib.metadata`, with a literal fallback for frozen builds). The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
 
 > **arm64 cursor bug — FIXED.** PyQt5 5.15 (arm64) had a macOS bug where the text cursor was invisible in styled QLineEdit widgets (QTBUG-109450): the native `macintosh` style fails to draw the caret in any input with a stylesheet `background-color`. Fixed by switching the app to the Fusion style on macOS + Qt >= 5.10 (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. The fix is scoped so the x86_64/PyQt5-5.9 build (native style works there) keeps its native look. arm64 is now ~10x faster to start with a fully working cursor, so it is the preferred release.
 
@@ -55,6 +57,7 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 |------|---------|
 | `diablos.spec` | PyInstaller config -- hidden imports, data files, excludes, platform packaging |
 | `tools/build.sh` | One-command build: sync registry, PyInstaller, DMG |
+| `pyproject.toml` | `[project] version` -- single source of truth for the app version (read by the spec, build script, and `modern_ui/__init__.py`) |
 | `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py` |
 | `lib/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
 | `lib/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
@@ -133,3 +136,32 @@ pyinstaller --noconfirm diablos.spec
 
 # 4. Output: dist/DiaBloS/DiaBloS (distribute the entire dist/DiaBloS folder)
 ```
+
+## Releasing
+
+Releases are cut from a tag; `.github/workflows/release.yml` does the building.
+
+1. **Bump the version** in `pyproject.toml` (`[project] version`). This is the
+   only place the version is written -- `modern_ui.__version__` (window title),
+   `diablos.spec` (`CFBundleShortVersionString`) and `tools/build.sh` (DMG
+   filename) all read it back.
+2. **Update `CHANGELOG.md`** with the changes under the new version heading.
+3. **Commit, tag and push:**
+
+   ```bash
+   git commit -am "release: v1.0.0"
+   git push
+   git tag v1.0.0
+   git push --tags
+   ```
+
+4. **The workflow builds the artifacts.** Pushing a `v*` tag runs
+   `Release`, which builds on `macos-latest` (arm64, via `tools/build.sh`) and
+   `windows-latest` (PyInstaller + a zipped `dist/DiaBloS` folder), then
+   publishes a GitHub release with `DiaBloS-<version>-arm64.dmg` and
+   `DiaBloS-<version>-windows-x64.zip` attached.
+
+The tag must match the version in `pyproject.toml` (`v1.0.0` <-> `1.0.0`) --
+nothing enforces this, so check it before tagging. Both artifacts are unsigned;
+the generated release notes tell users how to get past Gatekeeper and
+SmartScreen. Linux and macOS x86_64 builds are still manual (see above).
