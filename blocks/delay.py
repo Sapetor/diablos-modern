@@ -59,6 +59,33 @@ class DelayBlock(BaseBlock):
         """Delay is a memory block - can break algebraic loops."""
         return 1
 
+    def draw_icon(self, block_rect):
+        """Draw a sampled staircase and the same staircase shifted N samples."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Input: sampled ramp-up (upper band)
+        path.moveTo(0.04, 0.42)
+        path.lineTo(0.18, 0.42)
+        path.lineTo(0.18, 0.24)
+        path.lineTo(0.32, 0.24)
+        path.lineTo(0.32, 0.06)
+        path.lineTo(0.96, 0.06)
+        # Output: the same staircase, delayed (lower band)
+        path.moveTo(0.04, 0.96)
+        path.lineTo(0.40, 0.96)
+        path.lineTo(0.40, 0.78)
+        path.lineTo(0.54, 0.78)
+        path.lineTo(0.54, 0.60)
+        path.lineTo(0.96, 0.60)
+        # Sample shift
+        path.moveTo(0.18, 0.51)
+        path.lineTo(0.40, 0.51)
+        path.moveTo(0.33, 0.45)
+        path.lineTo(0.40, 0.51)
+        path.lineTo(0.33, 0.57)
+        return path
+
     def execute(self, time, inputs, params, output_only=False, **kwargs):
         delay_steps = max(1, int(params.get("delay_steps", 1)))
         initial_value = params.get("initial_value", 0.0)

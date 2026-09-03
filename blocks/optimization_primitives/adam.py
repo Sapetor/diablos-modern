@@ -75,6 +75,24 @@ class AdamBlock(BaseBlock):
     def outputs(self):
         return [{"name": "update", "type": "vector"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a damped zig-zag descent converging in a cost bowl."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Cost bowl
+        path.moveTo(0.06, 0.08)
+        path.quadTo(0.50, 1.12, 0.94, 0.08)
+        # Adaptive, shrinking steps toward the minimum
+        path.moveTo(0.16, 0.32)
+        path.lineTo(0.70, 0.58)
+        path.lineTo(0.34, 0.72)
+        path.lineTo(0.60, 0.80)
+        path.lineTo(0.46, 0.84)
+        # Minimum
+        path.addEllipse(0.46, 0.80, 0.09, 0.09)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             # Output-only path: no gradient input → return last update without mutating moments.

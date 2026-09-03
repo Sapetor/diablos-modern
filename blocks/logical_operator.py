@@ -66,6 +66,27 @@ class LogicalOperatorBlock(BaseBlock):
     def outputs(self):
         return [{"name": "y", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a logic-gate outline with two inputs and one output."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Gate body (D shape)
+        path.moveTo(0.32, 0.10)
+        path.lineTo(0.32, 0.90)
+        path.lineTo(0.56, 0.90)
+        path.cubicTo(0.88, 0.90, 0.88, 0.10, 0.56, 0.10)
+        path.lineTo(0.32, 0.10)
+        # Input stubs
+        path.moveTo(0.04, 0.30)
+        path.lineTo(0.32, 0.30)
+        path.moveTo(0.04, 0.70)
+        path.lineTo(0.32, 0.70)
+        # Output stub
+        path.moveTo(0.80, 0.50)
+        path.lineTo(0.98, 0.50)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         op = str(params.get("operator", "AND")).upper()
 

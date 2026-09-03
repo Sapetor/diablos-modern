@@ -64,6 +64,26 @@ class VectorGainBlock(BaseBlock):
     def outputs(self):
         return [{"name": "y", "type": "vector"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a gain triangle fed by a two-line vector bus."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Gain triangle
+        path.moveTo(0.26, 0.08)
+        path.lineTo(0.80, 0.50)
+        path.lineTo(0.26, 0.92)
+        path.lineTo(0.26, 0.08)
+        # Vector bus in
+        path.moveTo(0.02, 0.40)
+        path.lineTo(0.26, 0.40)
+        path.moveTo(0.02, 0.60)
+        path.lineTo(0.26, 0.60)
+        # Scaled output
+        path.moveTo(0.80, 0.50)
+        path.lineTo(0.98, 0.50)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0])).astype(float)

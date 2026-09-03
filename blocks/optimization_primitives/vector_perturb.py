@@ -65,6 +65,32 @@ class VectorPerturbBlock(BaseBlock):
     def outputs(self):
         return [{"name": "x_perturbed", "type": "vector"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a bracketed vector with one component nudged by epsilon."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Brackets
+        path.moveTo(0.16, 0.10)
+        path.lineTo(0.08, 0.10)
+        path.lineTo(0.08, 0.90)
+        path.lineTo(0.16, 0.90)
+        path.moveTo(0.58, 0.10)
+        path.lineTo(0.66, 0.10)
+        path.lineTo(0.66, 0.90)
+        path.lineTo(0.58, 0.90)
+        # Components
+        for row_y in (0.24, 0.50, 0.76):
+            path.moveTo(0.20, row_y)
+            path.lineTo(0.54, row_y)
+        # Perturbation applied to one component
+        path.moveTo(0.86, 0.72)
+        path.lineTo(0.86, 0.26)
+        path.moveTo(0.78, 0.36)
+        path.lineTo(0.86, 0.26)
+        path.lineTo(0.94, 0.36)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0])).copy().astype(float)

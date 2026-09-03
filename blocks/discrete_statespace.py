@@ -69,6 +69,34 @@ class DiscreteStateSpaceBlock(StateSpaceBaseBlock):
         """Block type: 1=strictly proper (memory), 2=proper (direct feedthrough)."""
         return 2
 
+    def draw_icon(self, block_rect):
+        """Draw a bracketed coefficient matrix beside a discrete "z"."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Left bracket
+        path.moveTo(0.26, 0.12)
+        path.lineTo(0.16, 0.12)
+        path.lineTo(0.16, 0.88)
+        path.lineTo(0.26, 0.88)
+        # Right bracket
+        path.moveTo(0.60, 0.12)
+        path.lineTo(0.70, 0.12)
+        path.lineTo(0.70, 0.88)
+        path.lineTo(0.60, 0.88)
+        # Matrix entries
+        for row_y in (0.34, 0.66):
+            path.moveTo(0.26, row_y)
+            path.lineTo(0.38, row_y)
+            path.moveTo(0.48, row_y)
+            path.lineTo(0.60, row_y)
+        # "z" marking the discrete-time recursion
+        path.moveTo(0.80, 0.30)
+        path.lineTo(0.98, 0.30)
+        path.lineTo(0.80, 0.62)
+        path.lineTo(0.98, 0.62)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         """Execute discrete state-space block with optional sampling time."""
         output_only = kwargs.get("output_only", False)

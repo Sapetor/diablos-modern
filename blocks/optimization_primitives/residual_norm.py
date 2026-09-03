@@ -69,6 +69,29 @@ class ResidualNormBlock(BaseBlock):
     def outputs(self):
         return [{"name": "norm", "type": "float"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a vector arrow between double norm bars."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Left double bar
+        path.moveTo(0.08, 0.12)
+        path.lineTo(0.08, 0.88)
+        path.moveTo(0.20, 0.12)
+        path.lineTo(0.20, 0.88)
+        # Right double bar
+        path.moveTo(0.80, 0.12)
+        path.lineTo(0.80, 0.88)
+        path.moveTo(0.92, 0.12)
+        path.lineTo(0.92, 0.88)
+        # Vector inside
+        path.moveTo(0.32, 0.72)
+        path.lineTo(0.68, 0.30)
+        path.moveTo(0.56, 0.30)
+        path.lineTo(0.68, 0.30)
+        path.lineTo(0.68, 0.42)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             F = np.atleast_1d(inputs.get(0, [0.0])).astype(float)

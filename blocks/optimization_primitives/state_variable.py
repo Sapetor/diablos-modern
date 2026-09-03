@@ -83,6 +83,34 @@ class StateVariableBlock(BaseBlock):
         """Input port 0 (x_next) is optional - allows execution without feedback on first step."""
         return [0]
 
+    def draw_icon(self, block_rect):
+        """Draw a state register x fed back on itself."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Register box
+        path.moveTo(0.26, 0.24)
+        path.lineTo(0.74, 0.24)
+        path.lineTo(0.74, 0.62)
+        path.lineTo(0.26, 0.62)
+        path.lineTo(0.26, 0.24)
+        # "x"
+        path.moveTo(0.38, 0.32)
+        path.lineTo(0.62, 0.54)
+        path.moveTo(0.62, 0.32)
+        path.lineTo(0.38, 0.54)
+        # Feedback loop
+        path.moveTo(0.74, 0.43)
+        path.lineTo(0.92, 0.43)
+        path.lineTo(0.92, 0.92)
+        path.lineTo(0.08, 0.92)
+        path.lineTo(0.08, 0.43)
+        path.lineTo(0.26, 0.43)
+        path.moveTo(0.18, 0.37)
+        path.lineTo(0.26, 0.43)
+        path.lineTo(0.18, 0.49)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             # Initialize state on first call

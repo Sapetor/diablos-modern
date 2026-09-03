@@ -67,6 +67,25 @@ class RelationalOperatorBlock(BaseBlock):
     def outputs(self):
         return [{"name": "y", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a comparison chevron fed by two input stubs."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Input stubs
+        path.moveTo(0.04, 0.24)
+        path.lineTo(0.22, 0.24)
+        path.moveTo(0.04, 0.76)
+        path.lineTo(0.22, 0.76)
+        # ">" chevron
+        path.moveTo(0.30, 0.10)
+        path.lineTo(0.70, 0.50)
+        path.lineTo(0.30, 0.90)
+        # Output stub
+        path.moveTo(0.72, 0.50)
+        path.lineTo(0.96, 0.50)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         op = str(params.get("operator", ">"))
         fn = _REL_OPS.get(op)

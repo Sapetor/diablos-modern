@@ -71,6 +71,24 @@ class CompareToConstantBlock(BaseBlock):
     def outputs(self):
         return [{"name": "y", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a comparison chevron pointed at a fixed constant level."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Input stub
+        path.moveTo(0.02, 0.50)
+        path.lineTo(0.16, 0.50)
+        # ">" chevron
+        path.moveTo(0.24, 0.12)
+        path.lineTo(0.56, 0.50)
+        path.lineTo(0.24, 0.88)
+        # Constant level with its marker
+        path.moveTo(0.64, 0.50)
+        path.lineTo(0.98, 0.50)
+        path.addEllipse(0.76, 0.44, 0.12, 0.12)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         op = str(params.get("operator", ">"))
         fn = _REL_OPS.get(op)

@@ -93,6 +93,29 @@ class VariableTransportDelayBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a delayed step whose shift is swept by a variability arrow."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Input step (upper band)
+        path.moveTo(0.04, 0.38)
+        path.lineTo(0.26, 0.38)
+        path.lineTo(0.26, 0.06)
+        path.lineTo(0.96, 0.06)
+        # Delayed output step (lower band)
+        path.moveTo(0.04, 0.94)
+        path.lineTo(0.58, 0.94)
+        path.lineTo(0.58, 0.62)
+        path.lineTo(0.96, 0.62)
+        # Diagonal "variable" arrow sweeping across the delay gap
+        path.moveTo(0.18, 0.74)
+        path.lineTo(0.72, 0.30)
+        path.moveTo(0.60, 0.30)
+        path.lineTo(0.72, 0.30)
+        path.lineTo(0.72, 0.42)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         max_delay = max(0.0, float(params.get("max_delay", 1.0)))
         initial_value = float(params.get("initial_value", 0.0))

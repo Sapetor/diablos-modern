@@ -70,6 +70,21 @@ class ExternalBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a bracketed source-file glyph (external code)."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        path.moveTo(0.2, 0.2)
+        path.lineTo(0.8, 0.2)
+        path.moveTo(0.2, 0.5)
+        path.lineTo(0.6, 0.5)
+        path.moveTo(0.2, 0.8)
+        path.lineTo(0.8, 0.8)
+        path.moveTo(0.2, 0.2)
+        path.lineTo(0.2, 0.8)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         """
         Execute external function.

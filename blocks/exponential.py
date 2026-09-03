@@ -45,6 +45,21 @@ class ExponentialBlock(BaseBlock):
     def outputs(self):
         return [{"name": "y", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw an exponential curve rising from the axis origin."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Axes
+        path.moveTo(0.10, 0.88)
+        path.lineTo(0.94, 0.88)
+        path.moveTo(0.10, 0.88)
+        path.lineTo(0.10, 0.08)
+        # y = a * exp(b * x)
+        path.moveTo(0.12, 0.80)
+        path.cubicTo(0.48, 0.78, 0.62, 0.62, 0.80, 0.12)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = inputs.get(0, 0.0)

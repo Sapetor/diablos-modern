@@ -665,7 +665,7 @@ class BlockRenderer:
             path.quadTo(0.3, 0.7, 0.2, 0.5)
             path.moveTo(0.2, 0.5)
             path.lineTo(0.1, 0.5)
-        elif block.block_fn == "LQR":
+        elif path.isEmpty() and block.block_fn == "LQR":
             self._draw_centered_text(block, painter, "LQR", bold=True, size_delta=2)
         elif block.block_fn == "Deriv":
             self._draw_text_icon(block, painter, ["dy", "dt"], italic=True)
@@ -696,7 +696,7 @@ class BlockRenderer:
             path.lineTo(0.7, 0.8)
             path.lineTo(0.8, 0.5)
             path.lineTo(0.9, 0.6)
-        elif block.block_fn == "Exp":
+        elif path.isEmpty() and block.block_fn == "Exp":
             self._draw_centered_text(block, painter, "eˣ", italic=True, size_delta=4)
         elif block.block_fn == "Display":
             params_source = runtime_params(block)
@@ -820,7 +820,7 @@ class BlockRenderer:
             self._draw_corner_labels(block, painter, "sp", "pv")
         elif block.block_fn == "StateSpace":
             self._draw_centered_text(block, painter, "x' = Ax+Bu\ny = Cx+Du", size_delta=-1)
-        elif block.block_fn == "DiscreteStateSpace":
+        elif path.isEmpty() and block.block_fn == "DiscreteStateSpace":
             self._draw_centered_text(block, painter, "x[k+1]=Ax+Bu\ny[k]=Cx+Du", size_delta=-2)
         elif block.block_fn == "External":
             path.moveTo(0.2, 0.2)
@@ -835,11 +835,11 @@ class BlockRenderer:
             # When draw_icon supplies the flat-line "constant level" shape (the
             # same convention as Step/Ramp/Sine), don't overlay a "K" on it.
             self._draw_centered_text(block, painter, "K", bold=True, size_delta=4)
-        elif block.block_fn == "Delay":
+        elif path.isEmpty() and block.block_fn == "Delay":
             self._draw_centered_text(block, painter, "z⁻ⁿ", size_delta=2)
-        elif block.block_fn == "Abs":
+        elif path.isEmpty() and block.block_fn == "Abs":
             self._draw_centered_text(block, painter, "|u|", bold=True, size_delta=4)
-        elif block.block_fn == "TransportDelay":
+        elif path.isEmpty() and block.block_fn == "TransportDelay":
             font = painter.font()
             orig = font.pointSize()
             font.setPointSize(orig + 3)
@@ -867,7 +867,7 @@ class BlockRenderer:
             path.moveTo(0.25, 0.75)
             path.quadTo(0.35, 0.35, 0.55, 0.45)
             path.quadTo(0.75, 0.55, 0.70, 0.30)
-        elif block.block_fn == "Assert":
+        elif path.isEmpty() and block.block_fn == "Assert":
             self._draw_centered_text(
                 block,
                 painter,

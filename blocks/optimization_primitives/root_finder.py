@@ -115,6 +115,24 @@ class RootFinderBlock(BaseBlock):
 
         return J
 
+    def draw_icon(self, block_rect):
+        """Draw a curve crossing the axis with its Newton tangent."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Axis
+        path.moveTo(0.04, 0.60)
+        path.lineTo(0.96, 0.60)
+        # F(x)
+        path.moveTo(0.10, 0.90)
+        path.cubicTo(0.42, 0.82, 0.52, 0.24, 0.90, 0.12)
+        # Newton tangent through the current iterate
+        path.moveTo(0.34, 0.92)
+        path.lineTo(0.78, 0.24)
+        # Root marker
+        path.addEllipse(0.44, 0.55, 0.10, 0.10)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0, 0.0])).astype(float)

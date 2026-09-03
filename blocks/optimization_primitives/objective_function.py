@@ -74,6 +74,23 @@ class ObjectiveFunctionBlock(BaseBlock):
     def outputs(self):
         return [{"name": "f", "type": "float"}]
 
+    def draw_icon(self, block_rect):
+        """Draw f(x) over axes with the evaluated point marked."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Axes
+        path.moveTo(0.08, 0.90)
+        path.lineTo(0.96, 0.90)
+        path.moveTo(0.08, 0.90)
+        path.lineTo(0.08, 0.06)
+        # f(x)
+        path.moveTo(0.12, 0.30)
+        path.cubicTo(0.36, 0.96, 0.60, 0.10, 0.92, 0.52)
+        # Evaluated sample
+        path.addEllipse(0.60, 0.28, 0.10, 0.10)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             x = np.atleast_1d(inputs.get(0, [0.0]))

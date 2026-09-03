@@ -84,6 +84,27 @@ class LinearSystemSolverBlock(BaseBlock):
     def outputs(self):
         return [{"name": "x", "type": "vector"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a bracketed triangular factor (LU solve of Ax = b)."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Brackets
+        path.moveTo(0.22, 0.08)
+        path.lineTo(0.12, 0.08)
+        path.lineTo(0.12, 0.92)
+        path.lineTo(0.22, 0.92)
+        path.moveTo(0.78, 0.08)
+        path.lineTo(0.88, 0.08)
+        path.lineTo(0.88, 0.92)
+        path.lineTo(0.78, 0.92)
+        # Upper-triangular entries
+        rows = ((0.22, (0.26, 0.48, 0.70)), (0.50, (0.48, 0.70)), (0.78, (0.70,)))
+        for row_y, cols in rows:
+            for col_x in cols:
+                path.addEllipse(col_x, row_y - 0.05, 0.10, 0.10)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             method = params.get("method", "direct")

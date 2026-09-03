@@ -35,6 +35,23 @@ class BodeMagBlock(BaseBlock):
     def outputs(self):
         return []
 
+    def draw_icon(self, block_rect):
+        """Draw a magnitude asymptote rolling off over log axes."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Axes
+        path.moveTo(0.1, 0.9)
+        path.lineTo(0.9, 0.9)
+        path.moveTo(0.1, 0.9)
+        path.lineTo(0.1, 0.1)
+        # Magnitude asymptote with a single break
+        path.moveTo(0.1, 0.4)
+        path.lineTo(0.4, 0.4)
+        path.lineTo(0.6, 0.7)
+        path.lineTo(0.9, 0.7)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         # BodeMag doesn't process data during simulation
         # It's used to generate static Bode plots via right-click menu

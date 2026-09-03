@@ -83,6 +83,37 @@ class LQRBlock(BaseBlock):
     def requires_outputs(self):
         return False
 
+    def draw_icon(self, block_rect):
+        """Draw a state-feedback loop: plant box closed through a K gain."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Plant block
+        path.moveTo(0.38, 0.10)
+        path.lineTo(0.74, 0.10)
+        path.lineTo(0.74, 0.44)
+        path.lineTo(0.38, 0.44)
+        path.lineTo(0.38, 0.10)
+        # Forward path
+        path.moveTo(0.10, 0.27)
+        path.lineTo(0.38, 0.27)
+        path.moveTo(0.74, 0.27)
+        path.lineTo(0.94, 0.27)
+        # Feedback tap down to the gain
+        path.moveTo(0.88, 0.27)
+        path.lineTo(0.88, 0.80)
+        path.lineTo(0.62, 0.80)
+        # Gain triangle K (pointing left)
+        path.moveTo(0.62, 0.62)
+        path.lineTo(0.62, 0.98)
+        path.lineTo(0.34, 0.80)
+        path.lineTo(0.62, 0.62)
+        # Return to the summing point
+        path.moveTo(0.34, 0.80)
+        path.lineTo(0.10, 0.80)
+        path.lineTo(0.10, 0.27)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         # Design tool only — no simulation output
         return {}

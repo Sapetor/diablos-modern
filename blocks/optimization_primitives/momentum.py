@@ -69,6 +69,22 @@ class MomentumBlock(BaseBlock):
     def outputs(self):
         return [{"name": "update", "type": "vector"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a cost bowl with an arrow carrying through the minimum."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Cost bowl
+        path.moveTo(0.08, 0.10)
+        path.quadTo(0.50, 1.10, 0.92, 0.10)
+        # Momentum arrow through the basin
+        path.moveTo(0.24, 0.66)
+        path.lineTo(0.76, 0.66)
+        path.moveTo(0.68, 0.58)
+        path.lineTo(0.76, 0.66)
+        path.lineTo(0.68, 0.74)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             # Output-only path: no gradient input → return last velocity without mutating state.

@@ -66,6 +66,32 @@ class TransportDelayBlock(BaseBlock):
     def outputs(self):
         return [{"name": "out", "type": "any"}]
 
+    def draw_icon(self, block_rect):
+        """Draw a step and its time-shifted copy, spanned by a tau arrow."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Input step (upper band)
+        path.moveTo(0.04, 0.38)
+        path.lineTo(0.28, 0.38)
+        path.lineTo(0.28, 0.06)
+        path.lineTo(0.96, 0.06)
+        # Delayed output step (lower band)
+        path.moveTo(0.04, 0.94)
+        path.lineTo(0.64, 0.94)
+        path.lineTo(0.64, 0.62)
+        path.lineTo(0.96, 0.62)
+        # Double-headed arrow spanning the delay
+        path.moveTo(0.28, 0.50)
+        path.lineTo(0.64, 0.50)
+        path.moveTo(0.35, 0.44)
+        path.lineTo(0.28, 0.50)
+        path.lineTo(0.35, 0.56)
+        path.moveTo(0.57, 0.44)
+        path.lineTo(0.64, 0.50)
+        path.lineTo(0.57, 0.56)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         delay_time = max(0.0, float(params.get("delay_time", 0.1)))
         initial_value = float(params.get("initial_value", 0.0))

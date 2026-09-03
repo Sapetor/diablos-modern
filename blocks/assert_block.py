@@ -58,6 +58,22 @@ class AssertBlock(BaseBlock):
         """Sinks don't need output connections."""
         return False
 
+    def draw_icon(self, block_rect):
+        """Draw a check mark inside a warning triangle."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Triangle
+        path.moveTo(0.50, 0.06)
+        path.lineTo(0.96, 0.90)
+        path.lineTo(0.04, 0.90)
+        path.lineTo(0.50, 0.06)
+        # Check mark
+        path.moveTo(0.30, 0.62)
+        path.lineTo(0.44, 0.78)
+        path.lineTo(0.72, 0.42)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         if not params.get("enabled", True):
             return {0: np.array([0.0])}

@@ -118,6 +118,23 @@ class NumericalGradientBlock(BaseBlock):
         arr = np.atleast_1d(val).ravel()
         return float(arr[0]) if len(arr) > 0 else default
 
+    def draw_icon(self, block_rect):
+        """Draw a nabla beside an approximation sign (finite differences)."""
+        from PyQt5.QtGui import QPainterPath
+
+        path = QPainterPath()
+        # Nabla
+        path.moveTo(0.12, 0.16)
+        path.lineTo(0.68, 0.16)
+        path.lineTo(0.40, 0.86)
+        path.lineTo(0.12, 0.16)
+        # "approximately equal" marker
+        path.moveTo(0.78, 0.40)
+        path.lineTo(0.98, 0.40)
+        path.moveTo(0.78, 0.60)
+        path.lineTo(0.98, 0.60)
+        return path
+
     def execute(self, time, inputs, params, **kwargs):
         try:
             dimension = int(params.get("dimension", 2))
