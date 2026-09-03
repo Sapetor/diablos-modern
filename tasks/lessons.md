@@ -1,7 +1,7 @@
 # DiaBloS Development Lessons Learned
 
 > Patterns and anti-patterns discovered during development.
-> Last updated: April 2026
+> Last updated: September 2026
 
 ---
 
@@ -454,15 +454,17 @@ A compounding issue: the initialization path (`initialize_execution` Loop 2) use
 
 ---
 
-### PyQt5 5.15 Cursor Invisible — Unfixable (March 2026)
+### PyQt5 5.15 Cursor Invisible — Fixed by the Fusion Style (March 2026, resolved)
 
 **Problem**: QLineEdit cursor (blinking caret) not drawn in PyQt5 5.15 on macOS when QSS sets `background-color`. QTBUG-109450.
 
 **Root Cause**: QLineEdit inside QScrollArea doesn't receive Qt focus on click (`hasFocus()` returns False even while typing works via event forwarding). Without focus, cursor is never drawn. Additionally, even after fixing focus via viewport event filter, the cursor still isn't rendered — Qt 5.15's macOS platform plugin doesn't draw the cursor when QSS `background-color` is set.
 
-**Tried and failed**: QSS `color` in `:focus`, QPalette override (Text/WindowText/Base), `setCursorWidth(2)`, per-widget QSS, `AA_UseStyleSheetPropagationInWidgetStyles`, `app.setStyle("Fusion")`, Python 3.12 vs 3.14. None work.
+**Tried and failed**: QSS `color` in `:focus`, QPalette override (Text/WindowText/Base), `setCursorWidth(2)`, per-widget QSS, `AA_UseStyleSheetPropagationInWidgetStyles`, Python 3.12 vs 3.14. None work.
 
-**Decision**: Use x86_64 Rosetta build (PyQt5 5.9.7) for releases. Future fix: migrate to PyQt6.
+**Resolution (fixed)**: switching the *whole application* to the Fusion style on macOS fixes it — Fusion is fully stylesheet-aware and draws the caret itself, where the native `macintosh` style does not. The fix lives in `_maybe_use_fusion_style()` (`modern_ui/styles/qss_styles.py`), called from `apply_modern_theme()` at startup *before* `app.setPalette` / `app.setStyleSheet`, and is scoped to macOS + Qt >= 5.10 so the x86_64/PyQt5-5.9 build (whose native style renders the caret correctly) keeps its native look. See `docs/building.md`. The original "Decision: ship the x86_64 Rosetta build (PyQt5 5.9.7)" no longer applies — arm64/PyQt5 5.15 starts ~10x faster with a working cursor and is now the preferred release.
 
-**Lesson**: Some Qt platform bugs have no in-app workaround. When you've exhausted QSS, QPalette, style, and attribute options, check `hasFocus()` to verify the widget actually has Qt focus. If the cursor still doesn't render after confirming focus, it's a platform-level rendering bug. Don't waste time on more QSS variations — change the Qt version.
+Note the earlier entry listed `app.setStyle("Fusion")` under "tried and failed"; that finding was wrong. Applied app-wide at startup, ahead of the stylesheet, it is the fix.
+
+**Lesson**: when the caret is missing, first check `hasFocus()` — a widget inside a QScrollArea can type via forwarded events without ever holding Qt focus, and an unfocused widget never draws a caret. If it still doesn't render with focus confirmed, suspect the *style*, not the stylesheet: QSS `background-color` and the native macOS style don't cooperate, and swapping to Fusion (application-wide, before the stylesheet is installed) is the lever — not more QSS/QPalette variations, and not a Qt downgrade. Also: re-test "unfixable" conclusions before building a release strategy on them.
 

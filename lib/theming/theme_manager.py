@@ -145,7 +145,11 @@ def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFo
         weight: a CSS weight from ``WEIGHT`` (400/500/600/700). Default if None.
     """
     f = QFont(UI_FONT_STACK[0])
-    f.setFamilies(UI_FONT_STACK)
+    # QFont.setFamilies needs Qt >= 5.13; on older Qt the QFont(family)
+    # constructor above already pinned the first stack entry, which is the
+    # intended fallback.
+    if hasattr(f, "setFamilies"):
+        f.setFamilies(UI_FONT_STACK)
     f.setStyleHint(QFont.SansSerif)
     if size is not None:
         f.setPointSize(size)
@@ -157,7 +161,10 @@ def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFo
 def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
     """Build a QFont from the canonical monospace stack (kbd hints, time readout)."""
     f = QFont(MONO_FONT_STACK[0])
-    f.setFamilies(MONO_FONT_STACK)
+    # See get_ui_font(): setFamilies is Qt >= 5.13 only; the constructor above
+    # is the fallback that pins the first family in the stack.
+    if hasattr(f, "setFamilies"):
+        f.setFamilies(MONO_FONT_STACK)
     f.setStyleHint(QFont.Monospace)
     if size is not None:
         f.setPointSize(size)
