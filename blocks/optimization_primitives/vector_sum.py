@@ -8,6 +8,7 @@ Used for computing x_next = x_current + update in optimization.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ class VectorSumBlock(BaseBlock):
 
             for i in range(len(signs)):
                 sign = signs[i] if i < len(signs) else "+"
-                x = np.atleast_1d(inputs.get(i, [0.0])).astype(float)
+                x = get_vector(inputs, i).astype(float)
 
                 if result is None:
                     result = x.copy() if sign == "+" else -x.copy()

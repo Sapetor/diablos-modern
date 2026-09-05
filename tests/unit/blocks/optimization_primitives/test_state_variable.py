@@ -75,3 +75,41 @@ class TestStateVariableBlock:
         result = self.block.execute(0.0, {}, params)
 
         np.testing.assert_array_equal(result[0], [5.0])
+
+    def test_bad_string_initial_value_returns_an_error_dict(self):
+        """Regression: a bad initial_value silently reset the state to [1.0, 1.0].
+
+        The optimization then started from a point the user never asked for and
+        quietly converged to the wrong answer, with nothing in the log.
+        """
+        params = {"initial_value": "[1.0, ", "dimension": 2, "_init_start_": True}
+
+        result = self.block.execute(0.0, {}, params)
+
+        assert result.get("E") is True
+        assert "initial_value" in result["error"]
+        assert "_state_" not in params
+        assert params["_init_start_"] is True  # still un-initialized
+
+    def test_non_numeric_string_initial_value_returns_an_error_dict(self):
+        params = {"initial_value": "start_here", "dimension": 2, "_init_start_": True}
+
+        result = self.block.execute(0.0, {}, params)
+
+        assert result.get("E") is True
+
+    def test_non_numeric_list_initial_value_returns_an_error_dict(self):
+        params = {"initial_value": ["a", "b"], "dimension": 2, "_init_start_": True}
+
+        result = self.block.execute(0.0, {}, params)
+
+        assert result.get("E") is True
+        assert "initial_value" in result["error"]
+
+    def test_scalar_initial_value_is_promoted_to_a_1d_state(self):
+        params = {"initial_value": 4.0, "dimension": 1, "_init_start_": True}
+
+        result = self.block.execute(0.0, {}, params)
+
+        assert result["E"] is False
+        np.testing.assert_array_equal(result[0], [4.0])

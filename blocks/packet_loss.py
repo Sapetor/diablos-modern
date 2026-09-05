@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import advance_sample_time, sample_due
 
 
 class PacketLossBlock(BaseBlock):
@@ -169,7 +170,7 @@ class PacketLossBlock(BaseBlock):
         current_input = np.atleast_1d(np.asarray(inputs.get(0, 0.0), dtype=float))
 
         # Sample instant? (advance the schedule, draw once per grid point)
-        if time >= params["_next_sample_time_"] - 1e-12:
+        if sample_due(time, params["_next_sample_time_"]):
             rng = params["_rng"]
             if loss_model == "gilbert_elliott":
                 # 1) Transition the Markov state first.
@@ -202,12 +203,8 @@ class PacketLossBlock(BaseBlock):
                 out = current_input
 
             # Advance the sample schedule past the current time.
-            if step > 0.0:
-                while params["_next_sample_time_"] <= time + 1e-12:
-                    params["_next_sample_time_"] += step
-            else:
-                # No step info: sample on every call.
-                params["_next_sample_time_"] = time
+            # (a non-positive step means "no schedule": sample every call)
+            advance_sample_time(params, "_next_sample_time_", time, step)
 
             return {0: np.atleast_1d(out)}
 

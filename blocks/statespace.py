@@ -1,8 +1,5 @@
 from blocks.statespace_base import StateSpaceBaseBlock
 from scipy import signal
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class StateSpaceBlock(StateSpaceBaseBlock):
@@ -93,20 +90,9 @@ class StateSpaceBlock(StateSpaceBaseBlock):
             params["_n_inputs_"] = m
             params["_n_outputs_"] = p
 
-        # Process input
-        u, err = self._process_input(inputs, params["_n_inputs_"], output_only)
-        if err:
+        # Read the input, form y = Cx + Du, then advance the state.
+        y_val, err = self._step(inputs, params, output_only)
+        if err is not None:
             return err
 
-        # Compute output
-        y, err = self._compute_output(params["_Cd_"], params["_Dd_"], params["_x_"], u)
-        if err:
-            return err
-
-        # Update state
-        if not output_only:
-            err = self._update_state(params["_Ad_"], params["_Bd_"], params["_x_"], u, params)
-            if err:
-                return err
-
-        return {0: self._format_output(y), "E": False}
+        return {0: y_val, "E": False}

@@ -23,14 +23,28 @@ from lib.safe_eval import safe_literal, SafeEvalError
 logger = logging.getLogger(__name__)
 
 
-def _parse_array(raw, fallback):
-    """Parse a table parameter (string literal or array) into a float ndarray."""
-    if isinstance(raw, str):
-        try:
-            return np.asarray(safe_literal(raw), dtype=float)
-        except (SafeEvalError, ValueError, TypeError):
-            return np.asarray(fallback, dtype=float)
-    return np.asarray(raw, dtype=float)
+def _parse_array(raw, name):
+    """Parse a table parameter (string literal or array) into a float ndarray.
+
+    Raises:
+        ValueError: if the parameter cannot be parsed as a numeric list. It used
+            to fall back to a hard-coded default table, which silently replaced
+            the user's curve with a straight line and falsified the run; the
+            caller turns this into an ``{'E': True, 'error': ...}`` result.
+    """
+    if raw is None:
+        raise ValueError(f"{name} is not set")
+    try:
+        value = safe_literal(raw) if isinstance(raw, str) else raw
+        return np.asarray(value, dtype=float)
+    except (SafeEvalError, ValueError, TypeError) as exc:
+        logger.warning("Lookup table parameter %s could not be parsed from %r: %s", name, raw, exc)
+        raise ValueError(f"{name}: cannot parse {raw!r} as a numeric list ({exc})") from exc
+
+
+def _table_key(*arrays):
+    """Hashable fingerprint of the parsed table arrays, for the interpolator cache."""
+    return tuple((a.shape, a.tobytes()) for a in arrays)
 
 
 class LookupTable1DBlock(BaseBlock):
@@ -114,10 +128,8 @@ class LookupTable1DBlock(BaseBlock):
             from scipy.interpolate import interp1d
 
             x_in = np.atleast_1d(inputs.get(0, 0.0)).astype(float)
-            xv = _parse_array(params.get("x_values"), [0.0, 1.0])
-            yv = _parse_array(params.get("y_values"), [0.0, 1.0])
-            xv = xv.flatten()
-            yv = yv.flatten()
+            xv = _parse_array(params.get("x_values"), "x_values").flatten()
+            yv = _parse_array(params.get("y_values"), "y_values").flatten()
 
             if xv.size != yv.size:
                 return {
@@ -137,8 +149,20 @@ class LookupTable1DBlock(BaseBlock):
 
             kind = params.get("interpolation", "linear")
             extrap = params.get("extrapolation", "clip")
-            fill = "extrapolate" if extrap == "linear" else (yv[0], yv[-1])
-            f = interp1d(xv, yv, kind=kind, bounds_error=False, fill_value=fill, assume_sorted=True)
+
+            # Cache the interpolator: building it is far more expensive than
+            # evaluating it, and the table is constant for the whole run in all
+            # but the (rare) workspace-variable case. The key covers the table
+            # contents and both mode strings, so an edited table rebuilds it.
+            cache_key = (_table_key(xv, yv), kind, extrap)
+            f = params.get("_interp1d_") if params.get("_interp1d_key_") == cache_key else None
+            if f is None:
+                fill = "extrapolate" if extrap == "linear" else (yv[0], yv[-1])
+                f = interp1d(
+                    xv, yv, kind=kind, bounds_error=False, fill_value=fill, assume_sorted=True
+                )
+                params["_interp1d_"] = f
+                params["_interp1d_key_"] = cache_key
             # interp1d on a 1-D input returns a 1-D array (scalar in -> size-1).
             return {0: np.asarray(f(x_in), dtype=float)}
         except (ValueError, TypeError) as exc:
@@ -233,9 +257,9 @@ class LookupTable2DBlock(BaseBlock):
         try:
             from scipy.interpolate import RegularGridInterpolator
 
-            xv = _parse_array(params.get("x_values"), [0.0, 1.0]).flatten()
-            yv = _parse_array(params.get("y_values"), [0.0, 1.0]).flatten()
-            Z = _parse_array(params.get("z_table"), [[0.0, 0.0], [0.0, 0.0]])
+            xv = _parse_array(params.get("x_values"), "x_values").flatten()
+            yv = _parse_array(params.get("y_values"), "y_values").flatten()
+            Z = _parse_array(params.get("z_table"), "z_table")
 
             if xv.size < 2 or yv.size < 2:
                 return {"E": True, "error": "Each axis needs at least 2 breakpoints"}
@@ -258,10 +282,18 @@ class LookupTable2DBlock(BaseBlock):
 
             method = params.get("interpolation", "linear")
             extrap = params.get("extrapolation", "clip")
-            fill_value = None if extrap == "linear" else np.nan
-            rgi = RegularGridInterpolator(
-                (xv, yv), Z, method=method, bounds_error=False, fill_value=fill_value
-            )
+
+            # Cache the interpolator (see LookupTable1D): rebuilding it on every
+            # time step dominates the cost of a table lookup.
+            cache_key = (_table_key(xv, yv, Z), method, extrap)
+            rgi = params.get("_rgi_") if params.get("_rgi_key_") == cache_key else None
+            if rgi is None:
+                fill_value = None if extrap == "linear" else np.nan
+                rgi = RegularGridInterpolator(
+                    (xv, yv), Z, method=method, bounds_error=False, fill_value=fill_value
+                )
+                params["_rgi_"] = rgi
+                params["_rgi_key_"] = cache_key
 
             x_in = np.atleast_1d(inputs.get(0, 0.0)).astype(float)
             y_in = np.atleast_1d(inputs.get(1, 0.0)).astype(float)

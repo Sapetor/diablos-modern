@@ -8,6 +8,7 @@ Computes the norm of a vector for convergence checking.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class ResidualNormBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            F = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
+            F = get_vector(inputs, 0).astype(float)
             norm_type = params.get("norm_type", "2")
 
             if norm_type == "1":

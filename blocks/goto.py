@@ -1,7 +1,7 @@
-from blocks.base_block import BaseBlock
+from blocks.tag_base import TagRoutingBlock
 
 
-class GotoBlock(BaseBlock):
+class GotoBlock(TagRoutingBlock):
     """
     Tag-based signal jumper (sends signal to matching From with same tag).
     """
@@ -15,14 +15,6 @@ class GotoBlock(BaseBlock):
         return "goto_block"
 
     @property
-    def category(self):
-        return "Routing"
-
-    @property
-    def color(self):
-        return "orange"
-
-    @property
     def doc(self):
         return (
             "Goto Tag."
@@ -34,31 +26,9 @@ class GotoBlock(BaseBlock):
         )
 
     @property
-    def params(self):
-        return {
-            "tag": {"type": "string", "default": "A", "doc": "Tag name to link Goto/From."},
-            "signal_name": {
-                "type": "string",
-                "default": "",
-                "doc": "Optional label; defaults to tag when empty.",
-            },
-        }
-
-    @property
     def inputs(self):
         return [{"name": "in", "type": "any"}]
 
     @property
     def outputs(self):
         return []
-
-    @property
-    def shape(self):
-        return "tag"
-
-    def draw_icon(self, block_rect):
-        """Goto uses tag text rendering - handled in DBlock switch."""
-        return None
-
-    def execute(self, time, inputs, params, **kwargs):
-        return {0: inputs.get(0, 0)}

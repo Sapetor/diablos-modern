@@ -126,25 +126,12 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
             params["_n_inputs_"] = 1
             params["_n_outputs_"] = 1
 
-        # Get input (SISO block, scalar input)
-        u = 0.0
-        if not output_only:
-            u = inputs.get(0, 0.0)
+        # Read the input, form y = Cx + Du, then advance the state. This block
+        # is SISO: a vector input used to reach .item() and raise, but the
+        # shared step routes it through the same input check as StateSpace and
+        # so yields a clear error dict instead.
+        y_val, err = self._step(inputs, params, output_only)
+        if err is not None:
+            return err
 
-        # Compute output: y = Cx + Du
-        x = params["_x_"]
-        try:
-            y = params["_Cd_"] @ x + params["_Dd_"] * u
-        except ValueError as e:
-            logger.error(f"Error in transfer function: {e}")
-            return {"E": True, "error": f"Matrix multiplication error: {e}"}
-
-        # Update state: x[k+1] = Ax + Bu
-        if not output_only:
-            try:
-                params["_x_"] = params["_Ad_"] @ x + params["_Bd_"] * u
-            except ValueError as e:
-                logger.error(f"Error in transfer function state update: {e}")
-                return {"E": True, "error": f"State update error: {e}"}
-
-        return {0: y.item(), "E": False}
+        return {0: y_val, "E": False}

@@ -8,6 +8,7 @@ Combines momentum with RMSprop for robust optimization.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ class AdamBlock(BaseBlock):
                 held = params.get("_last_update_", np.array([0.0]))
                 return {0: np.atleast_1d(held), "E": False}
 
-            grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
+            grad = get_vector(inputs, 0).astype(float)
             alpha = float(params.get("alpha", 0.001))
             beta1 = float(params.get("beta1", 0.9))
             beta2 = float(params.get("beta2", 0.999))

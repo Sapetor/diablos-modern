@@ -1,7 +1,7 @@
-from blocks.base_block import BaseBlock
+from blocks.analysis_marker_base import AnalysisMarkerBlock
 
 
-class LQRBlock(BaseBlock):
+class LQRBlock(AnalysisMarkerBlock):
     """LQR design block — computes optimal state-feedback gain K.
 
     This is an analysis/design tool, not a simulation block.
@@ -18,10 +18,6 @@ class LQRBlock(BaseBlock):
     @property
     def category(self):
         return "Control"
-
-    @property
-    def color(self):
-        return "purple"
 
     @property
     def doc(self):
@@ -72,22 +68,16 @@ class LQRBlock(BaseBlock):
         return [0]
 
     @property
-    def outputs(self):
-        return []
-
-    @property
     def requires_inputs(self):
+        # A/B can be typed in by hand instead of read off a connected plant.
         return False
 
     @property
     def requires_outputs(self):
         return False
 
-    def draw_icon(self, block_rect):
+    def _trace_icon(self, path):
         """Draw a state-feedback loop: plant box closed through a K gain."""
-        from PyQt5.QtGui import QPainterPath
-
-        path = QPainterPath()
         # Plant block
         path.moveTo(0.38, 0.10)
         path.lineTo(0.74, 0.10)
@@ -112,8 +102,3 @@ class LQRBlock(BaseBlock):
         path.moveTo(0.34, 0.80)
         path.lineTo(0.10, 0.80)
         path.lineTo(0.10, 0.27)
-        return path
-
-    def execute(self, time, inputs, params, **kwargs):
-        # Design tool only — no simulation output
-        return {}

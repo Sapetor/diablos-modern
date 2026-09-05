@@ -1,10 +1,9 @@
-import bisect
 import numpy as np
 from collections import deque
-from blocks.base_block import BaseBlock
+from blocks.delay_base import DelayBufferBlock
 
 
-class TransportDelayBlock(BaseBlock):
+class TransportDelayBlock(DelayBufferBlock):
     """
     Continuous-time transport delay: e^(-τs)
     Delays the input signal by a specified time duration (in seconds).
@@ -140,28 +139,3 @@ class TransportDelayBlock(BaseBlock):
         params["_value_buffer_"] = value_buffer
 
         return {0: output}
-
-    def _interpolate(self, time_buffer, value_buffer, target_time, initial_value):
-        """Linear interpolation to get value at target_time."""
-        # If target time is before first recorded sample
-        if target_time <= time_buffer[0]:
-            return np.atleast_1d(initial_value)
-
-        # If target time is after last recorded sample (shouldn't happen normally)
-        if target_time >= time_buffer[-1]:
-            return value_buffer[-1].copy()
-
-        # Find bracketing indices using binary search (O(log n))
-        i = bisect.bisect_right(time_buffer, target_time) - 1
-        i = max(0, min(i, len(time_buffer) - 2))
-
-        t0 = time_buffer[i]
-        t1 = time_buffer[i + 1]
-
-        if t1 - t0 == 0:
-            return value_buffer[i].copy()
-
-        alpha = (target_time - t0) / (t1 - t0)
-        v0 = value_buffer[i]
-        v1 = value_buffer[i + 1]
-        return (1.0 - alpha) * v0 + alpha * v1

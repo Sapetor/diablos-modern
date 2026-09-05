@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import advance_sample_time, sample_due
 
 
 class RandomSourceBlock(BaseBlock):
@@ -171,14 +172,10 @@ class RandomSourceBlock(BaseBlock):
 
         # Sample instant? (advance schedule, draw once per grid point).
         # Force a draw on the very first call so the output is never None.
-        if params["_held_"] is None or time >= params["_next_sample_time_"] - 1e-12:
+        if params["_held_"] is None or sample_due(time, params["_next_sample_time_"]):
             params["_held_"] = float(self._draw(params))
 
-            if step > 0.0:
-                while params["_next_sample_time_"] <= time + 1e-12:
-                    params["_next_sample_time_"] += step
-            else:
-                # No step info: sample on every call.
-                params["_next_sample_time_"] = time
+            # (a non-positive step means "no schedule": sample every call)
+            advance_sample_time(params, "_next_sample_time_", time, step)
 
         return {0: np.atleast_1d(params["_held_"])}

@@ -1,10 +1,10 @@
-import bisect
 import numpy as np
 from collections import deque
-from blocks.base_block import BaseBlock
+from blocks.delay_base import DelayBufferBlock
+from blocks.input_helpers import get_scalar
 
 
-class VariableTransportDelayBlock(BaseBlock):
+class VariableTransportDelayBlock(DelayBufferBlock):
     """
     Variable (input-driven) transport delay.
 
@@ -17,6 +17,11 @@ class VariableTransportDelayBlock(BaseBlock):
     linear interpolation of a (time, value) history buffer for sub-sample
     accuracy.
     """
+
+    # The buffer is seeded at t0, so buffer[0] == buffer[-1] on the first step;
+    # a tau of 0 must still read as a passthrough there, not as "before the
+    # start of history".
+    _HOLD_LAST_ON_TIE = True
 
     @property
     def block_name(self):
@@ -134,9 +139,7 @@ class VariableTransportDelayBlock(BaseBlock):
 
         # Read the requested delay from port 1 (default 0 if not connected),
         # then clamp to the implicit [0, max_delay] window.
-        tau_raw = inputs.get(1, 0.0)
-        tau = float(np.atleast_1d(tau_raw)[0])
-        tau = min(max(tau, 0.0), max_delay)
+        tau = min(max(get_scalar(inputs, 1, 0.0), 0.0), max_delay)
         target_time = float(time) - tau
 
         # Output-only path (init / no signal input): hold without recording a
@@ -163,33 +166,3 @@ class VariableTransportDelayBlock(BaseBlock):
         params["_value_buffer_"] = value_buffer
 
         return {0: output}
-
-    def _interpolate(self, time_buffer, value_buffer, target_time, initial_value):
-        """Linear interpolation of the buffer at target_time."""
-        if len(time_buffer) == 0:
-            return np.atleast_1d(initial_value)
-
-        # Request at/after the most recent sample (tau == 0 -> passthrough).
-        # Checked before the earliest-sample branch so passthrough wins at the
-        # seeded buffer start (where buffer[0] and buffer[-1] share a timestamp).
-        if target_time >= time_buffer[-1]:
-            return value_buffer[-1].copy()
-
-        # Request precedes the start of recorded history.
-        if target_time <= time_buffer[0]:
-            return np.atleast_1d(initial_value)
-
-        # Find bracketing indices via binary search (O(log n)).
-        i = bisect.bisect_right(time_buffer, target_time) - 1
-        i = max(0, min(i, len(time_buffer) - 2))
-
-        t0 = time_buffer[i]
-        t1 = time_buffer[i + 1]
-
-        if t1 - t0 == 0:
-            return value_buffer[i].copy()
-
-        alpha = (target_time - t0) / (t1 - t0)
-        v0 = value_buffer[i]
-        v1 = value_buffer[i + 1]
-        return (1.0 - alpha) * v0 + alpha * v1

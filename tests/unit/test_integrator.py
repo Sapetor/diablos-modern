@@ -228,3 +228,144 @@ class TestIntegratorBlock:
         assert val_after_output_only == val_after_init, (
             "output_only should not change internal state"
         )
+
+
+@pytest.mark.unit
+class TestIntegratorMethodNames:
+    """The fixed-step 4-stage strategy is called "RK4", not "RK45".
+
+    It is classical Runge-Kutta, not scipy's adaptive RK4(5), and it shipped
+    mislabelled for years -- so "RK45" survives as a *legacy alias* that saved
+    .diablos files still hold. Both spellings must select the same path, in the
+    block and in ``SimulationEngine.count_rk45_integrators`` (which enables the
+    interpreter's four sub-steps by string-matching the resolved name).
+    """
+
+    def test_option_list_offers_the_corrected_spelling(self):
+        from blocks.integrator import INTEGRATOR_METHODS
+
+        assert "RK4" in INTEGRATOR_METHODS
+        assert "RK45" not in INTEGRATOR_METHODS
+
+    def test_legacy_rk45_resolves_to_the_rk4_strategy(self):
+        from blocks.integrator import resolve_method
+
+        assert resolve_method("RK45") == "RK4"
+        assert resolve_method("RK4") == "RK4"
+        assert resolve_method("FWD_EULER") == "FWD_EULER"
+
+    def test_every_offered_option_is_its_own_canonical_name(self):
+        """An option the dropdown offers must not itself be an alias, or the
+        saved value and the strategy actually run would drift apart."""
+        from blocks.integrator import INTEGRATOR_METHODS, METHOD_ALIASES, resolve_method
+
+        for option in INTEGRATOR_METHODS:
+            assert resolve_method(option) == option
+
+        # Every alias must land on something execute() actually implements.
+        for legacy, canonical in METHOD_ALIASES.items():
+            assert legacy not in INTEGRATOR_METHODS
+            assert canonical in INTEGRATOR_METHODS
+
+    def test_rk4_takes_the_four_stage_path(self):
+        """ "RK4" must set up the sub-step state for the four-stage schedule."""
+        from blocks.integrator import IntegratorBlock
+
+        block = IntegratorBlock()
+        params = {"init_conds": 0.0, "method": "RK4", "_init_start_": True, "_name_": "I"}
+
+        result = block.execute(0.0, {0: np.array([1.0])}, params, dtime=0.1)
+
+        assert params["nb_loop"] == 1  # stage 1 of 4, not a completed step
+        assert 0 not in result  # stages 0-2 publish nothing
+        assert np.isclose(params["aux"][0], 0.05)  # x_n + K1/2
+
+    def test_rk4_and_legacy_rk45_produce_identical_state_over_a_full_cycle(self):
+        from blocks.integrator import IntegratorBlock
+
+        def run(method):
+            block = IntegratorBlock()
+            params = {"init_conds": 0.0, "method": method, "_init_start_": True, "_name_": "I"}
+            for _ in range(4):
+                block.execute(0.0, {0: np.array([1.0])}, params, dtime=0.1)
+            return float(params["mem"][0])
+
+        assert np.isclose(run("RK4"), run("RK45"))
+
+    def test_legacy_rk45_completes_a_step_after_four_stages(self):
+        """A diagram saved before the rename still runs the full RK4 cycle."""
+        from blocks.integrator import IntegratorBlock
+
+        block = IntegratorBlock()
+        params = {"init_conds": 0.0, "method": "RK45", "_init_start_": True, "_name_": "I"}
+
+        for _ in range(4):
+            result = block.execute(0.0, {0: np.array([1.0])}, params, dtime=0.1)
+
+        # RK4 on dy/dt = 1 over h = 0.1: (K1 + 2K2 + 2K3 + K4)/6 = h.
+        assert np.isclose(result[0][0], 0.1)
+        assert params["nb_loop"] == 0
+
+    def test_unknown_method_returns_an_error_dict(self):
+        from blocks.integrator import IntegratorBlock
+
+        block = IntegratorBlock()
+        params = {"init_conds": 0.0, "method": "MAGIC", "_init_start_": True, "_name_": "I"}
+
+        result = block.execute(0.0, {0: np.array([1.0])}, params, dtime=0.1)
+
+        assert result.get("E") is True
+        assert "MAGIC" in result["error"]
+
+
+@pytest.mark.unit
+class TestIntegratorEulerVariants:
+    """Pin what BWD_EULER actually computes.
+
+    It is NOT implicit (backward) Euler: a plain integrator cannot form
+    ``y[k+1] = y[k] + h*u[k+1]`` on the interpreted path, because ``u`` at the new
+    time is produced by the rest of the diagram from the new state -- only the
+    compiled solver solves the whole system simultaneously. What the block does
+    is explicit Euler on the *previous* input sample, i.e. one extra step of lag.
+    The block doc says so; these tests keep the doc honest.
+    """
+
+    @staticmethod
+    def _run(method, inputs, dtime=0.1):
+        from blocks.integrator import IntegratorBlock
+
+        block = IntegratorBlock()
+        params = {"init_conds": 0.0, "method": method, "_init_start_": True, "_name_": "I"}
+        out = []
+        for k, u in enumerate(inputs):
+            out.append(
+                float(block.execute(k * dtime, {0: np.array([u])}, params, dtime=dtime)[0][0])
+            )
+        return out
+
+    def test_fwd_euler_uses_the_current_input_sample(self):
+        u = [1.0, 2.0, 3.0]
+        assert self._run("FWD_EULER", u) == pytest.approx([0.1, 0.3, 0.6])
+
+    def test_bwd_euler_uses_the_previous_input_sample(self):
+        u = [1.0, 2.0, 3.0]
+        # y[k+1] = y[k] + h*u[k-1], with u[-1] taken as 0 by the seeded mem_list.
+        assert self._run("BWD_EULER", u) == pytest.approx([0.0, 0.1, 0.3])
+
+    def test_bwd_euler_is_not_implicit_euler(self):
+        """Implicit Euler on dy/dt = u would give h*(u[0]+...+u[k])."""
+        u = [1.0, 2.0, 3.0]
+        implicit = [0.1, 0.3, 0.6]
+        assert self._run("BWD_EULER", u) != pytest.approx(implicit)
+
+    def test_tustin_is_the_trapezoidal_rule(self):
+        u = [1.0, 2.0, 3.0]
+        # 0.5*h*(u[k] + u[k-1]) accumulated, with u[-1] = 0.
+        assert self._run("TUSTIN", u) == pytest.approx([0.05, 0.2, 0.45])
+
+    def test_the_documented_behaviour_is_stated_in_the_block_doc(self):
+        from blocks.integrator import IntegratorBlock
+
+        doc = IntegratorBlock().doc
+        assert "NOT" in doc and "implicit Euler" in doc
+        assert "u[k-1]" in doc

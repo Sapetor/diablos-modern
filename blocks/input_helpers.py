@@ -322,3 +322,63 @@ def clip_to_limits(
     lower = params.get(min_key, -np.inf)
     upper = params.get(max_key, np.inf)
     return np.clip(value, lower, upper)
+
+
+# --- Sample-time gating -----------------------------------------------------
+#
+# Discrete-rate blocks (ZeroOrderHold, FirstOrderHold, RateTransition,
+# PacketLoss, NetworkChannel, RandomSource, ...) all decide "is this a sample
+# instant?" by comparing the solver time against a scheduled next-sample time,
+# with a small tolerance so that floating-point drift in the accumulated
+# schedule never makes a block skip a grid point.  The tolerance used to be
+# copy-pasted per block with two different values (1e-9 and 1e-12); it now
+# lives here so there is exactly one epsilon.
+
+SAMPLE_TIME_EPS = 1e-9
+"""Tolerance (seconds) for sample-instant comparisons; see :func:`sample_due`."""
+
+
+def sample_due(time: float, next_sample_time: float, eps: float = SAMPLE_TIME_EPS) -> bool:
+    """Return True when ``time`` has reached the scheduled ``next_sample_time``.
+
+    Args:
+        time: Current simulation time.
+        next_sample_time: Scheduled sample instant.
+        eps: Comparison tolerance (defaults to :data:`SAMPLE_TIME_EPS`).
+    """
+    return time >= next_sample_time - eps
+
+
+def advance_sample_time(
+    params: Dict[str, Any],
+    key: str,
+    time: float,
+    sampling_time: float,
+    eps: float = SAMPLE_TIME_EPS,
+) -> float:
+    """Advance ``params[key]`` past ``time`` in whole ``sampling_time`` steps.
+
+    A non-positive (or non-finite) ``sampling_time`` would make the naive
+    ``while next <= time: next += step`` loop spin forever, so it is treated as
+    "no schedule": the block samples on every call.
+
+    Args:
+        params: Block parameter dict holding the schedule.
+        key: Parameter name of the scheduled next-sample time.
+        time: Current simulation time.
+        sampling_time: Sample period; <= 0 (or NaN/inf) means "every call".
+        eps: Comparison tolerance (defaults to :data:`SAMPLE_TIME_EPS`).
+
+    Returns:
+        The new scheduled next-sample time.
+    """
+    step = float(sampling_time) if sampling_time is not None else 0.0
+    if not np.isfinite(step) or step <= 0.0:
+        params[key] = float(time)
+        return params[key]
+
+    next_time = float(params.get(key, time))
+    while next_time <= time + eps:
+        next_time += step
+    params[key] = next_time
+    return next_time

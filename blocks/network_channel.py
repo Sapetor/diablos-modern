@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import SAMPLE_TIME_EPS, advance_sample_time, sample_due
 
 
 class NetworkChannelBlock(BaseBlock):
@@ -170,7 +171,7 @@ class NetworkChannelBlock(BaseBlock):
         buffer = params["_buffer_"]
 
         # ---- Sample instant: maybe enqueue a new packet -------------------
-        if time >= params["_next_sample_time_"] - 1e-12:
+        if sample_due(time, params["_next_sample_time_"]):
             u = params["_rng"].random()
             if u >= loss_prob:
                 # DELIVERED -> draw a per-packet latency and enqueue.
@@ -187,18 +188,14 @@ class NetworkChannelBlock(BaseBlock):
             # (dropped packets are simply never enqueued)
 
             # Advance the sample schedule past the current time.
-            if step > 0.0:
-                while params["_next_sample_time_"] <= time + 1e-12:
-                    params["_next_sample_time_"] += step
-            else:
-                # No step info: sample on every call.
-                params["_next_sample_time_"] = time
+            # (a non-positive step means "no schedule": sample every call)
+            advance_sample_time(params, "_next_sample_time_", time, step)
 
         # ---- Deliver: take the most-recent packet whose time has passed ---
         # Buffer is sorted by delivery_time; consume everything that is due.
         keep_from = 0
         for dtime_pkt, value in buffer:
-            if dtime_pkt <= time + 1e-12:
+            if dtime_pkt <= time + SAMPLE_TIME_EPS:
                 params["_held_"] = value
                 params["_delivered_any_"] = True
                 keep_from += 1

@@ -8,6 +8,7 @@ Maintains velocity state internally for acceleration.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class MomentumBlock(BaseBlock):
                 held = params.get("_last_update_", np.array([0.0]))
                 return {0: np.atleast_1d(held), "E": False}
 
-            grad = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
+            grad = get_vector(inputs, 0).astype(float)
             alpha = float(params.get("alpha", 0.01))
             beta = float(params.get("beta", 0.9))
 

@@ -6,6 +6,7 @@ Handles both upsampling (slow→fast) and downsampling (fast→slow).
 """
 
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import advance_sample_time, sample_due
 import numpy as np
 import logging
 
@@ -198,7 +199,7 @@ class RateTransitionBlock(BaseBlock):
                     params["_linear_last_input_"] = val
 
         # Check if it's time to produce output
-        at_output_time = time >= params["_next_output_time_"] - 1e-9
+        at_output_time = sample_due(time, params["_next_output_time_"])
 
         if not output_only and mode == "Average":
             # Store sample in buffer for averaging (only Average mode consumes it)
@@ -228,8 +229,7 @@ class RateTransitionBlock(BaseBlock):
 
             # Schedule next output time
             if at_output_time and not output_only:
-                while params["_next_output_time_"] <= time + 1e-9:
-                    params["_next_output_time_"] += output_sample_time
+                advance_sample_time(params, "_next_output_time_", time, output_sample_time)
 
             return {0: output_val, "E": False}
 
@@ -272,8 +272,7 @@ class RateTransitionBlock(BaseBlock):
                 params["_prev_value_"] = val
                 params["_prev_time_"] = time
 
-                while params["_next_output_time_"] <= time + 1e-9:
-                    params["_next_output_time_"] += output_sample_time
+                advance_sample_time(params, "_next_output_time_", time, output_sample_time)
 
             return {0: params["_held_value_"], "E": False}
 

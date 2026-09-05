@@ -1,6 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.input_helpers import get_vector
+from blocks.input_helpers import advance_sample_time, get_vector, safe_float, sample_due
 
 
 class ZeroOrderHoldBlock(BaseBlock):
@@ -79,15 +79,25 @@ class ZeroOrderHoldBlock(BaseBlock):
         held_val = np.atleast_1d(params.get("_held_value_", 0.0))
 
         # Check if it's time to sample
-        sampling_time = params.get("sampling_time", 0.1)
-        if time >= params["_next_sample_time_"] - 1e-9:
+        sampling_time = safe_float(params.get("sampling_time", 0.1), 0.1)
+
+        # A non-positive sample period has no valid sample grid; the schedule
+        # loop below would spin forever trying to step past `time`.  Degrade to
+        # a pass-through (sample on every call) instead of hanging the app.
+        if not np.isfinite(sampling_time) or sampling_time <= 0.0:
+            if output_only:
+                return {0: held_val}
+            params["_held_value_"] = get_vector(inputs, 0)
+            params["_next_sample_time_"] = float(time)
+            return {0: np.atleast_1d(params["_held_value_"])}
+
+        if sample_due(time, params["_next_sample_time_"]):
             if not output_only:
                 # Update held value
                 params["_held_value_"] = get_vector(inputs, 0)
 
                 # Schedule next sample
-                while params["_next_sample_time_"] <= time + 1e-9:
-                    params["_next_sample_time_"] += sampling_time
+                advance_sample_time(params, "_next_sample_time_", time, sampling_time)
 
             return {0: np.atleast_1d(params["_held_value_"])}
 

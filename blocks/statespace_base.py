@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import advance_sample_time, sample_due
 import numpy as np
 import logging
 
@@ -209,3 +210,64 @@ class StateSpaceBaseBlock(BaseBlock):
         if y.size == 1:
             return y.item()
         return y.flatten()
+
+    def _step(self, inputs, params, output_only=False):
+        """Run one sample of a discretized A/B/C/D block.
+
+        Every block in this family (TranFn, StateSpace, DiscreteTranFn,
+        DiscreteStateSpace) performs the same three operations once the
+        ``_Ad_``/``_Bd_``/``_Cd_``/``_Dd_`` matrices and the ``_x_`` state have
+        been stashed in ``params`` by the block's own initialization:
+
+            u <- input port 0, checked against ``_n_inputs_``
+            y  = Cd x + Dd u          (computed from the *pre-update* state)
+            x <- Ad x + Bd u          (skipped on the ``output_only`` path)
+
+        The state update deliberately runs after the output is formed, so a
+        feedthrough block reports y[k] for the state it had on entry.
+
+        Args:
+            inputs: Input dict from ``execute()``.
+            params: Block params holding the discrete matrices and ``_x_``.
+            output_only: True on the engine's peek path — read the output
+                without consuming an input or advancing the state.
+
+        Returns:
+            tuple: ``(y_value, None)`` on success, where ``y_value`` is already
+            formatted by :meth:`_format_output`; ``(None, error_dict)`` if any
+            stage failed.
+        """
+        u, err = self._process_input(inputs, params.get("_n_inputs_", 1), output_only)
+        if err is not None:
+            return None, err
+
+        x = params["_x_"]
+        y, err = self._compute_output(params["_Cd_"], params["_Dd_"], x, u)
+        if err is not None:
+            return None, err
+
+        y_value = self._format_output(y)
+
+        if not output_only:
+            err = self._update_state(params["_Ad_"], params["_Bd_"], x, u, params)
+            if err is not None:
+                return None, err
+
+        return y_value, None
+
+    def _sample_due(self, time, params):
+        """Whether this call lands on (or past) the block's next sample instant.
+
+        A non-positive ``sampling_time`` means "no rate": the block advances
+        one sample per solver step, so every call is due.
+        """
+        sampling_time = params.get("sampling_time", -1.0)
+        if sampling_time > 0:
+            return sample_due(time, params["_next_sample_time_"])
+        return True
+
+    def _schedule_next_sample(self, time, params):
+        """Advance ``_next_sample_time_`` past ``time`` in whole periods."""
+        sampling_time = params.get("sampling_time", -1.0)
+        if sampling_time > 0:
+            advance_sample_time(params, "_next_sample_time_", time, sampling_time)

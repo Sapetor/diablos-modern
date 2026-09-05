@@ -8,6 +8,7 @@ Used to build the finite difference structure for NumericalGradient.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,7 @@ class VectorPerturbBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            x = np.atleast_1d(inputs.get(0, [0.0])).copy().astype(float)
+            x = get_vector(inputs, 0).astype(float)
             index = int(params.get("index", 0))
             epsilon = float(params.get("epsilon", 1e-6))
 

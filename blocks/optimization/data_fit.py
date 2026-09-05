@@ -161,8 +161,14 @@ class DataFitBlock(BaseBlock):
                         from scipy.interpolate import UnivariateSpline
 
                         spline = UnivariateSpline(t_data, y_data, s=0)
-                    except Exception:
+                    except Exception as exc:
                         # Fall back to linear interpolation; sentinel avoids retrying.
+                        logger.warning(
+                            "DataFit '%s': spline interpolation unavailable (%s); "
+                            "falling back to linear interpolation.",
+                            params.get("_name_", "?"),
+                            exc,
+                        )
                         spline = np.interp
                     params["_spline_"] = spline
                 if spline is np.interp:

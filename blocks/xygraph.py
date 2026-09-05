@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_scalar
 
 
 class XYGraphBlock(BaseBlock):
@@ -85,8 +86,8 @@ class XYGraphBlock(BaseBlock):
             params["_init_start_"] = False
 
         # Get input values
-        x_val = float(np.atleast_1d(inputs.get(0, 0))[0])
-        y_val = float(np.atleast_1d(inputs.get(1, 0))[0])
+        x_val = get_scalar(inputs, 0, 0.0)
+        y_val = get_scalar(inputs, 1, 0.0)
 
         # Store data points
         params["_x_data_"].append(x_val)

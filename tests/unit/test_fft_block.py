@@ -240,3 +240,57 @@ class TestFFTBlock:
         # Should be the same list object
         assert first_buffer_id == second_buffer_id
         assert len(params["_fft_buffer_"]) == 2
+
+
+@pytest.mark.unit
+class TestFFTBufferReset:
+    """Regression: the sample buffers survived between simulation runs.
+
+    ``execute`` initialized them only ``if "_fft_buffer_" not in params`` and the
+    block declared no ``_init_start_``, so ``reset_memblocks()`` (which only
+    touches blocks that declare the flag) left the previous run's samples in
+    place and the second run's spectrum was computed over both runs concatenated.
+    """
+
+    def test_declares_the_init_flag_so_the_engine_can_re_arm_it(self):
+        from blocks.fft import FFTBlock
+
+        # reset_memblocks() only resets blocks that have "_init_start_" in params.
+        assert "_init_start_" in FFTBlock().params
+
+    def test_second_run_does_not_see_the_first_run_s_samples(self):
+        from blocks.fft import FFTBlock
+
+        block = FFTBlock()
+        params = {k: v["default"] for k, v in block.params.items()}
+
+        first_run = [1.0, 2.0, 3.0, 4.0]
+        for i, value in enumerate(first_run):
+            block.execute(i * 0.1, {0: np.array([value])}, params)
+        assert len(params["_fft_buffer_"]) == len(first_run)
+
+        # What the engine's reset_memblocks() does between runs.
+        params["_init_start_"] = True
+
+        second_run = [10.0, 20.0]
+        for i, value in enumerate(second_run):
+            block.execute(i * 0.1, {0: np.array([value])}, params)
+
+        assert len(params["_fft_buffer_"]) == len(second_run)
+        assert len(params["_fft_time_"]) == len(second_run)
+        recorded = [float(np.atleast_1d(v)[0]) for v in params["_fft_buffer_"]]
+        assert recorded == second_run
+        # The first run's times must be gone too, so fs is computed correctly.
+        assert params["_fft_time_"] == [0.0, 0.1]
+
+    def test_buffer_keeps_accumulating_while_the_flag_stays_cleared(self):
+        from blocks.fft import FFTBlock
+
+        block = FFTBlock()
+        params = {"_init_start_": True}
+
+        for i in range(5):
+            block.execute(i * 0.1, {0: np.array([float(i)])}, params)
+
+        assert params["_init_start_"] is False
+        assert len(params["_fft_buffer_"]) == 5

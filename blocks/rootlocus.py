@@ -1,21 +1,10 @@
-from blocks.base_block import BaseBlock
+from blocks.analysis_marker_base import AnalysisMarkerBlock
 
 
-class RootLocusBlock(BaseBlock):
-    def __init__(self):
-        super().__init__()
-
+class RootLocusBlock(AnalysisMarkerBlock):
     @property
     def block_name(self):
         return "RootLocus"
-
-    @property
-    def category(self):
-        return "Analysis"
-
-    @property
-    def color(self):
-        return "purple"
 
     @property
     def params(self):
@@ -34,42 +23,23 @@ class RootLocusBlock(BaseBlock):
             "\n- Shows pole trajectories and stability boundaries."
         )
 
-    @property
-    def inputs(self):
-        return [{"name": "in", "type": "any"}]
-
-    @property
-    def outputs(self):
-        return []
-
-    def draw_icon(self, block_rect):
-        from PyQt5.QtGui import QPainterPath
-
-        path = QPainterPath()
-
-        # Draw axes centered
+    def _trace_icon(self, path):
+        """Draw two locus branches leaving a pole marked with an 'x'."""
+        # Axes centered
         path.moveTo(0.5, 0.1)
-        path.lineTo(0.5, 0.9)  # Imag axis
+        path.lineTo(0.5, 0.9)  # Imaginary axis
         path.moveTo(0.1, 0.5)
         path.lineTo(0.9, 0.5)  # Real axis
 
-        # Draw some "branches"
+        # Branches
         path.moveTo(0.3, 0.5)  # Pole on left (stable)
         path.quadTo(0.3, 0.3, 0.5, 0.2)  # Branch going to zero/asymptote
 
         path.moveTo(0.3, 0.5)
         path.quadTo(0.3, 0.7, 0.5, 0.8)  # Mirror branch
 
-        # Draw 'x' for a pole at 0.3, 0.5
+        # 'x' for the pole at (0.3, 0.5)
         path.moveTo(0.28, 0.48)
         path.lineTo(0.32, 0.52)
         path.moveTo(0.32, 0.48)
         path.lineTo(0.28, 0.52)
-
-        return path
-
-    def execute(self, time, inputs, params, **kwargs):
-        # RootLocus doesn't process data during simulation
-        # It's used to generate static root locus plots via right-click menu
-        # Return empty output dict to avoid breaking simulation
-        return {}

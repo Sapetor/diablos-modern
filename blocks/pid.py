@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_scalar
 
 
 class PIDBlock(BaseBlock):
@@ -138,8 +139,8 @@ class PIDBlock(BaseBlock):
             return {0: np.atleast_1d(params.get("_last_output_", 0.0))}
 
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
-        sp = float(np.atleast_1d(inputs.get(0, 0.0))[0])
-        meas = float(np.atleast_1d(inputs.get(1, 0.0))[0])
+        sp = get_scalar(inputs, 0, 0.0)
+        meas = get_scalar(inputs, 1, 0.0)
         e = sp - meas
 
         first_call = bool(params.get("_init_start_", True))

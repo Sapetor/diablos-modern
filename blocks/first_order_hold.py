@@ -9,6 +9,7 @@ between a past and a future sample.
 """
 
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import advance_sample_time, safe_float, sample_due
 import numpy as np
 
 
@@ -115,7 +116,9 @@ class FirstOrderHoldBlock(BaseBlock):
             params["_value_prev_"] = val
             params["_value_curr_"] = val
 
-        sampling_time = float(params.get("input_sample_time", params.get("sampling_time", 0.1)))
+        sampling_time = safe_float(
+            params.get("input_sample_time", params.get("sampling_time", 0.1)), 0.1
+        )
         if sampling_time < 0:
             sampling_time = 0.1  # Default if continuous marker was used
 
@@ -126,8 +129,20 @@ class FirstOrderHoldBlock(BaseBlock):
         elif hasattr(val, "item"):
             val = val.item()
 
+        # A zero (or non-finite) sample period has no valid sample grid; the
+        # schedule loop below would spin forever trying to step past `time`.
+        # Degrade to a pass-through instead of hanging the app.
+        if not np.isfinite(sampling_time) or sampling_time <= 0.0:
+            if not output_only:
+                params["_value_prev_"] = val
+                params["_value_curr_"] = val
+                params["_sample_time_prev_"] = time
+                params["_sample_time_curr_"] = time
+                params["_next_sample_time_"] = float(time)
+            return {0: params["_value_curr_"], "E": False}
+
         # Check if it's time to take a new sample
-        if time >= params["_next_sample_time_"] - 1e-9:
+        if sample_due(time, params["_next_sample_time_"]):
             if not output_only:
                 # Shift samples: current becomes previous
                 params["_value_prev_"] = params["_value_curr_"]
@@ -138,8 +153,7 @@ class FirstOrderHoldBlock(BaseBlock):
                 params["_sample_time_curr_"] = time
 
                 # Schedule next sample
-                while params["_next_sample_time_"] <= time + 1e-9:
-                    params["_next_sample_time_"] += sampling_time
+                advance_sample_time(params, "_next_sample_time_", time, sampling_time)
 
         # First-Order Hold: Extrapolate forward from the last two samples
         # This produces a ramp between sample times based on the computed slope

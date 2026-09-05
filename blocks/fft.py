@@ -1,5 +1,7 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
+from blocks.param_templates import init_flag_param
 import matplotlib.pyplot as plt
 
 
@@ -49,6 +51,10 @@ class FFTBlock(BaseBlock):
             },
             "normalize": {"type": "bool", "default": True, "doc": "Normalize magnitude to 0-1."},
             "log_scale": {"type": "bool", "default": False, "doc": "Use dB scale for magnitude."},
+            # Declaring the init flag is what lets the engine's reset_memblocks()
+            # re-arm this block between runs (it only touches blocks that have
+            # "_init_start_" in their params).
+            **init_flag_param(),
         }
 
     @property
@@ -80,12 +86,16 @@ class FFTBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         # Get input signal value
-        u = np.atleast_1d(inputs.get(0, 0)).astype(float)
+        u = get_vector(inputs, 0).astype(float)
 
-        # Initialize buffer on first call
-        if "_fft_buffer_" not in params:
+        # (Re-)initialize the buffers on the first call of every run. Testing
+        # only for a missing "_fft_buffer_" key made the buffers survive
+        # reset_memblocks(), so a second run computed its spectrum over both
+        # runs' samples concatenated.
+        if params.get("_init_start_", True) or "_fft_buffer_" not in params:
             params["_fft_buffer_"] = []
             params["_fft_time_"] = []
+            params["_init_start_"] = False
 
         # Store signal value. Always append the full 1-D array so np.array(buffer)
         # yields a regular array (avoids a ragged object array if the input width

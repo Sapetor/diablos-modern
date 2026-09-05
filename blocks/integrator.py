@@ -7,8 +7,30 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Integration method choices
-INTEGRATOR_METHODS = ["FWD_EULER", "BWD_EULER", "TUSTIN", "RK45", "SOLVE_IVP"]
+# Integration method choices.
+#
+# NOTE ON THE "RK4" LABEL: this strategy is a *fixed-step* classical 4-stage
+# Runge-Kutta scheme, and that is what it is now called. It shipped for years
+# mislabelled "RK45" -- scipy's adaptive Runge-Kutta 4(5), which it is not --
+# so every diagram saved before the rename stores that spelling. "RK45" is
+# therefore kept as a legacy alias: `resolve_method` maps it onto "RK4", which
+# is the only name execute() (and the interpreter's four-sub-step gate in
+# SimulationEngine.count_rk45_integrators) matches against.
+INTEGRATOR_METHODS = ["FWD_EULER", "BWD_EULER", "TUSTIN", "RK4", "SOLVE_IVP"]
+
+# Legacy spellings -> the canonical strategy name used by execute().
+METHOD_ALIASES = {"RK45": "RK4"}
+
+
+def resolve_method(method):
+    """Map a stored ``method`` string onto the canonical strategy name.
+
+    Saved diagrams predating the rename hold "RK45" for what is really
+    fixed-step RK4; both spellings resolve to "RK4".
+    """
+    name = str(method)
+    return METHOD_ALIASES.get(name, name)
+
 
 # scipy.integrate.solve_ivp ODE methods exposed for the SOLVE_IVP strategy.
 # "RK45" matches scipy's own default, so the default behaviour is unchanged.
@@ -63,9 +85,14 @@ class IntegratorBlock(BaseBlock):
                 default="SOLVE_IVP",
                 doc=(
                     "Integration method, applied by the interpreted solver only. "
-                    "The compiled (fast) solver assembles the whole diagram into one "
-                    "ODE system and integrates it with the solver method set in "
-                    "Simulation settings, which offers Euler and RK4 as well."
+                    "FWD_EULER: explicit Euler. BWD_EULER: explicit Euler on the "
+                    "previous input sample (see the block doc -- it is NOT implicit "
+                    "Euler). TUSTIN: trapezoidal. RK4: fixed-step classical 4-stage "
+                    'Runge-Kutta; "RK45" is accepted as a legacy alias for it in '
+                    "diagrams saved before the rename. SOLVE_IVP: hands the step to "
+                    "scipy. The compiled (fast) solver assembles the whole diagram "
+                    "into one ODE system and integrates it with the solver method set "
+                    "in Simulation settings, which offers Euler and RK4 as well."
                 ),
             ),
             **method_param(
@@ -91,9 +118,25 @@ class IntegratorBlock(BaseBlock):
             "\n\nParameters:"
             "\n- Initial Condition: Value of the output at start time."
             "\n- Limit Output: Enable saturation limits on the integral."
-            "\n- Method: Integration method (e.g., RK45, Forward Euler), used by the"
-            "\n  interpreted solver only; the compiled solver integrates the whole"
-            "\n  diagram with the method from Simulation settings."
+            "\n- Method: Integration method, used by the interpreted solver only;"
+            "\n  the compiled solver integrates the whole diagram with the method"
+            "\n  from Simulation settings."
+            "\n\nMethods (interpreted solver):"
+            "\n- FWD_EULER: y[k+1] = y[k] + h*u[k]  (explicit Euler)."
+            "\n- BWD_EULER: y[k+1] = y[k] + h*u[k-1]. Despite the name this is NOT"
+            "\n  implicit Euler: a plain integrator cannot form y[k+1] = y[k] +"
+            "\n  h*u[k+1], because u at the new time is produced by the rest of the"
+            "\n  diagram from the new state, so the implicit step would have to be"
+            "\n  solved across the whole diagram at once. It is explicit Euler on the"
+            "\n  previous input sample, i.e. first order with one extra step of lag."
+            "\n  For stiff systems use SOLVE_IVP (Radau/BDF/LSODA) or the compiled"
+            "\n  solver instead."
+            "\n- TUSTIN: y[k+1] = y[k] + (h/2)*(u[k] + u[k-1])  (trapezoidal)."
+            "\n- RK4: fixed-step classical 4-stage Runge-Kutta. It is not scipy's"
+            "\n  adaptive RK4(5); the historical label 'RK45' is still accepted for"
+            "\n  diagrams saved before the rename."
+            "\n- SOLVE_IVP: hands each step to scipy.integrate.solve_ivp using the"
+            "\n  method chosen in 'ivp_method'."
             "\n\nUsage:"
             "\nFundamental block for building dynamic system models."
         )
@@ -140,6 +183,9 @@ class IntegratorBlock(BaseBlock):
         """
         output_only = kwargs.get("output_only", False)
         dtime = kwargs.get("dtime", params.get("dtime", 0.01))
+        # Diagrams saved before the rename store "RK45" for what is really
+        # fixed-step RK4; accept both here so either name selects the same path.
+        method = resolve_method(params.get("method", "SOLVE_IVP"))
 
         # Initialization
         init_mgr = InitStateManager(params)
@@ -152,12 +198,12 @@ class IntegratorBlock(BaseBlock):
             init_mgr.mark_initialized()
             params["aux"] = np.zeros_like(params["mem"])
 
-            if params["method"] == "RK45":
+            if method == "RK4":
                 params["nb_loop"] = 0
                 params["RK45_Klist"] = [0, 0, 0, 0]
 
         if output_only:
-            if params.get("method") == "RK45" and params.get("nb_loop", 0) != 0:
+            if method == "RK4" and params.get("nb_loop", 0) != 0:
                 # Mid-cycle: publish the RK4 stage state (x_n + K1/2, then
                 # x_n + K2/2, then x_n + K3) so the rest of the diagram
                 # evaluates the derivative at the stage point.  Publishing the
@@ -185,13 +231,16 @@ class IntegratorBlock(BaseBlock):
                 return {"E": True, "error": f"Dimension mismatch in {params['_name_']}"}
 
         # Integration by method
-        if params["method"] == "FWD_EULER":
+        if method == "FWD_EULER":
             params["mem"] += params["dtime"] * inputs[0]
-        elif params["method"] == "BWD_EULER":
+        elif method == "BWD_EULER":
+            # Explicit Euler on the *previous* input sample, not implicit Euler --
+            # see the block doc for why a plain integrator cannot take an implicit
+            # step on the interpreted path.
             params["mem"] += params["dtime"] * params["mem_list"][-1]
-        elif params["method"] == "TUSTIN":
+        elif method == "TUSTIN":
             params["mem"] += 0.5 * params["dtime"] * (inputs[0] + params["mem_list"][-1])
-        elif params["method"] == "RK45":
+        elif method == "RK4":
             K_list = params["RK45_Klist"]
             K_list[params["nb_loop"]] = params["dtime"] * np.array(inputs[0], dtype=float)
             params["RK45_Klist"] = K_list
@@ -212,7 +261,7 @@ class IntegratorBlock(BaseBlock):
             elif params["nb_loop"] == 3:
                 params["nb_loop"] = 0
                 params["mem"] += (1 / 6) * (K1 + 2 * K2 + 2 * K3 + K4)
-        elif params["method"] == "SOLVE_IVP":
+        elif method == "SOLVE_IVP":
             mem_shape = params["mem"].shape
             y0 = np.atleast_1d(params["mem"]).flatten()
 
@@ -229,8 +278,8 @@ class IntegratorBlock(BaseBlock):
             params["mem"] = sol.y[:, -1].reshape(mem_shape)
             return {0: params["mem"], "E": False}
         else:
-            logger.error(f"Unknown integration method {params['method']} in {params['_name_']}")
-            return {"E": True, "error": f"Unknown method: {params['method']}"}
+            logger.error(f"Unknown integration method {method} in {params.get('_name_', '?')}")
+            return {"E": True, "error": f"Unknown method: {method}"}
 
         aux_list = params["mem_list"]
         aux_list.append(inputs[0])

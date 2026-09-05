@@ -1,9 +1,6 @@
 from blocks.statespace_base import StateSpaceBaseBlock
 import numpy as np
 from scipy import signal
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class DiscreteTransferFunctionBlock(StateSpaceBaseBlock):
@@ -90,44 +87,18 @@ class DiscreteTransferFunctionBlock(StateSpaceBaseBlock):
             params["_next_sample_time_"] = 0.0
             params["_held_output_"] = 0.0
 
-        # Check sampling time
-        sampling_time = params.get("sampling_time", -1.0)
-        should_update = True
-        if sampling_time > 0:
-            if time < params["_next_sample_time_"] - 1e-9:
-                should_update = False
-
-        if not should_update:
+        # Between sample instants the block holds its last output.
+        if not self._sample_due(time, params):
             return {0: params.get("_held_output_", 0.0), "E": False}
 
-        # Get input (SISO block, scalar input)
-        u = 0.0
-        if not output_only:
-            u = inputs.get(0, 0.0)
+        # Read the input, form y = Cx + Du, then advance the state.
+        y_val, err = self._step(inputs, params, output_only)
+        if err is not None:
+            return err
 
-        # Compute output: y = Cx + Du
-        x = params["_x_"]
-        try:
-            y = params["_Cd_"] @ x + params["_Dd_"] * u
-        except ValueError as e:
-            logger.error(f"Error in discrete transfer function: {e}")
-            return {"E": True, "error": f"Matrix multiplication error: {e}"}
-
-        # Store held output
-        y_val = y.item()
         params["_held_output_"] = y_val
 
-        # Update state: x[k+1] = Ax + Bu
         if not output_only:
-            try:
-                params["_x_"] = params["_Ad_"] @ x + params["_Bd_"] * u
-            except ValueError as e:
-                logger.error(f"Error in discrete transfer function state update: {e}")
-                return {"E": True, "error": f"State update error: {e}"}
-
-            # Schedule next sample
-            if sampling_time > 0:
-                while params["_next_sample_time_"] <= time + 1e-9:
-                    params["_next_sample_time_"] += sampling_time
+            self._schedule_next_sample(time, params)
 
         return {0: y_val, "E": False}

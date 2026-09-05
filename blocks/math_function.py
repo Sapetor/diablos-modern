@@ -127,13 +127,14 @@ Select the function via the block parameters."""
                     f"MathFunction '{params.get('_name_', '?')}' expression error "
                     f"in '{raw_func}': {e}"
                 )
-                return {"E": True, "error": f"MathFunction expression error: {e}"}
+                return {"E": True, "error": f"MathFunction expression error in '{raw_func}': {e}"}
 
         except Exception as e:
-            logger.warning(f"MathFunction '{params.get('_name_', '?')}': {e}")
-            # Preserve the input shape so downstream blocks are not corrupted by a
-            # bare scalar replacing a vector signal.
-            return {0: np.zeros_like(np.asarray(u, dtype=float))}
+            # Never substitute zeros here: a silent all-zero signal looks like a
+            # legitimate result and falsifies the whole run. Surface the failure
+            # so the engine stops and reports it.
+            logger.error(f"MathFunction '{params.get('_name_', '?')}' failed on '{func}': {e}")
+            return {"E": True, "error": f"MathFunction '{func}' error: {e}"}
 
     def draw_icon(self, block_rect):
         """MathFunction uses f(·) text rendering - handled in DBlock switch."""

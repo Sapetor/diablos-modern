@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_scalar
 
 
 class SwitchBlock(BaseBlock):
@@ -107,7 +108,7 @@ class SwitchBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        ctrl = float(np.atleast_1d(inputs.get(0, 0.0))[0])
+        ctrl = get_scalar(inputs, 0, 0.0)
         mode = params.get("mode", "threshold")
         n = max(2, int(params.get("n_inputs", 2)))
 

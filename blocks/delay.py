@@ -90,23 +90,30 @@ class DelayBlock(BaseBlock):
         delay_steps = max(1, int(params.get("delay_steps", 1)))
         initial_value = params.get("initial_value", 0.0)
 
-        # Initialize buffer on first call
-        if params.get("_init_start_", True):
-            params["_buffer_"] = [np.atleast_1d(initial_value)] * delay_steps
+        # Initialize buffer on first call.
+        # The buffer is a fixed-size ring: `_head_` indexes the oldest sample.
+        # It used to be a plain list shifted with `pop(0)` on every step, which
+        # is O(N) per step (and O(N*steps) per run) for no reason. A list plus an
+        # index (rather than a collections.deque) keeps the parameter a plain
+        # JSON-friendly type, matching the "_buffer_" list param declared above.
+        if params.get("_init_start_", True) or not params.get("_buffer_"):
+            params["_buffer_"] = [np.atleast_1d(initial_value) for _ in range(delay_steps)]
+            params["_head_"] = 0
             params["_init_start_"] = False
 
         buffer = params["_buffer_"]
+        head = int(params.get("_head_", 0)) % len(buffer)
 
         # For output_only mode (used in init), just return current buffer head
         if output_only:
-            return {0: buffer[0] if buffer else np.atleast_1d(initial_value)}
+            return {0: buffer[head]}
 
         current_input = np.atleast_1d(inputs.get(0, initial_value))
 
-        # Get oldest value (output) and add new input
-        output = buffer[0]
-        buffer.pop(0)
-        buffer.append(current_input)
-        params["_buffer_"] = buffer
+        # Take the oldest value, overwrite that slot with the newest input and
+        # advance the head: same FIFO semantics as pop(0)/append, but O(1).
+        output = buffer[head]
+        buffer[head] = current_input
+        params["_head_"] = (head + 1) % len(buffer)
 
         return {0: output}

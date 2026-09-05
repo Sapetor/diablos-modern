@@ -8,6 +8,7 @@ Used for learning rate scaling in optimization algorithms.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_vector
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class VectorGainBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         try:
-            x = np.atleast_1d(inputs.get(0, [0.0])).astype(float)
+            x = get_vector(inputs, 0).astype(float)
             gain = float(params.get("gain", 1.0))
 
             y = gain * x

@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import get_scalar
 
 
 class HysteresisBlock(BaseBlock):
@@ -79,7 +80,7 @@ class HysteresisBlock(BaseBlock):
         if 0 not in inputs:
             return {0: np.atleast_1d(params["_state"])}
 
-        u = float(np.atleast_1d(inputs.get(0, 0.0))[0])
+        u = get_scalar(inputs, 0, 0.0)
 
         if params.get("_init_start_", True):
             # On the first input step, default to the low state in the
