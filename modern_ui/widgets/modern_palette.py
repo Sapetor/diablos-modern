@@ -26,6 +26,7 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QFrame,
     QMenu,
+    QToolButton,
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
 from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
@@ -197,6 +198,21 @@ class CompactBlockRow(QFrame):
     def _build_tooltip(self):
         try:
             doc_lines = []
+            library_def = getattr(self.menu_block, "library_def", None)
+            if library_def is not None:
+                # Library blocks have no block class: describe them from the
+                # mask instead (description, parameter names, source file).
+                doc_lines.append(library_def.description or library_def.name)
+                specs = (library_def.mask or {}).get("parameters") or []
+                if specs:
+                    names = [str(sp.get("name", "")) for sp in specs]
+                    doc_lines.append("Params:  " + ", ".join(names[:6]))
+                doc_lines.append(f"Library: {library_def.file_name}")
+                tip = "\n".join([line for line in doc_lines if line])
+                if tip:
+                    self.setToolTip(tip)
+                return
+
             block_cls = getattr(self.menu_block, "block_class", None)
             inst = block_cls() if block_cls else None
             if inst and hasattr(inst, "doc"):
@@ -508,7 +524,15 @@ class _BlockGlyphLabel(QWidget):
 
 
 def _block_category_name(menu_block) -> str:
-    """Best-effort category lookup from menu_block (class.category, else keyword match)."""
+    """Best-effort category lookup from menu_block (class.category, else keyword match).
+
+    The ``category`` attribute set when the palette entry was built wins: it is
+    what ``load_all_blocks`` already recorded for built-in blocks, and it is the
+    *only* source for user library blocks, which have no block class.
+    """
+    declared = getattr(menu_block, "category", None)
+    if declared:
+        return str(declared)
     cls = getattr(menu_block, "block_class", None)
     if cls:
         try:
@@ -1073,6 +1097,16 @@ class ModernBlockPalette(QWidget):
         cf.setPointSize(9)
         self.count_label.setFont(cf)
         hl.addWidget(self.count_label)
+
+        # Re-scan the user library folders (see lib/library.py) and rebuild.
+        self.refresh_button = QToolButton()
+        self.refresh_button.setText("\u21bb")
+        self.refresh_button.setAutoRaise(True)
+        self.refresh_button.setCursor(Qt.PointingHandCursor)
+        self.refresh_button.setToolTip("Refresh user library blocks")
+        self.refresh_button.clicked.connect(self.refresh_library)
+        hl.addWidget(self.refresh_button)
+
         outer.addWidget(head)
 
         # Search
@@ -1242,9 +1276,12 @@ class ModernBlockPalette(QWidget):
         ]
 
         for b in menu_blocks:
-            cat = None
+            # The palette entry's own category wins -- library blocks have no
+            # block class, so keyword-matching their display name would file
+            # them under the wrong section.
+            cat = getattr(b, "category", None)
             cls = getattr(b, "block_class", None)
-            if cls:
+            if not cat and cls:
                 try:
                     inst = cls()
                     if hasattr(inst, "category"):
@@ -1410,6 +1447,29 @@ class ModernBlockPalette(QWidget):
         self.refresh_blocks()
 
     # -- Public API (preserved) --------------------------------------------
+
+    def refresh_library(self):
+        """Re-scan the library folders and rebuild the palette.
+
+        Safe to call when the model predates library support (older tests and
+        embedders construct a bare stand-in ``dsim``): the rescan is skipped
+        and the palette is simply rebuilt.
+        """
+        try:
+            # The main window knows the open diagram's path (needed for the
+            # project-local library/ folder) and rebuilds this palette itself.
+            window = self.window()
+            hook = getattr(window, "refresh_block_library", None)
+            if callable(hook):
+                hook()
+                return
+            model = getattr(self.dsim, "model", None)
+            loader = getattr(model, "load_library_blocks", None)
+            if callable(loader):
+                loader(getattr(self.dsim, "current_filepath", None))
+        except Exception as e:
+            logger.error(f"Error refreshing user library: {e}")
+        self.refresh_blocks()
 
     def refresh_blocks(self):
         try:

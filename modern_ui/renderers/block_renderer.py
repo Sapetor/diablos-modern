@@ -37,6 +37,17 @@ _CATEGORY_KEY_MAP = (
 )
 
 
+def _block_mask(block):
+    """Return the block's mask definition, or None (never raises into a paint)."""
+    try:
+        from lib.masks import get_mask
+
+        return get_mask(block)
+    except Exception:  # pragma: no cover - defensive: painting must not fail
+        logger.debug("Mask lookup failed while painting", exc_info=True)
+        return None
+
+
 def _category_token(block) -> str:
     """Return a lowercased category string from a block, or '' if absent."""
     cat = getattr(block, "category", None)
@@ -175,6 +186,9 @@ class BlockRenderer:
         painter.setBrush(gradient)
         painter.setPen(QPen(border_color, 3 if block.selected else 2.5))
 
+        mask = _block_mask(block)
+        mask_outline = (mask or {}).get("shape", "rect")
+
         if block.block_fn == "Gain":
             # Draw a triangle for the Gain block
             points = QPolygonF()
@@ -187,6 +201,9 @@ class BlockRenderer:
                 points.append(QPoint(block.left, int(block.top + block.height / 2)))
                 points.append(QPoint(block.left + block.width, block.top + block.height))
             painter.drawPolygon(points)
+        elif mask is not None and mask_outline != "rect":
+            # A mask may pick one of the existing outlines for its block.
+            self._draw_mask_outline(block, painter, mask_outline)
         else:
             radius = 12
             painter.drawRoundedRect(
@@ -588,8 +605,47 @@ class BlockRenderer:
 
         return None
 
+    def _draw_mask_outline(self, block, painter, shape):
+        """Draw a masked block's outline for one of the non-default shapes."""
+        rect = QRect(block.left, block.top, block.width, block.height)
+        if shape == "circle":
+            painter.drawEllipse(rect)
+            return
+        if shape == "triangle":
+            points = QPolygonF()
+            if not block.flipped:
+                points.append(QPoint(block.left, block.top))
+                points.append(QPoint(block.left + block.width, int(block.top + block.height / 2)))
+                points.append(QPoint(block.left, block.top + block.height))
+            else:
+                points.append(QPoint(block.left + block.width, block.top))
+                points.append(QPoint(block.left, int(block.top + block.height / 2)))
+                points.append(QPoint(block.left + block.width, block.top + block.height))
+            painter.drawPolygon(points)
+            return
+        if shape == "tag":
+            notch = max(8, block.width // 6)
+            points = QPolygonF()
+            points.append(QPoint(block.left, block.top))
+            points.append(QPoint(block.left + block.width - notch, block.top))
+            points.append(QPoint(block.left + block.width, int(block.top + block.height / 2)))
+            points.append(QPoint(block.left + block.width - notch, block.top + block.height))
+            points.append(QPoint(block.left, block.top + block.height))
+            painter.drawPolygon(points)
+            return
+        painter.drawRoundedRect(rect, 12, 12)
+
     def _draw_legacy_icon(self, block, painter, path):
         """Helper to draw legacy icons that use direct calls or mess with fonts."""
+        # A masked subsystem draws its own identity (icon glyph, else the mask
+        # display name) instead of the generic nested-rectangles glyph.
+        mask = _block_mask(block)
+        if mask is not None:
+            text = mask.get("icon") or mask.get("name") or ""
+            if text:
+                self._draw_centered_text(block, painter, text, bold=True, size_delta=1)
+            return
+
         # Using if/elif chain copied from original block.py
         if path.isEmpty() and block.block_fn == "Step":
             path.moveTo(0.1, 0.7)

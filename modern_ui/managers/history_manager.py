@@ -114,6 +114,15 @@ class HistoryManager:
                     "external": block.external,
                     "selected": block.selected,
                 }
+                # Subsystems cannot be rebuilt from these scalars: restoring
+                # them as a plain DBlock would silently drop sub_blocks,
+                # sub_lines, ports and the mask. Snapshot the object itself so
+                # undo/redo round-trips a whole (possibly masked) subsystem.
+                if block.block_fn == "Subsystem" or hasattr(block, "sub_blocks"):
+                    try:
+                        block_data["snapshot"] = copy.deepcopy(block)
+                    except Exception as e:
+                        logger.error(f"Could not snapshot subsystem {block.name}: {e}")
                 state["blocks"].append(block_data)
 
             # Capture all connections
@@ -163,6 +172,16 @@ class HistoryManager:
 
             for block_data in state["blocks"]:
                 try:
+                    snapshot = block_data.get("snapshot")
+                    if snapshot is not None:
+                        # Subsystem: restore the snapshotted object wholesale
+                        # (contents, ports and mask included). Deep-copy again
+                        # so a later undo/redo of the same entry is independent.
+                        restored = copy.deepcopy(snapshot)
+                        restored.selected = block_data.get("selected", False)
+                        self.dsim.blocks_list.append(restored)
+                        continue
+
                     coords = QRect(*block_data["coords"])
 
                     block_fn = block_data["block_fn"]

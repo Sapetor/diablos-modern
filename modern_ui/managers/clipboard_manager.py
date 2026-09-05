@@ -208,6 +208,16 @@ class ClipboardManager:
                     new_block.fn_name = block_data["fn_name"]
                     # Deep copy so repeated pastes get independent (possibly nested) params
                     new_block.params = copy.deepcopy(block_data["params"])
+                    # Subsystem() starts with an empty params dict, so its
+                    # init_params_list (which gates saving_params) would drop
+                    # everything pasted here -- the mask, its parameter values,
+                    # a library back-reference -- on the next save. Recompute
+                    # it with the same rule DBlock uses.
+                    new_block.init_params_list = [
+                        key
+                        for key in new_block.params
+                        if not (key.startswith("_") and key.endswith("_"))
+                    ]
                     new_block.params["_name_"] = new_block.name  # Ensure params name matches
                     new_block.external = block_data["external"]
                     new_block.category = block_data.get("category", "Other")
@@ -249,6 +259,14 @@ class ClipboardManager:
                     )
                 new_block.flipped = block_data["flipped"]
                 new_block.selected = True  # Select the pasted blocks
+
+                # A pasted masked subsystem keeps showing its mask name.
+                try:
+                    from lib.masks import apply_mask_appearance
+
+                    apply_mask_appearance(new_block)
+                except Exception as e:  # pragma: no cover - defensive
+                    logger.debug(f"Could not apply mask appearance on paste: {e}")
 
                 # Add to blocks list
                 self.dsim.blocks_list.append(new_block)

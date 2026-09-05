@@ -651,7 +651,13 @@ class TikZExporter:
             return _escape_latex(label)
 
         if fn == "Subsystem":
-            return _escape_latex(block.username if block.username != block.name else "Subsystem")
+            # A masked subsystem exports under its mask's display name; an
+            # instance the user renamed keeps that name.
+            from lib.masks import mask_display_name
+
+            label = block.username if block.username != block.name else None
+            label = label or mask_display_name(block) or "Subsystem"
+            return _escape_latex(label)
 
         return _escape_latex(fn)
 

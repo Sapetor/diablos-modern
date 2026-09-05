@@ -59,6 +59,23 @@ def _is_internal_param(key: str) -> bool:
     return key.startswith("_") or key in _HIDDEN_SCRATCH_KEYS
 
 
+def _block_mask(block):
+    """Mask definition of ``block``, or None (never raises into the panel)."""
+    try:
+        from lib.masks import get_mask
+
+        return get_mask(block)
+    except Exception:
+        logger.debug("Mask lookup failed for the property panel", exc_info=True)
+        return None
+
+
+def _mask_parameters(mask):
+    from lib.masks import mask_parameters
+
+    return mask_parameters(mask)
+
+
 class CollapsibleSection(QWidget):
     """A collapsible section with toggle arrow and content area."""
 
@@ -257,6 +274,7 @@ class PropertyEditor(QFrame):
         self._pin_btns = {}  # key -> QPushButton (only for params with sliders)
         self._defaults = {}  # key -> default value
         self._sections = []  # CollapsibleSection references
+        self._mask = None  # Mask definition of the selected block, if masked
         self._pending_submit = {}  # QLineEdit -> submit callable, flushed on block switch
         # Diagram-inspector context (V1 empty-state): set by main_window.
         self._dsim = None
@@ -330,6 +348,7 @@ class PropertyEditor(QFrame):
         self._defaults.clear()
         self._sections.clear()
         self._pending_submit.clear()
+        self._mask = None
 
     def _clear_sub_layout(self, layout):
         while layout.count():
@@ -634,11 +653,22 @@ class PropertyEditor(QFrame):
         if not hasattr(self.block, "params"):
             return
 
+        # A masked subsystem presents its mask's parameters (in the order the
+        # mask declares them), not the container's raw internals.
+        self._mask = _block_mask(self.block)
+
         self._create_block_header()
         self._create_name_field()
         self._create_port_count_field()
 
-        keys = [k for k in self.block.params.keys() if not _is_internal_param(k)]
+        if self._mask is not None:
+            keys = [
+                spec["name"]
+                for spec in _mask_parameters(self._mask)
+                if spec["name"] in self.block.params
+            ]
+        else:
+            keys = [k for k in self.block.params.keys() if not _is_internal_param(k)]
         groups = self._categorize_params(keys)
 
         for group_name, group_keys in groups.items():
@@ -662,7 +692,12 @@ class PropertyEditor(QFrame):
         h_layout.setContentsMargins(0, 0, 0, 4)
         h_layout.setSpacing(4)
 
-        type_name = getattr(self.block, "block_fn", None) or getattr(self.block, "name", "Block")
+        if self._mask is not None:
+            type_name = self._mask.get("name") or "Masked Subsystem"
+        else:
+            type_name = getattr(self.block, "block_fn", None) or getattr(
+                self.block, "name", "Block"
+            )
         text_color = theme_manager.get_color("text_primary").name()
         type_label = QLabel(type_name)
         type_label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 14px;")
@@ -671,7 +706,7 @@ class PropertyEditor(QFrame):
         info_row = QHBoxLayout()
         info_row.setSpacing(8)
 
-        category = getattr(self.block, "category", None)
+        category = (self._mask or {}).get("category") or getattr(self.block, "category", None)
         if category:
             badge = QLabel(category)
             block_color = getattr(self.block, "color", "gray")
@@ -976,6 +1011,9 @@ class PropertyEditor(QFrame):
     # ── Documentation section ──────────────────────────────────
 
     def _create_doc_section(self):
+        if self._mask is not None:
+            self._create_mask_doc_section()
+            return
         if not (hasattr(self.block, "doc") and self.block.doc):
             return
         accent_color = theme_manager.get_color("accent_primary").name()
@@ -1000,10 +1038,30 @@ class PropertyEditor(QFrame):
 
         self._main_layout.addWidget(section)
 
+    def _create_mask_doc_section(self):
+        """Documentation panel for a masked subsystem: the mask's description."""
+        description = (self._mask or {}).get("description", "").strip()
+        if not description:
+            return
+        sec_color = theme_manager.get_color("text_secondary").name()
+        section = CollapsibleSection("Documentation", expanded=True)
+        self._sections.append(section)
+        doc_label = QLabel(description)
+        doc_label.setWordWrap(True)
+        doc_label.setStyleSheet(f"color: {sec_color}; font-style: italic; margin-bottom: 4px;")
+        section.content_layout.addRow("", doc_label)
+        self._main_layout.addWidget(section)
+
     # ── Metadata helpers ───────────────────────────────────────
 
     def _get_param_metadata(self, key):
         if self.block is None:
+            return {}
+        # Mask parameters carry their spec on the mask, not on a block class.
+        if self._mask is not None:
+            for spec in _mask_parameters(self._mask):
+                if spec.get("name") == key:
+                    return spec
             return {}
         block_instance = getattr(self.block, "block_instance", None)
         if block_instance is None:
