@@ -710,6 +710,25 @@ Everything here lives in the **View** menu. The first three are written to
   canvas during a run (on by default).
 - **Show Grid** (**Ctrl+Shift+G**) toggles the canvas grid.
 
+## Changing the Language
+
+**View ▸ Language** switches the interface language. The menu lists every
+translation shipped with DiaBloS (each named in its own language) plus
+**System default**, which follows your operating system's locale. Spanish
+(*Español*) ships with the application; anything without a translation falls
+back to English, so nothing ever shows up blank.
+
+The choice is remembered between sessions. Menus, the toolbar, the block
+palette, panel and dock titles and the status bar switch immediately; windows
+and dialogs that are already open keep the language they were opened with, so
+close and reopen them (or restart) to see them translated.
+
+Block names stay in English on purpose — they are what a saved diagram
+records, so a `.diablos` file opens identically whatever language you use. The
+palette's category headings and each parameter's help text *are* translated.
+
+---
+
 ---
 
 ## Autosave and Recovery

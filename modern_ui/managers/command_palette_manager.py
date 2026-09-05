@@ -22,6 +22,7 @@ from collections import OrderedDict
 from modern_ui.widgets.modern_palette import visible_menu_blocks
 
 from lib.app_paths import resource_path
+from lib.i18n import tr, tr_noop
 
 logger = logging.getLogger(__name__)
 
@@ -33,35 +34,35 @@ logger = logging.getLogger(__name__)
 # ``palette_command_groups`` so it cannot drift). An empty shortcut string means
 # "no default binding".
 _SIM_COMMANDS: list[tuple[str, str]] = [
-    ("Run simulation", "F5"),
-    ("Pause simulation", "F6"),
-    ("Stop simulation", "F7"),
-    ("Step simulation", "F8"),
-    ("Toggle fast solver", ""),
+    (tr_noop("Run simulation"), "F5"),
+    (tr_noop("Pause simulation"), "F6"),
+    (tr_noop("Stop simulation"), "F7"),
+    (tr_noop("Step simulation"), "F8"),
+    (tr_noop("Toggle fast solver"), ""),
 ]
 
 _VIEW_COMMANDS: list[tuple[str, str]] = [
-    ("Zoom in", "Ctrl++"),
-    ("Zoom out", "Ctrl+-"),
-    ("Fit to window", "Ctrl+0"),
-    ("Toggle theme", "Ctrl+T"),
-    ("Toggle grid", "Ctrl+Shift+G"),
-    ("Toggle minimap", "Ctrl+Shift+M"),
-    ("Toggle variable editor", "Ctrl+Shift+V"),
-    ("Toggle workspace variables", "Ctrl+Shift+W"),
-    ("Toggle tuning panel", "Ctrl+Shift+T"),
+    (tr_noop("Zoom in"), "Ctrl++"),
+    (tr_noop("Zoom out"), "Ctrl+-"),
+    (tr_noop("Fit to window"), "Ctrl+0"),
+    (tr_noop("Toggle theme"), "Ctrl+T"),
+    (tr_noop("Toggle grid"), "Ctrl+Shift+G"),
+    (tr_noop("Toggle minimap"), "Ctrl+Shift+M"),
+    (tr_noop("Toggle variable editor"), "Ctrl+Shift+V"),
+    (tr_noop("Toggle workspace variables"), "Ctrl+Shift+W"),
+    (tr_noop("Toggle tuning panel"), "Ctrl+Shift+T"),
 ]
 
 _FILE_COMMANDS: list[tuple[str, str]] = [
-    ("New diagram", "Ctrl+N"),
-    ("Open diagram", "Ctrl+O"),
-    ("Save diagram", "Ctrl+S"),
-    ("Load workspace…", ""),
-    ("Show plots", ""),
-    ("Export as image…", ""),
-    ("Export as TikZ…", ""),
-    ("Export as Python script…", ""),
-    ("Copy diagram as image", ""),
+    (tr_noop("New diagram"), "Ctrl+N"),
+    (tr_noop("Open diagram"), "Ctrl+O"),
+    (tr_noop("Save diagram"), "Ctrl+S"),
+    (tr_noop("Load workspace…"), ""),
+    (tr_noop("Show plots"), ""),
+    (tr_noop("Export as image…"), ""),
+    (tr_noop("Export as TikZ…"), ""),
+    (tr_noop("Export as Python script…"), ""),
+    (tr_noop("Copy diagram as image"), ""),
 ]
 
 
@@ -75,9 +76,9 @@ def palette_command_groups() -> "OrderedDict[str, list[tuple[str, str]]]":
     """
     return OrderedDict(
         [
-            ("Simulation", list(_SIM_COMMANDS)),
-            ("View", list(_VIEW_COMMANDS)),
-            ("File", list(_FILE_COMMANDS)),
+            (tr_noop("Simulation"), list(_SIM_COMMANDS)),
+            (tr_noop("View"), list(_VIEW_COMMANDS)),
+            (tr_noop("File"), list(_FILE_COMMANDS)),
         ]
     )
 
@@ -110,7 +111,7 @@ class CommandPaletteManager:
                 block_fn = getattr(menu_block, "block_fn", "") or fn_name
                 commands.append(
                     {
-                        "name": f"Add {block_fn} block",
+                        "name": tr("Add {block_fn} block", block_fn=block_fn),
                         "type": "block",
                         "description": f"{block_fn} ({fn_name})",
                         "aliases": [fn_name, block_fn, fn_name.lower()],
@@ -160,7 +161,7 @@ class CommandPaletteManager:
             for (label, kbd), cb in zip(table, callbacks):
                 commands.append(
                     {
-                        "name": label,
+                        "name": tr(label),
                         "type": badge,
                         "shortcut": kbd,
                         "callback": cb,
@@ -177,7 +178,7 @@ class CommandPaletteManager:
                         path = os.path.join(examples_dir, f)
                         commands.append(
                             {
-                                "name": f"examples / {os.path.splitext(f)[0]}",
+                                "name": tr("examples / {name}", name=os.path.splitext(f)[0]),
                                 "type": "file",
                                 "callback": lambda p=path: window.open_example(p),
                                 "data": {"path": path},
@@ -231,7 +232,7 @@ class CommandPaletteManager:
 
         # Add the block using the canvas method
         canvas.add_block_from_palette(menu_block, canvas_pos)
-        window.toast.show_message(f"✅ Added {menu_block.block_fn} block")
+        window.toast.show_message("✅ " + tr("Added {name} block", name=menu_block.block_fn))
 
     def on_command_executed(self, command_type: str, data: dict):
         """Handle command palette command execution."""

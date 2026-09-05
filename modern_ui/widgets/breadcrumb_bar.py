@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import pyqtSignal, Qt
 import logging
 
+from lib.i18n import tr
 from modern_ui.themes.theme_manager import theme_manager
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class BreadcrumbBar(QWidget):
         self.layout.setAlignment(Qt.AlignLeft)
 
         # Initial path
-        self.set_path(["Main"])
+        self.set_path([tr("Main")])
 
     def set_path(self, path_list):
         """

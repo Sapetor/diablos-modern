@@ -44,5 +44,8 @@
     "directory": "external",
     "auto_reload": false,
     "validate_on_load": true
+  },
+  "ui": {
+    "language": "system"
   }
 }

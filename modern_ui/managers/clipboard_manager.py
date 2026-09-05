@@ -7,6 +7,8 @@ import logging
 import copy
 from PyQt5.QtCore import QRect, QPoint
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,7 +140,7 @@ class ClipboardManager:
         except Exception as e:
             logger.error(f"Error copying blocks: {str(e)}")
             if hasattr(self.canvas, "simulation_status_changed"):
-                self.canvas.simulation_status_changed.emit(f"Copy failed: {e}")
+                self.canvas.simulation_status_changed.emit(tr("Copy failed: {error}", error=e))
 
     def paste_blocks(self, pos=None):
         """Paste blocks from clipboard.
@@ -367,7 +369,7 @@ class ClipboardManager:
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
             if hasattr(self.canvas, "simulation_status_changed"):
-                self.canvas.simulation_status_changed.emit(f"Paste failed: {e}")
+                self.canvas.simulation_status_changed.emit(tr("Paste failed: {error}", error=e))
 
     def cut_selected_blocks(self):
         """Cut selected blocks to clipboard."""

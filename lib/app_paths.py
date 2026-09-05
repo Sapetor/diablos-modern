@@ -32,6 +32,18 @@ def resource_path(relative_path: str) -> str:
     return os.path.join(get_base_path(), relative_path)
 
 
+def locales_path(filename: str = "") -> str:
+    """Resolve the bundled ``locales/`` directory (or a file inside it).
+
+    Translation catalogs are read-only bundled resources, so they resolve the
+    same way icons and default configs do. ``locales`` is listed in
+    ``diablos.spec`` ``datas`` so frozen builds ship them too.
+    """
+    if filename:
+        return resource_path(os.path.join("locales", filename))
+    return resource_path("locales")
+
+
 def get_user_data_dir() -> str:
     """Return a writable directory for user data (configs, autosave, etc.).
 

@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QCursor
 from modern_ui.themes.theme_manager import theme_manager, make_shadow
 from lib.diagram_validator import ErrorSeverity
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +44,13 @@ class ErrorItemWidget(QFrame):
         severity_label = QLabel()
         if self.error.severity == ErrorSeverity.ERROR:
             severity_label.setText("🔴")
-            severity_label.setToolTip("Error")
+            severity_label.setToolTip(tr("Error"))
         elif self.error.severity == ErrorSeverity.WARNING:
             severity_label.setText("🟡")
-            severity_label.setToolTip("Warning")
+            severity_label.setToolTip(tr("Warning"))
         else:
             severity_label.setText("ℹ️")
-            severity_label.setToolTip("Info")
+            severity_label.setToolTip(tr("Info"))
         severity_label.setFixedWidth(24)
         layout.addWidget(severity_label)
 
@@ -102,7 +103,7 @@ class ErrorItemWidget(QFrame):
     def contextMenuEvent(self, event):
         """Show context menu with copy option."""
         menu = QMenu(self)
-        copy_action = menu.addAction("Copy Message")
+        copy_action = menu.addAction(tr("Copy Message"))
         copy_action.triggered.connect(self._copy_to_clipboard)
         menu.exec_(QCursor.pos())
 
@@ -117,7 +118,7 @@ class ErrorItemWidget(QFrame):
         )
         text = f"[{severity_text}] {self.error.message}"
         if hasattr(self.error, "block_name") and self.error.block_name:
-            text += f" (Block: {self.error.block_name})"
+            text += " " + tr("(Block: {name})", name=self.error.block_name)
         clipboard.setText(text)
         logger.debug(f"Copied to clipboard: {text[:50]}...")
 
@@ -149,12 +150,12 @@ class ErrorPanel(QWidget):
         header_layout.setContentsMargins(10, 8, 10, 8)
 
         # Title
-        self.title_label = QLabel("Validation Results")
+        self.title_label = QLabel(tr("Validation Results"))
         self.title_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
         header_layout.addWidget(self.title_label)
 
         # Error count badge
-        self.count_label = QLabel("0 issues")
+        self.count_label = QLabel(tr("{n} issues", n=0))
         self.count_label.setFont(QFont("Segoe UI", 9))
         header_layout.addWidget(self.count_label)
 
@@ -163,7 +164,7 @@ class ErrorPanel(QWidget):
         # Copy all button
         self.copy_btn = QPushButton("📋")
         self.copy_btn.setFixedSize(24, 24)
-        self.copy_btn.setToolTip("Copy all messages")
+        self.copy_btn.setToolTip(tr("Copy all messages"))
         self.copy_btn.clicked.connect(self._copy_all_to_clipboard)
         header_layout.addWidget(self.copy_btn)
 
@@ -176,7 +177,7 @@ class ErrorPanel(QWidget):
         # Clear button
         clear_btn = QPushButton("✕")
         clear_btn.setFixedSize(24, 24)
-        clear_btn.setToolTip("Close panel")
+        clear_btn.setToolTip(tr("Close panel"))
         clear_btn.clicked.connect(self.hide)
         header_layout.addWidget(clear_btn)
 
@@ -263,13 +264,25 @@ class ErrorPanel(QWidget):
         warning_count = sum(1 for e in errors if e.severity == ErrorSeverity.WARNING)
 
         if error_count > 0 and warning_count > 0:
-            self.count_label.setText(f"{error_count} errors, {warning_count} warnings")
+            self.count_label.setText(
+                tr(
+                    "{errors} errors, {warnings} warnings",
+                    errors=error_count,
+                    warnings=warning_count,
+                )
+            )
         elif error_count > 0:
-            self.count_label.setText(f"{error_count} error{'s' if error_count != 1 else ''}")
+            if error_count == 1:
+                self.count_label.setText(tr("{n} error", n=error_count))
+            else:
+                self.count_label.setText(tr("{n} errors", n=error_count))
         elif warning_count > 0:
-            self.count_label.setText(f"{warning_count} warning{'s' if warning_count != 1 else ''}")
+            if warning_count == 1:
+                self.count_label.setText(tr("{n} warning", n=warning_count))
+            else:
+                self.count_label.setText(tr("{n} warnings", n=warning_count))
         else:
-            self.count_label.setText("No issues")
+            self.count_label.setText(tr("No issues"))
 
         # Show panel if there are errors
         if errors:
@@ -314,7 +327,7 @@ class ErrorPanel(QWidget):
             )
             text = f"[{severity_text}] {error.message}"
             if hasattr(error, "block_name") and error.block_name:
-                text += f" (Block: {error.block_name})"
+                text += " " + tr("(Block: {name})", name=error.block_name)
             lines.append(text)
 
         clipboard = QApplication.clipboard()

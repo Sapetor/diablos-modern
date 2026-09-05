@@ -39,6 +39,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from lib.i18n import tr
 
 from lib.analysis.monte_carlo import OUTCOME_METRICS
 
@@ -67,7 +68,7 @@ class EnsembleResultWindow(QWidget):
         super().__init__(parent)
         self.result = result or {}
 
-        self.setWindowTitle("Monte Carlo Ensemble")
+        self.setWindowTitle(tr("Monte Carlo Ensemble"))
         self.resize(820, 600)
 
         layout = QVBoxLayout()
@@ -79,14 +80,16 @@ class EnsembleResultWindow(QWidget):
         self._signal_names = list(signals.keys())
 
         # Header summarising the run outcome.
-        header = QLabel(f"Monte Carlo: {n_ok}/{n_runs} successful runs")
+        header = QLabel(
+            tr("Monte Carlo: {n_ok}/{n_runs} successful runs", n_ok=n_ok, n_runs=n_runs)
+        )
         header.setStyleSheet("font-size: 14px; font-weight: bold; padding: 6px;")
         layout.addWidget(header)
         self.header_label = header
 
         # Nothing successful (or no harvested signals) -> friendly placeholder.
         if n_ok <= 0 or not self._signal_names:
-            empty = QLabel("No successful runs to display.")
+            empty = QLabel(tr("No successful runs to display."))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
@@ -108,7 +111,7 @@ class EnsembleResultWindow(QWidget):
         self.combo.addItems(self._signal_names)
         if len(self._signal_names) > 1:
             row = QHBoxLayout()
-            row.addWidget(QLabel("Signal:"))
+            row.addWidget(QLabel(tr("Signal:")))
             row.addWidget(self.combo, 1)
             layout.addLayout(row)
         # else: keep the combo (so callers/tests can introspect it) but hide it.
@@ -117,12 +120,15 @@ class EnsembleResultWindow(QWidget):
         # View toggle + outcome-metric picker (metric only applies to histograms).
         controls = QHBoxLayout()
         self.view_combo = QComboBox()
-        self.view_combo.addItems(["Time Series", "Histogram"])
-        controls.addWidget(QLabel("View:"))
+        self.view_combo.addItems([tr("Time Series"), tr("Histogram")])
+        controls.addWidget(QLabel(tr("View:")))
         controls.addWidget(self.view_combo)
         controls.addStretch(1)
-        self.metric_label = QLabel("Metric:")
+        self.metric_label = QLabel(tr("Metric:"))
         self.metric_combo = QComboBox()
+        # NOTE: metric_combo items are OUTCOME_METRICS keys and are used verbatim
+        # as dict lookup keys (currentText() -> OUTCOME_METRICS[...] / sig["metrics"][...]),
+        # so they are intentionally left untranslated here.
         self.metric_combo.addItems(list(OUTCOME_METRICS.keys()))
         controls.addWidget(self.metric_label)
         controls.addWidget(self.metric_combo)
@@ -130,8 +136,8 @@ class EnsembleResultWindow(QWidget):
 
         # Stacked time-series / histogram canvases.
         self.stack = QStackedWidget()
-        self.plot = self._make_plot("Time", "Value")
-        self.hist_plot = self._make_plot("Value", "Runs")
+        self.plot = self._make_plot(tr("Time"), tr("Value"))
+        self.hist_plot = self._make_plot(tr("Value"), tr("Runs"))
         self.plot.addLegend(offset=(10, 10))
         self.stack.addWidget(self.plot)
         self.stack.addWidget(self.hist_plot)
@@ -229,7 +235,7 @@ class EnsembleResultWindow(QWidget):
 
         # Bold mean line on top.
         if mean.size and t.size == mean.size:
-            self.plot.plot(t, mean, pen=pg.mkPen((200, 30, 30), width=3), name="mean")
+            self.plot.plot(t, mean, pen=pg.mkPen((200, 30, 30), width=3), name=tr("mean"))
 
     # -------------------------------------------------------------- histogram
     def _plot_histogram(self):
@@ -246,7 +252,11 @@ class EnsembleResultWindow(QWidget):
 
         vals = self._metric_values(sig, metric)
         vals = vals[np.isfinite(vals)] if vals.size else vals
-        self.hist_plot.setTitle(f"{name} - {metric} ({vals.size} runs)")
+        # `name` and `metric` are data identifiers (signal name / OUTCOME_METRICS
+        # key); only the surrounding words are translated.
+        self.hist_plot.setTitle(
+            tr("{name} - {metric} ({n} runs)", name=name, metric=metric, n=vals.size)
+        )
         self.hist_plot.setLabel("bottom", str(metric))
         if vals.size == 0:
             return

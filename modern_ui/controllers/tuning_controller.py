@@ -9,6 +9,8 @@ import logging
 import numpy as np
 from PyQt5.QtCore import QObject, QTimer, Qt
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +87,7 @@ class TuningController(QObject):
         Accumulates changes and restarts debounce timer.
         """
         if not self.is_active:
-            self._set_status("Run simulation first (F5) before tuning")
+            self._set_status(tr("Run simulation first (F5) before tuning"))
             return
 
         self._pending_changes[(block_name, param_name)] = value
@@ -118,10 +120,13 @@ class TuningController(QObject):
                         else:
                             # Param changed type/length since slider creation;
                             # surface the skip so stale tuning isn't applied silently.
-                            msg = (
-                                f"Tuning: skipped '{block_name}.{param_name}' "
-                                f"(param '{base_name}' is not an indexable "
-                                f"list/array of sufficient length)"
+                            msg = tr(
+                                "Tuning: skipped '{block}.{param}' "
+                                "(param '{base}' is not an indexable "
+                                "list/array of sufficient length)",
+                                block=block_name,
+                                param=param_name,
+                                base=base_name,
                             )
                             logger.warning(msg)
                             self._set_status(msg)
@@ -130,17 +135,17 @@ class TuningController(QObject):
                     break
 
         # 2. Run headless re-simulation
-        self._set_status("Re-simulating...")
+        self._set_status(tr("Re-simulating..."))
         success, error_msg = self.dsim.run_tuning_simulation(self._sim_time, self._sim_dt)
 
         if not success:
-            self._set_status(f"Tuning re-sim failed: {error_msg}")
+            self._set_status(tr("Tuning re-sim failed: {error}", error=error_msg))
             logger.warning(f"Tuning re-simulation failed: {error_msg}")
             return
 
         # 3. Collect scope data and update existing plots
         self._update_plots()
-        self._set_status("Tuning: parameters updated")
+        self._set_status(tr("Tuning: parameters updated"))
 
     def _update_plots(self):
         """Read scope data from blocks and update the existing SignalPlot."""

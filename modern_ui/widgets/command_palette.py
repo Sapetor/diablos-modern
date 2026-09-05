@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import (
     QFrame,
 )
 
+from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
 
 logger = logging.getLogger(__name__)
@@ -41,16 +42,19 @@ SEARCH_HEIGHT = 44
 ICON_COL_W = 22
 BADGE_W = 50
 
-# Map command 'type' -> short category badge text
+# Map command 'type' -> short category badge text (translated where displayed)
+# Values are display badges shown next to a result, translated at paint time
+# (``tr(badge_text)``); tr_noop keeps them visible to the string extractor while
+# the dict itself stays keyed and valued in English.
 TYPE_BADGE = {
-    "block": "BLOCK",
-    "action": "ACTION",
-    "sim": "SIM",
-    "view": "VIEW",
-    "file": "FILE",
-    "recent": "FILE",
-    "setting": "SET",
-    "help": "HELP",
+    "block": tr_noop("BLOCK"),
+    "action": tr_noop("ACTION"),
+    "sim": tr_noop("SIM"),
+    "view": tr_noop("VIEW"),
+    "file": tr_noop("FILE"),
+    "recent": tr_noop("FILE"),
+    "setting": tr_noop("SET"),
+    "help": tr_noop("HELP"),
 }
 
 
@@ -121,7 +125,7 @@ class _PaletteRow(QWidget):
         # Category badge
         badge_text = TYPE_BADGE.get(cmd.get("type", ""), "")
         if badge_text:
-            badge = QLabel(badge_text)
+            badge = QLabel(tr(badge_text))
             badge.setFont(_mono(8))
             badge.setStyleSheet(
                 f"color: {self._text_dim};"
@@ -216,7 +220,7 @@ class CommandPalette(QDialog):
         h.addWidget(glyph)
 
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Type a command, block, or file…")
+        self.search.setPlaceholderText(tr("Type a command, block, or file…"))
         sf = self.search.font()
         sf.setPointSize(12)
         self.search.setFont(sf)
@@ -267,10 +271,10 @@ class CommandPalette(QDialog):
         f = QHBoxLayout(foot)
         f.setContentsMargins(14, 6, 14, 6)
         f.setSpacing(14)
-        self._foot_text = QLabel("↑↓ navigate · ↵ run · esc close")
+        self._foot_text = QLabel(tr("↑↓ navigate · ↵ run · esc close"))
         self._foot_text.setFont(_mono(8))
         f.addWidget(self._foot_text, 1)
-        self._foot_count = QLabel("0 results")
+        self._foot_count = QLabel(tr("{n} results", n=0))
         self._foot_count.setFont(_mono(8))
         f.addWidget(self._foot_count)
         v.addWidget(foot)
@@ -397,7 +401,7 @@ class CommandPalette(QDialog):
 
         if self.list.count():
             self.list.setCurrentRow(0)
-        self._foot_count.setText(f"{self.list.count()} results")
+        self._foot_count.setText(tr("{n} results", n=self.list.count()))
 
     # -- Execution --------------------------------------------------------
 

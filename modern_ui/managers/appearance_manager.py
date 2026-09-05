@@ -16,6 +16,7 @@ import os
 import json
 import logging
 
+from lib.i18n import tr
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,9 @@ class AppearanceManager:
         )
         # Refresh theme pill text
         if hasattr(window, "theme_status"):
-            theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
+            theme_label = (
+                tr("Dark") if theme_manager.current_theme == ThemeType.DARK else tr("Light")
+            )
             from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
 
             palette_label = PALETTE_DISPLAY_NAMES.get(

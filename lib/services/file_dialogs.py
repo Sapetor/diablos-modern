@@ -14,9 +14,29 @@ QtWidgets is imported lazily inside the functions so importing this module -- or
 import logging
 import os
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
-#: Extensions accepted for a diagram, newest/canonical first.
+
+def save_filter() -> str:
+    """Extensions accepted for a diagram, newest/canonical first (translated)."""
+    return (
+        tr("DiaBloS Files")
+        + " (*.diablos);;"
+        + tr("Data Files")
+        + " (*.dat);;"
+        + tr("All Files")
+        + " (*)"
+    )
+
+
+def open_filter() -> str:
+    """Extensions accepted when opening a diagram (translated)."""
+    return tr("DiaBloS Files") + " (*.diablos *.dat *.json);;" + tr("All Files") + " (*)"
+
+
+#: Untranslated forms, kept for callers/tests that compare against the English text.
 SAVE_FILTER = "DiaBloS Files (*.diablos);;Data Files (*.dat);;All Files (*)"
 OPEN_FILTER = "DiaBloS Files (*.diablos *.dat *.json);;All Files (*)"
 
@@ -34,9 +54,9 @@ def prompt_save_path(suggested_name: str, directory: str = None) -> str:
     options = QFileDialog.Options()
     filepath, _ = QFileDialog.getSaveFileName(
         None,
-        "Save File",
+        tr("Save File"),
         os.path.join(directory, suggested_name),
-        SAVE_FILTER,
+        save_filter(),
         options=options,
     )
     return filepath or ""
@@ -50,9 +70,9 @@ def prompt_open_path(directory: str = None) -> str:
     options = QFileDialog.Options()
     filepath, _ = QFileDialog.getOpenFileName(
         None,
-        "Open File",
+        tr("Open File"),
         directory,
-        OPEN_FILTER,
+        open_filter(),
         options=options,
     )
     return filepath or ""

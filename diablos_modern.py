@@ -120,6 +120,13 @@ def setup_application():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     # Create application
     app = QApplication(sys.argv)
+
+    # Activate the UI language before any widget text is built. Must come
+    # after QApplication so QLocale.system() is available for "system".
+    from lib.i18n import init_language
+
+    init_language()
+
     from modern_ui import __version__
 
     app.setApplicationName("DiaBloS Modern")

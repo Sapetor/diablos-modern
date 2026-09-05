@@ -23,6 +23,8 @@ from PyQt5.QtWidgets import QLabel, QFrame
 
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +75,7 @@ class StatusBarManager:
 
         # Left: status pill (reused from toolbar)
         window.status_pill = _StatusPill(window)
-        window.status_pill.setToolTip("Simulation state")
+        window.status_pill.setToolTip(tr("Simulation state"))
         statusbar.addWidget(window.status_pill)
 
         # Hidden compatibility shim — many call sites still call status_message.setText(...)
@@ -108,13 +110,13 @@ class StatusBarManager:
         statusbar.addWidget(_vsep())
 
         # File info: filename + unsaved indicator
-        window.file_status = QLabel("untitled")
-        window.file_status.setToolTip("Current diagram file")
+        window.file_status = QLabel(tr("untitled"))
+        window.file_status.setToolTip(tr("Current diagram file"))
         window.file_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_primary').name()};"
         )
         window.file_unsaved_status = QLabel("")
-        window.file_unsaved_status.setToolTip("Unsaved changes indicator")
+        window.file_unsaved_status.setToolTip(tr("Unsaved changes indicator"))
         window.file_unsaved_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_disabled').name()}; font-size: 9pt;"
         )
@@ -124,16 +126,18 @@ class StatusBarManager:
         statusbar.addWidget(_vsep())
 
         # Counts pill: blocks N · wires M · scopes K
-        window.counts_status = _mono_label("blocks 0 · wires 0 · scopes 0")
-        window.counts_status.setToolTip("Blocks · wires · scopes")
+        window.counts_status = _mono_label(
+            tr("blocks {blocks} · wires {wires} · scopes {scopes}", blocks=0, wires=0, scopes=0)
+        )
+        window.counts_status.setToolTip(tr("Blocks · wires · scopes"))
         window.counts_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
         statusbar.addWidget(window.counts_status)
 
         # ----- right-aligned permanent widgets -----
-        window.cursor_status = _mono_label("cursor 0,0")
-        window.cursor_status.setToolTip("Cursor position (x, y)")
+        window.cursor_status = _mono_label(tr("cursor {x},{y}", x=0, y=0))
+        window.cursor_status.setToolTip(tr("Cursor position (x, y)"))
         window.cursor_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -141,8 +145,8 @@ class StatusBarManager:
 
         statusbar.addPermanentWidget(_vsep())
 
-        window.zoom_status = _mono_label("zoom 100%")
-        window.zoom_status.setToolTip("Canvas zoom level")
+        window.zoom_status = _mono_label(tr("zoom {percent}%", percent=100))
+        window.zoom_status.setToolTip(tr("Canvas zoom level"))
         window.zoom_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -151,14 +155,14 @@ class StatusBarManager:
         statusbar.addPermanentWidget(_vsep())
 
         # Theme + palette tag
-        theme_label = "Dark" if theme_manager.current_theme == ThemeType.DARK else "Light"
+        theme_label = tr("Dark") if theme_manager.current_theme == ThemeType.DARK else tr("Light")
         from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES
 
         palette_label = PALETTE_DISPLAY_NAMES.get(
             theme_manager.current_palette, theme_manager.current_palette
         ).split()[0]
         window.theme_status = QLabel(f"{theme_label} · {palette_label}")
-        window.theme_status.setToolTip("Click to toggle theme (Ctrl+T)")
+        window.theme_status.setToolTip(tr("Click to toggle theme (Ctrl+T)"))
         window.theme_status.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
             f" background-color: {theme_manager.get_color('background_tertiary').name()};"
@@ -169,7 +173,9 @@ class StatusBarManager:
         # Drive zoom from toolbar's zoom rocker so the two stay in sync
         try:
             window.toolbar.zoom_changed.connect(
-                lambda f: window.zoom_status.setText(f"zoom {int(round(f * 100))}%")
+                lambda f: window.zoom_status.setText(
+                    tr("zoom {percent}%", percent=int(round(f * 100)))
+                )
             )
         except Exception:
             logger.debug("Failed to wire toolbar zoom_changed to zoom status label", exc_info=True)
@@ -177,7 +183,7 @@ class StatusBarManager:
         # Cursor pos from canvas
         try:
             window.canvas.cursor_moved.connect(
-                lambda x, y: window.cursor_status.setText(f"cursor {x},{y}")
+                lambda x, y: window.cursor_status.setText(tr("cursor {x},{y}", x=x, y=y))
             )
         except Exception:
             logger.debug("Failed to wire canvas cursor_moved to cursor status label", exc_info=True)
@@ -194,6 +200,37 @@ class StatusBarManager:
         # Apply theme palette to the statusbar host
         window.appearance_manager.update_statusbar_colors()
 
+    def retranslate_ui(self):
+        """Re-apply every status-bar string in the active language.
+
+        The pills are reused (only their text and tooltips are replaced) so the
+        widget references held all over the window stay valid.
+        """
+        window = self.window
+        for widget, text in (
+            (getattr(window, "status_pill", None), tr("Simulation state")),
+            (getattr(window, "file_status", None), tr("Current diagram file")),
+            (getattr(window, "file_unsaved_status", None), tr("Unsaved changes indicator")),
+            (getattr(window, "counts_status", None), tr("Blocks · wires · scopes")),
+            (getattr(window, "cursor_status", None), tr("Cursor position (x, y)")),
+            (getattr(window, "zoom_status", None), tr("Canvas zoom level")),
+            (getattr(window, "theme_status", None), tr("Click to toggle theme (Ctrl+T)")),
+        ):
+            if widget is not None:
+                widget.setToolTip(text)
+        # The status pill re-derives its own "Ready"/"Paused"/... label.
+        pill = getattr(window, "status_pill", None)
+        if pill is not None and hasattr(pill, "retranslate_ui"):
+            pill.retranslate_ui()
+        self.refresh_counts()
+        self.refresh_file_status()
+        # Rebuilds the "Dark · Solarized" pill text, which embeds a translated
+        # theme name.
+        try:
+            window.appearance_manager.update_statusbar_colors()
+        except Exception:
+            logger.debug("Failed to refresh the theme pill after a language change", exc_info=True)
+
     def refresh_counts(self):
         """Update the counts pill from current dsim state."""
         window = self.window
@@ -205,7 +242,12 @@ class StatusBarManager:
             wires = list(getattr(dsim, "line_list", []) or [])
             scopes = sum(1 for b in blocks if getattr(b, "block_fn", "") in ("Scope", "FieldScope"))
             window.counts_status.setText(
-                f"blocks {len(blocks)} · wires {len(wires)} · scopes {scopes}"
+                tr(
+                    "blocks {blocks} · wires {wires} · scopes {scopes}",
+                    blocks=len(blocks),
+                    wires=len(wires),
+                    scopes=scopes,
+                )
             )
         except Exception:
             logger.debug("Failed to refresh counts pill from dsim state", exc_info=True)
@@ -217,10 +259,10 @@ class StatusBarManager:
             path = getattr(window.dsim, "current_filepath", None) or getattr(
                 window.dsim, "filepath", None
             )
-            name = os.path.basename(path) if path else "untitled"
+            name = os.path.basename(path) if path else tr("untitled")
             window.file_status.setText(name)
             window.file_unsaved_status.setText(
-                "unsaved" if getattr(window.dsim, "dirty", False) else ""
+                tr("unsaved") if getattr(window.dsim, "dirty", False) else ""
             )
         except Exception:
             logger.debug("Failed to refresh file/unsaved status in status bar", exc_info=True)

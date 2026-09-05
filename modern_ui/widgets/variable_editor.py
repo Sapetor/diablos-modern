@@ -16,6 +16,7 @@ import logging
 from lib.workspace import WorkspaceManager
 from lib.safe_eval import safe_expr, SafeEvalError
 from modern_ui.themes.theme_manager import theme_manager
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -124,40 +125,44 @@ class VariableEditor(QWidget):
         layout.addWidget(self.toolbar)
 
         # Actions
-        self.action_load = QAction("Load Script", self)
-        self.action_load.setToolTip("Load Python script from file")
+        self.action_load = QAction(tr("Load Script"), self)
+        self.action_load.setToolTip(tr("Load Python script from file"))
         self.action_load.triggered.connect(self.load_script)
-        self.action_load.setText("📂 Load")
+        self.action_load.setText("📂 " + tr("Load"))
         self.toolbar.addAction(self.action_load)
 
-        self.action_run = QAction("Update Workspace", self)
+        self.action_run = QAction(tr("Update Workspace"), self)
         self.action_run.setShortcut("Ctrl+Enter")
-        self.action_run.setToolTip("Run code and update workspace (Ctrl+Enter)")
+        self.action_run.setToolTip(tr("Run code and update workspace (Ctrl+Enter)"))
         self.action_run.triggered.connect(self.update_workspace)
         # Simple text icon for now if no image assets
-        self.action_run.setText("▶ Run")
+        self.action_run.setText("▶ " + tr("Run"))
         self.toolbar.addAction(self.action_run)
 
-        self.action_clear = QAction("Clear", self)
-        self.action_clear.setToolTip("Clear editor")
+        self.action_clear = QAction(tr("Clear"), self)
+        self.action_clear.setToolTip(tr("Clear editor"))
         self.action_clear.triggered.connect(self.clear_editor)
-        self.action_clear.setText("🗑 Clear")
+        self.action_clear.setText("🗑 " + tr("Clear"))
         self.toolbar.addAction(self.action_clear)
 
         self.toolbar.addSeparator()
 
-        self.action_float = QAction("Float", self)
-        self.action_float.setToolTip("Detach/Attach window")
+        self.action_float = QAction(tr("Float"), self)
+        self.action_float.setToolTip(tr("Detach/Attach window"))
         self.action_float.setCheckable(True)
         self.action_float.triggered.connect(self.toggle_float)
-        self.action_float.setText("⧉ Float")
+        self.action_float.setText("⧉ " + tr("Float"))
         self.toolbar.addAction(self.action_float)
 
         # Text Editor
         self.editor = QTextEdit()
         self.editor.setFont(QFont("Monospace", 11))
         self.editor.setPlaceholderText(
-            "# Define variables here\nK = 10\namplitude = 5\n\n# You can use math/numpy expressions (no import needed)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])"
+            tr(
+                "# Define variables here\nK = 10\namplitude = 5\n\n"
+                "# You can use math/numpy expressions (no import needed)\n"
+                "omega = 2 * math.pi * 50\nA = np.array([1, 2, 3])"
+            )
         )
         self.editor.setStyleSheet("border: none;")
 
@@ -173,7 +178,7 @@ class VariableEditor(QWidget):
         status_layout = QHBoxLayout(self.status_bar)
         status_layout.setContentsMargins(10, 0, 10, 0)
 
-        self.status_label = QLabel("Ready")
+        self.status_label = QLabel(tr("Ready"))
         # Style applied in _apply_theme
         status_layout.addWidget(self.status_label)
 
@@ -225,7 +230,7 @@ class VariableEditor(QWidget):
 
     def clear_editor(self):
         self.editor.clear()
-        self.status_label.setText("Cleared")
+        self.status_label.setText(tr("Cleared"))
         self.status_label.setStyleSheet(
             f"color: {theme_manager.get_color('text_secondary').name()};"
         )
@@ -236,7 +241,10 @@ class VariableEditor(QWidget):
         import os
 
         filename, _ = QFileDialog.getOpenFileName(
-            self, "Load Python Script", "", "Python Files (*.py);;Text Files (*.txt);;All Files (*)"
+            self,
+            tr("Load Python Script"),
+            "",
+            tr("Python Files (*.py);;Text Files (*.txt);;All Files (*)"),
         )
 
         if filename:
@@ -244,14 +252,14 @@ class VariableEditor(QWidget):
                 with open(filename, "r", encoding="utf-8") as f:
                     content = f.read()
                 self.editor.setPlainText(content)
-                self.status_label.setText(f"Loaded {os.path.basename(filename)}")
+                self.status_label.setText(tr("Loaded {name}", name=os.path.basename(filename)))
                 self.status_label.setStyleSheet(
                     f"color: {theme_manager.get_color('text_secondary').name()};"
                 )
                 logger.info(f"Loaded script from {filename}")
             except Exception as e:
                 logger.error(f"Error loading script: {e}")
-                self.status_label.setText(f"Error loading file: {str(e)}")
+                self.status_label.setText(tr("Error loading file: {error}", error=str(e)))
                 self.status_label.setStyleSheet(
                     f"color: {theme_manager.get_color('error').name()};"
                 )
@@ -266,9 +274,9 @@ class VariableEditor(QWidget):
         if parent and isinstance(parent, QDockWidget):
             parent.setFloating(checked)
             if checked:
-                self.action_float.setText("⧉ Dock")
+                self.action_float.setText("⧉ " + tr("Dock"))
             else:
-                self.action_float.setText("⧉ Float")
+                self.action_float.setText("⧉ " + tr("Float"))
         else:
             logger.warning("Could not find parent QDockWidget to float/dock")
 
@@ -282,14 +290,14 @@ class VariableEditor(QWidget):
         """
         code = self.editor.toPlainText()
         if not code.strip():
-            self.status_label.setText("No code to execute")
+            self.status_label.setText(tr("No code to execute"))
             return
 
         try:
             tree = ast.parse(code)
         except SyntaxError as e:
             logger.error(f"Error parsing workspace code: {e}")
-            self.status_label.setText(f"⚠ Syntax error: {str(e)}")
+            self.status_label.setText(tr("⚠ Syntax error: {error}", error=str(e)))
             self.status_label.setStyleSheet(
                 f"color: {theme_manager.get_color('error').name()}; font-weight: bold;"
             )
@@ -300,7 +308,7 @@ class VariableEditor(QWidget):
         try:
             for node in tree.body:
                 if not isinstance(node, ast.Assign):
-                    raise SafeEvalError("Only 'name = expression' assignments are supported")
+                    raise SafeEvalError(tr("Only 'name = expression' assignments are supported"))
                 # Evaluate the right-hand side once, then bind to each target.
                 rhs_src = ast.get_source_segment(code, node.value)
                 if rhs_src is None:
@@ -309,16 +317,19 @@ class VariableEditor(QWidget):
                 value = safe_expr(rhs_src, variables=local_vars, allow_numpy=True)
                 for target in node.targets:
                     if not isinstance(target, ast.Name):
-                        raise SafeEvalError("Only simple variable assignments are supported")
+                        raise SafeEvalError(tr("Only simple variable assignments are supported"))
                     if target.id.startswith("_"):
                         raise SafeEvalError(
-                            f"Variable names starting with '_' are not allowed: {target.id}"
+                            tr(
+                                "Variable names starting with '_' are not allowed: {name}",
+                                name=target.id,
+                            )
                         )
                     new_vars[target.id] = value
                     local_vars[target.id] = value
         except SafeEvalError as e:
             logger.error(f"Error updating workspace: {e}")
-            self.status_label.setText(f"⚠ Error: {str(e)}")
+            self.status_label.setText(tr("⚠ Error: {error}", error=str(e)))
             self.status_label.setStyleSheet(
                 f"color: {theme_manager.get_color('error').name()}; font-weight: bold;"
             )
@@ -335,8 +346,13 @@ class VariableEditor(QWidget):
         self.variables_updated.emit()
 
         # Update status inline
+        names_preview = ", ".join(var_list[:3]) + ("..." if len(var_list) > 3 else "")
         self.status_label.setText(
-            f"✓ Updated {len(new_vars)} variables: {', '.join(var_list[:3])}{'...' if len(var_list) > 3 else ''}"
+            tr(
+                "✓ Updated {count} variables: {names}",
+                count=len(new_vars),
+                names=names_preview,
+            )
         )
         self.status_label.setStyleSheet(
             f"color: {theme_manager.get_color('success').name()}; font-weight: bold;"

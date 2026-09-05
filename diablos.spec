@@ -107,6 +107,7 @@ datas = [
     ('examples', 'examples'),
     ('modern_ui/icons', 'modern_ui/icons'),
     (VERSION_FILE, '.'),
+    ('locales', 'locales'),
 ]
 
 # --- Analysis ---

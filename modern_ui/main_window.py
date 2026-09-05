@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
 from lib.workspace import WorkspaceManager
 from PyQt5.QtCore import Qt, QTimer, QEvent, QSettings
 from lib.app_paths import SETTINGS_ORG, SETTINGS_APP
+from lib.i18n import tr
 
 # Import existing DSim functionality
 from lib.lib import DSim
@@ -34,7 +35,8 @@ logger = logging.getLogger(__name__)
 
 # One-time first-run welcome shown via the (non-blocking) toast on first launch.
 # Extracted to module scope so it can be asserted on in tests without spinning
-# up the full window.
+# up the full window. It is also the translation catalog key: the toast wraps it
+# in ``tr()`` at show time so the language chosen at startup applies.
 FIRST_RUN_WELCOME_MESSAGE = (
     "Welcome to DiaBloS! Drag a block from the palette to start, "
     "open File ▸ Examples for sample diagrams, or press F1 for shortcuts."
@@ -101,7 +103,7 @@ class ModernDiaBloSWindow(QMainWindow):
         from PyQt5.QtWidgets import QDockWidget
 
         self.variable_editor = VariableEditor(self)
-        self.variable_editor_dock = QDockWidget("Variable Editor", self)
+        self.variable_editor_dock = QDockWidget(tr("Variable Editor"), self)
         self.variable_editor_dock.setWidget(self.variable_editor)
         self.variable_editor_dock.setAllowedAreas(Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.variable_editor_dock)
@@ -112,7 +114,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Initialize Workspace Editor (Dockable)
         self.workspace_editor = WorkspaceEditor(self)
-        self.workspace_editor_dock = QDockWidget("Workspace Variables", self)
+        self.workspace_editor_dock = QDockWidget(tr("Workspace Variables"), self)
         self.workspace_editor_dock.setWidget(self.workspace_editor)
         self.workspace_editor_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, self.workspace_editor_dock)
@@ -120,7 +122,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Initialize Minimap (Dockable)
         self.minimap = MinimapWidget(self.canvas, self)
-        self.minimap_dock = QDockWidget("Minimap", self)
+        self.minimap_dock = QDockWidget(tr("Minimap"), self)
         self.minimap_dock.setWidget(self.minimap)
         self.minimap_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, self.minimap_dock)
@@ -251,6 +253,76 @@ class ModernDiaBloSWindow(QMainWindow):
         """Setup modern menu bar."""
         self.window_setup_manager.setup_menubar()
 
+    # -- Localization -------------------------------------------------------
+
+    def set_language(self, code: str):
+        """Switch the UI language and persist the choice.
+
+        ``code`` is a catalog code (``"es"``) or ``"system"`` to follow the host
+        locale. The chrome retranslates immediately; windows that are already
+        open keep the language they were built with until reopened.
+        """
+        from lib.i18n import set_language, store_language_setting
+
+        store_language_setting(code)
+        resolved = set_language(code)
+        self.retranslate_ui()
+        self._notify(
+            tr("Language changed"),
+            "\U0001f310 " + tr("Language changed. Open windows keep the previous language."),
+        )
+        logger.info("UI language switched to %r (requested %r)", resolved, code)
+
+    def retranslate_ui(self):
+        """Re-apply every string owned by the main window in the new language.
+
+        Menus are rebuilt wholesale (``MenuBuilder.setup_menubar`` clears the
+        bar first), while the toolbar, palette and status bar reuse their
+        widgets and only replace text -- so signal connections and the current
+        simulation state survive a language switch.
+        """
+        from modern_ui import __version__
+        from modern_ui.managers.window_setup_manager import WINDOW_TITLE
+
+        self.setWindowTitle(tr(WINDOW_TITLE, version=__version__))
+        self._setup_menubar()
+
+        for widget, method in (
+            (getattr(self, "toolbar", None), "retranslate_ui"),
+            (getattr(self, "block_palette", None), "retranslate_ui"),
+            (getattr(self, "status_bar_manager", None), "retranslate_ui"),
+        ):
+            if widget is not None and hasattr(widget, method):
+                try:
+                    getattr(widget, method)()
+                except Exception:
+                    logger.exception("Retranslating %s failed", type(widget).__name__)
+
+        for title, dock in (
+            (tr("Variable Editor"), getattr(self, "variable_editor_dock", None)),
+            (tr("Workspace Variables"), getattr(self, "workspace_editor_dock", None)),
+            (tr("Minimap"), getattr(self, "minimap_dock", None)),
+            (tr("Waveforms"), getattr(self, "waveform_inspector_dock", None)),
+        ):
+            if dock is not None:
+                dock.setWindowTitle(title)
+
+        if hasattr(self, "palette_panel_title"):
+            self.palette_panel_title.setText(tr("Block Palette"))
+        if hasattr(self, "properties_panel_title"):
+            self.properties_panel_title.setText(tr("Properties"))
+
+        # Re-render the inspector so param labels/tooltips pick up the new
+        # language: set_block() rebuilds the form from the current selection.
+        if hasattr(self, "property_editor"):
+            try:
+                self.property_editor.set_block(self.property_editor.block)
+            except Exception:
+                logger.debug("Property editor refresh after language change failed", exc_info=True)
+
+        if hasattr(self, "canvas"):
+            self.canvas.update()
+
     def create_subsystem(self):
         """Create subsystem from selection (delegate to canvas)."""
         if hasattr(self, "canvas") and hasattr(self.canvas, "_create_subsystem_trigger"):
@@ -301,8 +373,11 @@ class ModernDiaBloSWindow(QMainWindow):
 
         QMessageBox.information(
             self,
-            "UI Scaling",
-            "The UI scaling factor has been changed. Please restart the application for the changes to take effect.",
+            tr("UI Scaling"),
+            tr(
+                "The UI scaling factor has been changed. "
+                "Please restart the application for the changes to take effect."
+            ),
         )
 
     def _set_default_routing_mode(self, mode):
@@ -402,7 +477,7 @@ class ModernDiaBloSWindow(QMainWindow):
         from PyQt5.QtWidgets import QMessageBox
 
         if not self.dsim.blocks_list:
-            QMessageBox.information(self, "Export TikZ", "No blocks to export.")
+            QMessageBox.information(self, tr("Export TikZ"), tr("No blocks to export."))
             return
         from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
 
@@ -416,16 +491,16 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.tools.file_dialogs import ask_save_path
 
         if not self.dsim.blocks_list:
-            QMessageBox.information(self, "Export Python Script", "No blocks to export.")
+            QMessageBox.information(self, tr("Export Python Script"), tr("No blocks to export."))
             return
 
         diagram_name = os.path.basename(getattr(self.dsim, "filename", "") or "model.diablos")
         default_path = os.path.join(os.getcwd(), os.path.splitext(diagram_name)[0] + ".py")
         path = ask_save_path(
             self,
-            "Export as Python Script",
+            tr("Export as Python Script"),
             default_path,
-            [("Python Script (*.py)", ".py")],
+            [(tr("Python Script") + " (*.py)", ".py")],
         )
         if not path:
             return
@@ -435,15 +510,17 @@ class ModernDiaBloSWindow(QMainWindow):
         except CodegenError as exc:
             # Unsupported blocks / algebraic loops: say which, don't write a
             # half-working script.
-            QMessageBox.warning(self, "Export Python Script", str(exc))
-            self.status_message.setText("Python export failed")
+            QMessageBox.warning(self, tr("Export Python Script"), str(exc))
+            self.status_message.setText(tr("Python export failed"))
             return
         except Exception as exc:  # noqa: BLE001 - surface any generator failure
             logger.warning("Python script export failed", exc_info=True)
             QMessageBox.critical(
-                self, "Export Python Script", f"Could not generate the script:\n{exc}"
+                self,
+                tr("Export Python Script"),
+                tr("Could not generate the script:\n{error}", error=exc),
             )
-            self.status_message.setText("Python export failed")
+            self.status_message.setText(tr("Python export failed"))
             return
 
         try:
@@ -451,12 +528,19 @@ class ModernDiaBloSWindow(QMainWindow):
                 fp.write(source)
         except OSError as exc:
             logger.warning("Could not write %s: %s", path, exc)
-            QMessageBox.critical(self, "Export Python Script", f"Could not write the file:\n{exc}")
-            self.status_message.setText("Python export failed")
+            QMessageBox.critical(
+                self,
+                tr("Export Python Script"),
+                tr("Could not write the file:\n{error}", error=exc),
+            )
+            self.status_message.setText(tr("Python export failed"))
             return
 
         name = os.path.basename(path)
-        self._notify(f"Exported Python script: {name}", f"\U0001f40d Exported {name}")
+        self._notify(
+            tr("Exported Python script: {name}", name=name),
+            "\U0001f40d " + tr("Exported {name}", name=name),
+        )
 
     def _notify(self, status, toast=None):
         """Set the status-bar message and (optionally) show a toast."""
@@ -470,33 +554,36 @@ class ModernDiaBloSWindow(QMainWindow):
         from modern_ui.tools.file_dialogs import ask_save_path
 
         if not self.dsim.blocks_list and not self.dsim.line_list:
-            self.status_message.setText("Nothing to export")
+            self.status_message.setText(tr("Nothing to export"))
             return
 
         path = ask_save_path(
             self,
-            "Export as Image",
+            tr("Export as Image"),
             os.path.join(os.getcwd(), "diagram.png"),
-            [("PNG Image (*.png)", ".png"), ("SVG Image (*.svg)", ".svg")],
+            [(tr("PNG Image") + " (*.png)", ".png"), (tr("SVG Image") + " (*.svg)", ".svg")],
         )
         if not path:
             return
 
         if export_diagram_to_file(self.canvas, path):
             name = os.path.basename(path)
-            self._notify(f"Exported image: {name}", f"\U0001f5bc️ Exported {name}")
+            self._notify(
+                tr("Exported image: {name}", name=name),
+                "\U0001f5bc️ " + tr("Exported {name}", name=name),
+            )
         else:
             logger.warning("Failed to export diagram image to %s", path)
-            self.status_message.setText("Image export failed")
+            self.status_message.setText(tr("Image export failed"))
 
     def copy_diagram_image(self):
         """Copy the diagram to the clipboard as an image (content only)."""
         from modern_ui.tools.diagram_image_exporter import copy_diagram_to_clipboard
 
         if copy_diagram_to_clipboard(self.canvas):
-            self._notify("Diagram copied to clipboard", "\U0001f5bc️ Copied diagram")
+            self._notify(tr("Diagram copied to clipboard"), "\U0001f5bc️ " + tr("Copied diagram"))
         else:
-            self.status_message.setText("Nothing to copy")
+            self.status_message.setText(tr("Nothing to copy"))
 
     # Analysis/experiment facades -> ExperimentController (see controllers/experiment_controller.py)
     def linearize_and_analyze(self):
@@ -530,14 +617,16 @@ class ModernDiaBloSWindow(QMainWindow):
             return
         history = getattr(self.dsim, "run_history", [])
         if not history:
-            QMessageBox.information(self, "Waveform Inspector", "No scope data available yet.")
+            QMessageBox.information(
+                self, tr("Waveform Inspector"), tr("No scope data available yet.")
+            )
             return
 
         if not hasattr(self, "waveform_inspector_dock"):
             from PyQt5.QtWidgets import QDockWidget
 
             self.waveform_inspector = WaveformInspector(self.dsim)
-            self.waveform_inspector_dock = QDockWidget("Waveforms", self)
+            self.waveform_inspector_dock = QDockWidget(tr("Waveforms"), self)
             self.waveform_inspector_dock.setWidget(self.waveform_inspector)
             self.waveform_inspector_dock.setAllowedAreas(
                 Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea
@@ -562,7 +651,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         default_path = os.path.join(os.getcwd(), "screenshot.png")
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Screenshot", default_path, "PNG Image (*.png)"
+            self, tr("Save Screenshot"), default_path, tr("PNG Image") + " (*.png)"
         )
         if not path:
             return
@@ -587,13 +676,13 @@ class ModernDiaBloSWindow(QMainWindow):
         if pixmap.save(path, "PNG"):
             name = os.path.basename(path)
             if hasattr(self, "status_message"):
-                self.status_message.setText(f"Screenshot saved: {name}")
+                self.status_message.setText(tr("Screenshot saved: {name}", name=name))
             if hasattr(self, "toast"):
-                self.toast.show_message(f"\U0001f4f8 Saved {name}")
+                self.toast.show_message("\U0001f4f8 " + tr("Saved {name}", name=name))
         else:
             logger.warning("Failed to save screenshot to %s", path)
             if hasattr(self, "toast"):
-                self.toast.show_message("Screenshot save failed")
+                self.toast.show_message(tr("Screenshot save failed"))
 
     # View-action facades -> ViewActionsManager (see managers/view_actions_manager.py)
     def set_zoom(self, factor: float):
@@ -634,15 +723,15 @@ class ModernDiaBloSWindow(QMainWindow):
         """Undo last action."""
         if hasattr(self, "canvas"):
             self.canvas.undo()
-            self.status_message.setText("Undo")
-            self.toast.show_message("⟲ Undo")
+            self.status_message.setText(tr("Undo"))
+            self.toast.show_message("⟲ " + tr("Undo"))
 
     def redo_action(self):
         """Redo last undone action."""
         if hasattr(self, "canvas"):
             self.canvas.redo()
-            self.status_message.setText("Redo")
-            self.toast.show_message("⟳ Redo")
+            self.status_message.setText(tr("Redo"))
+            self.toast.show_message("⟳ " + tr("Redo"))
 
     def select_all(self):
         """Select all blocks in the diagram."""
@@ -661,9 +750,9 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.update()
 
             if selected_count > 0:
-                self.status_message.setText(f"Selected {selected_count} block(s)")
+                self.status_message.setText(tr("Selected {count} block(s)", count=selected_count))
             else:
-                self.status_message.setText("No blocks to select")
+                self.status_message.setText(tr("No blocks to select"))
 
     def zoom_in(self):
         self.view_actions_manager.zoom_in()
@@ -701,11 +790,11 @@ class ModernDiaBloSWindow(QMainWindow):
         if self.variable_editor_dock.isVisible():
             self.variable_editor_dock.hide()
             self.variable_editor_action.setChecked(False)
-            self.toast.show_message("Variable Editor hidden")
+            self.toast.show_message(tr("Variable Editor hidden"))
         else:
             self.variable_editor_dock.show()
             self.variable_editor_action.setChecked(True)
-            self.toast.show_message("Variable Editor shown")
+            self.toast.show_message(tr("Variable Editor shown"))
 
     def toggle_workspace_editor(self):
         """Toggle Workspace Editor visibility."""
@@ -714,12 +803,12 @@ class ModernDiaBloSWindow(QMainWindow):
                 self.workspace_editor_dock.hide()
                 if hasattr(self, "workspace_editor_action"):
                     self.workspace_editor_action.setChecked(False)
-                self.toast.show_message("Workspace Variables hidden")
+                self.toast.show_message(tr("Workspace Variables hidden"))
             else:
                 self.workspace_editor_dock.show()
                 if hasattr(self, "workspace_editor_action"):
                     self.workspace_editor_action.setChecked(True)
-                self.toast.show_message("Workspace Variables shown")
+                self.toast.show_message(tr("Workspace Variables shown"))
 
     def _on_variables_updated(self):
         """Handle variable updates from the Variable Editor."""
@@ -735,13 +824,20 @@ class ModernDiaBloSWindow(QMainWindow):
             if hasattr(self, "property_editor") and self.property_editor.block is None:
                 self.property_editor.set_block(None)
 
-            self.toast.show_message(f"✓ Workspace updated ({var_count} variables)", duration=2000)
-            self.status_message.setText(f"Workspace updated with {var_count} variable(s)")
+            self.toast.show_message(
+                "✓ " + tr("Workspace updated ({count} variables)", count=var_count),
+                duration=2000,
+            )
+            self.status_message.setText(
+                tr("Workspace updated with {count} variable(s)", count=var_count)
+            )
             logger.info(f"Workspace updated from Variable Editor: {var_count} variables")
         except Exception as e:
             logger.error(f"Error handling variable update: {str(e)}")
             self.toast.show_message(
-                f"Error updating workspace: {str(e)}", duration=3000, is_error=True
+                tr("Error updating workspace: {error}", error=str(e)),
+                duration=3000,
+                is_error=True,
             )
 
     def _prompt_unsaved_changes(self) -> str:
@@ -817,7 +913,7 @@ class ModernDiaBloSWindow(QMainWindow):
                 return
             block_name = getattr(block, "fn_name", "Unknown")
             logger.info(f"Block selected: {block_name}")
-            self.status_message.setText(f"Selected: {block_name}")
+            self.status_message.setText(tr("Selected: {name}", name=block_name))
 
             # Update property panel with block properties
             self.property_editor.set_block(block)
@@ -831,7 +927,9 @@ class ModernDiaBloSWindow(QMainWindow):
             source_name = getattr(source_block, "fn_name", "Unknown")
             target_name = getattr(target_block, "fn_name", "Unknown")
             logger.info(f"Connection created: {source_name} -> {target_name}")
-            self.status_message.setText(f"Connected {source_name} to {target_name}")
+            self.status_message.setText(
+                tr("Connected {source} to {target}", source=source_name, target=target_name)
+            )
 
         except Exception as e:
             logger.error(f"Error handling connection creation: {str(e)}")
@@ -880,7 +978,7 @@ class ModernDiaBloSWindow(QMainWindow):
         if hasattr(self, "toast"):
             self.toast.show_message(message, duration=5000, is_error=True)
         else:
-            QMessageBox.critical(self, "Error", message)
+            QMessageBox.critical(self, tr("Error"), message)
 
     # Property/param facades -> PropertyController (see managers/property_controller.py)
     def _convert_param_value(self, new_value, target_type):
@@ -963,7 +1061,7 @@ class ModernDiaBloSWindow(QMainWindow):
             self.canvas.update()
 
             logger.info(f"Navigated to error location at ({center_x}, {center_y})")
-            self.status_message.setText(f"Showing error: {error.message}")
+            self.status_message.setText(tr("Showing error: {message}", message=error.message))
 
         except Exception as e:
             logger.error(f"Error navigating to error location: {str(e)}")
@@ -1064,7 +1162,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
                 if was_running and not is_running:
                     self.toolbar.set_simulation_state(False, False)
-                    self.status_message.setText("Simulation finished")
+                    self.status_message.setText(tr("Simulation finished"))
                     # Arm tuning controller with sim params from completed run
                     self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
 
@@ -1081,7 +1179,7 @@ class ModernDiaBloSWindow(QMainWindow):
         """Create new diagram."""
         if hasattr(self, "canvas"):
             self.canvas.clear_canvas()
-        self.status_message.setText("New diagram created")
+        self.status_message.setText(tr("New diagram created"))
 
     def start_simulation(self) -> None:
         """Start simulation with validation.
@@ -1193,24 +1291,30 @@ class ModernDiaBloSWindow(QMainWindow):
             # done (idempotent: we only ever want this to fire once).
             settings.setValue("ui/first_run_done", True)
             if hasattr(self, "toast"):
-                self.toast.show_message(FIRST_RUN_WELCOME_MESSAGE, duration=8000)
+                self.toast.show_message(tr(FIRST_RUN_WELCOME_MESSAGE), duration=8000)
         except Exception as e:
             logger.error(f"Error showing first-run welcome: {str(e)}")
 
     def load_workspace(self):
         """Load variables from a workspace file."""
         filepath, _ = QFileDialog.getOpenFileName(
-            self, "Load Workspace", "", "Text Files (*.txt);;All Files (*)"
+            self,
+            tr("Load Workspace"),
+            "",
+            tr("Text Files") + " (*.txt);;" + tr("All Files") + " (*)",
         )
         if filepath:
             try:
                 WorkspaceManager().load_from_file(filepath)
                 self._on_variables_updated()
                 self.toast.show_message(
-                    f"Workspace loaded from {os.path.basename(filepath)}", duration=3000
+                    tr("Workspace loaded from {name}", name=os.path.basename(filepath)),
+                    duration=3000,
                 )
             except Exception as e:
                 self.toast.show_message(
-                    f"Failed to load workspace: {str(e)}", duration=5000, is_error=True
+                    tr("Failed to load workspace: {error}", error=str(e)),
+                    duration=5000,
+                    is_error=True,
                 )
                 logger.error(f"Failed to load workspace: {str(e)}")

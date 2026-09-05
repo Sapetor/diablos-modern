@@ -10,6 +10,7 @@ from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt
 
+from lib.i18n import tr
 from lib.improvements import ValidationHelper
 from modern_ui.widgets.canvas_state import ConnectionState
 
@@ -225,7 +226,7 @@ class ConnectionManager:
 
             # Basic validation checks
             if start_block == end_block:
-                validation_errors.append("Cannot connect a block to itself")
+                validation_errors.append(tr("Cannot connect a block to itself"))
 
             # BodeMag and RootLocus connections logic
             allowed_bode_blocks = [
@@ -241,12 +242,16 @@ class ConnectionManager:
                 and start_block.block_fn not in allowed_bode_blocks
             ):
                 validation_errors.append(
-                    f"{end_block.block_fn} block can only be connected to: {', '.join(allowed_bode_blocks)}"
+                    tr(
+                        "{block} block can only be connected to: {allowed}",
+                        block=end_block.block_fn,
+                        allowed=", ".join(allowed_bode_blocks),
+                    )
                 )
 
             if end_block.block_fn == "RootLocus" and start_block.block_fn != "TranFn":
                 validation_errors.append(
-                    "RootLocus block can only be connected to a Transfer Function."
+                    tr("RootLocus block can only be connected to a Transfer Function.")
                 )
 
             # Check if the destination input port is already connected.
@@ -258,7 +263,7 @@ class ConnectionManager:
             for line in existing_lines:
                 if hasattr(line, "dstblock") and hasattr(line, "dstport"):
                     if line.dstblock == end_name and line.dstport == end_port:
-                        validation_errors.append("Input port already connected")
+                        validation_errors.append(tr("Input port already connected"))
                         break
 
             # Use ValidationHelper if available
@@ -296,7 +301,7 @@ class ConnectionManager:
             return len(validation_errors) == 0, validation_errors
         except Exception as e:
             logger.error(f"Error validating connection: {str(e)}")
-            return False, [f"Validation error: {str(e)}"]
+            return False, [tr("Validation error: {error}", error=str(e))]
 
     # ==================== Line Creation ====================
 
@@ -337,7 +342,7 @@ class ConnectionManager:
                         error_msg = "\n".join(validation_errors)
                         logger.warning(f"Connection validation failed: {error_msg}")
                         self.canvas.simulation_status_changed.emit(
-                            f"Connection invalid: {error_msg}"
+                            tr("Connection invalid: {error}", error=error_msg)
                         )
                         self.cancel_line_creation()
                         return
@@ -522,8 +527,12 @@ class ConnectionManager:
         # Show input dialog
         text, ok = QInputDialog.getText(
             self.canvas,
-            "Edit Connection Label",
-            f"Enter label for connection {line.srcblock} -> {line.dstblock}:",
+            tr("Edit Connection Label"),
+            tr(
+                "Enter label for connection {source} -> {destination}:",
+                source=line.srcblock,
+                destination=line.dstblock,
+            ),
             text=current_label,
         )
 

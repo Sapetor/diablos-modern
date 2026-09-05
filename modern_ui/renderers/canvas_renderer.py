@@ -8,6 +8,7 @@ import logging
 from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath, QPolygonF
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from modern_ui.themes.theme_manager import theme_manager, font_metrics, text_width
+from lib.i18n import tr
 from lib.simulation.connection import bezier_control_points
 
 logger = logging.getLogger(__name__)
@@ -466,9 +467,9 @@ class CanvasRenderer:
             painter.resetTransform()
 
             # Prepare text lines
-            lines = ["Routing tags"]
+            lines = [tr("Routing tags")]
             for tag, counts in sorted(tags.items()):
-                label = tag if tag else "(empty)"
+                label = tag if tag else tr("(empty)")
                 lines.append(f"{label}: G{counts['goto']} → F{counts['from']}")
 
             # Memoized per font rather than reconstructed on every frame.

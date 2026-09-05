@@ -17,6 +17,8 @@ import ast
 import logging
 from typing import Any
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +120,9 @@ class PropertyController:
                     break
         except (ValueError, TypeError, SyntaxError) as e:
             logger.error(f"Failed to convert property {prop_name} to type {param_type}: {e}")
-            self.window.show_error(f"Invalid input for {prop_name}: {e}")
+            self.window.show_error(
+                tr("Invalid input for {param}: {error}", param=prop_name, error=e)
+            )
         except Exception as e:
             logger.error(f"Error updating property: {e}")
             import traceback

@@ -31,6 +31,8 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
 )
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +48,7 @@ class MonteCarloDialog(QDialog):
         super().__init__(parent)
         self.dsim = dsim
 
-        self.setWindowTitle("Monte-Carlo Ensemble")
+        self.setWindowTitle(tr("Monte-Carlo Ensemble"))
         self.setMinimumWidth(420)
         self.setModal(True)
 
@@ -87,17 +89,19 @@ class MonteCarloDialog(QDialog):
         layout.setSpacing(10)
 
         form = QFormLayout()
-        form.addRow("Number of runs:", self.n_runs_spin)
-        form.addRow("Master seed:", self.master_seed_spin)
-        form.addRow("Simulation time:", self.sim_time_spin)
-        form.addRow("Step size (dt):", self.sim_dt_spin)
+        form.addRow(tr("Number of runs:"), self.n_runs_spin)
+        form.addRow(tr("Master seed:"), self.master_seed_spin)
+        form.addRow(tr("Simulation time:"), self.sim_time_spin)
+        form.addRow(tr("Step size (dt):"), self.sim_dt_spin)
         layout.addLayout(form)
 
         helper = QLabel(
-            "Each run derives its own per-run seed from the master seed, the run "
-            "index, and the block name. Every run differs, yet the whole ensemble "
-            "is reproducible from the master seed alone -- rerun with the same "
-            "master seed to reproduce the exact ensemble."
+            tr(
+                "Each run derives its own per-run seed from the master seed, the run "
+                "index, and the block name. Every run differs, yet the whole ensemble "
+                "is reproducible from the master seed alone -- rerun with the same "
+                "master seed to reproduce the exact ensemble."
+            )
         )
         helper.setWordWrap(True)
         layout.addWidget(helper)

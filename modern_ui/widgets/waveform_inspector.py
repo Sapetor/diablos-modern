@@ -15,6 +15,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+# Aliased: this module uses `tr` as a loop variable name for trace dicts
+# (e.g. `for idx, tr in enumerate(self.traces)`), which would shadow the
+# translation function if imported under its usual name.
+from lib.i18n import tr as _tr
+
 
 class WaveformInspector(QWidget):
     """
@@ -40,7 +45,7 @@ class WaveformInspector(QWidget):
         self.active_traces = set()
         self.persist_enabled = bool(getattr(dsim, "run_history_persist_enabled", False))
 
-        self.setWindowTitle("Waveform Inspector")
+        self.setWindowTitle(_tr("Waveform Inspector"))
         self.resize(900, 650)
 
         root = QHBoxLayout()
@@ -57,13 +62,13 @@ class WaveformInspector(QWidget):
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Checked)
             self.run_list.addItem(item)
-        left.addWidget(QLabel("Runs"))
+        left.addWidget(QLabel(_tr("Runs")))
         left.addWidget(self.run_list)
 
         run_controls = QHBoxLayout()
-        self.pin_btn = QPushButton("Pin/Unpin")
+        self.pin_btn = QPushButton(_tr("Pin/Unpin"))
         self.pin_btn.clicked.connect(self._toggle_pin_selected)
-        self.persist_chk = QCheckBox("Persist history")
+        self.persist_chk = QCheckBox(_tr("Persist history"))
         self.persist_chk.setChecked(self.persist_enabled)
         self.persist_chk.toggled.connect(self._toggle_persist)
         run_controls.addWidget(self.pin_btn)
@@ -74,14 +79,14 @@ class WaveformInspector(QWidget):
         self.trace_list = QListWidget()
         self.trace_list.itemChanged.connect(self._on_trace_changed)
         self._populate_trace_list()
-        left.addWidget(QLabel("Traces"))
+        left.addWidget(QLabel(_tr("Traces")))
         left.addWidget(self.trace_list)
 
         # Right: plot + controls
         right = QVBoxLayout()
         root.addLayout(right, 1)
 
-        self.plot = pg.PlotWidget(title="Scopes")
+        self.plot = pg.PlotWidget(title=_tr("Scopes"))
         self.plot.showGrid(x=True, y=True)
         self.plot.addLegend()
         self.vline = pg.InfiniteLine(
@@ -95,7 +100,7 @@ class WaveformInspector(QWidget):
 
         # Scrub slider
         slider_row = QHBoxLayout()
-        slider_row.addWidget(QLabel("Scrub"))
+        slider_row.addWidget(QLabel(_tr("Scrub")))
         self.scrub = QSlider(Qt.Horizontal)
         self.scrub.setMinimum(0)
         self.scrub.setMaximum(
@@ -103,15 +108,15 @@ class WaveformInspector(QWidget):
         )
         self.scrub.valueChanged.connect(self._on_scrub)
         slider_row.addWidget(self.scrub, 1)
-        self.readout = QLabel("t = -, values = -")
+        self.readout = QLabel(_tr("t = -, values = -"))
         slider_row.addWidget(self.readout)
         right.addLayout(slider_row)
 
         # Buttons
         btns = QHBoxLayout()
-        export_btn = QPushButton("Export CSV")
+        export_btn = QPushButton(_tr("Export CSV"))
         export_btn.clicked.connect(self._export_csv)
-        autoscale_btn = QPushButton("Autoscale")
+        autoscale_btn = QPushButton(_tr("Autoscale"))
         autoscale_btn.clicked.connect(self._autoscale)
         btns.addWidget(export_btn)
         btns.addWidget(autoscale_btn)
@@ -163,7 +168,7 @@ class WaveformInspector(QWidget):
 
     def _run_display_name(self, run):
         prefix = "* " if run.get("pinned", False) else ""
-        return f"{prefix}{run.get('name', 'Run')}"
+        return f"{prefix}{run.get('name', _tr('Run'))}"
 
     def _update_scrub_max(self):
         if hasattr(self, "scrub"):
@@ -240,7 +245,7 @@ class WaveformInspector(QWidget):
 
     def _update_readout(self):
         if self.timeline is None or not len(self.timeline):
-            self.readout.setText("t = -, values = -")
+            self.readout.setText(_tr("t = -, values = -"))
             return
         t = self.vline.value()
         idx = np.searchsorted(self.timeline, t, side="left")
@@ -267,11 +272,12 @@ class WaveformInspector(QWidget):
             else:
                 tr_idx = idx
             if tr_idx >= len(y):
-                vals.append(f"{tr['name']}: n/a")
+                vals.append(_tr("{name}: n/a", name=tr["name"]))
             else:
                 vals.append(f"{tr['name']}: {y[tr_idx]:.4g}")
+        values_text = "; ".join(vals) if vals else _tr("no active traces")
         self.readout.setText(
-            f"t = {self.timeline[idx]:.4g}, " + ("; ".join(vals) if vals else "no active traces")
+            _tr("t = {time:.4g}, {values}", time=self.timeline[idx], values=values_text)
         )
         self.scrub.blockSignals(True)
         self.scrub.setValue(idx)
@@ -282,17 +288,19 @@ class WaveformInspector(QWidget):
 
     def _export_csv(self):
         if self.timeline is None or not len(self.timeline):
-            QMessageBox.warning(self, "No Data", "No data to export.")
+            QMessageBox.warning(self, _tr("No Data"), _tr("No data to export."))
             return
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Export CSV", "waveforms.csv", "CSV Files (*.csv)"
+            self, _tr("Export CSV"), "waveforms.csv", _tr("CSV Files (*.csv)")
         )
         if not filepath:
             return
         # Build matrix with selected traces
         active = [i for i in range(len(self.traces)) if i in self.active_traces]
         if not active:
-            QMessageBox.warning(self, "No Selection", "Select at least one trace to export.")
+            QMessageBox.warning(
+                self, _tr("No Selection"), _tr("Select at least one trace to export.")
+            )
             return
         # Align all columns to a common length so column_stack cannot fail on
         # traces that are shorter than the (longest-run) timeline.
@@ -300,7 +308,7 @@ class WaveformInspector(QWidget):
         for i in active:
             n = min(n, len(self.traces[i]["y"]))
         if n == 0:
-            QMessageBox.warning(self, "No Data", "Selected traces contain no samples.")
+            QMessageBox.warning(self, _tr("No Data"), _tr("Selected traces contain no samples."))
             return
         data_cols = [self.timeline[:n]]
         header = ["time"]
@@ -311,4 +319,6 @@ class WaveformInspector(QWidget):
             mat = np.column_stack(data_cols)
             np.savetxt(filepath, mat, delimiter=",", header=",".join(header), comments="")
         except (ValueError, OSError) as exc:
-            QMessageBox.warning(self, "Export Failed", f"Could not export CSV:\n{exc}")
+            QMessageBox.warning(
+                self, _tr("Export Failed"), _tr("Could not export CSV:\n{error}", error=exc)
+            )

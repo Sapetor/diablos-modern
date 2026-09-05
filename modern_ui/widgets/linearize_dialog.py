@@ -34,6 +34,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 # b_type values used across DiaBloS: 0 = source, 1 = state, 2 = algebraic,
@@ -54,13 +56,13 @@ class LinearizeDialog(QDialog):
         super().__init__(parent)
         self.dsim = dsim
 
-        self.setWindowTitle("Linearize & Analyze")
+        self.setWindowTitle(tr("Linearize & Analyze"))
         self.setMinimumWidth(460)
         self.setModal(True)
 
         self.input_list = QListWidget()
         self.output_list = QListWidget()
-        self.trim_checkbox = QCheckBox("Find operating point (trim) first")
+        self.trim_checkbox = QCheckBox(tr("Find operating point (trim) first"))
 
         self._setup_ui()
         self._populate()
@@ -71,9 +73,11 @@ class LinearizeDialog(QDialog):
         layout.setSpacing(10)
 
         intro = QLabel(
-            "Choose which source blocks act as system inputs and which blocks "
-            "are measured outputs. Leave both empty for an A-only "
-            "(eigenvalue/stability) analysis."
+            tr(
+                "Choose which source blocks act as system inputs and which blocks "
+                "are measured outputs. Leave both empty for an A-only "
+                "(eigenvalue/stability) analysis."
+            )
         )
         intro.setWordWrap(True)
         layout.addWidget(intro)
@@ -81,14 +85,14 @@ class LinearizeDialog(QDialog):
         lists_layout = QHBoxLayout()
 
         # Inputs
-        in_group = QGroupBox("Inputs (sources)")
+        in_group = QGroupBox(tr("Inputs (sources)"))
         in_v = QVBoxLayout(in_group)
         self.input_list.setSelectionMode(QListWidget.ExtendedSelection)
         in_v.addWidget(self.input_list)
         lists_layout.addWidget(in_group)
 
         # Outputs
-        out_group = QGroupBox("Outputs (signals)")
+        out_group = QGroupBox(tr("Outputs (signals)"))
         out_v = QVBoxLayout(out_group)
         self.output_list.setSelectionMode(QListWidget.ExtendedSelection)
         out_v.addWidget(self.output_list)
