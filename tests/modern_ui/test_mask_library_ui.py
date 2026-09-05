@@ -73,7 +73,7 @@ class TestPropertyEditorShowsMaskParameters:
             # The mask definition itself is never offered as a parameter.
             assert "_mask" not in editor._widgets
         finally:
-            editor.deleteLater()
+            editor.setParent(None)
 
     def test_widgets_are_typed_from_the_mask_spec(self, qapp):
         from modern_ui.widgets.property_editor import PropertyEditor
@@ -92,7 +92,7 @@ class TestPropertyEditorShowsMaskParameters:
                 mass_editor, "value"
             )
         finally:
-            editor.deleteLater()
+            editor.setParent(None)
 
     def test_docs_come_from_the_mask(self, qapp):
         from modern_ui.widgets.property_editor import PropertyEditor
@@ -107,7 +107,7 @@ class TestPropertyEditorShowsMaskParameters:
             # ...and the header names the block by its mask, not "Subsystem".
             assert any(text == "Vehicle" for text in texts)
         finally:
-            editor.deleteLater()
+            editor.setParent(None)
 
     def test_an_unmasked_subsystem_still_uses_the_generic_path(self, qapp):
         from blocks.subsystem import Subsystem
@@ -120,7 +120,7 @@ class TestPropertyEditorShowsMaskParameters:
             assert editor._mask is None
             assert editor._widgets == {}
         finally:
-            editor.deleteLater()
+            editor.setParent(None)
 
 
 # ----------------------------------------------------------------- palette ---
@@ -167,7 +167,7 @@ class TestPaletteLibraryBlocks:
             assert library_rows[0].category_name == "User Library"
             assert "Force in, speed out." in library_rows[0].toolTip()
         finally:
-            palette.deleteLater()
+            palette.setParent(None)
 
     def test_dropping_a_library_block_creates_an_independent_copy(self, qapp, library_dir):
         from lib.models.simulation_model import SimulationModel

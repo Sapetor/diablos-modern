@@ -44,6 +44,29 @@ VEHICLE_MASK = {
 }
 
 
+@pytest.fixture(scope="module")
+def model(qapp):
+    """One SimulationModel for the whole module.
+
+    Building a model loads every block class and its palette pixmap; doing that
+    once per test churns enough Qt objects to destabilise later widget tests in
+    a full-suite run, so the model is built once and cleared between tests.
+    """
+    from lib.models.simulation_model import SimulationModel
+
+    instance = SimulationModel()
+    yield instance
+    instance.blocks_list.clear()
+    instance.line_list.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_model(model):
+    model.blocks_list.clear()
+    model.line_list.clear()
+    yield
+
+
 @pytest.fixture
 def masked_subsystem(qapp):
     """A Subsystem carrying the Vehicle mask and one inner TranFn."""
@@ -82,8 +105,8 @@ def test_slugify_makes_a_safe_stem():
 
 
 @pytest.mark.unit
-def test_build_library_document_shape(qapp, simulation_model, masked_subsystem):
-    data = build_library_document(_serialize(simulation_model, masked_subsystem), "vehicle")
+def test_build_library_document_shape(qapp, model, masked_subsystem):
+    data = build_library_document(_serialize(model, masked_subsystem), "vehicle")
 
     # It is still a loadable diagram...
     assert data["version"] == "2.0"
@@ -105,9 +128,9 @@ def test_build_library_document_shape(qapp, simulation_model, masked_subsystem):
 
 @pytest.mark.unit
 @pytest.mark.file_io
-def test_library_file_round_trip(tmp_path, qapp, simulation_model, masked_subsystem):
+def test_library_file_round_trip(tmp_path, qapp, model, masked_subsystem):
     path = write_library_file(
-        _serialize(simulation_model, masked_subsystem), directory=str(tmp_path), block_id="vehicle"
+        _serialize(model, masked_subsystem), directory=str(tmp_path), block_id="vehicle"
     )
     assert os.path.basename(path) == "vehicle.diablos"
 
@@ -127,9 +150,9 @@ def test_library_file_round_trip(tmp_path, qapp, simulation_model, masked_subsys
 
 @pytest.mark.unit
 @pytest.mark.file_io
-def test_instance_data_is_an_independent_copy(tmp_path, qapp, simulation_model, masked_subsystem):
+def test_instance_data_is_an_independent_copy(tmp_path, qapp, model, masked_subsystem):
     path = write_library_file(
-        _serialize(simulation_model, masked_subsystem), directory=str(tmp_path), block_id="vehicle"
+        _serialize(model, masked_subsystem), directory=str(tmp_path), block_id="vehicle"
     )
     lib_block = read_library_file(path)
 
@@ -151,13 +174,11 @@ def test_a_plain_diagram_is_not_a_library_block(tmp_path):
 
 @pytest.mark.unit
 @pytest.mark.file_io
-def test_discovery_from_the_env_var(
-    tmp_path, monkeypatch, qapp, simulation_model, masked_subsystem
-):
+def test_discovery_from_the_env_var(tmp_path, monkeypatch, qapp, model, masked_subsystem):
     lib_dir = tmp_path / "mylib"
     lib_dir.mkdir()
     write_library_file(
-        _serialize(simulation_model, masked_subsystem), directory=str(lib_dir), block_id="vehicle"
+        _serialize(model, masked_subsystem), directory=str(lib_dir), block_id="vehicle"
     )
     monkeypatch.setenv(LIBRARY_ENV_VAR, str(lib_dir))
 
@@ -182,15 +203,13 @@ def test_search_path_order(tmp_path, monkeypatch):
 
 @pytest.mark.unit
 @pytest.mark.file_io
-def test_higher_priority_folder_wins(
-    tmp_path, monkeypatch, qapp, simulation_model, masked_subsystem
-):
+def test_higher_priority_folder_wins(tmp_path, monkeypatch, qapp, model, masked_subsystem):
     env_dir = tmp_path / "env"
     env_dir.mkdir()
     project_dir = tmp_path / "project" / "library"
     project_dir.mkdir(parents=True)
 
-    block_data = _serialize(simulation_model, masked_subsystem)
+    block_data = _serialize(model, masked_subsystem)
     write_library_file(block_data, directory=str(project_dir), block_id="vehicle")
 
     shadowed = dict(VEHICLE_MASK, name="Vehicle (env)")
@@ -205,9 +224,7 @@ def test_higher_priority_folder_wins(
 
 @pytest.mark.unit
 @pytest.mark.file_io
-def test_masked_subsystem_survives_a_diagram_save_load(
-    tmp_path, qapp, simulation_model, masked_subsystem
-):
+def test_masked_subsystem_survives_a_diagram_save_load(tmp_path, qapp, model, masked_subsystem):
     """A saved diagram keeps the mask, its values and the library ref."""
     from lib.library import attach_library_ref
     from lib.services.file_service import FileService
@@ -215,13 +232,13 @@ def test_masked_subsystem_survives_a_diagram_save_load(
     attach_library_ref(masked_subsystem, {"id": "vehicle", "file": "vehicle.diablos"})
     masked_subsystem.params["m"] = 1200.0
 
-    simulation_model.blocks_list.append(masked_subsystem)
-    service = FileService(simulation_model)
+    model.blocks_list.append(masked_subsystem)
+    service = FileService(model)
     target = tmp_path / "diagram.diablos"
     assert service.save_to_file(service.serialize(), str(target))
 
     service.apply_loaded_data(service.load(filepath=str(target)))
-    reloaded = simulation_model.blocks_list[0]
+    reloaded = model.blocks_list[0]
 
     mask = get_mask(reloaded)
     assert mask is not None and mask["name"] == "Vehicle"
