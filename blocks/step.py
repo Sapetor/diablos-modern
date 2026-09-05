@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class StepBlock(BaseBlock):
@@ -69,6 +70,7 @@ class StepBlock(BaseBlock):
                 "default": True,
                 "doc": "If type is pulse, defines if it starts up or down.",
             },
+            **zero_crossing_param(),
         }
 
     @property

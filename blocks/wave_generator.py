@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 from scipy import signal
 
 
@@ -36,6 +37,7 @@ class WaveGeneratorBlock(BaseBlock):
             "frequency": {"default": 1.0, "type": "float"},
             "phase": {"default": 0.0, "type": "float"},
             "bias": {"default": 0.0, "type": "float"},
+            **zero_crossing_param(),
         }
 
     @property

@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class DeadbandBlock(BaseBlock):
@@ -49,6 +50,7 @@ class DeadbandBlock(BaseBlock):
                 "doc": "Start of dead zone (lower threshold).",
             },
             "end": {"type": "float", "default": 0.5, "doc": "End of dead zone (upper threshold)."},
+            **zero_crossing_param(),
         }
 
     @property

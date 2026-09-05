@@ -48,11 +48,18 @@ class TestAbsBlock:
         result = block.execute(0.0, {0: -7.0}, {})
         assert result[0][0] == 7.0
 
-    def test_no_params_needed(self):
+    def test_no_behavioural_params(self):
+        """|u| has nothing to configure.
+
+        The one param it does carry, ``zero_crossing``, steers the compiled
+        solver's event detection (the corner at u = 0) and is never read by
+        ``execute()`` -- so the block still takes no parameters that change
+        what it computes.
+        """
         from blocks.abs_block import AbsBlock
 
         block = AbsBlock()
-        assert block.params == {}
+        assert set(block.params) == {"zero_crossing"}
 
     def test_has_one_input_one_output(self):
         from blocks.abs_block import AbsBlock

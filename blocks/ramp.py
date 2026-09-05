@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class RampBlock(BaseBlock):
@@ -42,6 +43,7 @@ class RampBlock(BaseBlock):
         return {
             "slope": {"type": "float", "default": 1.0, "doc": "The slope of the ramp."},
             "delay": {"type": "float", "default": 0.0, "doc": "The delay of the ramp."},
+            **zero_crossing_param(),
         }
 
     @property

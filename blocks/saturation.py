@@ -1,5 +1,5 @@
 from blocks.base_block import BaseBlock
-from blocks.param_templates import limit_params
+from blocks.param_templates import limit_params, zero_crossing_param
 from blocks.input_helpers import get_vector, clip_to_limits
 
 
@@ -34,7 +34,10 @@ class SaturationBlock(BaseBlock):
 
     @property
     def params(self):
-        return limit_params(min_doc="Lower saturation limit.", max_doc="Upper saturation limit.")
+        return {
+            **limit_params(min_doc="Lower saturation limit.", max_doc="Upper saturation limit."),
+            **zero_crossing_param(),
+        }
 
     @property
     def inputs(self):

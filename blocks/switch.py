@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class SwitchBlock(BaseBlock):
@@ -53,6 +54,7 @@ class SwitchBlock(BaseBlock):
                 "options": ["threshold", "index"],
                 "doc": "'threshold' or 'index'.",
             },
+            **zero_crossing_param(),
         }
 
     @property

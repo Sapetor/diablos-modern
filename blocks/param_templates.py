@@ -115,6 +115,39 @@ def slew_rate_params(default_rising: float = np.inf, default_falling: float = np
     }
 
 
+def zero_crossing_param(default: str = "auto") -> ParamDict:
+    """Per-block opt-out from compiled-path zero-crossing detection.
+
+    Blocks with a switching surface (Saturation, Switch, Deadband, Hysteresis,
+    Step, ...) contribute event functions to the fast solver so their switching
+    instants are located exactly instead of smeared across an adaptive step --
+    see ``lib/engine/zero_crossing.py``. That is the right default, but a block
+    that switches far faster than the output step spends the run being located
+    rather than integrated; ``"off"`` drops just that block's events while the
+    rest of the diagram keeps its own.
+
+    The interpreted path is fixed-step and has no event machinery, so it
+    ignores this param entirely (and no ``execute()`` reads it).
+
+    Args:
+        default: "auto" (contribute events) or "off".
+
+    Returns:
+        Parameter dict with the zero_crossing definition.
+    """
+    return {
+        "zero_crossing": {
+            "type": "string",
+            "default": default,
+            "doc": (
+                "Fast-solver zero-crossing detection for this block: "
+                "'auto' locates its switching instants exactly, 'off' skips them."
+            ),
+            "options": ["auto", "off"],
+        }
+    }
+
+
 def method_param(
     choices: List[str], default: str, param_name: str = "method", doc: Optional[str] = None
 ) -> ParamDict:
