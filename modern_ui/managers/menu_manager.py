@@ -623,13 +623,13 @@ class MenuManager:
         if conn_mgr is not None:
             _build_kbd_row(
                 menu,
-                "Auto-route wire",
+                tr("Auto-route wire"),
                 "",
                 on_trigger=lambda: conn_mgr.auto_route_line(line),
             )
             _build_kbd_row(
                 menu,
-                "Reset routing",
+                tr("Reset routing"),
                 "",
                 enabled=bool(getattr(line, "modified", False)),
                 on_trigger=lambda: conn_mgr.reset_line_routing(line),

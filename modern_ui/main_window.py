@@ -849,9 +849,9 @@ class ModernDiaBloSWindow(QMainWindow):
         """
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("Unsaved Changes")
-        box.setText("This diagram has unsaved changes.")
-        box.setInformativeText("Save them before closing?")
+        box.setWindowTitle(tr("Unsaved Changes"))
+        box.setText(tr("This diagram has unsaved changes."))
+        box.setInformativeText(tr("Save them before closing?"))
         box.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         box.setDefaultButton(QMessageBox.Save)
         answer = box.exec_()
