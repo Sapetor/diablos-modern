@@ -7,12 +7,40 @@ Separates rendering logic from the DLine data model.
 import math
 import logging
 import numpy as np
-from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF, QFontMetrics
+from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF
 
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect
-from modern_ui.themes.theme_manager import theme_manager, get_ui_font, get_mono_font, TYPE
+from modern_ui.themes.theme_manager import (
+    theme_manager,
+    get_ui_font,
+    get_mono_font,
+    font_metrics,
+    text_width,
+    TYPE,
+)
 
 logger = logging.getLogger(__name__)
+
+# The chip / label fonts are constants; building them (and their metrics) per
+# frame showed up in the paint profile, so they are created lazily once.
+_CHIP_FONT = None
+_LABEL_FONT = None
+
+
+def _chip_font():
+    """Monospace font for the live port-value chips (built once)."""
+    global _CHIP_FONT
+    if _CHIP_FONT is None:
+        _CHIP_FONT = get_mono_font(TYPE["caption"])
+    return _CHIP_FONT
+
+
+def _label_font():
+    """UI font for connection labels (built once)."""
+    global _LABEL_FONT
+    if _LABEL_FONT is None:
+        _LABEL_FONT = get_ui_font(TYPE["body"])
+    return _LABEL_FONT
 
 
 class ConnectionRenderer:
@@ -65,9 +93,9 @@ class ConnectionRenderer:
             border = QColor(success)
             border.setAlpha(90)
 
-            font = get_mono_font(TYPE["caption"])
+            font = _chip_font()
             painter.setFont(font)
-            fm = QFontMetrics(font)
+            fm = font_metrics(font)
 
             for block in blocks:
                 coords = getattr(block, "out_coords", None)
@@ -81,11 +109,7 @@ class ConnectionRenderer:
                     if not text:
                         continue
 
-                    text_w = (
-                        fm.horizontalAdvance(text)
-                        if hasattr(fm, "horizontalAdvance")
-                        else fm.width(text)
-                    )
+                    text_w = text_width(fm, text)
                     text_h = fm.height()
                     pad_x, pad_y = 6, 2
                     chip_w = text_w + 2 * pad_x
@@ -279,25 +303,20 @@ class ConnectionRenderer:
         label_pos = self.label_anchor(line)
 
         # Draw label background (canonical UI stack instead of fixed Arial)
-        font = get_ui_font(TYPE["body"])
+        font = _label_font()
         painter.setFont(font)
 
-        metrics = QFontMetrics(font)
+        metrics = font_metrics(font)
         text = str(line.label)
-        # Qt5.9 compatibility: use width() as fallback
-        text_width = (
-            metrics.horizontalAdvance(text)
-            if hasattr(metrics, "horizontalAdvance")
-            else metrics.width(text)
-        )
+        label_width = text_width(metrics, text)
         text_height = metrics.height()
 
         # Background rectangle
         padding = 4
         bg_rect = QRect(
-            label_pos.x() - text_width // 2 - padding,
+            label_pos.x() - label_width // 2 - padding,
             label_pos.y() - text_height // 2 - padding,
-            text_width + 2 * padding,
+            label_width + 2 * padding,
             text_height + 2 * padding,
         )
 

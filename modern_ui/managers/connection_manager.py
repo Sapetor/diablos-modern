@@ -5,7 +5,7 @@ Handles connection/wire creation, editing, and deletion.
 
 import logging
 import types
-from typing import Optional, Tuple, Any, TYPE_CHECKING
+from typing import Any, Iterable, Optional, Tuple, TYPE_CHECKING
 from PyQt5.QtCore import QPoint
 from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt
@@ -287,9 +287,11 @@ class ConnectionManager:
                 logger.debug(f"ValidationHelper not available: {str(e)}")
             except Exception as e:
                 # The helper exists but raised while validating: that's a real
-                # bug in the validator, not an absent feature. Surface it so a
-                # broken validator isn't mistaken for a passing connection.
-                logger.warning(f"ValidationHelper execution failed: {str(e)}")
+                # bug in the validator, not an absent feature. A validator that
+                # crashed has NOT approved this connection, so treat the crash
+                # as a rejection instead of letting an unvalidated wire through.
+                logger.error(f"ValidationHelper execution failed: {str(e)}", exc_info=True)
+                validation_errors.append(f"Connection validator failed: {str(e)}")
 
             return len(validation_errors) == 0, validation_errors
         except Exception as e:
@@ -539,10 +541,22 @@ class ConnectionManager:
             self.canvas.update()
             logger.info(f"Changed routing mode for {line.name} to {mode}")
 
-    def update_line_positions(self) -> None:
-        """Update line positions after block movement.
+    def update_line_positions(self, block_names: Optional[Iterable[str]] = None) -> None:
+        """Recompute wire endpoints after block movement.
 
         This replaces DSim.update_lines() - line position logic belongs in canvas.
+
+        ``block_names`` restricts the work to wires attached to those blocks.
+        A wire's geometry only depends on the two blocks it joins, so during a
+        drag (one ``update_line_positions`` per mouse-move event) relaying out
+        every wire in the diagram is wasted work that grows with diagram size.
+        Pass None -- the default -- to refresh everything, which is what the
+        structural callers (load, paste, subsystem edits, undo) want.
         """
-        for line in self.dsim.line_list:
-            line.update_line(self.dsim.blocks_list)
+        lines = self.dsim.line_list
+        if block_names is not None:
+            names = frozenset(block_names)
+            lines = [line for line in lines if line.srcblock in names or line.dstblock in names]
+        blocks = self.dsim.blocks_list
+        for line in lines:
+            line.update_line(blocks)

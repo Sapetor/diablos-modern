@@ -17,10 +17,15 @@ from PyQt5.QtGui import (
     QRadialGradient,
     QTransform,
     QFont,
-    QFontMetrics,
 )
 from PyQt5.QtCore import Qt, QRect, QRectF, QPoint, QPointF
-from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE
+from modern_ui.themes.theme_manager import (
+    theme_manager,
+    get_ui_font,
+    font_metrics,
+    text_width as measure_text,
+    TYPE,
+)
 from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
@@ -192,6 +197,218 @@ _SOFT_SHADOW_LAYERS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Paint-object caches
+# ---------------------------------------------------------------------------
+# Painting a block used to allocate, per block and per FRAME (60 FPS): five
+# QPainterPaths (body + four shadow layers), a QLinearGradient, several QPens,
+# a QRadialGradient per port and a fresh QFontMetrics per label -- plus a
+# re-run of the block's draw_icon() and a rebuilt QTransform.
+#
+# Every one of those objects is a pure function of values that only change when
+# the user actually edits the diagram (block geometry, flip state, shape,
+# theme colors), so they are memoized here. Caches are keyed BY VALUE, never by
+# block identity, so two blocks with identical geometry share one entry and a
+# deleted block simply stops being looked up -- no per-block invalidation hook
+# and no reference kept to a removed DBlock.
+#
+# Eviction: dragging a block mints a new geometry key every frame, so each
+# cache is capped and flushed wholesale on overflow (one frame of rebuilds,
+# amortized to nothing). Cached objects are treated as READ-ONLY by the
+# renderer; QPainter copies the pen/brush/gradient it is given, so handing out
+# a shared instance is safe.
+_CACHE_MAX = 2048
+
+_OUTLINE_CACHE: dict = {}
+_ICON_SOURCE_CACHE: dict = {}
+_ICON_TRANSFORM_CACHE: dict = {}
+_PORT_GRADIENT_CACHE: dict = {}
+_BODY_GRADIENT_CACHE: dict = {}
+_PEN_CACHE: dict = {}
+_SHADOW_LAYER_COLOR_CACHE: dict = {}
+
+_NAME_FONT_CACHE: dict = {}
+
+_ALL_RENDER_CACHES = (
+    _OUTLINE_CACHE,
+    _ICON_SOURCE_CACHE,
+    _ICON_TRANSFORM_CACHE,
+    _PORT_GRADIENT_CACHE,
+    _BODY_GRADIENT_CACHE,
+    _PEN_CACHE,
+    _SHADOW_LAYER_COLOR_CACHE,
+    _NAME_FONT_CACHE,
+)
+
+# Constant highlight dab drawn on top of every port (was rebuilt per port).
+_PORT_HIGHLIGHT_COLOR = QColor(255, 255, 255, 50)
+
+# Shared empty path handed back when a block has no icon. Never mutated:
+# callers copy it (QPainterPath is copy-on-write) before drawing into it.
+_EMPTY_PATH = QPainterPath()
+
+
+def clear_render_caches() -> None:
+    """Drop every memoized paint object.
+
+    Only needed by tests that want a cold cache; normal operation never has to
+    invalidate, because every key already encodes the values it derives from.
+    """
+    for cache in _ALL_RENDER_CACHES:
+        cache.clear()
+
+
+def _cache_put(cache: dict, key, value):
+    """Store ``value`` under ``key``, flushing the cache if it has grown large."""
+    if len(cache) >= _CACHE_MAX:
+        cache.clear()
+    cache[key] = value
+    return value
+
+
+def _geometry_key(block) -> tuple:
+    """The (position, size, flip) tuple every cached paint object varies over."""
+    return (
+        block.left,
+        block.top,
+        block.width,
+        block.height,
+        bool(getattr(block, "flipped", False)),
+    )
+
+
+def cached_outline_path(block, shape: str, offset: int = 0, expand: int = 0) -> QPainterPath:
+    """Memoized :func:`block_outline_path`.
+
+    The returned path is shared; callers must only read from it (QPainter's
+    drawPath/fillPath never mutate their argument).
+    """
+    key = (shape, offset, expand) + _geometry_key(block)
+    path = _OUTLINE_CACHE.get(key)
+    if path is None:
+        path = _cache_put(
+            _OUTLINE_CACHE, key, block_outline_path(block, shape, offset=offset, expand=expand)
+        )
+    return path
+
+
+def _cached_pen(color: QColor, width, style=Qt.SolidLine) -> QPen:
+    """Memoized QPen. Shared instance -- read-only for callers."""
+    key = (color.rgba(), width, style)
+    pen = _PEN_CACHE.get(key)
+    if pen is None:
+        pen = _cache_put(_PEN_CACHE, key, QPen(color, width, style))
+    return pen
+
+
+def _cached_body_gradient(block, base_color: QColor) -> QLinearGradient:
+    """Memoized top-to-bottom body gradient for a block.
+
+    Subtle lighten (+12 RGB) keeps the top close to base so icons over the top
+    of the block don't wash out against a too-bright gradient.
+    """
+    key = (block.left, block.top, block.height, base_color.rgba())
+    gradient = _BODY_GRADIENT_CACHE.get(key)
+    if gradient is None:
+        lighter_color = QColor(base_color)
+        lighter_color.setRed(min(255, base_color.red() + 12))
+        lighter_color.setGreen(min(255, base_color.green() + 12))
+        lighter_color.setBlue(min(255, base_color.blue() + 12))
+        gradient = QLinearGradient(block.left, block.top, block.left, block.top + block.height)
+        gradient.setColorAt(0, lighter_color)
+        gradient.setColorAt(1, base_color)
+        _cache_put(_BODY_GRADIENT_CACHE, key, gradient)
+    return gradient
+
+
+def _cached_port_gradient(base_color: QColor, radius) -> QRadialGradient:
+    """Memoized port disc gradient, positioned by the caller.
+
+    Only the centre moves from port to port, so the (color, radius) shading is
+    built once and re-centred; QPainter copies the gradient when it is turned
+    into a brush, so mutating the cached instance between draws is safe.
+    """
+    key = (base_color.rgba(), radius)
+    gradient = _PORT_GRADIENT_CACHE.get(key)
+    if gradient is None:
+        gradient = QRadialGradient(0.0, 0.0, radius)
+        gradient.setColorAt(0.0, base_color.lighter(130))
+        gradient.setColorAt(0.7, base_color)
+        gradient.setColorAt(1.0, base_color.darker(110))
+        _cache_put(_PORT_GRADIENT_CACHE, key, gradient)
+    return gradient
+
+
+def _cached_shadow_layers(base_shadow: QColor) -> tuple:
+    """Memoized per-layer shadow colors for the soft-elevation recipe."""
+    key = base_shadow.rgba()
+    layers = _SHADOW_LAYER_COLOR_CACHE.get(key)
+    if layers is None:
+        base_alpha = base_shadow.alpha()
+        built = []
+        for offset, expand, alpha_scale in _SOFT_SHADOW_LAYERS:
+            layer_color = QColor(base_shadow)
+            layer_color.setAlpha(int(base_alpha * alpha_scale))
+            built.append((offset, expand, layer_color))
+        layers = _cache_put(_SHADOW_LAYER_COLOR_CACHE, key, tuple(built))
+    return layers
+
+
+_PORT_LABEL_FONT = None
+
+
+def _port_label_font() -> QFont:
+    """The (constant) port-label font, built once."""
+    global _PORT_LABEL_FONT
+    if _PORT_LABEL_FONT is None:
+        font = get_ui_font(TYPE["caption"])
+        font.setBold(False)
+        _PORT_LABEL_FONT = font
+    return _PORT_LABEL_FONT
+
+
+def _cached_name_font(font: QFont) -> QFont:
+    """Memoized normal-weight copy of a block's persistent label font.
+
+    The renderer must never mutate ``block.font`` (it is shared model state),
+    so it used to copy it every frame just to force Normal weight. The copy is
+    a pure function of the source font's attributes, so it is memoized.
+    """
+    key = (
+        font.family(),
+        font.pointSize(),
+        font.pointSizeF(),
+        font.pixelSize(),
+        font.italic(),
+        font.underline(),
+        font.strikeOut(),
+        int(font.styleStrategy()),
+    )
+    cached = _NAME_FONT_CACHE.get(key)
+    if cached is None:
+        cached = QFont(font)
+        cached.setWeight(QFont.Normal)
+        _cache_put(_NAME_FONT_CACHE, key, cached)
+    return cached
+
+
+def _cached_icon_transform(block) -> QTransform:
+    """Memoized unit-square -> block-interior transform for icon paths."""
+    key = _geometry_key(block)
+    transform = _ICON_TRANSFORM_CACHE.get(key)
+    if transform is None:
+        margin = block.width * 0.2
+        transform = QTransform()
+        if block.flipped:
+            transform.translate(block.left + block.width - margin, block.top + margin)
+            transform.scale(-(block.width - 2 * margin), block.height - 2 * margin)
+        else:
+            transform.translate(block.left + margin, block.top + margin)
+            transform.scale(block.width - 2 * margin, block.height - 2 * margin)
+        _cache_put(_ICON_TRANSFORM_CACHE, key, transform)
+    return transform
+
+
 class BlockRenderer:
     """
     Stateless renderer for DBlock objects.
@@ -242,10 +459,15 @@ class BlockRenderer:
         self, block, painter: QPainter, draw_name: bool, draw_ports: bool, hovered_port=None
     ) -> None:
         """Body of draw_block; runs inside a painter.save()/restore() guard."""
+        # Resolved once and threaded through: the shadow, the body outline and
+        # any hover/export pass must all agree on the same outline, and this
+        # used to be recomputed for each of them.
+        shape = resolve_block_shape(block)
+
         # Draw a soft multi-layer shadow for depth. The shadow follows the block
         # outline (triangle for Gain, rounded rect otherwise) and is built from
         # several stacked fills with growing offset/spread and fading alpha.
-        self._draw_soft_shadow(block, painter)
+        self._draw_soft_shadow(block, painter, shape)
 
         # Resolve colors from the *current* theme every paint. The block's
         # cached b_color is set at startup; when the user toggles dark/light
@@ -262,61 +484,27 @@ class BlockRenderer:
         if block.selected:
             border_color = theme_manager.get_color("block_selected")
 
-        # Draw main block shape with gradient fill.
-        # Subtle lighten (+12 RGB) keeps the top close to base so icons over
-        # the top of the block don't wash out against a too-bright gradient.
-        gradient = QLinearGradient(block.left, block.top, block.left, block.top + block.height)
-        lighter_color = QColor(base_color)
-        lighter_color.setRed(min(255, base_color.red() + 12))
-        lighter_color.setGreen(min(255, base_color.green() + 12))
-        lighter_color.setBlue(min(255, base_color.blue() + 12))
-        gradient.setColorAt(0, lighter_color)
-        gradient.setColorAt(1, base_color)
+        # Draw main block shape with gradient fill (memoized per geometry+color).
+        painter.setBrush(_cached_body_gradient(block, base_color))
+        painter.setPen(_cached_pen(border_color, 3 if block.selected else 2.5))
 
-        painter.setBrush(gradient)
-        painter.setPen(QPen(border_color, 3 if block.selected else 2.5))
-
-        shape = resolve_block_shape(block)
-        painter.drawPath(block_outline_path(block, shape))
+        painter.drawPath(cached_outline_path(block, shape))
 
         # Draw block-specific icon
-        icon_pen = QPen(theme_manager.get_color("block_icon_color"), 2)
-        painter.setPen(icon_pen)
+        painter.setPen(_cached_pen(theme_manager.get_color("block_icon_color"), 2))
 
-        path = QPainterPath()
-
-        # Try polymorphic draw_icon first
-        if block.block_instance and hasattr(block.block_instance, "draw_icon"):
-            try:
-                custom_path = block.block_instance.draw_icon(block.rect)
-                if custom_path is not None:
-                    path = custom_path
-            except Exception as e:
-                # Log once per block type at warning; subsequent identical
-                # failures drop to debug to avoid per-frame log spam. The
-                # legacy-icon fallback below recovers cleanly (it guards on
-                # path.isEmpty()), so this is non-fatal.
-                if block.block_fn not in self._draw_icon_warned:
-                    self._draw_icon_warned.add(block.block_fn)
-                    logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
-                else:
-                    logger.debug(f"draw_icon failed for {block.block_fn}: {e}")
+        # Try polymorphic draw_icon first. The result depends only on the block
+        # class and the rect it is handed (no draw_icon reads instance state),
+        # so it is memoized and copied out -- the legacy pass below appends to
+        # the path for some block types, and QPainterPath is copy-on-write, so
+        # the copy is O(1) and cannot corrupt the cached original.
+        path = QPainterPath(self._icon_source_path(block))
 
         # Fallback to legacy switch statement
         self._draw_legacy_icon(block, painter, path)
 
         if not path.isEmpty():
-            margin = block.width * 0.2
-            transform = QTransform()
-            if block.flipped:
-                transform.translate(block.left + block.width - margin, block.top + margin)
-                transform.scale(-(block.width - 2 * margin), block.height - 2 * margin)
-            else:
-                transform.translate(block.left + margin, block.top + margin)
-                transform.scale(block.width - 2 * margin, block.height - 2 * margin)
-
-            scaled_path = transform.map(path)
-            painter.drawPath(scaled_path)
+            painter.drawPath(_cached_icon_transform(block).map(path))
 
         # Draw ports
         if draw_ports:
@@ -326,11 +514,10 @@ class BlockRenderer:
         if draw_name:
             text_color = theme_manager.get_color("text_primary")
             painter.setPen(text_color)
-            # Copy the model's QFont before mutating; this renderer is stateless
-            # and must not alter shared model state (block.font is persistent).
-            font = QFont(block.font)
-            font.setWeight(QFont.Normal)
-            painter.setFont(font)
+            # Never mutate the model's QFont; this renderer is stateless and
+            # block.font is persistent shared state. The normal-weight copy is
+            # memoized rather than rebuilt for every block on every frame.
+            painter.setFont(_cached_name_font(block.font))
             text_rect = QRect(block.left, block.top + block.height + 2, block.width, 28)
             painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, block.username)
 
@@ -351,7 +538,46 @@ class BlockRenderer:
         # Draw sample rate indicator for discrete blocks
         self._draw_sample_rate_indicator(block, painter)
 
-    def _draw_soft_shadow(self, block, painter: QPainter) -> None:
+    def _icon_source_path(self, block) -> QPainterPath:
+        """Return the block's ``draw_icon`` path, memoized per (class, rect).
+
+        ``BaseBlock.draw_icon`` implementations are pure functions of the rect
+        they are handed -- none of the 89 in ``blocks/`` reads instance state --
+        so the resulting path only changes when the block is moved or resized.
+        Returns an empty path when the block has no instance or draw_icon
+        failed; the caller copies it before the legacy pass mutates it.
+        """
+        instance = block.block_instance
+        if not instance or not hasattr(instance, "draw_icon"):
+            return _EMPTY_PATH
+
+        key = (type(instance),) + _geometry_key(block)
+        cached = _ICON_SOURCE_CACHE.get(key)
+        if cached is not None:
+            return cached
+
+        path = _EMPTY_PATH
+        try:
+            custom_path = instance.draw_icon(block.rect)
+            if custom_path is not None:
+                path = custom_path
+        except Exception as e:
+            # Log once per block type at warning; subsequent identical
+            # failures drop to debug to avoid per-frame log spam. The
+            # legacy-icon fallback recovers cleanly (it guards on
+            # path.isEmpty()), so this is non-fatal.
+            if block.block_fn not in self._draw_icon_warned:
+                self._draw_icon_warned.add(block.block_fn)
+                logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
+            else:
+                logger.debug(f"draw_icon failed for {block.block_fn}: {e}")
+            # Don't memoize a failure: a transient error would otherwise be
+            # frozen in for the lifetime of that geometry.
+            return path
+
+        return _cache_put(_ICON_SOURCE_CACHE, key, path)
+
+    def _draw_soft_shadow(self, block, painter: QPainter, shape: Optional[str] = None) -> None:
         """Draw a soft, multi-layer drop shadow behind the block.
 
         Stacks the _SOFT_SHADOW_LAYERS recipe (growing offset/spread, fading
@@ -360,17 +586,19 @@ class BlockRenderer:
         (triangle, circle, tag or rounded rectangle -- see
         ``resolve_block_shape``). The base color/alpha come from the active
         theme's 'block_shadow' token so light/dark themes stay consistent.
+
+        ``shape`` may be passed in by a caller that already resolved it (the
+        block body does), avoiding a second ``resolve_block_shape`` per frame.
         """
-        base_shadow = theme_manager.get_color("block_shadow")
-        base_alpha = base_shadow.alpha()
-        shape = resolve_block_shape(block)
+        if shape is None:
+            shape = resolve_block_shape(block)
 
         painter.setPen(Qt.NoPen)
-        for offset, expand, alpha_scale in self._SOFT_SHADOW_LAYERS:
-            layer_color = QColor(base_shadow)
-            layer_color.setAlpha(int(base_alpha * alpha_scale))
+        for offset, expand, layer_color in _cached_shadow_layers(
+            theme_manager.get_color("block_shadow")
+        ):
             painter.setBrush(layer_color)
-            painter.drawPath(block_outline_path(block, shape, offset=offset, expand=expand))
+            painter.drawPath(cached_outline_path(block, shape, offset=offset, expand=expand))
 
     def draw_ports(self, block, painter: Optional[QPainter], hovered_port=None) -> None:
         """Draw input and output ports with modern styling.
@@ -445,18 +673,17 @@ class BlockRenderer:
             base_color = port_color
             radius = port_draw_radius
 
-        gradient = QRadialGradient(location.x(), location.y(), radius)
-        gradient.setColorAt(0.0, base_color.lighter(130))
-        gradient.setColorAt(0.7, base_color)
-        gradient.setColorAt(1.0, base_color.darker(110))
+        gradient = _cached_port_gradient(base_color, radius)
+        gradient.setCenter(location.x(), location.y())
+        gradient.setFocalPoint(location.x(), location.y())
 
         painter.setBrush(gradient)
-        painter.setPen(QPen(base_color.darker(140), 2.0))
+        painter.setPen(_cached_pen(base_color.darker(140), 2.0))
         painter.drawEllipse(location, radius, radius)
 
         # Highlight
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(255, 255, 255, 50))
+        painter.setBrush(_PORT_HIGHLIGHT_COLOR)
         highlight_offset = int(radius * 0.3)
         highlight_size = int(radius * 0.4)
         painter.drawEllipse(
@@ -492,17 +719,15 @@ class BlockRenderer:
         # Get port names from block
         input_names, output_names = block.get_port_names()
 
-        # Setup font for labels (canonical UI stack instead of fixed Arial)
-        label_font = get_ui_font(TYPE["caption"])
-        label_font.setBold(False)
+        # Setup font for labels (canonical UI stack instead of fixed Arial).
+        # The font is a constant and its metrics are memoized, so neither is
+        # rebuilt per block per frame.
+        label_font = _port_label_font()
         painter.setFont(label_font)
-        font_metrics = QFontMetrics(label_font)
+        metrics = font_metrics(label_font)
 
-        # Qt 5.11+ uses horizontalAdvance, older versions use width
         def get_text_width(text):
-            if hasattr(font_metrics, "horizontalAdvance"):
-                return font_metrics.horizontalAdvance(text)
-            return font_metrics.width(text)
+            return measure_text(metrics, text)
 
         # Label colors
         text_color = theme_manager.get_color("text_primary")
@@ -518,7 +743,7 @@ class BlockRenderer:
                 label = input_names[i]
                 # Position label to the right of the port (inside block)
                 text_width = get_text_width(label)
-                text_height = font_metrics.height()
+                text_height = metrics.height()
 
                 x = port_coord.x() + label_offset
                 y = port_coord.y() + text_height // 4
@@ -541,7 +766,7 @@ class BlockRenderer:
                 label = output_names[i]
                 # Position label to the left of the port (inside block)
                 text_width = get_text_width(label)
-                text_height = font_metrics.height()
+                text_height = metrics.height()
 
                 x = port_coord.x() - label_offset - text_width
                 y = port_coord.y() + text_height // 4
@@ -1057,7 +1282,9 @@ class BlockRenderer:
             fitted = False
             for size in range(base_size, max(7, base_size - 4) - 1, -1):
                 font.setPointSize(size)
-                if QFontMetrics(font).horizontalAdvance(candidate) <= max_width:
+                # Up to 20 metrics probes per Gain block per frame; memoized
+                # per (family, size, style) so only the first frame pays.
+                if measure_text(font_metrics(font), candidate) <= max_width:
                     fitted = True
                     break
             if fitted or candidate == "K":

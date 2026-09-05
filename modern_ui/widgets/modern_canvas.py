@@ -120,8 +120,9 @@ class ModernCanvas(QWidget):
         self._sim_controller = SimulationController(self.dsim, parent=self)
         self._sim_controller.status_changed.connect(self.simulation_status_changed)
 
-        # Initialize Analysis Tool
-        self.analyzer = ControlSystemAnalyzer(self, parent=self)
+        # Initialize Analysis Tool. The analyzers live in lib/ and must not
+        # import QMessageBox themselves, so the GUI injects the error sink.
+        self.analyzer = ControlSystemAnalyzer(self, parent=self, error_cb=self._show_analysis_error)
 
         # Initialize Renderer
         self.block_renderer = BlockRenderer()
@@ -518,17 +519,23 @@ class ModernCanvas(QWidget):
 
     # ===== Rendering Methods =====
 
-    def _update_line_positions(self):
+    def _update_line_positions(self, block_names=None):
         """Update line positions after block movement.
 
         During an active block drag this is the per-move hook InteractionManager
         calls right after relocating the block, so we first let the drag manager
         apply smart-alignment snapping (which may nudge the block onto a shared
         edge) before the wires are recomputed against the final position.
+
+        ``block_names`` narrows the relayout to wires touching those blocks --
+        the per-mouse-move drag/resize callers pass the blocks they just moved,
+        so the cost of a drag stops scaling with the size of the whole diagram.
+        Structural callers (load, paste, undo, subsystem edits) leave it None to
+        refresh every wire.
         """
         if self.state == State.DRAGGING and self.dragging_block is not None:
             self.interaction_manager.update_drag_alignment()
-        self.connection_manager.update_line_positions()
+        self.connection_manager.update_line_positions(block_names)
 
     def _reroute_affected_lines(self, block_names):
         """Re-run A* routing on auto-routed orthogonal wires touching ``block_names``.
@@ -1261,6 +1268,20 @@ class ModernCanvas(QWidget):
         except Exception as e:
             logger.error(f"Error finding menu block {block_name}: {str(e)}")
             return None
+
+    def _show_analysis_error(self, title, message):
+        """Qt sink for control-analysis errors raised inside ``lib.analysis``.
+
+        Injected as ``ControlSystemAnalyzer(error_cb=...)`` so the engine-layer
+        analyzers stay Qt-free and headless-safe.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(title)
+        box.setText(message)
+        box.exec_()
 
     def _validate_connection(self, start_block, start_port, end_block, end_port):
         """Validate a connection between two blocks. Delegates to ConnectionManager."""

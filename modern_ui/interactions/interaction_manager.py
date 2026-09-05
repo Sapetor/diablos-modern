@@ -185,7 +185,9 @@ class InteractionManager:
                             block_y = snapped_y + relative_offset.y()
                             block.relocate_Block(QPoint(int(block_x), int(block_y)))
 
-                self.canvas._update_line_positions()
+                # Only the blocks under the cursor moved, so only their wires
+                # need relaying out -- this runs on every mouse-move event.
+                self.canvas._update_line_positions(self._dragged_block_names())
                 self.canvas.update()
 
             elif self.canvas.state == State.RESIZING and self.resize.block:
@@ -383,6 +385,19 @@ class InteractionManager:
         except Exception as e:
             logger.error(f"Error starting drag: {str(e)}")
 
+    def _dragged_block_names(self):
+        """Names of every block the active drag is moving.
+
+        The clicked block plus any other selected blocks carried along with it
+        (``drag.offsets``). Used to relayout only the wires those blocks touch
+        on each mouse-move instead of every wire in the diagram.
+        """
+        names = {b.name for b in self.drag.offsets}
+        primary = self.canvas.dragging_block
+        if primary is not None:
+            names.add(primary.name)
+        return names
+
     def update_drag_alignment(self):
         """Stash the active alignment guides and (when grid snap is off) nudge.
 
@@ -541,8 +556,8 @@ class InteractionManager:
             block.resize_Block(new_width, new_height)
             block.rect.moveTo(new_left, new_top)
 
-            # Update connected lines
-            self.canvas._update_line_positions()
+            # Update connected lines (only this block's -- runs per mouse-move)
+            self.canvas._update_line_positions({block.name})
             self.canvas.update()
 
         except Exception as e:

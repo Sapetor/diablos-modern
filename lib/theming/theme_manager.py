@@ -31,8 +31,8 @@ Changes vs v2:
 
 import math
 from enum import Enum
-from typing import Dict, Any, Optional, TYPE_CHECKING
-from PyQt5.QtGui import QColor, QFont
+from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
+from PyQt5.QtGui import QColor, QFont, QFontMetrics
 from PyQt5.QtCore import QObject, pyqtSignal
 
 if TYPE_CHECKING:
@@ -171,6 +171,64 @@ def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> Q
     if weight is not None:
         f.setWeight(_qt5_weight(weight))
     return f
+
+
+# QFontMetrics construction resolves a font engine and is far from free, yet
+# the renderers rebuild the *same* metrics object for every block/label on
+# every paint. Metrics depend only on the font's identifying attributes, so
+# they can be memoized process-wide: fonts are value types and the cached
+# QFontMetrics is only ever queried (never mutated), so sharing is safe.
+# The key set is bounded by the handful of (family, size, weight, style)
+# combinations the UI actually uses; the cap below is pure belt-and-braces.
+_FONT_METRICS_CACHE: Dict[tuple, QFontMetrics] = {}
+_FONT_METRICS_CACHE_MAX = 256
+
+
+def _font_key(font: QFont) -> tuple:
+    """Identifying attributes of ``font`` for metrics memoization."""
+    return (
+        font.family(),
+        font.pointSize(),
+        font.pointSizeF(),
+        font.pixelSize(),
+        font.weight(),
+        font.italic(),
+        font.underline(),
+        font.strikeOut(),
+        int(font.stretch()),
+        float(font.letterSpacing()),
+        int(font.styleStrategy()),
+    )
+
+
+def font_metrics(font: QFont) -> QFontMetrics:
+    """Return a cached QFontMetrics for ``font``.
+
+    Drop-in replacement for ``QFontMetrics(font)`` on paint hot paths. The
+    returned object must be treated as read-only (QFontMetrics exposes no
+    mutators, so this is automatic in practice).
+    """
+    key = _font_key(font)
+    metrics = _FONT_METRICS_CACHE.get(key)
+    if metrics is None:
+        if len(_FONT_METRICS_CACHE) >= _FONT_METRICS_CACHE_MAX:
+            _FONT_METRICS_CACHE.clear()
+        metrics = QFontMetrics(font)
+        _FONT_METRICS_CACHE[key] = metrics
+    return metrics
+
+
+def text_width(metrics: QFontMetrics, text: str) -> int:
+    """Width of ``text`` under ``metrics``, portable across Qt 5.9 -> 5.11+.
+
+    ``QFontMetrics.horizontalAdvance`` only exists from Qt 5.11; older builds
+    expose ``width``. Centralized here so the renderers stop re-implementing
+    the same hasattr dance per label.
+    """
+    advance = getattr(metrics, "horizontalAdvance", None)
+    if advance is not None:
+        return advance(text)
+    return metrics.width(text)
 
 
 def make_shadow(level: str = "e2", color: Optional[QColor] = None) -> "QGraphicsDropShadowEffect":
@@ -429,13 +487,53 @@ class ThemeManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self.current_theme = ThemeType.DARK
-        self.current_palette = DEFAULT_PALETTE
-        self.solid_fills: bool = False
+        # name -> (r, g, b, a) memo for get_color. Populated lazily and dropped
+        # wholesale whenever the active theme / palette / solid-fill mode
+        # changes (the three inputs get_color reads besides the name itself).
+        self._color_cache: Dict[str, Tuple[int, int, int, int]] = {}
+        self._current_theme = ThemeType.DARK
+        self._current_palette = DEFAULT_PALETTE
+        self._solid_fills: bool = False
         self.themes = {
             ThemeType.DARK: self._create_dark_theme(),
             ThemeType.LIGHT: self._create_light_theme(),
         }
+
+    # -- Selection state -------------------------------------------------
+    # Exposed as properties (rather than plain attributes) purely so the
+    # get_color memo is invalidated even when something assigns to them
+    # directly instead of going through set_theme/set_palette/set_solid_fills.
+
+    def _invalidate_colors(self) -> None:
+        """Drop the memoized get_color results (theme/palette/mode changed)."""
+        self._color_cache.clear()
+
+    @property
+    def current_theme(self) -> "ThemeType":
+        return self._current_theme
+
+    @current_theme.setter
+    def current_theme(self, value: "ThemeType") -> None:
+        self._current_theme = value
+        self._invalidate_colors()
+
+    @property
+    def current_palette(self) -> str:
+        return self._current_palette
+
+    @current_palette.setter
+    def current_palette(self, value: str) -> None:
+        self._current_palette = value
+        self._invalidate_colors()
+
+    @property
+    def solid_fills(self) -> bool:
+        return self._solid_fills
+
+    @solid_fills.setter
+    def solid_fills(self, value: bool) -> None:
+        self._solid_fills = bool(value)
+        self._invalidate_colors()
 
     # ------------------------------------------------------------------
     # Chrome theme dicts
@@ -604,7 +702,13 @@ class ThemeManager(QObject):
     def get_current_theme(self) -> Dict[str, Any]:
         return self.themes[self.current_theme]
 
-    def get_color(self, color_name: str) -> QColor:
+    def _resolve_rgba(self, color_name: str) -> Tuple[int, int, int, int]:
+        """Parse ``color_name`` for the active theme into plain RGBA channels.
+
+        Split out of :meth:`get_color` so the (dict lookups + hex parsing) half
+        can be memoized while callers still receive a fresh, freely mutable
+        QColor. See ``_color_cache`` for the invalidation rules.
+        """
         if color_name in _PALETTE_KEYS:
             theme_key = self.current_theme.value
             palette = PALETTES.get(self.current_palette, PALETTES[DEFAULT_PALETTE])
@@ -623,10 +727,28 @@ class ThemeManager(QObject):
         if len(color_hex) == 9 and color_hex.startswith("#"):
             try:
                 r, g, b, a = (int(color_hex[i : i + 2], 16) for i in (1, 3, 5, 7))
-                return QColor(r, g, b, a)
+                return (r, g, b, a)
             except ValueError:
-                return QColor(color_hex[:7])
-        return QColor(color_hex)
+                fallback = QColor(color_hex[:7])
+                return (fallback.red(), fallback.green(), fallback.blue(), fallback.alpha())
+        color = QColor(color_hex)
+        return (color.red(), color.green(), color.blue(), color.alpha())
+
+    def get_color(self, color_name: str) -> QColor:
+        """Resolve a design-token color name to a QColor for the active theme.
+
+        The name -> RGBA resolution (two dict lookups plus hex parsing) is
+        memoized in ``_color_cache``; the cache is dropped whenever the active
+        theme, palette or solid-fill mode changes (see ``_invalidate_colors``).
+        A NEW QColor is constructed on every call so the many callers that do
+        ``c = get_color(...); c.setAlpha(...)`` keep working -- the cache holds
+        immutable int tuples, never shared QColor instances.
+        """
+        rgba = self._color_cache.get(color_name)
+        if rgba is None:
+            rgba = self._resolve_rgba(color_name)
+            self._color_cache[color_name] = rgba
+        return QColor(*rgba)
 
     # ------------------------------------------------------------------
     # Theme control
