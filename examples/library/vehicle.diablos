@@ -1,0 +1,432 @@
+{
+    "version": "2.0",
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 1.0,
+        "sim_dt": 0.01,
+        "sim_trange": 100,
+        "solver_method": "RK45",
+        "rtol": 1e-09,
+        "atol": 1e-12
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Subsystem",
+            "sid": 1,
+            "name": "Subsystem1",
+            "username": "Vehicle",
+            "coords_left": 620,
+            "coords_top": 270,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#d3d3d3",
+            "b_type": 2,
+            "io_edit": true,
+            "fn_name": "subsystem",
+            "params": {
+                "_mask": {
+                    "format_version": 1,
+                    "name": "Vehicle",
+                    "description": "Longitudinal vehicle model: force in, speed out.\nTransfer function v(s)/F(s) = 1 / (m s + b), with the mass m and the damping coefficient b exposed as mask parameters. The inner TranFn stores denominator = \"[m, b]\"; the mask resolves those names before the diagram is flattened.",
+                    "icon": "1/(ms+b)",
+                    "shape": "rect",
+                    "category": "User Library",
+                    "parameters": [
+                        {
+                            "name": "m",
+                            "type": "float",
+                            "default": 1500.0,
+                            "doc": "Vehicle mass [kg]",
+                            "options": []
+                        },
+                        {
+                            "name": "b",
+                            "type": "float",
+                            "default": 50.0,
+                            "doc": "Viscous damping coefficient [N s/m]",
+                            "options": []
+                        }
+                    ]
+                },
+                "m": 1500.0,
+                "b": 50.0
+            },
+            "external": false,
+            "flipped": false,
+            "sub_blocks": [
+                {
+                    "block_fn": "TranFn",
+                    "sid": 0,
+                    "name": "tranfn0",
+                    "username": "tranfn0",
+                    "coords_left": 100,
+                    "coords_top": 100,
+                    "coords_width": 110,
+                    "coords_height": 80,
+                    "coords_height_base": 80,
+                    "in_ports": 1,
+                    "out_ports": 1,
+                    "dragging": false,
+                    "selected": true,
+                    "b_color": "#5b21b6",
+                    "b_type": 1,
+                    "io_edit": "none",
+                    "fn_name": "transfer_function",
+                    "params": {
+                        "numerator": [
+                            1.0
+                        ],
+                        "denominator": "[m, b]",
+                        "sampling_time": -1.0
+                    },
+                    "external": false,
+                    "flipped": false
+                },
+                {
+                    "block_fn": "Inport",
+                    "sid": 1,
+                    "name": "inport1",
+                    "username": "In1",
+                    "coords_left": 20,
+                    "coords_top": 125,
+                    "coords_width": 40,
+                    "coords_height": 30,
+                    "coords_height_base": 30,
+                    "in_ports": 0,
+                    "out_ports": 1,
+                    "dragging": false,
+                    "selected": false,
+                    "b_color": "#008000",
+                    "b_type": 0,
+                    "io_edit": false,
+                    "fn_name": "inport",
+                    "params": {},
+                    "external": false,
+                    "flipped": false
+                },
+                {
+                    "block_fn": "Outport",
+                    "sid": 2,
+                    "name": "outport1",
+                    "username": "Out1",
+                    "coords_left": 259,
+                    "coords_top": 125,
+                    "coords_width": 40,
+                    "coords_height": 30,
+                    "coords_height_base": 30,
+                    "in_ports": 1,
+                    "out_ports": 0,
+                    "dragging": false,
+                    "selected": false,
+                    "b_color": "#ff0000",
+                    "b_type": 3,
+                    "io_edit": false,
+                    "fn_name": "outport",
+                    "params": {},
+                    "external": false,
+                    "flipped": false
+                }
+            ],
+            "sub_lines": [
+                {
+                    "name": "Line1",
+                    "sid": 1,
+                    "srcblock": "inport1",
+                    "srcport": 0,
+                    "dstblock": "tranfn0",
+                    "dstport": 0,
+                    "points": [
+                        [
+                            60,
+                            140
+                        ],
+                        [
+                            100,
+                            140
+                        ]
+                    ],
+                    "cptr": 0,
+                    "selected": false,
+                    "modified": false,
+                    "routing_mode": "bezier"
+                },
+                {
+                    "name": "Line2",
+                    "sid": 2,
+                    "srcblock": "tranfn0",
+                    "srcport": 0,
+                    "dstblock": "outport1",
+                    "dstport": 0,
+                    "points": [
+                        [
+                            210,
+                            140
+                        ],
+                        [
+                            259,
+                            140
+                        ]
+                    ],
+                    "cptr": 0,
+                    "selected": false,
+                    "modified": false,
+                    "routing_mode": "bezier"
+                }
+            ],
+            "ports": {
+                "in": [
+                    {
+                        "pos": [
+                            0,
+                            40.0
+                        ],
+                        "type": "input",
+                        "name": "1"
+                    }
+                ],
+                "out": [
+                    {
+                        "pos": [
+                            100,
+                            40.0
+                        ],
+                        "type": "output",
+                        "name": "1"
+                    }
+                ]
+            },
+            "ports_map": {}
+        }
+    ],
+    "lines_data": [],
+    "library_block": {
+        "format_version": 1,
+        "id": "vehicle",
+        "name": "Vehicle",
+        "category": "User Library",
+        "description": "Longitudinal vehicle model: force in, speed out.\nTransfer function v(s)/F(s) = 1 / (m s + b), with the mass m and the damping coefficient b exposed as mask parameters. The inner TranFn stores denominator = \"[m, b]\"; the mask resolves those names before the diagram is flattened.",
+        "mask": {
+            "format_version": 1,
+            "name": "Vehicle",
+            "description": "Longitudinal vehicle model: force in, speed out.\nTransfer function v(s)/F(s) = 1 / (m s + b), with the mass m and the damping coefficient b exposed as mask parameters. The inner TranFn stores denominator = \"[m, b]\"; the mask resolves those names before the diagram is flattened.",
+            "icon": "1/(ms+b)",
+            "shape": "rect",
+            "category": "User Library",
+            "parameters": [
+                {
+                    "name": "m",
+                    "type": "float",
+                    "default": 1500.0,
+                    "doc": "Vehicle mass [kg]",
+                    "options": []
+                },
+                {
+                    "name": "b",
+                    "type": "float",
+                    "default": 50.0,
+                    "doc": "Viscous damping coefficient [N s/m]",
+                    "options": []
+                }
+            ]
+        },
+        "block": {
+            "block_fn": "Subsystem",
+            "sid": 1,
+            "name": "Subsystem1",
+            "username": "Vehicle",
+            "coords_left": 620,
+            "coords_top": 270,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#d3d3d3",
+            "b_type": 2,
+            "io_edit": true,
+            "fn_name": "subsystem",
+            "params": {
+                "_mask": {
+                    "format_version": 1,
+                    "name": "Vehicle",
+                    "description": "Longitudinal vehicle model: force in, speed out.\nTransfer function v(s)/F(s) = 1 / (m s + b), with the mass m and the damping coefficient b exposed as mask parameters. The inner TranFn stores denominator = \"[m, b]\"; the mask resolves those names before the diagram is flattened.",
+                    "icon": "1/(ms+b)",
+                    "shape": "rect",
+                    "category": "User Library",
+                    "parameters": [
+                        {
+                            "name": "m",
+                            "type": "float",
+                            "default": 1500.0,
+                            "doc": "Vehicle mass [kg]",
+                            "options": []
+                        },
+                        {
+                            "name": "b",
+                            "type": "float",
+                            "default": 50.0,
+                            "doc": "Viscous damping coefficient [N s/m]",
+                            "options": []
+                        }
+                    ]
+                },
+                "m": 1500.0,
+                "b": 50.0
+            },
+            "external": false,
+            "flipped": false,
+            "sub_blocks": [
+                {
+                    "block_fn": "TranFn",
+                    "sid": 0,
+                    "name": "tranfn0",
+                    "username": "tranfn0",
+                    "coords_left": 100,
+                    "coords_top": 100,
+                    "coords_width": 110,
+                    "coords_height": 80,
+                    "coords_height_base": 80,
+                    "in_ports": 1,
+                    "out_ports": 1,
+                    "dragging": false,
+                    "selected": true,
+                    "b_color": "#5b21b6",
+                    "b_type": 1,
+                    "io_edit": "none",
+                    "fn_name": "transfer_function",
+                    "params": {
+                        "numerator": [
+                            1.0
+                        ],
+                        "denominator": "[m, b]",
+                        "sampling_time": -1.0
+                    },
+                    "external": false,
+                    "flipped": false
+                },
+                {
+                    "block_fn": "Inport",
+                    "sid": 1,
+                    "name": "inport1",
+                    "username": "In1",
+                    "coords_left": 20,
+                    "coords_top": 125,
+                    "coords_width": 40,
+                    "coords_height": 30,
+                    "coords_height_base": 30,
+                    "in_ports": 0,
+                    "out_ports": 1,
+                    "dragging": false,
+                    "selected": false,
+                    "b_color": "#008000",
+                    "b_type": 0,
+                    "io_edit": false,
+                    "fn_name": "inport",
+                    "params": {},
+                    "external": false,
+                    "flipped": false
+                },
+                {
+                    "block_fn": "Outport",
+                    "sid": 2,
+                    "name": "outport1",
+                    "username": "Out1",
+                    "coords_left": 259,
+                    "coords_top": 125,
+                    "coords_width": 40,
+                    "coords_height": 30,
+                    "coords_height_base": 30,
+                    "in_ports": 1,
+                    "out_ports": 0,
+                    "dragging": false,
+                    "selected": false,
+                    "b_color": "#ff0000",
+                    "b_type": 3,
+                    "io_edit": false,
+                    "fn_name": "outport",
+                    "params": {},
+                    "external": false,
+                    "flipped": false
+                }
+            ],
+            "sub_lines": [
+                {
+                    "name": "Line1",
+                    "sid": 1,
+                    "srcblock": "inport1",
+                    "srcport": 0,
+                    "dstblock": "tranfn0",
+                    "dstport": 0,
+                    "points": [
+                        [
+                            60,
+                            140
+                        ],
+                        [
+                            100,
+                            140
+                        ]
+                    ],
+                    "cptr": 0,
+                    "selected": false,
+                    "modified": false,
+                    "routing_mode": "bezier"
+                },
+                {
+                    "name": "Line2",
+                    "sid": 2,
+                    "srcblock": "tranfn0",
+                    "srcport": 0,
+                    "dstblock": "outport1",
+                    "dstport": 0,
+                    "points": [
+                        [
+                            210,
+                            140
+                        ],
+                        [
+                            259,
+                            140
+                        ]
+                    ],
+                    "cptr": 0,
+                    "selected": false,
+                    "modified": false,
+                    "routing_mode": "bezier"
+                }
+            ],
+            "ports": {
+                "in": [
+                    {
+                        "pos": [
+                            0,
+                            40.0
+                        ],
+                        "type": "input",
+                        "name": "1"
+                    }
+                ],
+                "out": [
+                    {
+                        "pos": [
+                            100,
+                            40.0
+                        ],
+                        "type": "output",
+                        "name": "1"
+                    }
+                ]
+            },
+            "ports_map": {}
+        }
+    }
+}

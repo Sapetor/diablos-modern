@@ -7,11 +7,12 @@
 3. [Project Structure](#project-structure)
 4. [Adding New Blocks](#adding-new-blocks)
 5. [Working with the MVC Architecture](#working-with-the-mvc-architecture)
-6. [Testing](#testing)
-7. [Code Style](#code-style)
-8. [Common Tasks](#common-tasks)
-9. [Debugging](#debugging)
-10. [Contributing](#contributing)
+6. [Masks and the Library File Format](#masks-and-the-library-file-format)
+7. [Testing](#testing)
+8. [Code Style](#code-style)
+9. [Common Tasks](#common-tasks)
+10. [Debugging](#debugging)
+11. [Contributing](#contributing)
 
 ## Getting Started
 
@@ -172,17 +173,12 @@ class MyCustomBlock(BaseBlock):
     @property
     def inputs(self):
         """Define input ports."""
-        return [
-            {"name": "input1", "type": "float"},
-            {"name": "input2", "type": "float"}
-        ]
+        return [{"name": "input1", "type": "float"}, {"name": "input2", "type": "float"}]
 
     @property
     def outputs(self):
         """Define output ports."""
-        return [
-            {"name": "output", "type": "float"}
-        ]
+        return [{"name": "output", "type": "float"}]
 
     @property
     def params(self):
@@ -190,7 +186,7 @@ class MyCustomBlock(BaseBlock):
         return {
             "gain": {"default": 1.0, "type": "float"},
             "offset": {"default": 0.0, "type": "float"},
-            "mode": {"default": "normal", "type": "string"}
+            "mode": {"default": "normal", "type": "string"},
         }
 
     @property
@@ -203,8 +199,8 @@ class MyCustomBlock(BaseBlock):
         Execute the block logic directly.
         """
         # Inline execution logic - see modern blocks for examples
-        gain = params.get('gain', 1.0)
-        offset = params.get('offset', 0.0)
+        gain = params.get("gain", 1.0)
+        offset = params.get("offset", 0.0)
         input1 = inputs.get(0, 0.0)
         input2 = inputs.get(1, 0.0)
         result = (input1 + input2) * gain + offset
@@ -248,7 +244,7 @@ class TestMyCustomBlock:
     def test_execute_with_valid_inputs(self):
         block = MyCustomBlock()
         inputs = {0: 5.0, 1: 3.0}
-        params = {'gain': 2.0, 'offset': 1.0}
+        params = {"gain": 2.0, "offset": 1.0}
 
         result = block.execute(0.0, inputs, params)
 
@@ -268,11 +264,12 @@ model = SimulationModel()
 
 # Add a block
 from PyQt5.QtCore import QPoint
+
 menu_block = model.menu_blocks[0]  # Get a block template
 new_block = model.add_block(menu_block, QPoint(100, 100))
 
 # Find a block
-block = model.get_block_by_name('step0')
+block = model.get_block_by_name("step0")
 
 # Add a connection
 src_data = (block1.name, 0, block1.out_coords[0])
@@ -300,7 +297,7 @@ engine = SimulationEngine(model)
 is_valid = engine.check_diagram_integrity()
 
 # Get block connections
-inputs, outputs = engine.get_neighbors('block_name')
+inputs, outputs = engine.get_neighbors("block_name")
 
 # Update simulation parameters
 engine.update_sim_params(sim_time=10.0, sim_dt=0.01)
@@ -319,11 +316,11 @@ from lib.services.file_service import FileService
 file_service = FileService(model)
 
 # Save diagram
-sim_params = {'sim_time': 10.0, 'sim_dt': 0.01, 'plot_trange': 100}
+sim_params = {"sim_time": 10.0, "sim_dt": 0.01, "plot_trange": 100}
 result = file_service.save(autosave=False, sim_params=sim_params)
 
 # Load diagram
-data = file_service.load(filepath='saves/my_diagram.dat')
+data = file_service.load(filepath="saves/my_diagram.dat")
 if data:
     sim_params = file_service.apply_loaded_data(data)
 ```
@@ -341,11 +338,111 @@ dsim = DSim()
 dsim.add_block(menu_block, pos)  # → model.add_block()
 
 # DSim delegates to engine
-dsim.check_diagram_integrity()   # → engine.check_diagram_integrity()
+dsim.check_diagram_integrity()  # → engine.check_diagram_integrity()
 
 # DSim delegates to file_service
-dsim.save()                       # → file_service.save()
+dsim.save()  # → file_service.save()
 ```
+
+## Masks and the Library File Format
+
+### Where a mask is stored
+
+`lib/masks.py` keeps a mask inside the Subsystem block's own `params` dict, so
+it round-trips through `FileService` with no extra serialization:
+
+| Key | Holds |
+| --- | --- |
+| `params["_mask"]` | the mask *definition* (name, description, icon, shape, category, ordered parameter specs) |
+| `params["<param name>"]` | the instance *value* of one mask parameter -- an ordinary params entry |
+| `params["_library_ref"]` | where a library instance came from (`id`, `file`, `format_version`, `name`) |
+
+Storing values as ordinary params entries is what makes the property editor,
+`PropertyController`, undo/redo and the clipboard work on them with no special
+cases. The `_`-prefixed keys are hidden from the generic parameter loop.
+
+> **Gotcha:** `DBlock.init_params_list` is frozen at construction time and gates
+> `saving_params()`. Anything written to `params` later -- the mask, its values,
+> a library ref -- must be registered there or it is silently dropped on the next
+> save. Use `masks.set_mask()` / `masks.refresh_saveable_params()` /
+> `library.attach_library_ref()` rather than assigning into `params` directly;
+> `FileService._construct_subsystem` and the clipboard paste path rebuild the
+> list for the same reason.
+
+### Where resolution happens
+
+Mask expressions are resolved into the **exec-time** copies only:
+
+* `Flattener._collect_recursive` (`lib/engine/flattener.py`) opens a new scope
+  via `masks.child_scope_for()` when it descends into a masked subsystem, and
+  applies `masks.resolve_params_in_scope()` to each clone it emits. Nested
+  masks resolve outer-to-inner; an *unmasked* subsystem passes the enclosing
+  scope straight through.
+* `DSim._resolve_block_params` (`lib/lib.py`) applies the same scope when it
+  builds `exec_params`, so `SimulationEngine.set_block_type` sees resolved
+  transfer-function coefficients rather than raw variable names.
+
+Neither path writes to the stored `params`, which is why `gain = "K"` survives
+a save/load and every re-run. `resolve_params_in_scope` returns its input dict
+unchanged when the scope is empty, so mask-free diagrams follow a strictly
+identical path -- pinned by `tests/regression/test_mask_resolution.py`.
+
+Everything downstream of flattening (the compiled solver, the interpreter, the
+Python code generator, the headless analysis runners) therefore needs no mask
+awareness of its own.
+
+### Library file format
+
+One masked subsystem per file. The file is ordinary `.diablos` JSON -- it opens
+as a diagram -- plus a top-level `library_block` section:
+
+```json
+{
+  "version": "2.0",
+  "sim_data":    { "...": "solver defaults" },
+  "blocks_data": [ { "block_fn": "Subsystem", "...": "..." } ],
+  "lines_data":  [],
+  "library_block": {
+      "format_version": 1,
+      "id":          "vehicle",
+      "name":        "Vehicle",
+      "category":    "User Library",
+      "description": "Force in, speed out.",
+      "mask":        { "name": "Vehicle", "parameters": [ { "name": "m", "type": "float", "default": 1500.0 } ] },
+      "block": {
+          "block_fn":   "Subsystem",
+          "sub_blocks": [ "... the inner blocks ..." ],
+          "sub_lines":  [ "... their connections ..." ],
+          "ports":      {},
+          "ports_map":  {}
+      }
+  }
+}
+```
+
+`id` is the file stem and the stable key used for de-duplication and for the
+`_library_ref` back-reference. `library_block.block` is the serialized
+Subsystem; its `sub_blocks` / `sub_lines` are the inner blocks and connections.
+
+### Discovery order
+
+`library.library_search_paths(diagram_path)` returns the folders to scan,
+highest priority first; the first folder providing a given `id` wins:
+
+1. every entry of the `DIABLOS_LIBRARY_PATH` environment variable
+   (`os.pathsep`-separated);
+2. `library/` next to the open diagram (project-local);
+3. the per-user library folder, `<user data dir>/library` -- resolved through
+   `lib/app_paths.get_user_data_dir()`, so it is the platform data directory in
+   a frozen build and the project root in development. Created on demand.
+
+`SimulationModel.load_library_blocks()` runs the scan and registers each hit as
+a `MenuBlocks` entry carrying a `library_def`; `SimulationModel.add_block()`
+routes those to `instantiate_library_block()`, which drops a **copy** of the
+contents into the diagram. Diagrams stay self-contained -- deleting or renaming
+a library file cannot break one -- and "Reload from library"
+(`MaskLibraryManager.reload_from_library`) re-syncs an instance's contents while
+preserving its own mask parameter values.
 
 ## Testing
 
@@ -417,6 +514,7 @@ Use fixtures from `conftest.py`:
 ```python
 import pytest
 
+
 @pytest.mark.unit
 @pytest.mark.qt
 def test_something(simulation_model, simulation_engine):
@@ -444,12 +542,15 @@ Follow **PEP 8** with these conventions:
 class SimulationModel:
     pass
 
+
 # Function names: snake_case
 def add_block(self, block, position):
     pass
 
+
 # Constants: UPPER_CASE
 MAX_BLOCKS = 1000
+
 
 # Private methods: _leading_underscore
 def _internal_helper(self):
@@ -463,9 +564,11 @@ Always use type hints for new code:
 ```python
 from typing import List, Dict, Optional, Tuple
 
+
 def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
     """Add a block to the diagram."""
     pass
+
 
 def get_neighbors(self, block_name: str) -> Tuple[List[Dict], List[Dict]]:
     """Get block's input and output connections."""
@@ -537,6 +640,7 @@ def _create_menu_bar(self):
     my_action.setShortcut("Ctrl+M")
     file_menu.addAction(my_action)
 
+
 def _on_my_action(self):
     """Handle my action."""
     # Implementation
@@ -573,19 +677,20 @@ def keyPressEvent(self, event):
 # modern_ui/themes/theme_manager.py
 
 THEMES = {
-    'light': {
+    "light": {
         # ... existing colors ...
-        'my_new_color': '#FF5733',
+        "my_new_color": "#FF5733",
     },
-    'dark': {
+    "dark": {
         # ... existing colors ...
-        'my_new_color': '#C70039',
-    }
+        "my_new_color": "#C70039",
+    },
 }
 
 # Use in code:
 from modern_ui.themes.theme_manager import theme_manager
-color = theme_manager.get_color('my_new_color')
+
+color = theme_manager.get_color("my_new_color")
 ```
 
 ## Debugging
@@ -595,10 +700,11 @@ color = theme_manager.get_color('my_new_color')
 ```python
 # In diablos_modern.py
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 # Or for specific modules
-logger = logging.getLogger('lib.models.simulation_model')
+logger = logging.getLogger("lib.models.simulation_model")
 logger.setLevel(logging.DEBUG)
 ```
 
@@ -606,6 +712,7 @@ logger.setLevel(logging.DEBUG)
 
 ```python
 import pdb
+
 
 def my_function():
     # Set breakpoint

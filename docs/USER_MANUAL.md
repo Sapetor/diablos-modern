@@ -498,6 +498,81 @@ Subsystems allowed you to group blocks together to simplify large diagrams.
 - When you exit the subsystem, the parent block automatically updates to match the number and order of internal ports.
 - Top-to-bottom order of internal ports corresponds to top-to-bottom order of external pins.
 
+### Masking a Subsystem
+
+A **mask** turns a subsystem into a component with its own small parameter
+surface: a display name, an icon, a description, and the handful of values a
+user of the block should be allowed to change. Everything else stays hidden
+inside.
+
+1. Select the subsystem and choose **Edit → Edit Mask...** (or right-click the
+   block → *Edit mask...*).
+2. On the **Parameters** tab, add one row per exposed parameter: a name, a type
+   (`float`, `int`, `string`, `choice`, `list`, `bool`), a default, optional
+   comma-separated choices, and a short description. Use **Move up** /
+   **Move down** to set the order they appear in.
+3. On **Icon & Appearance**, set the display name, the palette category the
+   block is listed under, an icon label (a short formula or an emoji) and the
+   outline shape (`rect`, `triangle`, `circle`, `tag`).
+4. On **Documentation**, write the description shown in the property panel and
+   in the palette tooltip.
+
+Inside the subsystem, reference a mask parameter **by name** in any block value.
+A Gain with `gain = K`, or a Transfer Function with `denominator = [m, b]`,
+picks up the mask's values when the diagram runs. Names resolve against the
+mask parameters first and the diagram's workspace variables second, so a mask
+parameter shadows a workspace variable of the same name. Mask parameter values
+are themselves expressions, so `b = m / 30` works, and a mask nested inside
+another mask sees the outer mask's parameters when *its* values are evaluated.
+
+The expression is never rewritten in your diagram: `denominator` still reads
+`[m, b]` after a save, a reload and any number of runs. Only the copy the
+engine executes carries the numbers.
+
+Selecting a masked subsystem shows the **mask parameters** in the property
+panel -- not the container's internals. To get at the contents, use **Look
+Under Mask** (Edit menu or the context menu), or double-click as usual.
+
+### Library blocks
+
+A masked subsystem can be published as a reusable palette block.
+
+1. Select it and choose **Edit → Save as Library Block...**.
+2. Pick a file name. The default folder is your user library folder (or the
+   first folder in `DIABLOS_LIBRARY_PATH` when that variable is set).
+3. The block appears in the palette under the mask's category (**User Library**
+   by default). **Edit → Refresh Block Library**, or the ⟳ button in the
+   palette header, re-scans for new files.
+
+Library folders are searched in this order, and the first copy of a given block
+wins:
+
+1. every folder listed in the `DIABLOS_LIBRARY_PATH` environment variable
+   (separated by `:` on macOS/Linux, `;` on Windows);
+2. a `library/` folder next to the diagram you have open;
+3. your per-user library folder.
+
+Drag a library block onto the canvas and DiaBloS drops in a **copy** of its
+contents. Diagrams are therefore self-contained: deleting or renaming a library
+file never breaks a diagram that used it. Each instance keeps its own mask
+parameter values, so two "Vehicle" blocks can have different masses.
+
+When the library file changes, right-click an instance and choose **Reload from
+library** to pull in the new contents. Your instance's parameter values are
+kept -- only the internals and the mask definition are refreshed.
+
+### Try it
+
+```bash
+DIABLOS_LIBRARY_PATH=examples/library python diablos_modern.py
+```
+
+Open `examples/library_block_demo.diablos`: a proportional controller closes a
+loop around a masked **Vehicle** block, `v(s)/F(s) = 1 / (m s + b)`, with the
+mass `m` and damping `b` exposed on the mask. The same block is published as
+`examples/library/vehicle.diablos`, so it also shows up in the palette under
+*User Library*.
+
 ---
 
 ## MIMO Support
