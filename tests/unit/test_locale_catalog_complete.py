@@ -86,6 +86,25 @@ class TestCatalogCompleteness:
                 broken.append(key)
         assert not broken, "placeholders differ between key and translation: {}".format(broken[:5])
 
+    def test_line_structure_is_preserved(self, code):
+        """Multi-line messages must keep their line count.
+
+        Block documentation blurbs and multi-line dialog bodies are laid out
+        line by line; losing (or inventing) a newline reflows the widget.
+        """
+        path = os.path.join(LOCALES_DIR, code + ".json")
+        with open(path, "r", encoding="utf-8") as fh:
+            catalog = json.load(fh)
+        broken = [
+            key
+            for key, value in catalog.items()
+            if not key.startswith("_")
+            and isinstance(value, str)
+            and value
+            and key.count("\n") != value.count("\n")
+        ]
+        assert not broken, "line count differs between key and translation: {}".format(broken[:5])
+
     def test_catalog_has_meta(self, code):
         path = os.path.join(LOCALES_DIR, code + ".json")
         with open(path, "r", encoding="utf-8") as fh:

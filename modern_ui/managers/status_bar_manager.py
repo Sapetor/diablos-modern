@@ -218,6 +218,10 @@ class StatusBarManager:
         ):
             if widget is not None:
                 widget.setToolTip(text)
+        # The status pill re-derives its own "Ready"/"Paused"/... label.
+        pill = getattr(window, "status_pill", None)
+        if pill is not None and hasattr(pill, "retranslate_ui"):
+            pill.retranslate_ui()
         self.refresh_counts()
         self.refresh_file_status()
         # Rebuilds the "Dark · Solarized" pill text, which embeds a translated
