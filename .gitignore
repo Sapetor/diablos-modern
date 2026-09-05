@@ -105,3 +105,6 @@ user_preferences.json
 
 # Exported plot data
 plot_data_*.csv
+# User block library folder created at the project root in dev mode
+# (lib/app_paths.get_user_data_dir()); examples/library/ is tracked.
+/library/

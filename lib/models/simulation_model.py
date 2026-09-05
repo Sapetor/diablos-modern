@@ -70,6 +70,9 @@ class SimulationModel:
 
         # Load available block types
         self.load_all_blocks()
+        # ...then the user's own library blocks (see lib/library.py). Missing
+        # folders are simply skipped, so this is a no-op for a fresh install.
+        self.load_library_blocks()
 
     def _get_category_color(self, category: str) -> QColor:
         """
@@ -200,6 +203,12 @@ class SimulationModel:
         Raises:
             None - errors are logged but not raised
         """
+        # Library blocks are not a block *class* -- they are a stored subsystem
+        # that gets copied into the diagram (see lib/library.py).
+        library_def = getattr(block, "library_def", None)
+        if library_def is not None:
+            return self.instantiate_library_block(library_def, m_pos)
+
         logger.debug(f"Adding new block of type {block.block_fn} at position {m_pos}")
 
         # Find next available ID for this block type. Names that do not match
@@ -253,6 +262,122 @@ class SimulationModel:
         self.dirty = True
         logger.debug(f"New block created: {new_block.name} (category: {category})")
         return new_block
+
+    # ------------------------------------------------------------------
+    # User library blocks
+    # ------------------------------------------------------------------
+
+    def next_sid_for(self, block_fn: str) -> int:
+        """Lowest unused sequential id for ``block_fn`` in the current scope."""
+        id_list = [
+            parsed
+            for b_elem in self.blocks_list
+            if b_elem.block_fn == block_fn
+            for parsed in (self._parse_id_suffix(b_elem.name, len(b_elem.block_fn)),)
+            if parsed is not None
+        ]
+        return max(id_list) + 1 if id_list else 0
+
+    def load_library_blocks(self, diagram_path: Optional[str] = None) -> int:
+        """(Re)scan the user library folders and register the blocks found.
+
+        Previously registered library entries are dropped first, so this
+        doubles as the palette's "Refresh" action.  Returns the number of
+        library blocks now registered.
+        """
+        from lib.library import discover_library_blocks
+
+        # Mutate in place: DSim (and anything else) aliases this list, so
+        # rebinding it here would leave stale palette entries behind.
+        self.menu_blocks[:] = [
+            mb for mb in self.menu_blocks if getattr(mb, "library_def", None) is None
+        ]
+
+        try:
+            found = discover_library_blocks(diagram_path)
+        except Exception:
+            logger.exception("Library discovery failed; palette keeps the built-in blocks only")
+            return 0
+
+        for lib_block in found:
+            try:
+                self.menu_blocks.append(self._make_library_menu_block(lib_block))
+            except Exception:
+                logger.exception("Could not register library block %r", lib_block.block_id)
+        logger.info("Registered %d user library block(s)", len(found))
+        return len(found)
+
+    def _make_library_menu_block(self, lib_block) -> MenuBlocks:
+        """Wrap a discovered library block in a palette entry."""
+        from lib.masks import mask_parameters
+
+        block_data = lib_block.block_data
+        width = int(block_data.get("coords_width", 100) or 100)
+        height = int(block_data.get("coords_height", 80) or 80)
+        specs = mask_parameters(lib_block.mask)
+
+        menu_block = MenuBlocks(
+            block_fn="Subsystem",
+            fn_name=lib_block.name,
+            io_params={
+                "inputs": int(block_data.get("in_ports", 0) or 0),
+                "outputs": int(block_data.get("out_ports", 0) or 0),
+                "b_type": int(block_data.get("b_type", 2) or 2),
+                "io_edit": "none",
+            },
+            ex_params={spec["name"]: spec.get("default") for spec in specs},
+            b_color=self._get_category_color(lib_block.category),
+            coords=(width, height),
+            block_class=None,
+            colors=self.colors,
+        )
+        menu_block.category = lib_block.category
+        menu_block.param_meta = {spec["name"]: spec for spec in specs}
+        menu_block.library_def = lib_block
+        menu_block.doc = lib_block.description
+        return menu_block
+
+    def instantiate_library_block(self, lib_block, m_pos: QPoint) -> Optional[DBlock]:
+        """Drop a *copy* of a library block onto the diagram.
+
+        The instance owns its contents outright -- deleting or renaming the
+        library file later cannot break the diagram -- and only remembers a
+        ``library_ref`` so "Reload from library" can re-sync it.
+        """
+        from lib.library import attach_library_ref
+        from lib.masks import apply_mask_appearance, refresh_saveable_params
+        from lib.services.file_service import FileService
+
+        data = lib_block.instance_block_data()
+        sid = self.next_sid_for("Subsystem")
+        width = int(data.get("coords_width", 100) or 100)
+        height = int(data.get("coords_height", 80) or 80)
+
+        data["sid"] = sid
+        data["name"] = f"Subsystem{sid}"
+        data["coords_left"] = int(m_pos.x() - width // 2)
+        data["coords_top"] = int(m_pos.y() - height // 2)
+        data["username"] = lib_block.name
+
+        try:
+            block = FileService(self)._construct_block(data)
+        except Exception:
+            logger.exception("Could not instantiate library block %r", lib_block.block_id)
+            return None
+        if block is None:
+            return None
+
+        block.name = data["name"]
+        block.params["_name_"] = block.name
+        block.username = lib_block.name
+        apply_mask_appearance(block)
+        attach_library_ref(block, lib_block.reference())
+        refresh_saveable_params(block)
+
+        self.blocks_list.append(block)
+        self.dirty = True
+        logger.info("Instantiated library block %r as %s", lib_block.block_id, block.name)
+        return block
 
     def link_goto_from(self) -> None:
         """
