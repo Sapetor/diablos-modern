@@ -468,3 +468,19 @@ Note the earlier entry listed `app.setStyle("Fusion")` under "tried and failed";
 
 **Lesson**: when the caret is missing, first check `hasFocus()` — a widget inside a QScrollArea can type via forwarded events without ever holding Qt focus, and an unfocused widget never draws a caret. If it still doesn't render with focus confirmed, suspect the *style*, not the stylesheet: QSS `background-color` and the native macOS style don't cooperate, and swapping to Fusion (application-wide, before the stylesheet is installed) is the lever — not more QSS/QPalette variations, and not a Qt downgrade. Also: re-test "unfixable" conclusions before building a release strategy on them.
 
+
+---
+
+## Parallel Agents / Worktrees
+
+### Agent worktrees branch from `main`, not the checked-out branch (September 2026)
+
+**Problem**: Three feature agents launched with worktree isolation while `feat/wire-routing-and-block-shapes` was checked out all reported a base of `1999c56` (`main`), seven commits behind the working branch. Every merge then had to reconcile the wire/shape overhaul as well as the feature itself (the compiled run loop had moved to `lib/engine/compiled_runner.py`, `lib/config_manager.py` had been deleted, `resolve_block_shape` had appeared).
+
+**Lesson**: Tell each agent the exact base commit to branch from (`git checkout -b <branch> <sha>`), and have it verify `git log -1` before editing. Merge the branch that touches the most files (localization) with a re-run of `scripts/extract_strings.py` afterwards, since strings added by later commits are not caught by the catalog-completeness test until they are wrapped in `tr()`.
+
+### pyqtgraph teardown segfaults appear only in the full suite (September 2026)
+
+**Problem**: Two independent branches each added tests that built many `DSim`/`SimulationModel` instances; each was green in isolation but made `tests/unit/test_linearization_result_window.py` abort the interpreter about half the time in the full run (a pyqtgraph `InfiniteLine` repainting after its ViewBox was gone).
+
+**Fix**: Module-scope the heavy model fixture, or add an autouse `gc.collect()` per test in the new module, so Qt items are freed deterministically rather than under an unrelated widget mid-construction. The underlying teardown in the linearization result window is still unfixed.
