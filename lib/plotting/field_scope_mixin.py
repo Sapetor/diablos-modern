@@ -20,8 +20,39 @@ from lib.plotting.animation_exporter import AnimationExporter
 logger = logging.getLogger(__name__)
 
 
+# Injected by the GUI so ``lib`` never has to reach into ``modern_ui``: a
+# ``(exporter, block_name) -> None`` callable that opens the animation export
+# dialog. Registered with :func:`set_animation_dialog_factory` (or per-instance
+# as ``plotter.animation_dialog_factory = ...``). When nothing is registered the
+# mixin falls back to a lazy import of the modern_ui dialog, which keeps the
+# desktop app behaving exactly as before while headless callers stay Qt-free.
+_ANIMATION_DIALOG_FACTORY = None
+
+
+def set_animation_dialog_factory(factory):
+    """Register the GUI callable that opens the animation export dialog.
+
+    Args:
+        factory: ``(exporter, block_name) -> None``, or None to unregister and
+            restore the lazy-import fallback.
+    """
+    global _ANIMATION_DIALOG_FACTORY
+    _ANIMATION_DIALOG_FACTORY = factory
+
+
+def _default_animation_dialog(exporter, block_name):
+    """Fallback: open ``modern_ui``'s export dialog via a lazy import."""
+    from modern_ui.widgets.animation_export_dialog import AnimationExportDialog
+
+    dialog = AnimationExportDialog(exporter=exporter, block_name=block_name)
+    dialog.exec_()
+
+
 class _FieldScopeRenderMixin:
     """Field/PDE/agent rendering methods for :class:`ScopePlotter`."""
+
+    #: Per-instance override of the injected animation-dialog factory.
+    animation_dialog_factory = None
 
     def _plot_field_scope(self, block):
         """
@@ -534,7 +565,6 @@ class _FieldScopeRenderMixin:
         """
         try:
             from PyQt5.QtWidgets import QApplication
-            from modern_ui.widgets.animation_export_dialog import AnimationExportDialog
 
             # Create exporter
             exporter = AnimationExporter(
@@ -547,9 +577,14 @@ class _FieldScopeRenderMixin:
                 logger.warning("No QApplication instance found for export dialog")
                 return
 
-            # Show dialog
-            dialog = AnimationExportDialog(exporter=exporter, block_name=block.name)
-            dialog.exec_()
+            # Show dialog through the injected GUI factory; only fall back to
+            # importing modern_ui when nothing has been registered.
+            factory = (
+                getattr(self, "animation_dialog_factory", None)
+                or _ANIMATION_DIALOG_FACTORY
+                or _default_animation_dialog
+            )
+            factory(exporter, block.name)
 
         except ImportError as e:
             logger.error(f"Failed to import export dialog: {e}")

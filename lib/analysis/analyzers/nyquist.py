@@ -4,20 +4,25 @@ import scipy.signal as signal
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
+from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
 
 
-class NyquistAnalyzer(BaseAnalyzer):
+class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Nyquist plots."""
+
+    error_title = "Nyquist Error"
 
     def analyze(self, source_block, canvas):
         """Generate Nyquist plot."""
         logger.debug(f"NyquistAnalyzer called for {source_block.name}")
 
+        self.last_error = None
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
+            self._report_no_model("a Nyquist plot")
             return None
 
         try:

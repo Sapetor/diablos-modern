@@ -3,20 +3,25 @@ import numpy as np
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
+from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
 
 
-class RootLocusAnalyzer(BaseAnalyzer):
+class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Root Locus plots."""
+
+    error_title = "Root Locus Error"
 
     def analyze(self, source_block, canvas):
         """Generate Root Locus plot."""
         logger.debug(f"RootLocusAnalyzer called for {source_block.name}")
 
+        self.last_error = None
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
+            self._report_no_model("a Root Locus plot")
             return None
 
         try:
@@ -148,13 +153,3 @@ class RootLocusAnalyzer(BaseAnalyzer):
             logger.exception("Error calculating Root Locus")
             self._show_error(f"Failed to compute Root Locus:\n{e}")
             return None
-
-    def _show_error(self, message):
-        """Show error in a message box."""
-        from PyQt5.QtWidgets import QMessageBox
-
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle("Root Locus Error")
-        msg.setText(message)
-        msg.exec_()

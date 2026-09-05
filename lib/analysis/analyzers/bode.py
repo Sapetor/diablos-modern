@@ -4,21 +4,27 @@ import scipy.signal as signal
 from PyQt5.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
+from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
 
 
-class BodeAnalyzer(BaseAnalyzer):
+class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer for generating Bode Magnitude and Phase plots."""
+
+    error_title = "Bode Error"
 
     def analyze(self, source_block, canvas, phase_only=False):
         """Generate Bode plot (Magnitude or Phase)."""
         logger.debug(f"BodeAnalyzer called for {source_block.name} (Phase={phase_only})")
 
+        # Clear any reason recorded by a previous analysis so _report_no_model
+        # cannot surface a stale explanation.
+        self.last_error = None
         model, sys_block = self._find_connected_transfer_function(source_block, canvas)
 
         if not model:
-            logger.warning("No valid linear system found for Bode analysis")
+            self._report_no_model("a Bode plot")
             return None
 
         try:

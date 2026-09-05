@@ -15,17 +15,27 @@ class ControlSystemAnalyzer:
     Delegates actual analysis to specific analyzer classes.
     """
 
-    def __init__(self, canvas, parent=None):
+    def __init__(self, canvas, parent=None, error_cb=None):
+        """
+        Args:
+            canvas: the ModernCanvas the analyses read the diagram from.
+            parent: parent widget for the plot windows.
+            error_cb: optional ``(title, message) -> None`` sink for user-facing
+                errors, supplied by the GUI. The engine layer never builds a
+                Qt dialog itself; without a callback the analyzers only log,
+                which is what headless runs want.
+        """
         self.canvas = canvas
         self.parent = parent
+        self.error_cb = error_cb
         self.plot_windows = []
 
         # Instantiate analyzers
-        # We pass parent for error message boxes if needed
-        self.bode_analyzer = BodeAnalyzer(parent)
-        self.nyquist_analyzer = NyquistAnalyzer(parent)
-        self.root_locus_analyzer = RootLocusAnalyzer(parent)
-        self.lqr_analyzer = LQRAnalyzer(parent)
+        # parent is the plot windows' parent; error_cb is the GUI error sink.
+        self.bode_analyzer = BodeAnalyzer(parent, error_cb=error_cb)
+        self.nyquist_analyzer = NyquistAnalyzer(parent, error_cb=error_cb)
+        self.root_locus_analyzer = RootLocusAnalyzer(parent, error_cb=error_cb)
+        self.lqr_analyzer = LQRAnalyzer(parent, error_cb=error_cb)
 
     def generate_bode_plot(self, block_name_or_obj=None):
         """Generate Bode Magnitude plot."""

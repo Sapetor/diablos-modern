@@ -8,10 +8,29 @@ import os
 import sys
 import logging
 from typing import Dict, Optional, Any
-from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QRect
 
+from lib.services.file_dialogs import prompt_open_path, prompt_save_path
+
 logger = logging.getLogger(__name__)
+
+# QtCore.QRect stays: a block's ``coords`` *is* a QRect, so reconstructing a
+# block from JSON needs it. QtWidgets does not: choosing a path is a UI concern
+# and lives in lib/services/file_dialogs.py, which imports QFileDialog lazily.
+
+
+def __getattr__(name):
+    """Lazy re-export of ``QFileDialog`` for backward compatibility.
+
+    The dialogs moved to :mod:`lib.services.file_dialogs`, but callers (and
+    tests) that patch ``lib.services.file_service.QFileDialog`` keep working:
+    the attribute resolves to the single QFileDialog class both modules share.
+    """
+    if name == "QFileDialog":
+        from PyQt5.QtWidgets import QFileDialog
+
+        return QFileDialog
+    raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
 
 
 class FileService:
@@ -204,16 +223,8 @@ class FileService:
             if filepath:
                 file = filepath
             else:
-                options = QFileDialog.Options()
-                initial_dir = os.path.join(os.path.dirname(__file__), "..", "..", "saves")
                 # .diablos is the canonical/default filter; .dat kept for back-compat.
-                file, _ = QFileDialog.getSaveFileName(
-                    None,
-                    "Save File",
-                    os.path.join(initial_dir, self.filename),
-                    "DiaBloS Files (*.diablos);;Data Files (*.dat);;All Files (*)",
-                    options=options,
-                )
+                file = prompt_save_path(self.filename)
 
             if not file:
                 return 1
@@ -265,17 +276,9 @@ class FileService:
             Returns None if user cancelled or error occurred
         """
         if filepath is None:
-            options = QFileDialog.Options()
-            initial_dir = os.path.join(os.path.dirname(__file__), "..", "..", "saves")
             # Show .diablos files (the format every example uses) by default,
             # while still accepting legacy .dat/.json files for back-compat.
-            filepath, _ = QFileDialog.getOpenFileName(
-                None,
-                "Open File",
-                initial_dir,
-                "DiaBloS Files (*.diablos *.dat *.json);;All Files (*)",
-                options=options,
-            )
+            filepath = prompt_open_path()
 
             if not filepath:
                 return None

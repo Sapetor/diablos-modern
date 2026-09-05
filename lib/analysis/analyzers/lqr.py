@@ -15,12 +15,15 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from .base_analyzer import BaseAnalyzer
+from .error_reporting import ErrorReportingMixin
 
 logger = logging.getLogger(__name__)
 
 
-class LQRAnalyzer(BaseAnalyzer):
+class LQRAnalyzer(ErrorReportingMixin, BaseAnalyzer):
     """Analyzer that solves the continuous LQR problem and displays results."""
+
+    error_title = "LQR Error"
 
     def analyze(self, source_block, canvas, **kwargs):
         """Compute LQR gain from block parameters A, B, Q, R.
@@ -145,7 +148,11 @@ class LQRAnalyzer(BaseAnalyzer):
                 from lib.workspace import WorkspaceManager
 
                 ws = WorkspaceManager()
-                ws_val = ws.get_variable(value)
+                # WorkspaceManager exposes get_value(); the old get_variable()
+                # was removed, and the surrounding except swallowed the
+                # resulting AttributeError, so every workspace matrix name
+                # silently failed to resolve.
+                ws_val = ws.get_value(value)
                 if ws_val is not None:
                     return np.atleast_2d(np.array(ws_val, dtype=float))
             except Exception:
@@ -158,16 +165,6 @@ class LQRAnalyzer(BaseAnalyzer):
             return self._resolve_matrix(value["default"], canvas)
 
         return np.atleast_2d(np.array(value, dtype=float))
-
-    def _show_error(self, message):
-        """Show error in a message box."""
-        from PyQt5.QtWidgets import QMessageBox
-
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle("LQR Error")
-        msg.setText(message)
-        msg.exec_()
 
 
 class LQRResultDialog(QDialog):

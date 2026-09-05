@@ -34,6 +34,7 @@ listing the offending blocks rather than emitting broken code.
 """
 
 import keyword
+import logging
 import math
 import os
 import re
@@ -44,6 +45,8 @@ from scipy import signal as _scipy_signal
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "CodegenError",
@@ -307,12 +310,18 @@ class _Block:
         return "{} ({})".format(self.raw_fn, self.name)
 
 
-def _resolved_params(block: Any) -> Dict[str, Any]:
+def _resolved_params(block: Any, warnings: Optional[List[str]] = None) -> Dict[str, Any]:
     """Params with workspace variables resolved, the way the engine reads them.
 
     Prefers ``exec_params`` when the diagram has been run (that is what
     ``SystemCompiler`` compiles from); otherwise resolves ``params`` through the
     workspace manager so ``gain = "Kp"`` exports as its numeric value.
+
+    Args:
+        block: the diagram block whose params are being read.
+        warnings: optional list collecting human-readable warnings; a failed
+            resolution is appended here as well as logged, so the caller
+            (:class:`PythonCodeGenerator.warnings`) can surface it to the user.
     """
     exec_params = getattr(block, "exec_params", None)
     if exec_params:
@@ -322,7 +331,27 @@ def _resolved_params(block: Any) -> Dict[str, Any]:
         from lib.workspace import WorkspaceManager
 
         return dict(WorkspaceManager().resolve_params(params))
-    except Exception:  # noqa: BLE001 - workspace is optional for export
+    except Exception as exc:  # noqa: BLE001 - workspace is optional for export
+        # Falling through silently used to bake the *unresolved* value (the
+        # variable name, e.g. gain = "Kp") into the exported script, which then
+        # fails at runtime with an obscure error. Name the block and the params
+        # that stayed symbolic so the user knows what to fix.
+        unresolved = sorted(
+            key
+            for key, value in params.items()
+            if isinstance(value, str) and not key.startswith("_")
+        )
+        message = (
+            "Block '{}': workspace variables could not be resolved ({}); the "
+            "exported script keeps {} unresolved and may not run.".format(
+                getattr(block, "name", "?"),
+                exc,
+                ", ".join(unresolved) if unresolved else "its parameters",
+            )
+        )
+        logger.warning(message)
+        if warnings is not None:
+            warnings.append(message)
         return params
 
 
@@ -395,6 +424,10 @@ class PythonCodeGenerator:
         self._helpers = set()
         self._n_states = 0
         self._x0: List[float] = []
+        # Non-fatal problems found while generating (currently: params whose
+        # workspace variables could not be resolved). Populated by generate();
+        # callers surface these to the user alongside the exported script.
+        self.warnings: List[str] = []
 
     # -- public API --------------------------------------------------------
 
@@ -413,7 +446,12 @@ class PythonCodeGenerator:
         )
 
     def generate(self) -> str:
-        """Return the source text of the standalone script."""
+        """Return the source text of the standalone script.
+
+        Any non-fatal problem found on the way (see :attr:`warnings`) is logged
+        and collected rather than raised.
+        """
+        self.warnings = []
         blocks, lines = self._flatten()
         self._prepare(blocks, lines)
         self._check_supported()
@@ -452,7 +490,7 @@ class PythonCodeGenerator:
 
     def _prepare(self, blocks, lines):
         for obj in blocks:
-            blk = _Block(obj, _resolved_params(obj))
+            blk = _Block(obj, _resolved_params(obj, self.warnings))
             self._block_index[blk.name] = len(self._blocks)
             self._blocks.append(blk)
             self._by_name[blk.name] = blk
