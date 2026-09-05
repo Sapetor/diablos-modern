@@ -19,6 +19,8 @@ import os
 import logging
 from collections import OrderedDict
 
+from modern_ui.widgets.modern_palette import visible_menu_blocks
+
 from lib.app_paths import resource_path
 
 logger = logging.getLogger(__name__)
@@ -99,7 +101,11 @@ class CommandPaletteManager:
 
         # Block library — typed as 'block' so the BLOCK badge surfaces
         if hasattr(window, "canvas") and hasattr(window.canvas.dsim, "menu_blocks"):
-            for menu_block in window.canvas.dsim.menu_blocks:
+            # Hidden blocks (``hidden = True`` on the block class, e.g. the
+            # unimplemented External stub) are filtered out with the same helper
+            # the palette uses, so the command palette can never offer a block
+            # the user cannot place from the palette itself.
+            for menu_block in visible_menu_blocks(window.canvas.dsim.menu_blocks):
                 fn_name = getattr(menu_block, "fn_name", "") or ""
                 block_fn = getattr(menu_block, "block_fn", "") or fn_name
                 commands.append(

@@ -134,7 +134,11 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         """
         :purpose: Plots the data saved in Scope and XYGraph blocks without needing to execute the simulation again.
         """
-        if self.dsim.dirty:
+        # Gate on "edited since the last run", not on "unsaved". These used to
+        # be the same flag only because execution_init cleared ``dirty`` -- so
+        # a plain unsaved diagram (the normal case right after a run) would now
+        # never be plotted at all.
+        if getattr(self.dsim, "diagram_changed_since_run", False):
             logger.error("ERROR: The diagram has been modified. Please run the simulation again.")
             return
         # Close any matplotlib figures left over from a previous plot so they
@@ -546,38 +550,43 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
                     rel_max_error = 0.0
                     rel_rms_error = 0.0
 
-                # Print verification summary
-                print("\n" + "=" * 60)
-                print(f"VERIFICATION SUMMARY: {block.name}")
-                print("=" * 60)
+                # Verification summary. Collected into one multi-line log
+                # record rather than print()ed: in a frozen windowed build
+                # stdout is an in-memory StringIO (see diablos_modern.py), so
+                # every printed line was invisible and leaked memory.
+                report = ["=" * 60, f"VERIFICATION SUMMARY: {block.name}", "=" * 60]
                 if labels:
                     # Handle labels as either list or comma-separated string
                     if isinstance(labels, list):
-                        label_parts = [l.strip() for l in labels]
+                        label_parts = [lbl.strip() for lbl in labels]
                     else:
-                        label_parts = [l.strip() for l in labels.split(",")]
+                        label_parts = [lbl.strip() for lbl in labels.split(",")]
                     if len(label_parts) >= 2:
-                        print(f"  Signal 1: {label_parts[0]}")
-                        print(f"  Signal 2: {label_parts[1]}")
-                print(f"  Max Absolute Error:  {max_error:.6e}")
-                print(f"  RMS Error:           {rms_error:.6e}")
-                print(f"  Max Relative Error:  {rel_max_error:.4f}%")
-                print(f"  RMS Relative Error:  {rel_rms_error:.4f}%")
+                        report.append(f"  Signal 1: {label_parts[0]}")
+                        report.append(f"  Signal 2: {label_parts[1]}")
+                report.append(f"  Max Absolute Error:  {max_error:.6e}")
+                report.append(f"  RMS Error:           {rms_error:.6e}")
+                report.append(f"  Max Relative Error:  {rel_max_error:.4f}%")
+                report.append(f"  RMS Relative Error:  {rel_rms_error:.4f}%")
 
                 # Sample values at key times
                 timeline = self.dsim.timeline
                 if len(timeline) > 0:
-                    print("\n  Sample Values:")
-                    print(f"  {'Time':>8}  {'Signal 1':>12}  {'Signal 2':>12}  {'Error':>12}")
-                    print(f"  {'-' * 8}  {'-' * 12}  {'-' * 12}  {'-' * 12}")
+                    report.append("")
+                    report.append("  Sample Values:")
+                    report.append(
+                        f"  {'Time':>8}  {'Signal 1':>12}  {'Signal 2':>12}  {'Error':>12}"
+                    )
+                    report.append(f"  {'-' * 8}  {'-' * 12}  {'-' * 12}  {'-' * 12}")
 
                     # Show t=0, t=1, t=2, and final time
                     sample_times = [0.0, 1.0, 2.0, timeline[-1]]
                     for t in sample_times:
                         idx = np.argmin(np.abs(timeline - t))
                         if idx < len(signal1):
-                            print(
-                                f"  {timeline[idx]:8.3f}  {signal1[idx]:12.6f}  {signal2[idx]:12.6f}  {error[idx]:12.6e}"
+                            report.append(
+                                f"  {timeline[idx]:8.3f}  {signal1[idx]:12.6f}  "
+                                f"{signal2[idx]:12.6f}  {error[idx]:12.6e}"
                             )
 
                 # Verdict
@@ -590,8 +599,10 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
                 else:
                     verdict = "NEEDS REVIEW - Error >= 10%"
 
-                print(f"\n  Verdict: {verdict}")
-                print("=" * 60 + "\n")
+                report.append("")
+                report.append(f"  Verdict: {verdict}")
+                report.append("=" * 60)
+                logger.info("\n".join(report))
 
                 logger.info(
                     f"Verification {block.name}: Max Error={max_error:.6e}, RMS={rms_error:.6e}, Rel={rel_max_error:.4f}%"

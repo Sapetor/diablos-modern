@@ -26,6 +26,7 @@ from PyQt5.QtWidgets import (
 )
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font
+from modern_ui.widgets.modern_palette import visible_menu_blocks
 
 logger = logging.getLogger(__name__)
 
@@ -428,7 +429,10 @@ class MenuManager:
         menu.setStyleSheet(_menu_stylesheet())
 
         # Inline search at the top
-        all_blocks = list(getattr(self.canvas.dsim, "menu_blocks", []))
+        # Same visibility rule as the block palette: a block flagged
+        # ``hidden`` (e.g. the unimplemented External stub) is never offered
+        # by the canvas search or the quick-add rows.
+        all_blocks = visible_menu_blocks(getattr(self.canvas.dsim, "menu_blocks", []))
         if all_blocks:
             search = _CanvasSearchWidget(
                 on_add=lambda mb, p=pos: self._quick_add(mb, p),

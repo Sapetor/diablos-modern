@@ -11,9 +11,11 @@ Signals:
                                  on cancellation it holds the partial ensemble.
   * ``failed(message)``       -- the run raised; ``message`` is the error text.
 
-The worker only reads/restores the diagram the way ``MonteCarloRunner`` already
-does. Keep the run modal at the UI level (a modal progress dialog) so nothing
-else mutates ``dsim`` while the worker is iterating.
+The worker runs against an isolated ``DSim`` copy supplied by
+``ExperimentController`` -- the runner rewrites blocks_list/line_list/timeline
+while it iterates, which raced the window's repaint timer when it was handed the
+live diagram. The modal progress dialog additionally keeps the user from editing
+the diagram mid-experiment.
 """
 
 import logging
@@ -35,7 +37,9 @@ class MonteCarloWorker(QThread):
     def __init__(self, dsim, selection, parent=None):
         """
         Args:
-            dsim: DSim instance to ensemble-run (never mutated past restore).
+            dsim: DSim to ensemble-run. ExperimentController hands over a
+                private copy (``DSim.clone_for_analysis``) so the worker never
+                touches the diagram the GUI is painting.
             selection: dict from ``MonteCarloDialog.get_selection()`` -- keys
                 ``n_runs``, ``master_seed``, ``sim_time``, ``sim_dt`` and an
                 optional ``samplers``.

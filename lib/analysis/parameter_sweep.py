@@ -59,9 +59,11 @@ class ParameterSweepRunner:
                 "values": array-like}``. One axis -> 1-D sweep; two -> 2-D grid.
             sim_time, sim_dt: overrides (default: the diagram's current values).
             progress_cb: optional callable(done, total).
-            cancel_cb: optional callable() -> bool, polled before each grid point;
-                when it returns True the sweep stops early and the partial grid
-                gathered so far is aggregated and returned (diagram still restored).
+            cancel_cb: optional callable() -> bool, polled before each grid point
+                *and* periodically inside each run (it is forwarded to
+                ``run_tuning_simulation``); when it returns True the sweep stops
+                early and the partial grid gathered so far is aggregated and
+                returned (diagram still restored).
 
         Returns:
             A sweep-result dict (see module docstring).
@@ -113,7 +115,12 @@ class ParameterSweepRunner:
                     break
                 for axi, (b, _bn, pn, values) in enumerate(resolved):
                     _set(b, pn, float(values[idx[axi]]))
-                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt)
+                # cancel_cb is forwarded so a cancel lands mid-run rather than
+                # only between grid points.
+                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt, cancel_cb=cancel_cb)
+                if cancel_cb is not None and cancel_cb():
+                    logger.info("Parameter sweep cancelled during point %s", idx)
+                    break
                 if ok:
                     harvests[k] = harvest_scope_signals(dsim)
                 else:

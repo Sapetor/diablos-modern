@@ -87,12 +87,27 @@ class TestSetupCommandPalette:
         assert run["callback"] == window.start_simulation
 
     def test_block_commands_match_menu_blocks(self, window):
+        """One command per *visible* block.
+
+        Blocks flagged ``hidden`` (``blocks/external.py``) are filtered out with
+        the same helper the palette uses, so the count is the visible subset,
+        not the full menu_blocks list.
+        """
+        from modern_ui.widgets.modern_palette import visible_menu_blocks
+
         cmds = _commands(window)
         block_cmds = [c for c in cmds if c["type"] == "block"]
         menu_blocks = list(getattr(window.canvas.dsim, "menu_blocks", []) or [])
-        assert len(block_cmds) == len(menu_blocks)
+        visible = visible_menu_blocks(menu_blocks)
+        assert len(block_cmds) == len(visible)
+        assert len(visible) < len(menu_blocks), "External should be hidden"
         for c in block_cmds:
             assert c["name"].startswith("Add ")
+
+    def test_hidden_blocks_are_not_offered(self, window):
+        cmds = _commands(window)
+        block_types = {c["data"]["block_type"] for c in cmds if c["type"] == "block"}
+        assert "external" not in block_types
 
     def test_examples_indexed(self, window):
         cmds = _commands(window)

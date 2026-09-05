@@ -105,10 +105,17 @@ class DSim:
         self.execution_pause = self.engine.execution_pause
         self.real_time = self.engine.real_time
         self.dynamic_plot = False
+        # Set while execution_batch runs off the GUI thread: suppresses every
+        # Qt call made from the interpreter loop (see execution_batch).
+        self._defer_gui_plots = False
+        # True when the diagram was edited after the last run, i.e. the data
+        # held in the Scope blocks no longer describes this diagram. This used
+        # to piggy-back on ``dirty`` (which execution_init cleared), conflating
+        # "unsaved" with "stale plot data"; the two are now separate.
+        self.diagram_changed_since_run = True
 
         # Delegate filename to file service
         self.filename = self.file_service.filename
-        self.dirty = self.model.dirty
 
         # Execution tracking (timeline, global_computed_list are now properties)
         self.scope_plotter = ScopePlotter(self)
@@ -121,6 +128,28 @@ class DSim:
 
         # Subsystem manager
         self.subsystem_manager = SubsystemManager(self.model, self)
+
+    # ``dirty`` is a live view of the model's flag, not a copy.
+    #
+    # FileService clears ``model.dirty`` on save while the whole GUI
+    # (status bar, property controller, clipboard/connection managers) reads
+    # and writes ``dsim.dirty``.  While these were two independent booleans a
+    # save never cleared the flag the GUI showed, and ``execution_init`` used
+    # to clear ``dsim.dirty`` -- so pressing Run marked unsaved edits as saved
+    # and closing the window lost them silently.
+    @property
+    def dirty(self) -> bool:
+        """True when the diagram has unsaved changes (delegates to the model)."""
+        return self.model.dirty
+
+    @dirty.setter
+    def dirty(self, value: bool) -> None:
+        value = bool(value)
+        if value:
+            # Every caller that marks the diagram dirty has just edited it, so
+            # any plotted run is now stale (see diagram_changed_since_run).
+            self.diagram_changed_since_run = True
+        self.model.dirty = value
 
     # Properties for backward compatibility with subsystem navigation
     @property
@@ -292,13 +321,13 @@ class DSim:
     def add_block(self, block, m_pos):
         """Add a block to the diagram. Delegates to model."""
         new_block = self.model.add_block(block, m_pos)
-        self.dirty = self.model.dirty
+        self.diagram_changed_since_run = True
         return new_block
 
     def add_line(self, srcData, dstData):
         """Add a connection line between two blocks. Delegates to model."""
         new_line = self.model.add_line(srcData, dstData)
-        self.dirty = self.model.dirty
+        self.diagram_changed_since_run = True
         return new_line
 
     def remove_block_and_lines(self, block):
@@ -306,20 +335,28 @@ class DSim:
         self.model.remove_block(block)
         self.line_list = self.model.line_list  # Sync line_list after removal
         self.connections_list = self.line_list  # Keep alias in sync
-        self.dirty = self.model.dirty
+        self.diagram_changed_since_run = True
 
     # NOTE: display_lines, display_blocks, display_ports, update_lines moved to ModernCanvas
     # NOTE: Block loading moved to SimulationModel.load_all_blocks()
 
     ##### LOADING AND SAVING #####
 
-    def save(self, autosave: bool = False, modern_ui_data: Optional[Dict] = None) -> int:
+    def save(
+        self,
+        autosave: bool = False,
+        modern_ui_data: Optional[Dict] = None,
+        filepath: Optional[str] = None,
+    ) -> int:
         """
         Save diagram to file. Delegates to FileService.
 
         Args:
             autosave: If True, save to autosave location without dialog
             modern_ui_data: Additional UI state data to save
+            filepath: Explicit destination. When given, no file dialog is shown
+                and the file is written there (the autosave path takes this
+                route -- see ``ModernDiaBloSWindow._auto_save``).
 
         Returns:
             0 on success, 1 if user cancelled
@@ -336,12 +373,24 @@ class DSim:
         self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
         self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
 
+        # An autosave is a crash-recovery snapshot, not the user saving their
+        # file: it must not clear the unsaved-changes flag. FileService clears
+        # model.dirty on every successful write, so restore it afterwards --
+        # otherwise pressing Run (execution_init autosaves) or the 2-minute
+        # timer would silently mark unsaved edits as saved.
+        was_dirty = self.dirty
+
         result = self.file_service.save(
-            autosave=autosave, modern_ui_data=modern_ui_data, sim_params=sim_params
+            autosave=autosave,
+            modern_ui_data=modern_ui_data,
+            sim_params=sim_params,
+            filepath=filepath,
         )
 
-        # Sync filename back for backward compatibility
-        if result == 0 and not autosave:
+        if autosave:
+            self.dirty = was_dirty
+        elif result == 0:
+            # Sync filename back for backward compatibility
             self.filename = self.file_service.filename
 
         return result
@@ -382,6 +431,28 @@ class DSim:
         self.filename = self.file_service.filename
         return sim_params
 
+    def clone_for_analysis(self) -> "DSim":
+        """Return an independent ``DSim`` holding a copy of this diagram.
+
+        Experiment runners (Monte-Carlo, parameter sweep) rewrite
+        ``blocks_list``/``line_list``/``timeline``/``execution_initialized``
+        and re-enter the interpreter loop.  Doing that to the live ``DSim`` from
+        a worker thread races the GUI's 60 FPS repaint timer (which iterates the
+        same lists and may itself call ``execution_loop``).  Running the
+        experiment against a private copy removes the shared state entirely.
+
+        The copy goes through ``serialize``/``deserialize``, i.e. exactly the
+        save/reopen path, so block names (which the runners use to address
+        parameters) and simulation settings are preserved.
+        """
+        clone = DSim()
+        clone.deserialize(self.serialize())
+        clone.use_fast_solver = getattr(self, "use_fast_solver", True)
+        # Never let a cloned run touch the GUI: no dynamic plotting, no scope
+        # windows -- the caller harvests block data directly.
+        clone.dynamic_plot = False
+        return clone
+
     def open(self) -> Optional[Dict]:
         """
         Load diagram from file. Delegates to FileService.
@@ -414,7 +485,7 @@ class DSim:
         self.blocks_list = self.model.blocks_list
         self.line_list = self.model.line_list
         self.connections_list = self.line_list  # Keep alias in sync
-        self.dirty = self.model.dirty
+        self.diagram_changed_since_run = True
 
         # Reset UI state
         self.line_creation = 0
@@ -432,6 +503,24 @@ class DSim:
 
         # The compiled RHS cached for the old diagram no longer applies.
         self.engine.clear_compile_cache()
+
+    def new_diagram(self):
+        """Start a fresh, untitled diagram (the File > New reset).
+
+        ``DiagramService.new_diagram`` (and therefore ``ProjectManager`` and the
+        File > New action) has always called this; ``DSim`` never defined it, so
+        File > New raised ``AttributeError``. It resets the diagram via
+        ``clear_all`` and drops the previous file's name, so the next save asks
+        where to put the new diagram instead of silently overwriting the old
+        file.
+        """
+        self.clear_all()
+        # Untitled: use the canonical default extension on both sides (clear_all
+        # still leaves the legacy .dat name behind).
+        self.filename = "data.diablos"
+        self.file_service.filename = "data.diablos"
+        # An empty diagram has nothing unsaved.
+        self.dirty = False
 
     ##### DIAGRAM EXECUTION #####
 
@@ -595,7 +684,11 @@ class DSim:
         self.pbar = tqdm(
             desc="SIMULATION PROGRESS", total=int(self.execution_time / self.sim_dt), unit="itr"
         )
-        self.dirty = False
+        # The Scope data about to be produced belongs to *this* diagram, so
+        # plot_again may use it until the next edit. (This is what the old
+        # ``self.dirty = False`` here was really for -- it also wiped the
+        # unsaved-changes flag, which is why pressing Run lost work.)
+        self.diagram_changed_since_run = False
 
         # Identify memory blocks to correctly solve algebraic loops (delegated to engine)
         self.engine.identify_memory_blocks()
@@ -640,8 +733,20 @@ class DSim:
 
         return True
 
-    def execution_batch(self) -> None:
-        """Run the entire simulation as fast as possible."""
+    def execution_batch(self, progress_cb=None, cancel_cb=None, defer_plots=False) -> None:
+        """Run the entire simulation as fast as possible.
+
+        Args:
+            progress_cb: optional callable(t_now, t_end), called once per
+                interpreter step (the compiled solver has no step hook).
+            cancel_cb: optional callable() -> bool, polled once per interpreter
+                step; when it returns True the run stops early and the blocks
+                are re-armed exactly as a completed run leaves them.
+            defer_plots: when True, the interpreter path skips every Qt call
+                (dynamic scope updates and the end-of-run ``pyqtPlotScope``) so
+                the batch can be driven from a worker thread; the caller is then
+                responsible for plotting on the GUI thread (``plot_again``).
+        """
         _tb0 = time.time()
         # Drop any diagnostics from a previous run so the interpreter path (which
         # records none) never surfaces a stale compiled-solver summary.
@@ -690,10 +795,24 @@ class DSim:
 
         logger.info("System not fully compilable. Using Interpreter Mode.")
         self.last_solver_type = "Standard (Interpreter)"
-        while self.execution_initialized:
-            self.execution_loop()
+        self._defer_gui_plots = bool(defer_plots)
+        try:
+            while self.execution_initialized:
+                self.execution_loop()
+                if progress_cb is not None:
+                    progress_cb(self.time_step, self.execution_time)
+                if cancel_cb is not None and cancel_cb():
+                    logger.info("Batch simulation cancelled at t=%.6g", self.time_step)
+                    self.timeline = np.array(self._timeline_list)
+                    self.execution_initialized = False
+                    if getattr(self, "pbar", None) is not None:
+                        self.pbar.close()
+                    self.reset_memblocks()
+                    break
+        finally:
+            self._defer_gui_plots = False
 
-    def run_tuning_simulation(self, sim_time, sim_dt):
+    def run_tuning_simulation(self, sim_time, sim_dt, cancel_cb=None, cancel_every=200):
         """
         Headless re-simulation for live parameter tuning.
 
@@ -703,6 +822,13 @@ class DSim:
         Args:
             sim_time: Total simulation time in seconds
             sim_dt: Simulation time step in seconds
+            cancel_cb: optional callable() -> bool.  Polled every
+                ``cancel_every`` interpreter steps (and once before the
+                compiled solver, which cannot be interrupted mid-solve); when it
+                returns True the run aborts and ``(False, "cancelled")`` is
+                returned.  Without this a cancelled ensemble/sweep still had to
+                wait out a whole run.
+            cancel_every: how many interpreter steps between cancel polls.
 
         Returns:
             (success: bool, error_msg: str)
@@ -760,11 +886,17 @@ class DSim:
                 logger.debug("Auto-connecting Goto/From tags failed", exc_info=True)
 
             self.execution_initialized = True
+            self.diagram_changed_since_run = False
             self.rk_counter += 1
 
             # Run batch (compiled or interpreter)
             use_fast = getattr(self, "use_fast_solver", True)
             compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
+
+            if cancel_cb is not None and cancel_cb():
+                self.execution_initialized = False
+                self.reset_memblocks()
+                return (False, "cancelled")
 
             if use_fast and compilable:
                 t_span = (0.0, sim_time)
@@ -778,8 +910,14 @@ class DSim:
                 # Fall through to interpreter if compiled fails
 
             # Interpreter mode
+            steps = 0
             while self.execution_initialized:
                 self.execution_loop_headless()
+                steps += 1
+                if cancel_cb is not None and steps % max(1, int(cancel_every)) == 0 and cancel_cb():
+                    self.execution_initialized = False
+                    self.reset_memblocks()
+                    return (False, "cancelled")
 
             if self.error_msg:
                 return (False, self.error_msg)
@@ -948,7 +1086,7 @@ class DSim:
                                     optional_inputs = set(block.block_instance.optional_inputs)
                             required_ports = block.in_ports - len(optional_inputs)
                             has_enough_inputs = (
-                                block.data_recieved >= required_ports or block.in_ports == 0
+                                block.data_received >= required_ports or block.in_ports == 0
                             )
 
                             # The block must have the degree of hierarchy to execute it (and meet the other requirements above)
@@ -1028,7 +1166,7 @@ class DSim:
                 if not outer_progressed:
                     break
 
-            if interactive:
+            if interactive and not self._defer_gui_plots:
                 # The dynamic plot function is called to save the new data, if active
                 self.dynamic_pyqtPlotScope(step=1)
 
@@ -1069,8 +1207,10 @@ class DSim:
                     except Exception as e:
                         logger.warning(f"Could not record run history: {e}")
 
-                    # Scope
-                    if not self.dynamic_plot:
+                    # Scope. Skipped when the batch is being driven from a
+                    # worker thread: Qt windows may only be built on the GUI
+                    # thread, so the caller plots via plot_again() instead.
+                    if not self.dynamic_plot and not self._defer_gui_plots:
                         logger.debug("Calling pyqtPlotScope...")
                         self.pyqtPlotScope()
                         logger.debug("pyqtPlotScope call finished.")

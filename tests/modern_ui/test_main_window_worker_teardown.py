@@ -10,6 +10,8 @@ wiring into closeEvent.
 import pytest
 from PyQt5.QtGui import QCloseEvent
 
+from modern_ui.controllers.experiment_controller import _ORPHANED_WORKERS, _WORKER_JOIN_MS
+
 
 class _StubWorker:
     """Stand-in for a Monte-Carlo / sweep QThread.
@@ -70,9 +72,9 @@ class TestCancelExperimentWorkers:
         window._cancel_experiment_workers()
 
         assert mc.cancel_calls == 1
-        assert mc.wait_calls == [10000]
+        assert mc.wait_calls == [_WORKER_JOIN_MS]
         assert sweep.cancel_calls == 1
-        assert sweep.wait_calls == [10000]
+        assert sweep.wait_calls == [_WORKER_JOIN_MS]
         # References cleared so the threads can be GC'd / not re-joined.
         assert window._mc_worker is None
         assert window._sweep_worker is None
@@ -100,14 +102,23 @@ class TestCancelExperimentWorkers:
         window._cancel_experiment_workers()
         assert window._mc_worker is None
 
-    def test_timeout_logs_warning_but_still_clears(self, window, caplog):
+    def test_timeout_logs_error_detaches_and_clears(self, window, caplog):
+        """A worker that ignores the cancel must never be destroyed while running.
+
+        It is parked in _ORPHANED_WORKERS (it owns a private diagram copy, so it
+        cannot touch anything the GUI still uses) and the window reference is
+        cleared regardless.
+        """
         slow = _StubWorker(running=True, wait_returns=False)
         window._sweep_worker = slow
-        with caplog.at_level("WARNING"):
+        before = len(_ORPHANED_WORKERS)
+        with caplog.at_level("ERROR"):
             window._cancel_experiment_workers()
         assert slow.cancel_calls == 1
         assert window._sweep_worker is None
-        assert any("did not stop within timeout" in r.message for r in caplog.records)
+        assert any("did not stop within" in r.message for r in caplog.records)
+        assert _ORPHANED_WORKERS[before:] == [slow]
+        del _ORPHANED_WORKERS[before:]
 
     def test_closeEvent_invokes_worker_teardown(self, window, monkeypatch):
         called = {"n": 0}

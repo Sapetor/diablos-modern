@@ -8,7 +8,6 @@ post-run terminal verification report. Communicates status to the UI via the
 """
 
 import logging
-import sys
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox, QWidget
@@ -17,15 +16,33 @@ from lib.improvements import SafetyChecks, ValidationHelper
 
 logger = logging.getLogger(__name__)
 
+# Batch runs that are currently executing on a worker thread. The window's
+# 60 FPS ``safe_update`` must not call ``dsim.execution_loop()`` while one of
+# these is stepping the same DSim, so it consults ``batch_simulation_active()``.
+# A set (not a bool) so a stale entry from one controller cannot unblock
+# another, and module-level so main_window does not have to reach into the
+# canvas's private controller reference.
+_ACTIVE_BATCH_WORKERS = set()
+
+
+def batch_simulation_active() -> bool:
+    """True while any batch simulation is running on a worker thread."""
+    return bool(_ACTIVE_BATCH_WORKERS)
+
 
 class SimulationController(QObject):
     """Drives validation, start/stop, and batch execution for a DSim model."""
 
     status_changed = pyqtSignal(str)  # Emitted when simulation status changes
 
+    # Emitted when a threaded batch run ends (completed, cancelled or failed).
+    # The window uses it to re-arm the tuning panel and reset the toolbar.
+    batch_finished = pyqtSignal(bool)  # ok
+
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
         self.dsim = dsim
+        self._batch_worker = None
 
     def start(self):
         """Start simulation with validation."""
@@ -93,34 +110,133 @@ class SimulationController(QObject):
             return False
 
     def run_batch(self):
-        """Run the simulation in batch mode (as fast as possible)."""
+        """Run the simulation in batch mode (as fast as possible).
+
+        Runs on a ``BatchSimulationWorker`` thread so the window keeps
+        repainting and the run can be cancelled (Stop). It used to run
+        synchronously on the GUI thread behind a single ``processEvents()``,
+        which froze the window for the whole run with no way out.
+
+        The live-plot case (``dynamic_plot``) stays synchronous: it drives
+        pyqtgraph from inside the step loop, and Qt widgets may only be touched
+        from the GUI thread.
+        """
+        if getattr(self.dsim, "dynamic_plot", False):
+            self._run_batch_blocking()
+            return
+
+        if self._batch_worker is not None:
+            logger.warning("A batch simulation is already running.")
+            return
+
+        from modern_ui.widgets.batch_simulation_worker import BatchSimulationWorker
+
+        logger.info("Running simulation in batch mode (worker thread).")
+        self.status_changed.emit("Running simulation...")
+
+        worker = BatchSimulationWorker(self.dsim, parent=self)
+        # Bound methods of this QObject (GUI-thread affinity), so Qt queues the
+        # calls onto the GUI thread -- results and plots are never touched from
+        # the worker. QThread.finished (not our finished_ok) drives deleteLater,
+        # so the object is only destroyed after run() has returned.
+        worker.progress.connect(self._on_batch_progress)
+        worker.finished_ok.connect(self._on_batch_ok)
+        worker.failed.connect(self._on_batch_failed)
+        worker.finished.connect(worker.deleteLater)
+        self._batch_worker = worker
+        _ACTIVE_BATCH_WORKERS.add(worker)
+        worker.start()
+
+    def _run_batch_blocking(self):
+        """Synchronous batch run (live-plot path); blocks the GUI thread."""
         from PyQt5.QtWidgets import QApplication
         from PyQt5.QtCore import Qt
 
-        logger.info("Running simulation in batch mode.")
+        logger.info("Running simulation in batch mode (blocking, dynamic plot).")
         self.status_changed.emit("Running simulation...")
-
-        # execution_batch() blocks the UI thread (a worker-thread version is a
-        # planned follow-up). Until then, show a wait cursor and let the status
-        # text / cursor paint once so the freeze reads as "working", not a hang.
         QApplication.setOverrideCursor(Qt.WaitCursor)
         QApplication.processEvents()
         try:
             self.dsim.execution_batch()
         finally:
             QApplication.restoreOverrideCursor()
+        self._finish_batch(True, "")
+
+    def _on_batch_progress(self, t_now, t_end):
+        if t_end:
+            self.status_changed.emit(f"Running simulation... t = {t_now:.4g} / {t_end:.4g} s")
+
+    def _on_batch_ok(self):
+        """Worker finished normally (or was cancelled). GUI thread."""
+        self._on_batch_done(True, "")
+
+    def _on_batch_failed(self, message):
+        """Worker raised. GUI thread."""
+        self._on_batch_done(False, message)
+
+    def _on_batch_done(self, ok, message):
+        """Worker-thread completion, delivered on the GUI thread by Qt."""
+        worker = self._batch_worker
+        self._batch_worker = None
+        if worker is not None:
+            _ACTIVE_BATCH_WORKERS.discard(worker)
+        self._finish_batch(ok, message)
+
+    def _finish_batch(self, ok, message):
+        """Post-run work: status, plots, verification report. GUI thread only."""
+        if not ok:
+            logger.error(f"Batch simulation failed: {message}")
+            self.status_changed.emit(f"Simulation failed: {message}")
+            self.batch_finished.emit(False)
+            return
 
         solver_type = getattr(self.dsim, "last_solver_type", "Standard")
         self.status_changed.emit(f"Simulation finished [{solver_type}]")
         logger.info(f"Batch simulation finished. Solver: {solver_type}")
+        # Plotting is deliberately done here rather than inside the run: the
+        # worker sets defer_plots so no Qt object is created off the GUI thread.
         self.dsim.plot_again()
-
-        # Print verification results to terminal
         self._print_terminal_verification()
+        self.batch_finished.emit(True)
+
+    def is_batch_running(self):
+        """True while this controller's batch run is executing on a thread."""
+        return self._batch_worker is not None
+
+    def cancel_batch(self, wait_ms=5000):
+        """Cancel a threaded batch run and join it (bounded)."""
+        worker = self._batch_worker
+        if worker is None:
+            return False
+        try:
+            if worker.isRunning():
+                worker.cancel()
+                if not worker.wait(wait_ms):
+                    logger.error("Batch simulation worker did not stop within %d ms", wait_ms)
+                    return False
+        except RuntimeError:
+            # Underlying C++ QThread already deleted; nothing to join.
+            pass
+        _ACTIVE_BATCH_WORKERS.discard(worker)
+        self._batch_worker = None
+        return True
 
     def _print_terminal_verification(self):
-        """Print verification results to terminal after simulation completes."""
+        """Log the post-run verification report.
+
+        This used to ``print()`` ~20 lines straight to stdout. In a frozen
+        windowed build stdout is an ``io.StringIO`` created by
+        ``diablos_modern.py``, so the report was invisible *and* accumulated in
+        memory for the life of the process. The report is now assembled into
+        one multi-line ``logger.info`` record, which reaches the log file and
+        the console handler alike.
+        """
         import numpy as np
+
+        report = []
+
+        def emit(line=""):
+            report.append(line)
 
         try:
             # Use active blocks from engine if available, otherwise fall back to blocks_list
@@ -190,19 +306,19 @@ class SimulationController(QObject):
             all_checks_passed = True
 
             if has_output:
-                print("\n" + "=" * 60, flush=True)
-                print("VERIFICATION RESULTS", flush=True)
-                print("=" * 60, flush=True)
+                emit("\n" + "=" * 60)
+                emit("VERIFICATION RESULTS")
+                emit("=" * 60)
 
                 # Display block values
                 if display_values:
-                    print("\n📊 Display Values:", flush=True)
+                    emit("\n📊 Display Values:")
                     for name, value in display_values.items():
-                        print(f"   {name}: {value}", flush=True)
+                        emit(f"   {name}: {value}")
 
                 # StateVariable convergence check
                 if state_values:
-                    print("\n🎯 Optimization Convergence:", flush=True)
+                    emit("\n🎯 Optimization Convergence:")
                     for name, info in state_values.items():
                         final = info["final"]
                         initial = info["initial"]
@@ -234,15 +350,15 @@ class SimulationController(QObject):
                         if not (converged_to_zero or state_changed):
                             all_checks_passed = False
 
-                        print(f"   {status} {name}: {final_str}", flush=True)
+                        emit(f"   {status} {name}: {final_str}")
                         if reduction is not None and reduction > 0:
-                            print(f"      ‖x‖ reduced by {reduction * 100:.1f}%", flush=True)
+                            emit(f"      ‖x‖ reduced by {reduction * 100:.1f}%")
                         if converged_to_zero:
-                            print(f"      Converged to ‖x‖ = {final_norm:.2e}", flush=True)
+                            emit(f"      Converged to ‖x‖ = {final_norm:.2e}")
 
                 # Scope convergence verification
                 if scope_convergence:
-                    print("\n📈 Signal Convergence:", flush=True)
+                    emit("\n📈 Signal Convergence:")
 
                     def format_val(v):
                         if v is None:
@@ -297,49 +413,47 @@ class SimulationController(QObject):
                             status = "✓" if converged else "✗"
                             if not converged:
                                 all_checks_passed = False
-                            print(
-                                f"   {status} {name}: {format_val(first)} → {format_val(last)}",
-                                flush=True,
-                            )
+                            emit(f"   {status} {name}: {format_val(first)} → {format_val(last)}")
                             if reduction > 0:
-                                print(f"      Reduced by {reduction * 100:.1f}%", flush=True)
+                                emit(f"      Reduced by {reduction * 100:.1f}%")
                         elif is_state:
                             # State should change and ideally converge
                             changed = not np.allclose(first, last, rtol=0.01)
                             status = "✓" if changed else "✗"
                             if not changed:
                                 all_checks_passed = False
-                            print(
-                                f"   {status} {name}: {format_val(first)} → {format_val(last)}",
-                                flush=True,
-                            )
+                            emit(f"   {status} {name}: {format_val(first)} → {format_val(last)}")
                         else:
                             # Generic scope or comparison mode - just show values (no pass/fail)
-                            print(
-                                f"   • {name} ({samples} pts): {format_val(first)} → {format_val(last)}",
-                                flush=True,
+                            emit(
+                                f"   • {name} ({samples} pts): "
+                                f"{format_val(first)} → {format_val(last)}"
                             )
 
                 # Final verdict
-                print("\n" + "-" * 60, flush=True)
+                emit("\n" + "-" * 60)
                 if all_checks_passed:
-                    print("✓ VERIFICATION PASSED", flush=True)
+                    emit("✓ VERIFICATION PASSED")
                 else:
-                    print("✗ VERIFICATION FAILED - Check values above", flush=True)
-                print("=" * 60 + "\n", flush=True)
-                sys.stdout.flush()
+                    emit("✗ VERIFICATION FAILED - Check values above")
+                emit("=" * 60)
+                logger.info("\n".join(report))
             else:
-                print("\n[Simulation completed - no verification data]", flush=True)
-                sys.stdout.flush()
+                logger.info("Simulation completed - no verification data")
 
         except Exception as e:
-            # Log the actual error for debugging
-            print(f"\n[Could not print verification results: {e}]", file=sys.stderr, flush=True)
-            logger.warning(f"Could not print verification results: {e}")
+            # Emit whatever was collected before the failure, then the reason.
+            if report:
+                logger.info("\n".join(report))
+            logger.warning(f"Could not assemble verification results: {e}", exc_info=True)
 
     def stop(self):
         """Stop simulation safely."""
         try:
+            # A threaded batch run owns the step loop; ask it to stop and join
+            # before clearing the flag, or it would keep stepping.
+            self.cancel_batch()
+
             if hasattr(self.dsim, "execution_initialized"):
                 self.dsim.execution_initialized = False
 

@@ -117,7 +117,11 @@ Configuration** dialog. It has two groups:
 **Solver Configuration**
 - **Solver Method**: `RK45` (default), `RK23`, `DOP853` (adaptive);
   `Radau`, `BDF`, `LSODA` (stiff); `RK4`, `Euler` (fixed-step, using the base
-  step size below).
+  step size below). This is the whole-diagram solver used by the compiled
+  (fast) path. It is not the same setting as the **Integrator** block's own
+  `Method`, which only applies on the interpreted path; the Integrator's
+  fixed-step 4-stage scheme is listed there as `RK4` (diagrams saved before
+  that label was corrected store `RK45` and still load).
 - **Base Step Size (dt) [s]**: the global step. Discrete blocks run at their own
   `sampling_time` or synchronise to this step.
 - **Simulation Duration [s]**.
@@ -641,6 +645,9 @@ Everything here lives in the **View** menu. The first three are written to
 - If the application exits abnormally, the next start asks
   **"Recover Auto-save?"**. Answer **Yes** to reload that session; answering
   **No** deletes the autosave file.
+- Closing the window with unsaved changes asks **Save / Discard / Cancel**.
+  Cancel keeps the window open; the autosave file is removed only once the
+  diagram has been saved or the changes explicitly discarded.
 - A clean exit removes the autosave file, so the prompt only appears when there
   is genuinely something to recover.
 

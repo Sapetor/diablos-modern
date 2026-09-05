@@ -20,10 +20,13 @@ class HistoryManager:
         self.canvas = canvas
         self.dsim = canvas.dsim
 
-        # Undo/Redo stacks — deque(maxlen) gives O(1) eviction at front
+        # Undo/Redo stacks — deque(maxlen) gives O(1) eviction at front.
+        # The redo stack is capped like the undo stack: each entry deep-copies
+        # every block's params, so an uncapped redo history was an unbounded
+        # memory hold for large diagrams.
         self.max_undo_steps = 50
         self.undo_stack = collections.deque(maxlen=self.max_undo_steps)
-        self.redo_stack = collections.deque()
+        self.redo_stack = collections.deque(maxlen=self.max_undo_steps)
 
     def capture_snapshot(self):
         """Snapshot the current diagram so it can be pushed later.
@@ -58,8 +61,10 @@ class HistoryManager:
                     f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})"
                 )
 
-        except Exception as e:
-            logger.error(f"Error pushing undo: {str(e)}")
+        except Exception:
+            # Never swallow silently: a failed push means the *next* undo will
+            # restore the wrong state, so the traceback has to reach the log.
+            logger.warning("Error pushing undo snapshot", exc_info=True)
 
     def undo(self):
         """Undo the last action."""
@@ -156,8 +161,8 @@ class HistoryManager:
 
             return state
 
-        except Exception as e:
-            logger.error(f"Error capturing state: {str(e)}")
+        except Exception:
+            logger.warning("Error capturing diagram state for undo", exc_info=True)
             return None
 
     def _restore_state(self, state):

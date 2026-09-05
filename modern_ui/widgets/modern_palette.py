@@ -507,6 +507,23 @@ class _BlockGlyphLabel(QWidget):
         p.end()
 
 
+def is_hidden_block(menu_block) -> bool:
+    """True when a block declares ``hidden`` and must not appear in the palette.
+
+    Blocks opt out by setting a plain ``hidden = True`` class attribute (see
+    ``blocks/external.py``): External is an unimplemented stub whose execute()
+    only returns an error, so offering it for placement can only produce a
+    diagram that refuses to run.
+    """
+    cls = getattr(menu_block, "block_class", None)
+    return bool(getattr(cls, "hidden", False))
+
+
+def visible_menu_blocks(menu_blocks):
+    """Filter a menu_blocks sequence down to the ones the palette should show."""
+    return [mb for mb in menu_blocks or [] if not is_hidden_block(mb)]
+
+
 def _block_category_name(menu_block) -> str:
     """Best-effort category lookup from menu_block (class.category, else keyword match)."""
     cls = getattr(menu_block, "block_class", None)
@@ -1110,7 +1127,7 @@ class ModernBlockPalette(QWidget):
 
     def _load_blocks(self):
         try:
-            menu_blocks = getattr(self.dsim, "menu_blocks", []) or []
+            menu_blocks = visible_menu_blocks(getattr(self.dsim, "menu_blocks", []))
             if not menu_blocks:
                 logger.warning("No menu blocks found in DSim")
                 self._add_placeholder()

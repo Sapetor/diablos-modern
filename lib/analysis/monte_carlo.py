@@ -69,9 +69,11 @@ class MonteCarloRunner:
             samplers: optional {(block_name, param_name): (low, high) | callable(rng)->value}
                 for per-run parameter Monte-Carlo (uniform draw when a (low, high) tuple).
             progress_cb: optional callable(done, total).
-            cancel_cb: optional callable() -> bool, polled before each run; when it
-                returns True the loop stops early and the partial ensemble gathered
-                so far is aggregated and returned (the diagram is still restored).
+            cancel_cb: optional callable() -> bool, polled before each run *and*
+                periodically inside each run (it is forwarded to
+                ``run_tuning_simulation``); when it returns True the loop stops
+                early and the partial ensemble gathered so far is aggregated and
+                returned (the diagram is still restored).
 
         Returns:
             An ensemble-result dict (see :meth:`_aggregate`).
@@ -123,7 +125,12 @@ class MonteCarloRunner:
                         )
                         _set(b, pn, val)
 
-                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt)
+                # cancel_cb is forwarded so a cancel lands mid-run rather than
+                # only between runs (a single long run used to have to finish).
+                ok, err = dsim.run_tuning_simulation(sim_time, sim_dt, cancel_cb=cancel_cb)
+                if cancel_cb is not None and cancel_cb():
+                    logger.info("Monte-Carlo cancelled during run %d/%d", i + 1, n_runs)
+                    break
                 if ok:
                     runs.append(self._harvest())
                 else:

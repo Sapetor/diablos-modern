@@ -31,7 +31,9 @@ class ParameterSweepWorker(QThread):
     def __init__(self, dsim, selection, parent=None):
         """
         Args:
-            dsim: DSim instance to sweep (never mutated past restore).
+            dsim: DSim to sweep. ExperimentController hands over a private
+                copy (``DSim.clone_for_analysis``), so the worker never touches
+                the diagram the GUI is painting.
             selection: dict from ``ParameterSweepDialog.get_selection()`` -- keys
                 ``axes`` (list of {block, param, values}), ``sim_time``, ``sim_dt``.
             parent: optional QObject parent.

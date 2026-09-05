@@ -5,6 +5,7 @@ Features modern layout, theming, and enhanced user interface.
 
 import os
 import logging
+import time
 from typing import Any
 from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
 from lib.workspace import WorkspaceManager
@@ -25,6 +26,7 @@ from modern_ui.widgets.minimap_widget import MinimapWidget
 from modern_ui.widgets.waveform_inspector import WaveformInspector
 from modern_ui.widgets.tuning_panel import TuningPanel
 from modern_ui.controllers.tuning_controller import TuningController
+from modern_ui.controllers.simulation_controller import batch_simulation_active
 
 # Logging is configured by the application entry point (diablos_modern.py via
 # lib.logging_config). Modules only acquire a logger at import time.
@@ -37,6 +39,12 @@ FIRST_RUN_WELCOME_MESSAGE = (
     "Welcome to DiaBloS! Drag a block from the palette to start, "
     "open File ▸ Examples for sample diagrams, or press F1 for shortcuts."
 )
+
+# Wall-clock budget (seconds) spent advancing an interpreted run per UI tick.
+# The timer fires at 1/FPS; stepping only *once* per tick made a 10 s run at
+# dt = 1 ms take ~167 s of wall clock. Keep it well under the frame interval so
+# the window still repaints and stays responsive.
+SIM_STEP_BUDGET_S = 0.010
 
 
 class ModernDiaBloSWindow(QMainWindow):
@@ -698,9 +706,53 @@ class ModernDiaBloSWindow(QMainWindow):
                 f"Error updating workspace: {str(e)}", duration=3000, is_error=True
             )
 
+    def _prompt_unsaved_changes(self) -> str:
+        """Ask what to do about unsaved changes: 'save', 'discard' or 'cancel'.
+
+        Split out from :meth:`closeEvent` so the decision can be stubbed in
+        tests (the suite neutralizes ``QMessageBox.exec_``, so the real dialog
+        never returns a meaningful button there).
+        """
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("Unsaved Changes")
+        box.setText("This diagram has unsaved changes.")
+        box.setInformativeText("Save them before closing?")
+        box.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+        box.setDefaultButton(QMessageBox.Save)
+        answer = box.exec_()
+        if answer == QMessageBox.Save:
+            return "save"
+        if answer == QMessageBox.Discard:
+            return "discard"
+        # Anything else (Cancel, Esc, closing the dialog) keeps the window open.
+        return "cancel"
+
     def closeEvent(self, event):
-        """Handle application shutdown."""
+        """Handle application shutdown.
+
+        Closing used to accept unconditionally *and* delete the autosave, so a
+        diagram with unsaved edits was lost without a word. Now the user is
+        asked first, and the autosave is only removed once the work is either
+        saved or explicitly discarded.
+        """
         logger.info("Modern DiaBloS closing...")
+
+        if getattr(self.dsim, "dirty", False):
+            choice = self._prompt_unsaved_changes()
+            if choice == "cancel":
+                logger.info("Close cancelled by user (unsaved changes kept).")
+                event.ignore()
+                return
+            if choice == "save":
+                self.save_diagram()
+                if getattr(self.dsim, "dirty", False):
+                    # Save was cancelled or failed -- the work is still unsaved,
+                    # so don't close (and don't delete the autosave).
+                    logger.info("Close aborted: save did not complete.")
+                    event.ignore()
+                    return
+
         self.stop_simulation()
         self._cancel_experiment_workers()  # join MC/sweep threads before teardown
         self._cleanup_autosave()  # Clean up auto-save file on normal exit
@@ -757,6 +809,11 @@ class ModernDiaBloSWindow(QMainWindow):
                 self.toolbar.set_simulation_state(False, False)
                 if "finished" in lowered:
                     self._report_solver_diagnostics(status)
+                    # Arm live tuning with the params of the run that just
+                    # ended. The tick's running -> not-running transition also
+                    # does this, but it cannot see a batch run that finished on
+                    # a worker thread between two ticks.
+                    self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
             elif "started" in lowered or "running" in lowered:
                 self.toolbar.set_simulation_state(True, False)
 
@@ -873,6 +930,55 @@ class ModernDiaBloSWindow(QMainWindow):
         except Exception as e:
             logger.error(f"Error navigating to error location: {str(e)}")
 
+    def _canvas_wants_repaint(self) -> bool:
+        """True when the canvas has live state (hover glow, wire drag, run).
+
+        Falls back to True if the canvas does not expose the animation gate, so
+        an unexpected canvas type still repaints as before.
+        """
+        gate = getattr(self.canvas, "_animation_should_run", None)
+        if not callable(gate):
+            return True
+        try:
+            return bool(gate())
+        except Exception as e:  # noqa: BLE001 - never let the gate break the tick
+            logger.debug(f"Animation gate raised, repainting anyway: {e}")
+            return True
+
+    def _advance_simulation(self, budget_s: float = SIM_STEP_BUDGET_S) -> int:
+        """Advance the interpreted run by as many steps as fit in ``budget_s``.
+
+        One step per UI tick made long runs crawl (see SIM_STEP_BUDGET_S). At
+        least one step is always taken, so this is never slower than before.
+
+        When the run is paced ("Run in real-time", the interactive path's own
+        flag), stepping also stops as soon as simulated time has caught up with
+        the wall clock since ``execution_init`` -- the pacing the option
+        promises but never actually implemented.
+        """
+        dsim = self.canvas.dsim
+        loop = getattr(dsim, "execution_loop", None)
+        if not callable(loop):
+            return 0
+
+        started = getattr(dsim, "execution_time_start", None)
+        paced = bool(getattr(dsim, "real_time", False)) and started is not None
+        deadline = time.perf_counter() + max(0.0, budget_s)
+
+        steps = 0
+        while True:
+            loop()
+            steps += 1
+            if not getattr(dsim, "execution_initialized", False):
+                break
+            if getattr(dsim, "execution_pause", False):
+                break
+            if time.perf_counter() >= deadline:
+                break
+            if paced and getattr(dsim, "time_step", 0.0) >= (time.time() - started):
+                break
+        return steps
+
     # Update safe_update to use the new canvas
     def safe_update(self):
         """Safe update with error handling and performance monitoring."""
@@ -881,8 +987,11 @@ class ModernDiaBloSWindow(QMainWindow):
 
             if hasattr(self, "canvas"):
                 was_running = self.canvas.is_simulation_running()
+                # A batch run on a worker thread owns the step loop and is
+                # mutating the same DSim; stepping it from here too would race.
+                batch_busy = batch_simulation_active()
 
-                if was_running:
+                if was_running and not batch_busy:
                     is_safe, errors = SafetyChecks.check_simulation_state(self.canvas.dsim)
                     if not is_safe:
                         logger.error(f"Simulation state unsafe: {errors}")
@@ -891,14 +1000,18 @@ class ModernDiaBloSWindow(QMainWindow):
                         return
 
                     self.perf_helper.start_timer("simulation_step")
-                    if hasattr(self.canvas.dsim, "execution_loop"):
-                        self.canvas.dsim.execution_loop()
+                    self._advance_simulation()
                     step_duration = self.perf_helper.end_timer("simulation_step")
 
                     if step_duration and step_duration > 0.1:
                         logger.warning(f"Slow simulation step: {step_duration:.4f}s")
 
-                self.canvas.update()
+                # Idle diagrams do not need a full-widget repaint 60x a second:
+                # interaction code (drag, selection, hover, zoom) already calls
+                # canvas.update() itself. Repaint only while something is
+                # actually moving.
+                if was_running or self._canvas_wants_repaint():
+                    self.canvas.update()
 
                 # Refresh minimap if visible
                 if hasattr(self, "minimap_dock") and self.minimap_dock.isVisible():
@@ -933,7 +1046,13 @@ class ModernDiaBloSWindow(QMainWindow):
         self.status_message.setText("New diagram created")
 
     def start_simulation(self) -> None:
-        """Start simulation with validation."""
+        """Start simulation with validation.
+
+        Auto-saves first: the user manual promises a snapshot "immediately
+        before every simulation run", and the 2-minute timer alone did not
+        deliver that.
+        """
+        self._auto_save()
         self.simulation_actions_manager.start()
 
     def stop_simulation(self):
@@ -982,6 +1101,11 @@ class ModernDiaBloSWindow(QMainWindow):
             # creates its parent directory; no relative makedirs needed (it
             # would fail against a read-only cwd in frozen builds).
 
+            # An autosave must not clear the unsaved-changes flag: FileService
+            # clears model.dirty on every successful write, and the GUI's
+            # "unsaved changes" state (status bar, close prompt) reads it.
+            was_dirty = getattr(self.dsim, "dirty", False)
+
             # Save using file_service for proper JSON format
             if hasattr(self.dsim, "file_service"):
                 self.dsim.file_service.save(
@@ -998,6 +1122,7 @@ class ModernDiaBloSWindow(QMainWindow):
                 # Fallback: use dsim.save
                 self.dsim.save(autosave=True, filepath=self.autosave_path)
 
+            self.dsim.dirty = was_dirty
             logger.debug("Auto-save completed")
 
         except Exception as e:

@@ -14,6 +14,8 @@ result dict. When ``n_ok == 0`` (no successful runs) a centered placeholder
 replaces the plot and ``plot`` / ``combo`` / ``metric_combo`` are ``None``.
 """
 
+import logging
+
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
@@ -29,6 +31,8 @@ from PyQt5.QtCore import Qt, QRectF
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 
 from lib.analysis.resim import OUTCOME_METRICS
+
+logger = logging.getLogger(__name__)
 
 
 class SweepResultWindow(QWidget):
@@ -265,8 +269,11 @@ class SweepResultWindow(QWidget):
             if self.colorbar is not None:
                 try:
                     self.colorbar.setLevels((lo, hi))
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as e:  # noqa: BLE001 - cosmetic, never fatal
+                    # pyqtgraph's ColorBarItem API varies between versions; the
+                    # heatmap itself is already correctly levelled, so this is
+                    # non-fatal -- but it must not vanish without a trace.
+                    logger.debug("Could not set colorbar levels: %s", e)
         self.plot.setTitle(f"{name}: {metric}")
 
     # ----------------------------------------------------------- callbacks

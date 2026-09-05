@@ -26,6 +26,18 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Workers that refused to stop within the join timeout on shutdown. They are
+# re-parented to None and parked here so Python keeps them alive: destroying a
+# still-running QThread (which the window would do when it takes its children
+# down) aborts the process.
+_ORPHANED_WORKERS = []
+
+# How long to wait for a worker to acknowledge a cancel, in ms. Both runners
+# poll the cancel flag inside a run now (forwarded into
+# ``DSim.run_tuning_simulation``), so a stop is bounded by a few solver steps
+# rather than by a whole simulation.
+_WORKER_JOIN_MS = 5000
+
 
 class ExperimentController:
     """Owns the window-side analysis/experiment action handlers."""
@@ -35,6 +47,32 @@ class ExperimentController:
         # Retain top-level result windows so they are not garbage-collected the
         # moment the handler returns (they have no parent widget).
         self._result_windows = []
+
+    def _isolated_dsim(self, title):
+        """Return a private ``DSim`` copy of the current diagram for a worker.
+
+        Both experiment runners drive full simulations, which rewrite
+        ``blocks_list`` / ``line_list`` / ``timeline`` / ``execution_initialized``.
+        Handing them the live ``window.dsim`` raced the window's 60 FPS
+        ``safe_update`` timer, which iterates the same lists while painting and
+        may itself call ``dsim.execution_loop()``. Running against a copy (the
+        same serialize/deserialize path as save+reopen, so block names and sim
+        settings are preserved) removes the shared state entirely.
+
+        Returns None (after showing an error) if the copy cannot be made -- the
+        caller must then abort rather than fall back to the live diagram.
+        """
+        from PyQt5.QtWidgets import QMessageBox
+
+        window = self.window
+        try:
+            return window.dsim.clone_for_analysis()
+        except Exception as e:  # noqa: BLE001 - surfaced to the user below
+            logger.exception("Could not create an isolated copy of the diagram")
+            QMessageBox.critical(
+                window, title, f"Could not prepare an isolated copy of the diagram:\n{e}"
+            )
+            return None
 
     def _retain_window(self, win):
         """Keep a parentless top-level result window alive (prevent GC) and show it."""
@@ -135,9 +173,18 @@ class ExperimentController:
         progress.setAutoReset(False)
         progress.setValue(0)
 
+        # The tuning panel's 50 ms debounce writes block params and re-simulates
+        # on the GUI thread; disarm it for the duration of the experiment.
+        window.tuning_controller.deactivate()
+
+        run_dsim = self._isolated_dsim("Monte Carlo")
+        if run_dsim is None:
+            progress.close()
+            return
+
         from modern_ui.widgets.monte_carlo_worker import MonteCarloWorker
 
-        worker = MonteCarloWorker(window.dsim, sel, parent=window)
+        worker = MonteCarloWorker(run_dsim, sel, parent=window)
 
         def _on_progress(done, total):
             if progress.maximum() != total:
@@ -233,9 +280,17 @@ class ExperimentController:
         progress.setAutoReset(False)
         progress.setValue(0)
 
+        # See run_monte_carlo: the tuning debounce must not fire mid-experiment.
+        window.tuning_controller.deactivate()
+
+        run_dsim = self._isolated_dsim("Parameter Sweep")
+        if run_dsim is None:
+            progress.close()
+            return
+
         from modern_ui.widgets.parameter_sweep_worker import ParameterSweepWorker
 
-        worker = ParameterSweepWorker(window.dsim, sel, parent=window)
+        worker = ParameterSweepWorker(run_dsim, sel, parent=window)
 
         def _on_progress(done, total_):
             if progress.maximum() != total_:
@@ -280,7 +335,13 @@ class ExperimentController:
         Without this, closing the window while an ensemble or sweep is running
         destroys a live ``QThread`` ("QThread: Destroyed while thread is still
         running"), which aborts the process. Both workers cancel cooperatively
-        (the flag is polled before each run), so a bounded ``wait()`` joins them.
+        and the flag is now polled *inside* a run as well as between runs, so a
+        bounded ``wait()`` joins them within a few solver steps.
+
+        Deterministic outcome: a worker that still has not stopped is detached
+        from the window and parked in ``_ORPHANED_WORKERS`` so it is never
+        destroyed while running (which would abort the process); it owns a
+        private diagram copy, so it cannot touch anything the GUI still uses.
 
         The worker references live on the window (``window._mc_worker`` /
         ``window._sweep_worker``); this reads and clears them there.
@@ -292,9 +353,19 @@ class ExperimentController:
                 continue
             try:
                 if worker.isRunning():
-                    worker.cancel()  # cooperative stop, polled before each run
-                    if not worker.wait(10000):  # bounded join (ms)
-                        logger.warning("%s did not stop within timeout on close.", attr)
+                    worker.cancel()  # cooperative stop, polled inside each run
+                    if not worker.wait(_WORKER_JOIN_MS):  # bounded join (ms)
+                        logger.error(
+                            "%s did not stop within %d ms; detaching it so it is not "
+                            "destroyed while running.",
+                            attr,
+                            _WORKER_JOIN_MS,
+                        )
+                        try:
+                            worker.setParent(None)
+                        except Exception:  # noqa: BLE001 - best-effort detach
+                            logger.debug("Could not detach %s from the window.", attr)
+                        _ORPHANED_WORKERS.append(worker)
             except RuntimeError:
                 # Underlying C++ QThread already deleted; nothing to join.
                 pass

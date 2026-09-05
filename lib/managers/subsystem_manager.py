@@ -69,9 +69,13 @@ class SubsystemManager:
         for line in self.dsim.line_list:
             line.selected = False
 
-        # Reset view state variables
+        # Reset view state variables.
+        # NOTE: do NOT clear ``dsim.dirty`` here.  Navigating into a subsystem
+        # is a view change, not a save: ``DSim.dirty`` is a live view of
+        # ``model.dirty``, so clearing it would silently discard the
+        # unsaved-changes flag for edits the user made before drilling in
+        # (the close prompt and the status bar both read it).
         self.dsim.ss_count = 0
-        self.dsim.dirty = False
 
         logger.info(f"Entered subsystem: {subsystem_block.name}")
 

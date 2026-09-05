@@ -26,6 +26,14 @@ class ExternalBlock(BaseBlock):
     auto-execute code referenced by a loaded project file.
     """
 
+    # Keep this block out of the block palette. ``execute()`` only ever
+    # returns an error dict and the engine hard-refuses External blocks, so
+    # offering it for placement can only produce a diagram that fails to run.
+    # Plain class attribute (not a BaseBlock property) so the palette can read
+    # it with getattr(block_class, "hidden", False) without every other block
+    # having to declare one.
+    hidden = True
+
     def __init__(self):
         super().__init__()
 

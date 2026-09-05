@@ -14,8 +14,11 @@ Example usage:
 """
 
 import json
+import logging
 import os
 from typing import Dict, Any, Optional, List
+
+logger = logging.getLogger(__name__)
 
 # Block type definitions for defaults
 BLOCK_DEFAULTS = {
@@ -369,9 +372,12 @@ class DiagramBuilder:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=4)
 
-        print(f"Diagram saved to {filepath}")
-        print(f"  - {len(self.blocks)} blocks")
-        print(f"  - {len(self.lines)} connections")
+        logger.info(
+            "Diagram saved to %s (%d blocks, %d connections)",
+            filepath,
+            len(self.blocks),
+            len(self.lines),
+        )
 
     def get_block(self, name: str) -> Optional[Dict[str, Any]]:
         """Get a block by name."""
