@@ -696,7 +696,7 @@ class PropertyEditor(QFrame):
         h_layout.setSpacing(4)
 
         if self._mask is not None:
-            type_name = self._mask.get("name") or "Masked Subsystem"
+            type_name = self._mask.get("name") or tr("Masked Subsystem")
         else:
             type_name = getattr(self.block, "block_fn", None) or getattr(
                 self.block, "name", "Block"
@@ -1062,7 +1062,7 @@ class PropertyEditor(QFrame):
         if not description:
             return
         sec_color = theme_manager.get_color("text_secondary").name()
-        section = CollapsibleSection("Documentation", expanded=True)
+        section = CollapsibleSection(tr("Documentation"), expanded=True)
         self._sections.append(section)
         doc_label = QLabel(description)
         doc_label.setWordWrap(True)

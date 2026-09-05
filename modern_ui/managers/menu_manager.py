@@ -356,20 +356,22 @@ class MenuManager:
         # Subsystem masks & user library
         if not multi and _is_subsystem(block):
             menu.addSeparator()
-            _build_kbd_row(menu, "Edit mask\u2026", "", on_trigger=lambda: self._edit_mask(block))
             _build_kbd_row(
-                menu, "Look under mask", "", on_trigger=lambda: self._look_under_mask(block)
+                menu, tr("Edit mask\u2026"), "", on_trigger=lambda: self._edit_mask(block)
+            )
+            _build_kbd_row(
+                menu, tr("Look under mask"), "", on_trigger=lambda: self._look_under_mask(block)
             )
             _build_kbd_row(
                 menu,
-                "Save as library block\u2026",
+                tr("Save as library block\u2026"),
                 "",
                 on_trigger=lambda: self._save_as_library_block(block),
             )
             if _library_ref(block):
                 _build_kbd_row(
                     menu,
-                    "Reload from library",
+                    tr("Reload from library"),
                     "",
                     on_trigger=lambda: self._reload_from_library(block),
                 )

@@ -24,6 +24,7 @@ from typing import Any, Optional
 
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
+from lib.i18n import tr
 from lib.library import (
     LibraryError,
     attach_library_ref,
@@ -91,8 +92,8 @@ class MaskLibraryManager:
         target = self.selected_subsystem(block)
         if target is None:
             self._warn(
-                "No subsystem selected",
-                "Select a Subsystem block first, then use '{}'.".format(action),
+                tr("No subsystem selected"),
+                tr("Select a Subsystem block first, then use '{action}'.", action=action),
             )
         return target
 
@@ -135,7 +136,7 @@ class MaskLibraryManager:
 
     def edit_mask(self, block: Any = None) -> bool:
         """Open the mask editor on ``block`` and apply the result."""
-        target = self._require_subsystem(block, "Edit Mask...")
+        target = self._require_subsystem(block, tr("Edit Mask..."))
         if target is None:
             return False
 
@@ -152,26 +153,26 @@ class MaskLibraryManager:
         try:
             set_mask(block, mask)
         except MaskError as exc:
-            self._warn("Invalid mask", str(exc))
+            self._warn(tr("Invalid mask"), str(exc))
             return False
         self._refresh_views(block)
-        self._notify("Mask updated: {}".format(mask.get("name", block.name)))
+        self._notify(tr("Mask updated: {name}", name=mask.get("name", block.name)))
         return True
 
     def remove_mask(self, block: Any = None) -> bool:
         """Drop the mask from ``block``, leaving a plain subsystem."""
-        target = self._require_subsystem(block, "Remove Mask")
+        target = self._require_subsystem(block, tr("Remove Mask"))
         if target is None or get_mask(target) is None:
             return False
         self._mark_dirty("Remove Mask")
         set_mask(target, None)
         self._refresh_views(target)
-        self._notify("Mask removed from {}".format(target.name))
+        self._notify(tr("Mask removed from {name}", name=target.name))
         return True
 
     def look_under_mask(self, block: Any = None) -> bool:
         """Navigate into the subsystem, mask or not."""
-        target = self._require_subsystem(block, "Look Under Mask")
+        target = self._require_subsystem(block, tr("Look Under Mask"))
         if target is None:
             return False
         dsim = self.dsim
@@ -201,7 +202,7 @@ class MaskLibraryManager:
 
         ``path`` skips the file dialog (used by tests and scripted callers).
         """
-        target = self._require_subsystem(block, "Save as Library Block...")
+        target = self._require_subsystem(block, tr("Save as Library Block..."))
         if target is None:
             return None
 
@@ -221,7 +222,9 @@ class MaskLibraryManager:
         try:
             block_data = FileService(model)._serialize_block(target)
         except Exception as exc:
-            self._warn("Could not save library block", "Serialization failed: {}".format(exc))
+            self._warn(
+                tr("Could not save library block"), tr("Serialization failed: {error}", error=exc)
+            )
             return None
         return self._write(target, path, mask, block_data)
 
@@ -232,9 +235,9 @@ class MaskLibraryManager:
             logger.debug("Could not pre-create the library folder", exc_info=True)
         chosen, _ = QFileDialog.getSaveFileName(
             self.window,
-            "Save as Library Block",
+            tr("Save as Library Block"),
             suggested_path,
-            "DiaBloS Library Blocks (*.diablos);;All Files (*)",
+            tr("DiaBloS Library Blocks") + " (*.diablos);;" + tr("All Files") + " (*)",
         )
         if not chosen:
             return None
@@ -251,7 +254,7 @@ class MaskLibraryManager:
                 mask=mask,
             )
         except LibraryError as exc:
-            self._warn("Could not save library block", str(exc))
+            self._warn(tr("Could not save library block"), str(exc))
             return None
 
         # Stamp the instance from the file we just wrote, not from a rescan:
@@ -268,12 +271,15 @@ class MaskLibraryManager:
         searched = [os.path.abspath(p) for p in library_search_paths(self.current_diagram_path())]
         if folder not in searched:
             self._notify(
-                "Saved library block to {} -- it is outside the library search "
-                "path, so it will not appear in the palette until you point "
-                "DIABLOS_LIBRARY_PATH at that folder.".format(written)
+                tr(
+                    "Saved library block to {path} -- it is outside the library search "
+                    "path, so it will not appear in the palette until you point "
+                    "DIABLOS_LIBRARY_PATH at that folder.",
+                    path=written,
+                )
             )
         else:
-            self._notify("Saved library block to {}".format(written))
+            self._notify(tr("Saved library block to {path}", path=written))
         return written
 
     def reload_from_library(self, block: Any = None) -> bool:
@@ -283,27 +289,30 @@ class MaskLibraryManager:
         contents (and the mask definition) come from the file -- so a tuned
         instance keeps its tuning across a library update.
         """
-        target = self._require_subsystem(block, "Reload from Library")
+        target = self._require_subsystem(block, tr("Reload from Library"))
         if target is None:
             return False
         ref = get_library_ref(target)
         if not ref:
             self._warn(
-                "Not a library instance",
-                "This subsystem was not created from a library block, so there is "
-                "nothing to reload from.",
+                tr("Not a library instance"),
+                tr(
+                    "This subsystem was not created from a library block, so there is "
+                    "nothing to reload from."
+                ),
             )
             return False
 
         lib_block = find_library_block(ref.get("id", ""), self.current_diagram_path())
         if lib_block is None:
             self._warn(
-                "Library block not found",
-                "No library block with id '{}' was found in:\n  {}\n\n"
-                "The diagram still works: library instances are self-contained "
-                "copies.".format(
-                    ref.get("id", "?"),
-                    "\n  ".join(library_search_paths(self.current_diagram_path())),
+                tr("Library block not found"),
+                tr(
+                    "No library block with id '{block_id}' was found in:\n  {paths}\n\n"
+                    "The diagram still works: library instances are self-contained "
+                    "copies.",
+                    block_id=ref.get("id", "?"),
+                    paths="\n  ".join(library_search_paths(self.current_diagram_path())),
                 ),
             )
             return False
@@ -323,7 +332,9 @@ class MaskLibraryManager:
         model = getattr(self.dsim, "model", None)
         fresh = FileService(model)._construct_block(data)
         if fresh is None:
-            self._warn("Reload failed", "The library file could not be rebuilt into a subsystem.")
+            self._warn(
+                tr("Reload failed"), tr("The library file could not be rebuilt into a subsystem.")
+            )
             return False
 
         target.sub_blocks = fresh.sub_blocks
@@ -346,7 +357,7 @@ class MaskLibraryManager:
             logger.debug("update_Block failed after library reload", exc_info=True)
 
         self._refresh_views(target)
-        self._notify("Reloaded {} from {}".format(target.name, lib_block.file_name))
+        self._notify(tr("Reloaded {name} from {file}", name=target.name, file=lib_block.file_name))
         return True
 
     def refresh_library(self) -> int:

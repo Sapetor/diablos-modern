@@ -207,8 +207,8 @@ class CompactBlockRow(QFrame):
                 specs = (library_def.mask or {}).get("parameters") or []
                 if specs:
                     names = [str(sp.get("name", "")) for sp in specs]
-                    doc_lines.append("Params:  " + ", ".join(names[:6]))
-                doc_lines.append(f"Library: {library_def.file_name}")
+                    doc_lines.append(tr("Params:  {names}", names=", ".join(names[:6])))
+                doc_lines.append(tr("Library: {file}", file=library_def.file_name))
                 tip = "\n".join([line for line in doc_lines if line])
                 if tip:
                     self.setToolTip(tip)
@@ -1122,7 +1122,7 @@ class ModernBlockPalette(QWidget):
         self.refresh_button.setText("\u21bb")
         self.refresh_button.setAutoRaise(True)
         self.refresh_button.setCursor(Qt.PointingHandCursor)
-        self.refresh_button.setToolTip("Refresh user library blocks")
+        self.refresh_button.setToolTip(tr("Refresh user library blocks"))
         self.refresh_button.clicked.connect(self.refresh_library)
         hl.addWidget(self.refresh_button)
 

@@ -41,6 +41,7 @@ import copy
 import logging
 from typing import Any, Dict, List, Optional
 
+from lib.i18n import tr, tr_noop
 from lib.safe_eval import SafeEvalError, safe_expr
 
 logger = logging.getLogger(__name__)
@@ -96,50 +97,74 @@ class MaskError(ValueError):
 # ---------------------------------------------------------------------------
 
 
-def default_mask(name: str = "Masked Subsystem") -> Dict[str, Any]:
-    """Return a new, empty but valid mask definition."""
+def default_mask(name: str = tr_noop("Masked Subsystem")) -> Dict[str, Any]:
+    """Return a new, empty but valid mask definition.
+
+    ``name`` is a default-parameter literal, evaluated once at import time
+    before a language is necessarily active -- ``tr_noop`` marks it for
+    extraction without translating it here. A caller that wants the display
+    string in the active language passes ``tr("Masked Subsystem")`` itself
+    (see ``modern_ui/widgets/mask_editor_dialog.py``).
+    """
     return {
         "format_version": MASK_FORMAT_VERSION,
         "name": name,
         "description": "",
         "icon": "",
         "shape": "rect",
-        "category": "User Library",
+        "category": tr_noop("User Library"),
         "parameters": [],
     }
 
 
 def _normalize_param(spec: Any, index: int, seen: set) -> Dict[str, Any]:
     if not isinstance(spec, dict):
-        raise MaskError(f"Mask parameter #{index + 1} must be a dict, got {type(spec).__name__}")
+        raise MaskError(
+            tr(
+                "Mask parameter #{index} must be a dict, got {type_name}",
+                index=index + 1,
+                type_name=type(spec).__name__,
+            )
+        )
 
     name = str(spec.get("name", "") or "").strip()
     if not name:
-        raise MaskError(f"Mask parameter #{index + 1} has no name")
+        raise MaskError(tr("Mask parameter #{index} has no name", index=index + 1))
     if not name.isidentifier():
         raise MaskError(
-            f"Mask parameter '{name}' is not a valid identifier "
-            f"(letters, digits and underscores; must not start with a digit)"
+            tr(
+                "Mask parameter '{name}' is not a valid identifier "
+                "(letters, digits and underscores; must not start with a digit)",
+                name=name,
+            )
         )
     if name in _RESERVED_PARAM_NAMES:
-        raise MaskError(f"Mask parameter '{name}' collides with a reserved block parameter")
+        raise MaskError(
+            tr("Mask parameter '{name}' collides with a reserved block parameter", name=name)
+        )
     if name in seen:
-        raise MaskError(f"Duplicate mask parameter '{name}'")
+        raise MaskError(tr("Duplicate mask parameter '{name}'", name=name))
     seen.add(name)
 
     ptype = str(spec.get("type", "float") or "float").strip().lower()
     if ptype not in MASK_PARAM_TYPES:
         raise MaskError(
-            f"Mask parameter '{name}' has unknown type '{ptype}' "
-            f"(expected one of: {', '.join(MASK_PARAM_TYPES)})"
+            tr(
+                "Mask parameter '{name}' has unknown type '{ptype}' (expected one of: {types})",
+                name=name,
+                ptype=ptype,
+                types=", ".join(MASK_PARAM_TYPES),
+            )
         )
 
     options = spec.get("options") or []
     if not isinstance(options, (list, tuple)):
-        raise MaskError(f"Mask parameter '{name}': 'options' must be a list")
+        raise MaskError(tr("Mask parameter '{name}': 'options' must be a list", name=name))
     options = [str(o) for o in options]
     if ptype == "choice" and not options:
-        raise MaskError(f"Mask parameter '{name}' is a choice but declares no options")
+        raise MaskError(
+            tr("Mask parameter '{name}' is a choice but declares no options", name=name)
+        )
 
     out = {
         "name": name,
@@ -171,19 +196,25 @@ def normalize_mask(mask: Any) -> Dict[str, Any]:
     Raises :class:`MaskError` when the definition cannot be repaired.
     """
     if not isinstance(mask, dict):
-        raise MaskError(f"Mask must be a dict, got {type(mask).__name__}")
+        raise MaskError(tr("Mask must be a dict, got {type_name}", type_name=type(mask).__name__))
 
     name = str(mask.get("name", "") or "").strip()
     if not name:
-        raise MaskError("Mask needs a display name")
+        raise MaskError(tr("Mask needs a display name"))
 
     shape = str(mask.get("shape", "rect") or "rect").strip().lower()
     if shape not in MASK_SHAPES:
-        raise MaskError(f"Unknown mask shape '{shape}' (expected one of: {', '.join(MASK_SHAPES)})")
+        raise MaskError(
+            tr(
+                "Unknown mask shape '{shape}' (expected one of: {shapes})",
+                shape=shape,
+                shapes=", ".join(MASK_SHAPES),
+            )
+        )
 
     raw_params = mask.get("parameters", []) or []
     if not isinstance(raw_params, (list, tuple)):
-        raise MaskError("Mask 'parameters' must be an ordered list")
+        raise MaskError(tr("Mask 'parameters' must be an ordered list"))
 
     seen: set = set()
     parameters = [_normalize_param(spec, i, seen) for i, spec in enumerate(raw_params)]
@@ -471,8 +502,9 @@ def resolve_mask_scope(
                 except SafeEvalError as exc:
                     available = sorted(set(env) | set(scope))
                     raise MaskError(
-                        "Mask parameter '{param}' of '{label}' could not be resolved: "
-                        "{expr!r} -- {reason}. Available names: {names}".format(
+                        tr(
+                            "Mask parameter '{param}' of '{label}' could not be resolved: "
+                            "{expr!r} -- {reason}. Available names: {names}",
                             param=name,
                             label=block_label,
                             expr=text,

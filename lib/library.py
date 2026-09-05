@@ -54,6 +54,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from lib.app_paths import get_user_data_dir
+from lib.i18n import tr
 from lib.masks import MASK_KEY, normalize_mask
 
 logger = logging.getLogger(__name__)
@@ -426,7 +427,9 @@ def write_library_file(
     try:
         os.makedirs(target_dir, exist_ok=True)
     except OSError as exc:
-        raise LibraryError("Could not create library folder {}: {}".format(target_dir, exc))
+        raise LibraryError(
+            tr("Could not create library folder {folder}: {error}", folder=target_dir, error=exc)
+        )
 
     document = build_library_document(block_data, block_id, mask=mask, sim_data=sim_data)
     path = os.path.join(target_dir, block_id + ".diablos")
@@ -434,7 +437,7 @@ def write_library_file(
         with open(path, "w", encoding="utf-8") as fp:
             json.dump(document, fp, indent=4)
     except OSError as exc:
-        raise LibraryError("Could not write library file {}: {}".format(path, exc))
+        raise LibraryError(tr("Could not write library file {path}: {error}", path=path, error=exc))
     logger.info("Saved library block %r to %s", block_id, path)
     return path
 
