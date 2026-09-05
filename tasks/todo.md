@@ -96,6 +96,34 @@
 
 ---
 
+### Potential Future Additions (idea review, September 2026)
+Picked for implementation in the Sept 2026 feature campaign: **Spanish localization
+with a pluggable i18n system**, **zero-crossing / event detection** in the compiled
+solver, and **user block libraries with masks**. The remaining ideas from that review
+are parked here:
+
+- [ ] **Stiff solver choice in the UI** — expose `engine.solver_method` (RK45 today)
+  as a Simulation Settings dropdown (Radau, BDF, LSODA, DOP853) with rtol/atol.
+- [ ] **Sample-time coloring** — tint blocks/wires by sample rate (continuous vs each
+  discrete period) so multirate mistakes around ZOH/FOH/RateTransition are visible.
+- [ ] **User blocks directory for frozen builds** — scan `~/.diablos/blocks/` at
+  startup so packaged installs can be extended without editing the registry.
+- [ ] **One-click auto-layout** — layered (Sugiyama-style) layout action in the Edit
+  menu, generalizing `scripts/fix_diagram_overlaps.py`.
+- [ ] **Block-diagram algebra** — select a source and a sink, show the closed-loop
+  transfer function symbolically with reduction steps (builds on `symbolic_execute()`).
+- [ ] **Run comparison overlay** — keep the previous run as a ghost trace in the
+  Scope / waveform inspector when parameters change (reuse the Monte Carlo harvesting).
+- [ ] **System identification block** — fit an n-th order transfer function to
+  FromFile data (FromFile + DataFit already provide the pieces).
+- [ ] **Interactive source blocks** — Slider/Knob source and Manual Switch adjustable
+  on the canvas during a run.
+- [ ] **Real-time pacing and hardware I/O** — wall-clock-paced run mode plus UDP and
+  serial source/sink blocks for lab rigs (Arduino etc.).
+- [ ] **Autosave and crash recovery** — periodic recovery file per open diagram.
+- [ ] **Semantic diff for `.diablos` files** — CLI subcommand diffing by block and
+  connection rather than by JSON line.
+
 ## Future / Roadmap
 
 ### PDE Phase 2: Mesh Abstraction
