@@ -399,6 +399,7 @@ python diablos_modern.py run diagram.diablos --solver interpreter -o out.npz
 | `-t`, `--time` | Simulation duration in seconds. Default: the diagram's `sim_time` |
 | `--dt` | Time step in seconds. Default: the diagram's `sim_dt` |
 | `--solver` | `compiled` (default) or `interpreter` |
+| `--no-zero-crossing` | Disable compiled-path zero-crossing detection. Default: the diagram's own setting |
 | `-q`, `--quiet` | Suppress the per-run summary on stdout |
 
 The Scope traces are written as columns (`t` first).
