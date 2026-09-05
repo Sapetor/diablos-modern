@@ -82,6 +82,7 @@ datas = [
     ('config/block_sizes.py', 'config'),
     ('examples', 'examples'),
     ('modern_ui/icons', 'modern_ui/icons'),
+    ('locales', 'locales'),
 ]
 
 # --- Analysis ---

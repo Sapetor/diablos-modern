@@ -109,6 +109,11 @@ class ConfigManager:
                 "slow_paint_threshold": 0.05,
                 "enable_profiling": False,
             },
+            "ui": {
+                # "system" follows the host locale; a two-letter code such as
+                # "es" pins the UI language (see lib/i18n.py).
+                "language": "system",
+            },
             "external_functions": {
                 "directory": "external",
                 "auto_reload": False,
