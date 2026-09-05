@@ -8,7 +8,11 @@ pytest-cov>=4.0.0
 pytest-timeout>=2.1.0  # CI backstop: fail a hung test instead of blocking the job
 
 # Code quality
-ruff>=0.6.0  # linter + formatter (replaces flake8/pylint/isort/black); see pyproject.toml
+# ruff = linter + formatter (replaces flake8/pylint/isort/black); config in pyproject.toml.
+# Pinned to the exact version .github/workflows/ci.yml installs: `ruff format` output shifts
+# between releases, so an unpinned local ruff can reformat the repo into a state that fails
+# the CI `ruff format --check` gate. Bump here, in pyproject.toml [dev] and in ci.yml together.
+ruff==0.15.18
 mypy>=1.0.0
 
 # Type stubs

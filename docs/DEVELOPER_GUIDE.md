@@ -104,7 +104,6 @@ diablos-modern/
 │   │   └── menu_block.py   # MenuBlocks class
 │   ├── lib.py              # Main DSim controller
 │   ├── dialogs.py          # UI dialogs
-│   ├── config_manager.py   # Configuration management
 │   └── improvements.py     # Utilities and helpers
 │
 ├── modern_ui/              # User interface
@@ -385,6 +384,11 @@ pytest -m regression
 | Integration | `tests/integration/` | End-to-end simulation tests |
 | Regression | `tests/regression/` | Prevent breaking existing functionality |
 | Profiling | `tests/profiling/` | Performance analysis scripts |
+
+Standalone verification / debug / benchmark harnesses are **not** tests and live
+in `scripts/` (`scripts/verify_*.py`, `scripts/debug_*.py`,
+`scripts/benchmark_fast_solver.py`). They are plain scripts -- run them directly
+(`python scripts/verify_fast_solver.py`), not through pytest.
 
 ### Regression Tests
 

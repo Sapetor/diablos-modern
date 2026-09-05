@@ -1,13 +1,19 @@
 # Packaging + tooling configuration for DiaBloS Modern.
 #
 # The `[project]` table below is the single source of truth for the version:
-# `modern_ui/__init__.py` reads it back through `importlib.metadata`, and
-# `diablos.spec` / `tools/build.sh` parse it so the macOS bundle version and
-# the DMG filename always match the release tag.
+# `modern_ui/__init__.py` parses it back out of this file (or, in a frozen
+# build, out of the `_version.txt` the spec emits), and `diablos.spec` /
+# `tools/build.sh` parse it so the macOS bundle version and the DMG filename
+# always match the release tag.
 #
-# Distribution to end users is still PyInstaller (`diablos.spec`,
-# `tools/build.sh`); the pip metadata exists so `pip install -e .` works for
-# development and so there is one canonical version string.
+# Distribution to end users is PyInstaller (`diablos.spec`, `tools/build.sh`)
+# and DiaBloS is run from a checkout in development (`python diablos_modern.py`).
+# It is an *application*, not a library: its top-level directories are `lib/`,
+# `blocks/` and `config/`, names far too generic to drop into site-packages, so
+# this project deliberately installs no importable packages at all (see
+# `[tool.setuptools]` below). The pip metadata exists purely to carry one
+# canonical version string that `modern_ui/__init__.py`, `diablos.spec`,
+# `tools/build.sh` and the release workflow all read back.
 
 [build-system]
 requires = ["setuptools>=64", "wheel"]
@@ -53,33 +59,37 @@ dev = [
     "pytest-qt>=4.2.0",
     "pytest-cov>=4.0.0",
     "pytest-timeout>=2.1.0",
-    "ruff>=0.6.0",
+    "ruff==0.15.18",  # pinned: matches .github/workflows/ci.yml (formatter output shifts between releases)
     "mypy>=1.0.0",
     "PyQt5-stubs>=5.15.0",
 ]
+
+# Optional: symbolic features (LaTeX/MathML export, `lib/engine/symbolic_engine.py`
+# and the per-block `symbolic_execute` hooks). Everything degrades gracefully
+# when SymPy is absent; `diablos.spec` bundles it only if the build env has it.
+symbolic = ["sympy>=1.9"]
 
 [project.urls]
 Homepage = "https://github.com/Sapetor/diablos-modern"
 Repository = "https://github.com/Sapetor/diablos-modern"
 
-[project.scripts]
-diablos = "diablos_modern:entry"
-
 [tool.setuptools]
-# The GUI entry point lives at the repo root, not inside a package.
-py-modules = ["diablos_modern"]
-
-[tool.setuptools.packages.find]
-# `lib/`, `blocks/` and `config/` have no `__init__.py` (they are imported as
-# implicit namespace packages), so namespace discovery is required; only
-# `modern_ui/` is a regular package.
-namespaces = true
-include = ["lib*", "modern_ui*", "blocks*", "config*"]
-exclude = ["*__pycache__*"]
-
-[tool.setuptools.package-data]
-"config" = ["*.json"]
-"modern_ui" = ["icons/*"]
+# Deliberately install NOTHING importable.
+#
+# `lib/`, `blocks/` and `config/` are top-level directories in this repo. The
+# previous `include = ["lib*", "modern_ui*", "blocks*", "config*"]` meant
+# `pip install .` dropped packages literally named `lib`, `blocks` and `config`
+# into site-packages, where they shadow anything else with those names for every
+# other project in the same environment. Renaming them is out of scope (they are
+# referenced by absolute import from ~500 places, saved diagrams and the spec),
+# so the project is simply not shipped as a wheel of top-level packages:
+# `pip install .` now installs only the distribution metadata (the canonical
+# version string), and `pip install -e .` likewise leaves the checkout as the
+# only import root. Run the app from the checkout (`python diablos_modern.py`)
+# or install a PyInstaller build; there is no `diablos` console script, because
+# a console script would import packages that are not installed.
+packages = []
+py-modules = []
 
 [tool.ruff]
 # 3.9 is the supported baseline (CI matrix + readthedocs); do not let Ruff
@@ -112,6 +122,9 @@ ignore = [
 # blocks/).
 "tests/**" = ["F841"]
 "examples/**" = ["F841"]
-# Work-in-progress benchmark that references an unbuilt DSim(...) mock; it is
-# not collected by pytest (name does not start with test_). Tracked separately.
-"tests/benchmark_fast_solver.py" = ["F821", "F841"]
+# Maintenance / verification scripts under scripts/ are not shipped either —
+# several are throwaway harnesses that bind an intermediate result to name it.
+"scripts/**" = ["F841"]
+# Work-in-progress benchmark that references an unbuilt DSim(...) mock; it is a
+# standalone script (moved out of tests/ in 2026-09), not a pytest module.
+"scripts/benchmark_fast_solver.py" = ["F821", "F841"]

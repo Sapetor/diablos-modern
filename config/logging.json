@@ -24,45 +24,12 @@
             "mode": "a"
         }
     },
-    "loggers": {
-        "lib.lib": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "lib.improvements": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "lib.engine": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "lib.engine.simulation_engine": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "lib.plotting": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "modern_ui.widgets.modern_canvas": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        },
-        "modern_ui.renderers": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": false
-        }
-    },
+    "loggers": {},
     "root": {
         "level": "INFO",
-        "handlers": ["console", "file"]
+        "handlers": [
+            "console",
+            "file"
+        ]
     }
 }

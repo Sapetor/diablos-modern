@@ -10,6 +10,39 @@ import os
 import sys
 from typing import Optional
 
+#: Loggers whose INFO chatter is per-simulation-step or per-frame and would
+#: drown the log; they are held at WARNING.
+#:
+#: THIS IS THE SINGLE SOURCE OF TRUTH for that list. It used to be duplicated
+#: as seven verbose entries in ``config/logging.json``'s ``loggers`` section,
+#: which drifted from this one. The JSON now ships an empty ``loggers`` map and
+#: this list is applied on top of whatever ``dictConfig`` set up -- an explicit
+#: entry in the JSON still wins, so per-logger overrides remain possible.
+QUIET_LOGGERS = (
+    "lib.lib",
+    "lib.improvements",
+    "lib.engine",
+    "lib.engine.simulation_engine",
+    "lib.plotting",
+    "modern_ui.widgets.modern_canvas",
+    "modern_ui.renderers",
+)
+
+
+def _apply_quiet_loggers(configured: Optional[dict] = None) -> None:
+    """Hold every ``QUIET_LOGGERS`` entry at WARNING.
+
+    Args:
+        configured: the ``loggers`` mapping from a loaded logging config, if
+            any. Names present there were configured explicitly and are left
+            alone, so the JSON can still override a default.
+    """
+    configured = configured or {}
+    for logger_name in QUIET_LOGGERS:
+        if logger_name in configured:
+            continue
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
 
 def setup_logging(config_path: Optional[str] = None) -> None:
     """
@@ -34,6 +67,7 @@ def setup_logging(config_path: Optional[str] = None) -> None:
                 if fn:
                     handler["filename"] = _get_log_file_path(fn)
             logging.config.dictConfig(config)
+            _apply_quiet_loggers(config.get("loggers"))
             return
         except (json.JSONDecodeError, ValueError, KeyError, OSError) as e:
             print(f"Warning: Failed to load logging config from {config_path}: {e}")
@@ -74,18 +108,8 @@ def _setup_default_logging() -> None:
         ],
     )
 
-    # Set specific logger levels - reduce verbosity for simulation
-    quiet_loggers = [
-        "lib.lib",
-        "lib.improvements",
-        "lib.engine",
-        "lib.engine.simulation_engine",
-        "lib.plotting",
-        "modern_ui.widgets.modern_canvas",
-        "modern_ui.renderers",
-    ]
-    for logger_name in quiet_loggers:
-        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    # Reduce verbosity for the per-step / per-frame loggers (see QUIET_LOGGERS).
+    _apply_quiet_loggers()
 
 
 def get_logger(name: str) -> logging.Logger:

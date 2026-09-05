@@ -3,9 +3,12 @@
 Quick test to verify variable resolution is working
 """
 
+import os
 import sys
 
-sys.path.insert(0, "/Users/apeters/diablos-modern")
+# Run from anywhere: put the repo root on sys.path (this used to be a hardcoded
+# absolute path to one developer's checkout).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.workspace import WorkspaceManager
 
@@ -17,9 +20,10 @@ wm.set_variable("num", [1, 2])
 wm.set_variable("den", [1, 3, 2])
 
 print(f"  Variables: {wm.variables}")
-print(f"  K = {wm.get_variable('K')}")
-print(f"  num = {wm.get_variable('num')}")
-print(f"  den = {wm.get_variable('den')}")
+# WorkspaceManager exposes get_value(); the old get_variable() accessor is gone.
+print(f"  K = {wm.get_value('K')}")
+print(f"  num = {wm.get_value('num')}")
+print(f"  den = {wm.get_value('den')}")
 
 # Test 2: Resolve parameters
 print("\nTest 2: Resolve parameters")

@@ -26,7 +26,7 @@ rm -rf dist/DiaBloS-*.app build/
 
 `tools/build.sh` runs three steps: sync block registry, PyInstaller build, DMG creation. App names include the architecture (`DiaBloS-arm64.app`, `DiaBloS-x86_64.app`) so both can coexist in `/Applications`.
 
-Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth, also read back at runtime by `modern_ui.__version__` (via `importlib.metadata`, with a literal fallback for frozen builds). The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
+Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth. `modern_ui.__version__` reads it back at runtime from, in order: `_version.txt` (written into the bundle by `diablos.spec`, since a frozen app ships no `.dist-info`), `pyproject.toml` itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
 
 > **arm64 cursor bug — FIXED.** PyQt5 5.15 (arm64) had a macOS bug where the text cursor was invisible in styled QLineEdit widgets (QTBUG-109450): the native `macintosh` style fails to draw the caret in any input with a stylesheet `background-color`. Fixed by switching the app to the Fusion style on macOS + Qt >= 5.10 (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. The fix is scoped so the x86_64/PyQt5-5.9 build (native style works there) keeps its native look. arm64 is now ~10x faster to start with a fully working cursor, so it is the preferred release.
 
@@ -58,15 +58,16 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 | `diablos.spec` | PyInstaller config -- hidden imports, data files, excludes, platform packaging |
 | `tools/build.sh` | One-command build: sync registry, PyInstaller, DMG |
 | `pyproject.toml` | `[project] version` -- single source of truth for the app version (read by the spec, build script, and `modern_ui/__init__.py`) |
-| `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py` |
+| `tools/sync_block_registry.py` | Auto-scans `blocks/` and updates `_BLOCK_MODULES` in `block_loader.py`; `--check` fails instead of writing (run in CI's lint job) |
 | `lib/app_paths.py` | Path resolver: `resource_path()` (read-only assets), `user_data_path()` (writable data) |
 | `lib/block_loader.py` | `_BLOCK_MODULES` static registry for frozen mode |
 
 ## How It Works
 
-- **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date -- run automatically by `tools/build.sh`.
+- **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date -- run automatically by `tools/build.sh`, and enforced in CI with `python tools/sync_block_registry.py --check`. The scan skips helper modules that define no block: anything listed in `EXCLUDED_MODULES`, plus any module whose name starts with `_` or ends with `_base`.
 - **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` which resolves to `~/Library/Application Support/DiaBloS/` on macOS.
 - **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included.
+- **Optional SymPy**: the symbolic features (LaTeX/MathML export via `lib/export/latex_exporter.py`, `lib/engine/symbolic_engine.py`, and each block's `symbolic_execute()`) import SymPy lazily and degrade to a warning when it is missing. SymPy is *not* in `requirements.txt`, so a default build environment produces a bundle where those features are unavailable. `diablos.spec` no longer hard-excludes it: install it in the build env (`pip install sympy`, or `pip install .[symbolic]`) and the spec picks it up automatically via `collect_submodules('sympy')`. Expect roughly +35-40 MB unpacked. The published releases are currently built **without** SymPy -- symbolic export is a niche feature and the release job installs only `requirements.txt`; add `sympy` there if you want it shipped.
 - **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
 - **Multiprocessing**: `multiprocessing.freeze_support()` is called at entry point to prevent duplicate process spawning.
 
@@ -156,12 +157,16 @@ Releases are cut from a tag; `.github/workflows/release.yml` does the building.
    ```
 
 4. **The workflow builds the artifacts.** Pushing a `v*` tag runs
-   `Release`, which builds on `macos-latest` (arm64, via `tools/build.sh`) and
-   `windows-latest` (PyInstaller + a zipped `dist/DiaBloS` folder), then
-   publishes a GitHub release with `DiaBloS-<version>-arm64.dmg` and
-   `DiaBloS-<version>-windows-x64.zip` attached.
+   `Release`, which first runs the whole CI workflow (`jobs.tests` reuses
+   `.github/workflows/ci.yml` through `workflow_call`, so lint + the 3.9/3.12
+   test matrix must be green), and only then builds on `macos-latest` (arm64,
+   via `tools/build.sh`), `windows-latest` (PyInstaller + a zipped
+   `dist/DiaBloS` folder) and `ubuntu-latest` (PyInstaller + a `dist/DiaBloS`
+   tarball). It publishes a GitHub release with `DiaBloS-<version>-arm64.dmg`,
+   `DiaBloS-<version>-windows-x64.zip` and
+   `DiaBloS-<version>-linux-x86_64.tar.gz` attached.
 
 The tag must match the version in `pyproject.toml` (`v1.0.0` <-> `1.0.0`) --
-nothing enforces this, so check it before tagging. Both artifacts are unsigned;
-the generated release notes tell users how to get past Gatekeeper and
-SmartScreen. Linux and macOS x86_64 builds are still manual (see above).
+nothing enforces this, so check it before tagging. All three artifacts are
+unsigned; the generated release notes tell users how to get past Gatekeeper and
+SmartScreen. The macOS x86_64 (Rosetta) build is still manual (see above).

@@ -49,6 +49,16 @@ def _project_version(default='1.0.0'):
 
 VERSION = _project_version()
 
+# Bundle the version as a plain-text data file. A frozen bundle ships no
+# `.dist-info`, so `modern_ui/__init__.py` cannot read the version back through
+# `importlib.metadata`; it reads `sys._MEIPASS/_version.txt` instead. Written
+# into build/ (gitignored) so the source tree stays clean.
+_BUILD_DIR = os.path.join(PROJECT_ROOT, 'build')
+os.makedirs(_BUILD_DIR, exist_ok=True)
+VERSION_FILE = os.path.join(_BUILD_DIR, '_version.txt')
+with open(VERSION_FILE, 'w', encoding='utf-8') as _fh:
+    _fh.write(VERSION + '\n')
+
 # --- Hidden imports ---
 # Blocks are loaded dynamically via importlib (lib/block_loader.py),
 # so PyInstaller can't discover them through static analysis.
@@ -63,10 +73,24 @@ hidden_imports_scipy = [m for m in collect_submodules('scipy')
 hidden_imports_numpy = [m for m in collect_submodules('numpy')
                         if '.tests' not in m and '.testing' not in m]
 
+# SymPy powers the optional symbolic features (LaTeX/MathML export,
+# `lib/engine/symbolic_engine.py`, the per-block `symbolic_execute`). It is an
+# optional dependency (`pip install .[symbolic]`), NOT part of requirements.txt,
+# so it is bundled only when the build environment has it -- see
+# docs/building.md. It used to be listed in `excludes` below, which meant even a
+# build env with sympy installed produced a bundle where LaTeX export silently
+# degraded.
+try:
+    hidden_imports_sympy = [m for m in collect_submodules('sympy')
+                            if '.tests' not in m and '.testing' not in m]
+except Exception:
+    hidden_imports_sympy = []
+
 hidden_imports = (
     hidden_imports_blocks
     + hidden_imports_scipy
     + hidden_imports_numpy
+    + hidden_imports_sympy
     + [
         'pyqtgraph',
         'PIL',
@@ -82,6 +106,7 @@ datas = [
     ('config/block_sizes.py', 'config'),
     ('examples', 'examples'),
     ('modern_ui/icons', 'modern_ui/icons'),
+    (VERSION_FILE, '.'),
 ]
 
 # --- Analysis ---
@@ -121,7 +146,6 @@ a = Analysis(
         'babel',
         'pygments',
         'boto', 'botocore', 's3transfer',
-        'sympy',
         'sklearn', 'scikit-learn',
         'cv2', 'opencv',
         'tkinter', '_tkinter',

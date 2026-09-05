@@ -2,11 +2,22 @@ import sys
 import os
 import time
 import logging
-from PyQt5.QtCore import QRect
 
 # Adjust path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# DBlock builds QPixmap-backed icons, which needs a live QApplication even
+# headless; without this the script aborts with "Must construct a
+# QGuiApplication before a QPixmap".
+from PyQt5.QtWidgets import QApplication
+
+if not QApplication.instance():
+    _app = QApplication(sys.argv)
+
+from PyQt5.QtCore import QRect
+from blocks.integrator import IntegratorBlock
+from blocks.scope import ScopeBlock
+from blocks.sine import SineBlock
 from lib.engine.simulation_engine import SimulationEngine
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine as Line
@@ -28,6 +39,15 @@ class MockModel:
         pass
 
 
+def default_params(block_class):
+    """Flatten a block class's params spec into the {name: default} map DBlock wants."""
+    spec = block_class().params or {}
+    return {
+        name: (entry.get("default") if isinstance(entry, dict) else entry)
+        for name, entry in spec.items()
+    }
+
+
 def create_benchmark_system(n_integrators=10):
     """Create a chain of integrators to stress the solver."""
     model = MockModel()
@@ -40,35 +60,52 @@ def create_benchmark_system(n_integrators=10):
     lines = []
 
     # Source: Sine
-    sine = DBlock("Sine", 0, QRect(0, 0, 50, 50), "blue")
-    sine.params["amplitude"] = 1.0
-    sine.params["frequency"] = 1.0
+    sine = DBlock(
+        "Sine",
+        0,
+        QRect(0, 0, 50, 50),
+        "blue",
+        in_ports=0,
+        block_class=SineBlock,
+        params=default_params(SineBlock),
+    )
     sine.hierarchy = 0
-    sine.block_fn = "Sine"
     blocks.append(sine)
 
     prev_block = sine
     prev_port = 0
 
     for i in range(n_integrators):
-        integ = DBlock("Integrator", i + 1, QRect(100 + i * 60, 0, 50, 50), "green")
-        integ.params["init_conds"] = 0.0
-        integ.block_fn = "Integrator"
+        integ = DBlock(
+            "Integrator",
+            i + 1,
+            QRect(100 + i * 60, 0, 50, 50),
+            "green",
+            block_class=IntegratorBlock,
+            params=default_params(IntegratorBlock),
+        )
         integ.hierarchy = i + 1
         blocks.append(integ)
 
-        line = Line(i, prev_block.name, prev_port, integ.name, 0, [])
+        line = Line(i, prev_block.name, prev_port, integ.name, 0, [(0, 0), (0, 0)])
         lines.append(line)
 
         prev_block = integ
 
     # Scope
-    scope = DBlock("Scope", n_integrators + 1, QRect(100 + n_integrators * 60, 0, 50, 50), "black")
-    scope.block_fn = "Scope"
+    scope = DBlock(
+        "Scope",
+        n_integrators + 1,
+        QRect(100 + n_integrators * 60, 0, 50, 50),
+        "black",
+        out_ports=0,
+        block_class=ScopeBlock,
+        params=default_params(ScopeBlock),
+    )
     scope.hierarchy = n_integrators + 1
     blocks.append(scope)
 
-    line = Line(n_integrators, prev_block.name, 0, scope.name, 0, [])
+    line = Line(n_integrators, prev_block.name, 0, scope.name, 0, [(0, 0), (0, 0)])
     lines.append(line)
 
     model.blocks_list = blocks
@@ -79,10 +116,6 @@ def create_benchmark_system(n_integrators=10):
 
 def run_benchmark():
     engine, model, blocks = create_benchmark_system(n_integrators=10)  # 10 serial integrators
-
-    dsim = DSim(None, None, None, None, None)  # Mock DSim?
-    # DSim constructor is complex (Canvas, etc).
-    # Let's just use engine directly or mock execution_batch logic.
 
     logger.info("System: 1 Sine -> 10 Integrators -> Scope (dt=0.001, T=10.0s, Steps=10,000)")
 
@@ -98,13 +131,13 @@ def run_benchmark():
     # Reset engine state
     engine.execution_initialized = False
 
-    # We need to manually run the interpreter loop since DSim.execution_loop isn't easily importable without GUI
-    # But we can try to use engine.execute_block in a loop.
-    # Or simplified:
+    # NOTE: this is a *proxy*, not a real interpreter run -- it times the
+    # per-block execute() cost over the same number of steps but skips output
+    # propagation, so it under-counts the interpreter. Treat the ratio below as
+    # a lower bound on the speedup, and tests/regression/ for correctness.
     start_time = time.time()
 
-    # Initialize
-    engine.initialize_execution(blocks)
+    engine.initialize_execution(blocks, model.line_list)
     steps = int(engine.execution_time / engine.sim_dt)
 
     # Simple Interpreter Loop equivalent
@@ -114,17 +147,13 @@ def run_benchmark():
 
         # Execute blocks in order
         for block in blocks:
-            # Logic from execution_loop reduced
             engine.execute_block(block)
-            # Propagate
-            out = {0: 0.0}  # Simplified prop
-            # engine.propagate_outputs(block, out) # Skip overhead of prop for fairness? No, prop is part of cost.
 
     std_duration = time.time() - start_time
-    logger.info(f"Interpreter Time (Est): {std_duration:.4f}s")
+    logger.info(f"Per-block execute() loop (proxy, no propagation): {std_duration:.4f}s")
 
     speedup = std_duration / fast_duration if fast_duration > 0 else 0
-    logger.info(f"Speedup: {speedup:.2f}x")
+    logger.info(f"Speedup (lower bound): {speedup:.2f}x")
 
 
 if __name__ == "__main__":

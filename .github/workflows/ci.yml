@@ -2,13 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Every branch, not just main: a feature branch should go red before it is
+    # merged. A `branches` filter with no `tags` filter never matches a tag
+    # push, which is deliberate — release.yml runs this same workflow on the
+    # tag through `workflow_call`, so a tag would otherwise build it twice.
+    branches: ["**"]
   pull_request:
-    branches: [main]
+  # Reusable: .github/workflows/release.yml gates the release on a green run
+  # of this exact workflow (`jobs.tests.uses: ./.github/workflows/ci.yml`).
+  workflow_call:
 
 # Cancel in-progress runs for the same ref when a new commit is pushed.
+# `github.workflow` is part of the key because when release.yml calls this
+# workflow it resolves to the *caller* ("Release"): without it a direct CI run
+# and a release's CI run on the same ref would share a group and cancel each
+# other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -37,6 +47,12 @@ jobs:
       - name: Format check
         # The repo was fully `ruff format`-ed in 2026-07; keep it that way.
         run: ruff format --check .
+
+      - name: Block registry in sync
+        # lib/block_loader._BLOCK_MODULES is what the frozen build ships. A new
+        # block file that nobody synced works in dev and is silently missing
+        # from the packaged app, so fail the branch instead.
+        run: python tools/sync_block_registry.py --check
 
   test:
     name: Tests (Python ${{ matrix.python-version }})
@@ -93,4 +109,19 @@ jobs:
         # --timeout makes an unexpected hang fail fast (signal method can
         # interrupt blocking C calls); the job timeout-minutes is the hard cap.
         # Coverage is reported (term-missing) but not gated on a threshold.
-        run: pytest tests/ --timeout=120 --timeout-method=signal --cov=lib --cov=blocks --cov=modern_ui --cov-report=term-missing
+        # --junitxml gives a machine-readable per-test record, uploaded below so
+        # a failure can be inspected without scrolling the raw job log.
+        run: >-
+          pytest tests/
+          --timeout=120 --timeout-method=signal
+          --cov=lib --cov=blocks --cov=modern_ui --cov-report=term-missing
+          --junitxml=junit/test-results-${{ matrix.python-version }}.xml
+
+      - name: Upload JUnit test report
+        # Uploaded even when the suite fails — that is when it is most useful.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-py${{ matrix.python-version }}
+          path: junit/test-results-${{ matrix.python-version }}.xml
+          if-no-files-found: warn

@@ -1,18 +1,3 @@
-import multiprocessing
-
-multiprocessing.freeze_support()  # Required for PyInstaller on macOS
-
-import sys
-import io
-
-# In frozen windowed mode (PyInstaller --noconsole), sys.stdout/stderr are None.
-# Redirect to devnull to prevent crashes from print() and tqdm.
-if sys.stdout is None:
-    sys.stdout = io.StringIO()
-if sys.stderr is None:
-    sys.stderr = io.StringIO()
-
-print("Running diablos_modern.py")
 """
 Modern DiaBloS Application - Phase 1
 Enhanced UI with modern styling, improved layout, and better user experience.
@@ -20,7 +5,49 @@ Enhanced UI with modern styling, improved layout, and better user experience.
 This is the main entry point for the modernized DiaBloS application.
 """
 
+import multiprocessing
+
+multiprocessing.freeze_support()  # Required for PyInstaller on macOS
+
 import sys
+import io
+
+
+class _DiscardStream(io.TextIOBase):
+    """Write-only stream that drops everything written to it.
+
+    In frozen windowed mode (PyInstaller --noconsole) ``sys.stdout``/``stderr``
+    are ``None``, so any ``print()`` or tqdm write raises ``AttributeError``.
+    This used to be patched with an ``io.StringIO()``, which does keep the app
+    alive but retains every byte ever written for the life of the process --
+    an unbounded leak, because the app prints per simulation step and per
+    plotted scope. Nothing can ever read the buffer back in a windowed build,
+    so discard instead; real diagnostics go to the log file configured by
+    ``lib.logging_config``.
+    """
+
+    def writable(self):
+        return True
+
+    def write(self, s):
+        return len(s)
+
+    def flush(self):
+        pass
+
+    def isatty(self):
+        return False
+
+    @property
+    def encoding(self):
+        return "utf-8"
+
+
+if sys.stdout is None:
+    sys.stdout = _DiscardStream()
+if sys.stderr is None:
+    sys.stderr = _DiscardStream()
+
 import os
 import logging
 import json
@@ -52,15 +79,19 @@ def _preload_heavy_modules():
         _dummy_D = np.array([[0]])
         signal.cont2discrete((_dummy_A, _dummy_B, _dummy_C, _dummy_D), 0.01)
 
-        print(f"[PRELOAD] Heavy modules loaded in {_t.time() - _start:.2f}s")
+        logging.getLogger(__name__).debug(
+            "[PRELOAD] Heavy modules loaded in %.2fs", _t.time() - _start
+        )
     except ImportError as e:
-        print(f"[PRELOAD] Failed: {e}")
+        logging.getLogger(__name__).warning("[PRELOAD] Failed: %s", e)
     except Exception as e:
-        print(f"[PRELOAD] Warning: {e}")
+        logging.getLogger(__name__).warning("[PRELOAD] Warning: %s", e)
 
 
-# Start preloading immediately in background thread
-print("[PRELOAD] Starting background import of scipy...")
+# Start preloading immediately in a background thread. Logged rather than
+# printed: in a frozen windowed build stdout is discarded (see _DiscardStream),
+# so a print() here would be invisible. The thread outlives the setup_logging()
+# call a few lines below, so its own messages land in the configured handlers.
 _preload_thread = threading.Thread(target=_preload_heavy_modules, daemon=True)
 _preload_thread.start()
 
@@ -196,8 +227,11 @@ def main():
                 sel = objc.sel_registerName(b"activateIgnoringOtherApps:")
                 objc.objc_msgSend(NSApp, sel, 1)
                 objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            except Exception:
-                pass
+            except Exception as e:
+                # Best-effort cosmetic fix (Dock icon / foreground focus).
+                # Never fatal, but log it so a "the app opened behind
+                # everything" report is diagnosable from the log file.
+                logger.debug("Could not set macOS activation policy: %s", e, exc_info=True)
 
         # Create main window with screen-aware sizing
         window = ModernDiaBloSWindow(screen_geometry)

@@ -105,6 +105,27 @@ DiaBloS Modern follows a **Model-View-Controller (MVC)** architecture, separatin
   - `reset_execution_data()` - Clear execution state
   - `get_max_hierarchy()` - Find max hierarchy level
 
+**CompiledRunner** (`compiled_runner.py`)
+- **Responsibility**: the compiled (fast-solver) run -- the ODE solve and the
+  post-solve signal replay -- extracted out of `simulation_engine.py`, which had
+  grown a 570-line replay method. `SimulationEngine.run_compiled_simulation()`
+  and `_replay_compiled_signals()` remain as thin delegating methods, so no
+  caller (GUI, DSim, scripts, tests) changed.
+- Every function takes the engine as its first argument and reads/writes exactly
+  the engine attributes the old methods did -- it is a file split, not a new
+  abstraction.
+- **Key functions**:
+  - `run_compiled_simulation(engine, blocks, lines, t_span, dt)` - resolve
+    params, compile the diagram into one ODE, integrate it (scipy, or an
+    in-house fixed step), record solver diagnostics
+  - `replay_compiled_signals(engine, sol, blocks, lines, state_map, matrices)` -
+    walk the saved state trajectory and reconstruct every block's output, so
+    Scope / FieldScope blocks get their history (the solve returns only the
+    ODE state)
+  - `integrate_fixed_step(model_func, t_eval, y0, scheme)` - the in-house
+    Euler / RK4 schemes
+  - `SCIPY_SOLVER_METHODS` / `FIXED_STEP_METHODS` - the accepted solver names
+
 ### 3. Services Layer (`lib/services/`)
 
 **FileService** (`file_service.py`)
@@ -198,10 +219,24 @@ class BaseBlock(ABC):
     @property
     def shape(self): ...            # Optional outline: "rect" (default), "triangle", "circle", "tag"
 
+    hidden = True                   # Plain class attribute: keep out of the palette/menus
+
     def draw_icon(self, block_rect):  # Optional: custom icon
         """Return QPainterPath in 0-1 normalized coordinates, or None for fallback."""
         ...
 ```
+
+**Hidden blocks.** A block class can set a plain `hidden = True` class attribute
+to stay out of every place the user can pick a block from. It is still loaded and
+still deserializes from an existing `.diablos` file -- it is simply not offered
+for placement. `blocks/external.py` uses this: it is an unimplemented stub whose
+`execute()` only returns an error, so offering it could only produce a diagram
+that refuses to run. The single source of truth is
+`modern_ui/widgets/modern_palette.py` -- `is_hidden_block(menu_block)` and
+`visible_menu_blocks(menu_blocks)` -- and all three pickers filter through it:
+the block palette, the command palette
+(`modern_ui/managers/command_palette_manager.py`) and the canvas right-click
+search / quick-add (`modern_ui/managers/menu_manager.py`).
 
 `BlockRenderer` resolves the outline through `resolve_block_shape()` (a
 circle falls back to a rectangle above three inputs) and draws body, shadow

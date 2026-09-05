@@ -9,7 +9,7 @@ modern_ui/          PyQt5 GUI: main_window.py (top-level); subdirs widgets/ [mod
                     controllers/, managers/ [undo/redo, clipboard, connections, selection],
                     renderers/, builders/, interactions/, tools/, themes/, styles/
 lib/                Core engine (engine/, simulation/, analysis/, plotting/, services/,
-                    export/, managers/, models/, + config_manager.py)
+                    export/, managers/, models/)
 blocks/             Block implementations: mostly flat .py files (one block class each);
                     subdirs pde/, optimization/, optimization_primitives/ group related families
 config/             Defaults: default_config.json, logging.json, block_sizes.py

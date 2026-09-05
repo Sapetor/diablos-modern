@@ -5,10 +5,12 @@ This demonstrates practical ways to enhance the existing codebase without
 breaking changes, by adding helper functions and better practices.
 """
 
-import sys
+import json
 import os
+import sys
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Run from anywhere: put the repo root (this file's parent) on sys.path.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.lib import DSim
 from lib.improvements import (
@@ -18,7 +20,24 @@ from lib.improvements import (
     LoggingHelper,
     validate_simulation_parameters,
 )
-from lib.config_manager import ConfigManager, get_config
+
+
+def load_default_config():
+    """Read config/default_config.json -- the app's only configuration file.
+
+    This used to go through a ``lib.config_manager.ConfigManager`` whose
+    hard-coded defaults had drifted away from the JSON it was supposed to be
+    loading; the module was dead except for this example and has been deleted.
+    Reading the JSON directly is what the application itself does (see
+    ``diablos_modern.setup_application``).
+    """
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "config",
+        "default_config.json",
+    )
+    with open(path, "r") as fh:
+        return json.load(fh)
 
 
 def demonstrate_improved_simulation():
@@ -28,21 +47,18 @@ def demonstrate_improved_simulation():
     LoggingHelper.setup_logging(level="INFO")
 
     # Load configuration
-    config = get_config()
+    config = load_default_config()
+    simulation_cfg = config.get("simulation", {})
+    display_cfg = config.get("display", {})
     print("\\n=== Configuration Demo ===")
-    print(f"Default simulation time: {config.get('simulation.default_time')}")
-    print(f"Default timestep: {config.get('simulation.default_timestep')}")
-    print(
-        f"Window size: {config.get('display.window_width')}x{config.get('display.window_height')}"
-    )
+    print(f"Default simulation time: {simulation_cfg.get('default_time')}")
+    print(f"Default timestep: {simulation_cfg.get('default_timestep')}")
+    print(f"Window size: {display_cfg.get('window_width')}x{display_cfg.get('window_height')}")
 
     # Create DSim instance
     print("\\n=== Creating DSim Instance ===")
     dsim = DSim()
-
-    # Apply configuration to DSim
-    config.apply_to_dsim(dsim)
-    print(f"Applied config - Screen size: {dsim.SCREEN_WIDTH}x{dsim.SCREEN_HEIGHT}")
+    print(f"Screen size: {dsim.SCREEN_WIDTH}x{dsim.SCREEN_HEIGHT}")
 
     # Create performance helper
     perf_helper = PerformanceHelper()
@@ -51,8 +67,8 @@ def demonstrate_improved_simulation():
     print("\\n=== Setting up Simple Test ===")
     # This would normally be done through the GUI or file loading
     # For demo purposes, we'll just set some basic properties
-    dsim.sim_time = config.get("simulation.default_time", 10.0)
-    dsim.sim_dt = config.get("simulation.default_timestep", 0.01)
+    dsim.sim_time = simulation_cfg.get("default_time", 10.0)
+    dsim.sim_dt = simulation_cfg.get("default_timestep", 0.01)
 
     # Validate simulation parameters
     print("\\n=== Parameter Validation ===")
@@ -114,15 +130,6 @@ def demonstrate_improved_simulation():
 
     # Log performance stats
     perf_helper.log_stats()
-
-    print("\\n=== Configuration Validation ===")
-    config_valid, config_errors = config.validate_config()
-    if config_valid:
-        print("✓ Configuration is valid")
-    else:
-        print("✗ Configuration issues:")
-        for error in config_errors:
-            print(f"  - {error}")
 
 
 def demonstrate_validation_helpers():
@@ -214,66 +221,6 @@ def demonstrate_validation_helpers():
             print(f"  - {error}")
 
 
-def demonstrate_config_management():
-    """Demonstrate configuration management."""
-
-    print("\\n" + "=" * 50)
-    print("CONFIGURATION MANAGEMENT DEMONSTRATION")
-    print("=" * 50)
-
-    # Create config manager
-    config = ConfigManager()
-
-    print("\\n=== Current Configuration ===")
-    print(f"Simulation time: {config.get('simulation.default_time')}")
-    print(f"Time step: {config.get('simulation.default_timestep')}")
-    print(f"Solver: {config.get('simulation.default_solver')}")
-    print(
-        f"Window size: {config.get('display.window_width')}x{config.get('display.window_height')}"
-    )
-    print(f"Logging level: {config.get('logging.level')}")
-    print(f"Performance monitoring: {config.get('performance.warn_slow_steps')}")
-
-    # Demonstrate setting values
-    print("\\n=== Modifying Configuration ===")
-    config.set("simulation.default_time", 20.0)
-    config.set("display.window_width", 1600)
-    config.set("logging.level", "DEBUG")
-
-    print(f"New simulation time: {config.get('simulation.default_time')}")
-    print(f"New window width: {config.get('display.window_width')}")
-    print(f"New logging level: {config.get('logging.level')}")
-
-    # Validate configuration
-    print("\\n=== Configuration Validation ===")
-    is_valid, errors = config.validate_config()
-    if is_valid:
-        print("✓ Configuration is valid")
-    else:
-        print("✗ Configuration errors:")
-        for error in errors:
-            print(f"  - {error}")
-
-    # Test with invalid config
-    print("\\n=== Testing Invalid Configuration ===")
-    config.set("simulation.default_time", -5.0)  # Invalid
-    config.set("display.fps", 200)  # Invalid
-
-    is_valid, errors = config.validate_config()
-    if is_valid:
-        print("✓ Configuration is valid")
-    else:
-        print("✗ Configuration errors (as expected):")
-        for error in errors:
-            print(f"  - {error}")
-
-    # Reset to defaults
-    print("\\n=== Resetting to Defaults ===")
-    config.reset_to_defaults()
-    print(f"Reset - simulation time: {config.get('simulation.default_time')}")
-    print(f"Reset - FPS: {config.get('display.fps')}")
-
-
 if __name__ == "__main__":
     print("DiaBloS Incremental Improvements Demonstration")
     print("=" * 60)
@@ -281,7 +228,6 @@ if __name__ == "__main__":
     try:
         demonstrate_improved_simulation()
         demonstrate_validation_helpers()
-        demonstrate_config_management()
 
         print("\\n" + "=" * 60)
         print("DEMONSTRATION COMPLETE")
@@ -289,7 +235,6 @@ if __name__ == "__main__":
         print("\\nKey benefits of these improvements:")
         print("✓ Better error handling and validation")
         print("✓ Performance monitoring and optimization")
-        print("✓ Configurable settings without code changes")
         print("✓ Enhanced logging for debugging")
         print("✓ Safety checks to prevent crashes")
         print("✓ All improvements work with existing DSim code")
