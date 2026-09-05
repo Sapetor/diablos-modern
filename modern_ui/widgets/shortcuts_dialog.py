@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 from modern_ui.managers.command_palette_manager import palette_command_groups
 from modern_ui.themes.theme_manager import (
     theme_manager,
@@ -45,17 +45,17 @@ from modern_ui.themes.theme_manager import (
 # live File group; Edit and Help are standalone groups. Keep in sync with
 # MenuBuilder.
 _FILE_SUPPLEMENT: list[tuple[str, str]] = [
-    ("Exit", "Alt+F4"),
+    (tr_noop("Exit"), "Alt+F4"),
 ]
 _EDIT_GROUP: list[tuple[str, str]] = [
-    ("Undo", "Ctrl+Z"),
-    ("Redo", "Ctrl+Y"),
-    ("Select all", "Ctrl+A"),
-    ("Create subsystem", "Ctrl+G"),
-    ("Command palette", "Ctrl+P"),
+    (tr_noop("Undo"), "Ctrl+Z"),
+    (tr_noop("Redo"), "Ctrl+Y"),
+    (tr_noop("Select all"), "Ctrl+A"),
+    (tr_noop("Create subsystem"), "Ctrl+G"),
+    (tr_noop("Command palette"), "Ctrl+P"),
 ]
 _HELP_GROUP: list[tuple[str, str]] = [
-    ("Keyboard shortcuts", "F1"),
+    (tr_noop("Keyboard shortcuts"), "F1"),
 ]
 
 
@@ -69,11 +69,11 @@ def build_shortcut_groups() -> list[tuple[str, list[tuple[str, str]]]]:
     """
     registry = palette_command_groups()
     return [
-        ("File", registry["File"] + _FILE_SUPPLEMENT),
-        ("Edit", list(_EDIT_GROUP)),
-        ("Simulation", registry["Simulation"]),
-        ("View", registry["View"]),
-        ("Help", list(_HELP_GROUP)),
+        (tr_noop("File"), registry["File"] + _FILE_SUPPLEMENT),
+        (tr_noop("Edit"), list(_EDIT_GROUP)),
+        (tr_noop("Simulation"), registry["Simulation"]),
+        (tr_noop("View"), registry["View"]),
+        (tr_noop("Help"), list(_HELP_GROUP)),
     ]
 
 

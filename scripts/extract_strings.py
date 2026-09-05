@@ -3,13 +3,15 @@
 
 What counts as a translatable string
 ------------------------------------
-1. The first argument of any ``tr("...")`` call (also ``i18n.tr(...)`` /
-   ``self.tr_(...)``-style attribute calls named ``tr``) found anywhere under
-   the scanned source roots.  Only *literal* strings are collected -- a
-   ``tr(variable)`` call cannot be extracted and should be avoided.
+1. The first argument of any ``tr("...")`` or ``tr_noop("...")`` call (also
+   attribute calls with those names, e.g. ``i18n.tr(...)``) found anywhere
+   under the scanned source roots.  Literal strings -- including implicit
+   concatenation and references to a module-level string constant -- are
+   collected; a ``tr(variable)`` call cannot be, so mark the literal with
+   ``tr_noop`` where it is declared instead.
 2. Block *display* metadata, which is translated at display time rather than at
-   the source site: the string returned by a block's ``category`` property and
-   every ``"doc"`` value inside a block's ``params`` spec.  ``block_name``,
+   the source site: a block's ``category`` name, its ``doc`` blurb, and every
+   ``"doc"``/``"group"`` value inside its ``params`` spec.  ``block_name``,
    parameter keys and category identifiers are **never** rewritten -- they are
    persisted in ``.diablos`` files and used as registry keys -- so only the
    human-readable text is extracted.
@@ -47,6 +49,11 @@ SOURCE_ROOTS = ("modern_ui", "lib", "blocks", "diablos_modern.py")
 BLOCKS_ROOT = "blocks"
 
 SKIP_DIRS = {"__pycache__", ".git", "build", "dist", "archive", ".venv", ".venv-win"}
+
+#: Call names whose first argument is a translatable string. ``tr_noop`` marks
+#: a literal declared away from its display site (a table of menu labels, a
+#: helper's argument) -- see ``lib.i18n.tr_noop``.
+TR_FUNCTIONS = ("tr", "tr_noop")
 
 
 # --- file discovery ---------------------------------------------------------
@@ -135,7 +142,7 @@ def extract_tr_calls(path: str) -> Set[str]:
     constants = _module_string_constants(tree)
     found: Set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and _call_name(node) == "tr" and node.args:
+        if isinstance(node, ast.Call) and _call_name(node) in TR_FUNCTIONS and node.args:
             arg = node.args[0]
             text = _literal_str(arg)
             if not text and isinstance(arg, ast.Name):
@@ -170,6 +177,12 @@ def extract_block_metadata(path: str) -> Tuple[Set[str], Set[str]]:
             text = _literal_str(value)
             if text:
                 categories.add(text)
+        # The block's own `doc` blurb, rendered in the property editor's
+        # documentation section (property_editor.py: tr(str(block.doc))).
+        for value in _property_return_strings(node, "doc"):
+            text = _literal_str(value)
+            if text:
+                docs.add(text)
         for value in _property_return_strings(node, "params"):
             for sub in ast.walk(value):
                 if not isinstance(sub, ast.Dict):

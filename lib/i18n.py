@@ -302,6 +302,24 @@ def tr(text: str, **fmt: Any) -> str:
     return translated
 
 
+def tr_noop(text: str) -> str:
+    """Mark ``text`` for extraction without translating it here.
+
+    The gettext ``N_()`` idiom. Use it when a literal is declared far from
+    where it is displayed -- a table of menu labels, a badge map, a helper's
+    argument -- so ``scripts/extract_strings.py`` still sees the literal while
+    the actual lookup happens later at display time::
+
+        _COMMANDS = [(tr_noop("New diagram"), "Ctrl+N"), ...]
+        ...
+        label.setText(tr(name))     # translated when shown
+
+    Returns ``text`` unchanged, so the stored value keeps its English identity
+    and remains usable as a lookup key.
+    """
+    return text
+
+
 def has_translation(text: str) -> bool:
     """True when the active catalog contains an entry for ``text``."""
     return text in _current_catalog

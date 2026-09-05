@@ -48,7 +48,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
 from lib.analysis import linearization_export
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 
 
@@ -112,8 +112,8 @@ class LinearizationResultWindow(QWidget):
         bar.addStretch(1)
 
         for label, formatter in (
-            ("Copy as Python", linearization_export.to_python_code),
-            ("Copy as MATLAB", linearization_export.to_matlab_code),
+            (tr_noop("Copy as Python"), linearization_export.to_python_code),
+            (tr_noop("Copy as MATLAB"), linearization_export.to_matlab_code),
         ):
             btn = QPushButton(tr(label))
             btn.clicked.connect(partial(self._copy_code, formatter, label.split()[-1]))

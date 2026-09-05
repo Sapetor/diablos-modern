@@ -20,7 +20,7 @@ import logging
 from collections import OrderedDict
 
 from lib.app_paths import resource_path
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 
 logger = logging.getLogger(__name__)
 
@@ -32,35 +32,35 @@ logger = logging.getLogger(__name__)
 # ``palette_command_groups`` so it cannot drift). An empty shortcut string means
 # "no default binding".
 _SIM_COMMANDS: list[tuple[str, str]] = [
-    ("Run simulation", "F5"),
-    ("Pause simulation", "F6"),
-    ("Stop simulation", "F7"),
-    ("Step simulation", "F8"),
-    ("Toggle fast solver", ""),
+    (tr_noop("Run simulation"), "F5"),
+    (tr_noop("Pause simulation"), "F6"),
+    (tr_noop("Stop simulation"), "F7"),
+    (tr_noop("Step simulation"), "F8"),
+    (tr_noop("Toggle fast solver"), ""),
 ]
 
 _VIEW_COMMANDS: list[tuple[str, str]] = [
-    ("Zoom in", "Ctrl++"),
-    ("Zoom out", "Ctrl+-"),
-    ("Fit to window", "Ctrl+0"),
-    ("Toggle theme", "Ctrl+T"),
-    ("Toggle grid", "Ctrl+Shift+G"),
-    ("Toggle minimap", "Ctrl+Shift+M"),
-    ("Toggle variable editor", "Ctrl+Shift+V"),
-    ("Toggle workspace variables", "Ctrl+Shift+W"),
-    ("Toggle tuning panel", "Ctrl+Shift+T"),
+    (tr_noop("Zoom in"), "Ctrl++"),
+    (tr_noop("Zoom out"), "Ctrl+-"),
+    (tr_noop("Fit to window"), "Ctrl+0"),
+    (tr_noop("Toggle theme"), "Ctrl+T"),
+    (tr_noop("Toggle grid"), "Ctrl+Shift+G"),
+    (tr_noop("Toggle minimap"), "Ctrl+Shift+M"),
+    (tr_noop("Toggle variable editor"), "Ctrl+Shift+V"),
+    (tr_noop("Toggle workspace variables"), "Ctrl+Shift+W"),
+    (tr_noop("Toggle tuning panel"), "Ctrl+Shift+T"),
 ]
 
 _FILE_COMMANDS: list[tuple[str, str]] = [
-    ("New diagram", "Ctrl+N"),
-    ("Open diagram", "Ctrl+O"),
-    ("Save diagram", "Ctrl+S"),
-    ("Load workspace…", ""),
-    ("Show plots", ""),
-    ("Export as image…", ""),
-    ("Export as TikZ…", ""),
-    ("Export as Python script…", ""),
-    ("Copy diagram as image", ""),
+    (tr_noop("New diagram"), "Ctrl+N"),
+    (tr_noop("Open diagram"), "Ctrl+O"),
+    (tr_noop("Save diagram"), "Ctrl+S"),
+    (tr_noop("Load workspace…"), ""),
+    (tr_noop("Show plots"), ""),
+    (tr_noop("Export as image…"), ""),
+    (tr_noop("Export as TikZ…"), ""),
+    (tr_noop("Export as Python script…"), ""),
+    (tr_noop("Copy diagram as image"), ""),
 ]
 
 
@@ -74,9 +74,9 @@ def palette_command_groups() -> "OrderedDict[str, list[tuple[str, str]]]":
     """
     return OrderedDict(
         [
-            ("Simulation", list(_SIM_COMMANDS)),
-            ("View", list(_VIEW_COMMANDS)),
-            ("File", list(_FILE_COMMANDS)),
+            (tr_noop("Simulation"), list(_SIM_COMMANDS)),
+            (tr_noop("View"), list(_VIEW_COMMANDS)),
+            (tr_noop("File"), list(_FILE_COMMANDS)),
         ]
     )
 

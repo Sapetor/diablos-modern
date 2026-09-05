@@ -9,9 +9,10 @@
 5. [Working with the MVC Architecture](#working-with-the-mvc-architecture)
 6. [Testing](#testing)
 7. [Code Style](#code-style)
-8. [Common Tasks](#common-tasks)
-9. [Debugging](#debugging)
-10. [Contributing](#contributing)
+8. [Localization](#localization)
+9. [Common Tasks](#common-tasks)
+10. [Debugging](#debugging)
+11. [Contributing](#contributing)
 
 ## Getting Started
 
@@ -520,6 +521,99 @@ from PyQt5.QtWidgets import QApplication
 from lib.models.simulation_model import SimulationModel
 from lib.simulation.block import DBlock
 ```
+
+## Localization
+
+The UI is translated through a small home-grown catalog system (`lib/i18n.py`),
+not Qt's `.ts`/`.qm` toolchain — catalogs are plain JSON, need no build step and
+are unit-testable.
+
+### How it works
+
+- Every user-visible string is wrapped in `tr()` and **keyed by its English
+  source text**, so a missing or untranslated entry falls back to the English
+  that is already in the code.
+- Catalogs live in `locales/<code>.json`: a flat UTF-8 JSON mapping of
+  English → translation, plus a `_meta` block that names the language.
+- The active language is resolved as **explicit user setting → system locale
+  (`QLocale`) → `en`**. The setting is stored in `QSettings` under
+  `ui/language` (written by **View ▸ Language**) and defaults to
+  `ui.language: "system"` in `config/default_config.json`.
+- `locales/` is registered through `lib/app_paths.locales_path()` and listed in
+  `diablos.spec` `datas`, so catalogs ship in frozen builds.
+
+### Wrapping a string
+
+```python
+from lib.i18n import tr
+
+self.setWindowTitle(tr("Monte Carlo"))
+self.statusBar().showMessage(tr("Loaded {name}", name=filename))
+```
+
+Rules:
+
+- **Never** wrap identifiers: dict keys, `objectName`s, `QSettings` keys, theme
+  names, signal names, block `block_name`s, parameter keys, `.diablos`
+  file-format strings. Log messages and developer-facing exceptions stay
+  English too.
+- **Never** put an f-string inside `tr()` — the catalog key must be a stable
+  literal. Use named placeholders: `tr("Loaded {name}", name=x)`.
+- Keep keyboard-shortcut suffixes out of the translated text:
+  `tr("&New") + "\tCtrl+N"`.
+- Block **categories** and parameter **doc** strings are translated at *display*
+  time (`tr(self.category_name)`, `tr(meta["doc"])`). The stored values stay
+  English because they are registry keys and are persisted in `.diablos` files.
+  The extractor harvests them straight from `blocks/*.py`, so no literal
+  `tr("Sources")` call is needed anywhere.
+
+### Adding a language
+
+1. Copy the metadata block into a new catalog, e.g. `locales/fr.json`:
+
+   ```json
+   {
+     "_meta": {"code": "fr", "name": "Français", "english_name": "French"}
+   }
+   ```
+
+2. Fill it with every translatable key:
+
+   ```bash
+   python scripts/extract_strings.py --update
+   ```
+
+   This scans the repo for literal `tr("...")` arguments plus block category
+   names and param `doc` strings, adds any missing key with an empty value,
+   keeps each file sorted (with `_meta` first) and **never deletes** an existing
+   translation. Keys that no longer exist in the source are reported as
+   *stale* rather than removed. `--fill-english` seeds new entries with the
+   English text instead of an empty string; `--list` prints every extracted key.
+
+3. Translate the empty values. Keep every `{named}` placeholder exactly as it
+   appears in the key — a test enforces this.
+
+4. Verify:
+
+   ```bash
+   python scripts/extract_strings.py          # exits 1 while keys are missing
+   pytest tests/unit/test_i18n.py tests/unit/test_locale_catalog_complete.py -q
+   ```
+
+   `tests/unit/test_locale_catalog_complete.py` runs the extractor over every
+   `locales/*.json`, so an untranslated new string fails CI instead of silently
+   shipping as English.
+
+5. The language appears in **View ▸ Language** automatically — the menu is built
+   from `locales/*.json` and labelled with each catalog's `_meta.name`.
+
+### Live retranslation
+
+`ModernDiaBloSWindow.retranslate_ui()` rebuilds the menu bar, toolbar, palette,
+dock titles and status bar in the new language; `lib.i18n.add_language_listener`
+lets other components hook the same event. Widgets built inside already-open
+dialogs and result windows keep the language they were created with — reopening
+them picks up the new one.
 
 ## Common Tasks
 

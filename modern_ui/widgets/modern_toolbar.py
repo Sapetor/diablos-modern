@@ -40,7 +40,7 @@ import math
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_mono_font,
@@ -250,6 +250,8 @@ class _StatusPill(QFrame):
         lay.setContentsMargins(8, 0, 10, 0)
         lay.setSpacing(6)
 
+        self._state = "idle"
+        self._custom_label = None
         self._dot = _StateDot(self)
         self._label = QLabel(tr("Ready"), self)
         self._label.setObjectName("StatusPillLabel")
@@ -259,6 +261,11 @@ class _StatusPill(QFrame):
     def set_state(self, state: str, label: str | None = None):
         if state not in ("idle", "running", "paused", "error"):
             state = "idle"
+        # Remembered so retranslate_ui() can rebuild the label in the new
+        # language. A caller-supplied label is already translated text, so it
+        # is replayed verbatim rather than looked up again.
+        self._state = state
+        self._custom_label = label
         self.setProperty("state", state)
         self._dot.set_state(state)
         text = (
@@ -274,6 +281,12 @@ class _StatusPill(QFrame):
         # Force re-polish so the [state=…] selector reapplies on dark/light swap.
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def retranslate_ui(self):
+        # Only the built-in state labels can be re-derived; a caller-supplied
+        # label stays as it is.
+        if self._custom_label is None:
+            self.set_state(self._state)
 
 
 class _StateDot(QWidget):
@@ -418,6 +431,10 @@ class _ZoomRocker(QWidget):
         self.minus_btn.setIcon(_make_icon("minus", 14, c))
         self.plus_btn.setIcon(_make_icon("plus", 14, c))
 
+    def retranslate_ui(self):
+        self.minus_btn.setToolTip(tr("Zoom out"))
+        self.plus_btn.setToolTip(tr("Zoom in"))
+
 
 class _TransportGroup(QWidget):
     """Play/Pause/Stop/Step + monospace t-readout, centered."""
@@ -437,6 +454,9 @@ class _TransportGroup(QWidget):
         self.pause_btn = self._mk_btn("pause", "TransportPause", tr("Pause") + " (F6)")
         self.stop_btn = self._mk_btn("stop", "TransportStop", tr("Stop") + " (F7)")
         self.step_btn = self._mk_btn("step", "TransportStep", tr("Step") + " (F8)")
+        # Last values handed to set_time(), so retranslate_ui() can rebuild the
+        # readout in the new language without waiting for the next sim tick.
+        self._last_time = (0.0, 10.0)
 
         self.play_btn.clicked.connect(self.play)
         self.pause_btn.clicked.connect(self.pause)
@@ -483,9 +503,18 @@ class _TransportGroup(QWidget):
         self.step_btn.setEnabled(not running or paused)
 
     def set_time(self, t: float, t_end: float):
+        self._last_time = (t, t_end)
         t_str = "{:6.3f}".format(t)
         end_str = "{:.3f}".format(t_end)
         self.time_label.setText(tr("t = {t} / {end} s", t=t_str, end=end_str))
+
+    def retranslate_ui(self):
+        self.play_btn.setToolTip(tr("Run") + " (F5)")
+        self.pause_btn.setToolTip(tr("Pause") + " (F6)")
+        self.stop_btn.setToolTip(tr("Stop") + " (F7)")
+        self.step_btn.setToolTip(tr("Step") + " (F8)")
+        t, t_end = self._last_time
+        self.set_time(t, t_end)
 
 
 # -----------------------------------------------------------------------------
@@ -529,6 +558,11 @@ class ModernToolBar(QToolBar):
     # -- Actions ------------------------------------------------------------
 
     def _build_actions(self):
+        # (action, English label, shortcut, English tooltip) — kept so
+        # retranslate_ui() can re-apply the text without rebuilding the
+        # actions (which would drop their signal connections).
+        self._action_specs = []
+
         def mk(kind: str, label: str, shortcut: str | None, tip: str, sig):
             a = QAction(_make_icon(kind, 18), tr(label), self)
             if shortcut:
@@ -538,21 +572,42 @@ class ModernToolBar(QToolBar):
             # Mirror the tooltip into the status bar on hover/focus.
             a.setStatusTip(full_tip)
             a.triggered.connect(sig)
+            self._action_specs.append((a, label, shortcut, tip))
             return a
 
-        self.new_action = mk("new", "New", "Ctrl+N", "New diagram", self.new_diagram.emit)
-        self.open_action = mk("open", "Open", "Ctrl+O", "Open diagram", self.open_diagram.emit)
-        self.save_action = mk("save", "Save", "Ctrl+S", "Save diagram", self.save_diagram.emit)
+        self.new_action = mk(
+            "new", tr_noop("New"), "Ctrl+N", tr_noop("New diagram"), self.new_diagram.emit
+        )
+        self.open_action = mk(
+            "open", tr_noop("Open"), "Ctrl+O", tr_noop("Open diagram"), self.open_diagram.emit
+        )
+        self.save_action = mk(
+            "save", tr_noop("Save"), "Ctrl+S", tr_noop("Save diagram"), self.save_diagram.emit
+        )
         self.plot_action = mk(
-            "plot", "Plot", None, "Show waveform inspector", self.plot_results.emit
+            "plot",
+            tr_noop("Plot"),
+            None,
+            tr_noop("Show waveform inspector"),
+            self.plot_results.emit,
         )
         self.capture_action = mk(
-            "capture", "Capture", None, "Take screenshot", self.capture_screen.emit
+            "capture",
+            tr_noop("Capture"),
+            None,
+            tr_noop("Take screenshot"),
+            self.capture_screen.emit,
         )
         self.auto_route_action = mk(
-            "route", "Auto-route", None, "Auto-route wires", self.auto_route_wires.emit
+            "route",
+            tr_noop("Auto-route"),
+            None,
+            tr_noop("Auto-route wires"),
+            self.auto_route_wires.emit,
         )
-        self.theme_action = mk("sun", "Theme", None, "Toggle theme", self._toggle_theme)
+        self.theme_action = mk(
+            "sun", tr_noop("Theme"), None, tr_noop("Toggle theme"), self._toggle_theme
+        )
 
     # -- Layout -------------------------------------------------------------
 
@@ -632,6 +687,29 @@ class ModernToolBar(QToolBar):
 
         self.transport.refresh_icons()
         self.zoom_rocker.refresh_icons()
+
+    # -- Localization -------------------------------------------------------
+
+    def retranslate_ui(self):
+        """Re-apply every toolbar string in the active language.
+
+        Called by the main window after the UI language changes. The actions
+        themselves are reused (only their text is replaced), so signal
+        connections and shortcuts survive.
+        """
+        self.setWindowTitle(tr("Main Toolbar"))
+        for action, label, shortcut, tip in self._action_specs:
+            action.setText(tr(label))
+            full_tip = tr(tip) + ("  ({})".format(shortcut) if shortcut else "")
+            action.setToolTip(full_tip)
+            action.setStatusTip(full_tip)
+        self.cmdk_btn.setText(tr("Search…") + "  ⌘K")
+        self.cmdk_btn.setToolTip(tr("Search commands and blocks") + "  (Ctrl+K / ⌘K)")
+        self.transport.retranslate_ui()
+        self.zoom_rocker.retranslate_ui()
+        self.status_pill.retranslate_ui()
+        # Re-applies the theme-dependent Switch to light/dark theme tooltip.
+        self._update_theme()
 
     # -- Public API (preserved) --------------------------------------------
 

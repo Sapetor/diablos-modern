@@ -36,7 +36,7 @@ from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 # accessor used for Favorites/Recent persistence (same store).
 from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
 from lib.app_paths import ui_settings
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
 _CHEVRON_EXPANDED = "▾"
@@ -1150,15 +1150,16 @@ class ModernBlockPalette(QWidget):
         that no longer map to a loaded block (e.g. a removed block) are skipped.
         Both are registered in ``self._sections`` so filter/collapse apply.
         """
-        # "Favorites"/"Recent" are section titles, not block categories, so
-        # scripts/extract_strings.py (which harvests block `category` literals
-        # from blocks/*.py, not the runtime tr(self.category_name) lookup in
-        # _refresh_header_text) never sees them. Register the literal keys here
-        # so translators get them; the untranslated string is still what is
-        # passed to _PinnedSection below since it doubles as the QSettings
-        # collapsed-state key and must stay stable across languages.
-        tr("Favorites")
-        tr("Recent")
+        # "Favorites"/"Recent" are section titles, not block categories, so the
+        # extractor -- which harvests block `category` literals from blocks/*.py,
+        # not the runtime tr(self.category_name) lookup in _refresh_header_text
+        # -- never sees them. "Filters" is in the same boat: _categorize_blocks()
+        # invents it. tr_noop registers the literals for translation while
+        # leaving the values English, which matters because they double as the
+        # QSettings collapsed-state keys and must stay stable across languages.
+        tr_noop("Favorites")
+        tr_noop("Recent")
+        tr_noop("Filters")
 
         fav_blocks = [index[n] for n in sorted(_load_favorites()) if n in index]
         if fav_blocks:
@@ -1442,6 +1443,17 @@ class ModernBlockPalette(QWidget):
             self._load_blocks()
         except Exception as e:
             logger.error(f"Error refreshing palette: {e}")
+
+    def retranslate_ui(self):
+        """Re-apply every palette string in the active language.
+
+        The section headers and row tooltips are rebuilt wholesale by
+        ``refresh_blocks()`` (they translate their category/block text at paint
+        time), so only the chrome needs explicit re-setting here.
+        """
+        self.title.setText(tr("Library"))
+        self.search_bar.setPlaceholderText(tr("Filter blocks…"))
+        self.refresh_blocks()
 
     def get_available_blocks(self):
         return getattr(self.dsim, "menu_blocks", [])

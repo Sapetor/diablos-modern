@@ -241,6 +241,76 @@ class ModernDiaBloSWindow(QMainWindow):
         """Setup modern menu bar."""
         self.window_setup_manager.setup_menubar()
 
+    # -- Localization -------------------------------------------------------
+
+    def set_language(self, code: str):
+        """Switch the UI language and persist the choice.
+
+        ``code`` is a catalog code (``"es"``) or ``"system"`` to follow the host
+        locale. The chrome retranslates immediately; windows that are already
+        open keep the language they were built with until reopened.
+        """
+        from lib.i18n import set_language, store_language_setting
+
+        store_language_setting(code)
+        resolved = set_language(code)
+        self.retranslate_ui()
+        self._notify(
+            tr("Language changed"),
+            "\U0001f310 " + tr("Language changed. Open windows keep the previous language."),
+        )
+        logger.info("UI language switched to %r (requested %r)", resolved, code)
+
+    def retranslate_ui(self):
+        """Re-apply every string owned by the main window in the new language.
+
+        Menus are rebuilt wholesale (``MenuBuilder.setup_menubar`` clears the
+        bar first), while the toolbar, palette and status bar reuse their
+        widgets and only replace text -- so signal connections and the current
+        simulation state survive a language switch.
+        """
+        from modern_ui import __version__
+        from modern_ui.managers.window_setup_manager import WINDOW_TITLE
+
+        self.setWindowTitle(tr(WINDOW_TITLE, version=__version__))
+        self._setup_menubar()
+
+        for widget, method in (
+            (getattr(self, "toolbar", None), "retranslate_ui"),
+            (getattr(self, "block_palette", None), "retranslate_ui"),
+            (getattr(self, "status_bar_manager", None), "retranslate_ui"),
+        ):
+            if widget is not None and hasattr(widget, method):
+                try:
+                    getattr(widget, method)()
+                except Exception:
+                    logger.exception("Retranslating %s failed", type(widget).__name__)
+
+        for title, dock in (
+            (tr("Variable Editor"), getattr(self, "variable_editor_dock", None)),
+            (tr("Workspace Variables"), getattr(self, "workspace_editor_dock", None)),
+            (tr("Minimap"), getattr(self, "minimap_dock", None)),
+            (tr("Waveforms"), getattr(self, "waveform_inspector_dock", None)),
+        ):
+            if dock is not None:
+                dock.setWindowTitle(title)
+
+        if hasattr(self, "palette_panel_title"):
+            self.palette_panel_title.setText(tr("Block Palette"))
+        if hasattr(self, "properties_panel_title"):
+            self.properties_panel_title.setText(tr("Properties"))
+
+        # Re-render the inspector so param labels/tooltips pick up the new
+        # language: set_block() rebuilds the form from the current selection.
+        if hasattr(self, "property_editor"):
+            try:
+                self.property_editor.set_block(self.property_editor.block)
+            except Exception:
+                logger.debug("Property editor refresh after language change failed", exc_info=True)
+
+        if hasattr(self, "canvas"):
+            self.canvas.update()
+
     def create_subsystem(self):
         """Create subsystem from selection (delegate to canvas)."""
         if hasattr(self, "canvas") and hasattr(self.canvas, "_create_subsystem_trigger"):

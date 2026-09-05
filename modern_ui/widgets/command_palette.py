@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import (
     QFrame,
 )
 
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
 
 logger = logging.getLogger(__name__)
@@ -43,15 +43,18 @@ ICON_COL_W = 22
 BADGE_W = 50
 
 # Map command 'type' -> short category badge text (translated where displayed)
+# Values are display badges shown next to a result, translated at paint time
+# (``tr(badge_text)``); tr_noop keeps them visible to the string extractor while
+# the dict itself stays keyed and valued in English.
 TYPE_BADGE = {
-    "block": "BLOCK",
-    "action": "ACTION",
-    "sim": "SIM",
-    "view": "VIEW",
-    "file": "FILE",
-    "recent": "FILE",
-    "setting": "SET",
-    "help": "HELP",
+    "block": tr_noop("BLOCK"),
+    "action": tr_noop("ACTION"),
+    "sim": tr_noop("SIM"),
+    "view": tr_noop("VIEW"),
+    "file": tr_noop("FILE"),
+    "recent": tr_noop("FILE"),
+    "setting": tr_noop("SET"),
+    "help": tr_noop("HELP"),
 }
 
 

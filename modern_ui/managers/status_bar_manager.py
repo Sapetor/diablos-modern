@@ -200,6 +200,33 @@ class StatusBarManager:
         # Apply theme palette to the statusbar host
         window.appearance_manager.update_statusbar_colors()
 
+    def retranslate_ui(self):
+        """Re-apply every status-bar string in the active language.
+
+        The pills are reused (only their text and tooltips are replaced) so the
+        widget references held all over the window stay valid.
+        """
+        window = self.window
+        for widget, text in (
+            (getattr(window, "status_pill", None), tr("Simulation state")),
+            (getattr(window, "file_status", None), tr("Current diagram file")),
+            (getattr(window, "file_unsaved_status", None), tr("Unsaved changes indicator")),
+            (getattr(window, "counts_status", None), tr("Blocks · wires · scopes")),
+            (getattr(window, "cursor_status", None), tr("Cursor position (x, y)")),
+            (getattr(window, "zoom_status", None), tr("Canvas zoom level")),
+            (getattr(window, "theme_status", None), tr("Click to toggle theme (Ctrl+T)")),
+        ):
+            if widget is not None:
+                widget.setToolTip(text)
+        self.refresh_counts()
+        self.refresh_file_status()
+        # Rebuilds the "Dark · Solarized" pill text, which embeds a translated
+        # theme name.
+        try:
+            window.appearance_manager.update_statusbar_colors()
+        except Exception:
+            logger.debug("Failed to refresh the theme pill after a language change", exc_info=True)
+
     def refresh_counts(self):
         """Update the counts pill from current dsim state."""
         window = self.window

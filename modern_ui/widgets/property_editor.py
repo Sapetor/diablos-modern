@@ -39,7 +39,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QColor, QFont, QPalette
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
-from lib.i18n import tr
+from lib.i18n import tr, tr_noop
 
 logger = logging.getLogger(__name__)
 
@@ -779,7 +779,7 @@ class PropertyEditor(QFrame):
 
     def _categorize_params(self, keys):
         groups = OrderedDict()
-        groups["Parameters"] = []
+        groups[tr_noop("Parameters")] = []
         for key in keys:
             meta = self._get_param_metadata(key)
             group = self._get_param_group(key, meta)
@@ -787,13 +787,20 @@ class PropertyEditor(QFrame):
         return OrderedDict((k, v) for k, v in groups.items() if v)
 
     def _get_param_group(self, key, meta):
+        """Return the (English) section title a parameter belongs to.
+
+        The value stays English: it is compared against elsewhere
+        (``group == "Advanced"``) and used as a dict key. It is passed through
+        ``tr()`` only where the section header is built. ``tr_noop`` keeps the
+        literals visible to scripts/extract_strings.py.
+        """
         if "group" in meta:
             return meta["group"]
         if key in ADVANCED_PARAM_NAMES or meta.get("advanced", False):
-            return "Advanced"
+            return tr_noop("Advanced")
         if key in LIMIT_PARAM_NAMES or key.endswith("_min") or key.endswith("_max"):
-            return "Limits"
-        return "Parameters"
+            return tr_noop("Limits")
+        return tr_noop("Parameters")
 
     # ── Parameter row ───────────────────────────────────────────
 

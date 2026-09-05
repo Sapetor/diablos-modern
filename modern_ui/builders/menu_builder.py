@@ -312,6 +312,48 @@ class MenuBuilder:
         self.window.bezier_routing_action = bezier
         self.window.orthogonal_routing_action = ortho
 
+        view_menu.addSeparator()
+        self._create_language_menu(view_menu)
+
+    def _create_language_menu(self, view_menu):
+        """Build View ▸ Language from the catalogs in ``locales/``.
+
+        Entries are discovered at runtime, so dropping a new ``locales/xx.json``
+        in (with a ``_meta.name``) is all it takes to offer another language --
+        no code change. "System" follows the host locale.
+        """
+        from lib.i18n import (
+            SYSTEM_LANGUAGE,
+            available_languages,
+            stored_language_setting,
+        )
+
+        language_menu = view_menu.addMenu(tr("&Language"))
+        group = QActionGroup(self.window)
+        group.setExclusive(True)
+        current = stored_language_setting()
+
+        system_action = QAction(tr("System default"), self.window, checkable=True)
+        system_action.setChecked(current == SYSTEM_LANGUAGE)
+        system_action.triggered.connect(lambda _checked: self.window.set_language(SYSTEM_LANGUAGE))
+        group.addAction(system_action)
+        language_menu.addAction(system_action)
+        language_menu.addSeparator()
+
+        for entry in available_languages():
+            code = entry["code"]
+            # The native name is deliberately NOT translated: a language is
+            # listed in its own language so a user who cannot read the current
+            # UI language can still find theirs.
+            action = QAction(entry["name"], self.window, checkable=True)
+            action.setChecked(current == code)
+            action.triggered.connect(lambda _checked, c=code: self.window.set_language(c))
+            group.addAction(action)
+            language_menu.addAction(action)
+
+        self.window.language_menu = language_menu
+        self.window.language_actions = group
+
     def _create_help_menu(self, menubar):
         """Create Help menu."""
         help_menu = menubar.addMenu(tr("&Help"))

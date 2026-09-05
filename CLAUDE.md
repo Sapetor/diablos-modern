@@ -13,6 +13,7 @@ lib/                Core engine (engine/, simulation/, analysis/, plotting/, ser
 blocks/             Block implementations: mostly flat .py files (one block class each);
                     subdirs pde/, optimization/, optimization_primitives/ group related families
 config/             Defaults: default_config.json, logging.json, block_sizes.py
+locales/            UI translation catalogs (`<code>.json`, English keys -> translations)
 examples/           Example diagrams (mostly .diablos; some legacy .json/.py pairs + sample data)
 docs/               ARCHITECTURE.md, DEVELOPER_GUIDE.md, USER_MANUAL.md, FAST_SOLVER.md, building.md
 scripts/            Maintenance scripts (resave_examples.py, fix_diagram_overlaps.py, audit_wiki_docs.py)
@@ -82,6 +83,28 @@ Note: `PortDefinition` (in `base_block.py`) is a type alias for `Dict[str, str]`
 Optional overrides: `category` (port-requirement defaults: Sources make inputs optional, Sinks/Other make outputs optional -- via `requires_inputs`/`requires_outputs` in `base_block.py`), `requires_inputs`/`requires_outputs` (override directly when `category` isn't enough), `optional_inputs`, `optional_outputs`, `draw_icon()`, `symbolic_execute()`.
 
 **Critical rule**: All block state that persists across time steps must be stored in `params` (e.g., `params['_t_old_']`), never on `self`. The engine's `reset_memblocks()` (`lib/engine/simulation_engine.py:713`) sets `_init_start_ = True` in each block's `params` and `exec_params` and clears stale `exec_params` accumulators (`_prev`, `mem`, `output`); it never touches instance attributes, so state stored on `self` survives resets invisibly and leaks between runs.
+
+## Localization
+
+The UI is translated through `lib/i18n.py`: `tr("text", **fmt)` looks the
+**English source string** up in `locales/<code>.json` and falls back to it, so an
+untranslated string still renders. Resolution order is `explicit user setting
+(QSettings "ui/language", written by View > Language) > system locale (QLocale) >
+"en"`, with `ui.language: "system"` as the packaged default in
+`config/default_config.json`.
+
+- Never wrap identifiers -- dict keys, `objectName`s, settings keys, theme names,
+  `block_name`s, parameter keys, `.diablos` format strings. Log messages and
+  developer-facing exceptions stay English.
+- Never put an f-string inside `tr()`: use `tr("Loaded {name}", name=x)` so the
+  catalog key stays a stable literal. Shortcut suffixes go outside the key:
+  `tr("&New") + "\tCtrl+N"`.
+- Block `category` names and param `doc` strings are translated at *display*
+  time (`tr(category)`, `tr(doc)`) because the stored values are registry keys
+  and are persisted in saved diagrams.
+- `python scripts/extract_strings.py [--update]` syncs catalogs;
+  `tests/unit/test_locale_catalog_complete.py` fails CI on an untranslated new
+  string. See "Localization" in `docs/DEVELOPER_GUIDE.md`.
 
 ## Adding New Blocks
 
