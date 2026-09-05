@@ -39,6 +39,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from lib.i18n import tr, tr_noop
 from lib.masks import (
     MASK_PARAM_TYPES,
     MASK_SHAPES,
@@ -56,7 +57,16 @@ _COL_TYPE = 1
 _COL_DEFAULT = 2
 _COL_OPTIONS = 3
 _COL_DOC = 4
-_COLUMNS = ("Name", "Type", "Default", "Options", "Description")
+# English source keys (tr_noop marks them for extraction); translated at
+# display time in _build_parameters_tab() via ``tr(c)`` so the column
+# count/order stays a stable module-level constant.
+_COLUMNS = (
+    tr_noop("Name"),
+    tr_noop("Type"),
+    tr_noop("Default"),
+    tr_noop("Options"),
+    tr_noop("Description"),
+)
 
 
 class MaskEditorDialog(QDialog):
@@ -73,7 +83,7 @@ class MaskEditorDialog(QDialog):
         """
         super().__init__(parent)
         self.block = block
-        self.setWindowTitle("Edit Mask")
+        self.setWindowTitle(tr("Edit Mask"))
         self.setModal(True)
         self.setMinimumWidth(620)
 
@@ -83,7 +93,7 @@ class MaskEditorDialog(QDialog):
             suggested = ""
             if block is not None:
                 suggested = getattr(block, "username", "") or getattr(block, "name", "")
-            mask = default_mask(suggested or "Masked Subsystem")
+            mask = default_mask(suggested or tr("Masked Subsystem"))
 
         self._build_ui()
         self._load(mask)
@@ -95,9 +105,9 @@ class MaskEditorDialog(QDialog):
         layout.setSpacing(10)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_parameters_tab(), "Parameters")
-        self.tabs.addTab(self._build_appearance_tab(), "Icon && Appearance")
-        self.tabs.addTab(self._build_documentation_tab(), "Documentation")
+        self.tabs.addTab(self._build_parameters_tab(), tr("Parameters"))
+        self.tabs.addTab(self._build_appearance_tab(), tr("Icon && Appearance"))
+        self.tabs.addTab(self._build_documentation_tab(), tr("Documentation"))
         layout.addWidget(self.tabs, 1)
 
         self.error_label = QLabel("")
@@ -116,16 +126,18 @@ class MaskEditorDialog(QDialog):
         v = QVBoxLayout(page)
 
         hint = QLabel(
-            "Parameters exposed by this block. Inside the subsystem, reference "
-            "a parameter by its name in a block value (for example a Gain with "
-            "gain = K). Values are resolved against these parameters first, "
-            "then the diagram's workspace variables."
+            tr(
+                "Parameters exposed by this block. Inside the subsystem, reference "
+                "a parameter by its name in a block value (for example a Gain with "
+                "gain = K). Values are resolved against these parameters first, "
+                "then the diagram's workspace variables."
+            )
         )
         hint.setWordWrap(True)
         v.addWidget(hint)
 
         self.table = QTableWidget(0, len(_COLUMNS))
-        self.table.setHorizontalHeaderLabels(list(_COLUMNS))
+        self.table.setHorizontalHeaderLabels([tr(c) for c in _COLUMNS])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -134,10 +146,10 @@ class MaskEditorDialog(QDialog):
         v.addWidget(self.table, 1)
 
         row = QHBoxLayout()
-        self.add_btn = QPushButton("Add")
-        self.remove_btn = QPushButton("Remove")
-        self.up_btn = QPushButton("Move up")
-        self.down_btn = QPushButton("Move down")
+        self.add_btn = QPushButton(tr("Add"))
+        self.remove_btn = QPushButton(tr("Remove"))
+        self.up_btn = QPushButton(tr("Move up"))
+        self.down_btn = QPushButton(tr("Move down"))
         self.add_btn.clicked.connect(self.add_parameter)
         self.remove_btn.clicked.connect(self.remove_parameter)
         self.up_btn.clicked.connect(lambda: self.move_parameter(-1))
@@ -154,29 +166,29 @@ class MaskEditorDialog(QDialog):
 
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Vehicle")
-        form.addRow("Display name:", self.name_edit)
+        form.addRow(tr("Display name:"), self.name_edit)
 
         self.category_edit = QLineEdit()
-        self.category_edit.setPlaceholderText("User Library")
-        self.category_edit.setToolTip("Palette section this block is listed under")
-        form.addRow("Palette category:", self.category_edit)
+        self.category_edit.setPlaceholderText(tr("User Library"))
+        self.category_edit.setToolTip(tr("Palette section this block is listed under"))
+        form.addRow(tr("Palette category:"), self.category_edit)
 
         self.icon_edit = QLineEdit()
-        self.icon_edit.setPlaceholderText("A short label or emoji, e.g. 1/(ms+b)")
+        self.icon_edit.setPlaceholderText(tr("A short label or emoji, e.g. 1/(ms+b)"))
         self.icon_edit.setToolTip(
-            "Drawn inside the block. Leave empty to draw the display name instead."
+            tr("Drawn inside the block. Leave empty to draw the display name instead.")
         )
-        form.addRow("Icon text:", self.icon_edit)
+        form.addRow(tr("Icon text:"), self.icon_edit)
 
         self.shape_combo = QComboBox()
         self.shape_combo.addItems(list(MASK_SHAPES))
-        form.addRow("Outline shape:", self.shape_combo)
+        form.addRow(tr("Outline shape:"), self.shape_combo)
         return page
 
     def _build_documentation_tab(self):
         page = QWidget()
         v = QVBoxLayout(page)
-        v.addWidget(QLabel("Shown in the property panel and the palette tooltip:"))
+        v.addWidget(QLabel(tr("Shown in the property panel and the palette tooltip:")))
         self.description_edit = QPlainTextEdit()
         v.addWidget(self.description_edit, 1)
         return page
@@ -215,7 +227,7 @@ class MaskEditorDialog(QDialog):
         options = spec.get("options") or []
         self.table.setItem(row, _COL_OPTIONS, QTableWidgetItem(", ".join(str(o) for o in options)))
         self.table.item(row, _COL_OPTIONS).setToolTip(
-            "Comma-separated allowed values (required for a 'choice' parameter)"
+            tr("Comma-separated allowed values (required for a 'choice' parameter)")
         )
 
         self.table.setItem(row, _COL_DOC, QTableWidgetItem(str(spec.get("doc", ""))))

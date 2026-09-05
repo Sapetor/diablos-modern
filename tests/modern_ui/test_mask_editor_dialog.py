@@ -10,6 +10,7 @@ import pytest
 from PyQt5.QtCore import QRect
 from PyQt5.QtWidgets import QDialog
 
+from lib import i18n
 from lib.masks import MaskError, get_mask, set_mask
 from modern_ui.widgets.mask_editor_dialog import (
     _COL_DEFAULT,
@@ -170,3 +171,20 @@ class TestMaskEditorDialog:
         assert mask["name"] == "Vehicle"
         assert subsystem.params["m"] == 1500.0
         assert subsystem.params["b"] == 50.0
+
+
+@pytest.mark.qt
+class TestMaskEditorDialogLocalization:
+    """The dialog is built once (no live retranslation), so the language
+    must be switched *before* construction -- see i18n's "Live retranslation"
+    note in docs/DEVELOPER_GUIDE.md.
+    """
+
+    def test_window_title_is_translated(self, make_dialog, subsystem):
+        i18n.set_language("es")
+        try:
+            dialog = make_dialog(block=subsystem)
+            assert dialog.windowTitle() == i18n.tr("Edit Mask")
+            assert dialog.windowTitle() != "Edit Mask"
+        finally:
+            i18n.set_language("en")
