@@ -89,6 +89,43 @@ class TestUpdateSimParams:
 
 
 @pytest.mark.unit
+class TestSimulationDialogSolverFields:
+    """The dialog is the only place a user sets these, so its round-trip counts."""
+
+    def test_reflects_and_returns_the_solver_settings(self, qapp):
+        from lib.dialogs import SimulationDialog
+
+        dialog = SimulationDialog(
+            sim_time=4.0,
+            sim_dt=0.002,
+            plot_trange=50,
+            solver_method="LSODA",
+            rtol=1e-7,
+            atol=1e-10,
+            zero_crossing=False,
+        )
+        try:
+            assert dialog.solver_method_combo.currentText() == "LSODA"
+            assert dialog.zero_crossing_checkbox.isChecked() is False
+
+            dialog.zero_crossing_checkbox.setChecked(True)
+            values = dialog.get_values()
+            assert values["solver_method"] == "LSODA"
+            assert values["rtol"] == 1e-7
+            assert values["atol"] == 1e-10
+            assert values["zero_crossing"] is True
+        finally:
+            dialog.deleteLater()
+
+    def test_every_scipy_method_is_offered(self, qapp):
+        from lib.dialogs import SimulationDialog
+
+        offered = set(SimulationDialog.SOLVER_METHODS)
+        assert set(SCIPY_SOLVER_METHODS) <= offered
+        assert set(FIXED_STEP_METHODS) <= offered
+
+
+@pytest.mark.unit
 class TestSolverPersistence:
     # `file_service` fixture (conftest.py) provides a FileService backed by a
     # SimulationModel and a session QApplication.
@@ -100,17 +137,20 @@ class TestSolverPersistence:
             "solver_method": "RK4",
             "rtol": 1e-6,
             "atol": 1e-8,
+            "zero_crossing": False,
         }
         data = file_service.serialize(modern_ui_data=None, sim_params=sim_params)
         assert data["sim_data"]["solver_method"] == "RK4"
         assert data["sim_data"]["rtol"] == 1e-6
         assert data["sim_data"]["atol"] == 1e-8
+        assert data["sim_data"]["zero_crossing"] is False
 
         # Round-trip back through the loader.
         loaded = file_service.apply_loaded_data(data)
         assert loaded["solver_method"] == "RK4"
         assert loaded["rtol"] == 1e-6
         assert loaded["atol"] == 1e-8
+        assert loaded["zero_crossing"] is False
 
     def test_load_legacy_file_defaults_to_rk45(self, file_service):
         # Legacy file without solver keys.
@@ -118,6 +158,9 @@ class TestSolverPersistence:
         loaded = file_service.apply_loaded_data(legacy)
         assert loaded["solver_method"] == "RK45"
         assert loaded["rtol"] == 1e-9
+        # Written before zero-crossing detection existed: it gets the same
+        # default a fresh diagram has, rather than silently landing off.
+        assert loaded["zero_crossing"] is True
 
 
 class _MockModel:
