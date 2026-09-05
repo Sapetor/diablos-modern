@@ -40,6 +40,7 @@ import math
 
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
+from lib.i18n import tr
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_mono_font,
@@ -250,7 +251,7 @@ class _StatusPill(QFrame):
         lay.setSpacing(6)
 
         self._dot = _StateDot(self)
-        self._label = QLabel("Ready", self)
+        self._label = QLabel(tr("Ready"), self)
         self._label.setObjectName("StatusPillLabel")
         lay.addWidget(self._dot, 0, Qt.AlignVCenter)
         lay.addWidget(self._label, 0, Qt.AlignVCenter)
@@ -263,10 +264,10 @@ class _StatusPill(QFrame):
         text = (
             label
             or {
-                "idle": "Ready",
-                "running": "Simulating…",
-                "paused": "Paused",
-                "error": "Error",
+                "idle": tr("Ready"),
+                "running": tr("Simulating…"),
+                "paused": tr("Paused"),
+                "error": tr("Error"),
             }[state]
         )
         self._label.setText(text)
@@ -372,7 +373,7 @@ class _ZoomRocker(QWidget):
         self.minus_btn.setIconSize(QSize(14, 14))
         self.minus_btn.setAutoRaise(True)
         self.minus_btn.setFixedSize(QSize(22, 22))
-        self.minus_btn.setToolTip("Zoom out")
+        self.minus_btn.setToolTip(tr("Zoom out"))
         self.minus_btn.clicked.connect(self._on_minus)
 
         self.label = QLabel("100%")
@@ -388,7 +389,7 @@ class _ZoomRocker(QWidget):
         self.plus_btn.setIconSize(QSize(14, 14))
         self.plus_btn.setAutoRaise(True)
         self.plus_btn.setFixedSize(QSize(22, 22))
-        self.plus_btn.setToolTip("Zoom in")
+        self.plus_btn.setToolTip(tr("Zoom in"))
         self.plus_btn.clicked.connect(self._on_plus)
 
         lay.addWidget(self.minus_btn)
@@ -432,17 +433,17 @@ class _TransportGroup(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(2)
 
-        self.play_btn = self._mk_btn("play", "TransportPlay", "Run (F5)")
-        self.pause_btn = self._mk_btn("pause", "TransportPause", "Pause (F6)")
-        self.stop_btn = self._mk_btn("stop", "TransportStop", "Stop (F7)")
-        self.step_btn = self._mk_btn("step", "TransportStep", "Step (F8)")
+        self.play_btn = self._mk_btn("play", "TransportPlay", tr("Run") + " (F5)")
+        self.pause_btn = self._mk_btn("pause", "TransportPause", tr("Pause") + " (F6)")
+        self.stop_btn = self._mk_btn("stop", "TransportStop", tr("Stop") + " (F7)")
+        self.step_btn = self._mk_btn("step", "TransportStep", tr("Step") + " (F8)")
 
         self.play_btn.clicked.connect(self.play)
         self.pause_btn.clicked.connect(self.pause)
         self.stop_btn.clicked.connect(self.stop)
         self.step_btn.clicked.connect(self.step)
 
-        self.time_label = QLabel("t = 0.000 / 10.000 s")
+        self.time_label = QLabel(tr("t = 0.000 / 10.000 s"))
         self.time_label.setObjectName("TransportTimeLabel")
         self.time_label.setFont(get_mono_font(TYPE["body"]))
         self.time_label.setMinimumWidth(140)
@@ -482,7 +483,9 @@ class _TransportGroup(QWidget):
         self.step_btn.setEnabled(not running or paused)
 
     def set_time(self, t: float, t_end: float):
-        self.time_label.setText(f"t = {t:6.3f} / {t_end:.3f} s")
+        t_str = "{:6.3f}".format(t)
+        end_str = "{:.3f}".format(t_end)
+        self.time_label.setText(tr("t = {t} / {end} s", t=t_str, end=end_str))
 
 
 # -----------------------------------------------------------------------------
@@ -510,7 +513,7 @@ class ModernToolBar(QToolBar):
     command_palette_requested = pyqtSignal()
 
     def __init__(self, parent=None):
-        super().__init__("Main Toolbar", parent)
+        super().__init__(tr("Main Toolbar"), parent)
         self.setObjectName("ModernToolBar")
         self.setMovable(False)
         self.setFloatable(False)
@@ -527,10 +530,10 @@ class ModernToolBar(QToolBar):
 
     def _build_actions(self):
         def mk(kind: str, label: str, shortcut: str | None, tip: str, sig):
-            a = QAction(_make_icon(kind, 18), label, self)
+            a = QAction(_make_icon(kind, 18), tr(label), self)
             if shortcut:
                 a.setShortcut(shortcut)
-            full_tip = f"{tip}" + (f"  ({shortcut})" if shortcut else "")
+            full_tip = tr(tip) + (f"  ({shortcut})" if shortcut else "")
             a.setToolTip(full_tip)
             # Mirror the tooltip into the status bar on hover/focus.
             a.setStatusTip(full_tip)
@@ -593,11 +596,11 @@ class ModernToolBar(QToolBar):
         self.addWidget(self.zoom_rocker)
         self.addSeparator()
 
-        self.cmdk_btn = QPushButton("Search…  ⌘K")
+        self.cmdk_btn = QPushButton(tr("Search…") + "  ⌘K")
         self.cmdk_btn.setObjectName("CommandPaletteBtn")
         self.cmdk_btn.setFlat(True)
         self.cmdk_btn.setCursor(Qt.PointingHandCursor)
-        self.cmdk_btn.setToolTip("Search commands and blocks  (Ctrl+K / ⌘K)")
+        self.cmdk_btn.setToolTip(tr("Search commands and blocks") + "  (Ctrl+K / ⌘K)")
         self.cmdk_btn.clicked.connect(self.command_palette_requested)
         self.addWidget(self.cmdk_btn)
 
@@ -620,12 +623,12 @@ class ModernToolBar(QToolBar):
 
         if theme_manager.current_theme.value == "dark":
             self.theme_action.setIcon(_make_icon("sun", 18))
-            self.theme_action.setToolTip("Switch to light theme")
-            self.theme_action.setStatusTip("Switch to light theme")
+            self.theme_action.setToolTip(tr("Switch to light theme"))
+            self.theme_action.setStatusTip(tr("Switch to light theme"))
         else:
             self.theme_action.setIcon(_make_icon("moon", 18))
-            self.theme_action.setToolTip("Switch to dark theme")
-            self.theme_action.setStatusTip("Switch to dark theme")
+            self.theme_action.setToolTip(tr("Switch to dark theme"))
+            self.theme_action.setStatusTip(tr("Switch to dark theme"))
 
         self.transport.refresh_icons()
         self.zoom_rocker.refresh_icons()

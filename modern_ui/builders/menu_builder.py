@@ -3,6 +3,8 @@ import logging
 
 from PyQt5.QtWidgets import QAction, QActionGroup
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,42 +28,44 @@ class MenuBuilder:
 
     def _create_analysis_menu(self, menubar):
         """Create Analysis menu (linearization-based system analysis)."""
-        analysis_menu = menubar.addMenu("&Analysis")
+        analysis_menu = menubar.addMenu(tr("&Analysis"))
         # "&&" renders a literal "&": label shows "Linearize & Analyze...".
-        analysis_menu.addAction("&Linearize && Analyze...", self.window.linearize_and_analyze)
-        analysis_menu.addAction("&Find Operating Point (Trim)...", self.window.find_operating_point)
-        analysis_menu.addAction("&Parameter Sweep...", self.window.run_parameter_sweep)
-        analysis_menu.addAction("&Monte Carlo...", self.window.run_monte_carlo)
+        analysis_menu.addAction(tr("&Linearize && Analyze..."), self.window.linearize_and_analyze)
+        analysis_menu.addAction(
+            tr("&Find Operating Point (Trim)..."), self.window.find_operating_point
+        )
+        analysis_menu.addAction(tr("&Parameter Sweep..."), self.window.run_parameter_sweep)
+        analysis_menu.addAction(tr("&Monte Carlo..."), self.window.run_monte_carlo)
 
     def _create_file_menu(self, menubar):
         """Create File menu."""
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu(tr("&File"))
 
         # Standard actions
-        file_menu.addAction("&New\tCtrl+N", self.window.new_diagram)
-        file_menu.addAction("&Open\tCtrl+O", self.window.open_diagram)
-        file_menu.addAction("&Save\tCtrl+S", self.window.save_diagram)
+        file_menu.addAction(tr("&New") + "\tCtrl+N", self.window.new_diagram)
+        file_menu.addAction(tr("&Open") + "\tCtrl+O", self.window.open_diagram)
+        file_menu.addAction(tr("&Save") + "\tCtrl+S", self.window.save_diagram)
         file_menu.addSeparator()
 
         # Export submenu
-        export_menu = file_menu.addMenu("E&xport")
-        export_menu.addAction("Export as &Image...", self.window.export_image)
-        export_menu.addAction("Export as Ti&kZ...", self.window.export_tikz)
-        export_menu.addAction("Export as &Python Script...", self.window.export_python_script)
+        export_menu = file_menu.addMenu(tr("E&xport"))
+        export_menu.addAction(tr("Export as &Image..."), self.window.export_image)
+        export_menu.addAction(tr("Export as Ti&kZ..."), self.window.export_tikz)
+        export_menu.addAction(tr("Export as &Python Script..."), self.window.export_python_script)
 
         file_menu.addSeparator()
 
         # Recent Files
-        self.window.recent_files_menu = file_menu.addMenu("Recent Files")
+        self.window.recent_files_menu = file_menu.addMenu(tr("Recent Files"))
         if hasattr(self.window, "_update_recent_files_menu"):
             self.window._update_recent_files_menu()
 
         # Examples
-        examples_menu = file_menu.addMenu("Examples")
+        examples_menu = file_menu.addMenu(tr("Examples"))
         self._populate_examples_menu(examples_menu)
 
         file_menu.addSeparator()
-        exit_action = file_menu.addAction("E&xit\tAlt+F4", self.window.close)
+        exit_action = file_menu.addAction(tr("E&xit") + "\tAlt+F4", self.window.close)
         # Danger-color via dynamic property; QSS picks it up via [role="danger"]
         exit_action.setProperty("role", "danger")
 
@@ -77,10 +81,10 @@ class MenuBuilder:
                 )
             except OSError as exc:
                 logger.warning("Could not read examples directory %s: %s", examples_dir, exc)
-                menu.addAction("Examples directory not readable").setEnabled(False)
+                menu.addAction(tr("Examples directory not readable")).setEnabled(False)
                 return
             if not files:
-                menu.addAction("No examples found").setEnabled(False)
+                menu.addAction(tr("No examples found")).setEnabled(False)
                 return
             for f in files:
                 display = os.path.splitext(f)[0].replace("_", " ")
@@ -91,56 +95,62 @@ class MenuBuilder:
                     )
                 )
         else:
-            menu.addAction("Examples directory not found").setEnabled(False)
+            menu.addAction(tr("Examples directory not found")).setEnabled(False)
 
     def _create_edit_menu(self, menubar):
         """Create Edit menu."""
-        edit_menu = menubar.addMenu("&Edit")
+        edit_menu = menubar.addMenu(tr("&Edit"))
         if hasattr(self.window, "undo_action"):
-            edit_menu.addAction("&Undo\tCtrl+Z", self.window.undo_action)
+            edit_menu.addAction(tr("&Undo") + "\tCtrl+Z", self.window.undo_action)
         if hasattr(self.window, "redo_action"):
-            edit_menu.addAction("&Redo\tCtrl+Y", self.window.redo_action)
+            edit_menu.addAction(tr("&Redo") + "\tCtrl+Y", self.window.redo_action)
 
         edit_menu.addSeparator()
 
         # Check if select_all is implemented, otherwise define it or skip
         if hasattr(self.window, "select_all"):
-            edit_menu.addAction("Select &All\tCtrl+A", self.window.select_all)
+            edit_menu.addAction(tr("Select &All") + "\tCtrl+A", self.window.select_all)
         elif hasattr(self.window, "canvas") and hasattr(self.window.canvas, "_select_all_blocks"):
             # Fallback if method missing in window
-            edit_menu.addAction("Select &All\tCtrl+A", self.window.canvas._select_all_blocks)
+            edit_menu.addAction(
+                tr("Select &All") + "\tCtrl+A", self.window.canvas._select_all_blocks
+            )
 
-        edit_menu.addAction("Copy Diagram as &Image", self.window.copy_diagram_image)
+        edit_menu.addAction(tr("Copy Diagram as &Image"), self.window.copy_diagram_image)
 
         edit_menu.addSeparator()
 
         # Create Subsystem
         if hasattr(self.window, "create_subsystem"):
-            action = edit_menu.addAction("Create &Subsystem\tCtrl+G", self.window.create_subsystem)
+            action = edit_menu.addAction(
+                tr("Create &Subsystem") + "\tCtrl+G", self.window.create_subsystem
+            )
             action.setShortcut("Ctrl+G")
         elif hasattr(self.window, "canvas") and hasattr(
             self.window.canvas, "_create_subsystem_trigger"
         ):
             action = edit_menu.addAction(
-                "Create &Subsystem\tCtrl+G", self.window.canvas._create_subsystem_trigger
+                tr("Create &Subsystem") + "\tCtrl+G", self.window.canvas._create_subsystem_trigger
             )
             action.setShortcut("Ctrl+G")
 
         edit_menu.addSeparator()
 
         if hasattr(self.window, "show_command_palette"):
-            edit_menu.addAction("Command &Palette\tCtrl+P", self.window.show_command_palette)
+            edit_menu.addAction(
+                tr("Command &Palette") + "\tCtrl+P", self.window.show_command_palette
+            )
 
     def _create_simulation_menu(self, menubar):
         """Create Simulation menu."""
-        sim_menu = menubar.addMenu("&Simulation")
-        sim_menu.addAction("&Run\tF5", self.window.start_simulation)
-        sim_menu.addAction("&Pause\tF6", self.window.pause_simulation)
-        sim_menu.addAction("&Stop\tF7", self.window.stop_simulation)
+        sim_menu = menubar.addMenu(tr("&Simulation"))
+        sim_menu.addAction(tr("&Run") + "\tF5", self.window.start_simulation)
+        sim_menu.addAction(tr("&Pause") + "\tF6", self.window.pause_simulation)
+        sim_menu.addAction(tr("&Stop") + "\tF7", self.window.stop_simulation)
         sim_menu.addSeparator()
 
         # Fast Solver Toggle
-        fast_solver = sim_menu.addAction("Enable Fast Solver (Experimental)")
+        fast_solver = sim_menu.addAction(tr("Enable Fast Solver (Experimental)"))
         fast_solver.setCheckable(True)
         # Default to True, but check DSim state if possible (MainWindow usually holds this state)
         # We'll assume MainWindow has 'use_fast_solver' attribute initialized to True
@@ -150,36 +160,40 @@ class MenuBuilder:
         self.window.fast_solver_action = fast_solver
 
         sim_menu.addSeparator()
-        sim_menu.addAction("Show &Plots", self.window.show_plots)
+        sim_menu.addAction(tr("Show &Plots"), self.window.show_plots)
 
     def _create_view_menu(self, menubar):
         """Create View menu."""
-        view_menu = menubar.addMenu("&View")
+        view_menu = menubar.addMenu(tr("&View"))
 
         # Zoom controls
         # Delegate to window methods if they exist, or lambdas
         if hasattr(self.window, "zoom_in"):
-            view_menu.addAction("&Zoom In\tCtrl++", self.window.zoom_in)
+            view_menu.addAction(tr("&Zoom In") + "\tCtrl++", self.window.zoom_in)
         else:
             view_menu.addAction(
-                "&Zoom In\tCtrl++", lambda: self.window.set_zoom(self.window.zoom_level * 1.2)
+                tr("&Zoom In") + "\tCtrl++",
+                lambda: self.window.set_zoom(self.window.zoom_level * 1.2),
             )
 
         if hasattr(self.window, "zoom_out"):
-            view_menu.addAction("Zoom &Out\tCtrl+-", self.window.zoom_out)
+            view_menu.addAction(tr("Zoom &Out") + "\tCtrl+-", self.window.zoom_out)
         else:
             view_menu.addAction(
-                "Zoom &Out\tCtrl+-", lambda: self.window.set_zoom(self.window.zoom_level / 1.2)
+                tr("Zoom &Out") + "\tCtrl+-",
+                lambda: self.window.set_zoom(self.window.zoom_level / 1.2),
             )
 
         if hasattr(self.window, "fit_to_window"):
-            view_menu.addAction("&Fit to Window\tCtrl+0", self.window.fit_to_window)
+            view_menu.addAction(tr("&Fit to Window") + "\tCtrl+0", self.window.fit_to_window)
 
         view_menu.addSeparator()
 
         # Grid toggle
         if hasattr(self.window, "toggle_grid"):
-            action = view_menu.addAction("Show &Grid\tCtrl+Shift+G", self.window.toggle_grid)
+            action = view_menu.addAction(
+                tr("Show &Grid") + "\tCtrl+Shift+G", self.window.toggle_grid
+            )
             action.setCheckable(True)
             action.setChecked(getattr(self.window, "show_grid", True))  # default True
             action.setShortcut("Ctrl+Shift+G")
@@ -188,9 +202,9 @@ class MenuBuilder:
         view_menu.addSeparator()
 
         # Live overlay submenu (Section 4 of UX phase 2)
-        live_menu = view_menu.addMenu("Live overlay")
+        live_menu = view_menu.addMenu(tr("Live overlay"))
         # V1 — port-value chips (default ON)
-        chips_action = QAction("Output value chips", self.window, checkable=True)
+        chips_action = QAction(tr("Output value chips"), self.window, checkable=True)
         chips_action.setChecked(True)
 
         def _toggle_chips(checked):
@@ -203,12 +217,12 @@ class MenuBuilder:
         self.window.live_chips_action = chips_action
 
         view_menu.addSeparator()
-        view_menu.addAction("Toggle &Theme\tCtrl+T", self.window.toggle_theme)
+        view_menu.addAction(tr("Toggle &Theme") + "\tCtrl+T", self.window.toggle_theme)
 
         # Block palette submenu
         from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
 
-        palette_menu = view_menu.addMenu("Block &Palette")
+        palette_menu = view_menu.addMenu(tr("Block &Palette"))
         palette_group = QActionGroup(self.window)
         palette_group.setExclusive(True)
         for key, display in PALETTE_DISPLAY_NAMES.items():
@@ -221,7 +235,7 @@ class MenuBuilder:
         self.window.palette_actions = palette_group
 
         # Solid block fills toggle
-        solid_fills_action = QAction("Solid Block Fills", self.window, checkable=True)
+        solid_fills_action = QAction(tr("Solid Block Fills"), self.window, checkable=True)
         solid_fills_action.setChecked(theme_manager.solid_fills)
         solid_fills_action.triggered.connect(self.window._toggle_solid_fills)
         view_menu.addAction(solid_fills_action)
@@ -232,7 +246,8 @@ class MenuBuilder:
         # Variable Editor toggle
         if hasattr(self.window, "toggle_variable_editor"):
             action = view_menu.addAction(
-                "Show/Hide Variable &Editor\tCtrl+Shift+V", self.window.toggle_variable_editor
+                tr("Show/Hide Variable &Editor") + "\tCtrl+Shift+V",
+                self.window.toggle_variable_editor,
             )
             action.setCheckable(True)
             action.setChecked(False)
@@ -242,7 +257,8 @@ class MenuBuilder:
         # Workspace Editor toggle
         if hasattr(self.window, "toggle_workspace_editor"):
             action = view_menu.addAction(
-                "Workspace &Variables\tCtrl+Shift+W", self.window.toggle_workspace_editor
+                tr("Workspace &Variables") + "\tCtrl+Shift+W",
+                self.window.toggle_workspace_editor,
             )
             action.setCheckable(True)
             action.setChecked(False)
@@ -251,7 +267,9 @@ class MenuBuilder:
 
         # Minimap toggle
         if hasattr(self.window, "toggle_minimap"):
-            action = view_menu.addAction("&Minimap\tCtrl+Shift+M", self.window.toggle_minimap)
+            action = view_menu.addAction(
+                tr("&Minimap") + "\tCtrl+Shift+M", self.window.toggle_minimap
+            )
             action.setCheckable(True)
             action.setChecked(False)
             action.setShortcut("Ctrl+Shift+M")
@@ -260,7 +278,8 @@ class MenuBuilder:
         # Parameter Tuning Panel toggle
         if hasattr(self.window, "toggle_tuning_panel"):
             action = view_menu.addAction(
-                "Parameter &Tuning Panel\tCtrl+Shift+T", self.window.toggle_tuning_panel
+                tr("Parameter &Tuning Panel") + "\tCtrl+Shift+T",
+                self.window.toggle_tuning_panel,
             )
             action.setCheckable(True)
             action.setChecked(False)
@@ -270,7 +289,7 @@ class MenuBuilder:
         view_menu.addSeparator()
 
         # UI Scale
-        scaling_menu = view_menu.addMenu("UI Scale")
+        scaling_menu = view_menu.addMenu(tr("UI Scale"))
         scaling_menu.addAction("100%").triggered.connect(lambda: self.window._set_scaling(1.0))
         scaling_menu.addAction("125%").triggered.connect(lambda: self.window._set_scaling(1.25))
         scaling_menu.addAction("150%").triggered.connect(lambda: self.window._set_scaling(1.5))
@@ -278,14 +297,14 @@ class MenuBuilder:
         view_menu.addSeparator()
 
         # Routing Menu
-        routing_menu = view_menu.addMenu("Default Connection Routing")
+        routing_menu = view_menu.addMenu(tr("Default Connection Routing"))
 
-        bezier = routing_menu.addAction("Bezier (Curved)")
+        bezier = routing_menu.addAction(tr("Bezier (Curved)"))
         bezier.setCheckable(True)
         bezier.setChecked(True)  # Assuming default
         bezier.triggered.connect(lambda: self.window._set_default_routing_mode("bezier"))
 
-        ortho = routing_menu.addAction("Orthogonal (Manhattan)")
+        ortho = routing_menu.addAction(tr("Orthogonal (Manhattan)"))
         ortho.setCheckable(True)
         ortho.triggered.connect(lambda: self.window._set_default_routing_mode("orthogonal"))
 
@@ -295,18 +314,18 @@ class MenuBuilder:
 
     def _create_help_menu(self, menubar):
         """Create Help menu."""
-        help_menu = menubar.addMenu("&Help")
+        help_menu = menubar.addMenu(tr("&Help"))
 
-        help_menu.addAction("&Keyboard Shortcuts\tF1", self._show_shortcuts)
+        help_menu.addAction(tr("&Keyboard Shortcuts") + "\tF1", self._show_shortcuts)
 
         # Reuse the existing Command Palette action when the window exposes it.
         if hasattr(self.window, "show_command_palette"):
-            help_menu.addAction("Command &Palette", self.window.show_command_palette)
+            help_menu.addAction(tr("Command &Palette"), self.window.show_command_palette)
 
-        help_menu.addAction("Open &Examples", self._open_examples_folder)
-        help_menu.addAction("User &Manual", self._open_user_manual)
+        help_menu.addAction(tr("Open &Examples"), self._open_examples_folder)
+        help_menu.addAction(tr("User &Manual"), self._open_user_manual)
         help_menu.addSeparator()
-        help_menu.addAction("&About", self._show_about)
+        help_menu.addAction(tr("&About"), self._show_about)
 
         # F1 opens the shortcuts dialog from anywhere in the window. Held on the
         # window so the QShortcut isn't garbage-collected with this builder.
@@ -355,8 +374,10 @@ class MenuBuilder:
 
         QMessageBox.about(
             self.window,
-            "About Modern DiaBloS",
-            "Modern DiaBloS - Diagram Block System\n\n"
-            "Phase 2 Refactoring\n"
-            "A modern control system simulation environment.",
+            tr("About Modern DiaBloS"),
+            tr(
+                "Modern DiaBloS - Diagram Block System\n\n"
+                "Phase 2 Refactoring\n"
+                "A modern control system simulation environment."
+            ),
         )

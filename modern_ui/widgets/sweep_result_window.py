@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QRectF
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from lib.i18n import tr
 
 from lib.analysis.resim import OUTCOME_METRICS
 
@@ -39,7 +40,7 @@ class SweepResultWindow(QWidget):
         self.result = result or {}
         self.mode = self.result.get("mode", "1d")
 
-        self.setWindowTitle("Parameter Sweep")
+        self.setWindowTitle(tr("Parameter Sweep"))
         self.resize(860, 620)
 
         layout = QVBoxLayout()
@@ -50,7 +51,14 @@ class SweepResultWindow(QWidget):
         signals = self.result.get("signals") or {}
         self._signal_names = list(signals.keys())
 
-        header = QLabel(f"Parameter Sweep ({self.mode.upper()}): {n_ok}/{n_points} successful runs")
+        header = QLabel(
+            tr(
+                "Parameter Sweep ({mode}): {n_ok}/{n_points} successful runs",
+                mode=self.mode.upper(),
+                n_ok=n_ok,
+                n_points=n_points,
+            )
+        )
         header.setStyleSheet("font-size: 14px; font-weight: bold; padding: 6px;")
         layout.addWidget(header)
         self.header_label = header
@@ -67,7 +75,7 @@ class SweepResultWindow(QWidget):
         self.colorbar = None
 
         if n_ok <= 0 or not self._signal_names:
-            empty = QLabel("No successful runs to display.")
+            empty = QLabel(tr("No successful runs to display."))
             empty.setAlignment(Qt.AlignCenter)
             empty.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
@@ -81,7 +89,7 @@ class SweepResultWindow(QWidget):
         self.combo.addItems(self._signal_names)
         if len(self._signal_names) > 1:
             row = QHBoxLayout()
-            row.addWidget(QLabel("Signal:"))
+            row.addWidget(QLabel(tr("Signal:")))
             row.addWidget(self.combo, 1)
             layout.addLayout(row)
         self.combo.currentTextChanged.connect(self._on_signal_changed)
@@ -109,12 +117,15 @@ class SweepResultWindow(QWidget):
         controls = QHBoxLayout()
         if with_view:
             self.view_combo = QComboBox()
-            self.view_combo.addItems(["Response family", "Metric vs parameter"])
-            controls.addWidget(QLabel("View:"))
+            self.view_combo.addItems([tr("Response family"), tr("Metric vs parameter")])
+            controls.addWidget(QLabel(tr("View:")))
             controls.addWidget(self.view_combo)
             controls.addStretch(1)
-        self.metric_label = QLabel("Metric:")
+        self.metric_label = QLabel(tr("Metric:"))
         self.metric_combo = QComboBox()
+        # NOTE: metric_combo items are OUTCOME_METRICS keys used verbatim as dict
+        # lookup keys (currentText() -> OUTCOME_METRICS[...] / sig["metrics"][...]),
+        # so they are intentionally left untranslated here.
         self.metric_combo.addItems(list(OUTCOME_METRICS.keys()))
         controls.addWidget(self.metric_label)
         controls.addWidget(self.metric_combo)
@@ -128,9 +139,9 @@ class SweepResultWindow(QWidget):
         self.stack = QStackedWidget()
         axis = self.result.get("axis", {})
         pname = axis.get("param", "parameter")
-        self.plot = self._make_plot("Time", "Value")
+        self.plot = self._make_plot(tr("Time"), tr("Value"))
         self.plot.addLegend(offset=(10, 10))
-        self.metric_plot = self._make_plot(pname, "Metric")
+        self.metric_plot = self._make_plot(pname, tr("Metric"))
         self.stack.addWidget(self.plot)
         self.stack.addWidget(self.metric_plot)
         layout.addWidget(self.stack, 1)
@@ -167,7 +178,9 @@ class SweepResultWindow(QWidget):
         if t.size != traces.shape[1]:
             t = np.arange(traces.shape[1], dtype=float)
 
-        self.plot.setTitle(f"{name} vs {pname}")
+        # `name` and `pname` are data identifiers (signal / swept param name);
+        # only the connecting word is translated.
+        self.plot.setTitle(tr("{name} vs {param}", name=name, param=pname))
         cmap = pg.colormap.get("viridis")
         n = traces.shape[0]
         for i in range(n):
@@ -198,7 +211,9 @@ class SweepResultWindow(QWidget):
         y = self._as_1d((sig.get("metrics") or {}).get(metric))
         self.metric_plot.setLabel("bottom", str(pname))
         self.metric_plot.setLabel("left", str(metric))
-        self.metric_plot.setTitle(f"{name}: {metric} vs {pname}")
+        self.metric_plot.setTitle(
+            tr("{name}: {metric} vs {param}", name=name, metric=metric, param=pname)
+        )
         n = min(vals.size, y.size)
         if n == 0:
             return

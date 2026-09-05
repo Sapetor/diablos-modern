@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from lib.i18n import tr
 
 
 class OperatingPointWindow(QWidget):
@@ -40,7 +41,7 @@ class OperatingPointWindow(QWidget):
         super().__init__(parent)
         self.result = result or {}
 
-        self.setWindowTitle("Operating Point (Trim)")
+        self.setWindowTitle(tr("Operating Point (Trim)"))
         self.resize(480, 460)
 
         layout = QVBoxLayout()
@@ -62,7 +63,7 @@ class OperatingPointWindow(QWidget):
         # State table.
         states = self.result.get("states") or []
         table = QTableWidget(len(states), 2)
-        table.setHorizontalHeaderLabels(["State", "Value"])
+        table.setHorizontalHeaderLabels([tr("State"), tr("Value")])
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         for row, st in enumerate(states):
@@ -76,19 +77,19 @@ class OperatingPointWindow(QWidget):
         layout.addWidget(table, 1)
 
         if not states:
-            layout.addWidget(QLabel("No continuous states in this diagram."))
+            layout.addWidget(QLabel(tr("No continuous states in this diagram.")))
 
         # Copy button.
         btn_row = QHBoxLayout()
         btn_row.addStretch(1)
-        copy_btn = QPushButton("Copy (Python dict)")
+        copy_btn = QPushButton(tr("Copy (Python dict)"))
         copy_btn.clicked.connect(self._copy_to_clipboard)
         btn_row.addWidget(copy_btn)
         layout.addLayout(btn_row)
 
     # ------------------------------------------------------------------ error
     def _build_error_view(self, layout):
-        msg = self.result.get("error") or "Operating-point search failed."
+        msg = self.result.get("error") or tr("Operating-point search failed.")
         label = QLabel(str(msg))
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignCenter)

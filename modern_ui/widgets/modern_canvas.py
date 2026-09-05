@@ -41,6 +41,7 @@ from modern_ui.managers.connection_manager import ConnectionManager
 from modern_ui.managers.rendering_manager import RenderingManager
 from modern_ui.controllers.simulation_controller import SimulationController
 from modern_ui.widgets.canvas_state import GridState
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -471,9 +472,9 @@ class ModernCanvas(QWidget):
         live QPainter. Order is top-to-bottom as drawn.
         """
         return [
-            "Double-click to add a block",
-            "Drag a block from the palette",
-            "Open an example from File ▸ Examples",
+            tr("Double-click to add a block"),
+            tr("Drag a block from the palette"),
+            tr("Open an example from File ▸ Examples"),
         ]
 
     def _draw_empty_hint(self, painter):

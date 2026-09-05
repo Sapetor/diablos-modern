@@ -15,6 +15,7 @@ import logging
 from lib.workspace import WorkspaceManager
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
 from modern_ui.themes.theme_manager import theme_manager
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -42,26 +43,26 @@ class WorkspaceEditor(QWidget):
         layout.addWidget(self.toolbar)
 
         # Actions
-        self.action_refresh = QAction("Refresh", self)
-        self.action_refresh.setToolTip("Refresh variables from workspace")
+        self.action_refresh = QAction(tr("Refresh"), self)
+        self.action_refresh.setToolTip(tr("Refresh variables from workspace"))
         self.action_refresh.triggered.connect(self.refresh_variables)
         self.action_refresh.setText("🔄")
         self.toolbar.addAction(self.action_refresh)
 
-        self.action_add = QAction("Add", self)
-        self.action_add.setToolTip("Add new variable")
+        self.action_add = QAction(tr("Add"), self)
+        self.action_add.setToolTip(tr("Add new variable"))
         self.action_add.triggered.connect(self.add_variable)
         self.action_add.setText("➕")
         self.toolbar.addAction(self.action_add)
 
-        self.action_delete = QAction("Delete", self)
-        self.action_delete.setToolTip("Delete selected variable")
+        self.action_delete = QAction(tr("Delete"), self)
+        self.action_delete.setToolTip(tr("Delete selected variable"))
         self.action_delete.triggered.connect(self.delete_variable)
         self.action_delete.setText("➖")
         self.toolbar.addAction(self.action_delete)
 
-        self.action_save = QAction("Save", self)
-        self.action_save.setToolTip("Save workspace to file")
+        self.action_save = QAction(tr("Save"), self)
+        self.action_save.setToolTip(tr("Save workspace to file"))
         self.action_save.triggered.connect(self.save_workspace)
         self.action_save.setText("💾")
         self.toolbar.addAction(self.action_save)
@@ -69,7 +70,7 @@ class WorkspaceEditor(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Name", "Value", "Type"])
+        self.table.setHorizontalHeaderLabels([tr("Name"), tr("Value"), tr("Type")])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Name
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # Value
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
@@ -167,23 +168,27 @@ class WorkspaceEditor(QWidget):
 
     def add_variable(self):
         """Add a new variable dialog."""
-        name, ok = QInputDialog.getText(self, "Add Variable", "Variable Name:")
+        name, ok = QInputDialog.getText(self, tr("Add Variable"), tr("Variable Name:"))
         if ok and name:
             name = name.strip()
             if not name.isidentifier():
                 QMessageBox.warning(
-                    self, "Invalid Name", "Variable name must be a valid Python identifier."
+                    self,
+                    tr("Invalid Name"),
+                    tr("Variable name must be a valid Python identifier."),
                 )
                 return
 
             if name in self.workspace_manager.variables:
                 QMessageBox.warning(
-                    self, "Exists", "Variable already exists. Edit it directly in the table."
+                    self,
+                    tr("Exists"),
+                    tr("Variable already exists. Edit it directly in the table."),
                 )
                 return
 
             val_str, ok_val = QInputDialog.getText(
-                self, "Initial Value", f"Value for {name}:", text="0"
+                self, tr("Initial Value"), tr("Value for {name}:", name=name), text="0"
             )
             if ok_val:
                 try:
@@ -198,7 +203,9 @@ class WorkspaceEditor(QWidget):
                     self.refresh_variables()
                     logger.info(f"Added variable {name} = {val}")
                 except Exception as e:
-                    QMessageBox.warning(self, "Invalid Value", f"Could not parse value: {e}")
+                    QMessageBox.warning(
+                        self, tr("Invalid Value"), tr("Could not parse value: {error}", error=e)
+                    )
 
     def delete_variable(self):
         """Delete user selected variable."""
@@ -207,8 +214,8 @@ class WorkspaceEditor(QWidget):
             name = self.table.item(row, 0).text()
             confirm = QMessageBox.question(
                 self,
-                "Confirm Delete",
-                f"Are you sure you want to delete '{name}'?",
+                tr("Confirm Delete"),
+                tr("Are you sure you want to delete '{name}'?", name=name),
                 QMessageBox.Yes | QMessageBox.No,
             )
             if confirm == QMessageBox.Yes:
@@ -255,6 +262,8 @@ class WorkspaceEditor(QWidget):
     def save_workspace(self):
         """Save workspace to file."""
         if self.workspace_manager.save_to_file():
-            QMessageBox.information(self, "Saved", "Workspace saved successfully.")
+            QMessageBox.information(self, tr("Saved"), tr("Workspace saved successfully."))
         else:
-            QMessageBox.warning(self, "Error", "Failed to save workspace. Check log for details.")
+            QMessageBox.warning(
+                self, tr("Error"), tr("Failed to save workspace. Check log for details.")
+            )

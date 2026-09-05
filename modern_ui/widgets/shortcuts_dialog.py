@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
+from lib.i18n import tr
 from modern_ui.managers.command_palette_manager import palette_command_groups
 from modern_ui.themes.theme_manager import (
     theme_manager,
@@ -87,7 +88,7 @@ class KeyboardShortcutsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("Keyboard Shortcuts")
+        self.setWindowTitle(tr("Keyboard Shortcuts"))
         self.setMinimumWidth(420)
         self.setMinimumHeight(480)
         self.setModal(True)
@@ -99,7 +100,7 @@ class KeyboardShortcutsDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(SPACE["lg"])
 
-        heading = QLabel("Keyboard Shortcuts")
+        heading = QLabel(tr("Keyboard Shortcuts"))
         heading.setFont(get_ui_font(TYPE["heading"], WEIGHT["semibold"]))
         heading.setStyleSheet(f"color: {theme_manager.get_color('text_primary').name()};")
         layout.addWidget(heading)
@@ -133,7 +134,7 @@ class KeyboardShortcutsDialog(QDialog):
         col.setSpacing(SPACE["sm"])
         col.setContentsMargins(0, 0, 0, 0)
 
-        title_label = QLabel(title)
+        title_label = QLabel(tr(title))
         title_label.setFont(get_ui_font(TYPE["subtitle"], WEIGHT["semibold"]))
         title_label.setStyleSheet(f"color: {theme_manager.get_color('accent_primary').name()};")
         col.addWidget(title_label)
@@ -152,7 +153,7 @@ class KeyboardShortcutsDialog(QDialog):
 
     def _make_label(self, text: str) -> QLabel:
         """Action description in the left column."""
-        label = QLabel(text)
+        label = QLabel(tr(text))
         label.setFont(get_ui_font(TYPE["body"], WEIGHT["regular"]))
         label.setStyleSheet(f"color: {theme_manager.get_color('text_primary').name()};")
         return label

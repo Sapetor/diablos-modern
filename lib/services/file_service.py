@@ -11,6 +11,8 @@ from typing import Dict, Optional, Any
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import QRect
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -208,9 +210,14 @@ class FileService:
                 # .diablos is the canonical/default filter; .dat kept for back-compat.
                 file, _ = QFileDialog.getSaveFileName(
                     None,
-                    "Save File",
+                    tr("Save File"),
                     os.path.join(initial_dir, self.filename),
-                    "DiaBloS Files (*.diablos);;Data Files (*.dat);;All Files (*)",
+                    tr("DiaBloS Files")
+                    + " (*.diablos);;"
+                    + tr("Data Files")
+                    + " (*.dat);;"
+                    + tr("All Files")
+                    + " (*)",
                     options=options,
                 )
 
@@ -270,9 +277,9 @@ class FileService:
             # while still accepting legacy .dat/.json files for back-compat.
             filepath, _ = QFileDialog.getOpenFileName(
                 None,
-                "Open File",
+                tr("Open File"),
                 initial_dir,
-                "DiaBloS Files (*.diablos *.dat *.json);;All Files (*)",
+                tr("DiaBloS Files") + " (*.diablos *.dat *.json);;" + tr("All Files") + " (*)",
                 options=options,
             )
 

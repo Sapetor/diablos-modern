@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import (
     QScrollArea,
 )
 
+from lib.i18n import tr
 from modern_ui.widgets.modern_palette import ModernBlockPalette
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.property_editor import PropertyEditor
@@ -152,7 +153,7 @@ class LayoutManager:
         layout.setSpacing(2)
 
         # Panel title
-        title = QLabel("Block Palette")
+        title = QLabel(tr("Block Palette"))
         title.setObjectName("PanelTitle")
         title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
         layout.addWidget(title)
@@ -231,7 +232,7 @@ class LayoutManager:
         layout.setSpacing(2)
 
         # Panel title
-        title = QLabel("Properties")
+        title = QLabel(tr("Properties"))
         title.setObjectName("PanelTitle")
         title.setStyleSheet("font-weight: bold; font-size: 12pt; padding: 4px;")
         layout.addWidget(title)

@@ -35,6 +35,7 @@ import logging
 import numpy as np
 
 from lib.analysis.linearizer import Linearizer
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +104,12 @@ class AnalysisController:
                 trim = lin.find_operating_point()
                 operating_point = trim.get("operating_point")
                 if trim.get("success"):
-                    trim_note = "Operating point found (trim succeeded)."
+                    trim_note = tr("Operating point found (trim succeeded).")
                 else:
-                    trim_note = (
+                    trim_note = tr(
                         "Trim solve did not converge; linearizing at the best "
-                        f"estimate ({trim.get('message', 'no message')})."
+                        "estimate ({message}).",
+                        message=trim.get("message", tr("no message")),
                     )
 
             lin_res = lin.linearize_at_point(
@@ -116,7 +118,7 @@ class AnalysisController:
                 output_blocks=output_blocks,
             )
             if lin_res is None:
-                return _empty_result("Diagram has no continuous states; nothing to linearize.")
+                return _empty_result(tr("Diagram has no continuous states; nothing to linearize."))
 
             return self._assemble(lin_res, trim_note=trim_note)
 
@@ -124,12 +126,12 @@ class AnalysisController:
             # Uncompilable diagram / unknown I/O block: expected, surfaced cleanly.
             logger.info("AnalysisController: linearization unavailable: %s", exc)
             res = _empty_result(str(exc))
-            res["summary"] = f"Analysis unavailable:\n{exc}"
+            res["summary"] = tr("Analysis unavailable:\n{error}", error=exc)
             return res
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("AnalysisController: unexpected failure")
-            res = _empty_result(f"Unexpected error: {exc}")
-            res["summary"] = f"Analysis failed:\n{exc}"
+            res = _empty_result(tr("Unexpected error: {error}", error=exc))
+            res["summary"] = tr("Analysis failed:\n{error}", error=exc)
             return res
 
     def find_trim(self, input_overrides=None):
@@ -165,7 +167,7 @@ class AnalysisController:
             y = np.atleast_1d(np.asarray(trim.get("y", []), dtype=float)).flatten()
             if y.size == 0:
                 res = self._empty_trim(
-                    "Diagram has no continuous states; no operating point to solve for."
+                    tr("Diagram has no continuous states; no operating point to solve for.")
                 )
                 res["summary"] = res["error"]
                 return res
@@ -191,12 +193,12 @@ class AnalysisController:
         except ValueError as exc:
             logger.info("AnalysisController: trim unavailable: %s", exc)
             res = self._empty_trim(str(exc))
-            res["summary"] = f"Operating-point search unavailable:\n{exc}"
+            res["summary"] = tr("Operating-point search unavailable:\n{error}", error=exc)
             return res
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("AnalysisController: unexpected trim failure")
-            res = self._empty_trim(f"Unexpected error: {exc}")
-            res["summary"] = f"Operating-point search failed:\n{exc}"
+            res = self._empty_trim(tr("Unexpected error: {error}", error=exc))
+            res["summary"] = tr("Operating-point search failed:\n{error}", error=exc)
             return res
 
     # ----------------------------------------------------------------- helpers
@@ -219,16 +221,16 @@ class AnalysisController:
     def _build_trim_summary(result):
         lines = []
         if result["success"]:
-            lines.append("Operating point found (trim converged).")
+            lines.append(tr("Operating point found (trim converged)."))
         else:
-            lines.append("Trim did NOT converge; showing the best estimate.")
+            lines.append(tr("Trim did NOT converge; showing the best estimate."))
         msg = result.get("message")
         if msg:
-            lines.append(f"Solver: {msg}")
+            lines.append(tr("Solver: {message}", message=msg))
         rn = result.get("residual_norm")
         if rn is not None:
-            lines.append(f"Residual ||f(y*)||: {rn:.4g}")
-        lines.append(f"States: {len(result['states'])}")
+            lines.append(tr("Residual ||f(y*)||: {value}", value=f"{rn:.4g}"))
+        lines.append(tr("States: {count}", count=len(result["states"])))
         return "\n".join(lines)
 
     def _assemble(self, lin_res, trim_note=None):
@@ -434,53 +436,76 @@ class AnalysisController:
         if trim_note:
             lines.append(trim_note)
 
-        lines.append(f"States: {result['n_states']}")
+        lines.append(tr("States: {count}", count=result["n_states"]))
 
         # Stability verdict.
         if result["is_stable"]:
-            verdict = "STABLE (all poles in the open left-half plane)"
+            verdict = tr("STABLE (all poles in the open left-half plane)")
         elif lin_res.get("is_marginally_stable"):
-            verdict = "MARGINALLY STABLE (poles on the imaginary axis)"
+            verdict = tr("MARGINALLY STABLE (poles on the imaginary axis)")
         else:
-            verdict = "UNSTABLE (at least one pole in the right-half plane)"
-        lines.append(f"Stability: {verdict}")
+            verdict = tr("UNSTABLE (at least one pole in the right-half plane)")
+        lines.append(tr("Stability: {verdict}", verdict=verdict))
 
         dom = lin_res.get("dominant_pole")
         if dom is not None:
-            lines.append(f"Dominant pole: {self._fmt_complex(dom)}")
+            lines.append(tr("Dominant pole: {value}", value=self._fmt_complex(dom)))
 
         if result["poles"]:
             ev_str = ", ".join(self._fmt_complex(complex(re, im)) for re, im in result["poles"])
-            lines.append(f"Eigenvalues: {ev_str}")
+            lines.append(tr("Eigenvalues: {values}", values=ev_str))
 
         if result["time_constants"]:
             tcs = ", ".join(f"{t:.4g}s" for t in sorted(result["time_constants"]))
-            lines.append(f"Time constants: {tcs}")
+            lines.append(tr("Time constants: {values}", values=tcs))
 
         if result["oscillatory_modes"]:
             for m in result["oscillatory_modes"]:
                 lines.append(
-                    f"Oscillatory mode: omega_n={m['omega_n']:.4g} rad/s, "
-                    f"zeta={m['zeta']:.4g}, period={m['period']:.4g}s"
+                    tr(
+                        "Oscillatory mode: omega_n={omega_n} rad/s, zeta={zeta}, period={period}s",
+                        omega_n=f"{m['omega_n']:.4g}",
+                        zeta=f"{m['zeta']:.4g}",
+                        period=f"{m['period']:.4g}",
+                    )
                 )
 
         if result["controllable"] is not None:
-            lines.append(f"Controllable: {'yes' if result['controllable'] else 'no'}")
+            lines.append(
+                tr(
+                    "Controllable: {answer}",
+                    answer=tr("yes") if result["controllable"] else tr("no"),
+                )
+            )
         if result["observable"] is not None:
-            lines.append(f"Observable: {'yes' if result['observable'] else 'no'}")
+            lines.append(
+                tr(
+                    "Observable: {answer}",
+                    answer=tr("yes") if result["observable"] else tr("no"),
+                )
+            )
 
         if result["tf_num"] is not None and result["tf_den"] is not None:
             lines.append(
-                f"Transfer function: num={self._fmt_poly(result['tf_num'])}, "
-                f"den={self._fmt_poly(result['tf_den'])}"
+                tr(
+                    "Transfer function: num={num}, den={den}",
+                    num=self._fmt_poly(result["tf_num"]),
+                    den=self._fmt_poly(result["tf_den"]),
+                )
             )
 
         gm = result["gain_margin_db"]
         pm = result["phase_margin_deg"]
         if gm is not None or pm is not None:
-            gm_s = "inf" if gm == float("inf") else ("n/a" if gm is None else f"{gm:.4g} dB")
-            pm_s = "inf" if pm == float("inf") else ("n/a" if pm is None else f"{pm:.4g} deg")
-            lines.append(f"Gain margin: {gm_s}, Phase margin: {pm_s}")
+            gm_s = "inf" if gm == float("inf") else (tr("n/a") if gm is None else f"{gm:.4g} dB")
+            pm_s = "inf" if pm == float("inf") else (tr("n/a") if pm is None else f"{pm:.4g} deg")
+            lines.append(
+                tr(
+                    "Gain margin: {gain_margin}, Phase margin: {phase_margin}",
+                    gain_margin=gm_s,
+                    phase_margin=pm_s,
+                )
+            )
 
         return "\n".join(lines)
 

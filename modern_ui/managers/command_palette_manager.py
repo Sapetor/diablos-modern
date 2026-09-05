@@ -20,6 +20,7 @@ import logging
 from collections import OrderedDict
 
 from lib.app_paths import resource_path
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class CommandPaletteManager:
                 block_fn = getattr(menu_block, "block_fn", "") or fn_name
                 commands.append(
                     {
-                        "name": f"Add {block_fn} block",
+                        "name": tr("Add {block_fn} block", block_fn=block_fn),
                         "type": "block",
                         "description": f"{block_fn} ({fn_name})",
                         "aliases": [fn_name, block_fn, fn_name.lower()],
@@ -154,7 +155,7 @@ class CommandPaletteManager:
             for (label, kbd), cb in zip(table, callbacks):
                 commands.append(
                     {
-                        "name": label,
+                        "name": tr(label),
                         "type": badge,
                         "shortcut": kbd,
                         "callback": cb,
@@ -171,7 +172,7 @@ class CommandPaletteManager:
                         path = os.path.join(examples_dir, f)
                         commands.append(
                             {
-                                "name": f"examples / {os.path.splitext(f)[0]}",
+                                "name": tr("examples / {name}", name=os.path.splitext(f)[0]),
                                 "type": "file",
                                 "callback": lambda p=path: window.open_example(p),
                                 "data": {"path": path},
@@ -225,7 +226,7 @@ class CommandPaletteManager:
 
         # Add the block using the canvas method
         canvas.add_block_from_palette(menu_block, canvas_pos)
-        window.toast.show_message(f"✅ Added {menu_block.block_fn} block")
+        window.toast.show_message("✅ " + tr("Added {name} block", name=menu_block.block_fn))
 
     def on_command_executed(self, command_type: str, data: dict):
         """Handle command palette command execution."""

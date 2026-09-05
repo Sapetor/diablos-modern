@@ -100,16 +100,46 @@ def _call_name(node: ast.Call) -> str:
     return ""
 
 
+def _module_string_constants(tree: ast.Module) -> Dict[str, str]:
+    """Map module-level ``NAME = "literal"`` assignments to their value.
+
+    A few long messages are kept as module constants so tests can assert on
+    them (``FIRST_RUN_WELCOME_MESSAGE``, ``WINDOW_TITLE``); ``tr(CONSTANT)``
+    must still be extractable.
+    """
+    constants: Dict[str, str] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if not isinstance(target, ast.Name):
+            continue
+        text = _literal_str(node.value)
+        if text:
+            constants[target.id] = text
+    return constants
+
+
 # --- extraction -------------------------------------------------------------
 def extract_tr_calls(path: str) -> Set[str]:
-    """Collect literal first arguments of ``tr(...)`` calls in one file."""
+    """Collect the first arguments of ``tr(...)`` calls in one file.
+
+    String literals (including implicit concatenation) and references to a
+    module-level string constant are resolved; anything else -- a variable, an
+    f-string, an attribute -- cannot be extracted and should be avoided at
+    ``tr()`` call sites.
+    """
     tree = _parse(path)
     if tree is None:
         return set()
+    constants = _module_string_constants(tree)
     found: Set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Call) and _call_name(node) == "tr" and node.args:
-            text = _literal_str(node.args[0])
+            arg = node.args[0]
+            text = _literal_str(arg)
+            if not text and isinstance(arg, ast.Name):
+                text = constants.get(arg.id, "")
             if text:
                 found.add(text)
     return found
@@ -147,7 +177,9 @@ def extract_block_metadata(path: str) -> Tuple[Set[str], Set[str]]:
                 for key, val in zip(sub.keys, sub.values):
                     if key is None:
                         continue
-                    if _literal_str(key) == "doc":
+                    # "doc" is the tooltip; "group" is the collapsible section
+                    # title the property editor renders above the field.
+                    if _literal_str(key) in ("doc", "group"):
                         text = _literal_str(val)
                         if text:
                             docs.add(text)

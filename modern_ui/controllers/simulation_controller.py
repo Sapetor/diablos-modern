@@ -13,6 +13,7 @@ import sys
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
+from lib.i18n import tr
 from lib.improvements import SafetyChecks, ValidationHelper
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class SimulationController(QObject):
             if not is_valid:
                 error_msg = "\n".join(errors)
                 logger.error(f"Simulation validation failed: {error_msg}")
-                self.status_changed.emit(f"Validation failed: {error_msg}")
+                self.status_changed.emit(tr("Validation failed: {error}", error=error_msg))
                 return False
 
             # Check simulation state safety
@@ -48,7 +49,7 @@ class SimulationController(QObject):
             if not is_safe:
                 error_msg = "\n".join(safety_errors)
                 logger.error(f"Simulation safety check failed: {error_msg}")
-                self.status_changed.emit(f"Safety check failed: {error_msg}")
+                self.status_changed.emit(tr("Safety check failed: {error}", error=error_msg))
                 return False
 
             # Start simulation
@@ -56,7 +57,7 @@ class SimulationController(QObject):
                 success = self.dsim.execution_init()
                 if success:
                     if self.dsim.real_time:
-                        self.status_changed.emit("Simulation started")
+                        self.status_changed.emit(tr("Simulation started"))
                         logger.info("Simulation started successfully")
                         return True
                     else:
@@ -66,30 +67,32 @@ class SimulationController(QObject):
                     error_msg = (
                         self.dsim.error_msg
                         if hasattr(self.dsim, "error_msg") and self.dsim.error_msg
-                        else "Initialization failed (see logs)."
+                        else tr("Initialization failed (see logs).")
                     )
                     logger.error(f"Simulation initialization failed. {error_msg}")
-                    self.status_changed.emit(f"Simulation failed to start. {error_msg}")
+                    self.status_changed.emit(
+                        tr("Simulation failed to start. {error}", error=error_msg)
+                    )
                     # Also pop up a message box, parented to the owning widget so
                     # it stays attached to / centered on the main window and
                     # inherits the application theme.
                     parent_widget = self.parent() if isinstance(self.parent(), QWidget) else None
                     msgBox = QMessageBox(parent_widget)
                     msgBox.setIcon(QMessageBox.Critical)
-                    msgBox.setText("Simulation Failed to Start")
+                    msgBox.setText(tr("Simulation Failed to Start"))
                     msgBox.setInformativeText(error_msg)
-                    msgBox.setWindowTitle("Simulation Error")
+                    msgBox.setWindowTitle(tr("Simulation Error"))
                     msgBox.setStandardButtons(QMessageBox.Ok)
                     msgBox.exec_()
                     return False
             else:
                 logger.error("DSim does not have execution_init method")
-                self.status_changed.emit("Simulation start failed")
+                self.status_changed.emit(tr("Simulation start failed"))
                 return False
 
         except Exception as e:
             logger.error(f"Error starting simulation: {str(e)}", exc_info=True)
-            self.status_changed.emit(f"Error: {str(e)}")
+            self.status_changed.emit(tr("Error: {error}", error=str(e)))
             return False
 
     def run_batch(self):
@@ -98,7 +101,7 @@ class SimulationController(QObject):
         from PyQt5.QtCore import Qt
 
         logger.info("Running simulation in batch mode.")
-        self.status_changed.emit("Running simulation...")
+        self.status_changed.emit(tr("Running simulation..."))
 
         # execution_batch() blocks the UI thread (a worker-thread version is a
         # planned follow-up). Until then, show a wait cursor and let the status
@@ -111,7 +114,7 @@ class SimulationController(QObject):
             QApplication.restoreOverrideCursor()
 
         solver_type = getattr(self.dsim, "last_solver_type", "Standard")
-        self.status_changed.emit(f"Simulation finished [{solver_type}]")
+        self.status_changed.emit(tr("Simulation finished [{solver}]", solver=solver_type))
         logger.info(f"Batch simulation finished. Solver: {solver_type}")
         self.dsim.plot_again()
 
@@ -343,7 +346,7 @@ class SimulationController(QObject):
             if hasattr(self.dsim, "execution_initialized"):
                 self.dsim.execution_initialized = False
 
-            self.status_changed.emit("Simulation stopped")
+            self.status_changed.emit(tr("Simulation stopped"))
             logger.info("Simulation stopped")
 
         except Exception as e:

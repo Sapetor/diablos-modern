@@ -48,6 +48,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
 from lib.analysis import linearization_export
+from lib.i18n import tr
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 
 
@@ -71,7 +72,7 @@ class LinearizationResultWindow(QWidget):
         super().__init__(parent)
         self.result = result or {}
 
-        self.setWindowTitle("Linearized System Analysis")
+        self.setWindowTitle(tr("Linearized System Analysis"))
         self.resize(820, 620)
 
         layout = QVBoxLayout()
@@ -84,17 +85,17 @@ class LinearizationResultWindow(QWidget):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
-        self.tabs.addTab(self._build_pole_zero_tab(), "Pole-Zero")
-        self.tabs.addTab(self._build_bode_tab(), "Bode")
+        self.tabs.addTab(self._build_pole_zero_tab(), tr("Pole-Zero"))
+        self.tabs.addTab(self._build_bode_tab(), tr("Bode"))
         self.tabs.addTab(
-            self._build_response_tab("step_response", "Step Response"),
-            "Step",
+            self._build_response_tab("step_response", tr("Step Response")),
+            tr("Step"),
         )
         self.tabs.addTab(
-            self._build_response_tab("impulse_response", "Impulse Response"),
-            "Impulse",
+            self._build_response_tab("impulse_response", tr("Impulse Response")),
+            tr("Impulse"),
         )
-        self.tabs.addTab(self._build_summary_tab(), "Summary")
+        self.tabs.addTab(self._build_summary_tab(), tr("Summary"))
 
         self._build_export_bar(layout)
 
@@ -114,11 +115,11 @@ class LinearizationResultWindow(QWidget):
             ("Copy as Python", linearization_export.to_python_code),
             ("Copy as MATLAB", linearization_export.to_matlab_code),
         ):
-            btn = QPushButton(label)
+            btn = QPushButton(tr(label))
             btn.clicked.connect(partial(self._copy_code, formatter, label.split()[-1]))
             bar.addWidget(btn)
 
-        save_btn = QPushButton("Save Data...")
+        save_btn = QPushButton(tr("Save Data..."))
         save_btn.clicked.connect(self._save_data)
         bar.addWidget(save_btn)
 
@@ -131,29 +132,32 @@ class LinearizationResultWindow(QWidget):
 
     def _copy_code(self, formatter, language):
         QApplication.clipboard().setText(formatter(self.result))
-        self._flash(f"Copied {language} to clipboard")
+        self._flash(tr("Copied {language} to clipboard", language=language))
 
     def _save_data(self):
         from modern_ui.tools.file_dialogs import ask_save_path
 
         path = ask_save_path(
             self,
-            "Save Linearized Model",
+            tr("Save Linearized Model"),
             "linearized_model.mat",
-            [("MAT-file (*.mat)", ".mat"), ("NumPy archive (*.npz)", ".npz")],
+            [
+                (tr("MAT-file") + " (*.mat)", ".mat"),
+                (tr("NumPy archive") + " (*.npz)", ".npz"),
+            ],
         )
         if not path:
             return
         try:
             linearization_export.save_data(self.result, path)
         except Exception as exc:  # pragma: no cover - defensive
-            QMessageBox.warning(self, "Save failed", str(exc))
+            QMessageBox.warning(self, tr("Save failed"), str(exc))
             return
-        self._flash(f"Saved {os.path.basename(path)}")
+        self._flash(tr("Saved {filename}", filename=os.path.basename(path)))
 
     # ------------------------------------------------------------------ error
     def _build_error_view(self, layout):
-        msg = self.result.get("error") or "Linearization failed."
+        msg = self.result.get("error") or tr("Linearization failed.")
         label = QLabel(str(msg))
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignCenter)
@@ -168,9 +172,9 @@ class LinearizationResultWindow(QWidget):
         plot = pg.PlotWidget()
         plot.setBackground("w")
         plot.showGrid(x=True, y=True, alpha=0.3)
-        plot.setLabel("bottom", "Real")
-        plot.setLabel("left", "Imaginary")
-        plot.setTitle("Pole-Zero Map")
+        plot.setLabel("bottom", tr("Real"))
+        plot.setLabel("left", tr("Imaginary"))
+        plot.setTitle(tr("Pole-Zero Map"))
         for axis in ("bottom", "left"):
             plot.getAxis(axis).setPen("k")
             plot.getAxis(axis).setTextPen("k")
@@ -193,10 +197,10 @@ class LinearizationResultWindow(QWidget):
                 size=12,
                 pen=pg.mkPen("b", width=2),
                 brush=None,
-                name="Zeros",
+                name=tr("Zeros"),
             )
             plot.addItem(zero_item)
-            legend.addItem(zero_item, "Zeros")
+            legend.addItem(zero_item, tr("Zeros"))
 
         if poles.size:
             pole_item = pg.ScatterPlotItem(
@@ -206,17 +210,17 @@ class LinearizationResultWindow(QWidget):
                 size=14,
                 pen=pg.mkPen("r", width=2),
                 brush=pg.mkBrush("r"),
-                name="Poles",
+                name=tr("Poles"),
             )
             plot.addItem(pole_item)
-            legend.addItem(pole_item, "Poles")
+            legend.addItem(pole_item, tr("Poles"))
 
         if not poles.size and not zeros.size:
             container = QWidget()
             box = QVBoxLayout()
             container.setLayout(box)
             box.addWidget(plot)
-            box.addWidget(QLabel("No poles or zeros to display."))
+            box.addWidget(QLabel(tr("No poles or zeros to display.")))
             return container
 
         return plot
@@ -229,7 +233,7 @@ class LinearizationResultWindow(QWidget):
 
         bode = self.result.get("bode")
         if not bode or not bode.get("w"):
-            label = QLabel("Designate input & output blocks to compute a Bode plot.")
+            label = QLabel(tr("Designate input & output blocks to compute a Bode plot."))
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
@@ -244,13 +248,15 @@ class LinearizationResultWindow(QWidget):
         phase_deg = np.asarray(bode.get("phase_deg", []), dtype=float)
 
         mag_plot = pg.PlotWidget()
-        self._style_plot(mag_plot, "Magnitude (dB)", "Frequency (rad/s)", "Magnitude (dB)")
+        self._style_plot(
+            mag_plot, tr("Magnitude (dB)"), tr("Frequency (rad/s)"), tr("Magnitude (dB)")
+        )
         mag_plot.setLogMode(x=True, y=False)
         if w.size and mag_db.size:
             mag_plot.plot(w, mag_db, pen=pg.mkPen("b", width=2))
 
         phase_plot = pg.PlotWidget()
-        self._style_plot(phase_plot, "Phase (deg)", "Frequency (rad/s)", "Phase (deg)")
+        self._style_plot(phase_plot, tr("Phase (deg)"), tr("Frequency (rad/s)"), tr("Phase (deg)"))
         phase_plot.setLogMode(x=True, y=False)
         if w.size and phase_deg.size:
             phase_plot.plot(w, phase_deg, pen=pg.mkPen("r", width=2))
@@ -271,7 +277,7 @@ class LinearizationResultWindow(QWidget):
 
         data = self.result.get(key)
         if not data or not data.get("t"):
-            label = QLabel("Designate input & output blocks to compute the time response.")
+            label = QLabel(tr("Designate input & output blocks to compute the time response."))
             label.setAlignment(Qt.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
@@ -285,7 +291,7 @@ class LinearizationResultWindow(QWidget):
         y = np.asarray(data.get("y", []), dtype=float)
 
         plot = pg.PlotWidget()
-        self._style_plot(plot, title, "Time (s)", "Output")
+        self._style_plot(plot, title, tr("Time (s)"), tr("Output"))
         if t.size and y.size:
             plot.plot(t, y, pen=pg.mkPen("b", width=2))
         box.addWidget(plot)
@@ -312,16 +318,16 @@ class LinearizationResultWindow(QWidget):
 
         n_states = r.get("n_states")
         if n_states is not None:
-            lines.append(f"States: {n_states}")
+            lines.append(tr("States: {n}", n=n_states))
         state_names = r.get("state_names") or []
         if state_names:
             lines.append("  " + ", ".join(map(str, state_names)))
         input_names = r.get("input_names") or []
         if input_names:
-            lines.append("Inputs:  " + ", ".join(map(str, input_names)))
+            lines.append(tr("Inputs:  {names}", names=", ".join(map(str, input_names))))
         output_names = r.get("output_names") or []
         if output_names:
-            lines.append("Outputs: " + ", ".join(map(str, output_names)))
+            lines.append(tr("Outputs: {names}", names=", ".join(map(str, output_names))))
         lines.append("")
 
         # State-space matrices.
@@ -335,15 +341,20 @@ class LinearizationResultWindow(QWidget):
         # Stability / poles.
         is_stable = r.get("is_stable")
         if is_stable is not None:
-            lines.append(f"Stable: {'yes' if is_stable else 'no'}")
+            lines.append(tr("Stable: {value}", value=tr("yes") if is_stable else tr("no")))
 
         tcs = r.get("time_constants") or []
         if tcs:
-            lines.append("Time constants: " + ", ".join(f"{float(t):.4g}" for t in tcs))
+            lines.append(
+                tr(
+                    "Time constants: {values}",
+                    values=", ".join(f"{float(t):.4g}" for t in tcs),
+                )
+            )
 
         modes = r.get("oscillatory_modes") or []
         if modes:
-            lines.append("Oscillatory modes:")
+            lines.append(tr("Oscillatory modes:"))
             for m in modes:
                 wn = m.get("omega_n")
                 zeta = m.get("zeta")
@@ -366,16 +377,20 @@ class LinearizationResultWindow(QWidget):
         gm = r.get("gain_margin_db")
         if gm is not None:
             gco = r.get("gain_crossover")
-            suffix = f" @ {float(gco):.4g} rad/s" if gco is not None else ""
-            margin_lines.append(f"  Gain margin:  {float(gm):.4g} dB{suffix}")
+            suffix = tr(" @ {v} rad/s", v="{:.4g}".format(gco)) if gco is not None else ""
+            margin_lines.append(
+                "  " + tr("Gain margin:  {v} dB{suffix}", v="{:.4g}".format(gm), suffix=suffix)
+            )
         pm = r.get("phase_margin_deg")
         if pm is not None:
             pco = r.get("phase_crossover")
-            suffix = f" @ {float(pco):.4g} rad/s" if pco is not None else ""
-            margin_lines.append(f"  Phase margin: {float(pm):.4g} deg{suffix}")
+            suffix = tr(" @ {v} rad/s", v="{:.4g}".format(pco)) if pco is not None else ""
+            margin_lines.append(
+                "  " + tr("Phase margin: {v} deg{suffix}", v="{:.4g}".format(pm), suffix=suffix)
+            )
         if margin_lines:
             lines.append("")
-            lines.append("Stability margins:")
+            lines.append(tr("Stability margins:"))
             lines.extend(margin_lines)
 
         # Transfer function.
@@ -383,7 +398,7 @@ class LinearizationResultWindow(QWidget):
         den = r.get("tf_den")
         if num is not None and den is not None:
             lines.append("")
-            lines.append("Transfer function:")
+            lines.append(tr("Transfer function:"))
             lines.append("  num: " + self._format_coeffs(num))
             lines.append("  den: " + self._format_coeffs(den))
 
@@ -391,10 +406,14 @@ class LinearizationResultWindow(QWidget):
         co_lines = []
         ctrl = r.get("controllable")
         if ctrl is not None:
-            co_lines.append(f"  Controllable: {'yes' if ctrl else 'no'}")
+            co_lines.append(
+                "  " + tr("Controllable: {value}", value=tr("yes") if ctrl else tr("no"))
+            )
         obs = r.get("observable")
         if obs is not None:
-            co_lines.append(f"  Observable:   {'yes' if obs else 'no'}")
+            co_lines.append(
+                "  " + tr("Observable:   {value}", value=tr("yes") if obs else tr("no"))
+            )
         if co_lines:
             lines.append("")
             lines.extend(co_lines)
@@ -403,7 +422,7 @@ class LinearizationResultWindow(QWidget):
         op = r.get("operating_point") or {}
         if op:
             lines.append("")
-            lines.append("Operating point:")
+            lines.append(tr("Operating point:"))
             for name, val in op.items():
                 lines.append(f"  {name} = {self._format_scalar(val)}")
 

@@ -14,6 +14,8 @@ the canvas's own SimulationController; these handlers call ``window.canvas``.
 
 import logging
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,7 @@ class SimulationActionsManager:
         """Start simulation with validation."""
         window = self.window
         if not hasattr(window, "canvas"):
-            window.status_message.setText("Canvas not available")
+            window.status_message.setText(tr("Canvas not available"))
             return
 
         # Run diagram validation first
@@ -47,7 +49,7 @@ class SimulationActionsManager:
                 # Critical errors found - don't start simulation
                 error_count = sum(1 for e in errors if e.severity == ErrorSeverity.ERROR)
                 window.status_message.setText(
-                    f"Cannot start simulation: {error_count} error(s) found"
+                    tr("Cannot start simulation: {count} error(s) found", count=error_count)
                 )
                 logger.warning(f"Simulation blocked by {error_count} validation error(s)")
 
@@ -56,9 +58,12 @@ class SimulationActionsManager:
 
                 QMessageBox.warning(
                     window,
-                    "Validation Errors",
-                    f"Cannot start simulation due to {error_count} validation error(s).\n\n"
-                    f"Please fix the errors shown in the error panel before running.",
+                    tr("Validation Errors"),
+                    tr(
+                        "Cannot start simulation due to {count} validation error(s).\n\n"
+                        "Please fix the errors shown in the error panel before running.",
+                        count=error_count,
+                    ),
                 )
                 return
             else:
@@ -66,13 +71,13 @@ class SimulationActionsManager:
                 warning_count = sum(1 for e in errors if e.severity == ErrorSeverity.WARNING)
                 logger.info(f"Starting simulation with {warning_count} warning(s)")
                 window.status_message.setText(
-                    f"Starting simulation with {warning_count} warning(s)..."
+                    tr("Starting simulation with {count} warning(s)...", count=warning_count)
                 )
         else:
             # No errors or warnings - clear error panel
             window.error_panel.clear()
             logger.info("Validation passed - no errors or warnings")
-            window.status_message.setText("Starting simulation...")
+            window.status_message.setText(tr("Starting simulation..."))
 
         # Clear validation indicators from canvas before starting
         # (errors will be shown in panel, don't need red borders during simulation)
@@ -99,7 +104,7 @@ class SimulationActionsManager:
         if hasattr(window, "canvas"):
             window.canvas.stop_simulation()
         window.toolbar.set_simulation_state(False, False)
-        window.status_message.setText("Simulation stopped")
+        window.status_message.setText(tr("Simulation stopped"))
 
     def pause(self):
         """Pause simulation."""
@@ -116,7 +121,7 @@ class SimulationActionsManager:
         """
         window = self.window
         if not hasattr(window.dsim, "single_step"):
-            window.status_message.setText("Single-step not available")
+            window.status_message.setText(tr("Single-step not available"))
             return
 
         # Check if this is the first step (will initialize)
@@ -125,9 +130,13 @@ class SimulationActionsManager:
         success = window.dsim.single_step()
         if success:
             if not was_initialized:
-                window.status_message.setText(f"Started stepping at t={window.dsim.time_step:.4f}s")
+                window.status_message.setText(
+                    tr("Started stepping at t={time:.4f}s", time=window.dsim.time_step)
+                )
             else:
-                window.status_message.setText(f"Stepped to t={window.dsim.time_step:.4f}s")
+                window.status_message.setText(
+                    tr("Stepped to t={time:.4f}s", time=window.dsim.time_step)
+                )
             window.canvas.update()
             # Keep toolbar in paused state (step always pauses)
             window.toolbar.set_simulation_state(True, True)
@@ -136,11 +145,11 @@ class SimulationActionsManager:
             if not window.dsim.execution_initialized:
                 window.toolbar.set_simulation_state(False, False)
                 if was_initialized:
-                    window.status_message.setText("Simulation finished")
+                    window.status_message.setText(tr("Simulation finished"))
                 else:
-                    window.status_message.setText("Failed to initialize simulation")
+                    window.status_message.setText(tr("Failed to initialize simulation"))
             else:
-                window.status_message.setText("Step failed")
+                window.status_message.setText(tr("Step failed"))
 
     def toggle_fast_solver(self, checked):
         """Toggle fast solver mode."""

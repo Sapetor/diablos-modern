@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
 from modern_ui.themes.theme_manager import theme_manager
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,13 @@ class TuningParameterRow(QFrame):
             label_text = f"..{param_name}" if len(param_name) <= 16 else f"..{param_name[-14:]}"
         name_label = QLabel(label_text)
         name_label.setFixedWidth(120)
-        name_label.setToolTip(f"{block_name}.{param_name}  |  Right-click for options")
+        name_label.setToolTip(
+            tr(
+                "{block_name}.{param_name}  |  Right-click for options",
+                block_name=block_name,
+                param_name=param_name,
+            )
+        )
         self._name_label = name_label
         row.addWidget(name_label)
 
@@ -94,7 +101,7 @@ class TuningParameterRow(QFrame):
         reset_btn = QToolButton()
         reset_btn.setText("\u21ba")
         reset_btn.setFixedSize(18, 18)
-        reset_btn.setToolTip(f"Reset to {self._fmt_value(value)}")
+        reset_btn.setToolTip(tr("Reset to {value}", value=self._fmt_value(value)))
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(self._reset_value)
         self._reset_btn = reset_btn
@@ -104,7 +111,7 @@ class TuningParameterRow(QFrame):
         remove_btn = QToolButton()
         remove_btn.setText("\u2716")
         remove_btn.setFixedSize(18, 18)
-        remove_btn.setToolTip("Remove from tuning")
+        remove_btn.setToolTip(tr("Remove from tuning"))
         remove_btn.setCursor(Qt.PointingHandCursor)
         remove_btn.clicked.connect(self._on_remove)
         self._remove_btn = remove_btn
@@ -210,10 +217,12 @@ class TuningParameterRow(QFrame):
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
-        range_action = menu.addAction("Set Range...")
-        reset_action = menu.addAction(f"Reset to {self._fmt_value(self._initial_value)}")
+        range_action = menu.addAction(tr("Set Range..."))
+        reset_action = menu.addAction(
+            tr("Reset to {value}", value=self._fmt_value(self._initial_value))
+        )
         menu.addSeparator()
-        remove_action = menu.addAction("Remove")
+        remove_action = menu.addAction(tr("Remove"))
         action = menu.exec_(self.mapToGlobal(pos))
         if action == range_action:
             self._open_range_dialog()
@@ -224,20 +233,20 @@ class TuningParameterRow(QFrame):
 
     def _open_range_dialog(self):
         dlg = QDialog(self)
-        dlg.setWindowTitle(f"Range: {self.param_name}")
+        dlg.setWindowTitle(tr("Range: {param_name}", param_name=self.param_name))
         form = QFormLayout(dlg)
 
         min_spin = QDoubleSpinBox()
         min_spin.setRange(-1e15, 1e15)
         min_spin.setDecimals(4)
         min_spin.setValue(self._min)
-        form.addRow("Min:", min_spin)
+        form.addRow(tr("Min:"), min_spin)
 
         max_spin = QDoubleSpinBox()
         max_spin.setRange(-1e15, 1e15)
         max_spin.setDecimals(4)
         max_spin.setValue(self._max)
-        form.addRow("Max:", max_spin)
+        form.addRow(tr("Max:"), max_spin)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dlg.accept)
@@ -338,14 +347,14 @@ class TuningPanel(QFrame):
         self._toggle_btn.clicked.connect(self._toggle_content)
         header.addWidget(self._toggle_btn)
 
-        title = QLabel("Tuning")
+        title = QLabel(tr("Tuning"))
         title.setStyleSheet("font-weight: bold; font-size: 11px;")
         self._title_label = title
         header.addWidget(title)
 
         header.addStretch(1)
 
-        clear_btn = QPushButton("Clear")
+        clear_btn = QPushButton(tr("Clear"))
         clear_btn.setFixedHeight(18)
         clear_btn.setCursor(Qt.PointingHandCursor)
         clear_btn.clicked.connect(self.clear_all)
@@ -370,7 +379,7 @@ class TuningPanel(QFrame):
         main_layout.addWidget(self._content)
 
         # Placeholder hint
-        self._hint = QLabel("Right-click block > Add to Tuning")
+        self._hint = QLabel(tr("Right-click block > Add to Tuning"))
         self._hint.setAlignment(Qt.AlignCenter)
         self._hint.setStyleSheet("color: gray; font-style: italic; padding: 4px; font-size: 11px;")
         main_layout.addWidget(self._hint)

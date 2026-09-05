@@ -26,6 +26,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QThread, pyqtSignal
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,9 +68,9 @@ class ExportWorker(QThread):
             )
 
             if success:
-                self.finished.emit(True, f"Animation exported to {self.filepath}")
+                self.finished.emit(True, tr("Animation exported to {path}", path=self.filepath))
             else:
-                self.finished.emit(False, "Export failed. Check logs for details.")
+                self.finished.emit(False, tr("Export failed. Check logs for details."))
 
         except Exception as e:
             logger.error(f"Export worker error: {e}")
@@ -98,7 +100,7 @@ class AnimationExportDialog(QDialog):
         self.worker = None
         self._export_filepath = None
 
-        self.setWindowTitle("Export Animation")
+        self.setWindowTitle(tr("Export Animation"))
         self.setMinimumWidth(400)
         self.setModal(True)
 
@@ -112,21 +114,21 @@ class AnimationExportDialog(QDialog):
         layout.setSpacing(12)
 
         # Info section
-        info_group = QGroupBox("Animation Info")
+        info_group = QGroupBox(tr("Animation Info"))
         info_layout = QFormLayout(info_group)
 
         self.frames_label = QLabel(f"{self.exporter.n_frames}")
-        self.duration_label = QLabel(f"{self.exporter.duration:.2f}s")
+        self.duration_label = QLabel(tr("{d}s", d="{:.2f}".format(self.exporter.duration)))
         self.grid_label = QLabel(self.exporter.grid_size)
 
-        info_layout.addRow("Frames:", self.frames_label)
-        info_layout.addRow("Simulation Duration:", self.duration_label)
-        info_layout.addRow("Grid Size:", self.grid_label)
+        info_layout.addRow(tr("Frames:"), self.frames_label)
+        info_layout.addRow(tr("Simulation Duration:"), self.duration_label)
+        info_layout.addRow(tr("Grid Size:"), self.grid_label)
 
         layout.addWidget(info_group)
 
         # Format section
-        format_group = QGroupBox("Format")
+        format_group = QGroupBox(tr("Format"))
         format_layout = QHBoxLayout(format_group)
 
         self.format_group = QButtonGroup(self)
@@ -144,7 +146,7 @@ class AnimationExportDialog(QDialog):
         layout.addWidget(format_group)
 
         # Settings section
-        settings_group = QGroupBox("Settings")
+        settings_group = QGroupBox(tr("Settings"))
         settings_layout = QFormLayout(settings_group)
 
         # FPS spinner
@@ -160,28 +162,30 @@ class AnimationExportDialog(QDialog):
         fps_layout.addWidget(self.playback_label)
         fps_layout.addStretch()
 
-        settings_layout.addRow("FPS:", fps_layout)
+        settings_layout.addRow(tr("FPS:"), fps_layout)
 
         # Quality combo
         self.quality_combo = QComboBox()
-        self.quality_combo.addItems(["Low (72 dpi)", "Medium (100 dpi)", "High (150 dpi)"])
+        self.quality_combo.addItems(
+            [tr("Low (72 dpi)"), tr("Medium (100 dpi)"), tr("High (150 dpi)")]
+        )
         self.quality_combo.setCurrentIndex(1)  # Default to medium
 
-        settings_layout.addRow("Quality:", self.quality_combo)
+        settings_layout.addRow(tr("Quality:"), self.quality_combo)
 
         layout.addWidget(settings_group)
 
         # Output path section
-        path_group = QGroupBox("Output")
+        path_group = QGroupBox(tr("Output"))
         path_layout = QHBoxLayout(path_group)
 
         self.path_edit = QLineEdit()
-        self.path_edit.setPlaceholderText("Select output file...")
+        self.path_edit.setPlaceholderText(tr("Select output file..."))
         default_name = f"{self.block_name}_animation.gif"
         default_path = os.path.join(os.path.expanduser("~"), default_name)
         self.path_edit.setText(default_path)
 
-        self.browse_btn = QPushButton("Browse...")
+        self.browse_btn = QPushButton(tr("Browse..."))
         self.browse_btn.clicked.connect(self._browse_file)
 
         path_layout.addWidget(self.path_edit, 1)
@@ -198,10 +202,10 @@ class AnimationExportDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        self.cancel_btn = QPushButton("Cancel")
+        self.cancel_btn = QPushButton(tr("Cancel"))
         self.cancel_btn.clicked.connect(self.reject)
 
-        self.export_btn = QPushButton("Export")
+        self.export_btn = QPushButton(tr("Export"))
         self.export_btn.setDefault(True)
         self.export_btn.clicked.connect(self._start_export)
 
@@ -221,11 +225,11 @@ class AnimationExportDialog(QDialog):
 
         if not available.get("gif", False):
             self.gif_radio.setEnabled(False)
-            self.gif_radio.setToolTip("Pillow not installed. Install with: pip install Pillow")
+            self.gif_radio.setToolTip(tr("Pillow not installed. Install with: pip install Pillow"))
 
         if not available.get("mp4", False):
             self.mp4_radio.setEnabled(False)
-            self.mp4_radio.setToolTip("ffmpeg not found. Install ffmpeg to enable MP4 export.")
+            self.mp4_radio.setToolTip(tr("ffmpeg not found. Install ffmpeg to enable MP4 export."))
 
         # Select first available format
         if not self.gif_radio.isEnabled() and self.mp4_radio.isEnabled():
@@ -233,13 +237,13 @@ class AnimationExportDialog(QDialog):
             self._update_file_extension()
         elif not self.gif_radio.isEnabled() and not self.mp4_radio.isEnabled():
             self.export_btn.setEnabled(False)
-            self.export_btn.setToolTip("No export formats available")
+            self.export_btn.setToolTip(tr("No export formats available"))
 
     def _update_playback_duration(self):
         """Update the playback duration label based on current FPS."""
         fps = self.fps_spin.value()
         duration = self.exporter.get_playback_duration(fps)
-        self.playback_label.setText(f"Playback: {duration:.1f}s")
+        self.playback_label.setText(tr("Playback: {d}s", d="{:.1f}".format(duration)))
 
     def _update_file_extension(self):
         """Update file extension when format changes."""
@@ -257,10 +261,10 @@ class AnimationExportDialog(QDialog):
     def _browse_file(self):
         """Open file browser to select output path."""
         ext = "gif" if self.gif_radio.isChecked() else "mp4"
-        filter_str = f"{ext.upper()} files (*.{ext})"
+        filter_str = tr("{ext} files", ext=ext.upper()) + f" (*.{ext})"
 
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Save Animation", self.path_edit.text(), filter_str
+            self, tr("Save Animation"), self.path_edit.text(), filter_str
         )
 
         if filepath:
@@ -278,7 +282,7 @@ class AnimationExportDialog(QDialog):
         """Start the export process."""
         filepath = self.path_edit.text().strip()
         if not filepath:
-            QMessageBox.warning(self, "Error", "Please specify an output file path.")
+            QMessageBox.warning(self, tr("Error"), tr("Please specify an output file path."))
             return
 
         format = "gif" if self.gif_radio.isChecked() else "mp4"
@@ -331,13 +335,13 @@ class AnimationExportDialog(QDialog):
         self.worker = None
 
         if success:
-            QMessageBox.information(self, "Export Complete", message)
+            QMessageBox.information(self, tr("Export Complete"), message)
             self.accept()
         else:
             # Remove any partial file left behind by a failed/cancelled export.
             self._cleanup_partial_file()
 
-            QMessageBox.critical(self, "Export Failed", message)
+            QMessageBox.critical(self, tr("Export Failed"), message)
             # Re-enable controls
             self.export_btn.setEnabled(True)
             self.browse_btn.setEnabled(True)

@@ -2,6 +2,7 @@ import os
 import logging
 from PyQt5.QtWidgets import QMessageBox
 from lib.app_paths import user_data_path
+from lib.i18n import tr
 from lib.services.diagram_service import DiagramService
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class ProjectManager:
             self.diagram_service.new_diagram()
         elif hasattr(self.window.dsim, "clear_all"):
             self.window.dsim.clear_all()
-        self.window.status_message.setText("New diagram created")
+        self.window.status_message.setText(tr("New diagram created"))
         # cleanup autosave on new? Maybe not necessary depending on logic
 
     def open_diagram(self):
@@ -43,7 +44,7 @@ class ProjectManager:
             result = self.diagram_service.load_diagram()
             logger.info(f"load_diagram returned: {result is not None}")
             if result:
-                self.window.status_message.setText("Diagram opened")
+                self.window.status_message.setText(tr("Diagram opened"))
                 # Single source of truth for the Recent Files menu is
                 # RecentFilesManager (config/recent_files.json). Routing here
                 # avoids a second, divergent QSettings-backed store writing the
@@ -57,7 +58,9 @@ class ProjectManager:
         """Open an example diagram."""
         if self.diagram_service:
             self.diagram_service.load_diagram(filename)
-        self.window.status_message.setText(f"Example {os.path.basename(filename)} opened")
+        self.window.status_message.setText(
+            tr("Example {name} opened", name=os.path.basename(filename))
+        )
 
     def save_diagram(self):
         """Save diagram."""
@@ -65,7 +68,7 @@ class ProjectManager:
             self.diagram_service.save_diagram()
             # Add to recent files if save successful
             # DiagramService usually returns success?
-        self.window.status_message.setText("Diagram saved")
+        self.window.status_message.setText(tr("Diagram saved"))
 
     # Recent files are owned by RecentFilesManager (config/recent_files.json),
     # which backs the Recent Files menu the user sees. ProjectManager used to
@@ -81,8 +84,10 @@ class ProjectManager:
             if os.path.exists(self.autosave_path):
                 reply = QMessageBox.question(
                     self.window,
-                    "Recover Auto-save?",
-                    "An auto-save file was found. Do you want to recover your previous session?",
+                    tr("Recover Auto-save?"),
+                    tr(
+                        "An auto-save file was found. Do you want to recover your previous session?"
+                    ),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.Yes,
                 )
@@ -110,13 +115,13 @@ class ProjectManager:
                 os.remove(self.autosave_path)
 
             self.window.canvas.update()
-            self.window.status_message.setText("Diagram recovered from auto-save")
+            self.window.status_message.setText(tr("Diagram recovered from auto-save"))
             logger.info("Diagram successfully recovered from auto-save")
 
             QMessageBox.information(
                 self.window,
-                "Recovery Successful",
-                "Your diagram has been successfully recovered from the auto-save file.",
+                tr("Recovery Successful"),
+                tr("Your diagram has been successfully recovered from the auto-save file."),
             )
 
         except Exception as e:
@@ -130,8 +135,11 @@ class ProjectManager:
                 )
             QMessageBox.warning(
                 self.window,
-                "Recovery Failed",
-                f"Could not recover auto-save file. Starting fresh.\n\nError: {str(e)}",
+                tr("Recovery Failed"),
+                tr(
+                    "Could not recover auto-save file. Starting fresh.\n\nError: {error}",
+                    error=str(e),
+                ),
             )
 
     def cleanup_autosave(self):

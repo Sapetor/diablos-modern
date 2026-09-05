@@ -10,6 +10,7 @@ from PyQt5.QtCore import QRect, QPoint, Qt
 from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QToolTip
 
+from lib.i18n import tr
 from modern_ui.widgets.canvas_state import ValidationState
 
 if TYPE_CHECKING:
@@ -252,12 +253,12 @@ class RenderingManager:
                     input_names, output_names = block.get_port_names()
                     if is_output and port_idx < len(output_names):
                         port_name = output_names[port_idx]
-                        tooltip = f"Output: {port_name}"
+                        tooltip = tr("Output: {name}", name=port_name)
                     elif not is_output and port_idx < len(input_names):
                         port_name = input_names[port_idx]
-                        tooltip = f"Input: {port_name}"
+                        tooltip = tr("Input: {name}", name=port_name)
                     else:
-                        tooltip = f"Port {port_idx}"
+                        tooltip = tr("Port {index}", index=port_idx)
 
                     # Include block documentation excerpt if available
                     if block.doc:

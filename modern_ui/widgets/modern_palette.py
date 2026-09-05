@@ -36,6 +36,7 @@ from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 # accessor used for Favorites/Recent persistence (same store).
 from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
 from lib.app_paths import ui_settings
+from lib.i18n import tr
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
 _CHEVRON_EXPANDED = "▾"
@@ -209,14 +210,13 @@ class CompactBlockRow(QFrame):
                     return "—"
 
             if inst:
-                doc_lines.append(f"Inputs:  {_names(getattr(inst, 'inputs', []))}")
-                doc_lines.append(f"Outputs: {_names(getattr(inst, 'outputs', []))}")
+                doc_lines.append(tr("Inputs:  {names}", names=_names(getattr(inst, "inputs", []))))
+                doc_lines.append(tr("Outputs: {names}", names=_names(getattr(inst, "outputs", []))))
                 params = getattr(self.menu_block, "param_meta", getattr(inst, "params", {}))
                 if isinstance(params, dict) and params:
                     keys = list(params.keys())
-                    doc_lines.append(
-                        "Params:  " + ", ".join(keys[:6]) + ("…" if len(keys) > 6 else "")
-                    )
+                    params_str = ", ".join(keys[:6]) + ("…" if len(keys) > 6 else "")
+                    doc_lines.append(tr("Params:  {names}", names=params_str))
             tip = "\n".join([l for l in doc_lines if l])
             if tip:
                 self.setToolTip(tip)
@@ -299,7 +299,7 @@ class CompactBlockRow(QFrame):
 
         is_fav = palette.is_favorite(fn_name)
         menu = QMenu(self)
-        act = menu.addAction("Unpin from Favorites" if is_fav else "Pin to Favorites")
+        act = menu.addAction(tr("Unpin from Favorites") if is_fav else tr("Pin to Favorites"))
         event.accept()
         # exec_ blocks; mutating favorites here would refresh_blocks() and delete
         # this row mid-menu. Capture the chosen action and act *after* exec_
@@ -936,7 +936,9 @@ class _CategorySection(QWidget):
 
     def _refresh_header_text(self):
         chevron = _CHEVRON_COLLAPSED if self._collapsed else _CHEVRON_EXPANDED
-        self.header.setText(f"{chevron}  {self.category_name.upper()}")
+        # category_name is the untranslated identifier (also the QSettings
+        # collapsed-state key); it is translated only here, at display time.
+        self.header.setText(f"{chevron}  {tr(self.category_name).upper()}")
 
     def _apply_row_visibility(self) -> bool:
         """Show rows that pass the active filter, unless the section is collapsed.
@@ -1060,7 +1062,7 @@ class ModernBlockPalette(QWidget):
         hl = QHBoxLayout(head)
         hl.setContentsMargins(12, 10, 12, 6)
         hl.setSpacing(8)
-        self.title = QLabel("Library")
+        self.title = QLabel(tr("Library"))
         tf = QFont()
         tf.setPointSize(9)
         tf.setBold(True)
@@ -1080,7 +1082,7 @@ class ModernBlockPalette(QWidget):
         sw = QHBoxLayout(search_wrap)
         sw.setContentsMargins(10, 0, 10, 8)
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Filter blocks…")
+        self.search_bar.setPlaceholderText(tr("Filter blocks…"))
         self.search_bar.setClearButtonEnabled(True)
         self.search_bar.textChanged.connect(self._filter_blocks)
         # Down/Up from the search box step into the visible rows (keyboard nav).
@@ -1148,6 +1150,16 @@ class ModernBlockPalette(QWidget):
         that no longer map to a loaded block (e.g. a removed block) are skipped.
         Both are registered in ``self._sections`` so filter/collapse apply.
         """
+        # "Favorites"/"Recent" are section titles, not block categories, so
+        # scripts/extract_strings.py (which harvests block `category` literals
+        # from blocks/*.py, not the runtime tr(self.category_name) lookup in
+        # _refresh_header_text) never sees them. Register the literal keys here
+        # so translators get them; the untranslated string is still what is
+        # passed to _PinnedSection below since it doubles as the QSettings
+        # collapsed-state key and must stay stable across languages.
+        tr("Favorites")
+        tr("Recent")
+
         fav_blocks = [index[n] for n in sorted(_load_favorites()) if n in index]
         if fav_blocks:
             fav = _PinnedSection("Favorites", fav_blocks, self.dsim.colors)
@@ -1273,7 +1285,7 @@ class ModernBlockPalette(QWidget):
         return {k: v for k, v in categories.items() if v}
 
     def _add_placeholder(self):
-        p = QLabel("No blocks available.\nCheck DSim initialization.")
+        p = QLabel(tr("No blocks available.\nCheck DSim initialization."))
         p.setAlignment(Qt.AlignCenter)
         p.setWordWrap(True)
         p.setStyleSheet(

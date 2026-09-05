@@ -21,12 +21,16 @@ from modern_ui.themes.theme_manager import get_ui_font, TYPE
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.platform_config import get_platform_config
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
-#: Main-window title. The version comes from the package metadata
-#: (``[project] version`` in pyproject.toml) via ``modern_ui.__version__``,
-#: so a release bump shows up in the title bar without a second edit.
-WINDOW_TITLE = f"DiaBloS Modern {__version__} - Block Diagram Simulator"
+#: Main-window title *template* (also the translation catalog key). The version
+#: comes from the package metadata (``[project] version`` in pyproject.toml) via
+#: ``modern_ui.__version__``, so a release bump shows up in the title bar
+#: without a second edit. Translated at call time, not at import time, so the
+#: title follows the language selected at startup.
+WINDOW_TITLE = "DiaBloS Modern {version} - Block Diagram Simulator"
 
 
 class WindowSetupManager:
@@ -38,7 +42,7 @@ class WindowSetupManager:
     def setup_window(self):
         """Setup main window properties with screen-aware sizing."""
         window = self.window
-        window.setWindowTitle(WINDOW_TITLE)
+        window.setWindowTitle(tr(WINDOW_TITLE, version=__version__))
 
         # Get platform configuration
         config = get_platform_config()

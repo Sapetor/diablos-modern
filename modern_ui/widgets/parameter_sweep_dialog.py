@@ -31,6 +31,7 @@ from PyQt5.QtWidgets import (
 )
 
 from modern_ui.themes.theme_manager import theme_manager
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class ParameterSweepDialog(QDialog):
         self.dsim = dsim
         self._blocks = {b.name: b for b in sweepable_blocks(dsim)}
 
-        self.setWindowTitle("Parameter Sweep")
+        self.setWindowTitle(tr("Parameter Sweep"))
         self.setMinimumWidth(460)
         self.setModal(True)
 
@@ -86,14 +87,14 @@ class ParameterSweepDialog(QDialog):
         layout.setSpacing(10)
 
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["1-D (one parameter)", "2-D (two parameters)"])
+        self.mode_combo.addItems([tr("1-D (one parameter)"), tr("2-D (two parameters)")])
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         top = QFormLayout()
-        top.addRow("Sweep type:", self.mode_combo)
+        top.addRow(tr("Sweep type:"), self.mode_combo)
         layout.addLayout(top)
 
-        self._x = self._make_axis_group("Parameter X")
-        self._y = self._make_axis_group("Parameter Y")
+        self._x = self._make_axis_group(tr("Parameter X"))
+        self._y = self._make_axis_group(tr("Parameter Y"))
         layout.addWidget(self._x["group"])
         layout.addWidget(self._y["group"])
 
@@ -113,12 +114,12 @@ class ParameterSweepDialog(QDialog):
         self.sim_dt_spin.setValue(self.default_sim_dt)
 
         sim_form = QFormLayout()
-        sim_form.addRow("Simulation time:", self.sim_time_spin)
-        sim_form.addRow("Step size (dt):", self.sim_dt_spin)
+        sim_form.addRow(tr("Simulation time:"), self.sim_time_spin)
+        sim_form.addRow(tr("Step size (dt):"), self.sim_dt_spin)
         layout.addLayout(sim_form)
 
         if not self._blocks:
-            warn = QLabel("No block exposes a numeric scalar parameter to sweep.")
+            warn = QLabel(tr("No block exposes a numeric scalar parameter to sweep."))
             warn.setStyleSheet(f"color: {theme_manager.get_color('error').name()}; padding: 4px;")
             warn.setWordWrap(True)
             layout.addWidget(warn)
@@ -150,11 +151,11 @@ class ParameterSweepDialog(QDialog):
         points_spin.setRange(2, 200)
         points_spin.setValue(11)
 
-        form.addRow("Block:", block_combo)
-        form.addRow("Parameter:", param_combo)
-        form.addRow("Min:", min_spin)
-        form.addRow("Max:", max_spin)
-        form.addRow("Points:", points_spin)
+        form.addRow(tr("Block:"), block_combo)
+        form.addRow(tr("Parameter:"), param_combo)
+        form.addRow(tr("Min:"), min_spin)
+        form.addRow(tr("Max:"), max_spin)
+        form.addRow(tr("Points:"), points_spin)
 
         ax = {
             "group": group,

@@ -35,6 +35,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +48,7 @@ class TikZExportDialog(QDialog):
         self.blocks_list = blocks_list
         self.line_list = line_list
 
-        self.setWindowTitle("Export as TikZ")
+        self.setWindowTitle(tr("Export as TikZ"))
         self.setMinimumSize(820, 520)
         self.resize(900, 580)
         self.setModal(True)
@@ -68,10 +70,11 @@ class TikZExportDialog(QDialog):
 
         exporter = TikZExporter(self.blocks_list, self.line_list)
         info = exporter.get_info()
-        info_text = (
-            f"{info['block_count']} blocks  \u00b7  "
-            f"{info['connection_count']} connections  \u00b7  "
-            f"{', '.join(info['block_types'])}"
+        info_text = tr(
+            "{blocks} blocks  \u00b7  {connections} connections  \u00b7  {types}",
+            blocks=info["block_count"],
+            connections=info["connection_count"],
+            types=", ".join(info["block_types"]),
         )
         info_label = QLabel(info_text)
         info_label.setStyleSheet("color: gray; padding: 2px 0;")
@@ -93,14 +96,14 @@ class TikZExportDialog(QDialog):
         left.setSpacing(10)
 
         # Format
-        fmt_group = QGroupBox("Format")
+        fmt_group = QGroupBox(tr("Format"))
         fmt_layout = QHBoxLayout(fmt_group)
         fmt_layout.setContentsMargins(8, 4, 8, 4)
 
         self.format_btn_group = QButtonGroup(self)
-        self.standalone_radio = QRadioButton("Standalone .tex")
-        self.snippet_radio = QRadioButton("Snippet only")
-        self.blox_radio = QRadioButton("blox macros")
+        self.standalone_radio = QRadioButton(tr("Standalone .tex"))
+        self.snippet_radio = QRadioButton(tr("Snippet only"))
+        self.blox_radio = QRadioButton(tr("blox macros"))
         self.standalone_radio.setChecked(True)
         self.format_btn_group.addButton(self.standalone_radio, 0)
         self.format_btn_group.addButton(self.snippet_radio, 1)
@@ -113,21 +116,21 @@ class TikZExportDialog(QDialog):
         left.addWidget(fmt_group)
 
         # Diagram Style
-        style_group = QGroupBox("Diagram Style")
+        style_group = QGroupBox(tr("Diagram Style"))
         style_layout = QVBoxLayout(style_group)
         style_layout.setContentsMargins(8, 4, 8, 4)
         style_layout.setSpacing(3)
 
-        self.source_as_arrow_cb = QCheckBox("Sources as input arrows")
+        self.source_as_arrow_cb = QCheckBox(tr("Sources as input arrows"))
         self.source_as_arrow_cb.setChecked(True)
 
-        self.sink_as_arrow_cb = QCheckBox("Sinks as output arrows")
+        self.sink_as_arrow_cb = QCheckBox(tr("Sinks as output arrows"))
         self.sink_as_arrow_cb.setChecked(True)
 
-        self.show_signal_labels_cb = QCheckBox("Signal labels on connections")
+        self.show_signal_labels_cb = QCheckBox(tr("Signal labels on connections"))
         self.show_signal_labels_cb.setChecked(True)
 
-        self.fill_blocks_cb = QCheckBox("Category fill colors")
+        self.fill_blocks_cb = QCheckBox(tr("Category fill colors"))
         self.fill_blocks_cb.setChecked(True)
 
         for cb in (
@@ -141,18 +144,18 @@ class TikZExportDialog(QDialog):
         left.addWidget(style_group)
 
         # Content
-        content_group = QGroupBox("Content")
+        content_group = QGroupBox(tr("Content"))
         content_layout = QVBoxLayout(content_group)
         content_layout.setContentsMargins(8, 4, 8, 4)
         content_layout.setSpacing(3)
 
-        self.show_usernames_cb = QCheckBox("Block labels")
+        self.show_usernames_cb = QCheckBox(tr("Block labels"))
         self.show_usernames_cb.setChecked(True)
 
-        self.show_values_cb = QCheckBox("Parameter values")
+        self.show_values_cb = QCheckBox(tr("Parameter values"))
         self.show_values_cb.setChecked(True)
 
-        self.include_sinks_cb = QCheckBox("Include sink blocks")
+        self.include_sinks_cb = QCheckBox(tr("Include sink blocks"))
         self.include_sinks_cb.setChecked(True)
 
         for cb in (self.show_usernames_cb, self.show_values_cb, self.include_sinks_cb):
@@ -161,7 +164,7 @@ class TikZExportDialog(QDialog):
         left.addWidget(content_group)
 
         # LaTeX
-        latex_group = QGroupBox("LaTeX")
+        latex_group = QGroupBox(tr("LaTeX"))
         latex_layout = QFormLayout(latex_group)
         latex_layout.setContentsMargins(8, 4, 8, 4)
         latex_layout.setSpacing(4)
@@ -176,11 +179,11 @@ class TikZExportDialog(QDialog):
         self.page_width_spin.setSingleStep(1.0)
 
         latex_layout.addRow(self.use_resizebox_cb)
-        latex_layout.addRow("Page width:", self.page_width_spin)
+        latex_layout.addRow(tr("Page width:"), self.page_width_spin)
         left.addWidget(latex_group)
 
         # Output path
-        out_group = QGroupBox("Output")
+        out_group = QGroupBox(tr("Output"))
         out_layout = QHBoxLayout(out_group)
         out_layout.setContentsMargins(8, 4, 8, 4)
 
@@ -189,12 +192,12 @@ class TikZExportDialog(QDialog):
         self._path_confirmed_via_dialog = False
 
         self.path_edit = QLineEdit()
-        self.path_edit.setPlaceholderText("Select output file...")
+        self.path_edit.setPlaceholderText(tr("Select output file..."))
         default_path = os.path.join(os.path.expanduser("~"), "diagram.tex")
         self.path_edit.setText(default_path)
         self.path_edit.textEdited.connect(self._on_path_edited)
 
-        self.browse_btn = QPushButton("Browse...")
+        self.browse_btn = QPushButton(tr("Browse..."))
         self.browse_btn.setFixedWidth(72)
         self.browse_btn.clicked.connect(self._browse_file)
 
@@ -207,7 +210,7 @@ class TikZExportDialog(QDialog):
         splitter.addWidget(left_scroll)
 
         # -- Right panel: preview --
-        preview_frame = QGroupBox("Preview")
+        preview_frame = QGroupBox(tr("Preview"))
         preview_layout = QVBoxLayout(preview_frame)
         preview_layout.setContentsMargins(4, 4, 4, 4)
 
@@ -228,13 +231,13 @@ class TikZExportDialog(QDialog):
         # --- Button bar ---
         btn_bar = QHBoxLayout()
 
-        self.copy_btn = QPushButton("Copy to Clipboard")
+        self.copy_btn = QPushButton(tr("Copy to Clipboard"))
         self.copy_btn.clicked.connect(self._copy_to_clipboard)
         btn_bar.addWidget(self.copy_btn)
         btn_bar.addStretch()
 
         button_box = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Save)
-        button_box.button(QDialogButtonBox.Save).setText("Export")
+        button_box.button(QDialogButtonBox.Save).setText(tr("Export"))
         button_box.rejected.connect(self.reject)
         button_box.accepted.connect(self._export)
         btn_bar.addWidget(button_box)
@@ -317,7 +320,7 @@ class TikZExportDialog(QDialog):
             self.preview_edit.setPlainText(tikz_code)
         except Exception as e:
             logger.exception("TikZ preview error")
-            self.preview_edit.setPlainText(f"% Error generating preview:\n% {e}")
+            self.preview_edit.setPlainText(tr("% Error generating preview:\n% {error}", error=e))
 
     def _on_path_edited(self, *_args):
         """A manually typed path has not been confirmed by the save dialog."""
@@ -325,7 +328,10 @@ class TikZExportDialog(QDialog):
 
     def _browse_file(self):
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Save TikZ File", self.path_edit.text(), "TeX files (*.tex);;All files (*)"
+            self,
+            tr("Save TikZ File"),
+            self.path_edit.text(),
+            tr("TeX files") + " (*.tex);;" + tr("All files") + " (*)",
         )
         if filepath:
             if not filepath.lower().endswith(".tex"):
@@ -338,22 +344,24 @@ class TikZExportDialog(QDialog):
             tikz_code = self._generate_tikz()
             clipboard = QApplication.clipboard()
             clipboard.setText(tikz_code)
-            QMessageBox.information(self, "Copied", "TikZ code copied to clipboard.")
+            QMessageBox.information(self, tr("Copied"), tr("TikZ code copied to clipboard."))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to generate TikZ code:\n{e}")
+            QMessageBox.critical(
+                self, tr("Error"), tr("Failed to generate TikZ code:\n{error}", error=e)
+            )
 
     def _export(self):
         filepath = self.path_edit.text().strip()
         if not filepath:
-            QMessageBox.warning(self, "Error", "Please specify an output file path.")
+            QMessageBox.warning(self, tr("Error"), tr("Please specify an output file path."))
             return
 
         # The save dialog already confirms overwrite; a typed/default path does not.
         if not self._path_confirmed_via_dialog and os.path.exists(filepath):
             reply = QMessageBox.question(
                 self,
-                "Overwrite File?",
-                f"The file already exists:\n{filepath}\n\nOverwrite it?",
+                tr("Overwrite File?"),
+                tr("The file already exists:\n{path}\n\nOverwrite it?", path=filepath),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
             )
@@ -365,9 +373,11 @@ class TikZExportDialog(QDialog):
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(tikz_code)
             QMessageBox.information(
-                self, "Export Complete", f"TikZ diagram exported to:\n{filepath}"
+                self,
+                tr("Export Complete"),
+                tr("TikZ diagram exported to:\n{path}", path=filepath),
             )
             self.accept()
         except Exception as e:
             logger.error(f"TikZ export error: {e}")
-            QMessageBox.critical(self, "Export Failed", str(e))
+            QMessageBox.critical(self, tr("Export Failed"), str(e))

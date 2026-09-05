@@ -11,6 +11,8 @@ from PyQt5.QtWidgets import (
 )
 import logging
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 class PortDialog(QDialog):
     def __init__(self, name, params, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"{name} Port Configuration")
+        self.setWindowTitle(tr("{name} Port Configuration", name=name))
         self.params = params
         self.layout = QVBoxLayout()
         self.entries = {}
@@ -36,7 +38,7 @@ class PortDialog(QDialog):
             self.layout.addWidget(entry)
             self.entries[key] = entry
 
-        button = QPushButton("OK")
+        button = QPushButton(tr("OK"))
         button.clicked.connect(self.accept)
         self.layout.addWidget(button)
 
@@ -66,16 +68,16 @@ class SimulationDialog(QDialog):
             QGroupBox,
         )  # Local import to avoid circular dep issues if any, or just convenience
 
-        self.setWindowTitle("Simulation Configuration")
+        self.setWindowTitle(tr("Simulation Configuration"))
         self.resize(480, 420)
         self.layout = QVBoxLayout()
 
         # --- Solver Configuration Group ---
-        solver_group = QGroupBox("Solver Configuration")
+        solver_group = QGroupBox(tr("Solver Configuration"))
         solver_layout = QVBoxLayout()
 
         # Solver method
-        solver_layout.addWidget(QLabel("Solver Method"))
+        solver_layout.addWidget(QLabel(tr("Solver Method")))
         self.solver_method_combo = QComboBox()
         self.solver_method_combo.addItems(self.SOLVER_METHODS)
         idx = self.solver_method_combo.findText(str(solver_method))
@@ -83,8 +85,10 @@ class SimulationDialog(QDialog):
         solver_layout.addWidget(self.solver_method_combo)
 
         method_hint = QLabel(
-            "Adaptive: RK45 (default), RK23, DOP853; stiff: Radau, BDF, LSODA. "
-            "Fixed-step (use the step size below): RK4, Euler."
+            tr(
+                "Adaptive: RK45 (default), RK23, DOP853; stiff: Radau, BDF, LSODA. "
+                "Fixed-step (use the step size below): RK4, Euler."
+            )
         )
         method_hint.setObjectName("HintLabel")
         method_hint.setWordWrap(True)
@@ -93,13 +97,15 @@ class SimulationDialog(QDialog):
         solver_layout.addSpacing(10)
 
         # Base Step Size
-        solver_layout.addWidget(QLabel("Base Step Size (dt) [s]"))
+        solver_layout.addWidget(QLabel(tr("Base Step Size (dt) [s]")))
         self.sampling_time_input = QLineEdit(str(sim_dt))
         solver_layout.addWidget(self.sampling_time_input)
 
         # Explanation Hint — themed via QSS, not inline styles
         hint_label = QLabel(
-            "Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step."
+            tr(
+                "Global solver step. Discrete blocks execute at their independent 'sampling_time' or synchronized to this step."
+            )
         )
         hint_label.setObjectName("HintLabel")
         hint_label.setWordWrap(True)
@@ -108,36 +114,36 @@ class SimulationDialog(QDialog):
         solver_layout.addSpacing(10)
 
         # Simulation Time
-        solver_layout.addWidget(QLabel("Simulation Duration [s]"))
+        solver_layout.addWidget(QLabel(tr("Simulation Duration [s]")))
         self.sim_time_input = QLineEdit(str(sim_time))
         solver_layout.addWidget(self.sim_time_input)
 
         # Tolerances (adaptive solvers only)
         tol_row = QHBoxLayout()
-        tol_row.addWidget(QLabel("Rel. tol"))
+        tol_row.addWidget(QLabel(tr("Rel. tol")))
         self.rtol_input = QLineEdit(str(rtol))
         tol_row.addWidget(self.rtol_input)
-        tol_row.addWidget(QLabel("Abs. tol"))
+        tol_row.addWidget(QLabel(tr("Abs. tol")))
         self.atol_input = QLineEdit(str(atol))
         tol_row.addWidget(self.atol_input)
         solver_layout.addLayout(tol_row)
 
         # Real-time Checkbox
-        self.real_time_checkbox = QCheckBox("Run in real-time")
+        self.real_time_checkbox = QCheckBox(tr("Run in real-time"))
         solver_layout.addWidget(self.real_time_checkbox)
 
         solver_group.setLayout(solver_layout)
         self.layout.addWidget(solver_group)
 
         # --- Visualization Group ---
-        viz_group = QGroupBox("Visualization")
+        viz_group = QGroupBox(tr("Visualization"))
         viz_layout = QVBoxLayout()
 
-        viz_layout.addWidget(QLabel("Plot Window Range [samples]"))
+        viz_layout.addWidget(QLabel(tr("Plot Window Range [samples]")))
         self.plot_range_input = QLineEdit(str(plot_trange))
         viz_layout.addWidget(self.plot_range_input)
 
-        self.dynamic_plot_checkbox = QCheckBox("Enable Dynamic Plotting")
+        self.dynamic_plot_checkbox = QCheckBox(tr("Enable Dynamic Plotting"))
         viz_layout.addWidget(self.dynamic_plot_checkbox)
 
         viz_group.setLayout(viz_layout)
@@ -147,11 +153,11 @@ class SimulationDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("Cancel"))
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        accept_btn = QPushButton("Simulate")
+        accept_btn = QPushButton(tr("Simulate"))
         accept_btn.clicked.connect(self.accept)
         accept_btn.setDefault(True)
         button_layout.addWidget(accept_btn)
@@ -164,11 +170,11 @@ class SimulationDialog(QDialog):
     # label to the QLineEdit so validation errors can name the offending field.
     def _numeric_fields(self):
         return [
-            ("Simulation Duration", self.sim_time_input),
-            ("Base Step Size (dt)", self.sampling_time_input),
-            ("Plot Window Range", self.plot_range_input),
-            ("Rel. tol", self.rtol_input),
-            ("Abs. tol", self.atol_input),
+            (tr("Simulation Duration"), self.sim_time_input),
+            (tr("Base Step Size (dt)"), self.sampling_time_input),
+            (tr("Plot Window Range"), self.plot_range_input),
+            (tr("Rel. tol"), self.rtol_input),
+            (tr("Abs. tol"), self.atol_input),
         ]
 
     def accept(self):
@@ -184,8 +190,8 @@ class SimulationDialog(QDialog):
         if invalid:
             QMessageBox.warning(
                 self,
-                "Invalid Input",
-                "Please enter a valid number for: " + ", ".join(invalid) + ".",
+                tr("Invalid Input"),
+                tr("Please enter a valid number for: {fields}.", fields=", ".join(invalid)),
             )
             return  # Keep the dialog open for correction.
 

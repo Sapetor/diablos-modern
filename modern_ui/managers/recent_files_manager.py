@@ -22,6 +22,8 @@ import logging
 
 from PyQt5.QtWidgets import QMessageBox
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,7 +89,7 @@ class RecentFilesManager:
         """Clear the recent files list."""
         self.save([])
         self.update_menu()
-        self.window.status_message.setText("Recent files cleared")
+        self.window.status_message.setText(tr("Recent files cleared"))
 
     # -- menu ---------------------------------------------------------------
 
@@ -99,7 +101,7 @@ class RecentFilesManager:
         recent_files = self.load()
 
         if not recent_files:
-            action = menu.addAction("No recent files")
+            action = menu.addAction(tr("No recent files"))
             action.setEnabled(False)
             return
 
@@ -111,7 +113,7 @@ class RecentFilesManager:
             action.triggered.connect(lambda checked, path=filepath: self.open(path))
 
         menu.addSeparator()
-        clear_action = menu.addAction("Clear Recent Files")
+        clear_action = menu.addAction(tr("Clear Recent Files"))
         clear_action.triggered.connect(self.clear)
 
     # -- open ---------------------------------------------------------------
@@ -129,16 +131,20 @@ class RecentFilesManager:
                     window.dsim.open(filepath)
 
                 self.add(filepath)
-                window.status_message.setText(f"Opened: {os.path.basename(filepath)}")
+                window.status_message.setText(tr("Opened: {name}", name=os.path.basename(filepath)))
                 logger.info(f"Opening recent file: {filepath}")
                 window.canvas.update()
 
             except Exception as e:
                 logger.error(f"Failed to open recent file: {e}")
-                QMessageBox.critical(window, "Error", f"Failed to open file:\n{str(e)}")
+                QMessageBox.critical(
+                    window, tr("Error"), tr("Failed to open file:\n{error}", error=str(e))
+                )
         else:
             QMessageBox.warning(
-                window, "File Not Found", f"The file '{filepath}' no longer exists."
+                window,
+                tr("File Not Found"),
+                tr("The file '{path}' no longer exists.", path=filepath),
             )
             # Remove from recent files
             recent_files = self.load()

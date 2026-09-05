@@ -13,6 +13,8 @@ the checkable grid/minimap menu actions, and the minimap dock.
 
 import logging
 
+from lib.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,21 +29,33 @@ class ViewActionsManager:
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.set_zoom(factor)
-            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
+            window.zoom_status.setText(
+                tr("zoom {percent}%", percent=int(window.canvas.zoom_factor * 100))
+            )
 
     def zoom_in(self):
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.zoom_in()
-            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
-            window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
+            window.zoom_status.setText(
+                tr("zoom {percent}%", percent=int(window.canvas.zoom_factor * 100))
+            )
+            window.toast.show_message(
+                "🔍 " + tr("Zoom: {percent}%", percent=int(window.canvas.zoom_factor * 100)),
+                1500,
+            )
 
     def zoom_out(self):
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.zoom_out()
-            window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
-            window.toast.show_message(f"🔍 Zoom: {int(window.canvas.zoom_factor * 100)}%", 1500)
+            window.zoom_status.setText(
+                tr("zoom {percent}%", percent=int(window.canvas.zoom_factor * 100))
+            )
+            window.toast.show_message(
+                "🔍 " + tr("Zoom: {percent}%", percent=int(window.canvas.zoom_factor * 100)),
+                1500,
+            )
 
     def toggle_grid(self):
         """Toggle grid visibility."""
@@ -49,10 +63,12 @@ class ViewActionsManager:
         if hasattr(window, "canvas"):
             window.canvas.toggle_grid()
             window.grid_toggle_action.setChecked(window.canvas.grid_visible)
-            status = "shown" if window.canvas.grid_visible else "hidden"
-            window.status_message.setText(f"Grid {status}")
-            icon = "⊞" if window.canvas.grid_visible else "⊟"
-            window.toast.show_message(f"{icon} Grid {status.capitalize()}")
+            grid_on = window.canvas.grid_visible
+            window.status_message.setText(tr("Grid shown") if grid_on else tr("Grid hidden"))
+            icon = "⊞" if grid_on else "⊟"
+            window.toast.show_message(
+                f"{icon} " + (tr("Grid Shown") if grid_on else tr("Grid Hidden"))
+            )
 
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
@@ -77,7 +93,7 @@ class ViewActionsManager:
         # Get all blocks
         blocks = window.canvas.dsim.blocks_list
         if not blocks:
-            window.status_message.setText("No blocks to fit")
+            window.status_message.setText(tr("No blocks to fit"))
             return
 
         # Calculate bounding box of all blocks
@@ -126,5 +142,7 @@ class ViewActionsManager:
 
         # Update display
         window.canvas.update()
-        window.zoom_status.setText(f"zoom {int(window.canvas.zoom_factor * 100)}%")
-        window.status_message.setText(f"Fit {len(blocks)} block(s) to window")
+        window.zoom_status.setText(
+            tr("zoom {percent}%", percent=int(window.canvas.zoom_factor * 100))
+        )
+        window.status_message.setText(tr("Fit {count} block(s) to window", count=len(blocks)))

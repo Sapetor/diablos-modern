@@ -39,6 +39,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QColor, QFont, QPalette
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +341,7 @@ class PropertyEditor(QFrame):
                 self._clear_sub_layout(child.layout())
 
     def _show_placeholder(self):
-        placeholder = QLabel("Select a block to view its properties.")
+        placeholder = QLabel(tr("Select a block to view its properties."))
         placeholder.setAlignment(Qt.AlignCenter)
         placeholder.setWordWrap(True)
         text_color = theme_manager.get_color("text_secondary").name()
@@ -369,7 +370,7 @@ class PropertyEditor(QFrame):
         h_lay.setContentsMargins(8, 6, 8, 8)
         h_lay.setSpacing(2)
 
-        eyebrow = QLabel("DIAGRAM")
+        eyebrow = QLabel(tr("DIAGRAM"))
         ef = eyebrow.font()
         ef.setPointSize(8)
         ef.setBold(True)
@@ -380,7 +381,7 @@ class PropertyEditor(QFrame):
         filepath = getattr(self._dsim, "current_filepath", None) or getattr(
             self._dsim, "filepath", None
         )
-        name = os.path.splitext(os.path.basename(filepath))[0] if filepath else "untitled"
+        name = os.path.splitext(os.path.basename(filepath))[0] if filepath else tr("untitled")
         title = QLabel(name)
         tf = title.font()
         tf.setPointSize(13)
@@ -391,7 +392,9 @@ class PropertyEditor(QFrame):
 
         blocks = list(getattr(self._dsim, "blocks_list", []) or [])
         wires = list(getattr(self._dsim, "line_list", []) or [])
-        sub = QLabel(f"{len(blocks)} blocks · {len(wires)} wires")
+        sub = QLabel(
+            tr("{n_blocks} blocks · {n_wires} wires", n_blocks=len(blocks), n_wires=len(wires))
+        )
         sf = sub.font()
         sf.setPointSize(10)
         sub.setFont(sf)
@@ -401,27 +404,27 @@ class PropertyEditor(QFrame):
         self._main_layout.addWidget(header)
 
         # ── Solver section
-        sec = CollapsibleSection("Solver", expanded=True)
+        sec = CollapsibleSection(tr("Solver"), expanded=True)
         self._sections.append(sec)
 
         # Reflect the live DSim simulation parameters (set via the run dialog).
         solver_fields = []
         # Method
-        solver_fields.append(("solver", getattr(self._dsim, "solver_method", "RK45")))
+        solver_fields.append((tr("solver"), getattr(self._dsim, "solver_method", "RK45")))
         # Step / duration
         sim_dt = getattr(self._dsim, "sim_dt", None)
         sim_time = getattr(self._dsim, "sim_time", None)
         if sim_dt is not None:
-            solver_fields.append(("step_size", f"{sim_dt} s"))
+            solver_fields.append((tr("step_size"), f"{sim_dt} s"))
         if sim_time is not None:
-            solver_fields.append(("duration", f"{sim_time} s"))
+            solver_fields.append((tr("duration"), f"{sim_time} s"))
         # Tolerances (relevant to adaptive solvers)
         for attr, label in [("rtol", "rtol"), ("atol", "atol")]:
             if hasattr(self._dsim, attr):
                 solver_fields.append((label, str(getattr(self._dsim, attr))))
         # Fast solver
         fast = getattr(self._main_window, "use_fast_solver", False) if self._main_window else False
-        solver_fields.append(("fast_solver", "✓ on" if fast else "off"))
+        solver_fields.append((tr("fast_solver"), tr("✓ on") if fast else tr("off")))
 
         for k, v in solver_fields:
             sec.addRow(
@@ -430,7 +433,7 @@ class PropertyEditor(QFrame):
         self._main_layout.addWidget(sec)
 
         # ── Workspace
-        wsec = CollapsibleSection("Workspace", expanded=True)
+        wsec = CollapsibleSection(tr("Workspace"), expanded=True)
         self._sections.append(wsec)
         try:
             ws = WorkspaceManager().variables or {}
@@ -438,7 +441,7 @@ class PropertyEditor(QFrame):
             self.logger.debug("workspace read failed: %s", e)
             ws = {}
         if not ws:
-            empty = QLabel("(no workspace variables)")
+            empty = QLabel(tr("(no workspace variables)"))
             self._apply_label_color(empty, text_disabled)
             wsec.addRow("", empty)
         else:
@@ -449,7 +452,7 @@ class PropertyEditor(QFrame):
                     self._mk_kv_value(str(v), text_primary, mono=True),
                 )
             if len(ws) > 12:
-                more = QLabel(f"… +{len(ws) - 12} more")
+                more = QLabel(tr("… +{count} more", count=len(ws) - 12))
                 self._apply_label_color(more, text_disabled)
                 wsec.addRow("", more)
         self._main_layout.addWidget(wsec)
@@ -464,10 +467,10 @@ class PropertyEditor(QFrame):
                 or []
             )
         if history:
-            rsec = CollapsibleSection("Recent runs", expanded=False)
+            rsec = CollapsibleSection(tr("Recent runs"), expanded=False)
             self._sections.append(rsec)
             for i, run in enumerate(reversed(history[-4:])):
-                label = getattr(run, "label", None) or f"Run {len(history) - i}"
+                label = getattr(run, "label", None) or tr("Run {n}", n=len(history) - i)
                 rsec.addRow(
                     self._mk_kv_label(str(label), text_secondary),
                     self._mk_kv_value("", text_disabled, mono=True),
@@ -484,7 +487,7 @@ class PropertyEditor(QFrame):
             self.logger.debug("validator failed: %s", e)
             errors = []
         if errors:
-            vsec = CollapsibleSection("Validation", expanded=True)
+            vsec = CollapsibleSection(tr("Validation"), expanded=True)
             self._sections.append(vsec)
             for err in errors[:10]:
                 sev_raw = getattr(err, "severity", None)
@@ -499,9 +502,9 @@ class PropertyEditor(QFrame):
             self._main_layout.addWidget(vsec)
         elif blocks:
             # No issues — show the "all good" confirmation
-            vsec = CollapsibleSection("Validation", expanded=False)
+            vsec = CollapsibleSection(tr("Validation"), expanded=False)
             self._sections.append(vsec)
-            ok = QLabel("✓ no issues detected")
+            ok = QLabel(tr("✓ no issues detected"))
             ok.setStyleSheet(f"color: {success}; padding: 2px;")
             vsec.addRow("", ok)
             self._main_layout.addWidget(vsec)
@@ -608,7 +611,7 @@ class PropertyEditor(QFrame):
             if not inbound and not outbound:
                 return
 
-            sec = CollapsibleSection("Connections", expanded=False)
+            sec = CollapsibleSection(tr("Connections"), expanded=False)
             self._sections.append(sec)
             text_secondary = theme_manager.get_color("text_secondary").name()
             text_primary = theme_manager.get_color("text_primary").name()
@@ -645,7 +648,7 @@ class PropertyEditor(QFrame):
             if not group_keys:
                 continue
             expanded = group_name == "Parameters"
-            section = CollapsibleSection(group_name, expanded=expanded)
+            section = CollapsibleSection(tr(group_name), expanded=expanded)
             self._sections.append(section)
             for key in group_keys:
                 self._add_param_row(section, key)
@@ -673,7 +676,9 @@ class PropertyEditor(QFrame):
 
         category = getattr(self.block, "category", None)
         if category:
-            badge = QLabel(category)
+            # category is a registry/lookup key (an identifier), never translated
+            # itself — only the displayed text is passed through tr() here.
+            badge = QLabel(tr(category))
             block_color = getattr(self.block, "color", "gray")
             bg_hex = self._color_name_to_hex(block_color, alpha=0.25)
             fg_hex = self._color_name_to_hex(block_color)
@@ -692,7 +697,7 @@ class PropertyEditor(QFrame):
             n_in = len(getattr(block_inst, "inputs", []))
             n_out = len(getattr(block_inst, "outputs", []))
             sec_color = theme_manager.get_color("text_secondary").name()
-            port_label = QLabel(f"{n_in} in \u2192 {n_out} out")
+            port_label = QLabel(tr("{n_in} in \u2192 {n_out} out", n_in=n_in, n_out=n_out))
             port_label.setStyleSheet(f"color: {sec_color}; font-size: 11px;")
             info_row.addWidget(port_label)
 
@@ -712,14 +717,14 @@ class PropertyEditor(QFrame):
         row = QHBoxLayout()
         row.setSpacing(6)
 
-        name_label = QLabel("Name:")
+        name_label = QLabel(tr("Name:"))
         name_label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
         row.addWidget(name_label)
 
         name_edit = QLineEdit(self.block.username)
         self._apply_widget_sizing(name_edit)
-        name_edit.setPlaceholderText("Custom display name")
-        name_edit.setToolTip("Set a custom display name (leave empty or '--' to reset)")
+        name_edit.setPlaceholderText(tr("Custom display name"))
+        name_edit.setToolTip(tr("Set a custom display name (leave empty or '--' to reset)"))
         name_edit.editingFinished.connect(lambda: self._on_name_changed(name_edit))
         row.addWidget(name_edit, stretch=1)
 
@@ -736,7 +741,7 @@ class PropertyEditor(QFrame):
         if io_edit in ("input", "both"):
             row = QHBoxLayout()
             row.setSpacing(6)
-            label = QLabel("Inputs:")
+            label = QLabel(tr("Inputs:"))
             label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
             row.addWidget(label)
 
@@ -751,7 +756,7 @@ class PropertyEditor(QFrame):
         if io_edit in ("output", "both"):
             row = QHBoxLayout()
             row.setSpacing(6)
-            label = QLabel("Outputs:")
+            label = QLabel(tr("Outputs:"))
             label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
             row.addWidget(label)
 
@@ -801,14 +806,17 @@ class PropertyEditor(QFrame):
         label = QLabel(f"{key.replace('_', ' ').title()}:")
         label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
 
-        # Per-param tooltip (#2)
+        # Per-param tooltip (#2). `doc` is a runtime string pulled from the
+        # block's params spec (blocks/*.py); tr() on it isn't extractable
+        # from this file, but scripts/extract_strings.py separately harvests
+        # every param "doc" literal directly from blocks/*.py.
         doc = meta.get("doc", "")
         if doc:
-            label.setToolTip(doc)
+            label.setToolTip(tr(doc))
 
         editor = self._create_editor_for_value(key, value, meta, group)
         if doc and not editor.toolTip():
-            editor.setToolTip(doc)
+            editor.setToolTip(tr(doc))
 
         # Default for reset (#6)
         default = meta.get("default", value)
@@ -816,7 +824,7 @@ class PropertyEditor(QFrame):
 
         reset_btn = QPushButton("\u21ba")
         reset_btn.setFixedSize(20, 22)
-        reset_btn.setToolTip(f"Reset to default: {default}")
+        reset_btn.setToolTip(tr("Reset to default: {default}", default=default))
         reset_btn.setCursor(Qt.PointingHandCursor)
         reset_btn.clicked.connect(lambda checked, k=key: self._reset_param(k))
         # setVisible() deferred until after addWidget below \u2014 calling it on a
@@ -833,10 +841,10 @@ class PropertyEditor(QFrame):
         pin_btn = None
         if isinstance(editor, SliderSpinBox):
             accent = theme_manager.get_color("accent_primary").name()
-            pin_btn = QPushButton("\u25c9  Pin to tuning")
+            pin_btn = QPushButton("\u25c9  " + tr("Pin to tuning"))
             pin_btn.setFlat(True)
             pin_btn.setCursor(Qt.PointingHandCursor)
-            pin_btn.setToolTip("Pin this parameter to the Tuning Panel")
+            pin_btn.setToolTip(tr("Pin this parameter to the Tuning Panel"))
             pin_btn.setStyleSheet(self._pin_button_stylesheet(accent))
             pin_btn.clicked.connect(lambda checked, k=key: self._on_pin_to_tuning(k))
             self._pin_btns[key] = pin_btn
@@ -912,7 +920,7 @@ class PropertyEditor(QFrame):
             if accepts_array:
                 le = QLineEdit(str(value))
                 self._apply_widget_sizing(le)
-                le.setPlaceholderText("e.g. 1.0 or [1, 2, 3]")
+                le.setPlaceholderText(tr("e.g. 1.0 or [1, 2, 3]"))
                 submit = lambda: self._validate_and_submit_numeric(key, le)
                 le.editingFinished.connect(submit)
                 self._pending_submit[le] = submit
@@ -943,7 +951,7 @@ class PropertyEditor(QFrame):
         le.editingFinished.connect(submit)
         self._pending_submit[le] = submit
         if isinstance(value, list):
-            le.setPlaceholderText("e.g. [1, 2, 3]")
+            le.setPlaceholderText(tr("e.g. [1, 2, 3]"))
         return le
 
     # ── Slider logic (#5) ──────────────────────────────────────
@@ -981,10 +989,13 @@ class PropertyEditor(QFrame):
         accent_color = theme_manager.get_color("accent_primary").name()
         sec_color = theme_manager.get_color("text_secondary").name()
 
-        section = CollapsibleSection("Documentation", expanded=False)
+        section = CollapsibleSection(tr("Documentation"), expanded=False)
         self._sections.append(section)
 
-        doc_label = QLabel(str(self.block.doc).strip())
+        # self.block.doc is a runtime string from the block class (blocks/*.py);
+        # tr() on it isn't extractable here, but scripts/extract_strings.py
+        # separately harvests the literal doc text from blocks/*.py.
+        doc_label = QLabel(tr(str(self.block.doc).strip()))
         doc_label.setWordWrap(True)
         doc_label.setStyleSheet(f"color: {sec_color}; font-style: italic; margin-bottom: 4px;")
         section.content_layout.addRow("", doc_label)
@@ -993,7 +1004,7 @@ class PropertyEditor(QFrame):
         cat_file = f"{getattr(self.block, 'category', 'Home')}.md".replace(" ", "-")
         anchor = getattr(self.block, "block_fn", "Home").lower().replace(" ", "-")
         full_url = f"{base_url}/{cat_file}#{anchor}"
-        link_label = QLabel(f'<a href="{full_url}">View Full Reference</a>')
+        link_label = QLabel(f'<a href="{full_url}">{tr("View Full Reference")}</a>')
         link_label.setOpenExternalLinks(True)
         link_label.setStyleSheet(f"color: {accent_color};")
         section.content_layout.addRow("", link_label)
@@ -1051,7 +1062,7 @@ class PropertyEditor(QFrame):
                     if text in ws.variables and isinstance(ws.variables[text], list):
                         converted_value = text
                     else:
-                        raise ValueError("Expected a list, e.g. [1, 2, 3]")
+                        raise ValueError(tr("Expected a list, e.g. [1, 2, 3]"))
             elif target_type == int:
                 try:
                     converted_value = int(text)
@@ -1060,7 +1071,7 @@ class PropertyEditor(QFrame):
                     if text in ws.variables:
                         converted_value = text
                     else:
-                        raise ValueError("Expected an integer or workspace variable")
+                        raise ValueError(tr("Expected an integer or workspace variable"))
             elif target_type == float:
                 try:
                     converted_value = float(text)
@@ -1069,7 +1080,7 @@ class PropertyEditor(QFrame):
                     if text in ws.variables:
                         converted_value = text
                     else:
-                        raise ValueError("Expected a number or workspace variable")
+                        raise ValueError(tr("Expected a number or workspace variable"))
             else:
                 converted_value = text
         except (ValueError, SyntaxError) as e:
@@ -1103,7 +1114,7 @@ class PropertyEditor(QFrame):
                 converted_value = text
             else:
                 is_valid = False
-                error_msg = "Expected a number, list, or workspace variable"
+                error_msg = tr("Expected a number, list, or workspace variable")
 
         if is_valid:
             self._set_validation_error(key, None)
