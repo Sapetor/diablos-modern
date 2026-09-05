@@ -47,22 +47,15 @@ def test_example_loads_and_inits(example_file, qapp):
         # Deserialize into the model (populates blocks_list, line_list, sim params).
         dsim.deserialize(data)
 
-        # Mirror the resolve_params loop from DSim.execution_init (no dialog needed).
+        # Run the *real* resolve pass from DSim.execution_init (no dialog
+        # needed). Using the production method rather than a local copy keeps
+        # this canary honest about mask scopes, Transfer-Function typing and
+        # External reloads.
         workspace_manager = WorkspaceManager()
-
-        def resolve_recursive(blocks):
-            for block in blocks:
-                block.exec_params = workspace_manager.resolve_params(block.params)
-                block.exec_params.update(
-                    {k: v for k, v in block.params.items() if k.startswith("_")}
-                )
-                block.exec_params["dtime"] = dsim.sim_dt
-                dsim.engine.set_block_type(block)
-                if getattr(block, "block_type", "") == "Subsystem":
-                    resolve_recursive(block.sub_blocks)
-
         root_blocks, root_lines = dsim.get_root_context()
-        resolve_recursive(root_blocks)
+        assert dsim._resolve_block_params(root_blocks, workspace_manager, dsim.sim_dt), (
+            f"{example_file.name}: parameter resolution failed — error_msg={dsim.error_msg!r}"
+        )
 
         # Engine init: resolves hierarchy, detects algebraic loops, validates connections.
         dsim.engine.update_sim_params(dsim.sim_time, dsim.sim_dt)

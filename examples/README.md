@@ -4,6 +4,39 @@ This folder contains example diagrams demonstrating DiaBloS features.
 
 ---
 
+## library_block_demo.diablos
+
+**A masked "Vehicle" subsystem in a proportional speed loop**
+
+A step reference of 20 m/s is compared with the measured speed; the error is
+scaled by a proportional gain and drives a masked **Vehicle** block modelling
+`v(s) / F(s) = 1 / (m s + b)`.
+
+```
+[Step 20] ──→ (+/-) ──→ [Gain 800] ──→ [Vehicle] ──┬──→ [Scope]
+                ↑                       m, b       │
+                └───────────────────────────────────┘
+```
+
+The Vehicle subsystem carries a **mask** exposing the mass `m` (1500 kg) and the
+damping `b` (50 N·s/m). Its inner Transfer Function stores
+`denominator = "[m, b]"` -- the mask resolves those names before the diagram is
+flattened, so the stored expression survives every save and re-run. Select the
+block and edit `m` or `b` in the property panel to see the response change; the
+steady state is `20 · K / (K + b)`.
+
+The same block is published as a library block in `examples/library/`:
+
+```bash
+DIABLOS_LIBRARY_PATH=examples/library python diablos_modern.py
+```
+
+"Vehicle" then appears in the palette under **User Library**, ready to drop into
+any diagram. See *Library blocks and masks* in
+[`docs/USER_MANUAL.md`](../docs/USER_MANUAL.md).
+
+---
+
 ## heat_equation_demo.diablos
 
 **1D Heat Equation Simulation using Method of Lines (MOL)**

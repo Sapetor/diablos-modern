@@ -192,26 +192,26 @@ class BaseBlock(ABC):
     # --- Required (abstract) members ---
     @property
     @abstractmethod
-    def block_name(self): ...       # e.g., "Integrator"
+    def block_name(self): ...  # e.g., "Integrator"
 
     @property
     @abstractmethod
-    def params(self): ...           # Default parameters (nested spec dict)
+    def params(self): ...  # Default parameters (nested spec dict)
 
     @property
     @abstractmethod
-    def inputs(self): ...           # Input port definitions
+    def inputs(self): ...  # Input port definitions
 
     @property
     @abstractmethod
-    def outputs(self): ...          # Output port definitions
+    def outputs(self): ...  # Output port definitions
 
     @abstractmethod
     def execute(self, time, inputs, params, **kwargs): ...
 
     # --- Optional overrides ---
     @property
-    def category(self): ...         # e.g., "Control" (defaults to "Other")
+    def category(self): ...  # e.g., "Control" (defaults to "Other")
 
     @property
     def fn_name(self): ...          # Only some blocks (e.g. statespace) override this
@@ -291,7 +291,13 @@ modern_canvas.start_simulation()
   ↓
 DSim.execution_init_time() - Get parameters
   ↓
+DSim._resolve_block_params() - params → exec_params
+  └→ masked subsystems layer their mask scope over the workspace
+     variables (lib/masks.py); stored params keep the expressions
+  ↓
 DSim.execution_init() - Initialize simulation
+  ├→ Flattener.flatten() - expands subsystems, resolving mask
+  │  parameters into the execution clones
   ├→ SimulationEngine.check_diagram_integrity()
   ├→ SimulationEngine.reset_execution_data()
   ├→ Assign hierarchy levels
@@ -313,8 +319,13 @@ interpreter loop above and compiles the whole diagram into a single ODE solved b
 SciPy:
 
 ```
+Mask resolve  - lib/masks.py evaluates each masked subsystem's parameters into
+                a scope (outer-to-inner for nested masks) and rewrites the
+                inner blocks' parameter strings against it
+  ↓
 Flattening    - Flattener (lib/engine/flattener.py) expands nested
-                subsystems into a flat block list
+                subsystems into a flat block list; the mask resolve above
+                happens inside this walk, on the execution clones only
   ↓
 Compilation   - SystemCompiler.compile_system() (lib/engine/system_compiler.py)
                 builds a per-block executor closure for every block by dispatching
@@ -409,6 +420,37 @@ DSim.update_lines_data() for each line
   └→ Create DLine instances
 ```
 
+## Masks and User Libraries
+
+Two small modules sit beside the engine rather than inside it:
+
+* **`lib/masks.py`** -- the mask model. A mask lives in the Subsystem block's
+  own `params` dict (`params["_mask"]` for the definition, one ordinary entry
+  per parameter value), so it round-trips through `FileService` with no special
+  serialization. `resolve_mask_scope()` evaluates the parameter values through
+  `lib/safe_eval.py` with the diagram's workspace variables underneath, and
+  `resolve_params_in_scope()` rewrites an inner block's parameter strings
+  against that scope.
+* **`lib/library.py`** -- discovery and persistence of user library blocks: one
+  masked subsystem per `.diablos` file with an added top-level `library_block`
+  section. See the Developer Guide for the file layout and the folder search
+  order.
+
+**Where resolution happens.** `Flattener._collect_recursive` opens a new scope
+each time it descends into a masked subsystem and applies it to the *clones* it
+emits; `DSim._resolve_block_params` does the same when it builds `exec_params`,
+so Transfer-Function typing sees resolved coefficients. Neither path mutates
+the user's stored `params`, which is what lets `gain = "K"` survive a save,
+a reload and every re-run. With no mask in scope `resolve_params_in_scope`
+returns the input dict unchanged, so mask-free diagrams take a byte-identical
+path (pinned by `tests/regression/test_mask_resolution.py`).
+
+Because resolution happens before flattening completes, both engines get it for
+free: the compiled path, the interpreter, the Python code generator and the
+headless analysis runners all consume the flattened list.
+
+---
+
 ## Design Patterns
 
 ### 1. MVC (Model-View-Controller)
@@ -423,6 +465,7 @@ DSim delegates responsibilities to specialized components:
 self.model = SimulationModel()
 self.engine = SimulationEngine(self.model)
 self.file_service = FileService(self.model)
+
 
 # Delegation example
 def add_block(self, block, m_pos):
@@ -464,7 +507,7 @@ self.colors = self.model.colors
 Critical fix: Always use `menu_block.fn_name` not `block_name.lower()`:
 ```python
 # SimulationModel.load_all_blocks()
-if hasattr(block, 'fn_name'):
+if hasattr(block, "fn_name"):
     fn_name = block.fn_name  # Use custom fn_name
 else:
     fn_name = block.block_name.lower()
@@ -479,8 +522,7 @@ else:
 ### 4. Type Safety
 All MVC components use type hints:
 ```python
-def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
-    ...
+def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock: ...
 ```
 
 ## Extension Points
@@ -496,6 +538,7 @@ def add_block(self, block: MenuBlocks, m_pos: QPoint) -> DBlock:
 from blocks.base_block import BaseBlock
 import numpy as np
 
+
 class MyBlock(BaseBlock):
     @property
     def block_name(self):
@@ -503,9 +546,7 @@ class MyBlock(BaseBlock):
 
     @property
     def params(self):
-        return {
-            "param1": {"default": 1.0, "type": "float"}
-        }
+        return {"param1": {"default": 1.0, "type": "float"}}
 
     # ... implement other properties
 
@@ -514,7 +555,7 @@ class MyBlock(BaseBlock):
         Execute block logic directly - no functions.py needed!
         """
         input_val = inputs.get(0, 0.0)
-        param1 = params.get('param1', 1.0)
+        param1 = params.get("param1", 1.0)
         result = input_val * param1
         return {0: result}  # outputs keyed by port index
 ```

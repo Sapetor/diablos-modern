@@ -509,6 +509,14 @@ class FileService:
         block.username = username
         if params:
             block.params.update(params)
+            # Subsystem() is constructed with an empty params dict, so
+            # init_params_list (which gates saving_params) starts empty and
+            # would drop everything restored here -- the mask definition, its
+            # parameter values and any library back-reference -- on the next
+            # save. Recompute it with the same rule DBlock uses.
+            block.init_params_list = [
+                key for key in params if not (key.startswith("_") and key.endswith("_"))
+            ]
         block.params["_name_"] = block.name
         block.external = block_data.get("external", False)
 

@@ -68,6 +68,11 @@ def resolve_block_shape(block) -> str:
             shape = None
     if not shape:
         shape = _SHAPE_FALLBACK_BY_FN.get(getattr(block, "block_fn", ""), "rect")
+    # A masked subsystem may pick one of the outlines for its block; it wins
+    # over the class hook so shadow, body, hover and export all agree.
+    mask = _block_mask(block)
+    if mask is not None and mask.get("shape"):
+        shape = mask.get("shape")
     if shape not in BLOCK_SHAPES:
         shape = "rect"
     if shape == "circle":
@@ -141,6 +146,17 @@ _CATEGORY_KEY_MAP = (
     ("pde", "block_pde"),
     ("optim", "block_optimization"),
 )
+
+
+def _block_mask(block):
+    """Return the block's mask definition, or None (never raises into a paint)."""
+    try:
+        from lib.masks import get_mask
+
+        return get_mask(block)
+    except Exception:  # pragma: no cover - defensive: painting must not fail
+        logger.debug("Mask lookup failed while painting", exc_info=True)
+        return None
 
 
 def _category_token(block) -> str:
@@ -854,6 +870,15 @@ class BlockRenderer:
 
     def _draw_legacy_icon(self, block, painter, path):
         """Helper to draw legacy icons that use direct calls or mess with fonts."""
+        # A masked subsystem draws its own identity (icon glyph, else the mask
+        # display name) instead of the generic nested-rectangles glyph.
+        mask = _block_mask(block)
+        if mask is not None:
+            text = mask.get("icon") or mask.get("name") or ""
+            if text:
+                self._draw_centered_text(block, painter, text, bold=True, size_delta=1)
+            return
+
         # Using if/elif chain copied from original block.py
         if path.isEmpty() and block.block_fn == "Step":
             path.moveTo(0.1, 0.7)

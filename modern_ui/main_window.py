@@ -234,6 +234,10 @@ class ModernDiaBloSWindow(QMainWindow):
 
         self.experiment_controller = ExperimentController(self)
 
+        from modern_ui.managers.mask_library_manager import MaskLibraryManager
+
+        self.mask_library_manager = MaskLibraryManager(self)
+
     def _init_state_management(self):
         """Expose the project manager's diagram service on the window."""
         self.diagram_service = self.project_manager.diagram_service
@@ -251,6 +255,27 @@ class ModernDiaBloSWindow(QMainWindow):
         """Create subsystem from selection (delegate to canvas)."""
         if hasattr(self, "canvas") and hasattr(self.canvas, "_create_subsystem_trigger"):
             self.canvas._create_subsystem_trigger()
+
+    # Mask / user-library facades -> MaskLibraryManager
+    def edit_block_mask(self, block=None):
+        """Edit the mask of the selected (or given) Subsystem."""
+        return self.mask_library_manager.edit_mask(block)
+
+    def look_under_mask(self, block=None):
+        """Navigate into the selected (or given) Subsystem."""
+        return self.mask_library_manager.look_under_mask(block)
+
+    def save_as_library_block(self, block=None, path=None):
+        """Save the selected (or given) Subsystem as a reusable library block."""
+        return self.mask_library_manager.save_as_library_block(block, path)
+
+    def reload_from_library(self, block=None):
+        """Re-sync a library instance's contents from its source file."""
+        return self.mask_library_manager.reload_from_library(block)
+
+    def refresh_block_library(self):
+        """Re-scan the user library folders and rebuild the palette."""
+        return self.mask_library_manager.refresh_library()
 
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
@@ -350,11 +375,24 @@ class ModernDiaBloSWindow(QMainWindow):
         pass
 
     # Toolbar action handlers (delegation to project_manager)
+    def _refresh_library_for_open_diagram(self):
+        """Re-scan library folders after a diagram changes.
+
+        The project-local ``library/`` folder is resolved relative to the open
+        file, so it only becomes visible once a diagram has been opened.
+        """
+        try:
+            self.mask_library_manager.refresh_library()
+        except Exception as e:
+            logger.warning(f"Could not refresh the block library: {e}")
+
     def open_diagram(self):
         self.project_manager.open_diagram()
+        self._refresh_library_for_open_diagram()
 
     def open_example(self, filename):
         self.project_manager.open_example(filename)
+        self._refresh_library_for_open_diagram()
 
     def save_diagram(self):
         self.project_manager.save_diagram()

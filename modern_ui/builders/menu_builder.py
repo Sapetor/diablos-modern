@@ -126,6 +126,14 @@ class MenuBuilder:
             )
             action.setShortcut("Ctrl+G")
 
+        # Masks & user library (see modern_ui/managers/mask_library_manager.py)
+        if hasattr(self.window, "edit_block_mask"):
+            edit_menu.addAction("Edit &Mask...", self.window.edit_block_mask)
+            edit_menu.addAction("&Look Under Mask", self.window.look_under_mask)
+            edit_menu.addAction("Save as &Library Block...", self.window.save_as_library_block)
+            edit_menu.addAction("Reload from Li&brary", self.window.reload_from_library)
+            edit_menu.addAction("Refresh Block Librar&y", self.window.refresh_block_library)
+
         edit_menu.addSeparator()
 
         if hasattr(self.window, "show_command_palette"):

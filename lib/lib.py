@@ -555,7 +555,7 @@ class DSim:
         else:
             return -1
 
-    def _resolve_block_params(self, blocks, workspace_manager, sim_dt) -> bool:
+    def _resolve_block_params(self, blocks, workspace_manager, sim_dt, mask_scope=None) -> bool:
         """
         Recursively resolve execution parameters for a block hierarchy.
 
@@ -563,12 +563,25 @@ class DSim:
         (headless) so both paths handle Transfer-Function typing, External
         data reload, and Subsystem recursion identically.
 
+        ``mask_scope`` carries the enclosing masked subsystem's resolved
+        parameters (see ``lib/masks.py``).  Mask expressions are folded into
+        ``exec_params`` only -- the stored ``params`` keep the user's
+        expression strings, so they survive save/load and every re-run.  The
+        flattener repeats the same resolution on its execution clones; doing
+        it here as well means ``set_block_type`` below sees resolved
+        numerator/denominator arrays rather than raw mask variable names.
+
         Returns True on success, False if an external file is missing or a
         reload raised (self.error_msg is set in those cases).
         """
+        from lib.masks import MaskError, child_scope_for, resolve_params_in_scope
+
         for block in blocks:
-            # Resolve parameters using WorkspaceManager
-            block.exec_params = workspace_manager.resolve_params(block.params)
+            # Resolve parameters using WorkspaceManager, with the enclosing
+            # mask's parameters layered over the diagram workspace.
+            block.exec_params = workspace_manager.resolve_params(
+                resolve_params_in_scope(block.params, mask_scope)
+            )
             # Copy internal parameters that start with '_'
             block.exec_params.update({k: v for k, v in block.params.items() if k.startswith("_")})
 
@@ -596,7 +609,18 @@ class DSim:
 
             # Recurse if subsystem
             if getattr(block, "block_type", "") == "Subsystem":
-                if self._resolve_block_params(block.sub_blocks, workspace_manager, sim_dt) is False:
+                try:
+                    child_scope = child_scope_for(block, mask_scope)
+                except MaskError as e:
+                    logger.error(str(e))
+                    self.error_msg = str(e)
+                    return False
+                if (
+                    self._resolve_block_params(
+                        block.sub_blocks, workspace_manager, sim_dt, child_scope
+                    )
+                    is False
+                ):
                     return False
         return True
 

@@ -235,6 +235,26 @@ class _CanvasSearchWidget(QWidget):
 # ---------------------------------------------------------------------------
 
 
+def _is_subsystem(block) -> bool:
+    """True when the right-clicked block is a Subsystem container."""
+    try:
+        from lib.masks import is_subsystem
+
+        return is_subsystem(block)
+    except Exception:  # pragma: no cover - defensive: never break the menu
+        return getattr(block, "block_fn", "") == "Subsystem"
+
+
+def _library_ref(block):
+    """The block's library back-reference, if it was made from a library block."""
+    try:
+        from lib.library import get_library_ref
+
+        return get_library_ref(block)
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
 class MenuManager:
     """Builds and shows right-click context menus for the canvas.
 
@@ -327,6 +347,27 @@ class MenuManager:
                 "Ctrl+G",
                 on_trigger=self.canvas._create_subsystem_trigger,
             )
+
+        # Subsystem masks & user library
+        if not multi and _is_subsystem(block):
+            menu.addSeparator()
+            _build_kbd_row(menu, "Edit mask\u2026", "", on_trigger=lambda: self._edit_mask(block))
+            _build_kbd_row(
+                menu, "Look under mask", "", on_trigger=lambda: self._look_under_mask(block)
+            )
+            _build_kbd_row(
+                menu,
+                "Save as library block\u2026",
+                "",
+                on_trigger=lambda: self._save_as_library_block(block),
+            )
+            if _library_ref(block):
+                _build_kbd_row(
+                    menu,
+                    "Reload from library",
+                    "",
+                    on_trigger=lambda: self._reload_from_library(block),
+                )
 
         # Port editing (variable-port blocks only)
         if getattr(block, "io_edit", "none") not in ("none", False, None):
@@ -421,6 +462,29 @@ class MenuManager:
         )
 
         menu.exec_(QCursor.pos())
+
+    # -- Mask / library actions -------------------------------------------
+
+    def _mask_action(self, name, block):
+        """Call one of the main window's mask/library facades on ``block``."""
+        main_win = self._find_main_window()
+        handler = getattr(main_win, name, None) if main_win is not None else None
+        if handler is None:
+            logger.warning("Mask/library action %r is unavailable from this window", name)
+            return None
+        return handler(block)
+
+    def _edit_mask(self, block):
+        return self._mask_action("edit_block_mask", block)
+
+    def _look_under_mask(self, block):
+        return self._mask_action("look_under_mask", block)
+
+    def _save_as_library_block(self, block):
+        return self._mask_action("save_as_library_block", block)
+
+    def _reload_from_library(self, block):
+        return self._mask_action("reload_from_library", block)
 
     # -- V2: Canvas (empty) menu ------------------------------------------
 

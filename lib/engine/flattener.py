@@ -1,6 +1,8 @@
 import logging
 import copy
 import re
+
+from lib.masks import child_scope_for, resolve_params_in_scope
 from lib.simulation.connection import DLine
 
 logger = logging.getLogger(__name__)
@@ -29,8 +31,12 @@ class Flattener:
         self.input_drivers = {}
         self.block_map = {}  # full_name -> block (clones for primitives)
 
-        # 1. Recursively collect primitives and build input map
-        self._collect_recursive(top_blocks, top_lines, "")
+        # 1. Recursively collect primitives and build input map.
+        #    Masked subsystems open a parameter scope here (see lib/masks.py):
+        #    the clones this walk produces are the exec-time copies, so mask
+        #    expressions are resolved into *them* and the user's stored
+        #    parameter strings ("gain = K") are left untouched.
+        self._collect_recursive(top_blocks, top_lines, "", None)
 
         # 2. Filter primitives (exclude container blocks)
         # Note: Inport/Outport are primitives in the sense they are leaves, but we treat them as wires.
@@ -65,7 +71,7 @@ class Flattener:
 
         return primitives, final_lines
 
-    def _collect_recursive(self, blocks, lines, prefix):
+    def _collect_recursive(self, blocks, lines, prefix, scope=None):
         # 1. Map all lines in this scope
         for line in lines:
             src = f"{prefix}{line.srcblock}"
@@ -108,10 +114,20 @@ class Flattener:
                 self.block_map[full_name] = (
                     block  # Store original (container) for reference if needed
                 )
-                self._collect_recursive(block.sub_blocks, block.sub_lines, f"{full_name}/")
+                # A masked subsystem replaces the scope its children see with
+                # its own resolved mask parameters; an unmasked one passes the
+                # enclosing scope straight through (so an unmasked subsystem
+                # nested in a masked one still sees the outer mask).
+                child_scope = child_scope_for(block, scope)
+                self._collect_recursive(
+                    block.sub_blocks, block.sub_lines, f"{full_name}/", child_scope
+                )
             else:
                 new_b = copy.deepcopy(block)
                 new_b.name = full_name
+                # No mask in scope -> params dict is returned as-is, so
+                # mask-free diagrams flatten exactly as before.
+                new_b.params = resolve_params_in_scope(new_b.params, scope)
                 # Store hierarchy path for debugging/inspector
                 new_b.hierarchy_path = prefix[:-1] if prefix else ""
 
