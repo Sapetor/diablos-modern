@@ -208,3 +208,16 @@ def build_ratelimiter(ctx):
         dy_vec[start] = dy
 
     return exec_ratelimiter
+
+
+# No @events builder for RateLimiter, deliberately.
+#
+# The compiled limiter is not a true rate limiter but a stiff first-order chase
+# ``dy = clip((u - y)*K, falling, rising)`` with K = 1000 (see
+# build_ratelimiter). Its "discontinuity" is that clip, and the unclipped rate
+# ``(u - y)*K`` does not cross the bound cleanly: while slew-limited the chase
+# holds the error pinned right at the bound, so a guard on
+# ``(u - y)*K - rising`` grazes zero over and over and trips the chattering
+# guard within a few milliseconds -- costing a pile of restarts and then
+# handing the run to the fixed-step fallback, i.e. strictly worse than not
+# watching it at all. Rerun without the fast solver for an exact rate limiter.

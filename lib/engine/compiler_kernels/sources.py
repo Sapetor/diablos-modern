@@ -9,7 +9,7 @@ in ``SystemCompiler._create_block_executor``; only the shared locals (``b_name``
 import numpy as np
 from scipy import signal
 
-from lib.engine.compiler_kernels import kernel
+from lib.engine.compiler_kernels import EventSpec, events, kernel
 
 
 @kernel("Constant")
@@ -70,6 +70,42 @@ def build_step(ctx):
             signals[b_name] = val if t >= step_t else 0.0
 
         return exec_step
+
+
+@events("Step")
+def events_step(ctx):
+    """The step instant itself: a pure time event ``t - delay``.
+
+    Without it the step edge falls inside whatever RK step straddles it and the
+    response is smeared (or the solver burns rejected steps shrinking onto it).
+    ``pulse`` repeats every half period and ``constant`` has no edge at all, so
+    only the single-edge shapes are handled here.
+    """
+    step_type = ctx.params.get("type", "up")
+    if step_type not in ("up", "down"):
+        return []
+    delay = float(ctx.params.get("delay", 0.0))
+    if not np.isfinite(delay):
+        return []
+
+    def _g(t, y, signals, _delay=delay):
+        return t - _delay
+
+    return [EventSpec(block=ctx.b_name, label="edge", func=_g, direction=1.0, monotonic=True)]
+
+
+@events("Ramp")
+def events_ramp(ctx):
+    """The ramp's start kink at ``t - delay`` (slope jumps from 0 to slope)."""
+    slope = float(ctx.params.get("slope", 1.0))
+    delay = float(ctx.params.get("delay", 0.0))
+    if slope == 0.0 or not np.isfinite(delay):
+        return []
+
+    def _g(t, y, signals, _delay=delay):
+        return t - _delay
+
+    return [EventSpec(block=ctx.b_name, label="start", func=_g, direction=1.0, monotonic=True)]
 
 
 @kernel("Ramp")
@@ -136,6 +172,57 @@ def build_wavegenerator(ctx):
             signals[b_name] = bias + amp * np.sin(arg)
 
         return exec_wavegen_default
+
+
+@events("Wavegenerator")
+def events_wavegenerator(ctx):
+    """Edges (Square, Sawtooth) or slope kinks (Triangle) of the waveform.
+
+    All three are periodic in ``arg = 2*pi*f*t + phase``.  A sine of ``arg`` (or
+    of ``arg/2``) is a smooth function with zeros exactly at the breakpoints, so
+    one event function covers the whole train; Sine itself is smooth and gets
+    nothing.
+    """
+    waveform = ctx.params.get("waveform", "Sine")
+    if waveform not in ("Square", "Triangle", "Sawtooth"):
+        return []
+    freq = float(ctx.params.get("frequency", 1.0))
+    phase = float(ctx.params.get("phase", 0.0))
+    if freq == 0.0 or not np.isfinite(freq):
+        return []
+
+    if waveform == "Sawtooth":
+        # One jump per period (arg = 2*k*pi) -> half-angle sine.
+        def _g(t, y, signals):
+            return np.sin(np.pi * freq * t + phase / 2.0)
+
+        label = "sawtooth_edge"
+    else:
+        # Square jumps and Triangle kinks both sit at arg = k*pi.
+        def _g(t, y, signals):
+            return np.sin(2.0 * np.pi * freq * t + phase)
+
+        label = "square_edge" if waveform == "Square" else "triangle_kink"
+
+    return [EventSpec(block=ctx.b_name, label=label, func=_g)]
+
+
+@events("Prbs")
+def events_prbs(ctx):
+    """Bit boundaries of the LFSR sequence (``t`` a multiple of ``bit_time``).
+
+    The sequence only jumps where consecutive bits differ, but the boundaries
+    are where a jump *can* happen and locating all of them costs one restart
+    each -- far cheaper than an RK step straddling an unresolved edge.
+    """
+    bit_time = float(ctx.params.get("bit_time", 0.1))
+    if bit_time <= 0 or not np.isfinite(bit_time):
+        return []
+
+    def _g(t, y, signals, _bt=bit_time):
+        return np.sin(np.pi * t / _bt)
+
+    return [EventSpec(block=ctx.b_name, label="bit_edge", func=_g)]
 
 
 @kernel("Impulse")

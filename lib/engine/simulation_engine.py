@@ -15,6 +15,7 @@ from lib.engine.flattener import Flattener
 from lib.engine.block_names import canonical_fn
 from lib.engine.topo import kahn_topological_order
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
+from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, solve_with_events
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.engine.block_params import push_down_internal_params
 from lib.engine import graph_analysis
@@ -154,6 +155,12 @@ class SimulationEngine:
         self.solver_method: str = "RK45"
         self.rtol: float = 1e-9
         self.atol: float = 1e-12
+        # Zero-crossing (event) detection for the compiled path. On by default:
+        # it is what makes a switching instant land on its exact time instead of
+        # being smeared across whatever adaptive step straddled it. See
+        # lib/engine/zero_crossing.py and docs/FAST_SOLVER.md.
+        self.zero_crossing: bool = True
+        self.zero_crossing_max_events: int = DEFAULT_MAX_EVENTS
         self.real_time: bool = True
         self.execution_time: float = 1.0
         self.time_step: float = 0.0
@@ -852,6 +859,7 @@ class SimulationEngine:
         solver_method: str = None,
         rtol: float = None,
         atol: float = None,
+        zero_crossing: bool = None,
     ) -> None:
         """
         Update simulation parameters.
@@ -863,6 +871,8 @@ class SimulationEngine:
                 'LSODA', 'BDF', 'Radau', 'RK23', 'DOP853'). Unchanged if None.
             rtol: Relative tolerance for adaptive scipy solvers. Unchanged if None.
             atol: Absolute tolerance for adaptive scipy solvers. Unchanged if None.
+            zero_crossing: Enable compiled-path zero-crossing detection.
+                Unchanged if None.
         """
         self.sim_time = sim_time
         self.sim_dt = sim_dt
@@ -872,6 +882,11 @@ class SimulationEngine:
             self.rtol = rtol
         if atol is not None:
             self.atol = atol
+        if zero_crossing is not None:
+            self.zero_crossing = bool(zero_crossing)
+            # Compilability depends on it: Hysteresis only compiles when the
+            # runner can locate its switching instants.
+            self.compiler.zero_crossing_enabled = bool(zero_crossing)
 
     def get_execution_status(self):
         """
@@ -1874,6 +1889,7 @@ class SimulationEngine:
         fallback_reason = None
         rtol = getattr(self, "rtol", 1e-9)
         atol = getattr(self, "atol", 1e-12)
+        zero_crossing_info = None
         self.last_solver_diagnostics = {}
 
         try:
@@ -1995,10 +2011,58 @@ class SimulationEngine:
                         fallback_reason = f"unknown solver '{method}' fell back to RK45"
                         method = "RK45"
                     backend = "scipy"
-                    logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
-                    sol = solve_ivp(
-                        model_func, t_span, y0, t_eval=t_eval, method=method, rtol=rtol, atol=atol
-                    )
+                    # Zero-crossing detection: only worth its machinery when the
+                    # diagram actually contains a discontinuity, so a smooth
+                    # diagram takes the plain single-shot solve_ivp call below
+                    # with no `events=` argument and no per-probe signal
+                    # bookkeeping at all.
+                    event_specs = list(getattr(model_func, "event_specs", None) or [])
+                    use_events = bool(self.zero_crossing) and bool(event_specs)
+                    if use_events:
+                        backend = "scipy+events"
+                        logger.info(
+                            f"Solving with {method} (rtol={rtol}, atol={atol}) and "
+                            f"{len(event_specs)} zero-crossing event(s)"
+                        )
+                        sol = solve_with_events(
+                            model_func,
+                            t_span,
+                            y0,
+                            t_eval,
+                            event_specs,
+                            method=method,
+                            rtol=rtol,
+                            atol=atol,
+                            max_events=int(getattr(self, "zero_crossing_max_events", 0) or 0)
+                            or DEFAULT_MAX_EVENTS,
+                            mode_states=getattr(model_func, "mode_states", None),
+                            # State-dependent guards can cross and come back
+                            # inside one adaptive step; capping at the output
+                            # step keeps anything the user can see detectable.
+                            max_step=dt,
+                            # Chattering systems stall an adaptive solver; the
+                            # guard hands the tail to the fixed-step scheme.
+                            fallback_integrator=integrate_fixed_step,
+                        )
+                        zero_crossing_info = sol.summary()
+                    else:
+                        logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
+                        sol = solve_ivp(
+                            model_func,
+                            t_span,
+                            y0,
+                            t_eval=t_eval,
+                            method=method,
+                            rtol=rtol,
+                            atol=atol,
+                        )
+                        zero_crossing_info = {
+                            "enabled": False,
+                            "n_events": 0,
+                            "reason": "disabled in settings"
+                            if not self.zero_crossing
+                            else "no discontinuous blocks",
+                        }
                 method_used = method
             solve_time = time_module.perf_counter() - solve_start
 
@@ -2024,6 +2088,7 @@ class SimulationEngine:
                     total_time=time_module.perf_counter() - run_start,
                     fallback_reason=fallback_reason,
                     failure_stage="solve",
+                    zero_crossing=zero_crossing_info,
                 )
                 return False
 
@@ -2070,6 +2135,7 @@ class SimulationEngine:
                 total_time=time_module.perf_counter() - run_start,
                 fallback_reason=fallback_reason,
                 output_range=output_range,
+                zero_crossing=zero_crossing_info,
             )
             logger.info(
                 "Compiled solver diagnostics: %s",

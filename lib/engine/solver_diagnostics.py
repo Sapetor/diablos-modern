@@ -41,6 +41,7 @@ def build_diagnostics(
     fallback_reason=None,
     failure_stage=None,
     output_range=None,
+    zero_crossing=None,
 ) -> Dict[str, Any]:
     """Build the compact diagnostics dict for a single compiled run.
 
@@ -79,6 +80,10 @@ def build_diagnostics(
         "replay_wall_time": float(replay_time),
         "total_wall_time": float(total_time),
         "output_range": output_range,
+        # None on the interpreted / fixed-step / algebraic paths, which have no
+        # event machinery; otherwise the summary dict from
+        # lib.engine.zero_crossing (events located, segments, guard state).
+        "zero_crossing": zero_crossing,
     }
 
 
@@ -87,12 +92,20 @@ def format_diagnostics_for_log(diagnostics: Dict[str, Any]) -> str:
     cache = "hit" if diagnostics.get("compile_cache_hit") else "miss"
     nfev = diagnostics.get("nfev")
     nfev_text = "n/a" if nfev is None else str(nfev)
+    zc = diagnostics.get("zero_crossing") or {}
+    if zc.get("enabled"):
+        zc_text = "events={}{} ".format(
+            zc.get("n_events", 0), " (guard tripped)" if zc.get("guard_tripped") else ""
+        )
+    else:
+        zc_text = ""
     return (
         f"method={diagnostics.get('method_used')} "
         f"backend={diagnostics.get('backend')} "
         f"states={diagnostics.get('n_states')} "
         f"points={diagnostics.get('n_time_points')} "
         f"nfev={nfev_text} "
+        f"{zc_text}"
         f"cache={cache} "
         f"compile={diagnostics.get('compile_wall_time', 0.0):.4f}s "
         f"solve={diagnostics.get('solve_wall_time', 0.0):.4f}s "

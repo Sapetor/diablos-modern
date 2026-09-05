@@ -9,7 +9,7 @@ from lib.engine.pde_helpers import (
     parse_pde_initial_condition,
 )
 from lib.engine.block_names import canonical_fn
-from lib.engine.compiler_kernels import BuildContext, get_kernel_builder
+from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
 from lib.engine.block_params import runtime_params
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,14 @@ class SystemCompiler:
     """
 
     def __init__(self):
+        # Per-compile store of latch/mode holders. Populated by _build_context
+        # so a block's kernel closure and its event functions close over the
+        # SAME mutable holder; reset at the top of every compile_system.
+        self._mode_registry: Dict[str, Dict[str, Any]] = {}
+        # Whether the caller intends to run with zero-crossing detection. Only
+        # affects compilability: blocks whose semantics require located events
+        # (Hysteresis) are compilable exactly when events will be available.
+        self.zero_crossing_enabled: bool = True
         # Allowlist of blocks that can be compiled
         self.COMPILABLE_BLOCKS = {
             "Integrator",
@@ -86,10 +94,13 @@ class SystemCompiler:
             "PRBS",
             "MathFunction",
             "Selector",
-            # 'Hysteresis' — excluded: the relay latch is path-dependent and cannot
-            # be a pure function of (t, y). solve_ivp probes the RHS at non-accepted,
-            # non-monotonic times, corrupting the latch. Falls back to the
-            # interpreted path (blocks/hysteresis.py).
+            # 'Hysteresis' — compilable only with zero-crossing detection on (see
+            # ZERO_CROSSING_ONLY_BLOCKS below). The relay latch is path-dependent
+            # and cannot be a pure function of (t, y) while solve_ivp probes the
+            # RHS at non-accepted, non-monotonic times; located terminal events
+            # fix that by freezing the mode inside each segment and flipping it
+            # only at the switching instant. Without events it still falls back
+            # to the interpreted path (blocks/hysteresis.py).
             # PDE Blocks (Method of Lines) - 1D
             "HeatEquation1D",
             "WaveEquation1D",
@@ -119,6 +130,18 @@ class SystemCompiler:
             "Product",
         }
 
+        # Blocks whose compiled kernel is only correct when the runner locates
+        # switching instants for it. They join COMPILABLE_BLOCKS when
+        # zero_crossing_enabled is True and are otherwise sent to the
+        # interpreter.
+        self.ZERO_CROSSING_ONLY_BLOCKS = {"Hysteresis"}
+
+    def _compilable_names(self):
+        """The live allowlist, including the event-gated blocks when events are on."""
+        if self.zero_crossing_enabled:
+            return self.COMPILABLE_BLOCKS | self.ZERO_CROSSING_ONLY_BLOCKS
+        return self.COMPILABLE_BLOCKS
+
     def check_compilability(self, blocks: List[DBlock]) -> bool:
         """
         Check if the entire diagram is supported by the compiler.
@@ -129,6 +152,7 @@ class SystemCompiler:
         Returns:
             bool: True if all blocks are supported, False otherwise.
         """
+        allowed = self._compilable_names()
         for block in blocks:
             # Check block type (case-insensitive for safety)
             # Normalize to Title Case (e.g. Sine, Integrator) or just allow 'sine'
@@ -171,28 +195,20 @@ class SystemCompiler:
             # Accept the block if its name matches the allowlist directly or
             # via case correction (TitleCase, e.g. Sine; or UPPER, e.g. PID).
             if (
-                b_type not in self.COMPILABLE_BLOCKS
-                and b_type.title() not in self.COMPILABLE_BLOCKS
-                and b_type.upper() not in self.COMPILABLE_BLOCKS
+                b_type not in allowed
+                and b_type.title() not in allowed
+                and b_type.upper() not in allowed
             ):
                 logger.debug(f"Block {block.name} ({block.block_fn}) is not compilable.")
                 return False
 
         return True
 
-    def _create_block_executor(
+    def _build_context(
         self, block: DBlock, input_map: Dict, state_map: Dict, block_matrices: Dict
-    ) -> Callable[[float, np.ndarray, np.ndarray, Dict], None]:
-        """
-        Creates a dedicated closure for a specific block's execution.
-        Args:
-            block: The block to compile.
-            input_map: Dependency graph.
-            state_map: State allocations.
-            block_matrices: Pre-computed matrices.
-        Returns:
-            function(t, y, dy_vec, signals) -> None
-        """
+    ) -> BuildContext:
+        """Assemble the per-block BuildContext shared by the kernel and event
+        builders (see ``lib.engine.compiler_kernels``)."""
         b_name = block.name
 
         # Normalize Function Name (single source of truth: lib.engine.block_names)
@@ -232,21 +248,37 @@ class SystemCompiler:
             else:
                 input_sources.append(None)  # None means 0.0 default
 
+        return BuildContext(
+            block=block,
+            b_name=b_name,
+            fn=fn,
+            params=params,
+            input_sources=input_sources,
+            deps=deps,
+            state_map=state_map,
+            block_matrices=block_matrices,
+            mode_registry=self._mode_registry,
+        )
+
+    def _create_block_executor(
+        self, block: DBlock, input_map: Dict, state_map: Dict, block_matrices: Dict
+    ) -> Callable[[float, np.ndarray, np.ndarray, Dict], None]:
+        """
+        Creates a dedicated closure for a specific block's execution.
+        Args:
+            block: The block to compile.
+            input_map: Dependency graph.
+            state_map: State allocations.
+            block_matrices: Pre-computed matrices.
+        Returns:
+            function(t, y, dy_vec, signals) -> None
+        """
         # --- Block-specific closures ---
         # Every compilable block family is registered in lib.engine.compiler_kernels;
         # dispatch to its builder. Unknown fn-names fall through to the no-op below.
-        builder = get_kernel_builder(fn)
+        ctx = self._build_context(block, input_map, state_map, block_matrices)
+        builder = get_kernel_builder(ctx.fn)
         if builder is not None:
-            ctx = BuildContext(
-                block=block,
-                b_name=b_name,
-                fn=fn,
-                params=params,
-                input_sources=input_sources,
-                deps=deps,
-                state_map=state_map,
-                block_matrices=block_matrices,
-            )
             return builder(ctx)
 
         # Generic catch-all: blocks with no registered kernel do nothing in the
@@ -256,6 +288,36 @@ class SystemCompiler:
 
         return exec_noop
 
+    def _collect_event_specs(
+        self, blocks: List[DBlock], input_map: Dict, state_map: Dict, block_matrices: Dict
+    ) -> List[Any]:
+        """Zero-crossing event functions contributed by the compiled blocks.
+
+        Each discontinuous block declares its switching surfaces next to the
+        kernel that implements the discontinuity (the ``@events(...)`` registry
+        in ``lib.engine.compiler_kernels``); this walks the diagram and gathers
+        them.  A block can opt out with its ``zero_crossing`` param set to
+        ``"off"`` -- useful when a block switches so fast that locating every
+        crossing costs more than it buys.
+
+        The specs are a pure function of the diagram, so they ride along in the
+        compiled-system cache; whether they are *used* is the runner's call
+        (the simulation-level ``zero_crossing`` setting).
+        """
+        specs = []
+        for block in blocks:
+            ctx = self._build_context(block, input_map, state_map, block_matrices)
+            if str(ctx.params.get("zero_crossing", "auto")).lower() == "off":
+                logger.debug("Zero-crossing disabled on block %s by its own param", ctx.b_name)
+                continue
+            try:
+                specs.extend(build_events(ctx))
+            except Exception as e:  # noqa: BLE001 - a bad event must not break compilation
+                logger.warning(
+                    "Failed to build zero-crossing events for %s (%s): %s", ctx.b_name, ctx.fn, e
+                )
+        return specs
+
     def compile_system(
         self, blocks: List[DBlock], sorted_order: List[DBlock], lines: List[Any]
     ) -> Tuple[Callable, np.ndarray, Dict]:
@@ -264,6 +326,9 @@ class SystemCompiler:
         """
         # 0. Block ordering is deferred to after state identification (section 2)
         # so we can inspect D matrices to classify D=0 vs D≠0 state blocks.
+        # Latch holders belong to this compile only: a stale registry would hand
+        # the new closures the previous diagram's relay modes.
+        self._mode_registry = {}
 
         # 1. Build Dependency Graph (Static Pull-based connections)
         # map: dest_block_name -> port_idx -> (source_block_name, source_port_idx)
@@ -666,5 +731,20 @@ class SystemCompiler:
         model_func.evaluate = _evaluate
         model_func.source_names = [b.name for b in sources]
         model_func.state_map = state_map
+
+        # 7. Zero-crossing events. Collected here (not in the runner) because
+        # they need the same input_map / state_map / latch holders the kernels
+        # were built from; they ride along on model_func so the compiled-system
+        # cache carries them too. Whether they are used is the runner's call.
+        model_func.event_specs = self._collect_event_specs(
+            sorted_order, input_map, state_map, block_matrices
+        )
+        model_func.mode_states = list(self._mode_registry.values())
+        if model_func.event_specs:
+            logger.debug(
+                "Compiled %d zero-crossing event(s): %s",
+                len(model_func.event_specs),
+                ", ".join(spec.name for spec in model_func.event_specs),
+            )
 
         return model_func, y0, state_map, block_matrices

@@ -60,6 +60,7 @@ class SimulationDialog(QDialog):
         solver_method="RK45",
         rtol=1e-9,
         atol=1e-12,
+        zero_crossing=True,
     ):
         super().__init__(parent)
         from PyQt5.QtWidgets import (
@@ -121,6 +122,21 @@ class SimulationDialog(QDialog):
         self.atol_input = QLineEdit(str(atol))
         tol_row.addWidget(self.atol_input)
         solver_layout.addLayout(tol_row)
+
+        # Zero-crossing detection (compiled/fast solver only)
+        self.zero_crossing_checkbox = QCheckBox("Detect zero crossings (fast solver)")
+        self.zero_crossing_checkbox.setChecked(bool(zero_crossing))
+        solver_layout.addWidget(self.zero_crossing_checkbox)
+
+        zc_hint = QLabel(
+            "Stops the fast solver exactly at each switching instant (Switch, "
+            "Saturation, Deadband, Hysteresis, Step, ...) instead of smearing it "
+            "across a step. Turn off only if a fast-switching diagram spends its "
+            "time locating crossings."
+        )
+        zc_hint.setObjectName("HintLabel")
+        zc_hint.setWordWrap(True)
+        solver_layout.addWidget(zc_hint)
 
         # Real-time Checkbox
         self.real_time_checkbox = QCheckBox("Run in real-time")
@@ -201,4 +217,5 @@ class SimulationDialog(QDialog):
             "solver_method": self.solver_method_combo.currentText(),
             "rtol": float(self.rtol_input.text()),
             "atol": float(self.atol_input.text()),
+            "zero_crossing": self.zero_crossing_checkbox.isChecked(),
         }
