@@ -561,7 +561,7 @@ class TestM1ParamResolutionOrder:
                 in_ports=1,
                 computed_data=False,
                 hierarchy=-1,
-                data_recieved=0,
+                data_received=0,
                 data_sent=0,
                 input_queue={},
                 block_instance=None,

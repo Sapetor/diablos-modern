@@ -125,7 +125,7 @@ class TestPidIntegralStartsAtZero:
 
 @pytest.mark.regression
 class TestRefreshDoesNotRecount:
-    def test_refresh_leaves_data_recieved_alone(self, qapp):
+    def test_refresh_leaves_data_received_alone(self, qapp):
         """Re-counting would let a multi-input consumer fire before it is ready."""
         from lib.engine.simulation_engine import SimulationEngine
 
@@ -133,23 +133,20 @@ class TestRefreshDoesNotRecount:
 
         class FakeChild:
             name = "child"
-            data_recieved = 0
+            data_received = 0
             input_queue = {}
 
         child = FakeChild()
         src = type("S", (), {"name": "src", "data_sent": 0})()
+        line = type("L", (), {"srcblock": "src", "srcport": 0, "dstblock": "child", "dstport": 0})()
+        # propagate_outputs resolves its targets from the active block/line
+        # lists (cached adjacency), so populate both.
         dsim_engine.active_blocks_list = [child]
-        dsim_engine.get_outputs = lambda _n: [
-            {"srcblock": "src", "srcport": 0, "dstblock": "child", "dstport": 0}
-        ]
-        dsim_engine._children_recognition = lambda name, children: (
-            name == "child",
-            [c for c in children if c["dstblock"] == name],
-        )
+        dsim_engine.active_line_list = [line]
 
         SimulationEngine.propagate_outputs(dsim_engine, src, {0: 1.0})
-        assert (child.data_recieved, child.input_queue[0]) == (1, 1.0)
+        assert (child.data_received, child.input_queue[0]) == (1, 1.0)
 
         SimulationEngine.propagate_outputs(dsim_engine, src, {0: 2.0}, count=False)
         assert child.input_queue[0] == 2.0, "refresh must overwrite the value"
-        assert child.data_recieved == 1, "refresh must not count as a new arrival"
+        assert child.data_received == 1, "refresh must not count as a new arrival"

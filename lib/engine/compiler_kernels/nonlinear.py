@@ -145,6 +145,12 @@ def build_selector(ctx):
     return exec_selector
 
 
+# NOTE: Hysteresis is NOT in SystemCompiler.COMPILABLE_BLOCKS (its relay latch
+# is path-dependent, and solve_ivp probes the RHS at rejected/non-monotonic
+# times), so no user diagram reaches this kernel -- check_compilability sends
+# the whole diagram to the interpreter first. It is kept as the compiled-path
+# reference implementation and is exercised by the direct-compile tests
+# (tests/unit/test_compiler_kernels.py, tests/unit/test_compiler_workspace_vars.py).
 @kernel("Hysteresis")
 def build_hysteresis(ctx):
     b_name = ctx.b_name

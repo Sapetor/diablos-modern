@@ -76,6 +76,7 @@ class SystemCompiler:
             "Display",
             "Deadband",
             "Exponential",
+            "Exp",
             "PiD",
             "PID",
             "RateLimiter",
@@ -129,10 +130,13 @@ class SystemCompiler:
         Returns:
             bool: True if all blocks are supported, False otherwise.
         """
+        # Normalize the allowlist through the same function the compiler and
+        # the replay use, so "TranFn"/"Transferfcn"/"tranfn" and friends can
+        # never be accepted here but spelled differently downstream. Rebuilt
+        # per call so a caller that edits COMPILABLE_BLOCKS is honoured.
+        allowed = {canonical_fn(name) for name in self.COMPILABLE_BLOCKS}
+
         for block in blocks:
-            # Check block type (case-insensitive for safety)
-            # Normalize to Title Case (e.g. Sine, Integrator) or just allow 'sine'
-            # Our Set is Title Case.
             b_type = block.block_fn
 
             # Special handling for Subsystems (Recursive check)
@@ -168,13 +172,10 @@ class SystemCompiler:
                 )
                 return False
 
-            # Accept the block if its name matches the allowlist directly or
-            # via case correction (TitleCase, e.g. Sine; or UPPER, e.g. PID).
-            if (
-                b_type not in self.COMPILABLE_BLOCKS
-                and b_type.title() not in self.COMPILABLE_BLOCKS
-                and b_type.upper() not in self.COMPILABLE_BLOCKS
-            ):
+            # Accept the block if its canonical name is on the allowlist. This
+            # covers the spelling variants the old three-way check handled
+            # (raw / TitleCase / UPPER) via one normalizer.
+            if canonical_fn(b_type) not in allowed:
                 logger.debug(f"Block {block.name} ({block.block_fn}) is not compilable.")
                 return False
 
@@ -531,41 +532,45 @@ class SystemCompiler:
         #                 Pre-populated with C*x (exact since D*u = 0), execute last.
         #
         # block_matrices is now populated, so we can inspect D to classify.
-        source_fns = (
-            "Step",
-            "Sine",
-            "Constant",
-            "From",
-            "Ramp",
-            "Exponential",
-            "Noise",
-            "Wavegenerator",
-            "Prbs",
-            "Impulse",
+        # Classification uses canonical_fn (the same normalizer as
+        # _create_block_executor and the replay loop), so these sets hold
+        # canonical spellings only -- no hand-maintained "Tranfn"/"TransferFcn"
+        # pairs that can drift apart from the dispatch ladders.
+        source_fns = frozenset(
+            {
+                "Step",
+                "Sine",
+                "Constant",
+                "From",
+                "Ramp",
+                "Noise",
+                "Wavegenerator",
+                "Prbs",
+                "Impulse",
+            }
         )
-        state_fns = (
-            "Tranfn",
-            "Transferfcn",
-            "TransferFcn",
-            "Statespace",
-            "StateSpace",
-            "Integrator",
-            "Pid",
-            "PID",
-            "Ratelimiter",
-            "RateLimiter",
-            "Heatequation1D",
-            "Waveequation1D",
-            "Advectionequation1D",
-            "Diffusionreaction1D",
-            "Heatequation2D",
-            "Waveequation2D",
-            "Advectionequation2D",
+        state_fns = frozenset(
+            {
+                "TransferFcn",
+                "StateSpace",
+                "Integrator",
+                "PID",
+                # canonical_fn only maps the exact upstream spelling 'PID' to
+                # 'PID'; a block_fn of 'pid'/'Pid' canonicalizes to 'Pid'.
+                "Pid",
+                "RateLimiter",
+                "Heatequation1D",
+                "Waveequation1D",
+                "Advectionequation1D",
+                "Diffusionreaction1D",
+                "Heatequation2D",
+                "Waveequation2D",
+                "Advectionequation2D",
+            }
         )
 
-        def _is_d0_state_block(b):
+        def _is_d0_state_block(b, fn):
             """True if b is a state block with D=0 (safe to pre-populate)."""
-            fn = b.block_fn.title() if b.block_fn else ""
             if fn not in state_fns:
                 return False
             if b.name in block_matrices:
@@ -578,10 +583,10 @@ class SystemCompiler:
         source_set = set()
         d0_state_set = set()
         for b in sorted_order:
-            fn = b.block_fn.title() if b.block_fn else ""
+            fn = canonical_fn(b.block_fn)
             if fn in source_fns:
                 source_set.add(b.name)
-            elif _is_d0_state_block(b):
+            elif _is_d0_state_block(b, fn):
                 d0_state_set.add(b.name)
 
         sources = [b for b in sorted_order if b.name in source_set]

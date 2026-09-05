@@ -13,6 +13,11 @@ class BaseAnalyzer:
 
     def __init__(self, parent=None):
         self.parent = parent
+        # Why the last _extract_system_model / _find_connected_transfer_function
+        # call produced no model, when the reason is known (e.g. a Subsystem
+        # that does not reduce to a single LTI path). Analyzers log a generic
+        # "no valid linear system found"; this holds the specific reason.
+        self.last_error = None
         # We assume self.parent.canvas exists or is passed?
         # Actually ControlSystemAnalyzer passes 'parent' as 'ModernCanvas' if interacting directly.
         # But BaseAnalyzer init only takes parent.
@@ -60,11 +65,11 @@ class BaseAnalyzer:
         if hasattr(block, "get_transfer_function"):
             return block.get_transfer_function()
 
-        # 2. Subsystem Support (Simplified)
-        if block.block_fn == "Subsystem":
-            # TODO: Robust subsystem tracing requires flattening logic or recursive graph search.
-            # For now, we abort if not implementing get_transfer_function (which compiles it).
-            pass
+        # 2. Subsystem: flatten it and compose the enclosed chain.
+        if getattr(block, "block_fn", "") == "Subsystem" or (
+            getattr(block, "block_type", "") == "Subsystem"
+        ):
+            return self._extract_subsystem_model(block, canvas, visited)
 
         # 3. Parameter-based Extraction (fallback for legacy blocks)
         params = getattr(block, "params", {})
@@ -171,6 +176,124 @@ class BaseAnalyzer:
             return block.get_transfer_function()
 
         return None
+
+    def _unsupported(self, reason):
+        """Record and log why no LTI model could be extracted; return None."""
+        self.last_error = reason
+        logger.error("Cannot extract a linear model: %s", reason)
+        return None
+
+    def _extract_subsystem_model(self, block, canvas, visited):
+        """Compose the LTI model of a Subsystem from its contents.
+
+        The subsystem is flattened with :class:`lib.engine.flattener.Flattener`
+        (the same code the simulation engine uses, so Inport/Outport boundaries
+        and nested subsystems resolve identically), and the resulting primitives
+        must form a single series chain -- one signal path from the subsystem
+        input to its output. Each block on that path contributes a transfer
+        function and the chain is multiplied out.
+
+        Anything else (a branch, an internal feedback loop, a block with no LTI
+        model) is *not* silently ignored, which is what this used to do: it
+        returns ``None`` with :attr:`last_error` naming the reason.
+        """
+        self.last_error = None
+        name = getattr(block, "name", "subsystem")
+
+        sub_blocks = getattr(block, "sub_blocks", None)
+        if not sub_blocks:
+            return self._unsupported(f"subsystem '{name}' has no contents to analyze")
+
+        from lib.engine.flattener import Flattener
+
+        try:
+            flat_blocks, flat_lines = Flattener().flatten([block], [])
+        except Exception as exc:
+            return self._unsupported(f"subsystem '{name}' could not be flattened: {exc}")
+
+        if not flat_blocks:
+            return self._unsupported(f"subsystem '{name}' contains no primitive blocks")
+
+        by_name = {b.name: b for b in flat_blocks}
+        incoming = {}
+        has_outgoing = set()
+        for line in flat_lines:
+            incoming.setdefault(line.dstblock, []).append(line)
+            has_outgoing.add(line.srcblock)
+
+        sinks = [b for b in flat_blocks if b.name not in has_outgoing]
+        if len(sinks) != 1:
+            return self._unsupported(
+                f"subsystem '{name}' does not reduce to a single signal path "
+                f"({len(sinks)} outputs); flatten it or replace it with an "
+                f"equivalent transfer function to analyze it"
+            )
+
+        # Walk the chain backwards from the single sink to the input.
+        chain = []
+        current = sinks[0]
+        seen = set()
+        while current is not None:
+            if current.name in seen:
+                return self._unsupported(
+                    f"subsystem '{name}' contains a feedback loop; only a series "
+                    f"chain can be composed into one transfer function"
+                )
+            seen.add(current.name)
+            chain.append(current)
+            feeds = incoming.get(current.name, [])
+            if len(feeds) > 1:
+                return self._unsupported(
+                    f"block '{current.name}' inside subsystem '{name}' combines "
+                    f"{len(feeds)} signals; only a series chain can be composed "
+                    f"into one transfer function"
+                )
+            current = by_name.get(feeds[0].srcblock) if feeds else None
+        chain.reverse()
+
+        num = np.array([1.0])
+        den = np.array([1.0])
+        dt = 0.0
+        for member in chain:
+            model = self._subsystem_member_model(member, canvas, visited)
+            if model is None:
+                return self._unsupported(
+                    f"block '{member.name}' ({getattr(member, 'block_fn', '?')}) "
+                    f"inside subsystem '{name}' has no linear model"
+                )
+            m_num, m_den, m_dt = model
+            m_dt = float(m_dt or 0.0)
+            if m_dt > 0 and dt > 0 and abs(m_dt - dt) > 1e-12:
+                return self._unsupported(f"subsystem '{name}' mixes sample rates ({dt} and {m_dt})")
+            dt = m_dt if m_dt > 0 else dt
+            num = np.convolve(num, np.atleast_1d(np.asarray(m_num, dtype=float)).flatten())
+            den = np.convolve(den, np.atleast_1d(np.asarray(m_den, dtype=float)).flatten())
+
+        return num, den, dt
+
+    def _subsystem_member_model(self, member, canvas, visited):
+        """LTI model of one block on a subsystem's internal chain.
+
+        Adds a static-gain case on top of :meth:`_extract_system_model`: a Gain
+        is a perfectly good factor of a series chain, but it must NOT become a
+        stopping point for the general upstream search in
+        :meth:`_find_connected_transfer_function` (which would return the gain
+        instead of tracing on to the plant), so the case lives here.
+        """
+        block_fn = getattr(member, "block_fn", "")
+        params = getattr(member, "params", {}) or {}
+        if block_fn in ("Gain", "MatrixGain"):
+            try:
+                gain = np.atleast_1d(np.asarray(params.get("gain", 1.0), dtype=float)).flatten()
+            except (TypeError, ValueError):
+                return None
+            if gain.size != 1:
+                return None  # matrix gain: not a scalar factor
+            return np.array([float(gain[0])]), np.array([1.0]), 0.0
+
+        # Fresh visited set per member: the chain is walked explicitly here, and
+        # the shared set is only there to break cycles in the upstream search.
+        return self._extract_system_model(member, canvas, set(visited or ()))
 
     def _find_connected_transfer_function(self, start_block, canvas):
         """Trace backwards to find a valid LTI system model."""

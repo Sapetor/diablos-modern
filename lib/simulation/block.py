@@ -165,7 +165,7 @@ class DBlock:
         self.font.setPointSize(self.font_size)
 
         self.hierarchy: int = -1
-        self.data_recieved: int = 0
+        self.data_received: int = 0
         self.computed_data: bool = False
         self.data_sent: int = 0
         self.input_queue: Dict[int, Any] = {}
@@ -186,6 +186,19 @@ class DBlock:
         if self.block_instance and hasattr(self.block_instance, "doc"):
             return self.block_instance.doc
         return ""
+
+    @property
+    def data_recieved(self) -> int:
+        """Deprecated misspelling of :attr:`data_received`.
+
+        Kept as a read/write alias so callers outside the engine (``lib/lib.py``
+        and existing tests / saved tooling) keep working after the rename.
+        """
+        return self.data_received
+
+    @data_recieved.setter
+    def data_recieved(self, value: int) -> None:
+        self.data_received = value
 
     # =========================================================================
     # Multi-Rate Simulation Methods

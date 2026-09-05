@@ -128,6 +128,12 @@ def build_sink(ctx):
     return exec_noop
 
 
+# NOTE: StateVariable is NOT in SystemCompiler.COMPILABLE_BLOCKS (the discrete
+# update below assumes monotonically advancing time, which solve_ivp violates
+# with repeated/rejected probe times), so no user diagram reaches this kernel
+# -- check_compilability sends the whole diagram to the interpreter first. It
+# is kept as the compiled-path reference implementation and is exercised by a
+# direct-compile test (tests/unit/test_compiler_kernels.py).
 @kernel("StateVariable", "Statevariable")
 def build_statevariable(ctx):
     # State variable for discrete optimization iterations.

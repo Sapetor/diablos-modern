@@ -58,7 +58,7 @@ def build_sum(ctx):
     return exec_sum
 
 
-@kernel("Exponential")
+@kernel("Exponential", "Exp")
 def build_exponential(ctx):
     b_name = ctx.b_name
     params = ctx.params

@@ -427,7 +427,7 @@ class TestResetExecutionData:
 
         # Set some execution state
         block.computed_data = True
-        block.data_recieved = 5
+        block.data_received = 5
         block.data_sent = 3
         block.hierarchy = 2
         block.input_queue = {0: 1.0, 1: 2.0}
@@ -439,7 +439,11 @@ class TestResetExecutionData:
         simulation_engine.reset_execution_data()
 
         assert block.computed_data == False
+        assert block.data_received == 0
+        # Deprecated misspelling kept as a read/write alias for lib/lib.py.
         assert block.data_recieved == 0
+        block.data_recieved = 7
+        assert block.data_received == 7
         assert block.data_sent == 0
         # When called before global_computed_list is set up, hierarchy is reset to -1
         # and input_queue is set to empty dict (DSim behavior)

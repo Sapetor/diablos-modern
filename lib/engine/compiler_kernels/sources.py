@@ -138,6 +138,13 @@ def build_wavegenerator(ctx):
         return exec_wavegen_default
 
 
+# NOTE: Impulse is NOT in SystemCompiler.COMPILABLE_BLOCKS (an adaptive solver
+# can step straight over the dt*1e-3-wide rectangle below and lose the
+# response), so no user diagram reaches this kernel -- check_compilability
+# sends the whole diagram to the interpreter first. It is kept as the
+# compiled-path reference implementation, mirrors the 'impulse' branch of
+# build_step above, and is exercised by a direct-compile test
+# (tests/unit/test_source_blocks.py::TestImpulseBlock).
 @kernel("Impulse")
 def build_impulse(ctx):
     b_name = ctx.b_name
@@ -217,6 +224,13 @@ def build_prbs(ctx):
     return exec_prbs
 
 
+# NOTE: Noise is NOT in SystemCompiler.COMPILABLE_BLOCKS (np.random inside the
+# ODE RHS is re-sampled on every solver stage and rejected step, and this
+# kernel ignores the block's `seed`, which is what makes a Monte-Carlo ensemble
+# reproducible -- see lib/analysis/monte_carlo.derive_seed), so no user diagram
+# reaches this kernel -- check_compilability sends the whole diagram to the
+# interpreter first. Wiring it in would additionally require forcing a
+# fixed-step method.
 @kernel("Noise")
 def build_noise(ctx):
     b_name = ctx.b_name
