@@ -206,6 +206,52 @@ def _diffusion_reaction_1d():
     return DiffusionReaction1DBlock()
 
 
+# --- blocks that gained a `zero_crossing` dropdown (compiled-solver event
+# detection, see lib/engine/zero_crossing.py). execute() ignores the param --
+# it steers the fast solver, not the interpreter -- so these stimuli only
+# assert the option list cannot make a block misbehave.
+def _abs_block():
+    from blocks.abs_block import AbsBlock
+
+    return AbsBlock()
+
+
+def _saturation():
+    from blocks.saturation import SaturationBlock
+
+    return SaturationBlock()
+
+
+def _deadband():
+    from blocks.deadband import DeadbandBlock
+
+    return DeadbandBlock()
+
+
+def _hysteresis():
+    from blocks.hysteresis import HysteresisBlock
+
+    return HysteresisBlock()
+
+
+def _step():
+    from blocks.step import StepBlock
+
+    return StepBlock()
+
+
+def _ramp():
+    from blocks.ramp import RampBlock
+
+    return RampBlock()
+
+
+def _prbs():
+    from blocks.prbs import PRBSBlock
+
+    return PRBSBlock()
+
+
 # Keyed by block_name so the coverage test can cross-reference the live library.
 SPECS = {
     "MathFunction": _spec(_math_function, inputs={0: np.array([0.5])}),
@@ -253,6 +299,14 @@ SPECS = {
     "WaveEquation1D": _spec(_wave_1d, params={"N": 8}, dtime=1e-4),
     "WaveEquation2D": _spec(_wave_2d, params={"Nx": 5, "Ny": 5}, dtime=1e-4),
     "DiffusionReaction1D": _spec(_diffusion_reaction_1d, params={"N": 8}, dtime=1e-4),
+    # zero_crossing dropdowns (fast-solver event detection).
+    "Abs": _spec(_abs_block, inputs={0: np.array([-1.5])}),
+    "Saturation": _spec(_saturation, inputs={0: np.array([2.0])}, params={"min": -1.0, "max": 1.0}),
+    "Deadband": _spec(_deadband, inputs={0: np.array([1.0])}),
+    "Hysteresis": _spec(_hysteresis, inputs={0: np.array([1.0])}),
+    "Step": _spec(_step),
+    "Ramp": _spec(_ramp),
+    "PRBS": _spec(_prbs, params={"seed": 1}),
 }
 
 

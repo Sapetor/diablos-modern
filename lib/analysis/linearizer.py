@@ -121,7 +121,8 @@ class Linearizer:
             raise ValueError(
                 "Diagram is not compilable, so numerical linearization is "
                 "unavailable. Linearization runs on the fast-solver path; remove "
-                "interpreter-only blocks (e.g. Noise, Hysteresis) to enable it."
+                "interpreter-only blocks (e.g. Noise, or Hysteresis when "
+                "zero-crossing detection is off) to enable it."
             )
 
         sorted_blocks = sorted(current_blocks, key=lambda b: b.hierarchy)

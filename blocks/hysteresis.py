@@ -1,6 +1,7 @@
 import numpy as np
 from blocks.base_block import BaseBlock
 from blocks.input_helpers import get_scalar
+from blocks.param_templates import zero_crossing_param
 
 
 class HysteresisBlock(BaseBlock):
@@ -43,6 +44,7 @@ class HysteresisBlock(BaseBlock):
             "high": {"type": "float", "default": 1.0, "doc": "Output when high."},
             "low": {"type": "float", "default": 0.0, "doc": "Output when low."},
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
+            **zero_crossing_param(),
         }
 
     @property

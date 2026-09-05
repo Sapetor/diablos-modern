@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class PRBSBlock(BaseBlock):
@@ -55,6 +56,7 @@ class PRBSBlock(BaseBlock):
             },
             "seed": {"type": "int", "default": 1, "doc": "Non‑zero initial LFSR state."},
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
+            **zero_crossing_param(),
         }
 
     @property

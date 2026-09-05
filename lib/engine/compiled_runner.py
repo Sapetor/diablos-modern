@@ -27,6 +27,7 @@ from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
 from lib.engine.pde_ops import wave_energy_1d
 from lib.engine.solver_diagnostics import format_diagnostics_for_log
+from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, solve_with_events
 from lib.safe_eval import SafeEvalError, safe_expr, safe_literal
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
@@ -823,6 +824,7 @@ def run_compiled_simulation(
         )
     backend = None
     fallback_reason = None
+    zero_crossing_info = None
     rtol = getattr(engine, "rtol", 1e-9)
     atol = getattr(engine, "atol", 1e-12)
     engine.last_solver_diagnostics = {}
@@ -935,11 +937,59 @@ def run_compiled_simulation(
                     logger.warning(f"Unknown solver '{method}', falling back to RK45")
                     fallback_reason = f"unknown solver '{method}' fell back to RK45"
                     method = "RK45"
-                backend = "scipy"
-                logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
-                sol = solve_ivp(
-                    model_func, t_span, y0, t_eval=t_eval, method=method, rtol=rtol, atol=atol
-                )
+                # Zero-crossing detection: only worth its machinery when the
+                # diagram actually contains a discontinuity, so a smooth
+                # diagram takes the plain single-shot solve_ivp call below
+                # with no `events=` argument and no per-probe signal
+                # bookkeeping at all.
+                event_specs = list(getattr(model_func, "event_specs", None) or [])
+                use_events = bool(getattr(engine, "zero_crossing", True)) and bool(event_specs)
+                if use_events:
+                    backend = "scipy+events"
+                    logger.info(
+                        f"Solving with {method} (rtol={rtol}, atol={atol}) and "
+                        f"{len(event_specs)} zero-crossing event(s)"
+                    )
+                    sol = solve_with_events(
+                        model_func,
+                        t_span,
+                        y0,
+                        t_eval,
+                        event_specs,
+                        method=method,
+                        rtol=rtol,
+                        atol=atol,
+                        max_events=int(getattr(engine, "zero_crossing_max_events", 0) or 0)
+                        or DEFAULT_MAX_EVENTS,
+                        mode_states=getattr(model_func, "mode_states", None),
+                        # State-dependent guards can cross and come back
+                        # inside one adaptive step; capping at the output
+                        # step keeps anything the user can see detectable.
+                        max_step=dt,
+                        # Chattering systems stall an adaptive solver; the
+                        # guard hands the tail to the fixed-step scheme.
+                        fallback_integrator=integrate_fixed_step,
+                    )
+                    zero_crossing_info = sol.summary()
+                else:
+                    backend = "scipy"
+                    logger.info(f"Solving with {method} (rtol={rtol}, atol={atol})")
+                    sol = solve_ivp(
+                        model_func,
+                        t_span,
+                        y0,
+                        t_eval=t_eval,
+                        method=method,
+                        rtol=rtol,
+                        atol=atol,
+                    )
+                    zero_crossing_info = {
+                        "enabled": False,
+                        "n_events": 0,
+                        "reason": "disabled in settings"
+                        if not getattr(engine, "zero_crossing", True)
+                        else "no discontinuous blocks",
+                    }
             method_used = method
         solve_time = time_module.perf_counter() - solve_start
 
@@ -965,6 +1015,7 @@ def run_compiled_simulation(
                 total_time=time_module.perf_counter() - run_start,
                 fallback_reason=fallback_reason,
                 failure_stage="solve",
+                zero_crossing=zero_crossing_info,
             )
             return False
 
@@ -1013,6 +1064,7 @@ def run_compiled_simulation(
             total_time=time_module.perf_counter() - run_start,
             fallback_reason=fallback_reason,
             output_range=output_range,
+            zero_crossing=zero_crossing_info,
         )
         logger.info(
             "Compiled solver diagnostics: %s",

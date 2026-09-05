@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 
 
 class AbsBlock(BaseBlock):
@@ -31,7 +32,7 @@ class AbsBlock(BaseBlock):
 
     @property
     def params(self):
-        return {}
+        return dict(zero_crossing_param())
 
     @property
     def inputs(self):

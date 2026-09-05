@@ -126,14 +126,45 @@ Configuration** dialog. It has two groups:
   `sampling_time` or synchronise to this step.
 - **Simulation Duration [s]**.
 - **Rel. tol / Abs. tol**: tolerances for the adaptive solvers.
+- **Detect zero crossings (fast solver)** (on by default): stop the compiled
+  solver exactly at each switching instant instead of letting an adaptive step
+  smear it. See below.
 - **Run in real-time**: pace the simulation against the wall clock.
 
 **Visualization**
 - **Plot Window Range [samples]** and **Enable Dynamic Plotting** for live
   plotting during a run.
 
-Solver method, `rtol` and `atol` are saved inside the `.diablos` file and shown
-read-only in the property editor.
+Solver method, `rtol`, `atol` and the zero-crossing setting are saved inside the
+`.diablos` file and shown read-only in the property editor.
+
+### Zero-crossing detection
+
+A discontinuous block -- `Switch`, `Saturation`, `Deadband`, `Hysteresis`,
+`Abs`, `MathFunction` set to `sign`/`abs`, a `Step` or `Ramp` edge, a square or
+sawtooth `WaveGenerator`, `PRBS` -- makes the compiled system's right-hand side
+piecewise. Left alone, an adaptive step that straddles the switch either smears
+it over the step or burns rejected steps shrinking onto it, and the switching
+instant itself is only ever known to step accuracy.
+
+With detection on (the default) the solver is given each block's switching
+surface, stops exactly at the crossing, applies any discrete update (a relay
+latch, say), and restarts from there. Switching instants then land on their true
+time and stop moving when you change the step size. `Hysteresis` runs on the
+compiled path *only* with this on -- its latch needs located instants to be
+well-defined -- and falls back to the interpreter otherwise.
+
+The cost is one extra solver restart per crossing, so a smooth diagram pays
+nothing (no events are registered and the solver is called exactly as before).
+Turn the setting off to reproduce the older behaviour for a whole diagram, or
+set a single block's **zero_crossing** parameter to `off` to drop just that
+block's crossings -- worth doing for a block that switches far faster than your
+output step, where locating every crossing costs more than it buys.
+
+If a relay chatters (switches infinitely often in finite time, as in sliding
+mode), detection cannot converge. Rather than hang, DiaBloS logs a warning
+naming the offending block and finishes the run with a fixed step. Adding
+hysteresis to the switching element is the usual fix.
 
 ### Compiled vs interpreted execution
 
@@ -377,6 +408,7 @@ python diablos_modern.py run diagram.diablos --solver interpreter -o out.npz
 | `-t`, `--time` | Simulation duration in seconds. Default: the diagram's `sim_time` |
 | `--dt` | Time step in seconds. Default: the diagram's `sim_dt` |
 | `--solver` | `compiled` (default) or `interpreter` |
+| `--no-zero-crossing` | Disable compiled-path zero-crossing detection. Default: the diagram's own setting |
 | `-q`, `--quiet` | Suppress the per-run summary on stdout |
 
 The Scope traces are written as columns (`t` first).

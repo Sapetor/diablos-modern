@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.param_templates import zero_crossing_param
 from lib.safe_eval import safe_expr, SafeEvalError
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,8 @@ class MathFunctionBlock(BaseBlock):
                     "floor",
                     "reciprocal",
                 ],
-            }
+            },
+            **zero_crossing_param(),
         }
 
     @property

@@ -98,6 +98,7 @@ class DSim:
         self.solver_method = self.engine.solver_method
         self.rtol = self.engine.rtol
         self.atol = self.engine.atol
+        self.zero_crossing = self.engine.zero_crossing
         self.plot_trange = 100
 
         # Execution state (properties delegate to engine)
@@ -369,6 +370,7 @@ class DSim:
             "solver_method": self.solver_method,
             "rtol": self.rtol,
             "atol": self.atol,
+            "zero_crossing": self.zero_crossing,
         }
         self.file_service.SCREEN_WIDTH = self.SCREEN_WIDTH
         self.file_service.SCREEN_HEIGHT = self.SCREEN_HEIGHT
@@ -407,6 +409,7 @@ class DSim:
             "solver_method": self.solver_method,
             "rtol": self.rtol,
             "atol": self.atol,
+            "zero_crossing": self.zero_crossing,
         }
         return self.file_service.serialize(modern_ui_data, sim_params)
 
@@ -427,6 +430,7 @@ class DSim:
         self.solver_method = sim_params.get("solver_method", "RK45")
         self.rtol = sim_params.get("rtol", 1e-9)
         self.atol = sim_params.get("atol", 1e-12)
+        self.zero_crossing = bool(sim_params.get("zero_crossing", True))
         self.ss_count = 0
         self.filename = self.file_service.filename
         return sim_params
@@ -498,6 +502,7 @@ class DSim:
         self.solver_method = "RK45"
         self.rtol = 1e-9
         self.atol = 1e-12
+        self.zero_crossing = True
         self.plot_trange = 100
         self.dynamic_plot = False
 
@@ -536,6 +541,7 @@ class DSim:
             solver_method=self.solver_method,
             rtol=self.rtol,
             atol=self.atol,
+            zero_crossing=self.zero_crossing,
         )
         if dialog.exec_() == QDialog.Accepted:
             try:
@@ -548,6 +554,7 @@ class DSim:
                 self.solver_method = values.get("solver_method", self.solver_method)
                 self.rtol = values.get("rtol", self.rtol)
                 self.atol = values.get("atol", self.atol)
+                self.zero_crossing = values.get("zero_crossing", self.zero_crossing)
                 return self.sim_time
             except ValueError:
                 logger.warning("Invalid input. Using default values.")
@@ -680,6 +687,7 @@ class DSim:
                 solver_method=self.solver_method,
                 rtol=self.rtol,
                 atol=self.atol,
+                zero_crossing=self.zero_crossing,
             )
 
             # Initialize engine with ROOT context (will trigger flattening)
@@ -889,6 +897,7 @@ class DSim:
                 solver_method=self.solver_method,
                 rtol=self.rtol,
                 atol=self.atol,
+                zero_crossing=self.zero_crossing,
             )
 
             # Initialize engine

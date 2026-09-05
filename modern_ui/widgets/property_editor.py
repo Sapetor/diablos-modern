@@ -444,6 +444,9 @@ class PropertyEditor(QFrame):
         # Fast solver
         fast = getattr(self._main_window, "use_fast_solver", False) if self._main_window else False
         solver_fields.append((tr("fast_solver"), tr("✓ on") if fast else tr("off")))
+        # Zero-crossing detection (fast solver only)
+        zc = getattr(self._dsim, "zero_crossing", True)
+        solver_fields.append((tr("zero_crossing"), tr("✓ on") if zc else tr("off")))
 
         for k, v in solver_fields:
             sec.addRow(

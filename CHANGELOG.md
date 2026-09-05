@@ -18,6 +18,23 @@ All notable changes to DiaBloS will be documented in this file.
 - Clicking or hovering a curved wire tested the straight chord between its ports, so clicks on the curve often missed (and clicks on empty space along the chord selected it).
 - A freshly created wire was never routed with block knowledge, so feedback and obstacle-avoiding routes only appeared after a block was moved; changing a wire's routing mode from the menu had the same problem.
 - Undo of a block move or resize needed two Ctrl+Z presses (the undo entry was pushed after the move). Wire bends and hand-made routes now survive undo/redo.
+- **Zero-crossing detection** on the compiled fast solver (Simulation settings ->
+  *Detect zero crossings*, on by default, saved in the `.diablos` file; also
+  `--no-zero-crossing` on the headless `run` command). Discontinuous blocks --
+  Switch, Saturation, Deadband, Hysteresis, Abs, MathFunction `sign`/`abs`, the
+  Step and Ramp edges, square/sawtooth WaveGenerator, PRBS -- now hand the
+  solver their switching surfaces, so it stops exactly at each crossing and
+  restarts from there instead of smearing the switch across an adaptive step.
+  Switching instants land on their true time and stop moving with the step size.
+- **Hysteresis runs on the fast solver** again (whenever zero-crossing detection
+  is on): its latch is frozen inside each integration segment and flipped only at
+  the located switching instant. With detection off it still falls back to the
+  interpreter.
+- A per-block `zero_crossing` parameter (`auto` / `off`) on each of those blocks,
+  to drop one block's crossings without turning detection off for the diagram.
+- A chattering guard: a relay that switches infinitely often (sliding mode) no
+  longer stalls the run. DiaBloS logs a warning naming the block and finishes
+  with a fixed step.
 
 ## [1.0.0] - 2026-09-03
 

@@ -10,7 +10,7 @@ import logging
 
 import numpy as np
 
-from lib.engine.compiler_kernels import kernel
+from lib.engine.compiler_kernels import EventSpec, events, kernel, signal_scalar
 from lib.safe_eval import compile_expr
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,41 @@ def build_abs(ctx):
         signals[b_name] = abs(val)
 
     return exec_abs
+
+
+@events("Abs", "Absblock")
+def events_abs(ctx):
+    """The input crossing zero, where |u| has its corner."""
+    src = ctx.input_sources[0] if ctx.input_sources else None
+    if not src:
+        return []
+
+    def _g(t, y, signals, _src=src):
+        return signal_scalar(signals, _src)
+
+    return [EventSpec(block=ctx.b_name, label="zero", func=_g)]
+
+
+@events("Mathfunction")
+def events_mathfunction(ctx):
+    """Zero crossings of the input for the discontinuous functions only.
+
+    ``sign`` jumps and ``abs`` has a corner at ``u = 0``; every other selectable
+    function (and any user expression) is smooth wherever it is defined, and
+    ``ceil``/``floor`` step at every integer -- an unbounded event train that
+    would be pure chattering, so they are deliberately left out.
+    """
+    src = ctx.input_sources[0] if ctx.input_sources else None
+    if not src:
+        return []
+    func = str(ctx.params.get("function", ctx.params.get("expression", "sin"))).lower()
+    if func not in ("sign", "abs"):
+        return []
+
+    def _g(t, y, signals, _src=src):
+        return signal_scalar(signals, _src)
+
+    return [EventSpec(block=ctx.b_name, label="{}_zero".format(func), func=_g)]
 
 
 @kernel("SgProd", "Sgprod", "SigProduct")

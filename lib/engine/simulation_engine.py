@@ -13,6 +13,7 @@ from lib.workspace import WorkspaceManager
 from lib.engine.system_compiler import SystemCompiler
 from lib.engine.flattener import Flattener
 from lib.engine.solver_diagnostics import build_diagnostics, format_diagnostics_for_log
+from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.engine.block_params import push_down_internal_params
 from lib.engine import graph_analysis
@@ -80,6 +81,14 @@ class SimulationEngine:
         self.solver_method: str = "RK45"
         self.rtol: float = 1e-9
         self.atol: float = 1e-12
+        # Zero-crossing (event) detection for the compiled path. On by default:
+        # it is what makes a switching instant land on its exact time instead of
+        # being smeared across whatever adaptive step straddled it. See
+        # lib/engine/zero_crossing.py and docs/FAST_SOLVER.md. Assigning it is
+        # what tells the compiler whether the event-gated blocks (Hysteresis)
+        # may compile, so it is a property rather than a plain attribute.
+        self.zero_crossing = True
+        self.zero_crossing_max_events: int = DEFAULT_MAX_EVENTS
         self.real_time: bool = True
         self.execution_time: float = 1.0
         self.time_step: float = 0.0
@@ -805,6 +814,24 @@ class SimulationEngine:
             block_name, children_list, self._active_line_source()
         )
 
+    @property
+    def zero_crossing(self) -> bool:
+        """Whether the compiled path locates switching instants exactly.
+
+        A property so the compiler's allowlist follows it: Hysteresis is only
+        compilable when the runner can locate its switching instants, and a
+        caller that sets the flag directly (rather than through
+        update_sim_params) must not leave the two disagreeing.
+        """
+        return self._zero_crossing
+
+    @zero_crossing.setter
+    def zero_crossing(self, enabled) -> None:
+        self._zero_crossing = bool(enabled)
+        compiler = getattr(self, "compiler", None)  # unset during __init__
+        if compiler is not None:
+            compiler.zero_crossing_enabled = self._zero_crossing
+
     def update_sim_params(
         self,
         sim_time: float,
@@ -812,6 +839,7 @@ class SimulationEngine:
         solver_method: str = None,
         rtol: float = None,
         atol: float = None,
+        zero_crossing: bool = None,
     ) -> None:
         """
         Update simulation parameters.
@@ -823,6 +851,8 @@ class SimulationEngine:
                 'LSODA', 'BDF', 'Radau', 'RK23', 'DOP853'). Unchanged if None.
             rtol: Relative tolerance for adaptive scipy solvers. Unchanged if None.
             atol: Absolute tolerance for adaptive scipy solvers. Unchanged if None.
+            zero_crossing: Enable compiled-path zero-crossing detection.
+                Unchanged if None.
         """
         self.sim_time = sim_time
         self.sim_dt = sim_dt
@@ -832,6 +862,8 @@ class SimulationEngine:
             self.rtol = rtol
         if atol is not None:
             self.atol = atol
+        if zero_crossing is not None:
+            self.zero_crossing = bool(zero_crossing)
 
     def get_execution_status(self):
         """

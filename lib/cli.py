@@ -95,19 +95,28 @@ def load_diagram(filepath):
     return dsim, sim_params
 
 
-def run_diagram(filepath, sim_time=None, sim_dt=None, use_fast_solver=True):
+def run_diagram(filepath, sim_time=None, sim_dt=None, use_fast_solver=True, zero_crossing=None):
     """Load and simulate ``filepath`` headlessly; return the finished DSim.
 
     ``sim_time`` / ``sim_dt`` default to the diagram's own sim_data when not
-    given. Raises FileNotFoundError if the diagram is missing and RuntimeError
-    if the simulation fails.
+    given, and so does ``zero_crossing`` (compiled-path event detection).
+    Raises FileNotFoundError if the diagram is missing and RuntimeError if the
+    simulation fails.
     """
     file_time, file_dt = _file_sim_params(filepath)
     sim_time = file_time if sim_time is None else float(sim_time)
     sim_dt = file_dt if sim_dt is None else float(sim_dt)
 
-    dsim, _ = load_diagram(filepath)
+    dsim, sim_params = load_diagram(filepath)
     dsim.use_fast_solver = use_fast_solver
+    # load_diagram calls apply_loaded_data, which returns the file's solver
+    # settings without pushing them onto the DSim facade, so a CLI run would
+    # otherwise silently use the default rather than the diagram's own. Applied
+    # here for zero-crossing; the same gap for solver_method/rtol/atol predates
+    # this and is left alone so CLI results for existing diagrams do not shift.
+    if zero_crossing is None:
+        zero_crossing = bool(sim_params.get("zero_crossing", True))
+    dsim.zero_crossing = bool(zero_crossing)
 
     ok, err = dsim.run_tuning_simulation(sim_time, sim_dt)
     if not ok:
@@ -205,6 +214,12 @@ def build_parser():
         help="Integration path (default: compiled fast solver).",
     )
     run.add_argument(
+        "--no-zero-crossing",
+        action="store_true",
+        help="Disable compiled-path zero-crossing detection for this run "
+        "(default: the diagram's own setting).",
+    )
+    run.add_argument(
         "-q", "--quiet", action="store_true", help="Suppress the per-run summary on stdout."
     )
 
@@ -287,6 +302,7 @@ def main(argv=None):
             sim_time=args.time,
             sim_dt=args.dt,
             use_fast_solver=(args.solver == "compiled"),
+            zero_crossing=False if args.no_zero_crossing else None,
         )
     except FileNotFoundError as e:
         print(f"error: diagram not found: {e}", file=sys.stderr)

@@ -86,6 +86,7 @@ class FileService:
             "solver_method": sim_params.get("solver_method", "RK45"),
             "rtol": sim_params.get("rtol", 1e-9),
             "atol": sim_params.get("atol", 1e-12),
+            "zero_crossing": bool(sim_params.get("zero_crossing", True)),
         }
 
         # Serialize blocks (recurses into Subsystems via _serialize_block)
@@ -348,6 +349,9 @@ class FileService:
             "solver_method": sim_data.get("solver_method", "RK45"),
             "rtol": sim_data.get("rtol", 1e-9),
             "atol": sim_data.get("atol", 1e-12),
+            # Files written before zero-crossing detection existed have no such
+            # key; they get the default (on), matching a fresh diagram.
+            "zero_crossing": bool(sim_data.get("zero_crossing", True)),
         }
 
         # Recreate top-level blocks (recurses into Subsystems via _construct_block).
