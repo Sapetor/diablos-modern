@@ -520,7 +520,13 @@ def test_examples_agree_with_events_on_and_off(filename, qapp):
     if with_events is None:
         pytest.skip("{} does not reach the compiled adaptive solver".format(filename))
     without_events = run(False)
-    assert without_events is not None
+    if without_events is None:
+        # Hysteresis is in SystemCompiler.ZERO_CROSSING_ONLY_BLOCKS: a diagram
+        # containing one compiles only while events are available, and drops to
+        # the interpreter when they are switched off. The two configurations
+        # then run different engines, so there is no adaptive solve to compare
+        # (examples/relay_thermostat_events.diablos, nonlinear_blocks.diablos).
+        pytest.skip("{} leaves the compiled path when zero-crossing is off".format(filename))
 
     info = with_events.engine.get_solver_diagnostics()["zero_crossing"] or {}
     assert not info.get("guard_tripped"), "{} tripped the chattering guard".format(filename)

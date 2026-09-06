@@ -1,0 +1,382 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 8.0,
+        "sim_dt": 0.005,
+        "sim_trange": 8,
+        "solver_method": "RK45",
+        "rtol": 1e-09,
+        "atol": 1e-12,
+        "zero_crossing": true
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Sine",
+            "sid": 0,
+            "name": "sine0",
+            "username": "input 2 sin(pi t)",
+            "coords_left": 60,
+            "coords_top": 260,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#065f46",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "sine",
+            "params": {
+                "amplitude": 2.0,
+                "omega": 3.14159,
+                "init_angle": 0.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Saturation",
+            "sid": 1,
+            "name": "saturation1",
+            "username": "saturation +/-1",
+            "coords_left": 300,
+            "coords_top": 90,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "saturation",
+            "params": {
+                "min": -1.0,
+                "max": 1.0,
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Deadband",
+            "sid": 2,
+            "name": "deadband2",
+            "username": "deadband +/-0.5",
+            "coords_left": 300,
+            "coords_top": 230,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "deadband",
+            "params": {
+                "start": -0.5,
+                "end": 0.5,
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Hysteresis",
+            "sid": 3,
+            "name": "hysteresis3",
+            "username": "hysteresis +/-0.5",
+            "coords_left": 300,
+            "coords_top": 370,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "hysteresis",
+            "params": {
+                "upper": 0.5,
+                "lower": -0.5,
+                "high": 1.0,
+                "low": -1.0,
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "RateLimiter",
+            "sid": 4,
+            "name": "ratelimiter4",
+            "username": "rate limiter +/-2",
+            "coords_left": 300,
+            "coords_top": 510,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "ratelimiter",
+            "params": {
+                "rising_slew": 2.0,
+                "falling_slew": -2.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 5,
+            "name": "scope5",
+            "username": "nonlinearities",
+            "coords_left": 620,
+            "coords_top": 250,
+            "coords_width": 100,
+            "coords_height": 124,
+            "coords_height_base": 80,
+            "in_ports": 5,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "input,saturation,deadband,hysteresis,rate limiter",
+                "verify_mode": "comparison"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "sine0",
+            "srcport": 0,
+            "dstblock": "saturation1",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    290
+                ],
+                [
+                    300,
+                    130
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "sine0",
+            "srcport": 0,
+            "dstblock": "deadband2",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    290
+                ],
+                [
+                    300,
+                    270
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "sine0",
+            "srcport": 0,
+            "dstblock": "hysteresis3",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    290
+                ],
+                [
+                    300,
+                    410
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "sine0",
+            "srcport": 0,
+            "dstblock": "ratelimiter4",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    290
+                ],
+                [
+                    300,
+                    550
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "sine0",
+            "srcport": 0,
+            "dstblock": "scope5",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    290
+                ],
+                [
+                    620,
+                    270
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "saturation1",
+            "srcport": 0,
+            "dstblock": "scope5",
+            "dstport": 1,
+            "points": [
+                [
+                    400,
+                    130
+                ],
+                [
+                    620,
+                    290
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "deadband2",
+            "srcport": 0,
+            "dstblock": "scope5",
+            "dstport": 2,
+            "points": [
+                [
+                    400,
+                    270
+                ],
+                [
+                    620,
+                    310
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "hysteresis3",
+            "srcport": 0,
+            "dstblock": "scope5",
+            "dstport": 3,
+            "points": [
+                [
+                    400,
+                    410
+                ],
+                [
+                    620,
+                    330
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "ratelimiter4",
+            "srcport": 0,
+            "dstblock": "scope5",
+            "dstport": 4,
+            "points": [
+                [
+                    400,
+                    550
+                ],
+                [
+                    620,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        }
+    ],
+    "version": "2.0"
+}

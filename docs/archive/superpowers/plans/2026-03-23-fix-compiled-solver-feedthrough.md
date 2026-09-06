@@ -28,7 +28,7 @@ These tests MUST fail before the fix and pass after.
 
 - [ ] **Step 1: Write test for D≠0 TF in closed loop (PI controller)**
 
-This is the exact bug from `examples/test_c02`: a PI controller `(2s+1)/s` (D=2) in a closed loop with plant TFs.
+This is the exact bug from `examples/pi_loop_three_plants.diablos`: a PI controller `(2s+1)/s` (D=2) in a closed loop with plant TFs.
 
 ```python
 """
@@ -250,7 +250,7 @@ class TestFeedthroughBug:
 
     def test_compiled_vs_analytical_three_tf_chain(self, qapp):
         """
-        Three TFs in closed loop (from test_c02 diagram):
+        Three TFs in closed loop (from the pi_loop_three_plants diagram):
 
             Step -> Sum(+-) -> (2s+1)/s -> 1/(s+1) -> 1/s -> feedback + Scope
 
@@ -479,13 +479,13 @@ D=0 blocks."
 
 ---
 
-### Task 3: Manual Verification with test_c02 Diagram
+### Task 3: Manual Verification with the pi_loop_three_plants Diagram
 
-- [ ] **Step 1: Run the app and simulate test_c02**
+- [ ] **Step 1: Run the app and simulate pi_loop_three_plants**
 
 Run: `cd /Users/apeters/Documents/APR/02-Projects/diablos-modern && python diablos_modern.py`
 
-Open `examples/test_c02` (the closed-loop PI + plant diagram). Run simulation. The scope output should show the system settling to 1.0 with proper transient dynamics (not the sluggish/wrong response seen before the fix).
+Open `examples/pi_loop_three_plants.diablos` (the closed-loop PI + plant diagram). Run simulation. The scope output should show the system settling to 1.0 with proper transient dynamics (not the sluggish/wrong response seen before the fix).
 
 - [ ] **Step 2: Compare with a known-good reference**
 

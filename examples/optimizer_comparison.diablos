@@ -27,7 +27,7 @@
             "fn_name": "statevariable",
             "params": {
                 "initial_value": [
-                    -1.0,
+                    -1.2,
                     1.0
                 ],
                 "dimension": 2
@@ -198,7 +198,7 @@
             "io_edit": "none",
             "fn_name": "vectorgain",
             "params": {
-                "gain": -0.001
+                "gain": -0.0002
             },
             "external": false,
             "flipped": false
@@ -245,7 +245,7 @@
             "fn_name": "statevariable",
             "params": {
                 "initial_value": [
-                    -1.0,
+                    -1.2,
                     1.0
                 ],
                 "dimension": 2
@@ -416,7 +416,7 @@
             "io_edit": "none",
             "fn_name": "momentum",
             "params": {
-                "alpha": 0.001,
+                "alpha": 5e-05,
                 "beta": 0.9
             },
             "external": false,
@@ -464,7 +464,7 @@
             "fn_name": "statevariable",
             "params": {
                 "initial_value": [
-                    -1.0,
+                    -1.2,
                     1.0
                 ],
                 "dimension": 2
@@ -635,7 +635,7 @@
             "io_edit": "none",
             "fn_name": "adam",
             "params": {
-                "alpha": 0.01,
+                "alpha": 0.005,
                 "beta1": 0.9,
                 "beta2": 0.999,
                 "epsilon": 1e-08
@@ -684,7 +684,7 @@
             "io_edit": "input",
             "fn_name": "scope",
             "params": {
-                "labels": "GD (\u03b1=0.001), Momentum (\u03b2=0.9), Adam"
+                "labels": "GD (alpha=2e-4),Momentum (alpha=5e-5, beta=0.9),Adam (alpha=0.005)"
             },
             "external": false,
             "flipped": false

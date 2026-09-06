@@ -1,0 +1,494 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 400.0,
+        "sim_dt": 0.05,
+        "sim_trange": 400,
+        "solver_method": "RK45",
+        "rtol": 1e-09,
+        "atol": 1e-12,
+        "zero_crossing": true
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Constant",
+            "sid": 0,
+            "name": "constant0",
+            "username": "setpoint 21 C",
+            "coords_left": 60,
+            "coords_top": 200,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#065f46",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": 21.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 1,
+            "name": "sum1",
+            "username": "error",
+            "coords_left": 220,
+            "coords_top": 200,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Hysteresis",
+            "sid": 2,
+            "name": "hysteresis2",
+            "username": "thermostat relay",
+            "coords_left": 380,
+            "coords_top": 190,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "hysteresis",
+            "params": {
+                "upper": 0.5,
+                "lower": -0.5,
+                "high": 1.0,
+                "low": 0.0,
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 3,
+            "name": "gain3",
+            "username": "heater 20 C",
+            "coords_left": 560,
+            "coords_top": 195,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "gain",
+            "params": {
+                "gain": 20.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "TranFn",
+            "sid": 4,
+            "name": "tranfn4",
+            "username": "room 1/(60s+1)",
+            "coords_left": 700,
+            "coords_top": 180,
+            "coords_width": 110,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "transfer_function",
+            "params": {
+                "numerator": [
+                    1.0
+                ],
+                "denominator": [
+                    60.0,
+                    1.0
+                ],
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 5,
+            "name": "constant5",
+            "username": "ambient 5 C",
+            "coords_left": 700,
+            "coords_top": 360,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#065f46",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": 5.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 6,
+            "name": "sum6",
+            "username": "room temperature",
+            "coords_left": 900,
+            "coords_top": 200,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "++"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 7,
+            "name": "scope7",
+            "username": "temperature",
+            "coords_left": 1060,
+            "coords_top": 170,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "setpoint,room temperature",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "name": "scope8",
+            "username": "relay",
+            "coords_left": 1060,
+            "coords_top": 340,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "heater on/off",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "constant0",
+            "srcport": 0,
+            "dstblock": "sum1",
+            "dstport": 0,
+            "points": [
+                [
+                    130,
+                    220
+                ],
+                [
+                    220,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "sum6",
+            "srcport": 0,
+            "dstblock": "sum1",
+            "dstport": 1,
+            "points": [
+                [
+                    960,
+                    230
+                ],
+                [
+                    980,
+                    230
+                ],
+                [
+                    980,
+                    293
+                ],
+                [
+                    200,
+                    293
+                ],
+                [
+                    200,
+                    240
+                ],
+                [
+                    220,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "hysteresis2",
+            "dstport": 0,
+            "points": [
+                [
+                    280,
+                    230
+                ],
+                [
+                    380,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "hysteresis2",
+            "srcport": 0,
+            "dstblock": "gain3",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    230
+                ],
+                [
+                    560,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "gain3",
+            "srcport": 0,
+            "dstblock": "tranfn4",
+            "dstport": 0,
+            "points": [
+                [
+                    630,
+                    220
+                ],
+                [
+                    700,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "tranfn4",
+            "srcport": 0,
+            "dstblock": "sum6",
+            "dstport": 0,
+            "points": [
+                [
+                    810,
+                    220
+                ],
+                [
+                    900,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "constant5",
+            "srcport": 0,
+            "dstblock": "sum6",
+            "dstport": 1,
+            "points": [
+                [
+                    770,
+                    380
+                ],
+                [
+                    900,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "constant0",
+            "srcport": 0,
+            "dstblock": "scope7",
+            "dstport": 0,
+            "points": [
+                [
+                    130,
+                    220
+                ],
+                [
+                    1060,
+                    200
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "sum6",
+            "srcport": 0,
+            "dstblock": "scope7",
+            "dstport": 1,
+            "points": [
+                [
+                    960,
+                    230
+                ],
+                [
+                    1060,
+                    220
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line9",
+            "sid": 9,
+            "srcblock": "hysteresis2",
+            "srcport": 0,
+            "dstblock": "scope8",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    230
+                ],
+                [
+                    1060,
+                    380
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        }
+    ],
+    "version": "2.0"
+}

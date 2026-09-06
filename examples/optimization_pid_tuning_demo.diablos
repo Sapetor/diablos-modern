@@ -5,72 +5,81 @@
         "fps": 60,
         "sim_time": 15.0,
         "sim_dt": 0.01,
-        "sim_trange": 1500
+        "sim_trange": 15,
+        "solver_method": "RK45",
+        "rtol": 1e-09,
+        "atol": 1e-12,
+        "zero_crossing": true
     },
     "blocks_data": [
         {
             "block_fn": "Step",
-            "sid": 1,
+            "sid": 0,
+            "name": "step0",
             "username": "Setpoint",
             "coords_left": 60,
-            "coords_top": 200,
+            "coords_top": 300,
             "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "coords_height": 60,
+            "coords_height_base": 60,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#064e3b",
+            "b_color": "#065f46",
             "b_type": 0,
             "io_edit": "none",
             "fn_name": "step",
             "params": {
-                "step_time": 1.0,
-                "initial_value": 0.0,
-                "final_value": 1.0
+                "value": 1.0,
+                "delay": 1.0,
+                "type": "up",
+                "pulse_start_up": true,
+                "zero_crossing": "auto"
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "Sum",
-            "sid": 2,
+            "sid": 1,
+            "name": "sum1",
             "username": "Error",
-            "coords_left": 180,
-            "coords_top": 200,
-            "coords_width": 50,
+            "coords_left": 220,
+            "coords_top": 300,
+            "coords_width": 60,
             "coords_height": 64,
             "coords_height_base": 50,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#1e3a8a",
-            "b_type": 1,
+            "b_color": "#1e40af",
+            "b_type": 2,
             "io_edit": "none",
             "fn_name": "sum",
             "params": {
-                "signs": "+-"
+                "sign": "+-"
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "Parameter",
-            "sid": 3,
+            "sid": 2,
+            "name": "parameter2",
             "username": "Kp_param",
-            "coords_left": 320,
-            "coords_top": 80,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "coords_left": 360,
+            "coords_top": 110,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#78350f",
-            "b_type": 1,
+            "b_color": "#3730a3",
+            "b_type": 2,
             "io_edit": "none",
             "fn_name": "parameter",
             "params": {
@@ -86,19 +95,20 @@
         },
         {
             "block_fn": "Parameter",
-            "sid": 4,
+            "sid": 3,
+            "name": "parameter3",
             "username": "Ki_param",
-            "coords_left": 420,
-            "coords_top": 80,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "coords_left": 360,
+            "coords_top": 330,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#78350f",
-            "b_type": 1,
+            "b_color": "#3730a3",
+            "b_type": 2,
             "io_edit": "none",
             "fn_name": "parameter",
             "params": {
@@ -114,19 +124,20 @@
         },
         {
             "block_fn": "Parameter",
-            "sid": 5,
+            "sid": 4,
+            "name": "parameter4",
             "username": "Kd_param",
-            "coords_left": 520,
-            "coords_top": 80,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "coords_left": 360,
+            "coords_top": 560,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 0,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#78350f",
-            "b_type": 1,
+            "b_color": "#3730a3",
+            "b_type": 2,
             "io_edit": "none",
             "fn_name": "parameter",
             "params": {
@@ -141,41 +152,156 @@
             "flipped": false
         },
         {
-            "block_fn": "PID",
-            "sid": 6,
-            "username": "PID_Controller",
-            "coords_left": 280,
+            "block_fn": "SgProd",
+            "sid": 5,
+            "name": "sgprod5",
+            "username": "Kp * e",
+            "coords_left": 520,
             "coords_top": 180,
             "coords_width": 100,
-            "coords_height": 104,
-            "coords_height_base": 60,
-            "in_ports": 4,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Integrator",
+            "sid": 6,
+            "name": "integrator6",
+            "username": "integral of e",
+            "coords_left": 360,
+            "coords_top": 420,
+            "coords_width": 90,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
             "b_color": "#5b21b6",
             "b_type": 1,
             "io_edit": "none",
-            "fn_name": "pid",
+            "fn_name": "integrator",
             "params": {
-                "Kp": 2.0,
-                "Ki": 0.5,
-                "Kd": 0.1,
-                "use_input_gains": true,
-                "derivative_filter": 0.01
+                "init_conds": 0.0,
+                "method": "SOLVE_IVP",
+                "ivp_method": "RK45",
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "SgProd",
+            "sid": 7,
+            "name": "sgprod7",
+            "username": "Ki * integral",
+            "coords_left": 520,
+            "coords_top": 400,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Deriv",
+            "sid": 8,
+            "name": "deriv8",
+            "username": "d/dt e",
+            "coords_left": 360,
+            "coords_top": 650,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "deriv",
+            "params": {
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "SgProd",
+            "sid": 9,
+            "name": "sgprod9",
+            "username": "Kd * derivative",
+            "coords_left": 520,
+            "coords_top": 620,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sgprod",
+            "params": {},
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 10,
+            "name": "sum10",
+            "username": "u = Kp e + Ki I + Kd D",
+            "coords_left": 680,
+            "coords_top": 290,
+            "coords_width": 60,
+            "coords_height": 84,
+            "coords_height_base": 50,
+            "in_ports": 3,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+++"
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "TranFn",
-            "sid": 7,
-            "username": "Plant_SecondOrder",
-            "coords_left": 420,
-            "coords_top": 190,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
+            "sid": 11,
+            "name": "tranfn11",
+            "username": "plant",
+            "coords_left": 830,
+            "coords_top": 280,
+            "coords_width": 110,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 1,
             "dragging": false,
@@ -192,105 +318,145 @@
                     1.0,
                     1.5,
                     1.0
-                ]
+                ],
+                "sampling_time": -1.0
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "Scope",
-            "sid": 8,
+            "sid": 12,
+            "name": "scope12",
             "username": "StepResponse",
-            "coords_left": 640,
-            "coords_top": 160,
-            "coords_width": 80,
-            "coords_height": 64,
-            "coords_height_base": 60,
+            "coords_left": 1010,
+            "coords_top": 250,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 2,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#7f1d1d",
+            "b_color": "#991b1b",
             "b_type": 3,
             "io_edit": "input",
             "fn_name": "scope",
             "params": {
-                "labels": "Reference, Output"
+                "labels": "Reference,Output",
+                "verify_mode": "auto"
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "CostFunction",
-            "sid": 9,
+            "sid": 13,
+            "name": "costfunction13",
             "username": "ITAE_Cost",
-            "coords_left": 420,
-            "coords_top": 300,
+            "coords_left": 680,
+            "coords_top": 460,
             "coords_width": 100,
-            "coords_height": 64,
-            "coords_height_base": 50,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 2,
             "out_ports": 1,
             "dragging": false,
             "selected": false,
-            "b_color": "#78350f",
-            "b_type": 1,
+            "b_color": "#3730a3",
+            "b_type": 2,
             "io_edit": "none",
             "fn_name": "costfunction",
             "params": {
                 "type": "ITAE",
                 "target": 0.0,
                 "weight": 1.0,
-                "start_time": 1.0
-            },
-            "external": false,
-            "flipped": false
-        },
-        {
-            "block_fn": "Optimizer",
-            "sid": 10,
-            "username": "PID_Optimizer",
-            "coords_left": 560,
-            "coords_top": 300,
-            "coords_width": 100,
-            "coords_height": 50,
-            "coords_height_base": 50,
-            "in_ports": 0,
-            "out_ports": 0,
-            "dragging": false,
-            "selected": false,
-            "b_color": "#78350f",
-            "b_type": 1,
-            "io_edit": "none",
-            "fn_name": "optimizer",
-            "params": {
-                "method": "Nelder-Mead",
-                "max_iter": 100,
-                "tol": 1e-05,
-                "verbose": true
+                "start_time": 1.0,
+                "settling_threshold": 0.02
             },
             "external": false,
             "flipped": false
         },
         {
             "block_fn": "Scope",
-            "sid": 11,
-            "username": "ErrorScope",
-            "coords_left": 640,
-            "coords_top": 250,
-            "coords_width": 80,
-            "coords_height": 40,
-            "coords_height_base": 40,
+            "sid": 14,
+            "name": "scope14",
+            "username": "CostScope",
+            "coords_left": 1010,
+            "coords_top": 440,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
             "in_ports": 1,
             "out_ports": 0,
             "dragging": false,
             "selected": false,
-            "b_color": "#7f1d1d",
+            "b_color": "#991b1b",
             "b_type": 3,
             "io_edit": "input",
             "fn_name": "scope",
             "params": {
-                "labels": "Tracking Error"
+                "labels": "ITAE cost",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 15,
+            "name": "scope15",
+            "username": "ErrorScope",
+            "coords_left": 1010,
+            "coords_top": 610,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "tracking error",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Optimizer",
+            "sid": 16,
+            "name": "optimizer16",
+            "username": "PID_Optimizer",
+            "coords_left": 60,
+            "coords_top": 560,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 0,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#3730a3",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "optimizer",
+            "params": {
+                "method": "Nelder-Mead",
+                "max_iter": 100,
+                "tol": 1e-05,
+                "use_constraints": false,
+                "use_penalty": false,
+                "penalty_factor": 1000.0,
+                "verbose": true,
+                "multistart": 1,
+                "popsize": 15,
+                "mutation": 0.8,
+                "recombination": 0.7
             },
             "external": false,
             "flipped": false
@@ -298,341 +464,458 @@
     ],
     "lines_data": [
         {
-            "name": "Line101",
-            "sid": 101,
-            "srcblock": "step1",
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
             "srcport": 0,
-            "dstblock": "sum2",
+            "dstblock": "sum1",
             "dstport": 0,
             "points": [
                 [
                     140,
-                    220
+                    330
                 ],
                 [
-                    180,
-                    220
+                    220,
+                    320
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line102",
-            "sid": 102,
-            "srcblock": "sum2",
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "tranfn11",
             "srcport": 0,
-            "dstblock": "pid6",
-            "dstport": 0,
-            "points": [
-                [
-                    230,
-                    230
-                ],
-                [
-                    255,
-                    230
-                ],
-                [
-                    255,
-                    200
-                ],
-                [
-                    280,
-                    200
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line103",
-            "sid": 103,
-            "srcblock": "parameter3",
-            "srcport": 0,
-            "dstblock": "pid6",
+            "dstblock": "sum1",
             "dstport": 1,
             "points": [
                 [
-                    400,
-                    100
+                    940,
+                    320
                 ],
                 [
-                    420,
-                    100
+                    960,
+                    320
                 ],
                 [
-                    420,
-                    149
+                    960,
+                    389
                 ],
                 [
-                    260,
-                    149
+                    200,
+                    389
                 ],
                 [
-                    260,
-                    220
+                    200,
+                    340
                 ],
                 [
-                    280,
-                    220
+                    220,
+                    340
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line104",
-            "sid": 104,
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "sgprod5",
+            "dstport": 0,
+            "points": [
+                [
+                    280,
+                    330
+                ],
+                [
+                    520,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "parameter2",
+            "srcport": 0,
+            "dstblock": "sgprod5",
+            "dstport": 1,
+            "points": [
+                [
+                    460,
+                    150
+                ],
+                [
+                    520,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "integrator6",
+            "dstport": 0,
+            "points": [
+                [
+                    280,
+                    330
+                ],
+                [
+                    360,
+                    460
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "integrator6",
+            "srcport": 0,
+            "dstblock": "sgprod7",
+            "dstport": 0,
+            "points": [
+                [
+                    450,
+                    460
+                ],
+                [
+                    520,
+                    430
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "parameter3",
+            "srcport": 0,
+            "dstblock": "sgprod7",
+            "dstport": 1,
+            "points": [
+                [
+                    460,
+                    370
+                ],
+                [
+                    520,
+                    450
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "deriv8",
+            "dstport": 0,
+            "points": [
+                [
+                    280,
+                    330
+                ],
+                [
+                    360,
+                    690
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "deriv8",
+            "srcport": 0,
+            "dstblock": "sgprod9",
+            "dstport": 0,
+            "points": [
+                [
+                    460,
+                    690
+                ],
+                [
+                    520,
+                    650
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line9",
+            "sid": 9,
             "srcblock": "parameter4",
             "srcport": 0,
-            "dstblock": "pid6",
+            "dstblock": "sgprod9",
+            "dstport": 1,
+            "points": [
+                [
+                    460,
+                    600
+                ],
+                [
+                    520,
+                    670
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line10",
+            "sid": 10,
+            "srcblock": "sgprod5",
+            "srcport": 0,
+            "dstblock": "sum10",
+            "dstport": 0,
+            "points": [
+                [
+                    620,
+                    220
+                ],
+                [
+                    680,
+                    310
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line11",
+            "sid": 11,
+            "srcblock": "sgprod7",
+            "srcport": 0,
+            "dstblock": "sum10",
+            "dstport": 1,
+            "points": [
+                [
+                    620,
+                    440
+                ],
+                [
+                    680,
+                    330
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line12",
+            "sid": 12,
+            "srcblock": "sgprod9",
+            "srcport": 0,
+            "dstblock": "sum10",
             "dstport": 2,
             "points": [
                 [
-                    500,
-                    100
+                    620,
+                    660
                 ],
                 [
-                    520,
-                    100
-                ],
-                [
-                    520,
-                    149
-                ],
-                [
-                    260,
-                    149
-                ],
-                [
-                    260,
-                    240
-                ],
-                [
-                    280,
-                    240
+                    680,
+                    350
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line105",
-            "sid": 105,
-            "srcblock": "parameter5",
+            "name": "Line13",
+            "sid": 13,
+            "srcblock": "sum10",
             "srcport": 0,
-            "dstblock": "pid6",
-            "dstport": 3,
-            "points": [
-                [
-                    600,
-                    100
-                ],
-                [
-                    620,
-                    100
-                ],
-                [
-                    620,
-                    149
-                ],
-                [
-                    260,
-                    149
-                ],
-                [
-                    260,
-                    260
-                ],
-                [
-                    280,
-                    260
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line106",
-            "sid": 106,
-            "srcblock": "pid6",
-            "srcport": 0,
-            "dstblock": "tranfn7",
+            "dstblock": "tranfn11",
             "dstport": 0,
             "points": [
                 [
-                    380,
-                    230
+                    740,
+                    330
                 ],
                 [
-                    400,
-                    230
-                ],
-                [
-                    400,
-                    220
-                ],
-                [
-                    420,
-                    220
+                    830,
+                    320
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line107",
-            "sid": 107,
-            "srcblock": "tranfn7",
+            "name": "Line14",
+            "sid": 14,
+            "srcblock": "step0",
             "srcport": 0,
-            "dstblock": "scope8",
-            "dstport": 1,
-            "points": [
-                [
-                    520,
-                    220
-                ],
-                [
-                    580,
-                    220
-                ],
-                [
-                    580,
-                    200
-                ],
-                [
-                    640,
-                    200
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line108",
-            "sid": 108,
-            "srcblock": "tranfn7",
-            "srcport": 0,
-            "dstblock": "sum2",
-            "dstport": 1,
-            "points": [
-                [
-                    520,
-                    220
-                ],
-                [
-                    540,
-                    220
-                ],
-                [
-                    540,
-                    269
-                ],
-                [
-                    160,
-                    269
-                ],
-                [
-                    160,
-                    240
-                ],
-                [
-                    180,
-                    240
-                ]
-            ],
-            "cptr": 0,
-            "selected": false
-        },
-        {
-            "name": "Line109",
-            "sid": 109,
-            "srcblock": "step1",
-            "srcport": 0,
-            "dstblock": "scope8",
+            "dstblock": "scope12",
             "dstport": 0,
             "points": [
                 [
                     140,
-                    220
+                    330
                 ],
                 [
-                    390,
-                    220
-                ],
-                [
-                    390,
-                    180
-                ],
-                [
-                    640,
-                    180
+                    1010,
+                    280
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line110",
-            "sid": 110,
-            "srcblock": "sum2",
+            "name": "Line15",
+            "sid": 15,
+            "srcblock": "tranfn11",
             "srcport": 0,
-            "dstblock": "costfunction9",
-            "dstport": 0,
+            "dstblock": "scope12",
+            "dstport": 1,
             "points": [
                 [
-                    230,
-                    230
-                ],
-                [
-                    325,
-                    230
-                ],
-                [
-                    325,
+                    940,
                     320
                 ],
                 [
-                    420,
-                    320
+                    1010,
+                    300
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         },
         {
-            "name": "Line111",
-            "sid": 111,
-            "srcblock": "sum2",
+            "name": "Line16",
+            "sid": 16,
+            "srcblock": "sum1",
             "srcport": 0,
-            "dstblock": "scope11",
+            "dstblock": "costfunction13",
             "dstport": 0,
             "points": [
                 [
-                    230,
-                    230
+                    280,
+                    330
                 ],
                 [
-                    435,
-                    230
-                ],
-                [
-                    435,
-                    270
-                ],
-                [
-                    640,
-                    270
+                    680,
+                    490
                 ]
             ],
             "cptr": 0,
-            "selected": false
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line17",
+            "sid": 17,
+            "srcblock": "costfunction13",
+            "srcport": 0,
+            "dstblock": "scope14",
+            "dstport": 0,
+            "points": [
+                [
+                    780,
+                    500
+                ],
+                [
+                    1010,
+                    480
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line18",
+            "sid": 18,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "scope15",
+            "dstport": 0,
+            "points": [
+                [
+                    280,
+                    330
+                ],
+                [
+                    1010,
+                    650
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
         }
     ],
-    "version": "2.0",
-    "modern_ui_data": {
-        "theme": "light",
-        "zoom_factor": 1.0
-    }
+    "version": "2.0"
 }
