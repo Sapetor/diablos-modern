@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: >-
+  If you use DiaBloS Modern in your research, please cite the software using
+  the metadata below. Until the accompanying JOSS paper is published, please
+  also cite the original DiaBloS article given under `preferred-citation`,
+  which describes the block-diagram processing algorithm this tool builds on.
+type: software
+title: DiaBloS Modern
+abstract: >-
+  A desktop block-diagram simulator for dynamical systems, built with Python
+  and PyQt5. Diagrams are compiled to an ODE and integrated with SciPy, with
+  zero-crossing event detection, subsystems and user libraries, linearisation
+  with Bode/Nyquist/root-locus/LQR analysis, Monte Carlo ensembles and
+  parameter sweeps, PDE and optimization blocks, TikZ/SVG/Python export, and a
+  headless command-line interface.
+version: 1.0.0
+date-released: '2026-09-03'
+license: MIT
+repository-code: 'https://github.com/Sapetor/diablos-modern'
+url: 'https://github.com/Sapetor/diablos-modern'
+keywords:
+  - simulation
+  - block diagram
+  - control systems
+  - dynamical systems
+  - engineering education
+  - Python
+  - PyQt5
+authors:
+  # TODO(author name): replace with the real name, ORCID and affiliation.
+  - given-names: TODO(given name)
+    family-names: TODO(family name)
+    orcid: 'https://orcid.org/0000-0000-0000-0000'
+    affiliation: TODO(affiliation)
+preferred-citation:
+  type: article
+  title: >-
+    An algorithm for processing block diagram models of dynamical systems and
+    an open-source visual-programming simulation tool
+  authors:
+    - given-names: Miguel
+      family-names: Torres-Torriti
+    - given-names: Matías
+      family-names: Rojas-Sepúlveda
+  journal: Simulation Modelling Practice and Theory
+  volume: 138
+  start: 103030
+  year: 2025
+  issn: 1569-190X
+  doi: 10.1016/j.simpat.2024.103030
