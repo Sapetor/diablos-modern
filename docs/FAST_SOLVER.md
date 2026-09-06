@@ -1,5 +1,11 @@
 # Fast Solver (Compiled Mode)
 
+> This document covers the compiled path itself. For the surrounding execution
+> semantics — continuous vs discrete vs hybrid blocks, sample times and
+> multirate, execution order and algebraic loops, what the interpreter does
+> instead, how to choose a solver and what the stiffness warning means, and what
+> a `.diablos` file stores — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md).
+
 ## Overview
 The **Fast Solver** is a high-performance execution engine introduced in DiaBloS Modern. It compiles valid portions of a block diagram into a flat system of differential equations and solves them using extensive numerical libraries (`scipy.integrate`).
 
@@ -11,7 +17,7 @@ This approach typically yields **10x-100x speedups** compared to the standard In
     *   **State Mapping**: `Integrator`, `TransferFcn`, and `StateSpace` blocks are assigned slots in a global state vector $\mathbf{y}$.
     *   **Function Generation**: The system is flattened into a derivative function $\frac{d\mathbf{y}}{dt} = f(t, \mathbf{y})$.
     *   **Matrix Construction**: Linear Time-Invariant (LTI) subsystems are converted to State-Space ($A, B, C, D$) matrices for efficient computation.
-3.  **Solving**: `scipy.integrate.solve_ivp` (default: RK45) integrates the system over the simulation time.
+3.  **Solving**: `scipy.integrate.solve_ivp` (default: RK45) integrates the system over the simulation time. Which method to pick, what the tolerances cost, and the automatic stiffness warning are covered in [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#8-choosing-a-solver).
 4.  **Replay**: The solver's output ($\mathbf{y}$ over time) is "replayed" through the topological graph to reconstruct intermediate signals for `Scope` blocks.
 
 ## Supported Blocks
@@ -196,7 +202,7 @@ Systems without any states (e.g., `Ramp` -> `Gain` -> `Scope`) do not require an
 4.  Executing the **Replay Loop** to compute all algebraic signals at each time step.
 
 ### Mixed Mode / Fallback
-If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. This is slower but guarantees compatibility. A block with a discrete sample time (`sampling_time > 0`) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.
+If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. The block that caused it is recorded and shown in the property panel — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#63-why-a-run-fell-back-and-where-to-see-it). This is slower but guarantees compatibility. A block with a discrete sample time (`sampling_time > 0`) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.
 
 ## Troubleshooting
 

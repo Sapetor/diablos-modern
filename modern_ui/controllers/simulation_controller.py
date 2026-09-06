@@ -202,11 +202,44 @@ class SimulationController(QObject):
         solver_type = getattr(self.dsim, "last_solver_type", "Standard")
         self.status_changed.emit(tr("Simulation finished [{solver}]", solver=solver_type))
         logger.info(f"Batch simulation finished. Solver: {solver_type}")
+        # Non-modal, and deliberately the *last* status line so it is what the
+        # user is left looking at. Same channel the run already reports through
+        # (status_changed -> status bar); nothing blocks and nothing is popped.
+        self._report_stiffness()
         # Plotting is deliberately done here rather than inside the run: the
         # worker sets defer_plots so no Qt object is created off the GUI thread.
         self.dsim.plot_again()
         self._print_terminal_verification()
         self.batch_finished.emit(True)
+
+    def _report_stiffness(self):
+        """Suggest an implicit solver when the last run looked stiff.
+
+        The compiled runner already logged the full diagnosis at warning level;
+        this puts the one-line, actionable half in front of the user without
+        interrupting them. Silent unless the heuristic actually fired.
+        """
+        engine = getattr(self.dsim, "engine", None)
+        getter = getattr(engine, "get_solver_diagnostics", None)
+        if not callable(getter):
+            return
+        try:
+            diagnostics = getter() or {}
+        except Exception as e:  # noqa: BLE001 - never break the end of a good run
+            logger.debug("Could not read solver diagnostics: %s", e)
+            return
+        if not diagnostics.get("stiffness_suspected"):
+            return
+        stiffness = diagnostics.get("stiffness") or {}
+        self.status_changed.emit(
+            tr(
+                "This diagram looks stiff — {method} took {steps} solver steps per output "
+                "sample. Try the {suggested} solver in Simulation settings.",
+                method=diagnostics.get("method_used", "RK45"),
+                steps="{:.0f}".format(stiffness.get("work_ratio", 0.0)),
+                suggested=stiffness.get("suggested_method", "LSODA"),
+            )
+        )
 
     def is_batch_running(self):
         """True while this controller's batch run is executing on a thread."""

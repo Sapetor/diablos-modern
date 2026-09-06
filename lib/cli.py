@@ -14,14 +14,18 @@ Usage::
     python diablos_modern.py run diagram.diablos -o out.csv
     python diablos_modern.py run diagram.diablos --time 20 --dt 0.005 -o out.csv
     python diablos_modern.py run diagram.diablos --solver interpreter -o out.npz
+    python diablos_modern.py run diagram.diablos --method Radau --rtol 1e-6 -o out.csv
     python diablos_modern.py export-python diagram.diablos -o model.py
 
 Or as a module: ``python -m lib.cli run diagram.diablos -o out.csv``.
 
-The default solver is the compiled fast path (scipy ``solve_ivp``), which is the
-numerically accurate engine; pass ``--solver interpreter`` for the fixed-step
-interpreter. See ``docs/ARCHITECTURE.md`` ("Compiled vs interpreter semantics")
-for how the two paths differ.
+``--solver`` picks the *engine*: the compiled fast path (scipy ``solve_ivp``,
+the default and the numerically accurate one) or the fixed-step ``interpreter``.
+``--method``/``--rtol``/``--atol``/``--no-zero-crossing`` tune the compiled path
+and each default to the diagram's own saved setting, so a headless run
+reproduces what the GUI would do with the same file. See
+``docs/SOLVER_SEMANTICS.md`` for the full execution semantics and
+``docs/ARCHITECTURE.md`` ("Compiled vs interpreter semantics") for the summary.
 """
 
 import argparse
@@ -95,11 +99,23 @@ def load_diagram(filepath):
     return dsim, sim_params
 
 
-def run_diagram(filepath, sim_time=None, sim_dt=None, use_fast_solver=True, zero_crossing=None):
+def run_diagram(
+    filepath,
+    sim_time=None,
+    sim_dt=None,
+    use_fast_solver=True,
+    zero_crossing=None,
+    solver_method=None,
+    rtol=None,
+    atol=None,
+):
     """Load and simulate ``filepath`` headlessly; return the finished DSim.
 
-    ``sim_time`` / ``sim_dt`` default to the diagram's own sim_data when not
-    given, and so does ``zero_crossing`` (compiled-path event detection).
+    Every solver setting defaults to the diagram's own ``sim_data`` -- duration,
+    step, integration method, tolerances and zero-crossing detection -- so a
+    headless run reproduces what the GUI would do with the same file. Pass any
+    of them explicitly to override just that one.
+
     Raises FileNotFoundError if the diagram is missing and RuntimeError if the
     simulation fails.
     """
@@ -109,11 +125,24 @@ def run_diagram(filepath, sim_time=None, sim_dt=None, use_fast_solver=True, zero
 
     dsim, sim_params = load_diagram(filepath)
     dsim.use_fast_solver = use_fast_solver
-    # load_diagram calls apply_loaded_data, which returns the file's solver
-    # settings without pushing them onto the DSim facade, so a CLI run would
-    # otherwise silently use the default rather than the diagram's own. Applied
-    # here for zero-crossing; the same gap for solver_method/rtol/atol predates
-    # this and is left alone so CLI results for existing diagrams do not shift.
+    # load_diagram calls apply_loaded_data, which *returns* the file's solver
+    # settings without pushing them onto the DSim facade, so a headless run used
+    # to silently integrate with the built-in default (RK45 / 1e-9 / 1e-12)
+    # even for a diagram saved with Radau or looser tolerances -- the GUI and
+    # the CLI could disagree on the same file. run_tuning_simulation reads these
+    # four attributes off the facade, so applying them here is what makes the
+    # file's own settings take effect. CLI arguments still win.
+    if solver_method is None:
+        solver_method = sim_params.get("solver_method", "RK45") or "RK45"
+    dsim.solver_method = str(solver_method)
+    if rtol is not None:
+        dsim.rtol = float(rtol)
+    elif sim_params.get("rtol") is not None:
+        dsim.rtol = float(sim_params["rtol"])
+    if atol is not None:
+        dsim.atol = float(atol)
+    elif sim_params.get("atol") is not None:
+        dsim.atol = float(sim_params["atol"])
     if zero_crossing is None:
         zero_crossing = bool(sim_params.get("zero_crossing", True))
     dsim.zero_crossing = bool(zero_crossing)
@@ -131,17 +160,21 @@ def export_python(filepath, out_path=None, sim_time=None, sim_dt=None, solver=No
     overridden. Raises FileNotFoundError, RuntimeError (load failure) or
     ``lib.export.python_codegen.CodegenError`` (unsupported blocks).
     """
+    from lib.engine.compiled_runner import resolve_solver_method
     from lib.export.python_codegen import PythonCodeGenerator
 
     dsim, sim_params = load_diagram(filepath)
     out_path = out_path or (os.path.splitext(filepath)[0] + ".py")
+    # "auto" is a DiaBloS-level setting, not a scipy method name; bake in the
+    # scheme a run would actually use so the script matches the simulation.
+    solver = resolve_solver_method(solver or sim_params.get("solver_method", "RK45"))
 
     source = PythonCodeGenerator(
         dsim.blocks_list,
         dsim.line_list,
         sim_time=sim_params.get("sim_time", 10.0) if sim_time is None else float(sim_time),
         sim_dt=sim_params.get("sim_dt", 0.01) if sim_dt is None else float(sim_dt),
-        solver=solver or sim_params.get("solver_method", "RK45") or "RK45",
+        solver=solver,
         rtol=sim_params.get("rtol", 1e-9),
         atol=sim_params.get("atol", 1e-12),
         diagram_name=os.path.basename(filepath),
@@ -212,6 +245,24 @@ def build_parser():
         choices=("compiled", "interpreter"),
         default="compiled",
         help="Integration path (default: compiled fast solver).",
+    )
+    run.add_argument(
+        "--method",
+        default=None,
+        help="Integration method for the compiled path (RK45, RK23, DOP853, Radau, "
+        "BDF, LSODA, RK4, Euler, auto). Default: the diagram's solver_method.",
+    )
+    run.add_argument(
+        "--rtol",
+        type=float,
+        default=None,
+        help="Relative tolerance for the adaptive solvers. Default: the diagram's rtol.",
+    )
+    run.add_argument(
+        "--atol",
+        type=float,
+        default=None,
+        help="Absolute tolerance for the adaptive solvers. Default: the diagram's atol.",
     )
     run.add_argument(
         "--no-zero-crossing",
@@ -303,6 +354,9 @@ def main(argv=None):
             sim_dt=args.dt,
             use_fast_solver=(args.solver == "compiled"),
             zero_crossing=False if args.no_zero_crossing else None,
+            solver_method=args.method,
+            rtol=args.rtol,
+            atol=args.atol,
         )
     except FileNotFoundError as e:
         print(f"error: diagram not found: {e}", file=sys.stderr)

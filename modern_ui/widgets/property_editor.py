@@ -428,8 +428,14 @@ class PropertyEditor(QFrame):
 
         # Reflect the live DSim simulation parameters (set via the run dialog).
         solver_fields = []
-        # Method
-        solver_fields.append((tr("solver"), getattr(self._dsim, "solver_method", "RK45")))
+        # Method. "auto" is a stored setting rather than a scheme, so say what
+        # it will actually run instead of leaving the reader to guess.
+        from lib.engine.compiled_runner import AUTO_RESOLVED_METHOD, AUTO_SOLVER_METHOD
+
+        method = getattr(self._dsim, "solver_method", "RK45")
+        if str(method).strip().lower() == AUTO_SOLVER_METHOD:
+            method = tr("auto ({resolved})", resolved=AUTO_RESOLVED_METHOD)
+        solver_fields.append((tr("solver"), method))
         # Step / duration
         sim_dt = getattr(self._dsim, "sim_dt", None)
         sim_time = getattr(self._dsim, "sim_time", None)
@@ -447,6 +453,10 @@ class PropertyEditor(QFrame):
         # Zero-crossing detection (fast solver only)
         zc = getattr(self._dsim, "zero_crossing", True)
         solver_fields.append((tr("zero_crossing"), tr("✓ on") if zc else tr("off")))
+        # Last-run rows: why the compiled path was declined (if it was), and
+        # the stiffness verdict (see solver_diagnostics.estimate_stiffness).
+        # Both are hidden rather than stubbed when there is nothing to say.
+        solver_fields.extend(self._last_run_rows())
 
         for k, v in solver_fields:
             sec.addRow(
@@ -533,6 +543,72 @@ class PropertyEditor(QFrame):
 
         self._main_layout.addStretch(1)
         self._update_theme()
+
+    def _last_run_rows(self):
+        """``(label, value)`` rows about the most recent run.
+
+        Two things worth knowing that are otherwise only in the log: whether the
+        fast solver declined the diagram (and which block did it), and the
+        stiffness verdict. Each row is omitted when there is nothing to say —
+        no stubs, so the panel stays honest about what it knows.
+        """
+        engine = getattr(self._dsim, "engine", None)
+        rows = []
+
+        reason = getattr(engine, "get_compile_fallback_reason", None)
+        if callable(reason):
+            try:
+                text = reason()
+            except Exception as e:  # noqa: BLE001 - an inspector row must not break the panel
+                self.logger.debug("compile fallback read failed: %s", e)
+                text = None
+            if text:
+                rows.append((tr("interpreter_because"), str(text)))
+
+        rows.extend(self._stiffness_rows(engine))
+        return rows
+
+    def _stiffness_rows(self, engine):
+        """``(label, value)`` rows describing the last run's stiffness verdict.
+
+        Empty whenever the heuristic did not apply: the interpreter ran, the
+        method was fixed-step or already implicit, or the diagram has no states.
+        """
+        getter = getattr(engine, "get_solver_diagnostics", None)
+        if not callable(getter):
+            return []
+        try:
+            stiffness = (getter() or {}).get("stiffness")
+        except Exception as e:  # noqa: BLE001 - an inspector row must not break the panel
+            self.logger.debug("solver diagnostics read failed: %s", e)
+            return []
+        if not stiffness:
+            return []
+
+        if stiffness.get("suspected"):
+            verdict = tr(
+                "suspected — try {method}",
+                method=stiffness.get("suggested_method", "LSODA"),
+            )
+        else:
+            verdict = tr("not detected")
+        rows = [(tr("stiffness"), verdict)]
+
+        index = stiffness.get("stiffness_index")
+        if index is not None:
+            # Numbers pre-formatted so the catalog key keeps plain {named}
+            # placeholders (see tests/unit/test_locale_catalog_complete.py).
+            rows.append(
+                (
+                    tr("stiffness_detail"),
+                    tr(
+                        "{steps} steps/sample, rate×dt {index}",
+                        steps="{:.1f}".format(stiffness.get("work_ratio", 0.0)),
+                        index="{:.3g}".format(index),
+                    ),
+                )
+            )
+        return rows
 
     @staticmethod
     def _apply_label_color(lbl, hex_color):

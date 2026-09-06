@@ -137,6 +137,19 @@ class SystemCompiler:
         # interpreter.
         self.ZERO_CROSSING_ONLY_BLOCKS = {"Hysteresis"}
 
+        # Why the last check_compilability() said no ("<block> (<fn>): <reason>"),
+        # or None when the diagram compiles. The GUI shows it so a silent
+        # fall-back to the interpreter is explainable without reading the log.
+        self.last_incompatibility = None
+
+    def _not_compilable(self, block, reason: str) -> bool:
+        """Record why ``block`` blocks compilation and return False."""
+        self.last_incompatibility = "{} ({}): {}".format(
+            getattr(block, "name", "?"), getattr(block, "block_fn", "?"), reason
+        )
+        logger.debug("Not compilable — %s; using interpreter.", self.last_incompatibility)
+        return False
+
     def _compilable_names(self):
         """Canonical allowlist for check_compilability.
 
@@ -151,16 +164,25 @@ class SystemCompiler:
             names |= self.ZERO_CROSSING_ONLY_BLOCKS
         return {canonical_fn(name) for name in names}
 
-    def check_compilability(self, blocks: List[DBlock]) -> bool:
+    def check_compilability(self, blocks: List[DBlock], _recursive: bool = False) -> bool:
         """
         Check if the entire diagram is supported by the compiler.
 
+        Records *why* on ``self.last_incompatibility`` when the answer is False,
+        so the caller can tell the user which block sent the run to the
+        interpreter instead of leaving it to a debug-level log line. Cleared on
+        every top-level call; ``_recursive`` is set for the Subsystem walk so an
+        inner reason survives back up to the caller.
+
         Args:
             blocks: List of all blocks in the diagram.
+            _recursive: Internal — do not reset the recorded reason.
 
         Returns:
             bool: True if all blocks are supported, False otherwise.
         """
+        if not _recursive:
+            self.last_incompatibility = None
         allowed = self._compilable_names()
         for block in blocks:
             b_type = block.block_fn
@@ -168,7 +190,7 @@ class SystemCompiler:
             # Special handling for Subsystems (Recursive check)
             if b_type == "Subsystem":
                 if hasattr(block, "sub_blocks"):
-                    if not self.check_compilability(block.sub_blocks):
+                    if not self.check_compilability(block.sub_blocks, _recursive=True):
                         return False
                 continue
 
@@ -181,10 +203,9 @@ class SystemCompiler:
             # adaptive compiled solver can step over; force the interpreter path
             # (same rationale as the excluded Impulse block in COMPILABLE_BLOCKS).
             if b_type == "Step" and getattr(block, "params", {}).get("type") == "impulse":
-                logger.debug(
-                    f"Block {block.name} (Step/impulse) is not compilable; using interpreter."
+                return self._not_compilable(
+                    block, "the 'impulse' step shape needs the fixed-step grid"
                 )
-                return False
 
             # A block gated to a discrete rate (sampling_time > 0) is a
             # sampled-data element: it must hold its output between sample
@@ -193,14 +214,16 @@ class SystemCompiler:
             # block as a purely continuous one, so the whole diagram falls
             # back to the interpreter, which honours the rate.
             if _declared_sample_time(block) > 0:
-                logger.debug(
-                    f"Block {block.name} ({b_type}) has a discrete sample time; using interpreter."
-                )
-                return False
+                return self._not_compilable(block, "it has a discrete sample time")
 
             if canonical_fn(b_type) not in allowed:
-                logger.debug(f"Block {block.name} ({block.block_fn}) is not compilable.")
-                return False
+                if canonical_fn(b_type) in {
+                    canonical_fn(n) for n in self.ZERO_CROSSING_ONLY_BLOCKS
+                }:
+                    return self._not_compilable(
+                        block, "it needs zero-crossing detection, which is off"
+                    )
+                return self._not_compilable(block, "it has no compiled kernel")
 
         return True
 

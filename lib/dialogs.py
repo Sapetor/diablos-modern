@@ -51,7 +51,11 @@ class PortDialog(QDialog):
 class SimulationDialog(QDialog):
     # Methods offered in the solver dropdown. Fixed-step methods (Euler, RK4)
     # use the base step size; the rest are adaptive scipy.integrate solvers.
-    SOLVER_METHODS = ["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA", "RK4", "Euler"]
+    # "auto" resolves to LSODA at run time (lib/engine/compiled_runner.py).
+    # It is listed last, not first, on purpose: index 0 is also the fallback
+    # for a stored method this build does not recognise, and that fallback must
+    # stay RK45 so no existing diagram silently changes solver.
+    SOLVER_METHODS = ["RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA", "RK4", "Euler", "auto"]
 
     def __init__(
         self,
@@ -88,7 +92,9 @@ class SimulationDialog(QDialog):
         method_hint = QLabel(
             tr(
                 "Adaptive: RK45 (default), RK23, DOP853; stiff: Radau, BDF, LSODA. "
-                "Fixed-step (use the step size below): RK4, Euler."
+                "Fixed-step (use the step size below): RK4, Euler. "
+                "'auto' runs LSODA, which switches between a non-stiff and a stiff "
+                "formula by itself — pick it if a run is flagged as stiff."
             )
         )
         method_hint.setObjectName("HintLabel")
