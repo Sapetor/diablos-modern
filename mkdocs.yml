@@ -101,8 +101,6 @@ nav:
       - Building & Packaging: building.md
       - Releasing: RELEASING.md
       - PDE Roadmap: PDE_ROADMAP.md
-      # TODO(merge): uncomment once docs/VALIDATION.md lands
-      # - Validation: VALIDATION.md
       - Block API: BLOCK_API.md
   - API Reference:
       - Core Library: api/lib.md
