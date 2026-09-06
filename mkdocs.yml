@@ -96,6 +96,7 @@ nav:
   - Development:
       - Architecture: ARCHITECTURE.md
       - Developer Guide: DEVELOPER_GUIDE.md
+      - Numerical Validation: VALIDATION.md
       - Block Symbol Drawing: SYMBOL_DRAWING_GUIDE.md
       - Building & Packaging: building.md
       - Releasing: RELEASING.md
