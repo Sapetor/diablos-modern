@@ -171,18 +171,22 @@ def build_pid_loop(gains, plant_num, plant_den, sim_time, sim_dt):
     return builder
 
 
-def build_saturating_ramp(limit, sim_time, sim_dt):
+def build_saturating_ramp(limit, sim_time, sim_dt, lower=-1e9):
     """``1 -> Integrator -> Saturation(max=limit) -> Integrator -> Scope('z')``.
 
     The first integrator makes ``y(t) = t``, so the saturation corner is a
     *state*-dependent switching surface crossed exactly once, at ``t = limit``.
     Integrating the clipped signal turns the kink into a visible trajectory:
     ``z = t^2/2`` until the corner and a straight line of slope ``limit`` after.
+
+    A finite ``lower`` gives the same ramp a *second* corner to cross first, at
+    ``t = lower``: two state-dependent crossings in one run, which is what shows
+    whether an event restart leaves the solver able to locate the next one.
     """
     builder = H.build(sim_time, sim_dt)
     H.add(builder, "Constant", "c", {"value": 1.0})
     H.add(builder, "Integrator", "ramp", {"init_conds": 0.0})
-    H.add(builder, "Saturation", "sat", {"min": -1e9, "max": limit})
+    H.add(builder, "Saturation", "sat", {"min": lower, "max": limit})
     H.add(builder, "Integrator", "acc", {"init_conds": 0.0})
     H.add(builder, "Scope", "sc", {"labels": "z"})
     builder.connect("c", 0, "ramp", 0)
@@ -194,6 +198,25 @@ def build_saturating_ramp(limit, sim_time, sim_dt):
 
 def saturating_ramp_reference(t, limit):
     return np.where(t < limit, t**2 / 2.0, limit**2 / 2.0 + limit * (t - limit))
+
+
+def two_corner_ramp_reference(t, lower, upper):
+    """``int clip(s, lower, upper) ds`` for the ramp ``y(s) = s``.
+
+    Flat at ``lower`` until ``t = lower``, the parabola between the corners,
+    then a straight line of slope ``upper``.
+    """
+    at_lower = lower * lower  # = lower * t at t = lower, the flat first stretch
+    at_upper = at_lower + (upper**2 - lower**2) / 2.0
+    return np.where(
+        t < lower,
+        lower * t,
+        np.where(
+            t <= upper,
+            at_lower + (t**2 - lower**2) / 2.0,
+            at_upper + upper * (t - upper),
+        ),
+    )
 
 
 def build_switched_ramp(threshold, sim_time, sim_dt):
@@ -791,6 +814,7 @@ def case_transport_delay():
 # --------------------------------------------------------------------------- #
 SATURATION = dict(limit=0.7, sim_time=2.0, sim_dt=0.01)
 SWITCH = dict(threshold=0.5, sim_time=2.0, sim_dt=0.01)
+TWO_CORNERS = dict(lower=0.3, upper=0.7, sim_time=2.0, sim_dt=0.01)
 
 
 def first_event_time(result):
@@ -879,6 +903,74 @@ def case_switch_event():
             "RK45 + events",
             cfg["sim_dt"],
             H.max_abs_error(z, switched_ramp_reference(t, cfg["threshold"])),
+            1e-6,
+            note="closed form",
+        ),
+    ]
+    H.release(result)
+    return rows
+
+
+def located_event_times(result):
+    """Every zero-crossing instant the compiled run reported, in order."""
+    info = result.diagnostics.get("zero_crossing") or {}
+    return [float(t) for t, _labels in (info.get("first_events") or [])]
+
+
+def case_two_state_corners():
+    """Two state-dependent corners in one run, both located exactly.
+
+    ``y(t) = t`` clipped to ``[0.3, 0.7]`` crosses a switching surface twice.
+    One crossing is not enough to check an event restart: what a restart can get
+    wrong is leaving the solver sitting *on* the root it just found, which costs
+    nothing at the first corner (it is located before anything goes wrong) and
+    everything at the second (the guard gives up in between and the rest of the
+    run falls back to a fixed step, so the later instant is located only to step
+    accuracy). Both instants, the event count and the trajectory are measured
+    here.
+    """
+    cfg = TWO_CORNERS
+    builder = build_saturating_ramp(
+        cfg["upper"], cfg["sim_time"], cfg["sim_dt"], lower=cfg["lower"]
+    )
+    result = H.run(builder, compiled=True, zero_crossing=True)
+    t, z = result.signal("z")
+    located = located_event_times(result)
+    info = result.diagnostics.get("zero_crossing") or {}
+    rows = [
+        CaseResult(
+            "Two saturation corners: located count |n - 2|",
+            "compiled",
+            "RK45 + events",
+            cfg["sim_dt"],
+            abs(int(info.get("n_events") or 0) - 2),
+            0.0,
+            note="one event per crossing, no chattering trip",
+        ),
+        CaseResult(
+            "Two saturation corners: first instant |t - {0}|".format(cfg["lower"]),
+            "compiled",
+            "RK45 + events",
+            cfg["sim_dt"],
+            abs((located[0] if located else float("nan")) - cfg["lower"]),
+            1e-9,
+            note="closed form",
+        ),
+        CaseResult(
+            "Two saturation corners: second instant |t - {0}|".format(cfg["upper"]),
+            "compiled",
+            "RK45 + events",
+            cfg["sim_dt"],
+            abs((located[1] if len(located) > 1 else float("nan")) - cfg["upper"]),
+            1e-9,
+            note="closed form",
+        ),
+        CaseResult(
+            "Two saturation corners: trajectory vs analytic",
+            "compiled",
+            "RK45 + events",
+            cfg["sim_dt"],
+            H.max_abs_error(z, two_corner_ramp_reference(t, cfg["lower"], cfg["upper"])),
             1e-6,
             note="closed form",
         ),
@@ -1171,6 +1263,7 @@ ALL_CASES = (
     ("transport_delay", case_transport_delay),
     ("saturation_event", case_saturation_event),
     ("switch_event", case_switch_event),
+    ("two_state_corners", case_two_state_corners),
     ("van_der_pol_stiff", case_van_der_pol_stiff),
     ("heat_eigenmode", case_heat_eigenmode),
     ("advection_pulse", case_advection_pulse),

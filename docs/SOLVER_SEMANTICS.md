@@ -401,9 +401,15 @@ the semantics in brief:
 * **How.** Every event is registered *terminal*; integration proceeds in
   segments, each ending at the earliest located root. Every event at that
   instant gets its update applied, then integration restarts a nudge
-  (`1e-11` of the span) past the root with the state carried across
-  (`lib/engine/zero_crossing.py::solve_with_events`). The returned `(t, y)` is
-  exactly the array a single `solve_ivp` call would have produced.
+  (`1e-11` of the span) past the root, with the state advanced across that gap
+  by one explicit Euler step of the post-event dynamics
+  (`lib/engine/zero_crossing.py::solve_with_events`). *Both* coordinates have to
+  move: nudging only `t` is enough for a guard written on time (a `Step` edge,
+  `t - delay`) but leaves a guard written on the state — `Saturation`'s
+  `u - max`, with `u` an integrator output — exactly zero at the new segment
+  start, where scipy counts it as an active event and re-locates the same root.
+  The returned `(t, y)` is exactly the array a single `solve_ivp` call would
+  have produced.
 * **Step cap.** `solve_ivp` only compares event signs at accepted step ends, so
   a state-dependent guard can cross and return inside one large step. Whenever
   any registered event is non-monotonic the step is capped at the output `dt`.

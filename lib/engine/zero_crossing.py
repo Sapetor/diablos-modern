@@ -64,8 +64,10 @@ MIN_SEPARATION_FRACTION = 1e-9
 #: How far past a located event integration restarts.  Without a nudge the
 #: restart sees ``g(t_restart) == 0`` and scipy immediately re-detects the same
 #: crossing (``find_active_events`` treats a zero as active), which would spin
-#: forever at one instant.  The state is carried across the gap unchanged, so
-#: the only error is the ~1e-10-of-span of dynamics skipped per event.
+#: forever at one instant.  The state is carried across the gap by one explicit
+#: Euler step (see ``_state_at_restart``), so a guard written on the *state* is
+#: also strictly past its root at the restart; the error is the O(nudge^2) of
+#: that single step, ~1e-22 of the span.
 RESTART_NUDGE_FRACTION = 1e-11
 
 
@@ -453,7 +455,8 @@ def solve_with_events(
         t_start = t_event + nudge
         if not (t_start > t_event):  # nudge lost to rounding at huge |t|
             t_start = float(np.nextafter(t_event, tf + 1.0))
-        y_start = y_event
+        y_start = _state_at_restart(model_func, t_event, y_event, t_start - t_event)
+        cache.invalidate()
 
         if result.guard_tripped and events_active:
             logger.warning(
@@ -480,6 +483,49 @@ def solve_with_events(
         result.y = result.y[:, :idx]
 
     return result
+
+
+def _state_at_restart(model_func, t_event, y_event, gap: float) -> np.ndarray:
+    """State to restart the next segment with, one explicit Euler step past the root.
+
+    The restart has to move *both* coordinates of the event function.  Nudging
+    only ``t`` and carrying ``y`` across unchanged is enough for a guard that is
+    a function of time (a ``Step`` edge, ``t - delay``), but not for one written
+    on the state: ``Saturation``'s ``u - max`` with ``u`` an integrator output is
+    still exactly zero at ``(t_event + nudge, y_event)``, and scipy's
+    ``find_active_events`` counts a zero at the start of a step as active and
+    brentq returns that same instant as the root.  A single monotone crossing
+    then re-fired ``CHATTER_STREAK_LIMIT`` times at ``nudge`` spacing and the run
+    finished on the fixed-step fallback with every later switch located only to
+    step accuracy.
+
+    Taking the step makes ``g`` at the new segment start ``dg/dt * gap`` away
+    from zero -- non-zero for any transversal crossing, and of the sign the
+    trajectory is heading in, so the event is behind the segment rather than on
+    its edge.  The state is advanced consistently with the time, which the plain
+    carry-across was not, and the truncation error is one Euler step over
+    ``1e-11`` of the span.
+
+    Genuine chattering is untouched: a sliding relay's ``dy/dt`` at the switching
+    surface is zero (or flips straight back), so the restart lands on the root
+    again, the streak still builds and the guard still trips.
+
+    Falls back to the unchanged state whenever the RHS cannot be evaluated or
+    returns something unusable -- degrading to the old behaviour is always safer
+    than aborting a solve.
+    """
+    y_event = np.asarray(y_event, dtype=float)
+    if not gap > 0.0 or y_event.size == 0:
+        return y_event
+    try:
+        dy, _signals = model_func.evaluate(t_event, y_event)
+        dy = np.asarray(dy, dtype=float)
+    except Exception:  # noqa: BLE001 - a restart must never break a solve
+        logger.debug("RHS evaluation for the event restart failed at t=%s", t_event, exc_info=True)
+        return y_event
+    if dy.shape != y_event.shape or not np.all(np.isfinite(dy)):
+        return y_event
+    return y_event + gap * dy
 
 
 def _finish_fixed_step(result, model_func, t_eval, idx, t_start, y_start, integrator) -> int:

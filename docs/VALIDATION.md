@@ -94,21 +94,21 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | --- | --- | --- | --- | ---: | ---: | :---: |
 | First-order lag K/(tau s+1), unit step | compiled | RK45 | 0.005 | 3.86e-10 | 1.0e-07 | yes |
 | First-order lag K/(tau s+1), unit step | interpreter | exact ZOH | 0.005 | 2.00e-15 | 1.0e-09 | yes |
-| Second-order step, zeta=0.3 | compiled | RK45 | 0.01 | 4.21e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=0.3 | compiled | RK45 | 0.01 | 4.16e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=0.3 | interpreter | exact ZOH | 0.01 | 8.22e-15 | 1.0e-09 | yes |
-| Second-order step, zeta=1.0 | compiled | RK45 | 0.01 | 1.16e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=1.0 | compiled | RK45 | 0.01 | 2.12e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=1.0 | interpreter | exact ZOH | 0.01 | 9.99e-16 | 1.0e-09 | yes |
-| Second-order step, zeta=2.0 | compiled | RK45 | 0.01 | 1.91e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=2.0 | compiled | RK45 | 0.01 | 2.06e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=2.0 | interpreter | exact ZOH | 0.01 | 2.11e-15 | 1.0e-09 | yes |
 | Integrator of a ramp -> a t^2/2 | compiled | RK45 | 0.01 | 1.24e-14 | 1.0e-07 | yes |
 | Integrator of a ramp -> a t^2/2 | interpreter | RK4 | 0.01 | 3.16e-13 | 1.0e-06 | yes |
 | Integrator of a sine -> A(1-cos wt)/w | compiled | RK45 | 0.01 | 5.65e-09 | 1.0e-07 | yes |
 | Integrator of a sine -> A(1-cos wt)/w | interpreter | RK4 | 0.01 | 2.81e-10 | 1.0e-06 | yes |
-| StateSpace vs scipy.linalg.expm (exact ZOH) | compiled | RK45 | 0.01 | 1.97e-10 | 1.0e-07 | yes |
+| StateSpace vs scipy.linalg.expm (exact ZOH) | compiled | RK45 | 0.01 | 1.91e-10 | 1.0e-07 | yes |
 | StateSpace vs scipy.linalg.expm (exact ZOH) | interpreter | exact ZOH | 0.01 | 0.00e+00 | 1.0e-11 | yes |
 | TranFn vs scipy.signal.lsim (sine input) | compiled | RK45 | 0.002 | 3.42e-06 | 1.0e-04 | yes |
 | TranFn vs scipy.signal.lsim (sine input) | interpreter | ZOH input | 0.002 | 3.81e-03 | 2.0e-02 | yes |
-| PID closed loop vs analytic CP/(1+CP) | compiled | RK45 | 0.002 | 2.64e-10 | 1.0e-07 | yes |
+| PID closed loop vs analytic CP/(1+CP) | compiled | RK45 | 0.002 | 1.26e-10 | 1.0e-07 | yes |
 | PID closed loop vs analytic CP/(1+CP) | interpreter | fixed step | 0.002 | 7.98e-03 | 2.0e-02 | yes |
 | DiscreteTranFn vs scipy.signal.dlsim (at samples) | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | Discrete output is constant between sample instants | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
@@ -121,6 +121,10 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | Saturation corner: trajectory vs analytic | interpreter | fixed step, no events | 0.01 | 3.50e-03 | 1.0e-02 | yes |
 | Switch threshold: located switching instant \|t - 0.5\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
 | Switch threshold: trajectory vs analytic | compiled | RK45 + events | 0.01 | 2.77e-08 | 1.0e-06 | yes |
+| Two saturation corners: located count \|n - 2\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 0.0e+00 | yes |
+| Two saturation corners: first instant \|t - 0.3\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
+| Two saturation corners: second instant \|t - 0.7\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
+| Two saturation corners: trajectory vs analytic | compiled | RK45 + events | 0.01 | 1.41e-08 | 1.0e-06 | yes |
 | Van der Pol, mu=1000 | compiled | Radau | 0.005 | 2.00e-15 | 1.0e-06 | yes |
 | Van der Pol, mu=1000 | compiled | LSODA | 0.005 | 1.24e-09 | 1.0e-06 | yes |
 | Heat 1-D eigenmode decay, N=81 | compiled | RK45, method of lines | 0.005 | 4.73e-05 | 2.0e-04 | yes |
@@ -135,23 +139,34 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 
 ## Known defects
 
-One case currently fails and is pinned as `xfail(strict=True)` in
-`tests/validation/test_known_defects.py`, with a full reproducer in its
-docstring, so the marker comes off the moment the defect is fixed. It is a
-wrong answer, not a tolerance quibble:
-
-1. **A single monotone state crossing trips the chattering guard.**
-   `lib/engine/zero_crossing.py` restarts each segment at the located root plus
-   a nudge in *time*, carrying the state across unchanged — so a guard written
-   on the state (`Saturation`'s `u - max`, where `u` is an integrator output) is
-   still exactly zero at the new segment start and is re-detected. The run logs
-   `chattering: 20 consecutive events closer than 2e-09s` and finishes on the
-   fixed-step fallback. The first instant is still located exactly (the
-   validated row above), but later switches in the same run fall back to step
-   accuracy. The documented nudge protects only guards that are functions of `t`
-   (`Step`, `Ramp`), not of `y`.
+None. This section is where a wrong answer, a crash or a violated invariant gets
+recorded — pinned as `xfail(strict=True)` in
+`tests/validation/test_known_defects.py` with a full reproducer in its
+docstring, so the marker comes off the moment the defect is fixed. That module
+is currently empty; the three defects it was created for are below.
 
 ### Fixed
+
+* **A single monotone state crossing tripped the chattering guard.**
+  `lib/engine/zero_crossing.py` restarted each segment at the located root plus
+  a nudge in *time* and carried the state across unchanged, so a guard written
+  on the state (`Saturation`'s `u - max`, where `u` is an integrator output) was
+  still exactly zero at the new segment start; scipy's `find_active_events`
+  counts a zero as active and brentq returns that same instant, so one crossing
+  re-fired 20 times at 2e-11 spacing and the run finished on the fixed-step
+  fallback. The restart now advances the *state* across the same gap with one
+  explicit Euler step of the post-event dynamics, so `g` at the new segment
+  start is `dg/dt * nudge` away from zero for any transversal crossing. On
+  `Constant(1) -> Integrator -> Saturation -> Integrator`, 21 events and
+  `guard_tripped` become 1 event and no trip (the `Switch` version likewise:
+  21 → 1). The cost was the *second* switch of a run, not the first: with both
+  saturation limits finite at 0.3 and 0.7 the guard used to give up at 0.3 and
+  the 0.7 corner was never located at all; both are now located exactly (new
+  rows in the table above). Genuine chattering still trips the guard — a
+  sliding relay's derivative at the switching surface is zero, so the Euler step
+  lands back on the root — and the located instants and trajectories of the
+  cases that already worked are unchanged (saturation 1.069e-8 → 1.070e-8,
+  switch 2.766e-8 → 2.766e-8).
 
 * **`Integrator` crashed under `TUSTIN` and `BWD_EULER` on a 0-d input.**
   `blocks/sine.py` returns `np.array(scalar)` (shape `()`) — so do
