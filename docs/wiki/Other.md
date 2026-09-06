@@ -2,51 +2,13 @@
 
 List of available blocks in the **Other** category.
 
-You can find detailed information about parameters and usage below.
-
 | Block | Description |
 |-------|-------------|
-| [BodeMag](#bodemag) | Right-click to generate a Bode magnitude plot from a connected Transfer Function block. |
-| [BodePhase](#bodephase) | Right-click to generate a Bode phase plot from a connected Transfer Function block. |
-| [External](#external) | External Function Block. |
-| [Nyquist](#nyquist) | Right-click to generate a Nyquist plot from a connected dynamic block. |
-| [RootLocus](#rootlocus) | Root Locus Plotter. |
+| [External](#external) | External Function Block (not implemented). |
 
----
-
-### BodeMag
-
-Right-click to generate a Bode magnitude plot from a connected Transfer Function block.
-
-Displays the frequency response magnitude (gain in dB) vs frequency (rad/s) on a log scale.
-
-Usage:
-Connect to a Transfer Function or State Space block.
-Right-click to generate plot.
-
-#### Parameters
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-
-**Ports**: 1 In, 0 Out
-
----
-
-### BodePhase
-
-Right-click to generate a Bode phase plot from a connected Transfer Function block.
-
-Displays the frequency response phase (degrees) vs frequency (rad/s) on a log scale.
-
-Usage:
-Connect to a Transfer Function or State Space block.
-Right-click to generate plot.
-
-#### Parameters
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-
-**Ports**: 1 In, 0 Out
+The frequency-response marker blocks that used to be listed here -- `BodeMag`,
+`BodePhase`, `Nyquist` and `RootLocus` -- now declare the **Analysis** category
+and are documented on the [Analysis](Analysis.md) page.
 
 ---
 
@@ -54,14 +16,14 @@ Right-click to generate plot.
 
 External Function Block.
 
-> **⚠️ NOT IMPLEMENTED**: This block is a stub. It returns an error when executed.
-> If you need custom Python code, consider using the Python block or submitting a feature request.
+> **NOT IMPLEMENTED**: this block is a stub. It returns an error when executed,
+> and it is hidden from the block palette. For custom behaviour use the
+> [Function](Math.md#function) block (a sandboxed Python expression) or add a
+> block of your own -- see the [Developer Guide](../DEVELOPER_GUIDE.md).
 
-Intended to execute custom Python code loaded from an external file.
-
-Parameters:
-- Script Path: Path to the .py file.
-- Function Name: Name of the function to call.
+Intended to execute custom Python code loaded from an external file. The `exec`
+path was deliberately disabled in 1.0.0 as part of removing `eval`/`exec` from
+the codebase.
 
 #### Parameters
 | Name | Type | Default | Description |
@@ -71,43 +33,6 @@ Parameters:
 
 **Ports**: 1 In, 1 Out
 
-**Status**: Returns error `{'E': True, 'error': 'External file not loaded: ...'}` when executed.
-
----
-
-### Nyquist
-
-Nyquist Plot.
-
-Displays the frequency response as a polar plot (Real vs Imaginary parts) for stability analysis.
-
-Usage:
-Connect to a Transfer Function or State Space block.
-Right-click to generate plot.
-Use for stability analysis: check encirclements of the -1 point.
-
-#### Parameters
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-
-**Ports**: 1 In, 0 Out
-
----
-
-### RootLocus
-
-Root Locus Plotter.
-
-Analyzes the closed-loop poles of a system as a parameter varies.
-
-Usage:
-Connect to a Transfer Function or State Space block.
-Right-click to generate plot.
-
-#### Parameters
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-
-**Ports**: 1 In, 0 Out
+**Status**: returns `{'E': True, 'error': 'External file not loaded: ...'}` when executed.
 
 ---

@@ -11,7 +11,9 @@ You can find detailed information about parameters and usage below.
 | [Goto](#goto) | Goto Tag. |
 | [Inport](#inport) | Subsystem input port. |
 | [Mux](#mux) | Multiplexer (Mux). |
+| [NetworkChannel](#networkchannel) | Lossy, jittery communication link (loss + random latency). |
 | [Outport](#outport) | Subsystem output port. |
+| [PacketLoss](#packetloss) | Lossy channel with Bernoulli or Gilbert-Elliott drops. |
 | [Selector](#selector) | Selector / Indexer. |
 | [Subsystem](#subsystem) | Hierarchical container block. |
 | [Switch](#switch) | Signal Switch. |
@@ -198,5 +200,65 @@ Create hierarchical multi-level designs.
 See [Subsystems Architecture](Subsystems_Architecture.md) for technical details on flattening and execution.
 
 **Ports**: Dynamic (based on internal Inport/Outport blocks)
+
+---
+### NetworkChannel
+
+Unreliable, jittery communication link: random packet loss plus a random
+per-packet transport delay.
+
+At each sample instant a Bernoulli trial decides whether the packet is dropped.
+A surviving packet is given a latency drawn uniformly from
+`[min_delay, max_delay]` and is enqueued for delivery at `time + delay`. The
+output holds the most recently delivered packet (zero-order hold).
+
+Because the block exposes a `seed`, it takes a derived sub-seed in a
+[Monte Carlo ensemble](../user-guide/analysis.md#monte-carlo-ensembles).
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `loss_prob` | float | `0.1` | Probability (0..1) that a packet is dropped. |
+| `min_delay` | float | `0.0` | Minimum per-packet transport delay (s). |
+| `max_delay` | float | `0.1` | Maximum per-packet transport delay (s). |
+| `sample_time` | float | `0.0` | Channel sample period (s). 0 = every step. |
+| `seed` | int | `0` | RNG seed (0 = non-reproducible, nonzero = reproducible). |
+| `drop_mode` | choice | `hold` | Output before any packet is delivered: `hold`, `zero`, `nan`. |
+| `initial_value` | float | `0.0` | Held value before the first delivered packet. |
+
+**Ports**: 1 In, 1 Out
+
+---
+
+### PacketLoss
+
+Lossy communication link. At each sample instant a seeded random trial decides
+whether the packet is delivered (output = input) or dropped (output falls back
+per `drop_mode`).
+
+Two loss models:
+
+- `bernoulli` — i.i.d. drops with probability `loss_prob`.
+- `gilbert_elliott` — a bursty two-state Markov chain: `p_bg` and `p_gb` set the
+  good↔bad transition probabilities, `loss_prob` applies in the good state and
+  `loss_prob_bad` in the bad one.
+
+Because the block exposes a `seed`, it takes a derived sub-seed in a
+[Monte Carlo ensemble](../user-guide/analysis.md#monte-carlo-ensembles).
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `loss_model` | choice | `bernoulli` | `bernoulli` (i.i.d.) or `gilbert_elliott` (bursty). |
+| `loss_prob` | float | `0.1` | Bernoulli / good-state drop probability (0..1). |
+| `p_bg` | float | `0.1` | Gilbert-Elliott good→bad transition probability. |
+| `p_gb` | float | `0.5` | Gilbert-Elliott bad→good transition probability. |
+| `loss_prob_bad` | float | `0.9` | Gilbert-Elliott drop probability in the bad state. |
+| `sample_time` | float | `0.0` | Channel sample period (s). 0 = every step. |
+| `seed` | int | `0` | RNG seed (0 = non-reproducible, nonzero = reproducible). |
+| `drop_mode` | choice | `hold` | Output on a dropped packet: `hold`, `zero`, `nan`. |
+| `initial_value` | float | `0.0` | Held value before the first delivered packet. |
+
+**Ports**: 1 In, 1 Out
 
 ---
