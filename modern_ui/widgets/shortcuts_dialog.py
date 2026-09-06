@@ -52,7 +52,7 @@ _EDIT_GROUP: list[tuple[str, str]] = [
     (tr_noop("Redo"), "Ctrl+Y"),
     (tr_noop("Select all"), "Ctrl+A"),
     (tr_noop("Create subsystem"), "Ctrl+G"),
-    (tr_noop("Command palette"), "Ctrl+P"),
+    (tr_noop("Command palette"), "Ctrl+K"),
 ]
 _HELP_GROUP: list[tuple[str, str]] = [
     (tr_noop("Keyboard shortcuts"), "F1"),

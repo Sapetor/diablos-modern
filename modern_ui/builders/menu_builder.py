@@ -155,7 +155,7 @@ class MenuBuilder:
 
         if hasattr(self.window, "show_command_palette"):
             edit_menu.addAction(
-                tr("Command &Palette") + "\tCtrl+P", self.window.show_command_palette
+                tr("Command &Palette") + "\tCtrl+K", self.window.show_command_palette
             )
 
     def _create_simulation_menu(self, menubar):

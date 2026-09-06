@@ -103,8 +103,7 @@ nav:
       - PDE Roadmap: PDE_ROADMAP.md
       # TODO(merge): uncomment once docs/VALIDATION.md lands
       # - Validation: VALIDATION.md
-      # TODO(merge): uncomment once docs/BLOCK_API.md lands
-      # - Block API: BLOCK_API.md
+      - Block API: BLOCK_API.md
   - API Reference:
       - Core Library: api/lib.md
       - Simulation Engine: api/engine.md
