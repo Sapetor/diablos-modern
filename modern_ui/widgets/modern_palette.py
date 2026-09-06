@@ -38,6 +38,7 @@ from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
 from lib.app_paths import ui_settings
 from lib.i18n import tr, tr_noop
+from lib.user_blocks import is_user_block, user_block_source
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
 _CHEVRON_EXPANDED = "▾"
@@ -192,6 +193,17 @@ class CompactBlockRow(QFrame):
         self.name_label.setAttribute(Qt.WA_TransparentForMouseEvents)
         lay.addWidget(self.name_label, 1, Qt.AlignVCenter)
 
+        # Small marker so a user block is distinguishable from a built-in at a
+        # glance (the tooltip names the file it came from).
+        self.user_badge = None
+        if is_user_menu_block(menu_block):
+            self.user_badge = QLabel("\u25c6")
+            badge_font = QFont()
+            badge_font.setPointSize(7)
+            self.user_badge.setFont(badge_font)
+            self.user_badge.setToolTip(tr("User block"))
+            lay.addWidget(self.user_badge, 0, Qt.AlignVCenter)
+
         self._apply_styling()
         # Theme changes are applied centrally by the owning palette
         # (ModernBlockPalette._on_theme_changed), not a per-row connection.
@@ -218,6 +230,9 @@ class CompactBlockRow(QFrame):
             inst = block_cls() if block_cls else None
             if inst and hasattr(inst, "doc"):
                 doc_lines.append(str(inst.doc))
+            if is_user_menu_block(self.menu_block):
+                source = user_menu_block_source(self.menu_block)
+                doc_lines.append(tr("User block: {file}", file=os.path.basename(source) or "?"))
 
             def _names(seq):
                 try:
@@ -538,6 +553,26 @@ def is_hidden_block(menu_block) -> bool:
 def visible_menu_blocks(menu_blocks):
     """Filter a menu_blocks sequence down to the ones the palette should show."""
     return [mb for mb in menu_blocks or [] if not is_hidden_block(mb)]
+
+
+def is_user_menu_block(menu_block) -> bool:
+    """True when a palette entry came from a user block module.
+
+    User blocks (``lib/user_blocks.py``) are flagged on the palette entry by
+    ``SimulationModel.load_all_blocks``; the class attribute is checked as a
+    fallback so a hand-built entry still marks correctly.
+    """
+    if getattr(menu_block, "user_block", False):
+        return True
+    return is_user_block(getattr(menu_block, "block_class", None))
+
+
+def user_menu_block_source(menu_block) -> str:
+    """Path of the module a user palette entry was loaded from ("" otherwise)."""
+    source = getattr(menu_block, "source_file", "")
+    if source:
+        return str(source)
+    return user_block_source(getattr(menu_block, "block_class", None))
 
 
 def _block_category_name(menu_block) -> str:

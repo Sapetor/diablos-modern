@@ -142,6 +142,15 @@ class MenuBuilder:
             edit_menu.addAction(tr("Reload from Li&brary"), self.window.reload_from_library)
             edit_menu.addAction(tr("Refresh Block Librar&y"), self.window.refresh_block_library)
 
+        # Custom block modules (see lib/user_blocks.py, docs/BLOCK_API.md)
+        if hasattr(self.window, "reload_user_blocks"):
+            # Lambda, not the bound method: QAction.triggered(bool) would bind
+            # the checked flag to reload_user_blocks' `quiet` argument.
+            edit_menu.addAction(tr("Reload &User Blocks"), lambda: self.window.reload_user_blocks())
+            edit_menu.addAction(
+                tr("Open User Blocks &Folder..."), self.window.open_user_blocks_folder
+            )
+
         edit_menu.addSeparator()
 
         if hasattr(self.window, "show_command_palette"):
