@@ -1,0 +1,608 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 3000.0,
+        "sim_dt": 1.0,
+        "sim_trange": 3000,
+        "solver_method": "Radau",
+        "rtol": 1e-06,
+        "atol": 1e-08,
+        "zero_crossing": true
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Sum",
+            "sid": 0,
+            "name": "sum0",
+            "username": "x''",
+            "coords_left": 380,
+            "coords_top": 120,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Integrator",
+            "sid": 1,
+            "name": "integrator1",
+            "username": "x'",
+            "coords_left": 540,
+            "coords_top": 110,
+            "coords_width": 90,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": 0.0,
+                "method": "SOLVE_IVP",
+                "ivp_method": "Radau",
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Integrator",
+            "sid": 2,
+            "name": "integrator2",
+            "username": "x",
+            "coords_left": 700,
+            "coords_top": 110,
+            "coords_width": 90,
+            "coords_height": 70,
+            "coords_height_base": 70,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "integrator",
+            "params": {
+                "init_conds": 2.0,
+                "method": "SOLVE_IVP",
+                "ivp_method": "Radau",
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MathFunction",
+            "sid": 3,
+            "name": "mathfunction3",
+            "username": "x^2",
+            "coords_left": 700,
+            "coords_top": 300,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "mathfunction",
+            "params": {
+                "function": "square",
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Constant",
+            "sid": 4,
+            "name": "constant4",
+            "username": "1",
+            "coords_left": 700,
+            "coords_top": 430,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#065f46",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "constant",
+            "params": {
+                "value": 1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 5,
+            "name": "sum5",
+            "username": "1 - x^2",
+            "coords_left": 560,
+            "coords_top": 320,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "-+"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Product",
+            "sid": 6,
+            "name": "product6",
+            "username": "(1-x^2) x'",
+            "coords_left": 420,
+            "coords_top": 320,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "product",
+            "params": {
+                "ops": "**"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Gain",
+            "sid": 7,
+            "name": "gain7",
+            "username": "mu = 1000",
+            "coords_left": 250,
+            "coords_top": 325,
+            "coords_width": 70,
+            "coords_height": 50,
+            "coords_height_base": 50,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "gain",
+            "params": {
+                "gain": 1000.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 8,
+            "name": "scope8",
+            "username": "relaxation oscillation",
+            "coords_left": 900,
+            "coords_top": 110,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "x (mu = 1000)",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "sum0",
+            "srcport": 0,
+            "dstblock": "integrator1",
+            "dstport": 0,
+            "points": [
+                [
+                    440,
+                    150
+                ],
+                [
+                    540,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "integrator1",
+            "srcport": 0,
+            "dstblock": "integrator2",
+            "dstport": 0,
+            "points": [
+                [
+                    630,
+                    140
+                ],
+                [
+                    700,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "integrator2",
+            "srcport": 0,
+            "dstblock": "mathfunction3",
+            "dstport": 0,
+            "points": [
+                [
+                    790,
+                    140
+                ],
+                [
+                    810,
+                    140
+                ],
+                [
+                    810,
+                    209
+                ],
+                [
+                    680,
+                    209
+                ],
+                [
+                    680,
+                    340
+                ],
+                [
+                    700,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "mathfunction3",
+            "srcport": 0,
+            "dstblock": "sum5",
+            "dstport": 0,
+            "points": [
+                [
+                    800,
+                    340
+                ],
+                [
+                    820,
+                    340
+                ],
+                [
+                    820,
+                    409
+                ],
+                [
+                    540,
+                    409
+                ],
+                [
+                    540,
+                    340
+                ],
+                [
+                    560,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "constant4",
+            "srcport": 0,
+            "dstblock": "sum5",
+            "dstport": 1,
+            "points": [
+                [
+                    770,
+                    460
+                ],
+                [
+                    790,
+                    460
+                ],
+                [
+                    790,
+                    509
+                ],
+                [
+                    540,
+                    509
+                ],
+                [
+                    540,
+                    360
+                ],
+                [
+                    560,
+                    360
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "sum5",
+            "srcport": 0,
+            "dstblock": "product6",
+            "dstport": 0,
+            "points": [
+                [
+                    620,
+                    350
+                ],
+                [
+                    640,
+                    350
+                ],
+                [
+                    640,
+                    413
+                ],
+                [
+                    400,
+                    413
+                ],
+                [
+                    400,
+                    340
+                ],
+                [
+                    420,
+                    340
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "integrator1",
+            "srcport": 0,
+            "dstblock": "product6",
+            "dstport": 1,
+            "points": [
+                [
+                    630,
+                    140
+                ],
+                [
+                    650,
+                    140
+                ],
+                [
+                    650,
+                    209
+                ],
+                [
+                    400,
+                    209
+                ],
+                [
+                    400,
+                    360
+                ],
+                [
+                    420,
+                    360
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "product6",
+            "srcport": 0,
+            "dstblock": "gain7",
+            "dstport": 0,
+            "points": [
+                [
+                    480,
+                    350
+                ],
+                [
+                    500,
+                    350
+                ],
+                [
+                    500,
+                    413
+                ],
+                [
+                    230,
+                    413
+                ],
+                [
+                    230,
+                    350
+                ],
+                [
+                    250,
+                    350
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "gain7",
+            "srcport": 0,
+            "dstblock": "sum0",
+            "dstport": 0,
+            "points": [
+                [
+                    320,
+                    350
+                ],
+                [
+                    380,
+                    140
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line9",
+            "sid": 9,
+            "srcblock": "integrator2",
+            "srcport": 0,
+            "dstblock": "sum0",
+            "dstport": 1,
+            "points": [
+                [
+                    790,
+                    140
+                ],
+                [
+                    810,
+                    140
+                ],
+                [
+                    810,
+                    209
+                ],
+                [
+                    360,
+                    209
+                ],
+                [
+                    360,
+                    160
+                ],
+                [
+                    380,
+                    160
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line10",
+            "sid": 10,
+            "srcblock": "integrator2",
+            "srcport": 0,
+            "dstblock": "scope8",
+            "dstport": 0,
+            "points": [
+                [
+                    790,
+                    140
+                ],
+                [
+                    900,
+                    150
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        }
+    ],
+    "version": "2.0"
+}

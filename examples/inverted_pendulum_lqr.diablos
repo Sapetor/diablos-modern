@@ -1,0 +1,568 @@
+{
+    "sim_data": {
+        "wind_width": 1280,
+        "wind_height": 770,
+        "fps": 60,
+        "sim_time": 8.0,
+        "sim_dt": 0.01,
+        "sim_trange": 8,
+        "solver_method": "RK45",
+        "rtol": 1e-09,
+        "atol": 1e-12,
+        "zero_crossing": true
+    },
+    "blocks_data": [
+        {
+            "block_fn": "Step",
+            "sid": 0,
+            "name": "step0",
+            "username": "reference (upright)",
+            "coords_left": 60,
+            "coords_top": 210,
+            "coords_width": 80,
+            "coords_height": 60,
+            "coords_height_base": 60,
+            "in_ports": 0,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#065f46",
+            "b_type": 0,
+            "io_edit": "none",
+            "fn_name": "step",
+            "params": {
+                "value": 0.0,
+                "delay": 0.0,
+                "type": "up",
+                "pulse_start_up": true,
+                "zero_crossing": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Sum",
+            "sid": 1,
+            "name": "sum1",
+            "username": "u = -K x",
+            "coords_left": 240,
+            "coords_top": 210,
+            "coords_width": 60,
+            "coords_height": 64,
+            "coords_height_base": 50,
+            "in_ports": 2,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "sum",
+            "params": {
+                "sign": "+-"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "StateSpace",
+            "sid": 2,
+            "name": "statespace2",
+            "username": "cart-pendulum (linearised)",
+            "coords_left": 400,
+            "coords_top": 190,
+            "coords_width": 120,
+            "coords_height": 90,
+            "coords_height_base": 90,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 1,
+            "io_edit": "none",
+            "fn_name": "statespace",
+            "params": {
+                "A": [
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        -0.98,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        21.56,
+                        0.0
+                    ]
+                ],
+                "B": [
+                    [
+                        0.0
+                    ],
+                    [
+                        1.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        -2.0
+                    ]
+                ],
+                "C": [
+                    [
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0,
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "D": [
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ],
+                    [
+                        0.0
+                    ]
+                ],
+                "init_conds": [
+                    0.0,
+                    0.0,
+                    0.2,
+                    0.0
+                ],
+                "sampling_time": -1.0
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Demux",
+            "sid": 3,
+            "name": "demux3",
+            "username": "states",
+            "coords_left": 620,
+            "coords_top": 190,
+            "coords_width": 70,
+            "coords_height": 104,
+            "coords_height_base": 60,
+            "in_ports": 1,
+            "out_ports": 4,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#115e59",
+            "b_type": 2,
+            "io_edit": "output",
+            "fn_name": "demux",
+            "params": {
+                "output_shape": 1
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 4,
+            "name": "scope4",
+            "username": "cart and pendulum",
+            "coords_left": 800,
+            "coords_top": 170,
+            "coords_width": 100,
+            "coords_height": 104,
+            "coords_height_base": 80,
+            "in_ports": 4,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "x [m],x_dot [m/s],theta [rad],theta_dot [rad/s]",
+                "verify_mode": "trajectory"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "MatrixGain",
+            "sid": 5,
+            "name": "matrixgain5",
+            "username": "K (LQR gain)",
+            "coords_left": 430,
+            "coords_top": 390,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 1,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#1e40af",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "matrixgain",
+            "params": {
+                "gain": "[[-2.2361, -3.4615, -34.8458, -7.645]]"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "Scope",
+            "sid": 6,
+            "name": "scope6",
+            "username": "control force",
+            "coords_left": 800,
+            "coords_top": 380,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#991b1b",
+            "b_type": 3,
+            "io_edit": "input",
+            "fn_name": "scope",
+            "params": {
+                "labels": "u [N]",
+                "verify_mode": "auto"
+            },
+            "external": false,
+            "flipped": false
+        },
+        {
+            "block_fn": "LQR",
+            "sid": 7,
+            "name": "lqr7",
+            "username": "LQR design (Tools > LQR)",
+            "coords_left": 60,
+            "coords_top": 400,
+            "coords_width": 100,
+            "coords_height": 80,
+            "coords_height_base": 80,
+            "in_ports": 1,
+            "out_ports": 0,
+            "dragging": false,
+            "selected": false,
+            "b_color": "#5b21b6",
+            "b_type": 2,
+            "io_edit": "none",
+            "fn_name": "lqr",
+            "params": {
+                "A": "[[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, -0.98, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 21.56, 0.0]]",
+                "B": "[[0.0], [1.0], [0.0], [-2.0]]",
+                "Q": "[[5, 0, 0, 0], [0, 1, 0, 0], [0, 0, 20, 0], [0, 0, 0, 1]]",
+                "R": "[[1]]"
+            },
+            "external": false,
+            "flipped": false
+        }
+    ],
+    "lines_data": [
+        {
+            "name": "Line0",
+            "sid": 0,
+            "srcblock": "step0",
+            "srcport": 0,
+            "dstblock": "sum1",
+            "dstport": 0,
+            "points": [
+                [
+                    140,
+                    240
+                ],
+                [
+                    240,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line1",
+            "sid": 1,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "statespace2",
+            "dstport": 0,
+            "points": [
+                [
+                    300,
+                    240
+                ],
+                [
+                    400,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line2",
+            "sid": 2,
+            "srcblock": "statespace2",
+            "srcport": 0,
+            "dstblock": "demux3",
+            "dstport": 0,
+            "points": [
+                [
+                    520,
+                    240
+                ],
+                [
+                    620,
+                    240
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line3",
+            "sid": 3,
+            "srcblock": "demux3",
+            "srcport": 0,
+            "dstblock": "scope4",
+            "dstport": 0,
+            "points": [
+                [
+                    690,
+                    210
+                ],
+                [
+                    800,
+                    190
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line4",
+            "sid": 4,
+            "srcblock": "demux3",
+            "srcport": 1,
+            "dstblock": "scope4",
+            "dstport": 1,
+            "points": [
+                [
+                    690,
+                    230
+                ],
+                [
+                    800,
+                    210
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line5",
+            "sid": 5,
+            "srcblock": "demux3",
+            "srcport": 2,
+            "dstblock": "scope4",
+            "dstport": 2,
+            "points": [
+                [
+                    690,
+                    250
+                ],
+                [
+                    800,
+                    230
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line6",
+            "sid": 6,
+            "srcblock": "demux3",
+            "srcport": 3,
+            "dstblock": "scope4",
+            "dstport": 3,
+            "points": [
+                [
+                    690,
+                    270
+                ],
+                [
+                    800,
+                    250
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line7",
+            "sid": 7,
+            "srcblock": "statespace2",
+            "srcport": 0,
+            "dstblock": "matrixgain5",
+            "dstport": 0,
+            "points": [
+                [
+                    520,
+                    240
+                ],
+                [
+                    540,
+                    240
+                ],
+                [
+                    540,
+                    309
+                ],
+                [
+                    410,
+                    309
+                ],
+                [
+                    410,
+                    430
+                ],
+                [
+                    430,
+                    430
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line8",
+            "sid": 8,
+            "srcblock": "matrixgain5",
+            "srcport": 0,
+            "dstblock": "sum1",
+            "dstport": 1,
+            "points": [
+                [
+                    530,
+                    430
+                ],
+                [
+                    550,
+                    430
+                ],
+                [
+                    550,
+                    499
+                ],
+                [
+                    220,
+                    499
+                ],
+                [
+                    220,
+                    250
+                ],
+                [
+                    240,
+                    250
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        },
+        {
+            "name": "Line9",
+            "sid": 9,
+            "srcblock": "sum1",
+            "srcport": 0,
+            "dstblock": "scope6",
+            "dstport": 0,
+            "points": [
+                [
+                    300,
+                    240
+                ],
+                [
+                    800,
+                    420
+                ]
+            ],
+            "cptr": 0,
+            "selected": false,
+            "modified": false,
+            "routing_mode": "bezier",
+            "auto_routed": false
+        }
+    ],
+    "version": "2.0"
+}
