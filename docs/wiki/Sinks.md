@@ -6,6 +6,7 @@ You can find detailed information about parameters and usage below.
 
 | Block | Description |
 |-------|-------------|
+| [AgentScope](#agentscope) | Animated 2D scatter of N agents over time. |
 | [Assert](#assert) | Stops simulation if input violates condition. Modes: >0, <0, >=0, <=0, ==0, !=0, finite. |
 | [Display](#display) | Numerical Display. |
 | [Export](#export) | Data Export. |
@@ -158,5 +159,26 @@ Phase portraits, hysteresis loops, or orbital paths.
 | `title` | string | `XY Plot` | Plot title. |
 
 **Ports**: 2 In, 0 Out
+
+---
+### AgentScope
+
+Animated 2D scatter of N agents over time, with optional trails.
+
+The input is a flat position vector of length `2*n_agents`, laid out
+`[x1, y1, x2, y2, ...]`. The window opens when the simulation ends.
+
+Usage:
+Multi-agent and swarm examples (consensus, flocking, Kuramoto on the plane).
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `n_agents` | int | `4` | Number of agents; the input length must equal 2*n_agents. |
+| `show_trails` | bool | `True` | Draw a fading line behind each agent. |
+| `trail_length` | int | `0` | Max trail samples (0 = full history). |
+| `title` | string | `Agent trajectories` | Plot title. |
+
+**Ports**: 1 In, 0 Out
 
 ---

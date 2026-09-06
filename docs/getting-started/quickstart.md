@@ -1,58 +1,108 @@
-# Quick Start Guide
+# Quick Start
 
-This guide will walk you through creating your first simulation in DiaBloS Modern.
+Building and running a first diagram takes about a minute.
 
-## Starting the Application
+## Start the application
 
-```bash
-python diablos_modern.py
-```
+=== "Prebuilt app"
 
-## Creating a Simple System
+    Launch **DiaBloS** from Applications (macOS), `DiaBloS.exe` (Windows) or
+    `./DiaBloS/DiaBloS` (Linux).
 
-### Step 1: Add a Source Block
+=== "From source"
 
-1. Open the block palette on the left
-2. Find "Sources" category
-3. Drag a "Step" block onto the canvas
+    ```bash
+    python diablos_modern.py
+    ```
 
-### Step 2: Add a Dynamic Block
+The window opens on an empty canvas with the **Block Palette** on the left and
+the **Properties** panel on the right.
 
-1. Find "Control" category
-2. Drag an "Integrator" block onto the canvas
+## A first-order lag, in six steps
 
-### Step 3: Add a Sink Block
+We will build `Step → 1/(s+1) → Scope`.
 
-1. Find "Sinks" category
-2. Drag a "Scope" block onto the canvas
+1. **Add a source.** In the palette, expand **SOURCES** and drag **Step** onto
+   the canvas. Can't find it? Press <kbd>Ctrl</kbd>+<kbd>K</kbd> for the command
+   palette, or type in the palette's search box (`s`, `sum`, `pid`… all work).
 
-### Step 4: Connect the Blocks
+2. **Add the dynamics.** From **CONTROL**, drag a **TranFn** block to the right
+   of the Step.
 
-1. Click on the output port of the Step block
-2. Drag to the input port of the Integrator
-3. Connect the Integrator output to the Scope input
+3. **Add a sink.** From **SINKS**, drag a **Scope** to the right of the TranFn.
 
-### Step 5: Run the Simulation
+4. **Wire them up.** Press on the Step's output port (the small disc on its
+   right edge), drag to the TranFn's input port, and release. The preview snaps
+   to the port under the cursor and turns green when the target is accepted, red
+   when it is not. Click-then-click also works if you prefer. Repeat from TranFn
+   to Scope.
 
-1. Set simulation time (e.g., 10 seconds) in the toolbar
-2. Click the "Run" button (or press F5)
-3. View results in the Scope plot window
+5. **Set the transfer function.** Click the TranFn block. In the Properties
+   panel set `numerator` to `[1]` and `denominator` to `[1, 1]`, giving
+   `1/(s+1)`.
 
-## Keyboard Shortcuts
+6. **Run.** Press <kbd>F5</kbd>. The **Simulation Configuration** dialog opens —
+   set **Simulation Duration** to `10`, leave the rest alone and press
+   **Simulate**. The scope window opens with the step response when the run
+   finishes.
+
+Save with <kbd>Ctrl</kbd>+<kbd>S</kbd>; DiaBloS writes a `.diablos` file (JSON).
+
+## Open an example instead
+
+**File ▸ Examples** lists everything in `examples/`. Good ones to start with:
+
+| Example | Shows |
+|---|---|
+| `c01_tank_feedback` | A classic single-loop feedback controller |
+| `c03_bode_frequency_response` | Frequency response and the analysis markers |
+| `c05_lqr_vs_open_loop` | State feedback designed with the LQR block |
+| `heat_equation_demo` | A 1D PDE rendered in FieldScope |
+| `library_block_demo` | A masked subsystem loaded from the user library |
+
+## What to try next
+
+- **Right-click a block.** Parameters, live tuning, flip, rename, wrap in a
+  subsystem, detach wires, alignment — it is all there.
+- **Right-click a wire.** Switch it between **Bezier (curved)** and
+  **Orthogonal (Manhattan)**, auto-route it, or reset its routing. Drag a wire to
+  create a bend; double-click a bend handle to remove it.
+- **Click empty canvas.** The Properties panel turns into a diagram inspector
+  showing the solver settings and the last runs.
+- **Analysis ▸ Linearize & Analyze…** on a closed loop gives you poles, a Bode
+  plot and stability margins without writing anything down. See
+  [Analysis & Experiments](../user-guide/analysis.md).
+
+## Keyboard shortcuts
+
+Press <kbd>F1</kbd> for the full, always-current list. The ones worth learning
+first:
 
 | Shortcut | Action |
 |----------|--------|
-| F5 | Run simulation |
-| Ctrl+S | Save diagram |
-| Ctrl+O | Open diagram |
-| Ctrl+Z | Undo |
-| Ctrl+Y | Redo |
-| Delete | Delete selected |
-| Ctrl+C | Copy |
-| Ctrl+V | Paste |
+| <kbd>F5</kbd> | Run simulation |
+| <kbd>F6</kbd> / <kbd>F7</kbd> | Pause / stop |
+| <kbd>F8</kbd> | Single step |
+| <kbd>Ctrl</kbd>+<kbd>K</kbd> | Command palette |
+| <kbd>Ctrl</kbd>+<kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> | New / open / save |
+| <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> | Undo / redo |
+| <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>V</kbd> | Copy / paste |
+| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Select all |
+| <kbd>Del</kbd> or <kbd>Backspace</kbd> | Delete selection |
+| <kbd>Ctrl</kbd>+<kbd>G</kbd> | Wrap selection in a subsystem |
+| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Flip selected blocks |
+| <kbd>Ctrl</kbd>+<kbd>0</kbd> | Fit diagram to window |
+| <kbd>Ctrl</kbd>+<kbd>T</kbd> | Toggle light/dark theme |
+| <kbd>Esc</kbd> | Cancel a wire, clear the selection, or leave a subsystem |
 
-## Next Steps
+Alignment uses <kbd>Ctrl</kbd>+<kbd>Shift</kbd> plus <kbd>L</kbd>/<kbd>R</kbd>/<kbd>H</kbd>/<kbd>T</kbd>/<kbd>B</kbd>,
+and the dockable panels use <kbd>Ctrl</kbd>+<kbd>Shift</kbd> plus
+<kbd>M</kbd> (minimap), <kbd>V</kbd> (variable editor), <kbd>W</kbd> (workspace
+variables) and <kbd>T</kbd> (tuning panel).
 
-- Explore the [Block Reference](../user-guide/block-reference.md)
-- Learn about [PDE Blocks](../wiki/PDE_Blocks.md)
-- Try the [Optimization Primitives](../wiki/Optimization_Primitives.md)
+## Next steps
+
+- [Creating diagrams](../user-guide/creating-diagrams.md)
+- [Running simulations](../user-guide/running-simulations.md) — solvers, tolerances, zero crossings
+- [Analysis & experiments](../user-guide/analysis.md)
+- [Block reference](../wiki/Home.md)

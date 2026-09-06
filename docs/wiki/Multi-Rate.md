@@ -131,5 +131,5 @@ When a discrete block skips execution (not at sample time):
 
 ## See Also
 
-- [Control Blocks](Control) - ZOH, FOH, RateTransition documentation
-- [Examples](Examples) - Multi-rate demo and other examples
+- [Control Blocks](Control.md) - ZOH, FOH, RateTransition documentation
+- [Examples](Examples.md) - Multi-rate demo and other examples

@@ -1,20 +1,28 @@
-# File: .readthedocs.yaml
+# Read the Docs build configuration.
+#
+# Read the Docs accepts this file as `readthedocs.yaml` at the repository root.
+# The same site is also built and deployed by .github/workflows/docs.yml, so
+# GitHub Pages stays current even if this build is not configured.
+#
+# https://docs.readthedocs.io/en/stable/config-file/v2.html
 
 version: 2
 
 build:
-  os: "ubuntu-20.04"
+  os: "ubuntu-24.04"
   tools:
-    python: "3.9"
+    # 3.12 is the newer leg of the CI matrix (.github/workflows/ci.yml);
+    # the code also supports 3.9.
+    python: "3.12"
 
-# Build with MkDocs (the project's maintained doc system: mkdocs.yml, Material theme)
+# MkDocs is the project's documentation system (mkdocs.yml, Material theme).
 mkdocs:
   configuration: mkdocs.yml
 
-# Explicitly set the version of Python and its requirements
+# mkdocstrings imports lib/, blocks/ and modern_ui/ to build the API reference,
+# so the runtime dependencies have to be installed too.
 python:
   install:
     - requirements: docs/requirements.txt
 
-formats:
-  - pdf
+# No `formats:` — Read the Docs only produces PDF/ePub for Sphinx projects.

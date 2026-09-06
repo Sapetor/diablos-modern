@@ -13,6 +13,7 @@ You can find detailed information about parameters and usage below.
 | [FirstOrderHold](#firstorderhold) | First-Order Hold (FOH) - linear extrapolation between samples. |
 | [Hysteresis](#hysteresis) | Hysteresis Relay. |
 | [Integrator](#integrator) | Continuous-time Integrator (1/s). |
+| [LQR](#lqr) | Linear-quadratic regulator gain designer (right-click to compute). |
 | [PID](#pid) | PID Controller. |
 | [RateLimiter](#ratelimiter) | Rate Limiter. |
 | [RateTransition](#ratetransition) | Rate Transition for multi-rate simulation. |
@@ -20,6 +21,7 @@ You can find detailed information about parameters and usage below.
 | [StateSpace](#statespace) | Continuous State-Space Model. |
 | [TranFn](#tranfn) | Represents a linear time-invariant system as a transfer function. |
 | [TransportDelay](#transportdelay) | Transport Delay / Time Delay. |
+| [VariableTransportDelay](#variabletransportdelay) | Transport delay whose τ is supplied on an input port. |
 | [ZeroOrderHold](#zeroorderhold) | Zero-Order Hold (ZOH). |
 
 ---
@@ -402,5 +404,61 @@ Models triggers or ADCs.
 | `sampling_time` | float | `0.1` |  |
 
 **Ports**: 1 In, 1 Out
+
+---
+### LQR
+
+Linear-quadratic regulator gain designer. This is a design tool, not a
+simulation block: `execute()` does nothing and the block produces no output
+signal.
+
+Right-click the block and choose **Compute LQR gain** to solve the continuous
+algebraic Riccati equation for
+
+```
+min ∫ (xᵀQx + uᵀRu) dt   subject to   dx/dt = Ax + Bu
+```
+
+The result window (**LQR Result: _name_**) reports the optimal gain `K`
+(`u = -Kx`), the closed-loop eigenvalues of `A - BK` and the cost matrix `P`.
+
+Connect the `plant` input to a `StateSpace` block to read `A` and `B`
+automatically; otherwise enter them by hand. Every matrix field also accepts a
+workspace variable name defined in the
+[Variable Editor](../VARIABLE_EDITOR_GUIDE.md).
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `A` | string | `[[0, 1], [0, 0]]` | State matrix (n×n). Matrix or workspace variable. |
+| `B` | string | `[[0], [1]]` | Input matrix (n×m). Matrix or workspace variable. |
+| `Q` | string | `[[1, 0], [0, 1]]` | State cost matrix (n×n, positive semidefinite). |
+| `R` | string | `[[1]]` | Input cost matrix (m×m, positive definite). |
+
+**Ports**: 1 In, 0 Out
+
+See also: [Analysis & Experiments](../user-guide/analysis.md#lqr-design).
+
+---
+
+### VariableTransportDelay
+
+Input-driven transport delay: `y(t) = u(t - τ(t))`.
+
+Like `TransportDelay`, but the delay τ arrives at runtime on the second input
+port instead of being a fixed parameter. τ is clamped to `[0, max_delay]`, and a
+`(time, value)` history buffer is interpolated linearly for sub-sample accuracy.
+
+Usage:
+Variable network latency, transport lag that depends on a flow rate, or a
+delay driven by a `RandomSource`.
+
+#### Parameters
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `max_delay` | float | `1.0` | Maximum delay τ (s); also the buffer retention window. |
+| `initial_value` | float | `0.0` | Output before the requested sample exists. |
+
+**Ports**: 2 In (`in`, `tau`), 1 Out
 
 ---

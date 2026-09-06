@@ -1,18 +1,28 @@
-site_name: DiaBloS Modern Documentation
-site_description: Documentation for DiaBloS Modern - A block diagram simulation tool for dynamic systems
+site_name: DiaBloS Modern
+site_description: A Python-native visual laboratory for dynamics and control.
 site_author: DiaBloS Project
+site_url: https://sapetor.github.io/diablos-modern/
 
-repo_name: diablos-modern
+repo_name: Sapetor/diablos-modern
 repo_url: https://github.com/Sapetor/diablos-modern
+edit_uri: edit/main/docs/
+
+copyright: MIT licensed. Built with MkDocs and Material for MkDocs.
 
 theme:
   name: material
+  icon:
+    logo: material/chart-timeline-variant
+    repo: fontawesome/brands/github
   features:
     - navigation.tabs
     - navigation.sections
-    - navigation.expand
+    - navigation.top
+    - navigation.instant
     - search.suggest
+    - search.highlight
     - content.code.copy
+    - content.action.edit
   palette:
     - scheme: default
       primary: indigo
@@ -27,6 +37,11 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
+# Superseded internal notes live in docs/archive/ for history; they are kept out
+# of the build entirely rather than deleted. See docs/archive/README.md.
+exclude_docs: |
+  archive/
+
 plugins:
   - search
   - mkdocstrings:
@@ -37,6 +52,14 @@ plugins:
             show_root_heading: true
             show_category_heading: true
             docstring_style: google
+            docstring_options:
+              # The API reference is generated from the live source. Missing
+              # parameter/return annotations in a docstring are a code nit, not
+              # a documentation build failure -- they must not break the
+              # `mkdocs build --strict` gate in .github/workflows/docs.yml.
+              warn_missing_types: false
+              warn_unknown_params: false
+              warnings: false
 
 nav:
   - Home: index.md
@@ -47,9 +70,13 @@ nav:
   - User Guide:
       - Creating Diagrams: user-guide/creating-diagrams.md
       - Running Simulations: user-guide/running-simulations.md
+      - Analysis & Experiments: user-guide/analysis.md
+      - Language & Translations: user-guide/localization.md
       - Block Reference: user-guide/block-reference.md
       - Variable Editor: VARIABLE_EDITOR_GUIDE.md
       - Fast Solver: FAST_SOLVER.md
+      # TODO(merge): uncomment once docs/SOLVER_SEMANTICS.md lands
+      # - Solver Semantics: SOLVER_SEMANTICS.md
   - Block Reference:
       - Overview: wiki/Home.md
       - Examples: wiki/Examples.md
@@ -57,7 +84,9 @@ nav:
       - Sinks: wiki/Sinks.md
       - Math: wiki/Math.md
       - Control: wiki/Control.md
+      - Logic: wiki/Logic.md
       - Routing: wiki/Routing.md
+      - Analysis: wiki/Analysis.md
       - Other: wiki/Other.md
       - Multi-Rate: wiki/Multi-Rate.md
       - PDE: wiki/PDE.md
@@ -70,7 +99,12 @@ nav:
       - Developer Guide: DEVELOPER_GUIDE.md
       - Block Symbol Drawing: SYMBOL_DRAWING_GUIDE.md
       - Building & Packaging: building.md
+      - Releasing: RELEASING.md
       - PDE Roadmap: PDE_ROADMAP.md
+      # TODO(merge): uncomment once docs/VALIDATION.md lands
+      # - Validation: VALIDATION.md
+      # TODO(merge): uncomment once docs/BLOCK_API.md lands
+      # - Block API: BLOCK_API.md
   - API Reference:
       - Core Library: api/lib.md
       - Simulation Engine: api/engine.md
@@ -87,6 +121,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.keys
+  - tables
   - toc:
       permalink: true
   - attr_list

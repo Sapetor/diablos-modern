@@ -354,6 +354,19 @@ Computes spatial derivative ∂field/∂x.
 
 Computes second derivative ∂²field/∂x².
 
+### FieldSlice
+
+Extracts a 1D slice out of a 2D field, so a `FieldScope` or `Scope` can plot it.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `slice_direction` | string | `x` | Slice direction: `x` (horizontal) or `y` (vertical) |
+| `slice_position` | float | 0.5 | Position of the slice, normalized to 0-1 |
+| `Lx`, `Ly` | float | 1.0 | Domain dimensions |
+
+**Inputs:** `field` (2D array), `position` *(optional: drives `slice_position` at runtime)*
+**Outputs:** `slice` (1D array along the cut)
+
 ---
 
 ## Verification Examples
