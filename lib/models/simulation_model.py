@@ -11,6 +11,7 @@ from PyQt5.QtCore import QRect, QPoint
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.block_loader import load_blocks
+from lib.user_blocks import is_user_block, user_block_source
 from lib.simulation.menu_block import MenuBlocks
 
 # Import block size configuration
@@ -107,13 +108,21 @@ class SimulationModel:
         else:
             return theme_manager.get_color("block_other")
 
-    def load_all_blocks(self) -> None:
+    def load_all_blocks(
+        self, diagram_path: Optional[str] = None, reload_user: bool = False
+    ) -> None:
         """
-        Load all available block types from the blocks/ directory with theme-aware colors.
+        Load all available block types (built-in and user) with theme-aware colors.
         Creates MenuBlock instances for each available block type.
+
+        ``diagram_path`` lets ``lib.user_blocks`` also scan a ``blocks/`` folder
+        next to the open diagram; ``reload_user`` re-reads user modules from
+        disk. The list is mutated in place because DSim aliases it (see
+        ``lib/lib.py``), so rebinding it here would leave stale palette entries
+        behind after a reload.
         """
-        self.menu_blocks = []
-        block_classes = load_blocks()
+        self.menu_blocks[:] = []
+        block_classes = load_blocks(diagram_path, reload_user=reload_user)
 
         for block_class in block_classes:
             block = block_class()
@@ -168,6 +177,10 @@ class SimulationModel:
 
             # Store category on menu block for later reference
             menu_block.category = category
+            # User blocks (lib/user_blocks.py) are flagged so the palette can
+            # mark them and the reload action can count them.
+            menu_block.user_block = is_user_block(block_class)
+            menu_block.source_file = user_block_source(block_class)
             # Store full param metadata for tooltips
             menu_block.param_meta = param_metadata
             self.menu_blocks.append(menu_block)
@@ -277,6 +290,17 @@ class SimulationModel:
             if parsed is not None
         ]
         return max(id_list) + 1 if id_list else 0
+
+    def reload_blocks(self, diagram_path: Optional[str] = None) -> int:
+        """Re-scan user block modules *and* library files, rebuilding the palette.
+
+        Returns the number of user block classes now registered. Built-ins are
+        rebuilt too so a user block that stops loading disappears cleanly.
+        """
+        self.load_all_blocks(diagram_path, reload_user=True)
+        user_count = sum(1 for mb in self.menu_blocks if getattr(mb, "user_block", False))
+        self.load_library_blocks(diagram_path)
+        return user_count
 
     def load_library_blocks(self, diagram_path: Optional[str] = None) -> int:
         """(Re)scan the user library folders and register the blocks found.

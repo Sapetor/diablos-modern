@@ -349,6 +349,105 @@ class ModernDiaBloSWindow(QMainWindow):
         """Re-scan the user library folders and rebuild the palette."""
         return self.mask_library_manager.refresh_library()
 
+    # User block facades -> lib/user_blocks.py (see docs/BLOCK_API.md)
+    def _current_diagram_path(self):
+        """Path of the open diagram, for the project-local ``blocks/`` folder."""
+        service = getattr(self, "diagram_service", None)
+        return getattr(service, "current_file", None) or getattr(
+            self.dsim, "current_filepath", None
+        )
+
+    def reload_user_blocks(self, quiet=False):
+        """Re-read user block modules from disk and rebuild the palette.
+
+        Modules are re-imported, so editing a block file and triggering this
+        action is enough to see the change -- no restart. ``quiet`` skips the
+        status-bar message, for the implicit reload that follows opening a
+        diagram (whose own "Diagram opened" message should stand).
+        """
+        from lib.user_blocks import user_block_search_paths
+
+        model = getattr(self.dsim, "model", None)
+        if model is None or not hasattr(model, "reload_blocks"):
+            logger.warning("This window's model does not support reloading user blocks")
+            return 0
+        try:
+            count = model.reload_blocks(self._current_diagram_path())
+        except Exception as exc:
+            logger.exception("Reloading user blocks failed")
+            QMessageBox.warning(
+                self,
+                tr("User blocks"),
+                tr("Could not reload user blocks: {error}", error=exc),
+            )
+            return 0
+        self.dsim.menu_blocks = model.menu_blocks
+        palette = getattr(self, "block_palette", None) or getattr(self, "palette_widget", None)
+        if palette is not None and hasattr(palette, "refresh_blocks"):
+            palette.refresh_blocks()
+        logger.info(
+            "Reloaded user blocks: %d registered from %s",
+            count,
+            user_block_search_paths(self._current_diagram_path()),
+        )
+        if not quiet:
+            self._notify(tr("Reloaded user blocks: {count} available", count=count))
+        return count
+
+    def open_user_blocks_folder(self):
+        """Open the per-user blocks folder in the system file manager."""
+        from PyQt5.QtCore import QUrl
+        from PyQt5.QtGui import QDesktopServices
+
+        from lib.user_blocks import user_blocks_dir
+
+        try:
+            folder = user_blocks_dir(create=True)
+            opened = QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
+        except Exception as exc:
+            logger.warning("Could not open the user blocks folder: %s", exc)
+            opened = False
+            folder = ""
+        if not opened:
+            QMessageBox.information(
+                self,
+                tr("User blocks folder"),
+                tr("Put your block modules in:\n{path}", path=folder),
+            )
+        return folder
+
+    def _warn_about_missing_block_types(self):
+        """Tell the user when the diagram just opened needs blocks we lack.
+
+        ``FileService`` skips a block whose type is not registered (it only
+        logs), which used to leave a silently incomplete diagram. Re-reading
+        the saved file is cheap and keeps the check out of the load path.
+        """
+        import json
+
+        from lib.user_blocks import missing_block_names, missing_blocks_message
+
+        path = self._current_diagram_path()
+        if not path or not os.path.isfile(path):
+            return []
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError) as exc:
+            logger.debug("Could not re-read %s for a block-availability check: %s", path, exc)
+            return []
+        known = [getattr(mb, "block_fn", "") for mb in getattr(self.dsim, "menu_blocks", []) or []]
+        missing = missing_block_names(data, known)
+        if not missing:
+            return []
+        logger.warning("Diagram %s uses unavailable block types: %s", path, missing)
+        QMessageBox.warning(
+            self,
+            tr("Missing block types"),
+            missing_blocks_message(missing, path),
+        )
+        return missing
+
     def toggle_minimap(self):
         """Toggle visibility of the minimap dock."""
         self.view_actions_manager.toggle_minimap()
@@ -457,6 +556,9 @@ class ModernDiaBloSWindow(QMainWindow):
         file, so it only becomes visible once a diagram has been opened.
         """
         try:
+            # Reloads user block modules too: both the project-local library/
+            # and blocks/ folders are resolved relative to the open file.
+            self.reload_user_blocks(quiet=True)
             self.mask_library_manager.refresh_library()
         except Exception as e:
             logger.warning(f"Could not refresh the block library: {e}")
@@ -464,10 +566,12 @@ class ModernDiaBloSWindow(QMainWindow):
     def open_diagram(self):
         self.project_manager.open_diagram()
         self._refresh_library_for_open_diagram()
+        self._warn_about_missing_block_types()
 
     def open_example(self, filename):
         self.project_manager.open_example(filename)
         self._refresh_library_for_open_diagram()
+        self._warn_about_missing_block_types()
 
     def save_diagram(self):
         self.project_manager.save_diagram()
