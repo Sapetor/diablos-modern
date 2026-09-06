@@ -1,9 +1,21 @@
+"""Block registry: the built-in blocks plus any user blocks the app can find.
+
+Built-ins load two ways -- a live filesystem scan of ``blocks/`` in a dev
+checkout, and the static ``_BLOCK_MODULES`` list in a frozen PyInstaller build
+(kept in sync by ``tools/sync_block_registry.py``).  User blocks (see
+``lib/user_blocks.py`` and ``docs/BLOCK_API.md``) load the same way in both
+modes, by file path, and are appended after the built-ins so a name collision
+always resolves in favour of the built-in.
+"""
+
 import os
 import sys
 import logging
 import importlib
 import inspect
-from blocks.base_block import BaseBlock
+from typing import List, Optional
+
+from blocks.base_block import BaseBlock, block_contract_errors
 
 logger = logging.getLogger(__name__)
 
@@ -122,10 +134,57 @@ def _collect_block_classes(module_names):
     return block_classes
 
 
-def load_blocks():
+def _validate_builtin_blocks(block_classes):
+    """Log contract violations in built-in blocks (development/test only).
+
+    Built-ins are still registered -- refusing to load one would break an
+    existing diagram over a cosmetic spec problem -- but the violation is
+    reported at load time instead of surfacing as an obscure failure deep in
+    the engine.  ``tests/unit/test_block_api.py`` turns the same check into a
+    hard CI gate; a frozen build skips it (the tree is fixed at build time).
     """
-    Imports all block modules and returns a list of all block classes.
-    Skips abstract base classes that cannot be instantiated.
+    for cls in block_classes:
+        try:
+            problems = block_contract_errors(cls)
+        except Exception:  # pragma: no cover - the validator must never break loading
+            logger.debug("Could not validate %s", cls, exc_info=True)
+            continue
+        if problems:
+            logger.error(
+                "Built-in block %s.%s breaks the block contract:\n  - %s",
+                cls.__module__,
+                cls.__name__,
+                "\n  - ".join(problems),
+            )
+
+
+def load_user_block_classes(diagram_path=None, builtin_classes=None, reload=False):
+    """Discovered user block classes, ready to register (never raises).
+
+    ``builtin_classes`` supplies the ``block_name`` values already taken; a
+    user block colliding with one is skipped by the loader.
+    """
+    from lib.user_blocks import load_user_blocks
+
+    taken = []
+    for cls in builtin_classes or []:
+        try:
+            taken.append(cls().block_name)
+        except Exception:  # pragma: no cover - a broken built-in is reported elsewhere
+            logger.debug("Could not read block_name from %s", cls, exc_info=True)
+
+    try:
+        report = load_user_blocks(diagram_path, builtin_names=taken, reload=reload)
+    except Exception:
+        logger.exception("User block discovery failed; only built-in blocks are available")
+        return []
+    if report.problems:
+        logger.warning("%d user block problem(s); see the log above", len(report.problems))
+    return report.classes
+
+
+def load_builtin_blocks():
+    """Import the built-in block modules and return their classes.
 
     In frozen (PyInstaller) mode, uses a static registry since filesystem
     scanning is not available. In development mode, scans the blocks directory.
@@ -160,4 +219,33 @@ def load_blocks():
 
     classes = _collect_block_classes(block_modules)
     logger.info(f"Loaded {len(classes)} block classes from {len(block_modules)} modules")
+    _validate_builtin_blocks(classes)
     return classes
+
+
+def load_blocks(
+    diagram_path: Optional[str] = None,
+    include_user: bool = True,
+    reload_user: bool = False,
+) -> List[type]:
+    """Every block class available to the app: built-ins first, then user blocks.
+
+    Args:
+        diagram_path: path of the open diagram, so a ``blocks/`` folder next to
+            it is searched too (see ``lib.user_blocks``).
+        include_user: set False to get the built-ins only (used by tests and by
+            tooling that must not execute third-party code).
+        reload_user: re-read user modules from disk instead of reusing the
+            already-imported ones (the "Reload user blocks" action).
+
+    Returns:
+        A list of block classes. User blocks are appended, so any lookup that
+        takes the first match keeps preferring the built-in.
+    """
+    classes = load_builtin_blocks()
+    if not include_user:
+        return classes
+    user_classes = load_user_block_classes(
+        diagram_path, builtin_classes=classes, reload=reload_user
+    )
+    return classes + user_classes
