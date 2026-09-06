@@ -567,27 +567,49 @@ def case_pid_closed_loop():
     compiler realises exactly the controller the block documents, in exactly
     the loop the diagram draws.
 
-    Interpreted, this loop does *not* converge to the same answer; see
-    ``test_known_defects.py``.
+    The interpreter runs the same loop as a fixed-step difference equation --
+    a one-sample delay around the feedback path and a backward-Euler filtered
+    derivative -- so it is first order in ``dt`` rather than exact, and its
+    tolerance says so. ``test_closed_loop.py`` measures the order.
     """
     cfg = PID_LOOP
     reference = pid_loop_reference(cfg["sim_time"], cfg["sim_dt"])
-    builder = build_pid_loop(
-        PID_GAINS, PID_PLANT_NUM, PID_PLANT_DEN, cfg["sim_time"], cfg["sim_dt"]
-    )
-    result = H.run(builder, compiled=True)
-    _t, y = result.signal("y")
-    row = CaseResult(
-        "PID closed loop vs analytic CP/(1+CP)",
-        "compiled",
-        "RK45",
-        cfg["sim_dt"],
-        H.max_abs_error(y, reference[: len(y)]),
-        1e-7,
-        note="scipy.signal.lsim",
-    )
-    H.release(result)
-    return [row]
+    rows = []
+    for compiled, method, tol, note in (
+        (True, "RK45", 1e-7, "scipy.signal.lsim"),
+        (False, "fixed step", 2e-2, "first order in dt by construction"),
+    ):
+        builder = build_pid_loop(
+            PID_GAINS, PID_PLANT_NUM, PID_PLANT_DEN, cfg["sim_time"], cfg["sim_dt"]
+        )
+        result = H.run(builder, compiled=compiled)
+        _t, y = result.signal("y")
+        rows.append(
+            CaseResult(
+                "PID closed loop vs analytic CP/(1+CP)",
+                "compiled" if compiled else "interpreter",
+                method,
+                cfg["sim_dt"],
+                H.max_abs_error(y, reference[: len(y)]),
+                tol,
+                note=note,
+            )
+        )
+        H.release(result)
+    return rows
+
+
+def pid_loop_errors(steps):
+    """Interpreted closed-loop error against ``CP/(1+CP)`` at each step size."""
+    errors = []
+    for dt in steps:
+        builder = build_pid_loop(PID_GAINS, PID_PLANT_NUM, PID_PLANT_DEN, PID_LOOP["sim_time"], dt)
+        result = H.run(builder, compiled=False)
+        _t, y = result.signal("y")
+        reference = pid_loop_reference(PID_LOOP["sim_time"], dt)
+        errors.append(H.max_abs_error(y, reference[: len(y)]))
+        H.release(result)
+    return errors
 
 
 # --------------------------------------------------------------------------- #

@@ -24,19 +24,24 @@ reference and the interpreter is the inaccurate one):
   * The compiled path integrates the *continuous* ODE and matches the analytic
     closed-loop response to machine precision (pure-P loop: (2/3)(1-e^{-3t});
     PI+integrator loop: 1+(t-1)e^{-t}).
-  * The interpreter diverges by ~0.26 (abs) in the transient of the full PID
+  * The interpreter diverges by ~0.10 (abs) in the transient of the full PID
     loop at the default dt=0.01. A separate dtime-clobber bug (the engine
     re-stamped every block's exec_params['dtime'] with its default 0.01 during
     run_tuning_simulation, so interpreter state blocks integrated at 0.01 s per
     step regardless of sim_dt) has since been fixed by syncing engine.sim_dt
     before initialize_execution, so the interpreter is no longer pinned to
     dt=0.01. This test runs at dt=0.01, where that clobber was masked anyway.
-  * At sim_dt=0.01 the transient still differs by up to ~0.26 because of (a) the
-    one-sample feedback delay inherent to the interpreter's memory-block loop vs
-    the compiled path's algebraic loop resolution, and (b) the derivative-kick
-    handling on the step (discrete filtered finite-difference vs the compiled
-    continuous filtered-derivative state). Both are transient-only; the steady
-    state agrees. These structural differences keep the trajectory xfail.
+  * At sim_dt=0.01 the transient still differs by up to ~0.10 (RMS ~0.015)
+    because of the one-sample feedback delay inherent to the interpreter's
+    memory-block loop, versus the compiled path's algebraic loop resolution.
+    That is transient-only and first order in dt; the steady state agrees. The
+    difference is what keeps the trajectory xfail at this test's fixed dt=0.01.
+    (A second cause -- the derivative branch filtering a finite difference
+    seeded from the first error sample, which deleted the step response of the
+    D term entirely -- has been fixed: blocks/pid.py now carries the same
+    filtered-error state the compiled kernel does, x_d' = N(e - x_d) from zero.
+    That alone took the divergence from ~0.26 to ~0.10 and restored first-order
+    convergence of the interpreted loop; see tests/validation/test_closed_loop.py.)
 """
 
 import numpy as np
@@ -208,13 +213,14 @@ class TestPIDCompiledVsInterpreted:
         strict=False,
         reason=(
             "Interpreter and compiled paths diverge in the transient of a PID "
-            "feedback loop (max ~0.26 abs, RMS ~0.12 at dt=0.01). The compiled "
+            "feedback loop (max ~0.10 abs, RMS ~0.015 at dt=0.01). The compiled "
             "path matches the analytic continuous closed-loop response to machine "
-            "precision; the interpreter is the inaccurate one, from (1) the "
-            "one-sample feedback delay of the memory-block loop and (2) discrete "
-            "derivative-kick handling on the step. (A third cause -- state blocks "
-            "pinned to dtime=0.01 regardless of sim_dt -- has been fixed, but is "
-            "masked at this test's dt=0.01 anyway.) See module docstring."
+            "precision; the interpreter is the inaccurate one, from the one-sample "
+            "feedback delay of the memory-block loop, which is first order in dt "
+            "and so does not vanish at this test's fixed dt=0.01. (Two other "
+            "causes -- state blocks pinned to dtime=0.01 regardless of sim_dt, and "
+            "a derivative branch that never saw the reference step -- have since "
+            "been fixed.) See module docstring."
         ),
     )
     def test_pid_loop_trajectory_equivalence(self, qapp):

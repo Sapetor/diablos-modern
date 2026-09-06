@@ -109,6 +109,7 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | TranFn vs scipy.signal.lsim (sine input) | compiled | RK45 | 0.002 | 3.42e-06 | 1.0e-04 | yes |
 | TranFn vs scipy.signal.lsim (sine input) | interpreter | ZOH input | 0.002 | 3.81e-03 | 2.0e-02 | yes |
 | PID closed loop vs analytic CP/(1+CP) | compiled | RK45 | 0.002 | 2.64e-10 | 1.0e-07 | yes |
+| PID closed loop vs analytic CP/(1+CP) | interpreter | fixed step | 0.002 | 7.98e-03 | 2.0e-02 | yes |
 | DiscreteTranFn vs scipy.signal.dlsim (at samples) | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | Discrete output is constant between sample instants | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | ZeroOrderHold of a sine vs analytic staircase | interpreter | ZOH, Ts=0.1 | 0.005 | 5.97e-14 | 1.0e-09 | yes |
@@ -132,22 +133,12 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 
 ## Known defects
 
-Three cases currently fail and are pinned as `xfail(strict=True)` in
+Two cases currently fail and are pinned as `xfail(strict=True)` in
 `tests/validation/test_known_defects.py` — each with a full reproducer in its
 docstring, so the marker comes off the moment the defect is fixed. They are
 wrong answers or crashes, not tolerance quibbles:
 
-1. **The interpreted PID's derivative branch never sees a step in its input.**
-   `blocks/pid.py` seeds `_prev_e` with the first error sample on the
-   initializing call, so `de = 0` at `t0` and the filtered derivative's response
-   to the reference step is lost. The compiled kernel starts its filter state at
-   zero and does produce it, matching the documented
-   `C(s) = Kp + Ki/s + Kd N s/(s+N)`. The resulting closed-loop error does not
-   vanish with `dt`: 0.2866 / 0.2843 / 0.2834 / 0.2831 at
-   `dt = 8e-3 / 4e-3 / 2e-3 / 1e-3`, an observed order of 0.00. With
-   `Kp = Ki = 0, Kd = 0.5` the interpreted loop output is identically zero while
-   the true response peaks at 0.36.
-2. **`Integrator` crashes under `TUSTIN` and `BWD_EULER` on a 0-d input.**
+1. **`Integrator` crashes under `TUSTIN` and `BWD_EULER` on a 0-d input.**
    `blocks/sine.py` returns `np.array(scalar)` (shape `()`); the integrator's
    promotion guard only tests `isinstance(x, (float, int))`, so its shape check
    rewrites `params['mem']` as a 0-d array while `params['mem_list'][0]` was
@@ -155,7 +146,7 @@ wrong answers or crashes, not tolerance quibbles:
    branches then raises `ValueError: non-broadcastable output operand`.
    `FWD_EULER`, `RK4` and `SOLVE_IVP` are unaffected, as are `Step` / `Ramp` /
    `Constant` sources.
-3. **A single monotone state crossing trips the chattering guard.**
+2. **A single monotone state crossing trips the chattering guard.**
    `lib/engine/zero_crossing.py` restarts each segment at the located root plus
    a nudge in *time*, carrying the state across unchanged — so a guard written
    on the state (`Saturation`'s `u - max`, where `u` is an integrator output) is
@@ -165,6 +156,22 @@ wrong answers or crashes, not tolerance quibbles:
    validated row above), but later switches in the same run fall back to step
    accuracy. The documented nudge protects only guards that are functions of `t`
    (`Step`, `Ramp`), not of `y`.
+
+### Fixed
+
+* **The interpreted PID's derivative branch never saw a step in its input.**
+  `blocks/pid.py` filtered the finite difference `(e[k] - e[k-1])/dt` with
+  `_prev_e` seeded from the first error sample, so `de = 0` at `t0` and the
+  filtered derivative's entire response to the reference step was lost — an
+  O(1) error that did not shrink with `dt` (0.2866 / 0.2843 / 0.2834 / 0.2831 at
+  `dt = 8e-3 / 4e-3 / 2e-3 / 1e-3`, observed order 0.00), and with
+  `Kp = Ki = 0, Kd = 0.5` an identically zero loop output against a true peak of
+  0.43. The block now carries the same state the compiled kernel does — the
+  low-passed *error* `x_d' = N(e - x_d)` from `x_d(0) = 0`, with the D term
+  `Kd N (e - x_d)` — discretised with backward Euler. The interpreted loop is
+  first order again: 0.0336 / 0.0162 / 0.0080 / 0.0040 at the same four steps,
+  observed order 1.05 / 1.02 / 1.01. The row is in the table above and the
+  convergence is asserted by `tests/validation/test_closed_loop.py`.
 
 ## Adding a case
 
