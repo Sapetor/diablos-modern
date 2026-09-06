@@ -89,6 +89,7 @@ saves/
 !screenshot.png
 !docs/**/*.png
 !examples/**/*.png
+!paper/figures/*.png
 
 # run_examples_compiled.py incremental state (regenerated each run)
 scripts/.examples_compiled_results.jsonl
