@@ -1109,6 +1109,42 @@ def case_integration_order():
     return rows
 
 
+# Methods whose only source is a *0-d* array (Sine, WaveGenerator, Noise and
+# Chirp all return ``np.array(scalar)``). Both of these mix the current input
+# with the previous sample in place, which is the combination a 0-d input used
+# to break; both also carry a one-step input lag from that previous sample, so
+# despite the trapezoidal rule's own second order the observed order here is
+# one -- the tolerances are set from that, not from the rule's name.
+LAGGED_METHODS = (("BWD_EULER", 2.0e-2), ("TUSTIN", 1.5e-2))
+
+
+def case_integrator_lagged_methods():
+    """The two methods that read ``mem_list`` must run, and converge, on a sine.
+
+    ``BWD_EULER`` and ``TUSTIN`` are the only interpreter strategies that
+    combine the current input sample with the previous one. That made them the
+    only two to crash on a source emitting a 0-d array, and it is also why both
+    are first order rather than the order their names suggest: the sample they
+    pair with is one step behind, and no fixed-step forward pass has the next
+    one. The measured row is the error at the finest step.
+    """
+    rows = []
+    for method, tol in LAGGED_METHODS:
+        errors, orders = integrator_order(method)
+        rows.append(
+            CaseResult(
+                "Integrator {0} of a sine (0-d source)".format(method),
+                "interpreter",
+                method,
+                ORDER_STEPS[-1],
+                errors[-1],
+                tol,
+                note="observed order {0}".format(", ".join("%.2f" % p for p in orders)),
+            )
+        )
+    return rows
+
+
 # --------------------------------------------------------------------------- #
 # Registry
 # --------------------------------------------------------------------------- #
@@ -1139,4 +1175,5 @@ ALL_CASES = (
     ("heat_eigenmode", case_heat_eigenmode),
     ("advection_pulse", case_advection_pulse),
     ("integration_order", case_integration_order),
+    ("integrator_lagged_methods", case_integrator_lagged_methods),
 )

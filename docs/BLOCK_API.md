@@ -171,6 +171,15 @@ Return either
 
 Returning `None` is treated as a failure.
 
+`np.atleast_1d` on the way out is a convention, not something the engine
+enforces, and several shipped sources do not follow it (`Sine`,
+`WaveGenerator`, `Noise` and `Chirp` return a 0-d `np.array(scalar)`). So the
+obligation is symmetric: **promote on the way in as well.** A block that mixes
+its input with stored state must run the input through `np.atleast_1d` before
+reading `.shape` or writing in place — a 0-d value that reaches an in-place
+`state += dt * u` against 1-D state raises `ValueError: non-broadcastable
+output operand`, which is exactly how this went wrong in `blocks/integrator.py`.
+
 ### State lives in `params`
 
 > **Critical rule.** Every value that must persist across time steps goes into

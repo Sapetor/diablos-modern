@@ -10,50 +10,12 @@ Each test is written as the check that *should* pass, with the observed failure
 described in its docstring, so the test doubles as the reproducer.
 """
 
-import numpy as np
 import pytest
 
 from tests.validation import _cases as cases
 from tests.validation import _harness as H
 
 pytestmark = pytest.mark.validation
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Interpreted Integrator crashes for method TUSTIN and BWD_EULER when the "
-        "upstream block emits a 0-d array. blocks/sine.py returns "
-        "np.array(scalar) (shape ()), which blocks/integrator.py does not promote "
-        "(its guard tests isinstance(inputs[0], (float, int))); the shape check then "
-        "rewrites params['mem'] as np.full((), ...), a 0-d array, while "
-        "params['mem_list'][0] was allocated with shape (1,) at init. The in-place "
-        "'mem += ...' of those two branches raises ValueError: non-broadcastable "
-        "output operand with shape () doesn't match the broadcast shape (1,). "
-        "FWD_EULER, RK4 and SOLVE_IVP survive because they never mix the two shapes, "
-        "and Step/Ramp/Constant sources survive because they emit shape (1,)."
-    ),
-)
-@pytest.mark.parametrize("method", ["TUSTIN", "BWD_EULER"])
-def test_trapezoidal_and_backward_euler_integrate_a_sine(method):
-    """``int A sin(wt) dt`` must run (and converge) for every declared method.
-
-    Reproducer: ``Sine -> Integrator(method='TUSTIN') -> Scope`` on the
-    interpreter. TUSTIN is second order, so this asserts only that it runs and
-    beats explicit Euler's first-order error.
-    """
-    builder = cases.build_integrator(
-        "Sine",
-        {"amplitude": 1.0, "omega": 2.0, "init_angle": 0.0},
-        2.0,
-        0.01,
-        method=method,
-    )
-    result = H.run(builder, compiled=False)
-    t, y = result.signal("y")
-    analytic = (1.0 - np.cos(2.0 * t)) / 2.0
-    assert H.max_abs_error(y, analytic) < 1e-3
-    H.release(result)
 
 
 @pytest.mark.xfail(

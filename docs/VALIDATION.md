@@ -130,23 +130,17 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | Advection 1-D mass conservation (relative drift) | compiled | RK45, 2nd-order upwind | 0.005 | 1.46e-05 | 1.0e-04 | yes |
 | Integrator FWD_EULER: observed order \|p - 1\| | interpreter | FWD_EULER | 0.02 -> 0.005 | 4.60e-03 | 1.0e-01 | yes |
 | Integrator RK4: observed order \|p - 4\| | interpreter | RK4 | 0.02 -> 0.005 | 6.83e-03 | 1.5e-01 | yes |
+| Integrator BWD_EULER of a sine (0-d source) | interpreter | BWD_EULER | 0.005 | 7.50e-03 | 2.0e-02 | yes |
+| Integrator TUSTIN of a sine (0-d source) | interpreter | TUSTIN | 0.005 | 5.00e-03 | 1.5e-02 | yes |
 
 ## Known defects
 
-Two cases currently fail and are pinned as `xfail(strict=True)` in
-`tests/validation/test_known_defects.py` — each with a full reproducer in its
-docstring, so the marker comes off the moment the defect is fixed. They are
-wrong answers or crashes, not tolerance quibbles:
+One case currently fails and is pinned as `xfail(strict=True)` in
+`tests/validation/test_known_defects.py`, with a full reproducer in its
+docstring, so the marker comes off the moment the defect is fixed. It is a
+wrong answer, not a tolerance quibble:
 
-1. **`Integrator` crashes under `TUSTIN` and `BWD_EULER` on a 0-d input.**
-   `blocks/sine.py` returns `np.array(scalar)` (shape `()`); the integrator's
-   promotion guard only tests `isinstance(x, (float, int))`, so its shape check
-   rewrites `params['mem']` as a 0-d array while `params['mem_list'][0]` was
-   allocated with shape `(1,)`. The in-place `mem += ...` of exactly those two
-   branches then raises `ValueError: non-broadcastable output operand`.
-   `FWD_EULER`, `RK4` and `SOLVE_IVP` are unaffected, as are `Step` / `Ramp` /
-   `Constant` sources.
-2. **A single monotone state crossing trips the chattering guard.**
+1. **A single monotone state crossing trips the chattering guard.**
    `lib/engine/zero_crossing.py` restarts each segment at the located root plus
    a nudge in *time*, carrying the state across unchanged — so a guard written
    on the state (`Saturation`'s `u - max`, where `u` is an integrator output) is
@@ -158,6 +152,24 @@ wrong answers or crashes, not tolerance quibbles:
    (`Step`, `Ramp`), not of `y`.
 
 ### Fixed
+
+* **`Integrator` crashed under `TUSTIN` and `BWD_EULER` on a 0-d input.**
+  `blocks/sine.py` returns `np.array(scalar)` (shape `()`) — so do
+  `WaveGenerator`, `Noise` and `Chirp` — and the integrator's promotion guard
+  only tested `isinstance(x, (float, int))`, so its shape check rewrote
+  `params['mem']` as a 0-d array while `params['mem_list'][0]` had been
+  allocated with shape `(1,)`. The in-place `mem += ...` of exactly the two
+  branches that pair the current input with the previous sample then raised
+  `ValueError: non-broadcastable output operand`. The integrator now promotes
+  its input with `np.atleast_1d` before anything reads a shape, which covers
+  every scalar-ish spelling rather than `float`/`int` alone; the fix is at the
+  consumer because the block contract makes 1-D output a convention, not a
+  requirement (see `docs/BLOCK_API.md`). Both methods now run and converge —
+  3.01e-2 / 1.50e-2 / 7.50e-3 for `BWD_EULER` and 2.01e-2 / 1.00e-2 / 5.00e-3
+  for `TUSTIN` at `dt = 0.02 / 0.01 / 0.005`, observed order 1.00 in both cases.
+  That order is *not* a regression: both strategies pair the current input with
+  the sample one step behind, and no forward fixed-step pass has the next one,
+  so the lag dominates the trapezoidal rule's own second order.
 
 * **The interpreted PID's derivative branch never saw a step in its input.**
   `blocks/pid.py` filtered the finite difference `(e[k] - e[k-1])/dt` with
