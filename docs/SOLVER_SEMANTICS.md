@@ -590,10 +590,6 @@ the built-in defaults.)
   not cost anything yet, it says nothing on implicit or fixed-step runs, and it
   is skipped above 64 states — a large PDE is never flagged even when it is
   stiff.
-* **`auto` in a GUI Python export.** `lib/cli.py`'s `export-python` resolves
-  `auto` to `LSODA` before code generation, but `PythonCodeGenerator.from_dsim`
-  (used by the File menu's export) applies its own unknown-name fallback and
-  would bake in `RK45`. Pick a concrete method before exporting from the GUI.
 * **`blocks/external.py` is a stub** and returns an error dict on both paths.
 
 ---

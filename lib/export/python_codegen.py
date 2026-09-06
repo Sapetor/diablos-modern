@@ -44,6 +44,7 @@ import numpy as np
 from scipy import signal as _scipy_signal
 
 from lib.engine.block_names import canonical_fn
+from lib.engine.compiled_runner import resolve_solver_method
 from lib.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)
@@ -405,8 +406,9 @@ class PythonCodeGenerator:
         self.raw_lines = list(lines or [])
         self.sim_time = float(sim_time)
         self.sim_dt = float(sim_dt)
-        solver = str(solver or "RK45")
-        # Same fallback the engine applies to an unknown solver name.
+        # "auto" resolves the same way the engine resolves it (LSODA); an
+        # unknown name degrades to RK45 exactly as the engine does.
+        solver = resolve_solver_method(solver)
         self.solver = solver if solver in _SCIPY_METHODS + _FIXED_STEP_METHODS else "RK45"
         self.rtol = float(rtol)
         self.atol = float(atol)

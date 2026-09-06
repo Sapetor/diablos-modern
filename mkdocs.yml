@@ -75,8 +75,7 @@ nav:
       - Block Reference: user-guide/block-reference.md
       - Variable Editor: VARIABLE_EDITOR_GUIDE.md
       - Fast Solver: FAST_SOLVER.md
-      # TODO(merge): uncomment once docs/SOLVER_SEMANTICS.md lands
-      # - Solver Semantics: SOLVER_SEMANTICS.md
+      - Solver Semantics: SOLVER_SEMANTICS.md
   - Block Reference:
       - Overview: wiki/Home.md
       - Examples: wiki/Examples.md

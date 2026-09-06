@@ -1,0 +1,3364 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Python-native visual laboratory for dynamics and control.">
+      
+      
+        <meta name="author" content="DiaBloS Project">
+      
+      
+        <link rel="canonical" href="https://sapetor.github.io/diablos-modern/SOLVER_SEMANTICS/">
+      
+      
+        <link rel="prev" href="../FAST_SOLVER/">
+      
+      
+        <link rel="next" href="../wiki/Home/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Solver Semantics - DiaBloS Modern</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#solver-semantics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DiaBloS Modern" class="md-header__button md-logo" aria-label="DiaBloS Modern" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m3 14 .5.07L8.07 9.5a1.95 1.95 0 0 1 .52-1.91c.78-.79 2.04-.79 2.82 0 .53.52.7 1.26.52 1.91l2.57 2.57.5-.07c.18 0 .35 0 .5.07l3.57-3.57C19 8.35 19 8.18 19 8a2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2c-.18 0-.35 0-.5-.07l-3.57 3.57c.07.15.07.32.07.5a2 2 0 0 1-2 2 2 2 0 0 1-2-2l.07-.5-2.57-2.57c-.32.07-.68.07-1 0L4.93 15.5 5 16a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DiaBloS Modern
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Solver Semantics
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Sapetor/diablos-modern" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Sapetor/diablos-modern
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../getting-started/installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../user-guide/creating-diagrams/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../wiki/Home/" class="md-tabs__link">
+          
+  
+  
+  Block Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/lib/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DiaBloS Modern" class="md-nav__button md-logo" aria-label="DiaBloS Modern" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m3 14 .5.07L8.07 9.5a1.95 1.95 0 0 1 .52-1.91c.78-.79 2.04-.79 2.82 0 .53.52.7 1.26.52 1.91l2.57 2.57.5-.07c.18 0 .35 0 .5.07l3.57-3.57C19 8.35 19 8.18 19 8a2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2c-.18 0-.35 0-.5-.07l-3.57 3.57c.07.15.07.32.07.5a2 2 0 0 1-2 2 2 2 0 0 1-2-2l.07-.5-2.57-2.57c-.32.07-.68.07-1 0L4.93 15.5 5 16a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2"/></svg>
+
+    </a>
+    DiaBloS Modern
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Sapetor/diablos-modern" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Sapetor/diablos-modern
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/creating-diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/running-simulations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Simulations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis & Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language & Translations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/block-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VARIABLE_EDITOR_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Variable Editor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FAST_SOLVER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fast Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Solver Semantics
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Solver Semantics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-two-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The two engines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-continuous-discrete-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Continuous, discrete, hybrid
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Continuous, discrete, hybrid">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-does-it-hold-state-across-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Does it hold state across steps?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-does-it-run-every-step-or-on-a-rate-of-its-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Does it run every step, or on a rate of its own?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-does-it-switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Does it switch?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-sample-times-and-multirate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Sample times and multirate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Execution order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Execution order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-initialization-both-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Initialization (both paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-interpreter-step-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Interpreter step order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-compiled-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Compiled execution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-algebraic-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Algebraic loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-interpreter-path-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The interpreter path in detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. The interpreter path in detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-stepping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Stepping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-block-state-_init_start_-and-resets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Block state, _init_start_, and resets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-the-compiled-path-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. The compiled path in detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. The compiled path in detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Backends
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-compiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What compiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-why-a-run-fell-back-and-where-to-see-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Why a run fell back, and where to see it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-run-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Run diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-zero-crossing-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Zero-crossing events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-choosing-a-solver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Choosing a solver
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Choosing a solver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-stiffness-indicator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The stiffness indicator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-what-is-saved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. What is saved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Known limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. File map
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Block Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Sinks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sinks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Logic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Other/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Multi-Rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Rate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/PDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Optimization-Primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimization Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/Subsystems_Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wiki/ModernUI_Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modern UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEVELOPER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYMBOL_DRAWING_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Symbol Drawing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building & Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDE_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDE Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BLOCK_API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/blocks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blocks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-two-engines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The two engines
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-continuous-discrete-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Continuous, discrete, hybrid
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Continuous, discrete, hybrid">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-does-it-hold-state-across-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Does it hold state across steps?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-does-it-run-every-step-or-on-a-rate-of-its-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Does it run every step, or on a rate of its own?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-does-it-switch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Does it switch?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-sample-times-and-multirate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Sample times and multirate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Execution order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Execution order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-initialization-both-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Initialization (both paths)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-interpreter-step-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Interpreter step order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-compiled-execution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Compiled execution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-algebraic-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Algebraic loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-interpreter-path-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The interpreter path in detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. The interpreter path in detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-stepping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Stepping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-block-state-_init_start_-and-resets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Block state, _init_start_, and resets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-the-compiled-path-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. The compiled path in detail
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. The compiled path in detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Backends
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-what-compiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 What compiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-why-a-run-fell-back-and-where-to-see-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Why a run fell back, and where to see it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-run-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Run diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-zero-crossing-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Zero-crossing events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-choosing-a-solver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Choosing a solver
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Choosing a solver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-the-stiffness-indicator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 The stiffness indicator
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-what-is-saved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. What is saved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Known limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. File map
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/Sapetor/diablos-modern/edit/main/docs/SOLVER_SEMANTICS.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="solver-semantics">Solver Semantics<a class="headerlink" href="#solver-semantics" title="Permanent link">&para;</a></h1>
+<p>What DiaBloS actually computes when you press Play: how a block's time behaviour
+is decided, in what order blocks run, which of the two engines executes them,
+and what each solver setting changes. Every statement below is annotated with
+the file that implements it.</p>
+<p>This is the semantics reference. <a href="../FAST_SOLVER/"><code>FAST_SOLVER.md</code></a> is the
+compiled path's own document (block coverage, the zero-crossing machinery,
+performance); <a href="../ARCHITECTURE/"><code>ARCHITECTURE.md</code></a> has the component map.</p>
+<hr />
+<h2 id="1-the-two-engines">1. The two engines<a class="headerlink" href="#1-the-two-engines" title="Permanent link">&para;</a></h2>
+<p>Every run goes through exactly one of two engines. The choice is automatic:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>DSim.execution_batch()                                      lib/lib.py
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  ├─ use_fast_solver (View menu, default True)  and
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  │  engine.check_compilability(blocks_list) == True
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  │     → compiled path      lib/engine/compiled_runner.py
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  └─ otherwise
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        → interpreter path   lib/lib.py::_interpreter_step
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Compiled path</th>
+<th>Interpreter path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model form</td>
+<td>one ODE <code>dy/dt = f(t, y)</code> for the whole diagram</td>
+<td>per-block <code>execute()</code> calls, one pass per step</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td><code>scipy.integrate.solve_ivp</code>, adaptive, error-controlled</td>
+<td>fixed step of <code>sim_dt</code> (or the block's own <code>Ts</code>)</td>
+</tr>
+<tr>
+<td>Block coverage</td>
+<td>the <code>@kernel</code> registry only (<code>lib/engine/compiler_kernels/</code>)</td>
+<td>every block</td>
+</tr>
+<tr>
+<td>Discrete rates</td>
+<td>none — a <code>sampling_time &gt; 0</code> anywhere sends the diagram here</td>
+<td>honoured per block</td>
+</tr>
+<tr>
+<td>Zero-crossing events</td>
+<td>yes (<code>lib/engine/zero_crossing.py</code>)</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Determinism</td>
+<td>byte-deterministic for a given diagram + settings</td>
+<td>depends on <code>sim_dt</code>; convergent as <code>sim_dt → 0</code></td>
+</tr>
+<tr>
+<td>Stochastic blocks</td>
+<td>never (they are excluded from the allowlist)</td>
+<td>yes, and only here are <code>seed</code> params honoured</td>
+</tr>
+</tbody>
+</table>
+<p>The compiled path is the numerically authoritative one — it is what
+<code>tests/regression/test_analytic_solutions.py</code> checks against closed-form
+answers. The interpreter exists so that <em>any</em> diagram runs. They are <strong>not</strong>
+expected to agree sample-for-sample; <code>tests/regression/test_equiv_*.py</code> pins
+where they do and characterises where they do not.</p>
+<p>Which one ran is reported as <code>DSim.last_solver_type</code> (<code>"Fast (Compiled)"</code> /
+<code>"Standard (Interpreter)"</code>), shown in the status bar at the end of a run.</p>
+<hr />
+<h2 id="2-continuous-discrete-hybrid">2. Continuous, discrete, hybrid<a class="headerlink" href="#2-continuous-discrete-hybrid" title="Permanent link">&para;</a></h2>
+<p>DiaBloS has no separate "continuous" and "discrete" block libraries. A block's
+time behaviour is the combination of three independent properties.</p>
+<h3 id="21-does-it-hold-state-across-steps">2.1 Does it hold state across steps?<a class="headerlink" href="#21-does-it-hold-state-across-steps" title="Permanent link">&para;</a></h3>
+<p>A block is a <strong>memory block</strong> when its output at time <em>t</em> depends only on <em>past</em>
+inputs, never on the input arriving this step. The classification is
+<code>lib/engine/memory_blocks.py::is_memory_block</code>:</p>
+<ul>
+<li>unconditional, by function name — <code>OUTPUT_ONLY_SAFE_BLOCK_FNS</code>: <code>Integrator</code>,
+  <code>StateVariable</code>, <code>TransportDelay</code>, <code>Delay</code>, <code>Adam</code>, <code>Momentum</code>,
+  <code>FirstOrderHold</code>, <code>ZeroOrderHold</code>, <code>RateLimiter</code>, <code>RateTransition</code>, <code>Deriv</code>,
+  <code>Hysteresis</code>, <code>PID</code>, <code>PRBS</code>;</li>
+<li>conditional, on resolved parameters — a <code>TranFn</code>/<code>DiscreteTranFn</code> is a memory
+  block iff <code>deg(den) &gt; deg(num)</code> (<code>is_strictly_proper_tf</code>), a
+  <code>StateSpace</code>/<code>DiscreteStateSpace</code> iff <code>D == 0</code> (<code>is_zero_D_statespace</code>);</li>
+<li>plus, in the engine, any block whose class sets <code>requires_inputs = False</code>
+  (sources), because those are always safe to run with no inputs
+  (<code>SimulationEngine.identify_memory_blocks</code>).</li>
+</ul>
+<p>The distinction matters twice: memory blocks are the ones the engine may run
+with <code>output_only=True</code> before any source has driven them, and edges <em>into</em> a
+memory block are removed when looking for algebraic loops, because the loop is
+broken in time.</p>
+<p>Feedthrough is tracked separately as <code>DBlock.b_type</code>. <code>set_block_type()</code>
+(<code>lib/engine/simulation_engine.py</code>) sets it for the parameterised cases:
+<code>b_type = 1</code> for a strictly proper <code>TranFn</code>/<code>DiscreteTranFn</code> or a <code>D == 0</code>
+<code>DiscreteStateSpace</code>, <code>b_type = 2</code> when there is direct feedthrough. The
+interpreter uses <code>b_type == 3</code> to mean "sink, do not propagate", and
+<code>b_type == 0</code> (together with a zero <em>required</em> input count) to mean "source".</p>
+<blockquote>
+<p><code>b_type</code> is a legacy per-block field with several producers and is <strong>not</strong> a
+reliable taxonomy on its own — <code>lib/diagram_builder.py</code>, for instance, gives
+<code>Gain</code> a <code>b_type</code> of 2. Only the three uses above are load-bearing.</p>
+</blockquote>
+<h3 id="22-does-it-run-every-step-or-on-a-rate-of-its-own">2.2 Does it run every step, or on a rate of its own?<a class="headerlink" href="#22-does-it-run-every-step-or-on-a-rate-of-its-own" title="Permanent link">&para;</a></h3>
+<p><code>DBlock.resolve_sample_time()</code> (<code>lib/simulation/block.py</code>) reads
+<code>params['sampling_time']</code>, falling back to <code>params['sample_time']</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Declared value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-1</code> (default, or the key absent)</td>
+<td><strong>continuous</strong> — executes every solver step</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td><strong>inherited</strong> — takes the fastest discrete rate among its inputs</td>
+</tr>
+<tr>
+<td><code>&gt; 0</code></td>
+<td><strong>discrete</strong> — executes every <code>Ts</code> seconds and holds its output between</td>
+</tr>
+</tbody>
+</table>
+<p>Blocks that ship a <code>sampling_time</code> parameter: <code>derivative</code>,
+<code>discrete_statespace</code>, <code>discrete_transfer_function</code>, <code>first_order_hold</code>,
+<code>integrator</code>, <code>network_channel</code>, <code>packet_loss</code>, <code>pid</code>, <code>random_source</code>,
+<code>rate_transition</code>, <code>statespace</code>, <code>statespace_base</code>, <code>transfer_function</code>,
+<code>zero_order_hold</code> (see <code>blocks/</code>). A block declaring
+<code>requires_sample_time = True</code> (<code>DiscreteTransferFunction</code>,
+<code>DiscreteStateSpace</code>) is a pure recursion in the sample index and is
+meaningless without a rate.</p>
+<h3 id="23-does-it-switch">2.3 Does it switch?<a class="headerlink" href="#23-does-it-switch" title="Permanent link">&para;</a></h3>
+<p>A block whose output has a kink or a jump — <code>Saturation</code>, <code>Deadband</code>, <code>Switch</code>,
+<code>Hysteresis</code>, <code>Abs</code>, <code>MathFunction(sign|abs)</code>, <code>Step</code>, <code>Ramp</code>,
+<code>WaveGenerator</code>, <code>PRBS</code> — is <em>hybrid</em> in the compiled path: it contributes
+zero-crossing event functions so the switching instant is located exactly
+(section 7). In the interpreter it is just a function evaluated on the grid.</p>
+<p><strong>A diagram is hybrid</strong>, then, when it mixes any of these. A hybrid diagram with
+a discrete rate always runs on the interpreter; a hybrid diagram that is purely
+continuous plus switching runs compiled, with events.</p>
+<hr />
+<h2 id="3-sample-times-and-multirate">3. Sample times and multirate<a class="headerlink" href="#3-sample-times-and-multirate" title="Permanent link">&para;</a></h2>
+<p>Rates are resolved once per run, in <code>SimulationEngine.propagate_sample_times()</code>
+(<code>lib/engine/simulation_engine.py</code>), after memory-block identification and
+before any block executes:</p>
+<ol>
+<li><strong>Declare</strong> — every block's <code>effective_sample_time</code> is set from
+   <code>resolve_sample_time()</code>, and its schedule state is cleared
+   (<code>reset_sample_time_state</code>).</li>
+<li><strong>Inherit</strong> — blocks declaring <code>0</code> repeatedly take the <em>smallest positive</em>
+   <code>effective_sample_time</code> among their input sources, until nothing changes
+   (bounded by the block count). A block with no discrete input resolves to
+   <code>-1</code>, i.e. continuous.</li>
+<li><strong>Mark wires</strong> — <code>line.discrete_signal</code> is set for every wire leaving a block
+   with a positive rate. This is presentation/analysis metadata; it does not
+   gate execution.</li>
+<li><strong>Warn</strong> — a block with <code>requires_sample_time = True</code> that resolved to
+   continuous gets a <code>logger.warning</code>: it will advance one sample per solver
+   step, so its physical response would silently change with <code>sim_dt</code>.</li>
+<li><strong>Stamp the step</strong> — each block's <code>exec_params['dtime']</code> is set to
+   <code>DBlock.execution_step(sim_dt)</code>, which is <code>Ts</code> for a discrete-rate block and
+   <code>sim_dt</code> otherwise. This is the step <code>Integrator</code> / <code>TranFn</code> / <code>StateSpace</code> /
+   <code>PID</code> integrate or discretise with, so a block gated to <code>Ts</code> advances <code>Ts</code>
+   per execution rather than <code>sim_dt</code>.</li>
+</ol>
+<p>During the run (<code>lib/lib.py::_interpreter_step</code>):</p>
+<ul>
+<li><code>DBlock.should_execute(t)</code> is <code>True</code> for a continuous block always, and for a
+  discrete block once <code>t &gt;= _next_execution_time - 1e-9</code>.</li>
+<li>On a step where it does not fire, the engine propagates
+  <code>DBlock.get_held_output(port)</code> to its consumers instead of executing it —
+  this is the zero-order hold between sample instants.</li>
+<li>On a step where it does fire, <code>SimulationEngine.stamp_held_outputs()</code> records
+  the outputs to hold and <code>DBlock.schedule_next_execution(t)</code> computes the next
+  instant on the absolute grid (<code>(floor(t/Ts + 0.5) + 1) * Ts</code>), so the schedule
+  cannot drift.</li>
+<li>A block declaring <code>output_is_post_update = True</code> returns the <em>advanced</em> state
+  from <code>execute()</code>; for those the value held is the pre-update output captured
+  by the <code>output_only</code> pass, or the staircase would lead the true sampled
+  response by a whole period.</li>
+</ul>
+<p><strong>Multirate is interpreter-only.</strong> <code>SystemCompiler.check_compilability</code> rejects
+any block with a declared <code>sampling_time &gt; 0</code> outright
+(<code>lib/engine/system_compiler.py</code>): a compiled ODE right-hand side has no notion
+of a sample instant and would run the block as if it were continuous.</p>
+<hr />
+<h2 id="4-execution-order">4. Execution order<a class="headerlink" href="#4-execution-order" title="Permanent link">&para;</a></h2>
+<h3 id="41-initialization-both-paths">4.1 Initialization (both paths)<a class="headerlink" href="#41-initialization-both-paths" title="Permanent link">&para;</a></h3>
+<p><code>SimulationEngine.initialize_execution()</code> flattens subsystems
+(<code>lib/engine/flattener.py</code>), checks connectivity, resolves parameters, then runs
+three loops:</p>
+<ul>
+<li><strong>Loop 1 — sources and memory outputs</strong> (<code>_init_execute_sources</code>). A block is
+  a <em>source</em> when its number of <strong>required</strong> input ports (total minus
+  <code>optional_inputs</code>) is zero and <code>b_type == 0</code>; it executes and is pinned to
+  <code>hierarchy = 0</code>. Memory blocks are executed with <code>output_only=True</code> so
+  <code>y[0] = h(x[0])</code> is available to their consumers, and pinned to hierarchy 0
+  as well. Outputs are propagated.</li>
+<li><strong>Loop 2 — hierarchy fixpoint</strong> (<code>_init_resolve_hierarchy</code>). Repeatedly
+  execute every block whose required inputs have all arrived, assigning
+  ascending <code>hierarchy</code> numbers, until every block is computed. If a pass
+  computes nothing new, the remaining blocks are examined (section 4.4).</li>
+<li><strong>Loop 3 — advance memory state</strong> (<code>_init_advance_memory_state</code>). Memory
+  blocks are executed again, this time for real, using the inputs Loop 2
+  produced. Without it the first simulation step would re-read <code>x[0]</code> and emit a
+  duplicate sample.</li>
+</ul>
+<p><code>hierarchy</code> is what the interpreter steps through; the compiled path uses it
+only as an input ordering that it then re-sorts (4.3).</p>
+<h3 id="42-interpreter-step-order">4.2 Interpreter step order<a class="headerlink" href="#42-interpreter-step-order" title="Permanent link">&para;</a></h3>
+<p>Each <code>_interpreter_step</code> call:</p>
+<ol>
+<li>Advance the clock and record a timeline sample (see 5.1 for the RK4 case).</li>
+<li><strong>Memory pass</strong> — every memory block runs <code>output_only=True</code> and propagates,
+   so consumers see last step's state. A discrete block that is not due
+   propagates its held output instead.</li>
+<li><strong>Hierarchy passes</strong> — for <code>hier</code> in <code>0 .. max_hier</code>, execute every
+   uncomputed block at that level whose required inputs have arrived, repeating
+   within the level until no progress is made, and repeating the whole sweep
+   until no progress is made anywhere. (The inner repeat handles two blocks at
+   the same level ordered producer-after-consumer in the list; the outer repeat
+   handles memory blocks pinned to hierarchy 0 whose state-update inputs are
+   produced at a higher level.)</li>
+<li>A memory block <strong>with</strong> feedthrough (<code>b_type == 2</code>: <code>ZeroOrderHold</code>,
+   <code>RateLimiter</code>, <code>PID</code>) re-propagates the value it just computed with
+   <code>count=False</code>, overwriting the stale <code>output_only</code> value in its consumers'
+   queues without re-counting the delivery. Strictly proper memory blocks
+   (<code>b_type == 1</code>) are left alone — their earlier value was the correct one.</li>
+</ol>
+<p>The consequence is the interpreter's characteristic <strong>one-sample feedback delay
+through strictly-proper memory blocks</strong>, which the compiled path does not have.</p>
+<h3 id="43-compiled-execution-order">4.3 Compiled execution order<a class="headerlink" href="#43-compiled-execution-order" title="Permanent link">&para;</a></h3>
+<p><code>SystemCompiler.compile_system()</code> re-sorts the blocks into three groups
+(<code>lib/engine/system_compiler.py</code>, and <code>tasks/lessons.md</code> for the two bugs that
+produced this design):</p>
+<ol>
+<li><strong>Sources</strong> — <code>Step</code>, <code>Sine</code>, <code>Constant</code>, <code>From</code>, <code>Ramp</code>, <code>Noise</code>,
+   <code>WaveGenerator</code>, <code>PRBS</code>, <code>Impulse</code>.</li>
+<li><strong>Middle</strong> — algebraic blocks <strong>and</strong> state blocks with <code>D != 0</code>, in
+   topological order. A <code>D != 0</code> block's output is <code>C x + D u</code>, which depends on
+   this instant's input, so it cannot be pre-populated; it must run where its
+   input is available. <code>PID</code> is always in this group.</li>
+<li><strong><code>D = 0</code> state blocks</strong> — strictly proper transfer functions, <code>StateSpace</code>
+   with <code>D = 0</code>, <code>Integrator</code>, <code>RateLimiter</code>, PDE blocks. Their outputs are
+   <em>pre-populated</em> as <code>C x</code> (exact, since <code>D u = 0</code>) before the sequence runs,
+   which is what closes feedback loops; they execute last so their derivative
+   <code>dx = A x + B u</code> sees the already-computed algebraic inputs.</li>
+</ol>
+<p>The classification is <code>_is_d0_state_block</code>, which reads the <code>D</code> matrix the
+compiler actually built rather than re-deriving it from parameters.</p>
+<p>The <strong>replay</strong> that reconstructs Scope traces after the solve uses a different
+order again: a topological sort over <em>feedthrough edges only</em>, because a state
+block's replayed output is its known state and does not depend on this step's
+inputs (<code>compiled_runner.replay_compiled_signals</code> / <code>replay_has_feedthrough</code>).</p>
+<h3 id="44-algebraic-loops">4.4 Algebraic loops<a class="headerlink" href="#44-algebraic-loops" title="Permanent link">&para;</a></h3>
+<p>A cycle of blocks with no state in it has no execution order. Loop 2 detects the
+stall and calls <code>graph_analysis.detect_algebraic_loops</code> (Kahn's algorithm with
+edges into memory blocks removed). Two outcomes:</p>
+<ul>
+<li>a genuine cycle → <code>"Algebraic loop detected involving blocks: [...]"</code>, and
+  initialization fails;</li>
+<li>no cycle but blocks still uncomputed → only memory blocks may legitimately
+  remain (they run in Loop 3); any other uncomputed block is a hard
+  <code>"Hierarchy resolution stalled with uncomputed non-memory blocks"</code> error
+  rather than a block that silently never runs.</li>
+</ul>
+<p>The fix is the usual one: put an <code>Integrator</code>, or a strictly proper <code>TranFn</code>, in
+the loop.</p>
+<hr />
+<h2 id="5-the-interpreter-path-in-detail">5. The interpreter path in detail<a class="headerlink" href="#5-the-interpreter-path-in-detail" title="Permanent link">&para;</a></h2>
+<h3 id="51-stepping">5.1 Stepping<a class="headerlink" href="#51-stepping" title="Permanent link">&para;</a></h3>
+<p><code>sim_dt</code> is the step, full stop: every continuous block advances <code>sim_dt</code> per
+call, every discrete block advances its own <code>Ts</code> (section 3). The timeline is
+accumulated as <code>_timeline_list</code> and the run ends once the last sample that fits
+inside <code>execution_time</code> has been produced, which is deliberately the same grid
+the compiled path writes (<code>arange(0, T + dt, dt)</code> clipped to <code>&lt;= T</code>).</p>
+<p>Per-block integration strategy lives in the <code>Integrator</code>'s <code>method</code> parameter
+(<code>blocks/integrator.py</code>): <code>FWD_EULER</code>, <code>BWD_EULER</code>, <code>TUSTIN</code>, <code>RK4</code>,
+<code>SOLVE_IVP</code> (the default; a one-step <code>solve_ivp</code> over <code>[t, t+dtime]</code> with a held
+input). <code>"RK45"</code> in a saved file is a legacy spelling of the fixed-step <code>RK4</code>
+and is mapped by <code>resolve_method()</code>.</p>
+<p>If <strong>any</strong> integrator resolves to <code>RK4</code>, <code>count_rk45_integrators()</code> sets
+<code>rk45_len</code> and the whole loop runs four sub-steps per <code>sim_dt</code>, advancing the
+clock <code>+0, +h/2, +0, +h/2</code> and recording one timeline sample per cycle. Sinks
+are told to skip the intermediate stages via <code>exec_params['_skip_']</code>.</p>
+<p>PDE blocks self-integrate their field with Forward Euler inside <code>execute()</code>,
+persisting it in <code>params</code>, and reuse the same spatial operators as the compiled
+kernels (<code>lib/engine/pde_ops.py</code>). FTCS stability limits apply.</p>
+<h3 id="52-block-state-_init_start_-and-resets">5.2 Block state, <code>_init_start_</code>, and resets<a class="headerlink" href="#52-block-state-_init_start_-and-resets" title="Permanent link">&para;</a></h3>
+<p>All state that survives a time step must live in <code>params</code> / <code>exec_params</code>, never
+on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lifecycle:</p>
+<ul>
+<li><code>_init_start_ = True</code> tells <code>execute()</code> to (re)build its state from
+  parameters — allocate <code>mem</code>, discretise <code>A, B, C, D</code> at <code>dtime</code>, seed
+  <code>_t_old_</code>, and so on — and to clear the flag afterwards.</li>
+<li><code>SimulationEngine._resolve_block_params()</code> builds <code>exec_params</code> from <code>params</code>
+  through the <code>WorkspaceManager</code>, copies every <code>_</code>-prefixed key across, and
+  stamps <code>dtime</code>. It is skipped when <code>exec_params</code> is already current for this
+  <code>dtime</code> and the parameter fingerprint is unchanged
+  (<code>lib/engine/compile_cache.py::source_params_fingerprint</code>); on that cache hit
+  the narrow set of engine-owned keys is still pushed down
+  (<code>lib/engine/block_params.py::PUSH_DOWN_KEYS</code>).</li>
+<li><code>SimulationEngine.reset_memblocks()</code> ends a run: it sets <code>_init_start_ = True</code>
+  in both <code>params</code> and <code>exec_params</code> and deletes the stale accumulators
+  <code>_prev</code>, <code>mem</code>, <code>output</code>. It never touches instance attributes — which is
+  exactly why state on <code>self</code> leaks silently between runs.</li>
+</ul>
+<hr />
+<h2 id="6-the-compiled-path-in-detail">6. The compiled path in detail<a class="headerlink" href="#6-the-compiled-path-in-detail" title="Permanent link">&para;</a></h2>
+<p><code>compiled_runner.run_compiled_simulation()</code> does four things:</p>
+<ol>
+<li><strong>Resolve and check.</strong> Parameters are resolved for the flattened block list,
+   then <code>SystemCompiler.check_compilability()</code> runs again on it.</li>
+<li><strong>Compile.</strong> <code>SimulationEngine._compile_system_cached()</code> builds (or reuses)
+   <code>model_func</code>, <code>y0</code>, <code>state_map</code>, <code>block_matrices</code>. The cache is a single slot
+   keyed on a fingerprint of the topology, the parameters and <code>dt</code>, because the
+   hot path is re-running the same diagram after a scalar tweak.</li>
+<li><strong>Solve</strong> on <code>t_eval = arange(t0, t1 + dt, dt)</code> clipped to <code>&lt;= t1</code>.</li>
+<li><strong>Replay</strong> the state trajectory through every block so Scope / FieldScope get
+   their history — the solve itself only returns <code>y</code>.</li>
+</ol>
+<h3 id="61-backends">6.1 Backends<a class="headerlink" href="#61-backends" title="Permanent link">&para;</a></h3>
+<p>The <code>backend</code> field of the diagnostics says which one ran:</p>
+<table>
+<thead>
+<tr>
+<th><code>backend</code></th>
+<th>When</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>algebraic</code></td>
+<td><code>len(y0) == 0</code></td>
+<td>no ODE at all; the grid is generated and only the replay runs</td>
+</tr>
+<tr>
+<td><code>fixed_step</code></td>
+<td>method is <code>RK4</code> or <code>Euler</code></td>
+<td>in-house, steps on the output grid (<code>integrate_fixed_step</code>)</td>
+</tr>
+<tr>
+<td><code>scipy</code></td>
+<td>adaptive method, no events</td>
+<td>one <code>solve_ivp</code> call, no <code>events=</code> argument</td>
+</tr>
+<tr>
+<td><code>scipy+events</code></td>
+<td>adaptive method and at least one event, detection on</td>
+<td>segmented solve (<code>zero_crossing.solve_with_events</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-what-compiles">6.2 What compiles<a class="headerlink" href="#62-what-compiles" title="Permanent link">&para;</a></h3>
+<p>The allowlist is <code>SystemCompiler.COMPILABLE_BLOCKS</code>, plus
+<code>ZERO_CROSSING_ONLY_BLOCKS</code> (<code>Hysteresis</code>) when detection is on. The per-family
+implementations are the <code>@kernel</code>-decorated builders in
+<code>lib/engine/compiler_kernels/</code>. <a href="../FAST_SOLVER/"><code>FAST_SOLVER.md</code></a> lists the
+supported blocks by family.</p>
+<p>Deliberate exclusions, each with a reason in the code:</p>
+<table>
+<thead>
+<tr>
+<th>Block</th>
+<th>Why it is not compiled</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Noise</code>, <code>PacketLoss</code>, <code>NetworkChannel</code>, <code>RandomSource</code></td>
+<td><code>np.random</code> inside an ODE right-hand side is re-sampled on every solver stage and every rejected step, which destroys both the error estimate and reproducibility. Only the interpreter honours their <code>seed</code> params.</td>
+</tr>
+<tr>
+<td><code>Impulse</code>, and <code>Step</code> with <code>type == "impulse"</code></td>
+<td>modelled as a <code>dt * 1e-3</code>-wide rectangle, which an adaptive step can jump clean over — the response would silently vanish.</td>
+</tr>
+<tr>
+<td><code>StateVariable</code></td>
+<td>performs a discrete update inside the RHS, keyed on a monotonic-time assumption <code>solve_ivp</code> violates (repeated, rejected and out-of-order probe times).</td>
+</tr>
+<tr>
+<td><code>Hysteresis</code> <strong>with detection off</strong></td>
+<td>its latch is path-dependent, so it can only be part of an RHS if the mode is frozen inside each segment and flipped at a located instant.</td>
+</tr>
+<tr>
+<td>anything with <code>sampling_time &gt; 0</code></td>
+<td>section 3.</td>
+</tr>
+<tr>
+<td>anything with no <code>@kernel</code> builder</td>
+<td>including user blocks.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-why-a-run-fell-back-and-where-to-see-it">6.3 Why a run fell back, and where to see it<a class="headerlink" href="#63-why-a-run-fell-back-and-where-to-see-it" title="Permanent link">&para;</a></h3>
+<p><code>check_compilability</code> records the first blocking block on
+<code>SystemCompiler.last_incompatibility</code>, formatted
+<code>"&lt;block name&gt; (&lt;block_fn&gt;): &lt;reason&gt;"</code> and reachable as
+<code>SimulationEngine.get_compile_fallback_reason()</code>. Three places surface it:</p>
+<ul>
+<li><strong>Property panel</strong> — with nothing selected, the inspector's <em>Solver</em> section
+  shows an <code>interpreter_because</code> row carrying that string
+  (<code>modern_ui/widgets/property_editor.py::_last_run_rows</code>). The row is absent
+  when the diagram compiles.</li>
+<li><strong>Status bar</strong> — <code>"Simulation finished [Standard (Interpreter)]"</code> tells you
+  <em>that</em> it fell back; for a compiled run the one-line diagnostics summary is
+  appended instead (<code>DSim.last_solver_diagnostics_summary</code>).</li>
+<li><strong>Log</strong> — a <code>DEBUG</code> line per rejected block, and <code>INFO</code>
+  <code>"System not fully compilable. Using Interpreter Mode."</code>.</li>
+</ul>
+<p>Failures <em>inside</em> the compiled run (as opposed to a refusal to compile) are
+recorded in the diagnostics <code>failure_stage</code> field: <code>"initialize"</code>,
+<code>"compilability"</code>, <code>"solve"</code> or <code>"exception"</code>.</p>
+<h3 id="64-run-diagnostics">6.4 Run diagnostics<a class="headerlink" href="#64-run-diagnostics" title="Permanent link">&para;</a></h3>
+<p>Every compiled run stores a dict on <code>engine.last_solver_diagnostics</code>
+(<code>lib/engine/solver_diagnostics.py::build_diagnostics</code>) with, among others:
+<code>success</code>, <code>failure_stage</code>, <code>backend</code>, <code>method_requested</code>, <code>method_used</code>,
+<code>fallback_reason</code>, <code>rtol</code>, <code>atol</code>, <code>dt</code>, <code>n_states</code>, <code>n_blocks</code>, <code>n_lines</code>,
+<code>n_time_points</code>, <code>nfev</code> / <code>njev</code> / <code>nlu</code>, the compile-cache counters, the four
+wall-time fields, <code>output_range</code>, the <code>zero_crossing</code> summary, and
+<code>stiffness</code> / <code>stiffness_suspected</code> (section 8).
+<code>format_diagnostics_for_log()</code> renders the one-line version.</p>
+<hr />
+<h2 id="7-zero-crossing-events">7. Zero-crossing events<a class="headerlink" href="#7-zero-crossing-events" title="Permanent link">&para;</a></h2>
+<p>Full treatment in <a href="../FAST_SOLVER/#zero-crossing-detection"><code>FAST_SOLVER.md</code></a>;
+the semantics in brief:</p>
+<ul>
+<li><strong>Scope.</strong> Compiled path only — the interpreter is fixed-step and has no event
+  machinery. On by default; the setting lives in Simulation settings and in the
+  file's <code>sim_data.zero_crossing</code>.</li>
+<li><strong>What is detected.</strong> Each discontinuous block declares its switching surfaces
+  next to its kernel through the <code>@events(...)</code> registry, as <code>EventSpec</code>s with a
+  <code>func(t, y, signals) -&gt; float</code>, a <code>direction</code> (+1 rising, −1 falling, 0
+  either), an optional <code>on_event</code> discrete update (a relay latch flip), an
+  optional <code>on_start</code> seeding, and a <code>monotonic</code> flag. The table of contributing
+  blocks is in <code>FAST_SOLVER.md</code>.</li>
+<li><strong>How.</strong> Every event is registered <em>terminal</em>; integration proceeds in
+  segments, each ending at the earliest located root. Every event at that
+  instant gets its update applied, then integration restarts a nudge
+  (<code>1e-11</code> of the span) past the root with the state carried across
+  (<code>lib/engine/zero_crossing.py::solve_with_events</code>). The returned <code>(t, y)</code> is
+  exactly the array a single <code>solve_ivp</code> call would have produced.</li>
+<li><strong>Step cap.</strong> <code>solve_ivp</code> only compares event signs at accepted step ends, so
+  a state-dependent guard can cross and return inside one large step. Whenever
+  any registered event is non-monotonic the step is capped at the output <code>dt</code>.
+  Pure time events (<code>Step</code>, <code>Ramp</code>) are <code>monotonic</code> and skip the cap.</li>
+<li><strong>Chattering guard.</strong> Two bounds: 20 consecutive events closer than <code>1e-9</code> of
+  the span, or 10 000 events in a run (<code>DEFAULT_MAX_EVENTS</code>, overridable via
+  <code>engine.zero_crossing_max_events</code>). Tripping either logs a warning naming the
+  block and finishes the run with a <strong>fixed step</strong> (RK4 on the output grid),
+  not with events merely switched off — an adaptive solver turned loose on a
+  chattering system never terminates. Latching blocks are unfrozen at the same
+  moment. The event summary in the diagnostics carries <code>guard_tripped</code> and
+  <code>guard_reason</code>.</li>
+<li><strong>Per-block opt-out.</strong> Any contributing block has a <code>zero_crossing</code> parameter
+  (<code>"auto"</code> / <code>"off"</code>); <code>"off"</code> drops that block's events while the rest of the
+  diagram keeps theirs (<code>SystemCompiler._collect_event_specs</code>).</li>
+<li><strong>Headless.</strong> <code>python diablos_modern.py run diagram.diablos --no-zero-crossing</code>
+  turns detection off for one run; without the flag the file's own setting is
+  used (<code>lib/cli.py</code>).</li>
+</ul>
+<p>Turning detection off also removes <code>Hysteresis</code> from the compilable set, so a
+diagram containing one falls back to the interpreter.</p>
+<hr />
+<h2 id="8-choosing-a-solver">8. Choosing a solver<a class="headerlink" href="#8-choosing-a-solver" title="Permanent link">&para;</a></h2>
+<p>The setting is <em>Simulation settings → Solver Method</em>
+(<code>lib/dialogs.py::SimulationDialog</code>), stored as <code>sim_data.solver_method</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Kind</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RK45</code></td>
+<td>explicit adaptive, order 5(4)</td>
+<td>the default. Smooth, non-stiff dynamics.</td>
+</tr>
+<tr>
+<td><code>RK23</code></td>
+<td>explicit adaptive, order 3(2)</td>
+<td>loose tolerances, cheap right-hand sides.</td>
+</tr>
+<tr>
+<td><code>DOP853</code></td>
+<td>explicit adaptive, order 8</td>
+<td>very tight tolerances on smooth problems.</td>
+</tr>
+<tr>
+<td><code>Radau</code></td>
+<td>implicit (Runge-Kutta)</td>
+<td>stiff problems; good on the stiff <em>and</em> highly oscillatory ones.</td>
+</tr>
+<tr>
+<td><code>BDF</code></td>
+<td>implicit (multistep)</td>
+<td>stiff problems with smooth solutions; cheapest per step of the implicit three.</td>
+</tr>
+<tr>
+<td><code>LSODA</code></td>
+<td>switches Adams ↔ BDF</td>
+<td>you are not sure. It detects stiffness itself and swaps formulas.</td>
+</tr>
+<tr>
+<td><code>auto</code></td>
+<td>resolves to <code>LSODA</code></td>
+<td>you want that decision made for you.</td>
+</tr>
+<tr>
+<td><code>RK4</code></td>
+<td>fixed step, 4 stages</td>
+<td>you need every sample on the <code>dt</code> grid with no adaptivity.</td>
+</tr>
+<tr>
+<td><code>Euler</code></td>
+<td>fixed step, 1 stage</td>
+<td>comparison against a hand-written Euler model; teaching.</td>
+</tr>
+</tbody>
+</table>
+<p><code>auto</code> is a DiaBloS-level setting, not a scipy method: it is resolved once, at
+the top of each run, by <code>compiled_runner.resolve_solver_method()</code>, and both the
+requested and resolved names are recorded (<code>method_requested</code> / <code>method_used</code>).
+The default stays <code>RK45</code> so no existing diagram's numbers move.</p>
+<p><strong>Tolerances.</strong> <code>rtol</code> (default <code>1e-9</code>) and <code>atol</code> (default <code>1e-12</code>) are passed
+straight to <code>solve_ivp</code> and apply to the adaptive methods only; the fixed-step
+schemes ignore them. These defaults are tight — deliberately, since the compiled
+path is the reference — but they cost steps: loosening to <code>1e-6</code> / <code>1e-9</code> is
+usually free accuracy-wise on a well-conditioned model and noticeably faster.</p>
+<p><strong>Symptoms and what to change:</strong></p>
+<ul>
+<li>Trace is fine but the run is slow → try <code>LSODA</code>, or loosen <code>rtol</code>.</li>
+<li>Trace is jagged at a switch → check that zero-crossing detection is on.</li>
+<li>Trace changes when you change <code>dt</code> → you are on the interpreter, or a block
+  with <code>requires_sample_time</code> has no rate (look for the warning in the log).</li>
+<li>Solver reports failure or the trace blows up → the system is probably stiff;
+  see below.</li>
+</ul>
+<h3 id="81-the-stiffness-indicator">8.1 The stiffness indicator<a class="headerlink" href="#81-the-stiffness-indicator" title="Permanent link">&para;</a></h3>
+<p>After a compiled run with an <strong>explicit</strong> method (<code>RK45</code>, <code>RK23</code>, <code>DOP853</code>),
+<code>lib/engine/solver_diagnostics.py::estimate_stiffness</code> decides whether an
+implicit solver would have been the better tool. It measures two things, and
+both gates must fire:</p>
+<ul>
+<li><strong><code>work_ratio</code></strong> — estimated internal solver steps per <em>output</em> sample,
+  <code>nfev / (stages * n_output_intervals)</code> with <code>stages</code> of 6 / 3 / 12 for
+  RK45 / RK23 / DOP853. High means the solver stepped far finer than the output
+  grid you asked for: the <em>cost</em> symptom. Threshold <code>STIFFNESS_WORK_RATIO = 4</code>.</li>
+<li><strong><code>stiffness_index</code></strong> — <code>max|Re λ| · dt</code>, from a forward-difference Jacobian
+  of the compiled right-hand side sampled at up to 5 points of the returned
+  trajectory. High means the fastest <em>decaying</em> mode has a time constant far
+  below one output step: the regime where an explicit method's step is bounded
+  by its stability region rather than by accuracy, which is exactly what an
+  implicit method fixes. Threshold <code>STIFFNESS_INDEX = 20</code>.</li>
+</ul>
+<p>Neither alone is enough. A benign second-order oscillator written out every
+0.5 s trips <code>work_ratio</code> (≈ 14 in the repo's test case) while its
+<code>stiffness_index</code> is 0.3 — an implicit solver would buy nothing there. A fast
+mode that has already died out trips nothing, because the solver has long since
+stretched its step back out. Conversely the <em>real part</em> is what counts: a purely
+imaginary spectrum (a fast oscillation) is not stiffness, and the index is 0
+for it.</p>
+<p>The classic max/min eigenvalue <strong>ratio</strong> is also recorded as <code>eig_ratio</code>, for
+information, but it is not a gate: the textbook scalar stiff problem
+<code>dy/dt = -10⁴(y - u(t))</code> has exactly one eigenvalue and a ratio of 1.</p>
+<p>Costs are kept negligible. The Jacobian is only probed once <code>work_ratio</code> has
+already cleared its gate, and never for more than
+<code>STIFFNESS_MAX_STATES = 64</code> states (a 2-D PDE has thousands, and the probe is
+<code>n + 1</code> right-hand-side evaluations per sample point). Anything that raises
+degrades to the work-ratio-only result rather than failing the run. Implicit and
+fixed-step methods are not probed at all — there is nothing to suggest to
+someone already using one — so <code>stiffness</code> is <code>None</code> there.</p>
+<p>Measured on the repo's own test diagram (<code>tests/unit/test_solver_semantics.py</code>),
+a Van der Pol oscillator with <code>mu = 1000</code> over <code>[0, 1]</code> at <code>dt = 0.05</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th><code>nfev</code></th>
+<th><code>work_ratio</code></th>
+<th><code>stiffness_index</code></th>
+<th>flagged</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RK45</td>
+<td>6428</td>
+<td>53.6</td>
+<td>150</td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td>Radau</td>
+<td>270</td>
+<td>—</td>
+<td>—</td>
+<td>not probed</td>
+</tr>
+<tr>
+<td>LSODA</td>
+<td>131</td>
+<td>—</td>
+<td>—</td>
+<td>not probed</td>
+</tr>
+</tbody>
+</table>
+<p>— i.e. the suggestion is worth a 25–50× reduction in right-hand-side
+evaluations. The same diagram with <code>mu = 100</code> is <em>not</em> flagged
+(<code>stiffness_index</code> 15.0, below the gate), and there Radau only halves the work:
+the heuristic stays quiet on the marginal cases by design.</p>
+<p>When it fires, three things happen:</p>
+<ul>
+<li><code>logger.warning</code> with the full diagnosis (<code>format_stiffness_for_log</code>);</li>
+<li><code>stiffness_suspected: True</code> plus the numbers in the diagnostics dict;</li>
+<li>a <strong>non-modal</strong> status-bar line at the end of the run —
+  <em>"This diagram looks stiff — RK45 took 54 solver steps per output sample. Try
+  the LSODA solver in Simulation settings."</em>
+  (<code>modern_ui/controllers/simulation_controller.py::_report_stiffness</code>, emitted
+  on the same <code>status_changed</code> channel the run already reports through), and two
+  rows in the property panel's <em>Solver</em> section (<code>stiffness</code>,
+  <code>stiffness_detail</code>).</li>
+</ul>
+<p>Nothing is changed automatically. Switching solver changes the numbers, and that
+is the user's call.</p>
+<hr />
+<h2 id="9-what-is-saved">9. What is saved<a class="headerlink" href="#9-what-is-saved" title="Permanent link">&para;</a></h2>
+<p><code>FileService.serialize()</code> writes <code>sim_data</code> (<code>lib/services/file_service.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sim_time</code></td>
+<td>run duration in seconds</td>
+</tr>
+<tr>
+<td><code>sim_dt</code></td>
+<td>base solver step / output step</td>
+</tr>
+<tr>
+<td><code>sim_trange</code></td>
+<td>scope plot window in samples (<code>plot_trange</code> in memory)</td>
+</tr>
+<tr>
+<td><code>solver_method</code></td>
+<td><code>RK45</code> … <code>Euler</code>, or <code>auto</code></td>
+</tr>
+<tr>
+<td><code>rtol</code>, <code>atol</code></td>
+<td>adaptive-solver tolerances</td>
+</tr>
+<tr>
+<td><code>zero_crossing</code></td>
+<td>compiled-path event detection on/off</td>
+</tr>
+<tr>
+<td><code>wind_width</code>, <code>wind_height</code>, <code>fps</code></td>
+<td>window metadata, not solver settings</td>
+</tr>
+</tbody>
+</table>
+<p><code>apply_loaded_data()</code> reads them back with the same defaults a fresh diagram has
+(<code>RK45</code> / <code>1e-9</code> / <code>1e-12</code> / detection on), so a file written before a setting
+existed loads as if the user had never touched it. <code>DSim.deserialize()</code> copies
+them onto the facade, and <code>run_tuning_simulation</code> / <code>execution_init</code> push them
+into the engine via <code>update_sim_params()</code>.</p>
+<p>Solver-relevant settings that live <strong>per block</strong>, in <code>params</code>, and are saved with
+the block: <code>sampling_time</code> / <code>sample_time</code> (section 3), the <code>Integrator</code>'s
+<code>method</code> (section 5.1), <code>zero_crossing</code> (<code>"auto"</code> / <code>"off"</code>, section 7), and
+<code>init_conds</code>.</p>
+<p><strong>Headless runs honour all of it.</strong> <code>lib/cli.py::run_diagram</code> pushes the file's
+<code>solver_method</code>, <code>rtol</code>, <code>atol</code> and <code>zero_crossing</code> onto the DSim before running;
+<code>--method</code>, <code>--rtol</code>, <code>--atol</code> and <code>--no-zero-crossing</code> override individually,
+and <code>--solver compiled|interpreter</code> picks the engine. (Before this, the CLI read
+only <code>sim_time</code>/<code>sim_dt</code> from the file and silently integrated everything with
+the built-in defaults.)</p>
+<hr />
+<h2 id="10-known-limitations">10. Known limitations<a class="headerlink" href="#10-known-limitations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>RateLimiter</code> is an approximation when compiled.</strong> The kernel is a stiff
+  first-order chase <code>dy = clip((u − y)·K, falling, rising)</code> with <code>K = 1000</code>, not
+  an exact per-step slew clamp (<code>lib/engine/compiler_kernels/state.py</code>). It also
+  deliberately contributes <strong>no</strong> zero-crossing events: while slew-limited the
+  chase pins its error right at the clip bound, so a guard on it grazes zero
+  repeatedly and trips the chattering guard within milliseconds. Turn the fast
+  solver off for exact rate-limiter parity.</li>
+<li><strong>Per-block <code>Integrator</code> methods are ignored by the compiled path.</strong> One state
+  vector cannot be integrated with Euler in one block and RK4 in another; the
+  run uses the method from Simulation settings and logs a warning naming every
+  block whose setting it discarded.</li>
+<li><strong><code>ceil</code> / <code>floor</code> in <code>MathFunction</code> contribute no events</strong> — an unbounded
+  event train at every integer.</li>
+<li><strong>Compiled and interpreted transients differ</strong> for state-heavy diagrams (the
+  feedback-delay difference of section 4.2). Steady states agree; do not assert
+  tight trajectory equality across the two.</li>
+<li><strong>The stiffness heuristic is a heuristic.</strong> It cannot see stiffness that has
+  not cost anything yet, it says nothing on implicit or fixed-step runs, and it
+  is skipped above 64 states — a large PDE is never flagged even when it is
+  stiff.</li>
+<li><strong><code>blocks/external.py</code> is a stub</strong> and returns an error dict on both paths.</li>
+</ul>
+<hr />
+<h2 id="11-file-map">11. File map<a class="headerlink" href="#11-file-map" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Engine, init loops, sample-time propagation, diagnostics wrappers</td>
+<td><code>lib/engine/simulation_engine.py</code></td>
+</tr>
+<tr>
+<td>Compiled run: solve, replay, <code>auto</code> resolution, stiffness call</td>
+<td><code>lib/engine/compiled_runner.py</code></td>
+</tr>
+<tr>
+<td>Diagram → ODE, allowlist, three-group order, event collection</td>
+<td><code>lib/engine/system_compiler.py</code></td>
+</tr>
+<tr>
+<td>Per-block compiled kernels and their event declarations</td>
+<td><code>lib/engine/compiler_kernels/</code></td>
+</tr>
+<tr>
+<td>Event solve, restart, chattering guard</td>
+<td><code>lib/engine/zero_crossing.py</code></td>
+</tr>
+<tr>
+<td>Diagnostics dict, log line, stiffness heuristic</td>
+<td><code>lib/engine/solver_diagnostics.py</code></td>
+</tr>
+<tr>
+<td>Memory-block taxonomy</td>
+<td><code>lib/engine/memory_blocks.py</code></td>
+</tr>
+<tr>
+<td>Subsystem flattening</td>
+<td><code>lib/engine/flattener.py</code></td>
+</tr>
+<tr>
+<td>Interpreter loop</td>
+<td><code>lib/lib.py</code> (<code>_interpreter_step</code>)</td>
+</tr>
+<tr>
+<td>Sample-time state, held outputs, per-block step</td>
+<td><code>lib/simulation/block.py</code></td>
+</tr>
+<tr>
+<td>Solver settings dialog</td>
+<td><code>lib/dialogs.py</code></td>
+</tr>
+<tr>
+<td><code>.diablos</code> read/write</td>
+<td><code>lib/services/file_service.py</code></td>
+</tr>
+<tr>
+<td>Headless runs and export</td>
+<td><code>lib/cli.py</code></td>
+</tr>
+<tr>
+<td>Solver rows, fallback reason, stiffness rows</td>
+<td><code>modern_ui/widgets/property_editor.py</code></td>
+</tr>
+<tr>
+<td>End-of-run status messages</td>
+<td><code>modern_ui/controllers/simulation_controller.py</code></td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      MIT licensed. Built with MkDocs and Material for MkDocs.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Sapetor/diablos-modern" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

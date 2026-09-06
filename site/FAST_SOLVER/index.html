@@ -18,7 +18,7 @@
         <link rel="prev" href="../VARIABLE_EDITOR_GUIDE/">
       
       
-        <link rel="next" href="../wiki/Home/">
+        <link rel="next" href="../SOLVER_SEMANTICS/">
       
       
         
@@ -1120,6 +1120,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SOLVER_SEMANTICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Solver Semantics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2383,6 +2411,13 @@
 
 
 <h1 id="fast-solver-compiled-mode">Fast Solver (Compiled Mode)<a class="headerlink" href="#fast-solver-compiled-mode" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>This document covers the compiled path itself. For the surrounding execution
+semantics — continuous vs discrete vs hybrid blocks, sample times and
+multirate, execution order and algebraic loops, what the interpreter does
+instead, how to choose a solver and what the stiffness warning means, and what
+a <code>.diablos</code> file stores — see <a href="../SOLVER_SEMANTICS/">SOLVER_SEMANTICS.md</a>.</p>
+</blockquote>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>The <strong>Fast Solver</strong> is a high-performance execution engine introduced in DiaBloS Modern. It compiles valid portions of a block diagram into a flat system of differential equations and solves them using extensive numerical libraries (<code>scipy.integrate</code>).</p>
 <p>This approach typically yields <strong>10x-100x speedups</strong> compared to the standard Interpreted Mode, especially for stiff systems or long simulations.</p>
@@ -2395,7 +2430,7 @@
 <li><strong>Matrix Construction</strong>: Linear Time-Invariant (LTI) subsystems are converted to State-Space ($A, B, C, D$) matrices for efficient computation.</li>
 </ul>
 </li>
-<li><strong>Solving</strong>: <code>scipy.integrate.solve_ivp</code> (default: RK45) integrates the system over the simulation time.</li>
+<li><strong>Solving</strong>: <code>scipy.integrate.solve_ivp</code> (default: RK45) integrates the system over the simulation time. Which method to pick, what the tolerances cost, and the automatic stiffness warning are covered in <a href="../SOLVER_SEMANTICS/#8-choosing-a-solver">SOLVER_SEMANTICS.md</a>.</li>
 <li><strong>Replay</strong>: The solver's output ($\mathbf{y}$ over time) is "replayed" through the topological graph to reconstruct intermediate signals for <code>Scope</code> blocks.</li>
 </ol>
 <h2 id="supported-blocks">Supported Blocks<a class="headerlink" href="#supported-blocks" title="Permanent link">&para;</a></h2>
@@ -2600,7 +2635,7 @@ while a single located step edge costs one extra restart:
 3.  Generating a time vector manually.
 4.  Executing the <strong>Replay Loop</strong> to compute all algebraic signals at each time step.</p>
 <h3 id="mixed-mode-fallback">Mixed Mode / Fallback<a class="headerlink" href="#mixed-mode-fallback" title="Permanent link">&para;</a></h3>
-<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. This is slower but guarantees compatibility. A block with a discrete sample time (<code>sampling_time &gt; 0</code>) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.</p>
+<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. The block that caused it is recorded and shown in the property panel — see <a href="../SOLVER_SEMANTICS/#63-why-a-run-fell-back-and-where-to-see-it">SOLVER_SEMANTICS.md</a>. This is slower but guarantees compatibility. A block with a discrete sample time (<code>sampling_time &gt; 0</code>) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="solver-returned-no-states-empty-plot">"Solver returned no states" / Empty Plot<a class="headerlink" href="#solver-returned-no-states-empty-plot" title="Permanent link">&para;</a></h3>
 <ul>
