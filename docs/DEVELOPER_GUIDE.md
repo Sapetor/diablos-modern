@@ -141,6 +141,21 @@ Blocks implement their execution logic directly in the `execute()` method.
 > **Note (2026-01):** The legacy `lib/functions.py` has been deleted.
 > All blocks now implement their logic in `execute()` directly.
 
+> **The complete contract is [`BLOCK_API.md`](BLOCK_API.md)** — required
+> members, the params spec, the `execute()` contract and the state-in-params
+> rule, every optional hook, the compiled-path kernel registry, and the
+> versioning policy. This section is the in-repo workflow; read the API
+> document for the rules themselves.
+>
+> To add a block **without touching the repository**, drop a module into the
+> user blocks folder (`<user data dir>/blocks/`, any folder listed in
+> `DIABLOS_BLOCKS_PATH`, or a `blocks/` folder next to your diagram) and use
+> *Edit ▸ Reload User Blocks*. Start from
+> [`examples/custom_block_template.py`](examples/custom_block_template.py)
+> (stateless + stateful) or
+> [`examples/custom_kernel_template.py`](examples/custom_kernel_template.py)
+> (compiled-path kernel). The loader is `lib/user_blocks.py`.
+
 ### Step 1: Create Block Class
 
 Create a new file in `blocks/` directory:
@@ -227,7 +242,20 @@ Your block should appear in the Block Palette under the category you specified!
 - At simulation init, the model creates a hidden virtual line from the Goto’s upstream source to each matching From (same tag). Hidden lines are not drawn or hit-tested.
 - The virtual line label is set to `signal_name` (defaults to `tag`), which can later be used for workspace binding/export.
 
-### Step 3: Write Tests
+### Step 3: Validate the contract
+
+```python
+from blocks.base_block import validate_block_class
+from blocks.my_custom_block import MyCustomBlock
+
+validate_block_class(MyCustomBlock)   # raises BlockContractError with details
+```
+
+`tests/unit/test_block_api.py` runs this over every registered block, so a new
+block with a malformed params spec, a port dict missing `name`, or an
+`execute()` without `**kwargs` fails CI instead of failing mid-simulation.
+
+### Step 4: Write Tests
 
 ```python
 # tests/unit/test_my_custom_block.py
