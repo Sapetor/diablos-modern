@@ -3,15 +3,15 @@
         "wind_width": 1280,
         "wind_height": 770,
         "fps": 60,
-        "sim_time": 50.0,
+        "sim_time": 30.0,
         "sim_dt": 0.01,
-        "sim_trange": 100.0
+        "sim_trange": 30
     },
     "blocks_data": [
         {
             "block_fn": "Step",
             "sid": 0,
-            "username": "step0",
+            "username": "reference",
             "coords_left": 20,
             "coords_top": 180,
             "coords_width": 80,
@@ -32,12 +32,13 @@
                 "pulse_start_up": true
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "step0"
         },
         {
             "block_fn": "TranFn",
             "sid": 0,
-            "username": "tranfn0",
+            "username": "plant 1/(s+1)",
             "coords_left": 480,
             "coords_top": 160,
             "coords_width": 110,
@@ -62,12 +63,13 @@
                 "sampling_time": -1.0
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "tranfn0"
         },
         {
             "block_fn": "Scope",
             "sid": 0,
-            "username": "scope0",
+            "username": "closed-loop output",
             "coords_left": 900,
             "coords_top": 160,
             "coords_width": 100,
@@ -82,16 +84,17 @@
             "io_edit": "input",
             "fn_name": "scope",
             "params": {
-                "labels": "default",
+                "labels": "output y(t)",
                 "verify_mode": "auto"
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "scope0"
         },
         {
             "block_fn": "TranFn",
             "sid": 1,
-            "username": "tranfn1",
+            "username": "PI (2s+1)/s",
             "coords_left": 280,
             "coords_top": 160,
             "coords_width": 110,
@@ -117,12 +120,13 @@
                 "sampling_time": -1.0
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "tranfn1"
         },
         {
             "block_fn": "TranFn",
             "sid": 2,
-            "username": "tranfn2",
+            "username": "integrator 1/s",
             "coords_left": 700,
             "coords_top": 160,
             "coords_width": 110,
@@ -147,12 +151,13 @@
                 "sampling_time": -1.0
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "tranfn2"
         },
         {
             "block_fn": "Sum",
             "sid": 0,
-            "username": "sum0",
+            "username": "error",
             "coords_left": 140,
             "coords_top": 180,
             "coords_width": 60,
@@ -170,7 +175,8 @@
                 "sign": "+-"
             },
             "external": false,
-            "flipped": false
+            "flipped": false,
+            "name": "sum0"
         }
     ],
     "lines_data": [
