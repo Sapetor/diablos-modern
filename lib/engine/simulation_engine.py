@@ -1242,6 +1242,15 @@ class SimulationEngine:
         """Check if the system can be compiled."""
         return self.compiler.check_compilability(blocks)
 
+    def get_compile_fallback_reason(self) -> Optional[str]:
+        """Why the last compilability check sent the run to the interpreter.
+
+        ``None`` when the diagram compiles (or nothing has been checked yet).
+        The string names the offending block, e.g.
+        ``"zeroorderhold3 (ZeroOrderHold): it has a discrete sample time"``.
+        """
+        return getattr(self.compiler, "last_incompatibility", None)
+
     def clear_compile_cache(self) -> None:
         """Drop the cached compiled RHS, state map, and replay executors."""
         self._compiled_system_cache_key = None

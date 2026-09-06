@@ -26,7 +26,11 @@ import numpy as np
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
 from lib.engine.pde_ops import wave_energy_1d
-from lib.engine.solver_diagnostics import format_diagnostics_for_log
+from lib.engine.solver_diagnostics import (
+    estimate_stiffness,
+    format_diagnostics_for_log,
+    format_stiffness_for_log,
+)
 from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, solve_with_events
 from lib.safe_eval import SafeEvalError, safe_expr, safe_literal
 from lib.simulation.block import DBlock
@@ -39,6 +43,28 @@ logger = logging.getLogger(__name__)
 SCIPY_SOLVER_METHODS = ("RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA")
 # Fixed-step schemes integrated in-house (use the simulation step dt).
 FIXED_STEP_METHODS = ("Euler", "RK4")
+
+# "Let DiaBloS pick." Not a scheme of its own: it resolves to LSODA, which
+# switches between an Adams (non-stiff) and a BDF (stiff) formula by itself, so
+# one setting copes with both regimes. Deliberately NOT the default -- RK45 is,
+# so no existing diagram's numbers move -- but it is what the stiffness warning
+# points at. Matched case-insensitively; stored verbatim in the .diablos file.
+AUTO_SOLVER_METHOD = "auto"
+AUTO_RESOLVED_METHOD = "LSODA"
+
+
+def resolve_solver_method(method) -> str:
+    """Map the stored solver setting to a scheme the runner can execute.
+
+    Only ``"auto"`` is rewritten (to :data:`AUTO_RESOLVED_METHOD`); everything
+    else -- including an unknown name, which the runner reports and degrades to
+    RK45 later -- is passed through untouched.
+    """
+    name = str(method or "").strip()
+    if name.lower() == AUTO_SOLVER_METHOD:
+        return AUTO_RESOLVED_METHOD
+    return name or "RK45"
+
 
 # Canonical fn-names whose compiled kernel executor is reused verbatim by the
 # post-solve replay loop (instead of a duplicated inline computation), so the
@@ -795,7 +821,11 @@ def run_compiled_simulation(
     replay_time = 0.0
     compile_cache_hit = False
     method_requested = getattr(engine, "solver_method", "RK45") or "RK45"
-    method_used = method_requested
+    # "auto" is a stored setting, not a scheme; resolve it once here so every
+    # branch below (and the diagnostics) sees the scheme that will actually run.
+    method_used = resolve_solver_method(method_requested)
+    if method_used != method_requested:
+        logger.info("Solver 'auto' resolved to %s for this run.", method_used)
 
     # This path assembles the whole diagram into a single ODE system and
     # integrates it with one scheme, so an Integrator's per-block "method"
@@ -906,7 +936,7 @@ def run_compiled_simulation(
             sol.nlu = 0
             logger.info("System is algebraic (0 states). Skipping solver.")
         else:
-            method = method_requested
+            method = method_used
 
             # NOTE: there is deliberately no stochastic-block special case
             # here. Every stochastic source (Noise, PacketLoss,
@@ -1044,7 +1074,23 @@ def run_compiled_simulation(
         )
         replay_time = time_module.perf_counter() - replay_start
 
+        # Stiffness heuristic. Deliberately last: it re-evaluates the compiled
+        # RHS a handful of times for a finite-difference Jacobian, and a block
+        # holding a latch must not see those probes before the replay has read
+        # its state. Returns None whenever it does not apply (implicit or
+        # fixed-step method, no states), and never raises.
+        stiffness = estimate_stiffness(
+            sol=sol,
+            method=method_used,
+            dt=dt,
+            n_states=len(y0),
+            model_func=model_func,
+        )
+        if stiffness and stiffness.get("suspected"):
+            logger.warning(format_stiffness_for_log(stiffness, method_used))
+
         engine._record_solver_diagnostics(
+            stiffness=stiffness,
             sol=sol,
             success=True,
             method_requested=method_requested,
