@@ -114,3 +114,6 @@ plot_data_*.csv
 
 # JOSS draft PDFs are build artifacts, never committed
 paper/*.pdf
+
+# mkdocs build output
+/site/

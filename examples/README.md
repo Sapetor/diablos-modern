@@ -15,11 +15,6 @@ python diablos_modern.py run examples/pid_second_order.diablos -o out.csv
 python diablos_modern.py export-python examples/pid_second_order.diablos -o model.py
 ```
 
-> The headless `run` subcommand does not yet apply a diagram's saved
-> `solver_method`, so `van_der_pol_stiff.diablos` runs under RK45 from the CLI
-> (~80 s) instead of its saved Radau (~1 s). Open it in the GUI, or use
-> `DSim.deserialize`, to get the stiff solver.
-
 The `.diablos` format has no diagram-level description field, so the notes below
 are the documentation for each file. Verification diagrams additionally carry a
 `_verification_notes` JSON key with the analytical solution they are checked
