@@ -76,8 +76,10 @@ venv.bak/
 *.log
 diablos_modern.log
 
-# Archived design handoffs and stale notes (not tracked)
-archive/
+# Archived design handoffs and stale notes (not tracked).
+# Root-anchored: docs/archive/ IS tracked -- it holds superseded documentation
+# kept for history and excluded from the built site (mkdocs.yml exclude_docs).
+/archive/
 design_handoff_*/
 
 # Saves folder (user data, not tracked)
