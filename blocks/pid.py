@@ -146,8 +146,9 @@ class PIDBlock(BaseBlock):
         first_call = bool(params.get("_init_start_", True))
         if first_call:
             params["_int"] = 0.0
+            # The derivative filter state starts at zero, not at the first error
+            # sample -- see the derivative branch below.
             params["_d_state"] = 0.0
-            params["_prev_e"] = e
             params["_init_start_"] = False
 
         Kp = float(params.get("Kp", 0.0))
@@ -164,13 +165,26 @@ class PIDBlock(BaseBlock):
         if not first_call:
             params["_int"] += e * dt
 
-        # Derivative with first-order filter (bandwidth ~ N*Kd)
-        de = (e - params["_prev_e"]) / dt
-        alpha = N * dt / (1.0 + N * dt) if Kd != 0 else 0.0
-        params["_d_state"] = params["_d_state"] + alpha * (de - params["_d_state"])
-        params["_prev_e"] = e
+        # Derivative with a first-order filter, stated exactly as the documented
+        # C(s) = Kp + Ki/s + Kd*N*s/(s+N) and as the compiled kernel realises it
+        # (lib/engine/compiler_kernels/state.py::build_pid): `_d_state` is the
+        # low-passed *error*
+        #
+        #     d(x_d)/dt = N * (e - x_d),   x_d(0) = 0,   D term = Kd*N*(e - x_d),
+        #
+        # discretised with backward Euler, which is unconditionally stable so a
+        # large N or a coarse dt cannot make the branch ring.
+        #
+        # It used to filter the finite difference (e[k] - e[k-1])/dt with
+        # `_prev_e` seeded from the first error sample, which forces de = 0 at
+        # t0 and throws away the derivative's entire response to a step in the
+        # reference -- an O(1) error that never shrinks with dt.  Starting the
+        # filter state at zero reproduces the continuous u(0+) = Kd*N*e(0).
+        x_d = (params["_d_state"] + N * dt * e) / (1.0 + N * dt)
+        params["_d_state"] = x_d
+        d_term = Kd * N * (e - x_d)
 
-        u = Kp * e + Ki * params["_int"] + Kd * params["_d_state"]
+        u = Kp * e + Ki * params["_int"] + d_term
 
         # Saturation and integral anti-windup (clamp integral within output bounds / Ki)
         u_min = params.get("u_min", -np.inf)
@@ -178,11 +192,11 @@ class PIDBlock(BaseBlock):
         if u < u_min:
             u = u_min
             if Ki != 0:
-                params["_int"] = (u_min - Kp * e - Kd * params["_d_state"]) / Ki
+                params["_int"] = (u_min - Kp * e - d_term) / Ki
         elif u > u_max:
             u = u_max
             if Ki != 0:
-                params["_int"] = (u_max - Kp * e - Kd * params["_d_state"]) / Ki
+                params["_int"] = (u_max - Kp * e - d_term) / Ki
 
         params["_last_output_"] = (
             float(np.asarray(u).flatten()[0]) if hasattr(u, "flatten") else float(u)

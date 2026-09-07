@@ -94,21 +94,22 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | --- | --- | --- | --- | ---: | ---: | :---: |
 | First-order lag K/(tau s+1), unit step | compiled | RK45 | 0.005 | 3.86e-10 | 1.0e-07 | yes |
 | First-order lag K/(tau s+1), unit step | interpreter | exact ZOH | 0.005 | 2.00e-15 | 1.0e-09 | yes |
-| Second-order step, zeta=0.3 | compiled | RK45 | 0.01 | 4.21e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=0.3 | compiled | RK45 | 0.01 | 4.16e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=0.3 | interpreter | exact ZOH | 0.01 | 8.22e-15 | 1.0e-09 | yes |
-| Second-order step, zeta=1.0 | compiled | RK45 | 0.01 | 1.16e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=1.0 | compiled | RK45 | 0.01 | 2.12e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=1.0 | interpreter | exact ZOH | 0.01 | 9.99e-16 | 1.0e-09 | yes |
-| Second-order step, zeta=2.0 | compiled | RK45 | 0.01 | 1.91e-10 | 1.0e-07 | yes |
+| Second-order step, zeta=2.0 | compiled | RK45 | 0.01 | 2.06e-10 | 1.0e-07 | yes |
 | Second-order step, zeta=2.0 | interpreter | exact ZOH | 0.01 | 2.11e-15 | 1.0e-09 | yes |
 | Integrator of a ramp -> a t^2/2 | compiled | RK45 | 0.01 | 1.24e-14 | 1.0e-07 | yes |
 | Integrator of a ramp -> a t^2/2 | interpreter | RK4 | 0.01 | 3.16e-13 | 1.0e-06 | yes |
 | Integrator of a sine -> A(1-cos wt)/w | compiled | RK45 | 0.01 | 5.65e-09 | 1.0e-07 | yes |
 | Integrator of a sine -> A(1-cos wt)/w | interpreter | RK4 | 0.01 | 2.81e-10 | 1.0e-06 | yes |
-| StateSpace vs scipy.linalg.expm (exact ZOH) | compiled | RK45 | 0.01 | 1.97e-10 | 1.0e-07 | yes |
+| StateSpace vs scipy.linalg.expm (exact ZOH) | compiled | RK45 | 0.01 | 1.91e-10 | 1.0e-07 | yes |
 | StateSpace vs scipy.linalg.expm (exact ZOH) | interpreter | exact ZOH | 0.01 | 0.00e+00 | 1.0e-11 | yes |
 | TranFn vs scipy.signal.lsim (sine input) | compiled | RK45 | 0.002 | 3.42e-06 | 1.0e-04 | yes |
 | TranFn vs scipy.signal.lsim (sine input) | interpreter | ZOH input | 0.002 | 3.81e-03 | 2.0e-02 | yes |
-| PID closed loop vs analytic CP/(1+CP) | compiled | RK45 | 0.002 | 2.64e-10 | 1.0e-07 | yes |
+| PID closed loop vs analytic CP/(1+CP) | compiled | RK45 | 0.002 | 1.26e-10 | 1.0e-07 | yes |
+| PID closed loop vs analytic CP/(1+CP) | interpreter | fixed step | 0.002 | 7.98e-03 | 2.0e-02 | yes |
 | DiscreteTranFn vs scipy.signal.dlsim (at samples) | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | Discrete output is constant between sample instants | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | ZeroOrderHold of a sine vs analytic staircase | interpreter | ZOH, Ts=0.1 | 0.005 | 5.97e-14 | 1.0e-09 | yes |
@@ -120,6 +121,10 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | Saturation corner: trajectory vs analytic | interpreter | fixed step, no events | 0.01 | 3.50e-03 | 1.0e-02 | yes |
 | Switch threshold: located switching instant \|t - 0.5\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
 | Switch threshold: trajectory vs analytic | compiled | RK45 + events | 0.01 | 2.77e-08 | 1.0e-06 | yes |
+| Two saturation corners: located count \|n - 2\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 0.0e+00 | yes |
+| Two saturation corners: first instant \|t - 0.3\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
+| Two saturation corners: second instant \|t - 0.7\| | compiled | RK45 + events | 0.01 | 0.00e+00 | 1.0e-09 | yes |
+| Two saturation corners: trajectory vs analytic | compiled | RK45 + events | 0.01 | 1.41e-08 | 1.0e-06 | yes |
 | Van der Pol, mu=1000 | compiled | Radau | 0.005 | 2.00e-15 | 1.0e-06 | yes |
 | Van der Pol, mu=1000 | compiled | LSODA | 0.005 | 1.24e-09 | 1.0e-06 | yes |
 | Heat 1-D eigenmode decay, N=81 | compiled | RK45, method of lines | 0.005 | 4.73e-05 | 2.0e-04 | yes |
@@ -129,42 +134,71 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | Advection 1-D mass conservation (relative drift) | compiled | RK45, 2nd-order upwind | 0.005 | 1.46e-05 | 1.0e-04 | yes |
 | Integrator FWD_EULER: observed order \|p - 1\| | interpreter | FWD_EULER | 0.02 -> 0.005 | 4.60e-03 | 1.0e-01 | yes |
 | Integrator RK4: observed order \|p - 4\| | interpreter | RK4 | 0.02 -> 0.005 | 6.83e-03 | 1.5e-01 | yes |
+| Integrator BWD_EULER of a sine (0-d source) | interpreter | BWD_EULER | 0.005 | 7.50e-03 | 2.0e-02 | yes |
+| Integrator TUSTIN of a sine (0-d source) | interpreter | TUSTIN | 0.005 | 5.00e-03 | 1.5e-02 | yes |
 
 ## Known defects
 
-Three cases currently fail and are pinned as `xfail(strict=True)` in
-`tests/validation/test_known_defects.py` — each with a full reproducer in its
-docstring, so the marker comes off the moment the defect is fixed. They are
-wrong answers or crashes, not tolerance quibbles:
+None. This section is where a wrong answer, a crash or a violated invariant gets
+recorded — pinned as `xfail(strict=True)` in
+`tests/validation/test_known_defects.py` with a full reproducer in its
+docstring, so the marker comes off the moment the defect is fixed. That module
+is currently empty; the three defects it was created for are below.
 
-1. **The interpreted PID's derivative branch never sees a step in its input.**
-   `blocks/pid.py` seeds `_prev_e` with the first error sample on the
-   initializing call, so `de = 0` at `t0` and the filtered derivative's response
-   to the reference step is lost. The compiled kernel starts its filter state at
-   zero and does produce it, matching the documented
-   `C(s) = Kp + Ki/s + Kd N s/(s+N)`. The resulting closed-loop error does not
-   vanish with `dt`: 0.2866 / 0.2843 / 0.2834 / 0.2831 at
-   `dt = 8e-3 / 4e-3 / 2e-3 / 1e-3`, an observed order of 0.00. With
-   `Kp = Ki = 0, Kd = 0.5` the interpreted loop output is identically zero while
-   the true response peaks at 0.36.
-2. **`Integrator` crashes under `TUSTIN` and `BWD_EULER` on a 0-d input.**
-   `blocks/sine.py` returns `np.array(scalar)` (shape `()`); the integrator's
-   promotion guard only tests `isinstance(x, (float, int))`, so its shape check
-   rewrites `params['mem']` as a 0-d array while `params['mem_list'][0]` was
-   allocated with shape `(1,)`. The in-place `mem += ...` of exactly those two
-   branches then raises `ValueError: non-broadcastable output operand`.
-   `FWD_EULER`, `RK4` and `SOLVE_IVP` are unaffected, as are `Step` / `Ramp` /
-   `Constant` sources.
-3. **A single monotone state crossing trips the chattering guard.**
-   `lib/engine/zero_crossing.py` restarts each segment at the located root plus
-   a nudge in *time*, carrying the state across unchanged — so a guard written
-   on the state (`Saturation`'s `u - max`, where `u` is an integrator output) is
-   still exactly zero at the new segment start and is re-detected. The run logs
-   `chattering: 20 consecutive events closer than 2e-09s` and finishes on the
-   fixed-step fallback. The first instant is still located exactly (the
-   validated row above), but later switches in the same run fall back to step
-   accuracy. The documented nudge protects only guards that are functions of `t`
-   (`Step`, `Ramp`), not of `y`.
+### Fixed
+
+* **A single monotone state crossing tripped the chattering guard.**
+  `lib/engine/zero_crossing.py` restarted each segment at the located root plus
+  a nudge in *time* and carried the state across unchanged, so a guard written
+  on the state (`Saturation`'s `u - max`, where `u` is an integrator output) was
+  still exactly zero at the new segment start; scipy's `find_active_events`
+  counts a zero as active and brentq returns that same instant, so one crossing
+  re-fired 20 times at 2e-11 spacing and the run finished on the fixed-step
+  fallback. The restart now advances the *state* across the same gap with one
+  explicit Euler step of the post-event dynamics, so `g` at the new segment
+  start is `dg/dt * nudge` away from zero for any transversal crossing. On
+  `Constant(1) -> Integrator -> Saturation -> Integrator`, 21 events and
+  `guard_tripped` become 1 event and no trip (the `Switch` version likewise:
+  21 → 1). The cost was the *second* switch of a run, not the first: with both
+  saturation limits finite at 0.3 and 0.7 the guard used to give up at 0.3 and
+  the 0.7 corner was never located at all; both are now located exactly (new
+  rows in the table above). Genuine chattering still trips the guard — a
+  sliding relay's derivative at the switching surface is zero, so the Euler step
+  lands back on the root — and the located instants and trajectories of the
+  cases that already worked are unchanged (saturation 1.069e-8 → 1.070e-8,
+  switch 2.766e-8 → 2.766e-8).
+
+* **`Integrator` crashed under `TUSTIN` and `BWD_EULER` on a 0-d input.**
+  `blocks/sine.py` returns `np.array(scalar)` (shape `()`) — so do
+  `WaveGenerator`, `Noise` and `Chirp` — and the integrator's promotion guard
+  only tested `isinstance(x, (float, int))`, so its shape check rewrote
+  `params['mem']` as a 0-d array while `params['mem_list'][0]` had been
+  allocated with shape `(1,)`. The in-place `mem += ...` of exactly the two
+  branches that pair the current input with the previous sample then raised
+  `ValueError: non-broadcastable output operand`. The integrator now promotes
+  its input with `np.atleast_1d` before anything reads a shape, which covers
+  every scalar-ish spelling rather than `float`/`int` alone; the fix is at the
+  consumer because the block contract makes 1-D output a convention, not a
+  requirement (see `docs/BLOCK_API.md`). Both methods now run and converge —
+  3.01e-2 / 1.50e-2 / 7.50e-3 for `BWD_EULER` and 2.01e-2 / 1.00e-2 / 5.00e-3
+  for `TUSTIN` at `dt = 0.02 / 0.01 / 0.005`, observed order 1.00 in both cases.
+  That order is *not* a regression: both strategies pair the current input with
+  the sample one step behind, and no forward fixed-step pass has the next one,
+  so the lag dominates the trapezoidal rule's own second order.
+
+* **The interpreted PID's derivative branch never saw a step in its input.**
+  `blocks/pid.py` filtered the finite difference `(e[k] - e[k-1])/dt` with
+  `_prev_e` seeded from the first error sample, so `de = 0` at `t0` and the
+  filtered derivative's entire response to the reference step was lost — an
+  O(1) error that did not shrink with `dt` (0.2866 / 0.2843 / 0.2834 / 0.2831 at
+  `dt = 8e-3 / 4e-3 / 2e-3 / 1e-3`, observed order 0.00), and with
+  `Kp = Ki = 0, Kd = 0.5` an identically zero loop output against a true peak of
+  0.43. The block now carries the same state the compiled kernel does — the
+  low-passed *error* `x_d' = N(e - x_d)` from `x_d(0) = 0`, with the D term
+  `Kd N (e - x_d)` — discretised with backward Euler. The interpreted loop is
+  first order again: 0.0336 / 0.0162 / 0.0080 / 0.0040 at the same four steps,
+  observed order 1.05 / 1.02 / 1.01. The row is in the table above and the
+  convergence is asserted by `tests/validation/test_closed_loop.py`.
 
 ## Adding a case
 

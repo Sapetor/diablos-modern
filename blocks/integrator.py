@@ -215,8 +215,16 @@ class IntegratorBlock(BaseBlock):
             result = {0: params.get("output", params["mem"]), "E": False}
             return result
 
-        # Check input dimensions
-        if isinstance(inputs.get(0), (float, int)):
+        # Normalise the input to at least 1-D before anything reads its shape.
+        # `mem`, `mem_list` and `aux` are all allocated 1-D at init, and the
+        # four fixed-step branches below mix them in place ("mem += ..."), so a
+        # 0-d input reaching the shape check would re-allocate `mem` as 0-d and
+        # then fail to broadcast against the (1,) entries of `mem_list`
+        # (ValueError: non-broadcastable output operand).  Sources are free to
+        # return a bare scalar or a 0-d array -- Sine, WaveGenerator, Noise and
+        # Chirp all do -- so the promotion belongs here, at the consumer, and
+        # has to cover every scalar-ish spelling rather than float/int alone.
+        if 0 in inputs:
             inputs[0] = np.atleast_1d(inputs[0])
 
         if params["mem"].shape != inputs.get(0, params["mem"]).shape:

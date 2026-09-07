@@ -11,6 +11,12 @@ The contrast between the two paths is the point: with zero-crossing detection
 the compiled path locates the instant to machine precision and follows the
 analytic trajectory to ~1e-8, while the fixed-step interpreter smears the switch
 across whichever step straddles it and lands three orders worse at the same dt.
+
+Locating an instant is only half of it: the solver has to be able to carry on
+afterwards. A crossing the trajectory passes through once must produce exactly
+one event, and a run with two corners must locate both -- otherwise the
+chattering guard gives up on a system that never chattered and everything after
+the first switch is back to step accuracy.
 """
 
 import numpy as np
@@ -74,3 +80,55 @@ def test_saturation_trajectory_is_flat_after_the_corner():
     slope = np.diff(z[after]) / np.diff(t[after])
     assert np.allclose(slope, cfg["limit"], atol=1e-7)
     H.release(result)
+
+
+def test_a_single_state_crossing_does_not_trip_the_chattering_guard():
+    """One monotone crossing is one event, not twenty.
+
+    ``Constant(1) -> Integrator -> Saturation(max=0.7) -> Integrator -> Scope``
+    compiled with zero crossing on: ``y = t`` crosses the limit once, at
+    t = 0.7. The guard function is written on the *state*, so a restart that
+    nudges only ``t`` leaves ``g`` exactly zero at the new segment start and the
+    same root is found again -- twenty times at 2e-11 spacing, after which the
+    run finishes on the fixed-step fallback.
+    """
+    cfg = cases.SATURATION
+    builder = cases.build_saturating_ramp(cfg["limit"], cfg["sim_time"], cfg["sim_dt"])
+    result = H.run(builder, compiled=True, zero_crossing=True)
+    info = result.diagnostics.get("zero_crossing") or {}
+    H.release(result)
+
+    assert info.get("enabled"), "the diagram should register the saturation guard"
+    assert not info.get("guard_tripped"), (
+        "chattering guard tripped on a single monotone crossing; located {0} events".format(
+            info.get("n_events")
+        )
+    )
+    assert info.get("n_events") == 1
+
+
+def test_both_corners_of_a_two_sided_saturation_are_located():
+    """A second state crossing is located as exactly as the first.
+
+    This is what a re-fired event actually costs: the first instant survives it
+    (it is found before the streak builds), the second does not, because the
+    guard has switched detection off by then and the tail runs on a fixed step.
+    """
+    rows = cases.case_two_state_corners()
+    failures = cases.format_failures(rows)
+    assert not failures, failures
+
+
+def test_a_two_corner_run_reports_exactly_two_events():
+    cfg = cases.TWO_CORNERS
+    builder = cases.build_saturating_ramp(
+        cfg["upper"], cfg["sim_time"], cfg["sim_dt"], lower=cfg["lower"]
+    )
+    result = H.run(builder, compiled=True, zero_crossing=True)
+    info = result.diagnostics.get("zero_crossing") or {}
+    located = cases.located_event_times(result)
+    H.release(result)
+
+    assert not info.get("guard_tripped"), info.get("guard_reason")
+    assert info.get("n_events") == 2, located
+    assert located == pytest.approx([cfg["lower"], cfg["upper"]], abs=1e-9)
