@@ -22,7 +22,7 @@ sys.path.insert(0, project_root)
 # Must create QApplication before importing anything that uses Qt
 from PyQt5.QtWidgets import QApplication
 
-app = QApplication(sys.argv)
+app = QApplication.instance() or QApplication(sys.argv)
 
 from lib.models.simulation_model import SimulationModel
 from lib.services.file_service import FileService
@@ -37,16 +37,11 @@ def resave_file(filepath):
     with open(filepath, "r") as f:
         data = json.load(f)
 
-    # Extract sim params before apply_loaded_data clears them
-    sim_data = data.get("sim_data", {})
-    sim_params = {
-        "sim_time": sim_data.get("sim_time", 1.0),
-        "sim_dt": sim_data.get("sim_dt", 0.01),
-        "plot_trange": sim_data.get("sim_trange", 100),
-    }
-
-    # Reconstruct blocks/lines with current theme colors and io_edit
-    fs.apply_loaded_data(data)
+    # Reconstruct blocks/lines with current theme colors and io_edit.
+    # apply_loaded_data returns every simulation setting the loader knows
+    # (sim_time, sim_dt, plot_trange, solver_method, rtol, atol,
+    # zero_crossing); reuse it so a re-save never drops a saved solver.
+    sim_params = fs.apply_loaded_data(data)
 
     # Re-serialize and save
     modern_ui_data = data.get("modern_ui_data", None)
