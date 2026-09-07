@@ -9,7 +9,8 @@ The allowlist of routed blocks is ``SimulationEngine._KERNEL_REPLAY_FNS``. It
 covers pure-function blocks plus the ODE-state blocks whose kernel output is
 reproducible from the replay's reconstructed state (StateSpace/TransferFcn/
 PID/RateLimiter). PDE/Field blocks, Integrator, Mathfunction, StateVariable,
-Demux and Hysteresis stay on their own replay branches (genuinely divergent).
+Demux stay on their own replay branches (genuinely divergent); Hysteresis is
+routed, with its latch driven by the event solve's recorded mode history.
 """
 
 from pathlib import Path
@@ -70,9 +71,10 @@ class TestReplayKernelReuse:
         differs from their kernel must stay OFF the allowlist --
         Integrator (trivial inline), PDE/Field blocks (emit display-only
         secondary outputs), Mathfunction (domain-guarded math), StateVariable
-        (discrete pending-update state), Demux (secondary-port outputs) and
-        Hysteresis (relay state in a kernel closure the solve phase pollutes,
-        no per-run reset). Routing any of these would change replay output."""
+        (discrete pending-update state) and Demux (secondary-port outputs).
+        Routing any of these would change replay output. Hysteresis is ON the
+        allowlist since its latch is driven by the event solve's recorded mode
+        history (ModeHistoryReplayer); see test_zero_crossing.TestHysteresis."""
         must_exclude = {
             "Integrator",
             "Heatequation1D",
@@ -86,7 +88,6 @@ class TestReplayKernelReuse:
             "StateVariable",
             "Statevariable",
             "Demux",
-            "Hysteresis",
             "Fieldprobe",
             "Fieldscope",
             "Fieldprobe2D",
