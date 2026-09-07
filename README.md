@@ -143,8 +143,12 @@ lint, format and test gates before opening a pull request.
 
 ## Citation
 
-If DiaBloS Modern is useful in published work, please cite it using the metadata
-in [`CITATION.cff`](CITATION.cff).
+DiaBloS Modern grew out of DiaBloS. Until it has a publication of its own,
+please cite the original paper: M. Torres-Torriti and M. Rojas-Sepúlveda,
+"An algorithm for processing block diagram models of dynamical systems and an
+open-source visual-programming simulation tool", *Simulation Modelling Practice
+and Theory* 138 (2025) 103030,
+[doi:10.1016/j.simpat.2024.103030](https://doi.org/10.1016/j.simpat.2024.103030).
 
 ## License
 
