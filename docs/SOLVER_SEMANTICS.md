@@ -422,6 +422,14 @@ the semantics in brief:
   chattering system never terminates. Latching blocks are unfrozen at the same
   moment. The event summary in the diagnostics carries `guard_tripped` and
   `guard_reason`.
+* **Latched outputs in the replay.** The solve records every latch's mode at
+  `t0` and after each located event (`EventSolveResult.mode_history`); the
+  post-solve replay drives the holders from that record
+  (`zero_crossing.ModeHistoryReplayer`) and runs `Hysteresis` through its
+  kernel, so a Scope wired to a relay switches exactly where the solve did.
+  Re-deriving the mode from grid samples cannot work: in a thermostat loop
+  the error touches a threshold only at the located instant, between samples.
+  After a guard trip the latches free-run in the replay too.
 * **Per-block opt-out.** Any contributing block has a `zero_crossing` parameter
   (`"auto"` / `"off"`); `"off"` drops that block's events while the rest of the
   diagram keeps theirs (`SystemCompiler._collect_event_specs`).

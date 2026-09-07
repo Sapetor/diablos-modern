@@ -288,6 +288,50 @@ class TestHysteresis:
         on_time = (expected[1] - expected[0]) + (4.0 - expected[2])
         assert _scope_trace(dsim)[-1] == pytest.approx(on_time, abs=1e-6)
 
+    def test_relay_output_is_replayed_not_frozen(self, qapp, tmp_path):
+        """A Scope wired straight to the relay sees every switch.
+
+        The event solve freezes the latch and flips it only at located roots;
+        the post-solve replay used to inherit that frozen holder and emitted
+        one constant mode for every sample. The replay must re-derive the
+        mode along the trajectory: high on [pi/12, 7pi/12] and from 13pi/12
+        on, low elsewhere.
+        """
+        builder = DiagramBuilder(sim_time=4.0, sim_dt=0.01)
+        _add(builder, "Sine", "src", params={"amplitude": 1.0, "frequency": 2.0})
+        _add(
+            builder,
+            "Hysteresis",
+            "relay",
+            params={"upper": 0.5, "lower": -0.5, "high": 1.0, "low": 0.0},
+        )
+        _add(builder, "Scope", "scope", params={"labels": "relay"})
+        # A state so the run takes the event-driven solve, not the algebraic one.
+        _add(builder, "Integrator", "acc", params={"init_conds": 0.0})
+        _add(builder, "Scope", "acc_scope", params={"labels": "acc"})
+        builder.connect("src", 0, "relay", 0)
+        builder.connect("relay", 0, "scope", 0)
+        builder.connect("relay", 0, "acc", 0)
+        builder.connect("acc", 0, "acc_scope", 0)
+
+        dsim, diagnostics = _run(builder, tmp_path, 4.0, 0.01)
+        assert diagnostics.get("backend") == "scipy+events"
+        assert len(_event_times(diagnostics)) == 3
+
+        trace = None
+        for block in dsim.engine.active_blocks_list:
+            params = getattr(block, "exec_params", block.params)
+            if block.block_fn == "Scope" and params.get("labels") == "relay":
+                trace = np.asarray(params["vector"], dtype=float).ravel()
+        assert trace is not None
+        t = np.arange(trace.size) * 0.01
+        switches = [np.pi / 12, 7 * np.pi / 12, 13 * np.pi / 12]
+        expected = ((t > switches[0]) & (t < switches[1])) | (t > switches[2])
+        # Away from the located instants the replayed relay matches exactly.
+        clear = np.all(np.abs(t[:, None] - np.asarray(switches)[None, :]) > 0.011, axis=1)
+        assert set(np.unique(trace)) == {0.0, 1.0}
+        np.testing.assert_array_equal(trace[clear], expected[clear].astype(float))
+
     def test_hysteresis_is_interpreter_only_without_events(self, qapp):
         """Its latch cannot be a pure function of (t, y) without located events.
 

@@ -155,11 +155,6 @@ rather than being smeared across an integration step. Widen the band and the
 cycle slows down; set `zero_crossing` to `off` in the simulation settings and
 the corners of the sawtooth soften.
 
-> Known issue: on the compiled path with zero-crossing enabled, the *relay's own
-> scope trace* is recorded as a constant even though the loop is switching
-> correctly (the temperature trace is right). See the strict `xfail` in
-> `tests/integration/test_example_gallery.py`.
-
 ### [`nonlinear_blocks.diablos`](nonlinear_blocks.diablos)
 
 One sine wave fanned into `Saturation`, `Deadband`, `Hysteresis` and

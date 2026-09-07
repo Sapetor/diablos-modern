@@ -31,7 +31,7 @@ from lib.engine.solver_diagnostics import (
     format_diagnostics_for_log,
     format_stiffness_for_log,
 )
-from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, solve_with_events
+from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, ModeHistoryReplayer, solve_with_events
 from lib.safe_eval import SafeEvalError, safe_expr, safe_literal
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
@@ -77,9 +77,10 @@ def resolve_solver_method(method) -> str:
 # a latent solve/replay divergence the broadcast inline branch had.
 # Still excluded -- their replay branches genuinely differ: PDE/Field blocks
 # (emit display-only secondary outputs), Mathfunction (domain-guarded math),
-# StateVariable (discrete pending-update state), Demux (secondary-port outputs),
-# and Hysteresis (relay state lives in a kernel closure that the out-of-order
-# solve phase pollutes and that has no per-run reset).
+# StateVariable (discrete pending-update state) and Demux (secondary-port
+# outputs). Hysteresis *is* replayed through its kernel: its latch is driven
+# by the mode history the event solve recorded (ModeHistoryReplayer), which is
+# the only way a relay's grid samples can switch where the solve did.
 # Note that some names below belong to blocks that SystemCompiler excludes from
 # COMPILABLE_BLOCKS (Noise): the diagram then never compiles at all, so the
 # entry is inert -- it is kept so this set stays a straight mirror of the
@@ -96,6 +97,7 @@ _KERNEL_REPLAY_FNS = frozenset(
         "Exponential",
         "Exp",
         "Deadband",
+        "Hysteresis",
         "Saturation",
         "Abs",
         "Absblock",
@@ -277,9 +279,16 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
     scope_width_warned = set()
 
     # Replay Loop
+    # Latched blocks take the mode that held at each sample, from the event
+    # solve's record; a plain solve has no record and this is a no-op.
+    mode_replayer = ModeHistoryReplayer(
+        getattr(getattr(engine, "compiler", None), "_mode_registry", {}).values(), sol
+    )
+
     for i in range(num_steps):
         t = sol.t[i]
         y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y
+        mode_replayer.at(float(t))
 
         # 1. State Map - Populate 'current_states' first
         # Output 'signals' populate diffently based on block type.

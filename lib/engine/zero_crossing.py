@@ -190,6 +190,8 @@ class EventSolveResult:
         "n_segments",
         "guard_tripped",
         "guard_reason",
+        "mode_history",
+        "events_off_at",
     )
 
     def __init__(self):
@@ -206,6 +208,12 @@ class EventSolveResult:
         self.n_segments = 0
         self.guard_tripped = False
         self.guard_reason = None
+        # (t, [mode per holder in mode_states order]) after seeding at t0 and
+        # after every located event; the post-solve replay walks this so a
+        # latched block's recorded output switches exactly where the solve did.
+        self.mode_history: List[Tuple[float, List[Any]]] = []
+        # Instant from which latches free-ran again (chattering guard), or None.
+        self.events_off_at: Optional[float] = None
 
     def summary(self) -> Dict[str, Any]:
         """Compact dict for the run diagnostics / log line."""
@@ -352,6 +360,7 @@ def solve_with_events(
         except Exception:  # noqa: BLE001 - seeding is best-effort
             logger.debug("Event mode seeding failed at t0", exc_info=True)
         cache.invalidate()
+    result.mode_history.append((t0, _snapshot_modes(mode_states)))
 
     event_callables = [_make_event_callable(spec, cache) for spec in specs]
 
@@ -429,6 +438,7 @@ def solve_with_events(
         cache.invalidate()
 
         result.event_log.append((float(t_event), [spec.name for spec in fired]))
+        result.mode_history.append((float(t_event), _snapshot_modes(mode_states)))
         result.n_events += 1
 
         if last_event_t is not None and (t_event - last_event_t) < min_separation:
@@ -467,6 +477,7 @@ def solve_with_events(
                 result.guard_reason,
             )
             events_active = False
+            result.events_off_at = float(t_start)
             # Latching blocks go back to updating their mode from the RHS: with
             # events off nothing else would ever advance them.
             _reset_mode_states_frozen(mode_states, False)
@@ -550,6 +561,59 @@ def _finish_fixed_step(result, model_func, t_eval, idx, t_start, y_start, integr
     result.message = "Finished with a fixed step after the zero-crossing guard tripped"
     result.status = 0
     return n_points
+
+
+def _snapshot_modes(mode_states) -> List[Any]:
+    return [holder.get("mode") for holder in (mode_states or ())]
+
+
+class ModeHistoryReplayer:
+    """Drive latch holders through the modes the event solve recorded.
+
+    ``solve_with_events`` freezes every claimed latch and flips it only at
+    located roots, then leaves it at its end-of-run mode.  The post-solve
+    replay re-executes kernels on the output grid, and a relay cannot re-derive
+    its mode from grid samples: in a thermostat loop the error touches the
+    thresholds only *at* the located instants, between samples, and turns back
+    at once, so a Scope on the relay used to record one flat line while the
+    temperature it drove limit-cycled.  Instead the replay calls :meth:`at`
+    before each sample and the holders take the mode that held at that time
+    (post-event at an event's own instant), frozen so the kernel just reads
+    them.  After a chattering-guard trip the latches were free-running in the
+    solve, so from ``events_off_at`` on they are unfrozen here too and the
+    kernel advances them from the reconstructed signals, as it did then.
+    Holders whose block opted out of zero-crossing were never frozen; they are
+    reset to their initial mode and left free-running.
+    """
+
+    def __init__(self, mode_states, result) -> None:
+        self._holders = list(mode_states or ())
+        self._history = list(getattr(result, "mode_history", None) or [])
+        self._off_at = getattr(result, "events_off_at", None)
+        self._idx = -1
+        for holder in self._holders:
+            if not holder.get("event_driven", False):
+                holder["mode"] = holder.get("init")
+                holder["frozen"] = False
+        self.active = bool(self._holders) and bool(self._history)
+
+    def at(self, t: float) -> None:
+        if not self.active:
+            return
+        history = self._history
+        while self._idx + 1 < len(history) and history[self._idx + 1][0] <= t:
+            self._idx += 1
+        if self._idx < 0:
+            return
+        free = self._off_at is not None and t >= self._off_at
+        for holder, mode in zip(self._holders, history[self._idx][1]):
+            if not holder.get("event_driven", False):
+                continue
+            if free:
+                holder["frozen"] = False
+            else:
+                holder["mode"] = mode
+                holder["frozen"] = True
 
 
 def _reset_mode_states_frozen(mode_states, frozen: bool) -> None:

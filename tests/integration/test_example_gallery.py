@@ -166,19 +166,6 @@ def test_van_der_pol_uses_its_saved_stiff_solver(qapp):
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Compiled-path bug: with zero_crossing enabled, a Scope fed straight from a "
-        "Hysteresis block inside a feedback loop records the relay's *initial* output "
-        "for every sample (constant 1.0) even though the loop is switching — the room "
-        "temperature state it drives limit-cycles correctly between 20.5 and 21.5 C. "
-        "Turning zero-crossing off, or running the interpreter, records 0/1 as expected. "
-        "Reproducer: run examples/relay_thermostat_events.diablos through "
-        "DSim.run_tuning_simulation with use_fast_solver=True and compare the relay "
-        "trace for zero_crossing True vs False."
-    ),
-)
 def test_relay_scope_records_switching_on_compiled_path(qapp):
     path = EXAMPLES_DIR / "relay_thermostat_events.diablos"
     _dsim, result = _run(path, sim_time=200.0, use_fast_solver=True, zero_crossing=True)
