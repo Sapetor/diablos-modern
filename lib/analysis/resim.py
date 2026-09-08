@@ -38,8 +38,11 @@ def harvest_scope_signals(dsim):
     """Read each Scope's trace(s) into ``{'timeline', 'signals'}`` (or ``None``).
 
     Returns ``{'timeline': 1-D ndarray, 'signals': {name: 1-D ndarray}}`` after a
-    completed headless run, or ``None`` if no timeline is available. Multi-channel
-    Scope buffers are reshaped and split per channel; duplicate signal names are
+    completed headless run, or ``None`` if no timeline is available. Every
+    channel is keyed by its Scope label (``vec_labels[j]``: the user's
+    ``labels`` entry, or the ``<scope>-<j>`` default), on both execution paths.
+    Only a channel without a label falls back to the block name (``<scope>``
+    for a single channel, ``<scope>[j]`` otherwise); duplicate names are
     disambiguated with a ``#n`` suffix.
     """
     timeline = getattr(dsim, "timeline", None)
@@ -66,18 +69,24 @@ def harvest_scope_signals(dsim):
             continue
         arr = np.asarray(vec, dtype=float)
         vec_dim = int(params.get("vec_dim", 1) or 1)
-        labels = params.get("vec_labels")
-        # Scope stores a flat concatenated buffer; reshape multi-channel data.
-        if arr.ndim == 1 and vec_dim > 1 and arr.size % vec_dim == 0:
-            arr = arr.reshape(-1, vec_dim)
+        # The interpreter keeps a flat, vec_dim-strided sample buffer; the
+        # compiled replay preallocates ``(n_samples, vec_dim)``. Normalise both
+        # to 2-D so the per-channel loop below is the only naming rule -- a
+        # single-channel Scope must come back under the same key either way.
         if arr.ndim == 1:
-            put(labels if isinstance(labels, str) else b.name, arr)
-        else:
-            for j in range(arr.shape[1]):
-                nm = (
-                    labels[j]
-                    if isinstance(labels, (list, tuple)) and j < len(labels)
-                    else f"{b.name}[{j}]"
-                )
-                put(nm, arr[:, j])
+            if vec_dim > 1 and arr.size % vec_dim == 0:
+                arr = arr.reshape(-1, vec_dim)
+            else:
+                arr = arr.reshape(-1, 1)
+        labels = params.get("vec_labels")
+        if isinstance(labels, str):
+            labels = [labels]
+        elif not isinstance(labels, (list, tuple)):
+            labels = []
+        n_channels = arr.shape[1]
+        for j in range(n_channels):
+            label = labels[j] if j < len(labels) else None
+            if not isinstance(label, str) or not label:
+                label = b.name if n_channels == 1 else f"{b.name}[{j}]"
+            put(label, arr[:, j])
     return {"timeline": np.asarray(timeline, dtype=float), "signals": signals}

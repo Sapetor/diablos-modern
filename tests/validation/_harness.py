@@ -121,13 +121,10 @@ def read_scopes(dsim):
     Scope's *username* to the whole ``(n_samples, n_channels)`` capture, which
     is how a PDE field arrives.
 
-    ``lib.analysis.resim.harvest_scope_signals`` does the same job for the
-    ensemble/sweep UI, but it keys a single-channel Scope by its *label* only
-    when the captured buffer happens to be 2-D -- which the compiled path
-    produces and the interpreter does not, so the same diagram comes back under
-    different keys on the two paths. A validation case compares those two runs
-    against one reference, so it needs one stable name: the Scope's declared
-    label, always.
+    ``lib.analysis.resim.harvest_scope_signals`` applies the same naming rule
+    for the ensemble/sweep UI (label first, block name as the fallback); this
+    reader additionally returns the whole-capture ``fields`` view and
+    disambiguates duplicate labels with a trailing ``'`` rather than ``#n``.
     """
     from lib.engine.block_params import runtime_params
 
