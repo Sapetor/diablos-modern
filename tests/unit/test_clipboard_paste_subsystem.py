@@ -88,7 +88,9 @@ def _manager(blocks, lines):
         update=lambda: None,
         block_selected=SimpleNamespace(emit=lambda *_: None),
         simulation_status_changed=SimpleNamespace(emitted=[]),
-        history_manager=SimpleNamespace(push_undo=lambda *_: None),
+        history_manager=SimpleNamespace(
+            capture_snapshot=lambda: {"pre": True}, push_snapshot=lambda *_: None
+        ),
     )
     canvas.simulation_status_changed.emit = canvas.simulation_status_changed.emitted.append
     return ClipboardManager(canvas), canvas

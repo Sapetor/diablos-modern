@@ -21,6 +21,7 @@ All notable changes to DiaBloS will be documented in this file.
 
 ### Fixed
 - Copy/paste of a Subsystem keeps the connections to and from it; the pasted Subsystem now gets its ports and geometry before wires are recreated.
+- A paste that fails part-way no longer leaves half of the blocks on the canvas or a dangling undo entry; the diagram, selection and history are restored and the error is shown as before.
 - A block whose `execute()` raises on the interpreted solver path is now reported as that block's error (`Block '<name>' failed: ...`) instead of crashing the run with `argument of type 'bool' is not iterable` (`SimulationEngine.execute_block` returns an error dict).
 - The post-run verification report showed `---` for every Display block (it read the value from the wrong parameter dict); it now shows the displayed value.
 - Clicking or hovering a curved wire tested the straight chord between its ports, so clicks on the curve often missed (and clicks on empty space along the chord selected it).

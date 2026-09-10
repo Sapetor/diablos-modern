@@ -475,11 +475,18 @@ complexity 25, all listed here.
     deep-copies `ports`/`ports_map` and runs `update_Block()` (same as
     `FileService._construct_subsystem`) before connections are recreated. Tests:
     `tests/unit/test_clipboard_paste_subsystem.py` (6, all failed before).
-  - [ ] Found while verifying (pre-existing, kept identical): (b) pasted
-    Subsystems get `username="Subsystem{sid}"` vs `name="subsystem{sid}"`, so
-    `apply_mask_appearance` (`lib/masks.py:383`) never adopts the mask name; (c) a
-    failure mid-paste leaves the already-pasted blocks in place with an undo entry
-    pushed but `dirty` unset and no redraw.
+  - [x] (c) Fixed 2026-09-10: a failure mid-paste left the half-pasted blocks in
+    place with a dangling undo entry. `paste_blocks` now captures the pre-paste
+    snapshot up front, pushes it via `push_snapshot` only after instantiate +
+    connect both succeed, and on failure `_rollback_paste` deletes exactly the
+    appended blocks/lines in place and restores the selection, then re-raises into
+    the existing "Paste failed" path. Tests: `tests/unit/test_clipboard_paste_rollback.py` (6).
+  - [ ] (b) pasted Subsystems get `username="Subsystem{sid}"` vs
+    `name="subsystem{sid}"`, so `apply_mask_appearance` (`lib/masks.py:383`) never
+    adopts the mask name — needs a decision on which spelling is canonical.
+  - [ ] (d) `_instantiate_pasted_blocks` sets `flipped` after construction without
+    re-running `update_Block()`, so a copied flipped block pastes with mirrored
+    port coordinates until it is next moved.
 - [x] **`solve_with_events`** (`lib/engine/zero_crossing.py`, was 232 lines,
   C901 = 25) — done 2026-09-10 (agent-driven, worktree). Now an ~80-line loop body
   (C901 = 9) over a `_SegmentLoop` state dataclass and phase helpers `_step_cap`,

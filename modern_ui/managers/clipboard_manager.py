@@ -245,14 +245,25 @@ class ClipboardManager:
                 logger.info("Clipboard is empty")
                 return
 
-            # Push undo state before pasting
-            if hasattr(self.canvas, "history_manager"):
-                self.canvas.history_manager.push_undo("Paste")
-            self._deselect_all_blocks()
+            # Snapshot the pre-paste diagram now but push it only once the paste
+            # has succeeded: push_undo also clears the redo stack and the history
+            # manager cannot drop an entry, so a paste that fails half-way must
+            # never touch either stack.
+            history = getattr(self.canvas, "history_manager", None)
+            pre_state = history.capture_snapshot() if history is not None else None
 
             offset = _paste_offset(pos, self.clipboard_blocks[0]["coords"])
-            pasted_blocks = self._instantiate_pasted_blocks(offset)
-            self._recreate_connections(pasted_blocks)
+            previously_selected = self._deselect_all_blocks()
+            n_blocks, n_lines = len(self.dsim.blocks_list), len(self.dsim.line_list)
+            try:
+                pasted_blocks = self._instantiate_pasted_blocks(offset)
+                self._recreate_connections(pasted_blocks)
+            except Exception:
+                self._rollback_paste(n_blocks, n_lines, previously_selected)
+                raise
+
+            if history is not None:
+                history.push_snapshot(pre_state, "Paste")
             self._finish_paste(pasted_blocks)
 
         except Exception as e:
@@ -261,9 +272,33 @@ class ClipboardManager:
                 self.canvas.simulation_status_changed.emit(tr("Paste failed: {error}", error=e))
 
     def _deselect_all_blocks(self):
-        """Clear the selection so only the pasted blocks end up selected."""
-        for block in self.dsim.blocks_list:
+        """Clear the selection so only the pasted blocks end up selected.
+
+        Returns the blocks that were selected, so a failed paste can restore them.
+        """
+        previously_selected = [block for block in self.dsim.blocks_list if block.selected]
+        for block in previously_selected:
             block.selected = False
+        return previously_selected
+
+    def _rollback_paste(self, n_blocks, n_lines, previously_selected):
+        """Undo a half-done paste: drop what it appended and restore the selection.
+
+        The paste phases only ever ``append`` to ``blocks_list``/``line_list``, so
+        everything past the pre-paste lengths is exactly what this paste added.
+        Deleting in place keeps ``connections_list`` (an alias of ``line_list``)
+        in step. Nothing was pushed to the undo stack yet and ``dirty`` is untouched,
+        so afterwards the diagram and the history read exactly as before the paste.
+        """
+        removed_blocks = len(self.dsim.blocks_list) - n_blocks
+        removed_lines = len(self.dsim.line_list) - n_lines
+        del self.dsim.blocks_list[n_blocks:]
+        del self.dsim.line_list[n_lines:]
+        for block in previously_selected:
+            block.selected = True
+        logger.warning(
+            f"Paste rolled back: removed {removed_blocks} block(s) and {removed_lines} line(s)"
+        )
 
     def _instantiate_pasted_blocks(self, offset):
         """Create one new block per clipboard entry and append it to the diagram in order."""

@@ -71,8 +71,14 @@ def _manager(blocks=(), lines=(), menu_blocks=(), with_history=True):
     canvas.block_selected.emit = canvas.block_selected.emitted.append
     canvas.simulation_status_changed.emit = canvas.simulation_status_changed.emitted.append
     if with_history:
-        canvas.history_manager = SimpleNamespace(undo=[])
-        canvas.history_manager.push_undo = canvas.history_manager.undo.append
+        # Mirrors HistoryManager's capture_snapshot/push_snapshot pair: ``undo``
+        # records the description of every entry that actually gets pushed.
+        history = SimpleNamespace(undo=[], captured=0)
+        history.capture_snapshot = lambda: (
+            setattr(history, "captured", history.captured + 1) or {"pre": True}
+        )
+        history.push_snapshot = lambda state, description="Action": history.undo.append(description)
+        canvas.history_manager = history
     return ClipboardManager(canvas), canvas
 
 
@@ -337,3 +343,6 @@ class TestPasteBlocksOrchestration:
         emitted = canvas.simulation_status_changed.emitted
         assert len(emitted) == 1 and "'coords'" in emitted[0]
         assert canvas.dsim.dirty is False
+        # The pre-paste snapshot was taken but never pushed: no dangling undo entry.
+        assert canvas.history_manager.captured == 1
+        assert canvas.history_manager.undo == []
