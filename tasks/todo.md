@@ -345,13 +345,17 @@ complexity 25, all listed here.
   vs new `draw_block` for all 82 block types (79 identical; the 20 changed are
   exactly the double-stroke/overlay set). Tests:
   `tests/modern_ui/test_block_renderer_icon_text.py`.
-- [ ] **`replay_compiled_signals`** (`lib/engine/compiled_runner.py`, 616 lines,
-  C901 = 100 — the worst in the repo). Four jobs in one body: feedthrough
-  classification, Kahn topological sort, the per-step replay loop with ~40
-  per-block branches, Scope finalization. Split into an order builder, a replay
-  dispatch table extending `_KERNEL_REPLAY_FNS` to the inline Scope/FieldScope/
-  Integrator/Hysteresis/Demux/MathFunction branches, and a finalizer. Safety
-  net: `tests/regression/test_equiv_*.py` and the example gallery test.
+- [x] **`replay_compiled_signals`** — done 2026-09-10. Was 616 lines, C901 = 100
+  (the worst in the repo). Now a ~70-line orchestrator (C901 < 10) over three
+  helpers in `compiled_runner.py` (`_replay_order`, `_connections_by_destination`,
+  `_collect_inputs`) and a new `lib/engine/replay_handlers.py`: `REPLAY_HANDLERS`
+  (canonical_fn -> handler for the 16 inline block branches), `MATHFUNCTION_OPS`
+  (the 17-way if/elif as a table of domain-guarded numpy callables), `RECORDERS` +
+  `finalize_recorders` (Scope / FieldScope / FieldScope2D history), and
+  `replay_fallback`. Verified by running all 56 examples on the compiled path before
+  and after and comparing every Scope / FieldScope history: 115 arrays across 33
+  compiled diagrams, all bit-identical. Tests: `tests/unit/test_replay_handlers.py`
+  (40) plus the existing golden / equivalence suites.
 - [ ] **Engine cores**: `SystemCompiler.compile_system` (434 lines, C901 = 41)
   and `DSim._interpreter_step` (`lib/lib.py`, 296 lines, C901 = 41). Both are
   phase-structured (classify → assemble state fns → order → run); extract the

@@ -1,10 +1,9 @@
 """The compiled (fast-solver) run: ODE solve + post-solve signal replay.
 
-Extracted verbatim from :class:`~lib.engine.simulation_engine.SimulationEngine`
-(2100 lines, with a 570-line replay method inside it).  Every function here
-takes the engine as its first argument and reads/writes exactly the attributes
-the methods did; ``SimulationEngine.run_compiled_simulation`` and
-``_replay_compiled_signals`` remain as thin delegating methods, so no caller
+Extracted from :class:`~lib.engine.simulation_engine.SimulationEngine`.  The
+two entry points take the engine as their first argument and read/write exactly
+the attributes the original methods did; ``SimulationEngine.run_compiled_simulation``
+and ``_replay_compiled_signals`` remain as thin delegating methods, so no caller
 (GUI, DSim, scripts, tests) had to change.
 
 The split follows the two halves of a fast-solver run:
@@ -14,7 +13,8 @@ The split follows the two halves of a fast-solver run:
   diagnostics.
 * :func:`replay_compiled_signals` -- walk the saved state trajectory and
   reconstruct every block's output, so Scope / FieldScope blocks get their
-  history (the solve itself only returns the ODE state).
+  history (the solve itself only returns the ODE state). The per-block replay
+  math lives in :mod:`lib.engine.replay_handlers`.
 """
 
 import logging
@@ -25,14 +25,20 @@ import numpy as np
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
-from lib.engine.pde_ops import wave_energy_1d
 from lib.engine.solver_diagnostics import (
     estimate_stiffness,
     format_diagnostics_for_log,
     format_stiffness_for_log,
 )
+from lib.engine.replay_handlers import (
+    RECORDERS,
+    REPLAY_HANDLERS,
+    ReplayRun,
+    ReplayStep,
+    finalize_recorders,
+    replay_fallback,
+)
 from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, ModeHistoryReplayer, solve_with_events
-from lib.safe_eval import SafeEvalError, safe_expr, safe_literal
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
 from lib.engine.topo import kahn_topological_order
@@ -200,38 +206,20 @@ def replay_has_feedthrough(block, block_matrices) -> bool:
         return True
 
 
-def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_map, block_matrices):
-    """Re-evaluate every block at each saved solver time so Scope /
-    FieldScope blocks capture their signal history.
+def _replay_order(current_blocks, current_lines, block_matrices):
+    """Blocks in replay order: topological on direct-feedthrough edges only.
 
-    The compiled solver returns only the ODE state trajectory; this
-    post-solve 'replay' reconstructs every block's output from it,
-    reusing the compiled kernels for the routed blocks (see
-    _KERNEL_REPLAY_FNS) and inline branches for the genuinely-divergent
-    ones (Integrator, PDE / Field, Mathfunction, StateVariable, Demux,
-    Hysteresis). Mutates each Scope / FieldScope block's exec_params.
+    A strictly proper state block's output is its (already-known) state, so
+    it does not depend on this step's inputs and need not follow its source.
+    Kahn's algorithm, stable on block name for determinism; any cycle
+    leftovers are appended in current-block order so every block still runs.
     """
-    # For Scope visualization, we need to populate block outputs.
-    # We "replay" the simulation using the solution to capture all signals.
-    num_steps = len(sol.t)
-
-    # Replay Sort: topological order respecting Direct Feedthrough.
-    # Only feedthrough edges constrain the order — a state block's output
-    # is its (already-known) state, so it does not depend on this step's
-    # inputs and need not follow its source.
-    adj = {b.name: [] for b in current_blocks}
-    # name -> block lookup, built once to avoid repeated linear scans
     block_by_name = {b.name: b for b in current_blocks}
-
-    # Feedthrough is a property of the destination block, so classify each
-    # one once instead of once per incoming line.
+    adj = {name: [] for name in block_by_name}
+    # Feedthrough is a property of the destination block: classify each once.
     feedthrough_by_dst: Dict[str, bool] = {}
-
     for line in current_lines:
-        src = line.srcblock
         dst = line.dstblock
-
-        # Check Direct Feedthrough
         dst_block = block_by_name.get(dst)
         if dst_block is None:
             is_feedthrough = True
@@ -240,45 +228,66 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
             if is_feedthrough is None:
                 is_feedthrough = replay_has_feedthrough(dst_block, block_matrices)
                 feedthrough_by_dst[dst] = is_feedthrough
+        if is_feedthrough and line.srcblock in adj:
+            adj[line.srcblock].append(dst)
 
-        if is_feedthrough and src in adj:
-            adj[src].append(dst)
-
-    # Kahn's algorithm, stable on block name for determinism (e.g. step
-    # before sine if independent). Any cycle leftovers are appended in
-    # current-block order (best effort) so every block still runs.
     order_names, leftover_names = kahn_topological_order(
         (b.name for b in current_blocks), adj, key=lambda n: n
     )
-    sorted_blocks = [block_by_name[n] for n in order_names] + [
-        block_by_name[n] for n in leftover_names
-    ]
+    return [block_by_name[n] for n in order_names] + [block_by_name[n] for n in leftover_names]
 
-    # Precompute dst_name -> list of (srcblock, srcport, dstport) once so
-    # the per-step replay does not rescan every connection for every
-    # block (was O(steps * blocks * lines)).
+
+def _connections_by_destination(current_lines) -> Dict[str, List[Tuple[str, int, int]]]:
+    """``dst_name -> [(src_name, src_port, dst_port)]``, built once per replay."""
     inputs_by_dst: Dict[str, List[Tuple[str, int, int]]] = {}
     for line in current_lines:
         src_port = getattr(line, "srcport", 0) or 0
         inputs_by_dst.setdefault(line.dstblock, []).append((line.srcblock, src_port, line.dstport))
+    return inputs_by_dst
 
-    # Pure-function blocks (see _KERNEL_REPLAY_FNS) reuse their compiled
-    # kernel executor during replay instead of a duplicated inline
-    # computation. block_executors was populated by compile_system above.
+
+def _collect_inputs(connections, signals) -> Dict[int, Any]:
+    """This step's input values for one block, from the signals computed so far.
+
+    Port 0 of a source is stored under its name; secondary ports under
+    ``"{name}_out{port}"`` (falling back to the primary when a block did not
+    publish that port).
+    """
+    inputs = {}
+    for srcblock, src_port, dstport in connections:
+        if src_port == 0:
+            inputs[dstport] = signals.get(srcblock, 0.0)
+        else:
+            inputs[dstport] = signals.get(f"{srcblock}_out{src_port}", signals.get(srcblock, 0.0))
+    return inputs
+
+
+def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_map, block_matrices):
+    """Re-evaluate every block at each saved solver time so Scope /
+    FieldScope blocks capture their signal history.
+
+    The compiled solver returns only the ODE state trajectory; this
+    post-solve 'replay' reconstructs every block's output from it. Blocks
+    in _KERNEL_REPLAY_FNS reuse their compiled kernel executor (one source
+    of truth for the output math); the rest go through
+    :data:`lib.engine.replay_handlers.REPLAY_HANDLERS` or, unlisted, their
+    own ``execute()``. Mutates each Scope / FieldScope block's exec_params.
+    """
+    num_steps = len(sol.t)
+    sorted_blocks = _replay_order(current_blocks, current_lines, block_matrices)
+    inputs_by_dst = _connections_by_destination(current_lines)
+    fn_by_name = {b.name: canonical_fn(b.block_fn) for b in sorted_blocks}
+
+    # block_executors was populated by compile_system; pure kernels never
+    # write the scratch dy vector.
     block_executors = getattr(engine.compiler, "block_executors", {})
-    replay_dy = np.zeros(sol.y.shape[0])  # scratch dy_vec; pure kernels never write it
-
-    # Step size the replay advances by, for the execute() fallback below.
-    # The solve wrote its results on the fixed t_eval grid, so the spacing
-    # is uniform; fall back to the engine's dt for a degenerate grid.
+    replay_dy = np.zeros(sol.y.shape[0])
+    # The solve wrote its results on the fixed t_eval grid, so the spacing is
+    # uniform; fall back to the engine's dt for a degenerate grid.
     replay_dt = float(sol.t[1] - sol.t[0]) if num_steps > 1 else float(engine.sim_dt)
-    # Blocks whose fallback execute() already failed once, so the warning
-    # is emitted once per block instead of once per block per step.
     fallback_failed = set()
-    # Scopes whose sample width changed mid-run (warned once each).
-    scope_width_warned = set()
+    run = ReplayRun(num_steps)
 
-    # Replay Loop
     # Latched blocks take the mode that held at each sample, from the event
     # solve's record; a plain solve has no record and this is a no-op.
     mode_replayer = ModeHistoryReplayer(
@@ -289,533 +298,36 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
         t = sol.t[i]
         y_step = sol.y[:, i] if sol.y.ndim > 1 else sol.y
         mode_replayer.at(float(t))
+        step = ReplayStep(
+            t,
+            {name: y_step[start : start + size] for name, (start, size) in state_map.items()},
+            {},
+        )
 
-        # 1. State Map - Populate 'current_states' first
-        # Output 'signals' populate diffently based on block type.
-        current_signals = {}
-        current_states = {}  # b_name -> x
-
-        for b_name, (start, size) in state_map.items():
-            x_val = y_step[start : start + size]
-            current_states[b_name] = x_val
-
-            # For Integrator, y = x
-            # For SS/TF, y != x. We calculate y later.
-            # We can pe-fill generic "Integrator" assumption if we verify type?
-            # No, let's rely on block loop.
-
-        # 2. Block Logic Replay
-        # Execute blocks in topological order
         for block in sorted_blocks:
             b_name = block.name
-            # Normalize function name (single source of truth: lib.engine.block_names)
-            fn = canonical_fn(block.block_fn)
-
-            # Collect inputs
-            inputs = {}
-            for srcblock, src_port, dstport in inputs_by_dst.get(b_name, ()):
-                # Direct feedthrough lookup - handle multi-output blocks
-                if src_port == 0:
-                    val = current_signals.get(srcblock, 0.0)
-                else:
-                    # Secondary output - use suffix naming convention
-                    # Check for common suffixes used by multi-output blocks
-                    src_key = f"{srcblock}_out{src_port}"
-                    val = current_signals.get(src_key, current_signals.get(srcblock, 0.0))
-                inputs[dstport] = val
-
-            out_val = 0.0
+            fn = fn_by_name[b_name]
+            inputs = _collect_inputs(inputs_by_dst.get(b_name, ()), step.signals)
 
             executor = block_executors.get(b_name) if fn in _KERNEL_REPLAY_FNS else None
             if executor is not None:
-                # Reuse the compiled kernel as the single source of truth
-                # for this block's output math. It reads inputs from
-                # current_signals (same {src} / {src}_out{p} keys the
-                # replay uses) and writes the primary output to
-                # current_signals[b_name]; pure-function kernels never
-                # touch replay_dy.
-                executor(t, y_step, replay_dy, current_signals)
-                out_val = current_signals.get(b_name, out_val)
-            elif fn == "Integrator":
-                # Valid because Integrator state output is just the state
-                if b_name in current_states:
-                    val = current_states[b_name]
-                    out_val = val if val.size > 1 else val.item()
-
-            # ==================== PDE BLOCKS ====================
-            elif fn == "Heatequation1D":
-                # HeatEquation1D: output is the temperature field (state vector)
-                if b_name in current_states:
-                    T = current_states[b_name]
-                    out_val = T
-                    current_signals[b_name + "_out1"] = float(np.mean(T))  # T_avg
-                else:
-                    out_val = np.zeros(int(block.params.get("N", 20)))
-
-            elif fn == "Waveequation1D":
-                # WaveEquation1D: state is [u, v], output primary is u (displacement)
-                N = int(block.params.get("N", 50))
-                if b_name in current_states:
-                    state = current_states[b_name]
-                    u = state[:N]  # Displacement field
-                    v = state[N:]  # Velocity field
-                    out_val = u
-                    current_signals[b_name + "_out1"] = v  # v_field
-                    # Full kinetic+potential energy, single-sourced with the
-                    # block's execute() via pde_ops.wave_energy_1d so the
-                    # solve/replay path reports the same energy the
-                    # interpreter does (was a kinetic-only "Simplified"
-                    # inline that diverged from the block output).
-                    current_signals[b_name + "_out2"] = float(wave_energy_1d(u, v, block.params))
-                else:
-                    out_val = np.zeros(N)
-
-            elif fn == "Advectionequation1D":
-                # AdvectionEquation1D: output is concentration field
-                if b_name in current_states:
-                    c = current_states[b_name]
-                    out_val = c
-                    L = float(block.params.get("L", 1.0))
-                    N = len(c)
-                    dx = L / (N - 1) if N > 1 else 1.0
-                    current_signals[b_name + "_out1"] = float(np.sum(c) * dx)  # c_total
-                else:
-                    out_val = np.zeros(int(block.params.get("N", 50)))
-
-            elif fn == "Diffusionreaction1D":
-                # DiffusionReaction1D: output is concentration field
-                if b_name in current_states:
-                    c = current_states[b_name]
-                    out_val = c
-                    L = float(block.params.get("L", 1.0))
-                    N = len(c)
-                    dx = L / (N - 1) if N > 1 else 1.0
-                    current_signals[b_name + "_out1"] = float(np.sum(c) * dx)  # c_total
-                    k = float(block.params.get("k", 0.1))
-                    n_order = int(block.params.get("n", 1))
-                    reaction = np.sum(k * np.power(np.maximum(c, 0), n_order)) * dx
-                    current_signals[b_name + "_out2"] = float(reaction)  # reaction_rate
-                else:
-                    out_val = np.zeros(int(block.params.get("N", 50)))
-
-            # ==================== 2D PDE BLOCKS ====================
-            elif fn == "Heatequation2D":
-                # HeatEquation2D: output is 2D temperature field
-                Nx = int(block.params.get("Nx", 20))
-                Ny = int(block.params.get("Ny", 20))
-                if b_name in current_states:
-                    state = current_states[b_name]
-                    T_field = state.reshape((Ny, Nx))
-                else:
-                    T_field = np.zeros((Ny, Nx))
-                out_val = T_field
-                # Store secondary outputs for multi-port access
-                current_signals[b_name + "_out1"] = float(np.mean(T_field))  # T_avg
-                current_signals[b_name + "_out2"] = float(np.max(T_field))  # T_max
-
-            elif fn == "Fieldprobe2D":
-                # FieldProbe2D: bilinear interpolation from 2D field
-                field = inputs.get(0, None)
-                if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
-                    out_val = 0.0
-                else:
-                    Ny_f, Nx_f = field.shape
-                    x_pos = float(block.params.get("x_position", 0.5))
-                    y_pos = float(block.params.get("y_position", 0.5))
-                    x_norm = max(0, min(1, x_pos))
-                    y_norm = max(0, min(1, y_pos))
-                    i_float = x_norm * (Nx_f - 1)
-                    j_float = y_norm * (Ny_f - 1)
-                    i0 = int(np.floor(i_float))
-                    i1 = min(i0 + 1, Nx_f - 1)
-                    j0 = int(np.floor(j_float))
-                    j1 = min(j0 + 1, Ny_f - 1)
-                    di = i_float - i0
-                    dj = j_float - j0
-                    out_val = (
-                        field[j0, i0] * (1 - di) * (1 - dj)
-                        + field[j0, i1] * di * (1 - dj)
-                        + field[j1, i0] * (1 - di) * dj
-                        + field[j1, i1] * di * dj
-                    )
-
-            elif fn == "Fieldscope2D":
-                # FieldScope2D: pass through 2D field
-                field = inputs.get(0, np.zeros((1, 1)))
-                out_val = np.atleast_2d(field)
-
-            elif fn == "Fieldslice":
-                # FieldSlice: extract 1D slice from 2D field
-                field = inputs.get(0, None)
-                if field is None or not isinstance(field, np.ndarray) or field.ndim != 2:
-                    out_val = np.array([0.0])
-                else:
-                    Ny_f, Nx_f = field.shape
-                    direction = block.params.get("slice_direction", "x")
-                    position = float(block.params.get("slice_position", 0.5))
-                    if direction.lower() == "x":
-                        j = int(position * (Ny_f - 1))
-                        j = max(0, min(Ny_f - 1, j))
-                        out_val = field[j, :]
-                    else:
-                        i = int(position * (Nx_f - 1))
-                        i = max(0, min(Nx_f - 1, i))
-                        out_val = field[:, i]
-
-            elif fn in ("Statevariable", "StateVariable"):
-                # StateVariable: manage discrete state across iterations
-                # State is stored in block.params for persistence across replay steps
-                # Key insight: We must update state from PREVIOUS iteration's computed input
-                # before outputting, not after.
-                # Re-initialize whenever _init_start_ is True (mirroring the
-                # Hysteresis branch) so reset_memblocks takes effect across
-                # runs; otherwise a second run would keep the previous run's
-                # final state instead of resetting to initial_value.
-                if block.params.get("_init_start_", True) or "_replay_state_" not in block.params:
-                    initial = block.params.get("initial_value", [1.0])
-                    if isinstance(initial, str):
-                        try:
-                            initial = safe_literal(initial)
-                        except (SafeEvalError, ValueError, SyntaxError):
-                            initial = [1.0]
-                    # Preserve full vector state, not just first element
-                    block.params["_replay_state_"] = np.atleast_1d(initial).copy()
-                    block.params["_replay_pending_"] = None  # Input from previous step
-                    block.params["_init_start_"] = False
-
-                # First: Apply pending update from previous iteration
-                if block.params["_replay_pending_"] is not None:
-                    block.params["_replay_state_"] = block.params["_replay_pending_"]
-                    block.params["_replay_pending_"] = None
-
-                # Output current state (preserve vector or return scalar if 1D)
-                state = block.params["_replay_state_"]
-                out_val = state if np.atleast_1d(state).size > 1 else float(np.atleast_1d(state)[0])
-
-                # Store input for next iteration (will be applied next time step)
-                if 0 in inputs:
-                    new_val = inputs[0]
-                    # Preserve full vector, not just first element
-                    block.params["_replay_pending_"] = np.atleast_1d(new_val).copy()
-
-            elif fn == "Mathfunction":
-                # Keep the input as an array so vector signals work:
-                # float(...) raises on a multi-element array (numpy 2.x).
-                val = np.asarray(inputs.get(0, 0.0), dtype=float)
-                # Check both 'function' and 'expression' keys for backward compatibility
-                func_raw = block.params.get("function", block.params.get("expression", "sin"))
-                func = str(func_raw).lower()
-
-                try:
-                    if func == "sin":
-                        out_val = np.sin(val)
-                    elif func == "cos":
-                        out_val = np.cos(val)
-                    elif func == "tan":
-                        out_val = np.tan(val)
-                    elif func == "asin":
-                        with np.errstate(invalid="ignore"):
-                            out_val = np.where(
-                                np.abs(val) <= 1, np.arcsin(np.clip(val, -1.0, 1.0)), 0.0
-                            )
-                    elif func == "acos":
-                        with np.errstate(invalid="ignore"):
-                            out_val = np.where(
-                                np.abs(val) <= 1, np.arccos(np.clip(val, -1.0, 1.0)), 0.0
-                            )
-                    elif func == "atan":
-                        out_val = np.arctan(val)
-                    elif func == "exp":
-                        out_val = np.exp(val)
-                    elif func == "log":
-                        with np.errstate(divide="ignore", invalid="ignore"):
-                            out_val = np.where(val > 0, np.log(np.where(val > 0, val, 1.0)), 0.0)
-                    elif func == "log10":
-                        with np.errstate(divide="ignore", invalid="ignore"):
-                            out_val = np.where(val > 0, np.log10(np.where(val > 0, val, 1.0)), 0.0)
-                    elif func == "sqrt":
-                        out_val = np.where(val >= 0, np.sqrt(np.where(val >= 0, val, 0.0)), 0.0)
-                    elif func == "square":
-                        out_val = val * val
-                    elif func == "sign":
-                        out_val = np.sign(val)
-                    elif func == "abs":
-                        out_val = np.abs(val)
-                    elif func == "ceil":
-                        out_val = np.ceil(val)
-                    elif func == "floor":
-                        out_val = np.floor(val)
-                    elif func == "reciprocal":
-                        out_val = np.where(val != 0, 1.0 / np.where(val != 0, val, 1.0), 0.0)
-                    elif func == "cube":
-                        out_val = val * val * val
-                    else:
-                        # Python expression fallback (vectorized: no float()).
-                        out_val = safe_expr(str(func_raw), variables={"u": val, "t": t})
-                except (ValueError, ZeroDivisionError):
-                    out_val = 0.0
-
-            elif fn == "Hysteresis":
-                # Relay latch state is scalar; reduce vector inputs safely.
-                val = float(np.ravel(inputs.get(0, 0.0))[0])
-                upper = float(block.params.get("upper", 0.5))
-                lower = float(block.params.get("lower", -0.5))
-                high_val = float(block.params.get("high", 1.0))
-                low_val = float(block.params.get("low", 0.0))
-
-                # Get or initialize persistent state for replay (in exec_params,
-                # not on the block instance).
-                # Re-initialize whenever _init_start_ is True so reset_memblocks takes effect.
-                if (
-                    block.exec_params.get("_init_start_", True)
-                    or "_replay_hyst_state_" not in block.exec_params
-                ):
-                    block.exec_params["_replay_hyst_state_"] = low_val
-                    block.exec_params["_init_start_"] = False
-
-                if val >= upper:
-                    block.exec_params["_replay_hyst_state_"] = high_val
-                elif val <= lower:
-                    block.exec_params["_replay_hyst_state_"] = low_val
-
-                out_val = block.exec_params["_replay_hyst_state_"]
-
-            elif fn == "Demux":
-                # Split the vector input into N consecutive sub-vectors of
-                # length output_shape each (mirrors blocks/demux.py). Port
-                # 0 is the primary out_val (stored at signals[b_name]);
-                # secondary ports use the "{b_name}_out{i}" convention.
-                arr = np.atleast_1d(np.asarray(inputs.get(0, 0.0), dtype=float)).flatten()
-                output_shape = int(block.params.get("output_shape", 1))
-                if output_shape < 1:
-                    output_shape = 1
-                n_outputs = int(block.params.get("_outputs_", getattr(block, "out_ports", 1)))
-                if n_outputs < 1:
-                    n_outputs = 1
-                out_val = arr[0:output_shape]
-                for p in range(1, n_outputs):
-                    current_signals[b_name + f"_out{p}"] = arr[
-                        p * output_shape : (p + 1) * output_shape
-                    ]
-
-            elif fn == "Fieldprobe":
-                # FieldProbe: Extract value at position from field array
-                field = inputs.get(0, np.array([0.0]))
-                field = np.atleast_1d(field).flatten()
-
-                position = float(block.params.get("position", 0.5))
-                mode = block.params.get("position_mode", "normalized")
-                L = float(block.params.get("L", 1.0))
-                N = len(field)
-
-                if N == 0:
-                    out_val = 0.0
-                else:
-                    if mode == "normalized":
-                        idx_float = position * (N - 1)
-                    else:
-                        idx_float = (position / L) * (N - 1)
-
-                    idx_float = max(0, min(N - 1, idx_float))
-                    idx_low = int(np.floor(idx_float))
-                    idx_high = min(idx_low + 1, N - 1)
-                    frac = idx_float - idx_low
-
-                    out_val = field[idx_low] * (1 - frac) + field[idx_high] * frac
-
-            elif fn == "Fieldscope":
-                # FieldScope: Store field for 2D visualization
-                field = inputs.get(0, np.array([0.0]))
-                out_val = np.atleast_1d(field).flatten()
-
-            elif fn in ("Terminator", "Display", "Scope"):
-                # Sinks: nothing to compute. A Scope in particular must NOT
-                # reach the execute() fallback below -- ScopeBlock.execute
-                # writes its own 'vector' into the params dict it is given,
-                # which would clobber the replay history recorded further
-                # down (the fallback used to be handed raw `params`, so the
-                # collision was invisible; it now gets exec_params).
-                pass
-
+                # The kernel reads its inputs from step.signals (same keys the
+                # replay uses) and writes its primary output there itself.
+                executor(t, y_step, replay_dy, step.signals)
+                out_val = step.signals.get(b_name, 0.0)
             else:
-                # Fallback: call block.execute() for unhandled block types
-                # This handles optimization primitives and custom blocks.
-                # Pass the *resolved* params (runtime_params) -- raw params
-                # still hold workspace-variable names as strings -- and the
-                # replay step, which stateful blocks need to advance.
-                if block.block_instance is not None:
-                    try:
-                        result = block.block_instance.execute(
-                            time=t,
-                            inputs=inputs,
-                            params=runtime_params(block),
-                            dtime=replay_dt,
-                        )
-                        if result and 0 in result:
-                            out_val = result[0]
-                    except Exception as e:
-                        if b_name not in fallback_failed:
-                            fallback_failed.add(b_name)
-                            logger.warning(
-                                "Replay fallback execute() failed for %s (%s): %s. "
-                                "Its recorded signal stays 0.0 for this run "
-                                "(further failures for this block are not logged).",
-                                b_name,
-                                block.block_fn,
-                                e,
-                                exc_info=True,
-                            )
-
-            # Store
-            current_signals[b_name] = out_val
-            # logger.info(f"DEBUG Replay {b_name} t={t:.2f} out={out_val}") # Uncomment for verbose debug
-
-            # Store in Block History for Scopes
-            # ScopePlotter expects `block.out_history` list? Or `block.params['vector']`?
-            # DSim.execution_loop doesn't seem to append to `out_history` explicitly?
-            # Ah, `Scope` blocks have internal `execute` that saves to `vector`.
-            # Standard blocks don't save history unless probed.
-            # But Scopes DO.
-            if fn == "Scope":
-                # Scope can have multiple inputs - collect all of them
-                # Ensure we write to exec_params as ScopePlotter prioritizes it
-                if not hasattr(block, "exec_params"):
-                    block.exec_params = block.params.copy()
-
-                # Get number of input ports
-                n_inputs = block.in_ports if hasattr(block, "in_ports") else 1
-
-                # Collect and flatten all input values (matching Scope.execute() behavior)
-                # Each port value is flattened to 1D so vector signals (e.g. StateSpace
-                # with 4 outputs) are properly expanded into individual components.
-                combined = []
-                for port in range(n_inputs):
-                    val = inputs.get(port, 0.0)
-                    combined.append(np.atleast_1d(val).flatten())
-                new_sample = np.concatenate(combined) if combined else np.array([0.0])
-                vec_dim = len(new_sample)
-
-                # Initialize the history buffer and labels on the first
-                # timestep.  The sample count is known up front, so the
-                # history is preallocated as the (num_steps, vec_dim) array
-                # the plotter ultimately wants, instead of growing a Python
-                # list of arrays and converting it at the end.
-                if i == 0:
-                    try:
-                        sample_dtype = np.promote_types(new_sample.dtype, np.float64)
-                    except TypeError:
-                        sample_dtype = float
-                    block.exec_params["vector"] = np.zeros((num_steps, vec_dim), dtype=sample_dtype)
-                    block.exec_params["vec_dim"] = vec_dim
-                    # Set vec_labels from 'labels' param (Scope uses 'labels', plotter reads 'vec_labels')
-                    labels_raw = block.params.get("labels", block.exec_params.get("labels", ""))
-                    # Guard against non-string labels (e.g. a list/dict):
-                    # calling string methods would raise AttributeError
-                    # that the broad except would mask as a generic failure.
-                    if isinstance(labels_raw, str) and labels_raw and labels_raw != "default":
-                        labels_list = [
-                            l.strip() for l in labels_raw.replace(" ", "").split(",") if l.strip()
-                        ]
-                        # Pad or trim to match actual signal dimension
-                        while len(labels_list) < vec_dim:
-                            labels_list.append(f"{b_name}-{len(labels_list)}")
-                        labels_list = labels_list[:vec_dim]
-                    else:
-                        labels_list = [f"{b_name}-{j}" for j in range(vec_dim)]
-                    block.exec_params["vec_labels"] = labels_list
-
-                history = block.exec_params["vector"]
-                width = history.shape[1]
-                if new_sample.size == width:
-                    history[i] = new_sample
+                handler = REPLAY_HANDLERS.get(fn)
+                if handler is not None:
+                    out_val = handler(step, block, inputs)
                 else:
-                    # A width change mid-run used to build a ragged list
-                    # that np.array() rejected outright at the end of the
-                    # replay (losing the whole trace); keep the first
-                    # width, pad/truncate, and say so once.
-                    n_common = min(new_sample.size, width)
-                    history[i, :n_common] = new_sample[:n_common]
-                    if b_name not in scope_width_warned:
-                        scope_width_warned.add(b_name)
-                        logger.warning(
-                            "Scope %s: input width changed mid-run (%d -> %d); "
-                            "padding/truncating to the first width.",
-                            b_name,
-                            width,
-                            new_sample.size,
-                        )
+                    out_val = replay_fallback(block, inputs, t, replay_dt, fallback_failed)
+            step.signals[b_name] = out_val
 
-                if i == num_steps - 1:
-                    vec = block.exec_params["vector"]
-                    logger.info(
-                        f"Replay Scope {b_name}: vec_dim={vec_dim}, samples={len(vec)}, labels={block.exec_params.get('vec_labels')}"
-                    )
+            recorder = RECORDERS.get(fn)
+            if recorder is not None:
+                recorder(run, block, inputs, i, t)
 
-            if fn == "Fieldscope":
-                # FieldScope: Store field history for 2D heatmap
-                field = inputs.get(0, np.array([0.0]))
-                field = np.atleast_1d(field).flatten()
-
-                if not hasattr(block, "exec_params"):
-                    block.exec_params = block.params.copy()
-
-                if i == 0:
-                    block.exec_params["_field_history_"] = []
-                    block.exec_params["_time_history_"] = []
-
-                block.exec_params["_field_history_"].append(field.copy())
-                block.exec_params["_time_history_"].append(t)
-
-                if i == num_steps - 1:
-                    logger.info(
-                        f"DEBUG Replay FieldScope {b_name}: field_len={len(field)}, history_len={len(block.exec_params['_field_history_'])}"
-                    )
-
-            if fn == "Fieldscope2D":
-                # FieldScope2D: Store 2D field history for animated heatmap
-                field = inputs.get(0, np.zeros((1, 1)))
-                field = np.atleast_2d(field)
-
-                if not hasattr(block, "exec_params"):
-                    block.exec_params = block.params.copy()
-
-                if i == 0:
-                    block.exec_params["_field_history_2d_"] = []
-                    block.exec_params["_time_history_"] = []
-
-                # Store every N frames to reduce memory
-                sample_interval = int(block.params.get("sample_interval", 5))
-                if i % sample_interval == 0:
-                    block.exec_params["_field_history_2d_"].append(field.copy())
-                    block.exec_params["_time_history_"].append(t)
-
-                if i == num_steps - 1:
-                    logger.info(
-                        f"DEBUG Replay FieldScope2D {b_name}: field_shape={field.shape}, history_len={len(block.exec_params['_field_history_2d_'])}"
-                    )
-
-    # Finalize Scope Vectors (convert to numpy)
-    for block in current_blocks:
-        if block.block_fn == "Scope":
-            # Already the preallocated (num_steps, vec_dim) array in the
-            # normal path; asarray only matters for a leftover list from a
-            # previous interpreted run when the replay recorded no steps.
-            if hasattr(block, "exec_params") and "vector" in block.exec_params:
-                block.exec_params["vector"] = np.asarray(block.exec_params["vector"])
-        elif block.block_fn == "FieldScope":
-            if hasattr(block, "exec_params") and "_field_history_" in block.exec_params:
-                block.exec_params["_field_history_"] = np.array(
-                    block.exec_params["_field_history_"]
-                )
-            if hasattr(block, "exec_params") and "_time_history_" in block.exec_params:
-                block.exec_params["_time_history_"] = np.array(block.exec_params["_time_history_"])
-        elif block.block_fn == "FieldScope2D":
-            if hasattr(block, "exec_params") and "_field_history_2d_" in block.exec_params:
-                block.exec_params["_field_history_2d_"] = np.array(
-                    block.exec_params["_field_history_2d_"]
-                )
-            if hasattr(block, "exec_params") and "_time_history_" in block.exec_params:
-                block.exec_params["_time_history_"] = np.array(block.exec_params["_time_history_"])
+    finalize_recorders(current_blocks)
 
 
 def run_compiled_simulation(
