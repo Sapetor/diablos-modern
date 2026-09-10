@@ -84,31 +84,8 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
-      # Qt6's platform plugins (offscreen included, which still loads the
-      # xcb-adjacent stack) link a wider set of system libraries than Qt5 did;
-      # libxcb-cursor0 in particular is a Qt6-only addition. Keep this list in
-      # sync with docs.yml, release.yml (linux) and
-      # docs/getting-started/installation.md.
       - name: Install Qt runtime system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libgl1 \
-            libegl1 \
-            libdbus-1-3 \
-            libfontconfig1 \
-            libfreetype6 \
-            libxkbcommon0 \
-            libxkbcommon-x11-0 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-image0 \
-            libxcb-keysyms1 \
-            libxcb-randr0 \
-            libxcb-render-util0 \
-            libxcb-shape0 \
-            libxcb-xfixes0 \
-            libxcb-xinerama0
+        uses: ./.github/actions/qt-apt-deps
 
       - name: Install Python dependencies
         run: |

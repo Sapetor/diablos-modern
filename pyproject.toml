@@ -40,16 +40,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-# Mirrors requirements.txt. Upper bounds guard reproducibility against
-# breaking major releases of the numerically-sensitive core.
-#
-# The two PyQt6 lines are one requirement split by an environment marker:
-# PyQt6 6.11 ships cp310-abi3 wheels only, but 3.9 is still the supported
-# baseline (see `requires-python` above and [tool.ruff] target-version), so
-# 3.9 installs get the last 3.9-compatible series. Collapse to a single
-# "PyQt6>=6.7" when the 3.9 leg is retired. matplotlib >= 3.5 is the release
-# that added the binding-agnostic `QtAgg` backend; pyqtgraph >= 0.13 is the
-# first with PyQt6 support.
+# Mirrors requirements.txt, which explains the bounds (including why PyQt6 is
+# one requirement split by a Python-version marker).
 dependencies = [
     "numpy>=1.20.0,<3.0",
     "matplotlib>=3.5.0",

@@ -161,6 +161,6 @@ Key files: `diablos.spec` (PyInstaller config), `lib/app_paths.py` (frozen vs de
 
 ## Key Dependencies
 
-- **Runtime**: PyQt6 (>= 6.7; pinned `<6.11` on Python 3.9, whose wheels 6.11 dropped), numpy, scipy, matplotlib (>= 3.5, for the `QtAgg` backend), pyqtgraph (>= 0.13), Pillow, tqdm
+- **Runtime**: PyQt6 (>= 6.7; the Python 3.9 pin is explained in `requirements.txt`), numpy, scipy, matplotlib (>= 3.5), pyqtgraph (>= 0.13), Pillow, tqdm
 - **GIF export**: Pillow >= 8.0.0
 - **MP4 export**: ffmpeg (external, `brew install ffmpeg`)

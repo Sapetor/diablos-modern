@@ -12,18 +12,16 @@ All notable changes to DiaBloS will be documented in this file.
 - **`run --verify`** on the headless CLI prints the same post-run verification report the GUI logs (Display values, StateVariable convergence, Scope first→last samples judged by each Scope's `verify_mode`) and exits with code 3 when a check fails, so example diagrams can be checked in CI.
 
 ### Changed
-- **Migrated the GUI from PyQt5 to PyQt6.** PyQt5 is end-of-life-adjacent and no
-  longer gets Qt fixes; the whole UI, the test suite and the packaged builds now
-  run on PyQt6 6.7+. The supported Python baseline is unchanged (3.9 + 3.12 in
-  CI), but PyQt6 6.11 dropped Python 3.9, so the dependency is pinned
-  `PyQt6>=6.7,<6.11` on 3.9 and `PyQt6>=6.7` on 3.10+ via environment markers;
-  the split goes away when the 3.9 leg is retired. Along with it: matplotlib
-  floor raised to 3.5 (the binding-agnostic `QtAgg` backend), pyqtgraph floor to
-  0.13 (first release with PyQt6 support), and `PyQt5-stubs` dropped (PyQt6
-  ships its own type stubs). `diablos.spec` now excludes PyQt5/PySide so a dev
-  machine with several Qt bindings still produces a Qt6-only bundle, and the CI
-  and Read the Docs jobs install Qt6's wider set of system libraries
-  (`libxcb-cursor0` and friends).
+- **Migrated the GUI from PyQt5 to PyQt6** (6.7+). The Python baseline stays
+  3.9, so the dependency is pinned `<6.11` on 3.9 only (6.11 dropped 3.9
+  wheels); matplotlib now needs 3.5+ (`QtAgg`), pyqtgraph 0.13+, and
+  `PyQt5-stubs` is gone. The PyInstaller spec excludes other Qt bindings, and
+  the CI, release and Read the Docs jobs install Qt6's system libraries.
+  Behaviour differences the suite surfaced were fixed in code: `QPainterPath`
+  takes `QPointF` only, `QFont.StyleStrategy` is no longer an int (its `int()`
+  was crashing the palette drag pixmap), wheel/gesture/drop events lost
+  `pos()`, `QApplication.desktop()` and `QRegExp` are gone, and `QMenu.exec()`
+  blocks under the offscreen platform.
 - Block moves no longer convert bezier wires into Manhattan routes. Bezier wires stay curved; only orthogonal, auto-routed wires are re-routed, and hand-bent wires keep their bends (end segments stay axis-aligned). **Auto-route** switches the routed wires to orthogonal mode so the routing menu reflects what is drawn.
 - Orthogonal wires have small rounded corners; the router keeps clear of block name labels.
 - Arrowheads sit in front of the port disc instead of under it, wire labels sit at the true midpoint of the drawn path, and crossing wires show an over/under gap.

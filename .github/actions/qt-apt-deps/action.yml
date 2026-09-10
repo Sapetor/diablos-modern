@@ -1,0 +1,32 @@
+name: Install Qt6 runtime system libraries
+description: >-
+  The apt packages Qt6's platform plugins link against on ubuntu-latest
+  (offscreen included, which still loads the xcb-adjacent stack). Qt6 needs a
+  wider set than Qt5 did; libxcb-cursor0 is the classic Qt6-only addition.
+  readthedocs.yaml (build.apt_packages) and
+  docs/getting-started/installation.md carry the same list for environments
+  that cannot use this action.
+runs:
+  using: composite
+  steps:
+    - name: Install Qt runtime system libraries
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libgl1 \
+          libegl1 \
+          libdbus-1-3 \
+          libfontconfig1 \
+          libfreetype6 \
+          libxkbcommon0 \
+          libxkbcommon-x11-0 \
+          libxcb-cursor0 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-shape0 \
+          libxcb-xfixes0 \
+          libxcb-xinerama0
