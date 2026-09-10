@@ -469,10 +469,13 @@ complexity 25, all listed here.
   re-paste, empty clipboard, Subsystem with sub-blocks/lines/ports, masked
   Subsystem, bad connection indices, no history manager, mid-paste failure) — all
   identical incl. signals and undo stack. Tests: `tests/unit/test_clipboard_paste_phases.py` (26).
-  - [ ] Found while verifying (pre-existing, kept identical): (a) pasting a
-    Subsystem drops every copied connection to/from it — `_build_subsystem`
-    creates it with 0 in/out ports and never re-runs `update_Block()`, so
-    `in_coords`/`out_coords` are empty when `_resolve_endpoints` runs; (b) pasted
+  - [x] (a) Fixed 2026-09-10: pasting a Subsystem dropped every copied connection
+    to/from it — `_build_subsystem` created it with 0 in/out ports and never re-ran
+    `update_Block()`. New `_restore_subsystem_ports` sets `in_ports`/`out_ports`,
+    deep-copies `ports`/`ports_map` and runs `update_Block()` (same as
+    `FileService._construct_subsystem`) before connections are recreated. Tests:
+    `tests/unit/test_clipboard_paste_subsystem.py` (6, all failed before).
+  - [ ] Found while verifying (pre-existing, kept identical): (b) pasted
     Subsystems get `username="Subsystem{sid}"` vs `name="subsystem{sid}"`, so
     `apply_mask_appearance` (`lib/masks.py:383`) never adopts the mask name; (c) a
     failure mid-paste leaves the already-pasted blocks in place with an undo entry

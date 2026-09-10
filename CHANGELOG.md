@@ -20,6 +20,7 @@ All notable changes to DiaBloS will be documented in this file.
 - The `examples/example_usage.py` demo script and the `lib/improvements.py` helper module it showcased. The checks the GUI still runs before a simulation (duplicate input ports, algebraic loops, block integrity) now live in `lib/diagram_validator.py`; the frame timer moved to `modern_ui/perf_helper.py`.
 
 ### Fixed
+- Copy/paste of a Subsystem keeps the connections to and from it; the pasted Subsystem now gets its ports and geometry before wires are recreated.
 - A block whose `execute()` raises on the interpreted solver path is now reported as that block's error (`Block '<name>' failed: ...`) instead of crashing the run with `argument of type 'bool' is not iterable` (`SimulationEngine.execute_block` returns an error dict).
 - The post-run verification report showed `---` for every Display block (it read the value from the wrong parameter dict); it now shows the displayed value.
 - Clicking or hovering a curved wire tested the straight chord between its ports, so clicks on the curve often missed (and clicks on empty space along the chord selected it).

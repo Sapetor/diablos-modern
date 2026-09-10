@@ -330,21 +330,43 @@ class ClipboardManager:
         new_block.category = block_data.get("category", "Other")
         if "sub_blocks" in block_data:
             self._restore_subsystem_contents(new_block, block_data)
+        self._restore_subsystem_ports(new_block, block_data)
         return new_block
 
     @staticmethod
     def _restore_subsystem_contents(new_block, block_data):
-        """Copy the internal blocks, lines and port maps captured at copy time onto ``new_block``."""
+        """Copy the internal blocks and lines captured at copy time onto ``new_block``."""
         try:
             new_block.sub_blocks = copy.deepcopy(block_data["sub_blocks"])
             new_block.sub_lines = copy.deepcopy(block_data["sub_lines"])
-            new_block.ports = copy.deepcopy(block_data.get("ports", {}))
-            new_block.ports_map = copy.deepcopy(block_data.get("ports_map", {}))
             logger.info(
                 f"Restored {len(new_block.sub_blocks)} internal blocks for {new_block.name}"
             )
         except Exception as e:
             logger.error(f"Error restoring subsystem contents for {new_block.name}: {e}")
+
+    @staticmethod
+    def _restore_subsystem_ports(new_block, block_data):
+        """Give the pasted Subsystem the copied external ports and their geometry.
+
+        ``Subsystem()`` is constructed with 0 in/out ports and no ``ports`` dict,
+        so without this step ``in_coords``/``out_coords`` stay empty and every
+        copied connection touching the subsystem is skipped when the lines are
+        recreated. Mirrors ``FileService._construct_subsystem``: restore the
+        port counts, the ``ports`` layout and the index->name map, then run
+        ``update_Block()`` so the port coordinates exist before any line is built.
+        """
+        new_block.in_ports = block_data.get("in_ports", 0)
+        new_block.out_ports = block_data.get("out_ports", 0)
+        new_block.ports = copy.deepcopy(block_data.get("ports") or {})
+        new_block.ports_map = copy.deepcopy(block_data.get("ports_map") or {})
+        try:
+            new_block.update_Block()
+        except Exception as e:
+            logger.error(
+                f"Subsystem update_Block failed after paste (name={new_block.name}): {e}. "
+                f"Pasted subsystem may have stale/empty port geometry."
+            )
 
     @staticmethod
     def _keep_mask_appearance(new_block):
