@@ -435,9 +435,19 @@ complexity 25, all listed here.
   `block.params["_display_value_"]` while the block writes it into the dict
   `execute()` receives (`exec_params`); it now reads through `runtime_params`
   like the renderer.
-- [ ] **`SubsystemManager.create_subsystem_from_selection`** (406 lines,
-  C901 = 43); `ClipboardManager.paste_blocks` (228); `solve_with_events` (232).
-  Large but routine; extract when next touched.
+- [x] **`SubsystemManager.create_subsystem_from_selection`** (was 406 lines,
+  C901 = 43) — done 2026-09-10, now ~90 lines (C901 ≤ 6). The four near-identical
+  port-creation blocks (boundary in/out, unconnected in/out) collapsed into
+  `_add_inport` / `_add_outport`; pure helpers at module level: `_bounding_box`,
+  `_classify_lines`, `_unconnected_ports`, `_port_point`, `_reroute_internal_lines`,
+  `_add_internal_line`, `_next_sid`; methods `_new_subsystem_block`,
+  `_move_into_subsystem`. Verified by running the old (git HEAD) and new module on
+  six selection scenarios (unconnected pair, chain with boundary in+out+internal
+  line, partially connected Sum, fan-out from one port, single block, empty) and
+  comparing ports, sub-blocks, sub-lines (incl. routed points), remaining lines
+  and dirty flag — all identical. Tests: `tests/unit/test_subsystem_creation_helpers.py`.
+- [ ] **Remaining large routine functions**: `ClipboardManager.paste_blocks` (228
+  lines); `solve_with_events` (232). Extract when next touched.
 - [ ] **Palette glyphs** — `modern_palette._draw_glyph` (156 lines, C901 = 36)
   is a second icon system with its own switch; reuse the blocks' `draw_icon`
   paths (mapped into the palette tile) so a block's icon is defined once.
