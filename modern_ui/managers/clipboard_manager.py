@@ -5,7 +5,7 @@ Handles copy, paste, cut, and duplicate operations.
 
 import logging
 import copy
-from PyQt5.QtCore import QRect, QPoint
+from PyQt6.QtCore import QRect, QPoint
 
 from blocks.subsystem import Subsystem
 from lib.i18n import tr

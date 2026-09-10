@@ -7,7 +7,7 @@ then updates existing SignalPlot windows in-place.
 
 import logging
 import numpy as np
-from PyQt5.QtCore import QObject, QTimer, Qt
+from PyQt6.QtCore import QObject, QTimer, Qt
 
 from lib.i18n import tr
 
@@ -68,9 +68,9 @@ class TuningController(QObject):
         try:
             was_visible = plotty.isVisible()
             if on_top:
-                plotty.setWindowFlags(plotty.windowFlags() | Qt.WindowStaysOnTopHint)
+                plotty.setWindowFlags(plotty.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
             else:
-                plotty.setWindowFlags(plotty.windowFlags() & ~Qt.WindowStaysOnTopHint)
+                plotty.setWindowFlags(plotty.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
             # setWindowFlags hides the widget, so re-show if it was visible
             if was_visible:
                 plotty.show()

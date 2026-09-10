@@ -1,7 +1,7 @@
 import unittest
 import os
 import sys
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -38,7 +38,7 @@ class TermBlock(BaseBlock):
         return {}
 
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 
 class TestVariableParams(unittest.TestCase):
@@ -96,7 +96,7 @@ class TestVariableParams(unittest.TestCase):
         self.sim.blocks_list = [step, gain, term]
         # Connect blocks using add_line
         # Step output 0 -> Gain input 0
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         # Dummy points for connection
         p1 = QPoint(100, 50)

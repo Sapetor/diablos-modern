@@ -7,7 +7,7 @@ geometry the draw path uses, and the selection/miss guards.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 from modern_ui.renderers.block_renderer import BlockRenderer
 

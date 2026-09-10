@@ -15,8 +15,8 @@ user store.
 """
 
 import pytest
-from PyQt5.QtCore import Qt, QSettings, QEvent
-from PyQt5.QtGui import QKeyEvent
+from PyQt6.QtCore import Qt, QSettings, QEvent
+from PyQt6.QtGui import QKeyEvent
 
 import modern_ui.widgets.modern_palette as mp
 from modern_ui.widgets.modern_palette import (
@@ -43,7 +43,7 @@ def isolated_settings(tmp_path, monkeypatch):
     ini = str(tmp_path / "palette_settings.ini")
 
     def _factory(*_args, **_kwargs):
-        return QSettings(ini, QSettings.IniFormat)
+        return QSettings(ini, QSettings.Format.IniFormat)
 
     monkeypatch.setattr(mp, "QSettings", _factory)
     return _factory
@@ -138,7 +138,7 @@ class TestKeyboardNavigation:
     def test_rows_are_focusable(self, palette):
         rows = palette.findChildren(CompactBlockRow)
         assert rows
-        assert all(r.focusPolicy() == Qt.StrongFocus for r in rows)
+        assert all(r.focusPolicy() == Qt.FocusPolicy.StrongFocus for r in rows)
 
     def test_visible_rows_helper_constructs(self, palette):
         rows = palette.visible_rows()
@@ -148,7 +148,7 @@ class TestKeyboardNavigation:
     def test_down_arrow_from_search_focuses_first_row(self, palette):
         rows = palette.visible_rows()
         assert rows
-        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier)
+        ev = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
         handled = palette.eventFilter(palette.search_bar, ev)
         assert handled is True
         assert rows[0].hasFocus()
@@ -156,7 +156,7 @@ class TestKeyboardNavigation:
     def test_up_arrow_from_search_focuses_last_row(self, palette):
         rows = palette.visible_rows()
         assert rows
-        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Up, Qt.NoModifier)
+        ev = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Up, Qt.KeyboardModifier.NoModifier)
         handled = palette.eventFilter(palette.search_bar, ev)
         assert handled is True
         assert rows[-1].hasFocus()
@@ -167,7 +167,7 @@ class TestKeyboardNavigation:
         row = rows[0]
         received = []
         palette.block_drag_started.connect(lambda mb: received.append(mb))
-        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier)
+        ev = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Return, Qt.KeyboardModifier.NoModifier)
         row.keyPressEvent(ev)
         assert received and received[0] is row.menu_block
 
@@ -175,7 +175,7 @@ class TestKeyboardNavigation:
         rows = palette.visible_rows()
         if len(rows) < 2:
             pytest.skip("need at least two visible rows")
-        rows[0].setFocus(Qt.OtherFocusReason)
-        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_Down, Qt.NoModifier)
+        rows[0].setFocus(Qt.FocusReason.OtherFocusReason)
+        ev = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
         rows[0].keyPressEvent(ev)
         assert rows[1].hasFocus()

@@ -13,7 +13,7 @@ Run offscreen:
 import numpy as np
 import pytest
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from lib.plotting.signal_plot import SignalPlot
 
@@ -160,12 +160,12 @@ class TestPreviousRunOverlay:
         plot._apply_theme()
 
         overlay_pen = plot.prev_curves[0].opts["pen"]
-        assert overlay_pen.style() == Qt.DashLine
+        assert overlay_pen.style() == Qt.PenStyle.DashLine
         assert overlay_pen.width() == 1
         assert overlay_pen.color().alpha() < 255
         # Current curve stays solid, full width and opaque
         current_pen = plot.curves[0].opts["pen"]
-        assert current_pen.style() == Qt.SolidLine
+        assert current_pen.style() == Qt.PenStyle.SolidLine
         assert current_pen.width() == 2
         assert current_pen.color().alpha() == 255
         plot.close()
@@ -257,8 +257,9 @@ class TestExportFigure:
 
     def test_export_success_shows_no_error_dialog(self, qapp, monkeypatch, tmp_path):
         # Regression: the success feedback once raised TypeError after saving
-        # (PyQt5 lacks QTimer.singleShot's context-object overload), landing in
-        # the except branch and showing "Export Failed" despite a written file.
+        # (it called QTimer.singleShot with a context object the binding did not
+        # accept), landing in the except branch and showing "Export Failed"
+        # despite a written file.
         plot = self._plot_with_data(qapp)
         path = tmp_path / "figure.pdf"
         self._fake_save_dialog(monkeypatch, path)

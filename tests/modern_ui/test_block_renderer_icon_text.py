@@ -8,7 +8,7 @@ and nothing here appends to the (shared, memoized) draw_icon path any more.
 """
 
 import pytest
-from PyQt5.QtGui import QPainterPath
+from PyQt6.QtGui import QPainterPath
 
 from modern_ui.renderers import block_renderer as br
 from modern_ui.renderers.block_renderer import BlockRenderer

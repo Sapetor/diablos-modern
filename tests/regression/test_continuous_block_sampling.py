@@ -40,7 +40,7 @@ THE FIX
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _new_dsim(sim_time, sim_dt):

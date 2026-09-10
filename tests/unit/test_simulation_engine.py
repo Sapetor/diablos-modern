@@ -3,7 +3,7 @@ Unit tests for SimulationEngine class.
 """
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine

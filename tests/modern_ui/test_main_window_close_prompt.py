@@ -15,7 +15,7 @@ only removed once the diagram is saved or the changes are discarded.
 """
 
 import pytest
-from PyQt5.QtGui import QCloseEvent
+from PyQt6.QtGui import QCloseEvent
 
 
 @pytest.fixture(scope="module")

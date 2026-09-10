@@ -20,7 +20,7 @@ the diagram mid-experiment.
 
 import logging
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from lib.analysis.monte_carlo import MonteCarloRunner
 

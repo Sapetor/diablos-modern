@@ -6,7 +6,7 @@ particularly for blocks with multiple input/output ports.
 """
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.simulation.block import DBlock
 from blocks.subsystem import Subsystem
@@ -15,7 +15,7 @@ from blocks.subsystem import Subsystem
 @pytest.fixture
 def sample_colors():
     """Provide sample color palette for tests."""
-    from PyQt5.QtGui import QColor
+    from PyQt6.QtGui import QColor
 
     return {
         "black": QColor(0, 0, 0),

@@ -6,7 +6,7 @@ Monte Carlo actions, the window methods exist, and the empty-diagram paths are s
 """
 
 import pytest
-from PyQt5.QtWidgets import QMenu
+from PyQt6.QtWidgets import QMenu
 
 
 @pytest.mark.unit
@@ -31,7 +31,7 @@ def test_analysis_menu_and_method_wired(qapp, monkeypatch):
         assert any("Monte Carlo" in a.text() for a in analysis_menu.actions())
 
         # Empty diagram: both features show an info box (monkeypatched), no crash.
-        import PyQt5.QtWidgets as qtw
+        import PyQt6.QtWidgets as qtw
 
         calls = []
         monkeypatch.setattr(qtw.QMessageBox, "information", lambda *a, **k: calls.append(a))

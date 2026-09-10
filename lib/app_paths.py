@@ -84,6 +84,6 @@ def ui_settings():
     call site reads and writes the same store. ``QSettings`` is imported lazily
     to keep this module free of a Qt import at module scope.
     """
-    from PyQt5.QtCore import QSettings
+    from PyQt6.QtCore import QSettings
 
     return QSettings(SETTINGS_ORG, SETTINGS_APP)

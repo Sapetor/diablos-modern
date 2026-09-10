@@ -15,8 +15,8 @@ import pytest
 
 
 def _block(block_fn, name, in_ports, out_ports, params, b_type):
-    from PyQt5.QtCore import QRect
-    from PyQt5.QtGui import QColor
+    from PyQt6.QtCore import QRect
+    from PyQt6.QtGui import QColor
     from lib.simulation.block import DBlock
 
     blk = DBlock(
@@ -35,7 +35,7 @@ def _block(block_fn, name, in_ports, out_ports, params, b_type):
 
 
 def _line(src, dst):
-    from PyQt5.QtCore import QPoint
+    from PyQt6.QtCore import QPoint
     from lib.simulation.connection import DLine
 
     return DLine(

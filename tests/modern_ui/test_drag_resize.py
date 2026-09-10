@@ -15,7 +15,7 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock

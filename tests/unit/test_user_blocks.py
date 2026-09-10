@@ -571,7 +571,7 @@ class TestMenuActions:
     """The Edit menu must offer the reload and open-folder actions."""
 
     def test_edit_menu_lists_the_user_block_actions(self, qapp):
-        from PyQt5.QtWidgets import QMenuBar
+        from PyQt6.QtWidgets import QMenuBar
 
         from modern_ui.builders.menu_builder import MenuBuilder
 

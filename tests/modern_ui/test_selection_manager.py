@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 from modern_ui.managers.selection_manager import SelectionManager
 
 

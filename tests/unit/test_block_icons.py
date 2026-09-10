@@ -17,8 +17,8 @@ set cannot grow silently.
 """
 
 import pytest
-from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPixmap, QPen, QTransform
+from PyQt6.QtCore import QRect
+from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPixmap, QPen, QTransform
 
 from blocks.base_block import BaseBlock
 from lib.block_loader import load_blocks

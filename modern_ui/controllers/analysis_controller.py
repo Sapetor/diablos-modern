@@ -6,7 +6,7 @@ result-dict contract consumed by the results window. This module is HEADLESS:
 it imports no Qt. The two BaseAnalyzer frequency-domain helpers it reuses
 (``_auto_frequency_range`` and ``_compute_stability_margins``) are imported
 lazily inside :meth:`analyze` so that merely importing this controller never
-pulls in PyQt5 / pyqtgraph.
+pulls in PyQt6 / pyqtgraph.
 
 Result-dict contract (see also the results window which consumes EXACTLY this):
 

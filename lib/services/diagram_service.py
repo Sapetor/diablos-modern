@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sys
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +13,11 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
     dialog = QFileDialog(parent, title, directory)
 
     # Use Qt dialog instead of native (fixes macOS click issues)
-    dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+    dialog.setOption(QFileDialog.Option.DontUseNativeDialog, True)
 
     # Apply name filters explicitly. Passing the filter via the constructor
     # is unreliable when DontUseNativeDialog is toggled afterward — on some
-    # Qt5/macOS builds the first filter group is dropped or not selected,
+    # some macOS builds the first filter group is dropped or not selected,
     # which makes saved diagrams (*.diablos) look invisible in the dialog.
     name_filters = [f.strip() for f in filters.split(";;") if f.strip()]
     if name_filters:
@@ -25,8 +25,8 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
         dialog.selectNameFilter(name_filters[0])
 
     if save:
-        dialog.setAcceptMode(QFileDialog.AcceptSave)
-        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
         # Default-suffix the first wildcard in the first filter so users
         # who type "myfile" still get the right extension.
         first = name_filters[0] if name_filters else ""
@@ -34,8 +34,8 @@ def _create_styled_file_dialog(parent, title, directory, filters, save=False):
         if m:
             dialog.setDefaultSuffix(m.group(1))
     else:
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
 
     # Make dialog larger for better usability
     dialog.resize(900, 600)
@@ -201,7 +201,7 @@ class DiagramService:
         non-widget stub or absent.
         """
         try:
-            from PyQt5.QtWidgets import QWidget
+            from PyQt6.QtWidgets import QWidget
 
             if isinstance(self.main_window, QWidget):
                 QMessageBox.critical(self.main_window, title, message)
@@ -229,7 +229,7 @@ class DiagramService:
                 save=True,
             )
             try:
-                if dialog.exec_() == QFileDialog.Accepted:
+                if dialog.exec() == QFileDialog.DialogCode.Accepted:
                     files = dialog.selectedFiles()
                     filename = files[0] if files else ""
                 else:
@@ -296,7 +296,7 @@ class DiagramService:
                 save=False,
             )
             try:
-                if dialog.exec_() == QFileDialog.Accepted:
+                if dialog.exec() == QFileDialog.DialogCode.Accepted:
                     files = dialog.selectedFiles()
                     filename = files[0] if files else ""
                 else:

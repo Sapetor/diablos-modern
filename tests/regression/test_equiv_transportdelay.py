@@ -53,7 +53,7 @@ def _defaults(block):
 
 def _build_dsim():
     """Build a Sine -> TransportDelay -> Scope DSim from scratch."""
-    from PyQt5.QtCore import QRect, QPoint
+    from PyQt6.QtCore import QRect, QPoint
     from blocks.sine import SineBlock
     from blocks.transport_delay import TransportDelayBlock
     from blocks.scope import ScopeBlock

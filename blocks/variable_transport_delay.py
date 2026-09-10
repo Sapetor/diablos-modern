@@ -100,7 +100,7 @@ class VariableTransportDelayBlock(DelayBufferBlock):
 
     def draw_icon(self, block_rect):
         """Draw a delayed step whose shift is swept by a variability arrow."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Input step (upper band)

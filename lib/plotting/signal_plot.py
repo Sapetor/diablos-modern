@@ -2,7 +2,7 @@
 SignalPlot - Dynamic plotting widget for DiaBloS simulation output.
 
 Uses pyqtgraph for high-performance plotting of scope data.
-*WARNING: Uses PyQT5 (GPL) via pyqtgraph.*
+*WARNING: Uses PyQt6 (GPL) via pyqtgraph.*
 """
 
 import csv
@@ -12,8 +12,8 @@ from datetime import datetime
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
     QFileDialog,
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class SignalPlot(QWidget):
     """
     Class that manages the display of dynamic plots through the simulation.
-    *WARNING: It uses pyqtgraph as base (MIT license, but interacts with PyQT5 (GPL)).*
+    *WARNING: It uses pyqtgraph as base (MIT license, but interacts with PyQt6 (GPL)).*
 
     :param dt: Sampling time of the system.
     :param labels: List of names of the vectors.
@@ -282,7 +282,7 @@ class SignalPlot(QWidget):
 
     def _prev_pen(self, idx):
         """Dimmed dashed pen for the previous-run overlay in subplot ``idx``."""
-        return pg.mkPen(color=self._curve_color(idx) + "66", width=1, style=Qt.DashLine)
+        return pg.mkPen(color=self._curve_color(idx) + "66", width=1, style=Qt.PenStyle.DashLine)
 
     def _previous_trace(self, idx):
         """Return (y, step) of the held-run trace for subplot ``idx``, or None.
@@ -404,8 +404,8 @@ class SignalPlot(QWidget):
         The restore timer is parented to ``button`` so it is destroyed with the
         widget if the plot window closes before it fires — otherwise the lambda
         would touch a deleted C++ QPushButton and raise RuntimeError in the
-        event loop. (PyQt5 does not expose QTimer.singleShot's context-object
-        overload, so a parented timer is the way to get that guarantee.)
+        event loop. (A parented QTimer gives that guarantee without relying on
+        QTimer.singleShot's context-object overload.)
         """
         original_text = button.text()
         button.setText(f"✓ Exported to {os.path.basename(filepath)}")
@@ -479,7 +479,7 @@ class SignalPlot(QWidget):
         dialog.setLayout(dialog_layout)
         dialog.setMinimumWidth(400)
 
-        if dialog.exec_() != QDialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
         selected_indices = [i for i, cb in enumerate(checkboxes) if cb.isChecked()]

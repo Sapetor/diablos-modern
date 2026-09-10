@@ -4,7 +4,7 @@ Provides alignment and distribution operations for selected blocks.
 """
 
 import logging
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 logger = logging.getLogger(__name__)
 

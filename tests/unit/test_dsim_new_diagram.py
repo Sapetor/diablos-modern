@@ -6,7 +6,7 @@ raised ``AttributeError`` and did nothing.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 @pytest.mark.unit

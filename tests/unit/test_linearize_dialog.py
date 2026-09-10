@@ -11,8 +11,8 @@ and verifies:
 """
 
 import pytest
-from PyQt5.QtWidgets import QDialog
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QDialog
+from PyQt6.QtCore import Qt
 
 from lib.diagram_builder import DiagramBuilder
 from modern_ui.widgets.linearize_dialog import LinearizeDialog
@@ -68,7 +68,7 @@ def _name_of(dsim, block_fn):
 
 def _item_data(list_widget):
     """All UserRole (block.name) values currently in a QListWidget."""
-    return [list_widget.item(i).data(Qt.UserRole) for i in range(list_widget.count())]
+    return [list_widget.item(i).data(Qt.ItemDataRole.UserRole) for i in range(list_widget.count())]
 
 
 @pytest.mark.unit
@@ -135,11 +135,11 @@ class TestLinearizeDialog:
         # Select the source in inputs and the integrator in outputs.
         for i in range(dlg.input_list.count()):
             item = dlg.input_list.item(i)
-            if item.data(Qt.UserRole) == const_name:
+            if item.data(Qt.ItemDataRole.UserRole) == const_name:
                 item.setSelected(True)
         for i in range(dlg.output_list.count()):
             item = dlg.output_list.item(i)
-            if item.data(Qt.UserRole) == integ_name:
+            if item.data(Qt.ItemDataRole.UserRole) == integ_name:
                 item.setSelected(True)
         dlg.trim_checkbox.setChecked(True)
 

@@ -6,7 +6,7 @@ exactly as they were, while still reporting the error on the status signal.
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine

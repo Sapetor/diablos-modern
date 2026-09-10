@@ -24,7 +24,7 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtWidgets import QSplitter
+from PyQt6.QtWidgets import QSplitter
 
 from modern_ui.widgets.modern_canvas import ModernCanvas
 from modern_ui.widgets.property_editor import PropertyEditor

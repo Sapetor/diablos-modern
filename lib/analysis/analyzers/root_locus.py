@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
@@ -93,7 +93,7 @@ class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             sorted_roots = np.array(sorted_roots)
 
             # Plotting
-            from PyQt5.QtWidgets import QWidget
+            from PyQt6.QtWidgets import QWidget
 
             plot_window = QWidget()
             t = f"Root Locus: {sys_block.name}"
@@ -141,8 +141,8 @@ class RootLocusAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                     symbolPen=pg.mkPen("g", width=3),
                 )
 
-            plot_widget.addLine(x=0, pen=pg.mkPen("k", width=1, style=Qt.DashLine))
-            plot_widget.addLine(y=0, pen=pg.mkPen("k", width=1, style=Qt.DashLine))
+            plot_widget.addLine(x=0, pen=pg.mkPen("k", width=1, style=Qt.PenStyle.DashLine))
+            plot_widget.addLine(y=0, pen=pg.mkPen("k", width=1, style=Qt.PenStyle.DashLine))
             plot_widget.showGrid(x=True, y=True)
 
             self._position_window(plot_window)

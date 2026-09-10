@@ -12,7 +12,7 @@ the enclosed series chain, or refuses with a specific reason in
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.analysis.analyzers.base_analyzer import BaseAnalyzer
 from lib.simulation.block import DBlock

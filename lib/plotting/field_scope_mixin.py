@@ -45,7 +45,7 @@ def _default_animation_dialog(exporter, block_name):
     from modern_ui.widgets.animation_export_dialog import AnimationExportDialog
 
     dialog = AnimationExportDialog(exporter=exporter, block_name=block_name)
-    dialog.exec_()
+    dialog.exec()
 
 
 class _FieldScopeRenderMixin:
@@ -68,10 +68,10 @@ class _FieldScopeRenderMixin:
         import matplotlib
         import matplotlib.pyplot as plt
 
-        # Try to set Qt5 backend if not already set
+        # Try to set the Qt backend if not already set
         try:
-            if matplotlib.get_backend() != "Qt5Agg":
-                matplotlib.use("Qt5Agg")
+            if matplotlib.get_backend() != "QtAgg":
+                matplotlib.use("QtAgg")
         except Exception:
             pass  # Already using a backend
 
@@ -283,10 +283,10 @@ class _FieldScopeRenderMixin:
         from matplotlib.widgets import Slider
 
         try:
-            if matplotlib.get_backend() != "Qt5Agg":
-                matplotlib.use("Qt5Agg")
+            if matplotlib.get_backend() != "QtAgg":
+                matplotlib.use("QtAgg")
         except Exception:
-            logger.debug("Could not switch matplotlib backend to Qt5Agg", exc_info=True)
+            logger.debug("Could not switch matplotlib backend to QtAgg", exc_info=True)
 
         params = getattr(block, "exec_params", block.params)
 
@@ -564,7 +564,7 @@ class _FieldScopeRenderMixin:
             dimension: '1d' or '2d'
         """
         try:
-            from PyQt5.QtWidgets import QApplication
+            from PyQt6.QtWidgets import QApplication
 
             # Create exporter
             exporter = AnimationExporter(

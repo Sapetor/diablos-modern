@@ -6,8 +6,8 @@ Manages blocks, lines, and diagram state.
 import logging
 import copy
 from typing import List, Dict, Optional, Tuple, Any
-from PyQt5.QtGui import QColor
-from PyQt5.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.block_loader import load_blocks

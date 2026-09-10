@@ -177,7 +177,7 @@ class _MockModel:
 
 def _constant_integrator_scope(method="RK45", value=2.0):
     """Build a valid Constant -> Integrator -> Scope compiled test diagram."""
-    from PyQt5.QtCore import QRect, QPoint
+    from PyQt6.QtCore import QRect, QPoint
     from blocks.constant import ConstantBlock
     from blocks.integrator import IntegratorBlock
     from blocks.scope import ScopeBlock
@@ -276,7 +276,7 @@ class TestCompiledSolverEndToEnd:
     """
 
     def _run(self, qapp, method, t_end=5.0, dt=0.01):
-        from PyQt5.QtCore import QRect, QPoint
+        from PyQt6.QtCore import QRect, QPoint
         from lib.engine.simulation_engine import SimulationEngine
         from lib.simulation.block import DBlock
         from lib.simulation.connection import DLine

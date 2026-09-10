@@ -6,7 +6,7 @@ import pytest
 import sys
 import os
 from unittest.mock import MagicMock
-from PyQt5.QtCore import QRect, QPoint
+from PyQt6.QtCore import QRect, QPoint
 
 # Ensure we can import from the project
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))

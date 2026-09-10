@@ -53,9 +53,15 @@ import logging
 import json
 import warnings
 import threading
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+
+# Pin pyqtgraph's Qt binding before anything can import it. PyQt5 may still be
+# installed alongside PyQt6 in a developer environment, and pyqtgraph picks a
+# binding at import time -- letting it choose PyQt5 would load two bindings
+# into one process and crash.
+os.environ.setdefault("PYQTGRAPH_QT_LIB", "PyQt6")
+
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont
 
 
 def _preload_heavy_modules():
@@ -115,9 +121,8 @@ def setup_application():
         message="PyQtGraph supports Qt version >= 5.15",
         category=RuntimeWarning,
     )
-    # Enable high DPI scaling
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    # Qt6 scales for high DPI unconditionally; the Qt5 opt-in attributes
+    # (AA_EnableHighDpiScaling / AA_UseHighDpiPixmaps) no longer exist.
     # Create application
     app = QApplication(sys.argv)
 
@@ -156,7 +161,7 @@ def setup_application():
         font = QFont(".AppleSystemUIFont", int(10 * scaling_factor))
     else:
         font = QFont("Segoe UI", int(10 * scaling_factor))
-    font.setHintingPreference(QFont.PreferDefaultHinting)
+    font.setHintingPreference(QFont.HintingPreference.PreferDefaultHinting)
     app.setFont(font)
 
     # Apply modern theme
@@ -252,7 +257,7 @@ def main():
             if os.path.isfile(file_path) and file_path.endswith(".diablos"):
                 logger.info(f"Opening diagram from command line: {file_path}")
                 # Use QTimer to load after event loop starts
-                from PyQt5.QtCore import QTimer
+                from PyQt6.QtCore import QTimer
 
                 def load_file():
                     try:
@@ -288,7 +293,7 @@ def main():
         logger.info("- Modern styling and typography")
 
         # Start application event loop
-        exit_code = app.exec_()
+        exit_code = app.exec()
 
         logger.info(f"Modern DiaBloS exiting with code: {exit_code}")
         return exit_code

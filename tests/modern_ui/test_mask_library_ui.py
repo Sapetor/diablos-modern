@@ -8,8 +8,8 @@
 """
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QLineEdit
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QLineEdit
 
 from lib.library import LIBRARY_ENV_VAR, get_library_ref, write_library_file
 from lib.masks import get_mask, set_mask
@@ -373,7 +373,7 @@ class TestMaskMenuEntries:
             shown["labels"] = labels
             return None
 
-        monkeypatch.setattr(mm.QMenu, "exec_", _capture, raising=False)
+        monkeypatch.setattr(mm.QMenu, "exec", _capture)
         window.canvas.menu_manager.show_block_context_menu(block, QPoint(10, 10))
 
         joined = " | ".join(shown.get("labels", []))

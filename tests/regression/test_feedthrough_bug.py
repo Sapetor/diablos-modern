@@ -47,8 +47,8 @@ Tests that do NOT expose the bug (no algebraic block reads D!=0 output):
 
 import pytest
 import numpy as np
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
 
 
 # ---------------------------------------------------------------------------

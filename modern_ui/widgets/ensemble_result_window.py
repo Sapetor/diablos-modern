@@ -28,7 +28,7 @@ When ``n_ok == 0`` the ``signals`` dict is ``{}`` and ``timeline`` is ``None``.
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -36,7 +36,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QStackedWidget,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 from lib.i18n import tr
@@ -90,7 +90,7 @@ class EnsembleResultWindow(QWidget):
         # Nothing successful (or no harvested signals) -> friendly placeholder.
         if n_ok <= 0 or not self._signal_names:
             empty = QLabel(tr("No successful runs to display."))
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             empty.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
                 f"font-size: {TYPE['body_strong']}pt; padding: 48px;"
@@ -279,7 +279,7 @@ class EnsembleResultWindow(QWidget):
         mu = float(np.mean(vals))
         self.hist_plot.addItem(
             pg.InfiniteLine(
-                pos=mu, angle=90, pen=pg.mkPen((200, 30, 30), width=2, style=Qt.DashLine)
+                pos=mu, angle=90, pen=pg.mkPen((200, 30, 30), width=2, style=Qt.PenStyle.DashLine)
             )
         )
 

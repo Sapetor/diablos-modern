@@ -62,9 +62,9 @@ def test_drag_path_does_not_emit_palette_add_signal(palette, monkeypatch):
     palette.block_drag_started.connect(lambda mb: received.append(mb))
 
     # Neutralize the actual QDrag.exec_ so the test doesn't start a real drag.
-    from PyQt5.QtGui import QDrag
+    from PyQt6.QtGui import QDrag
 
-    monkeypatch.setattr(QDrag, "exec_", lambda *a, **k: 0)
+    monkeypatch.setattr(QDrag, "exec", lambda *a, **k: 0)
     try:
         row._start_drag(None)
     except Exception:

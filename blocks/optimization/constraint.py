@@ -114,7 +114,7 @@ class ConstraintBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw constraint icon - inequality symbol with boundary."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw less-than-or-equal symbol

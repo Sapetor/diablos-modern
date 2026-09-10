@@ -22,7 +22,7 @@ import logging
 import os
 from typing import Any, Optional
 
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from lib.i18n import tr
 from lib.library import (

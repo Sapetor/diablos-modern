@@ -15,9 +15,9 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QSize
-from PyQt5.QtGui import QFont, QKeyEvent
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QEvent
+from PyQt6.QtGui import QFont, QKeyEvent
+from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QVBoxLayout,
@@ -110,7 +110,7 @@ class _PaletteRow(QWidget):
         # Icon column — simple glyph or category dot
         icon_lbl = QLabel(self._glyph_for_type(cmd.get("type", "action")))
         icon_lbl.setFixedWidth(ICON_COL_W)
-        icon_lbl.setAlignment(Qt.AlignCenter)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_lbl.setStyleSheet(f"color: {self._text_dim}; font-size: 13pt;")
         lay.addWidget(icon_lbl)
 
@@ -133,7 +133,7 @@ class _PaletteRow(QWidget):
                 f" border-radius: 3px;"
                 f" padding: 1px 6px;"
             )
-            badge.setAlignment(Qt.AlignCenter)
+            badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lay.addWidget(badge)
 
         # Shortcut hint (optional)
@@ -175,8 +175,8 @@ class CommandPalette(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Popup)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Popup)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self._commands: List[Dict[str, Any]] = []
         self._filtered: List[Dict[str, Any]] = []
@@ -245,7 +245,7 @@ class CommandPalette(QDialog):
 
         # Divider
         div1 = QFrame()
-        div1.setFrameShape(QFrame.HLine)
+        div1.setFrameShape(QFrame.Shape.HLine)
         div1.setObjectName("CmdkDivider")
         v.addWidget(div1)
 
@@ -255,14 +255,14 @@ class CommandPalette(QDialog):
         self.list.setMaximumHeight(ROW_MAX_HEIGHT)
         self.list.setMinimumHeight(40)
         self.list.setSpacing(0)
-        self.list.setFocusPolicy(Qt.NoFocus)
-        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.itemClicked.connect(lambda _it: self._run_selected())
         v.addWidget(self.list)
 
         # Divider 2
         div2 = QFrame()
-        div2.setFrameShape(QFrame.HLine)
+        div2.setFrameShape(QFrame.Shape.HLine)
         div2.setObjectName("CmdkDivider")
         v.addWidget(div2)
 
@@ -395,7 +395,7 @@ class CommandPalette(QDialog):
             item = QListWidgetItem()
             row = _PaletteRow(cmd)
             item.setSizeHint(QSize(0, row.sizeHint().height() + 2))
-            item.setData(Qt.UserRole, cmd)
+            item.setData(Qt.ItemDataRole.UserRole, cmd)
             self.list.addItem(item)
             self.list.setItemWidget(item, row)
 
@@ -411,7 +411,7 @@ class CommandPalette(QDialog):
             item = self.list.item(0)
         if item is None:
             return
-        cmd = item.data(Qt.UserRole)
+        cmd = item.data(Qt.ItemDataRole.UserRole)
         self._execute(cmd)
 
     def _execute(self, cmd: Dict[str, Any]):
@@ -441,39 +441,43 @@ class CommandPalette(QDialog):
             self.move(QPoint(x, y))
             return
         # Fallback: center on cursor's screen
-        from PyQt5.QtGui import QCursor
+        from PyQt6.QtGui import QCursor
 
-        screen = QApplication.desktop().availableGeometry(QCursor.pos())
+        # QApplication.desktop() is gone in Qt6; resolve the screen under the
+        # cursor via QGuiApplication.screenAt (falling back to the primary one).
+        cursor_pos = QCursor.pos()
+        qscreen = QApplication.screenAt(cursor_pos) or QApplication.primaryScreen()
+        screen = qscreen.availableGeometry()
         x = screen.x() + (screen.width() - self.width()) // 2
         y = screen.y() + max(80, screen.height() // 8)
         self.move(QPoint(x, y))
 
     def keyPressEvent(self, event: QKeyEvent):
         key = event.key()
-        if key == Qt.Key_Escape:
+        if key == Qt.Key.Key_Escape:
             self.close()
-        elif key == Qt.Key_Down:
+        elif key == Qt.Key.Key_Down:
             self._move_selection(+1)
-        elif key == Qt.Key_Up:
+        elif key == Qt.Key.Key_Up:
             self._move_selection(-1)
-        elif key in (Qt.Key_Return, Qt.Key_Enter):
+        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self._run_selected()
         else:
             super().keyPressEvent(event)
 
     def eventFilter(self, obj, event):
-        if obj is self.search and event.type() == event.KeyPress:
+        if obj is self.search and event.type() == QEvent.Type.KeyPress:
             key = event.key()
-            if key == Qt.Key_Down:
+            if key == Qt.Key.Key_Down:
                 self._move_selection(+1)
                 return True
-            if key == Qt.Key_Up:
+            if key == Qt.Key.Key_Up:
                 self._move_selection(-1)
                 return True
-            if key in (Qt.Key_Return, Qt.Key_Enter):
+            if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
                 self._run_selected()
                 return True
-            if key == Qt.Key_Escape:
+            if key == Qt.Key.Key_Escape:
                 self.close()
                 return True
         return super().eventFilter(obj, event)

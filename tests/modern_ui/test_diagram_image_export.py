@@ -15,9 +15,9 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QImage
-from PyQt5.QtWidgets import QApplication, QFileDialog
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QImage
+from PyQt6.QtWidgets import QApplication, QFileDialog
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock

@@ -33,7 +33,7 @@ from functools import partial
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -44,8 +44,8 @@ from PyQt5.QtWidgets import (
     QApplication,
     QMessageBox,
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
 
 from lib.analysis import linearization_export
 from lib.i18n import tr, tr_noop
@@ -160,7 +160,7 @@ class LinearizationResultWindow(QWidget):
         msg = self.result.get("error") or tr("Linearization failed.")
         label = QLabel(str(msg))
         label.setWordWrap(True)
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(
             f"color: {theme_manager.get_color('error').name()}; "
             f"font-size: {TYPE['body_strong']}pt; padding: 24px;"
@@ -234,7 +234,7 @@ class LinearizationResultWindow(QWidget):
         bode = self.result.get("bode")
         if not bode or not bode.get("w"):
             label = QLabel(tr("Designate input & output blocks to compute a Bode plot."))
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
@@ -278,7 +278,7 @@ class LinearizationResultWindow(QWidget):
         data = self.result.get(key)
         if not data or not data.get("t"):
             label = QLabel(tr("Designate input & output blocks to compute the time response."))
-            label.setAlignment(Qt.AlignCenter)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setWordWrap(True)
             label.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
@@ -302,7 +302,7 @@ class LinearizationResultWindow(QWidget):
         text = QPlainTextEdit()
         text.setReadOnly(True)
         mono = QFont("Consolas")
-        mono.setStyleHint(QFont.Monospace)
+        mono.setStyleHint(QFont.StyleHint.Monospace)
         text.setFont(mono)
         text.setPlainText(self._compose_summary_text())
         return text

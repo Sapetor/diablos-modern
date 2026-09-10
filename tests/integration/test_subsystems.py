@@ -282,7 +282,7 @@ class TestSubsystemManagerUnconnectedPorts:
     @pytest.fixture
     def mock_dsim(self, qapp):
         """Create a mock dsim object for testing."""
-        from PyQt5.QtCore import QRect, QPoint
+        from PyQt6.QtCore import QRect, QPoint
 
         class MockBlock:
             """Mock block with minimal attributes needed for subsystem creation."""
@@ -338,7 +338,7 @@ class TestSubsystemManagerUnconnectedPorts:
     def test_unconnected_gain_blocks_get_ports(self, qapp, mock_dsim):
         """Test that unconnected blocks get Inport/Outport when grouped."""
         from lib.managers.subsystem_manager import SubsystemManager
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
 
@@ -385,7 +385,7 @@ class TestSubsystemManagerUnconnectedPorts:
         """Test subsystem with both boundary connections and unconnected ports."""
         from lib.managers.subsystem_manager import SubsystemManager
         from lib.simulation.connection import DLine
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
 
@@ -443,7 +443,7 @@ class TestSubsystemManagerUnconnectedPorts:
     def test_single_block_gets_all_ports(self, qapp, mock_dsim):
         """Test that a single unconnected block gets Inport and Outport."""
         from lib.managers.subsystem_manager import SubsystemManager
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
 
@@ -470,7 +470,7 @@ class TestSubsystemManagerUnconnectedPorts:
     def test_block_with_multiple_ports(self, qapp, mock_dsim):
         """Test block with multiple input/output ports."""
         from lib.managers.subsystem_manager import SubsystemManager
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         model, dsim, MockBlock = mock_dsim
 

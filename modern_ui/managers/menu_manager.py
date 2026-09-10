@@ -12,18 +12,9 @@ text directly).
 """
 
 import logging
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QCursor, QFont
-from PyQt5.QtWidgets import (
-    QMenu,
-    QAction,
-    QActionGroup,
-    QWidgetAction,
-    QWidget,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-)
+from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QCursor, QFont, QAction, QActionGroup
+from PyQt6.QtWidgets import QMenu, QWidgetAction, QWidget, QHBoxLayout, QLabel, QLineEdit
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font
 from modern_ui.widgets.modern_palette import visible_menu_blocks
@@ -89,7 +80,7 @@ def _build_header_action(menu: QMenu, text: str) -> QAction:
     f = label.font()
     f.setPointSize(8)
     f.setBold(True)
-    f.setLetterSpacing(QFont.PercentageSpacing, 110)
+    f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 110)
     label.setFont(f)
     label.setStyleSheet(f"color: {dim}; padding: 6px 14px 2px 14px;")
     wa = QWidgetAction(menu)
@@ -472,7 +463,7 @@ class MenuManager:
             menu, tr("Delete"), "Del", danger=True, on_trigger=self.canvas.remove_selected_items
         )
 
-        menu.exec_(QCursor.pos())
+        menu.exec(QCursor.pos())
 
     # -- Mask / library actions -------------------------------------------
 
@@ -574,7 +565,7 @@ class MenuManager:
                 on_trigger=self.canvas.auto_route_lines,
             )
 
-        menu.exec_(QCursor.pos())
+        menu.exec(QCursor.pos())
 
     # -- V3: Wire menu -----------------------------------------------------
 
@@ -653,7 +644,7 @@ class MenuManager:
             on_trigger=lambda: self.canvas._delete_line(line),
         )
 
-        menu.exec_(QCursor.pos())
+        menu.exec(QCursor.pos())
 
     # -- Internals --------------------------------------------------------
 
@@ -690,7 +681,7 @@ class MenuManager:
         self.canvas.update()
 
     def _rename_block(self, block):
-        from PyQt5.QtWidgets import QInputDialog
+        from PyQt6.QtWidgets import QInputDialog
 
         current = getattr(block, "username", None) or getattr(block, "name", "")
         new_name, ok = QInputDialog.getText(

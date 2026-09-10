@@ -9,7 +9,7 @@ import logging
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.simulation.block import DBlock
 from modern_ui.managers import clipboard_manager as cm

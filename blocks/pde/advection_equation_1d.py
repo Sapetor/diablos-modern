@@ -110,7 +110,7 @@ class AdvectionEquation1DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw advection icon - arrow with flowing profile."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw a bell curve being transported

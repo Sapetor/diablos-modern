@@ -22,7 +22,7 @@ import logging
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 # y[k] = 0.5*y[k-1] + u[k-1]
 NUM = [1.0]

@@ -2,8 +2,8 @@
 Brief visual feedback for keyboard shortcuts and actions.
 """
 
-from PyQt5.QtWidgets import QLabel, QGraphicsOpacityEffect
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtWidgets import QLabel, QGraphicsOpacityEffect
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from modern_ui.themes.theme_manager import theme_manager, get_ui_font, TYPE, WEIGHT
 
 
@@ -12,13 +12,17 @@ class ToastNotification(QLabel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         # Styling
         self.setFont(get_ui_font(TYPE["body_strong"], WEIGHT["bold"]))
-        self.setAlignment(Qt.AlignCenter)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumWidth(200)
         self.setMaximumWidth(400)
         self.setWordWrap(True)
@@ -29,7 +33,7 @@ class ToastNotification(QLabel):
 
         # Animation
         self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.fade_animation.setEasingCurve(QEasingCurve.InOutQuad)
+        self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         # Connect once; hide only when a fade-OUT (end value 0.0) completes so the
         # fade-IN's finished signal does not hide a freshly shown toast.
         self.fade_animation.finished.connect(self._on_fade_finished)

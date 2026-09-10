@@ -15,7 +15,7 @@ Styling follows the project convention: every color comes from
 ``get_ui_font``/``get_mono_font`` — no hardcoded hex, px, or font families.
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QLabel,
@@ -25,7 +25,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QDialogButtonBox,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from lib.i18n import tr, tr_noop
 from modern_ui.managers.command_palette_manager import palette_command_groups
@@ -108,7 +108,7 @@ class KeyboardShortcutsDialog(QDialog):
         # Scrollable body so a long catalogue stays usable on small screens.
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         body = QWidget()
         body_layout = QVBoxLayout(body)
@@ -122,7 +122,7 @@ class KeyboardShortcutsDialog(QDialog):
         scroll.setWidget(body)
         layout.addWidget(scroll, 1)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Close)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         button_box.rejected.connect(self.reject)
         button_box.accepted.connect(self.accept)
         layout.addWidget(button_box)
@@ -162,7 +162,7 @@ class KeyboardShortcutsDialog(QDialog):
         """Key binding (kbd glyph) in the right column; mono, dimmed when empty."""
         kbd = QLabel(key or "—")
         kbd.setFont(get_mono_font(TYPE["caption"], WEIGHT["medium"]))
-        kbd.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        kbd.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         token = "text_secondary" if key else "text_disabled"
         kbd.setStyleSheet(f"color: {theme_manager.get_color(token).name()};")
         return kbd

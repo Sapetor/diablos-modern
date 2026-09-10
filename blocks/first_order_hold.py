@@ -85,7 +85,7 @@ class FirstOrderHoldBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw FOH icon (ramp segments instead of stairs)."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw connected ramp segments (linear interpolation visualization)

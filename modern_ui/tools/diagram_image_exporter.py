@@ -16,8 +16,8 @@ drift from the on-screen look.
 import logging
 import math
 
-from PyQt5.QtCore import QRectF, QSize
-from PyQt5.QtGui import QImage, QPainter
+from PyQt6.QtCore import QRectF, QSize
+from PyQt6.QtGui import QImage, QPainter
 
 from modern_ui.themes.theme_manager import theme_manager
 
@@ -63,7 +63,7 @@ def diagram_bounding_rect(canvas, margin=MARGIN):
 def _paint_content(canvas, painter, rect):
     """Paint the diagram content into ``painter``, offset so ``rect``'s
     top-left lands at the painter origin. Assumes any scaling is already set."""
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.translate(-rect.x(), -rect.y())
     with canvas.rendering_manager.decorations_suppressed():
         canvas.rendering_manager.render_content(painter)
@@ -80,7 +80,7 @@ def render_diagram_image(canvas, scale=3):
 
     width = max(1, int(math.ceil(rect.width() * scale)))
     height = max(1, int(math.ceil(rect.height() * scale)))
-    image = QImage(width, height, QImage.Format_ARGB32)
+    image = QImage(width, height, QImage.Format.Format_ARGB32)
     image.fill(theme_manager.get_color("canvas_background"))
 
     painter = QPainter(image)
@@ -97,7 +97,7 @@ def render_diagram_svg(canvas, path):
 
     Returns ``True`` on success, ``False`` for an empty diagram.
     """
-    from PyQt5.QtSvg import QSvgGenerator
+    from PyQt6.QtSvg import QSvgGenerator
 
     rect = diagram_bounding_rect(canvas)
     if rect is None:
@@ -142,7 +142,7 @@ def copy_diagram_to_clipboard(canvas):
 
     Returns ``True`` if an image was copied, ``False`` for an empty diagram.
     """
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
 
     image = render_diagram_image(canvas)
     if image is None:

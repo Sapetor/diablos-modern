@@ -26,7 +26,7 @@ time comparison cannot append samples on top of re-initialised blocks.
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _run(fast, sim_time, sim_dt):

@@ -23,8 +23,8 @@ Run with:
 import math
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtGui import QPixmap, QPainter, QColor
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QPixmap, QPainter, QColor
 
 from lib.lib import DSim
 from modern_ui.widgets.modern_canvas import ModernCanvas

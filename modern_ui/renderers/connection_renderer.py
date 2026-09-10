@@ -7,9 +7,9 @@ Separates rendering logic from the DLine data model.
 import math
 import logging
 import numpy as np
-from PyQt5.QtGui import QPainter, QPen, QColor, QPolygonF
+from PyQt6.QtGui import QPainter, QPen, QColor, QPolygonF
 
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRect
+from PyQt6.QtCore import Qt, QPoint, QPointF, QRect
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
@@ -126,7 +126,7 @@ class ConnectionRenderer:
                     painter.drawRoundedRect(rect, 3, 3)
 
                     painter.setPen(success)
-                    painter.drawText(rect, Qt.AlignCenter, text)
+                    painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
         except Exception as e:  # never let a render error tank the paint
             logger.debug("Live port-value chip draw skipped: %s", e)
 
@@ -184,7 +184,7 @@ class ConnectionRenderer:
 
         try:
             # Enable antialiasing for smooth curves
-            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
             # Use theme_manager for connection colors
             default_connection_color = theme_manager.get_color("connection_default")
@@ -205,12 +205,12 @@ class ConnectionRenderer:
                 halo_pen = QPen(
                     theme_manager.get_color("canvas_background"),
                     line_width + self.CROSSING_GAP,
-                    Qt.SolidLine,
-                    Qt.FlatCap,
-                    Qt.RoundJoin,
+                    Qt.PenStyle.SolidLine,
+                    Qt.PenCapStyle.FlatCap,
+                    Qt.PenJoinStyle.RoundJoin,
                 )
                 painter.setPen(halo_pen)
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawPath(line.path)
 
             # Draw subtle glow/shadow for selected connections
@@ -219,23 +219,35 @@ class ConnectionRenderer:
                 # while the animation timer runs (stable alpha when idle).
                 glow_color = QColor(active_connection_color)
                 glow_color.setAlpha(self._glow_alpha(self._ACTIVE_GLOW_BASE_ALPHA))
-                glow_pen = QPen(glow_color, line_width + 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                glow_pen = QPen(
+                    glow_color,
+                    line_width + 4,
+                    Qt.PenStyle.SolidLine,
+                    Qt.PenCapStyle.RoundCap,
+                    Qt.PenJoinStyle.RoundJoin,
+                )
                 painter.setPen(glow_pen)
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawPath(line.path)
 
             # Determine line style based on signal type
             # Discrete signals use dashed lines
             is_discrete = getattr(line, "discrete_signal", False)
-            line_style = Qt.DashLine if is_discrete else Qt.SolidLine
+            line_style = Qt.PenStyle.DashLine if is_discrete else Qt.PenStyle.SolidLine
 
             # Draw main connection line
-            pen = QPen(pen_color, line_width, line_style, Qt.RoundCap, Qt.RoundJoin)
+            pen = QPen(
+                pen_color,
+                line_width,
+                line_style,
+                Qt.PenCapStyle.RoundCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
             if is_discrete:
                 # Set dash pattern for discrete signals: dash-space-dash-space
                 pen.setDashPattern([6, 3])  # 6 pixels dash, 3 pixels space
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawPath(line.path)
 
             # If a specific segment is selected, highlight it
@@ -247,13 +259,23 @@ class ConnectionRenderer:
                     # Draw glow for segment
                     segment_glow_color = QColor(active_connection_color)
                     segment_glow_color.setAlpha(60)
-                    glow_pen = QPen(segment_glow_color, 6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                    glow_pen = QPen(
+                        segment_glow_color,
+                        6,
+                        Qt.PenStyle.SolidLine,
+                        Qt.PenCapStyle.RoundCap,
+                        Qt.PenJoinStyle.RoundJoin,
+                    )
                     painter.setPen(glow_pen)
                     painter.drawLine(p1, p2)
 
                     # Draw segment highlight
                     highlight_pen = QPen(
-                        active_connection_color, 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin
+                        active_connection_color,
+                        3,
+                        Qt.PenStyle.SolidLine,
+                        Qt.PenCapStyle.RoundCap,
+                        Qt.PenJoinStyle.RoundJoin,
                     )
                     painter.setPen(highlight_pen)
                     painter.drawLine(p1, p2)
@@ -330,7 +352,7 @@ class ConnectionRenderer:
         # Draw text
         text_color = theme_manager.get_color("text_primary")
         painter.setPen(text_color)
-        painter.drawText(bg_rect, Qt.AlignCenter, text)
+        painter.drawText(bg_rect, Qt.AlignmentFlag.AlignCenter, text)
 
     def _draw_arrowhead(self, line, painter: QPainter, color: QColor):
         """Draw arrowhead at the end of the line."""
@@ -371,5 +393,5 @@ class ConnectionRenderer:
         arrow_polygon = QPolygonF([tip, arrow_p1, arrow_p2])
 
         painter.setBrush(color)  # Fill arrowhead with line color
-        painter.setPen(Qt.NoPen)  # No border for arrowhead
+        painter.setPen(Qt.PenStyle.NoPen)  # No border for arrowhead
         painter.drawPolygon(arrow_polygon)

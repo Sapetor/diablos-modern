@@ -45,7 +45,7 @@ class AnalysisMarkerBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Build the marker's icon path in 0-1 normalized coordinates."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         self._trace_icon(path)

@@ -14,7 +14,7 @@ The dialogs and workers are stubbed; no experiment is actually run.
 import types
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 @pytest.fixture(scope="module")
@@ -91,10 +91,10 @@ def fake_workers(monkeypatch):
         def __init__(self, dsim, parent=None):
             self.dsim = dsim
 
-        def exec_(self):
-            from PyQt5.QtWidgets import QDialog
+        def exec(self):
+            from PyQt6.QtWidgets import QDialog
 
-            return QDialog.Accepted
+            return QDialog.DialogCode.Accepted
 
         def get_selection(self):
             return self.selection

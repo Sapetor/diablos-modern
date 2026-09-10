@@ -12,7 +12,7 @@ rebuilds children using a real Subsystem instance.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 
 @pytest.mark.regression

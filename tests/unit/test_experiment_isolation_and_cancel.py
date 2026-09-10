@@ -20,7 +20,7 @@ loop; the runners forward their ``cancel_cb`` into it.
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _diagram(sim_time=0.2, sim_dt=0.01):

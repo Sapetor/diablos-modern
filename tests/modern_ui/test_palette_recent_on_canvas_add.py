@@ -5,7 +5,7 @@ not on _start_drag.
 Background
 ----------
 The palette's Recent section used to record a block unconditionally in
-``CompactBlockRow._start_drag`` *after* ``drag.exec_()`` returned. That fired
+``CompactBlockRow._start_drag`` *after* ``drag.exec()`` returned. That fired
 even when the drag was cancelled with Escape or dropped outside the canvas, so a
 block the user never placed still showed up under Recent. Recording now happens
 once per *actual* placement in ``ModernCanvas.add_block_from_palette`` (the
@@ -26,8 +26,8 @@ real palette preferences.
 
 import pytest
 
-from PyQt5.QtCore import QPoint, QSettings
-from PyQt5.QtWidgets import QMainWindow
+from PyQt6.QtCore import QPoint, QSettings
+from PyQt6.QtWidgets import QMainWindow
 
 from modern_ui.widgets import modern_palette as mp
 from modern_ui.widgets.modern_palette import (
@@ -55,7 +55,7 @@ def _isolated_settings(tmp_path, monkeypatch):
     ini = str(tmp_path / "palette_settings.ini")
 
     def _fake_ui_settings():
-        return QSettings(ini, QSettings.IniFormat)
+        return QSettings(ini, QSettings.Format.IniFormat)
 
     monkeypatch.setattr(mp, "ui_settings", _fake_ui_settings)
     return _fake_ui_settings
@@ -111,9 +111,9 @@ def test_cancelled_drag_does_not_record_recent(palette, monkeypatch):
     # Neutralize the blocking QDrag.exec_ so no real drag starts. This models a
     # drag that was cancelled (Escape) or dropped outside the canvas: exec_
     # returns without the canvas drop path ever running.
-    from PyQt5.QtGui import QDrag
+    from PyQt6.QtGui import QDrag
 
-    monkeypatch.setattr(QDrag, "exec_", lambda *a, **k: 0)
+    monkeypatch.setattr(QDrag, "exec", lambda *a, **k: 0)
 
     row._start_drag(None)
 

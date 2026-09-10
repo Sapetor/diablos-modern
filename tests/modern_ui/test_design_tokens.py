@@ -9,8 +9,8 @@ tokens, and their exposure through ``get_qss_variables()`` /
 
 import pytest
 
-from PyQt5.QtGui import QColor, QFont
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
 
 @pytest.fixture(autouse=True)
@@ -85,14 +85,14 @@ class TestFontHelpers:
         assert f.family() == MONO_FONT_STACK[0]
         assert f.pointSize() == 10
 
-    def test_css_weight_maps_to_qt5_enum(self):
+    def test_css_weight_maps_to_qfont_weight(self):
         from modern_ui.themes.theme_manager import get_ui_font, WEIGHT
 
         regular = get_ui_font(9, WEIGHT["regular"]).weight()
         semibold = get_ui_font(9, WEIGHT["semibold"]).weight()
-        # Qt5 enum: Normal(50) < DemiBold(63). The mapping must preserve order.
-        assert regular == QFont.Normal
-        assert semibold == QFont.DemiBold
+        # QFont.Weight: Normal(400) < DemiBold(600). The mapping must preserve order.
+        assert regular == QFont.Weight.Normal
+        assert semibold == QFont.Weight.DemiBold
         assert semibold > regular
 
     def test_helpers_default_to_no_explicit_size(self):

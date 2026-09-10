@@ -68,7 +68,7 @@ class LogicalOperatorBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a logic-gate outline with two inputs and one output."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Gate body (D shape)

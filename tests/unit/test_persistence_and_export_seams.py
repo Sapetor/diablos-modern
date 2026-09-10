@@ -30,7 +30,7 @@ import pytest
 class TestDsimSaveAcceptsFilepath:
     def test_save_writes_to_the_given_path_without_a_dialog(self, qapp, tmp_path, monkeypatch):
         from lib.lib import DSim
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         dsim = DSim()
         menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -52,7 +52,7 @@ class TestDsimSaveAcceptsFilepath:
     def test_autosave_with_filepath_keeps_the_dirty_flag(self, qapp, tmp_path):
         """The _auto_save fallback branch must behave like the primary one."""
         from lib.lib import DSim
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         dsim = DSim()
         menu = {b.fn_name: b for b in dsim.menu_blocks}
@@ -80,11 +80,11 @@ class TestFileServiceHasNoWidgetImport:
         source = pathlib.Path(fs.__file__).read_text(encoding="utf-8")
         # QtCore.QRect stays (a block's coords *is* a QRect); QtWidgets must not
         # be imported at module scope.
-        assert "from PyQt5.QtWidgets import" not in source.split("def __getattr__")[0]
+        assert "from PyQt6.QtWidgets import" not in source.split("def __getattr__")[0]
 
     def test_qfiledialog_is_still_reachable_for_back_compat(self):
         """Existing tests monkeypatch lib.services.file_service.QFileDialog."""
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
 
         import lib.services.file_service as fs
 

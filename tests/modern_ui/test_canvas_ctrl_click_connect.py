@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PyQt5.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint
 
 from modern_ui.widgets.canvas_state import ConnectionState
 from modern_ui.widgets.modern_canvas import ModernCanvas
@@ -61,7 +61,7 @@ def test_ctrl_click_connect_does_not_raise(canvas_stub):
     with (
         patch(
             "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
-            return_value=Qt.ControlModifier,
+            return_value=Qt.KeyboardModifier.ControlModifier,
         ),
         patch("modern_ui.widgets.modern_canvas.logger") as mock_logger,
     ):
@@ -84,7 +84,7 @@ def test_ctrl_click_connect_rearms_state_for_next_connection(canvas_stub):
     with (
         patch(
             "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
-            return_value=Qt.ControlModifier,
+            return_value=Qt.KeyboardModifier.ControlModifier,
         ),
         patch("modern_ui.widgets.modern_canvas.logger"),
     ):
@@ -109,7 +109,7 @@ def test_ctrl_click_picks_first_free_target_input_port(canvas_stub):
     with (
         patch(
             "modern_ui.widgets.modern_canvas.QApplication.keyboardModifiers",
-            return_value=Qt.ControlModifier,
+            return_value=Qt.KeyboardModifier.ControlModifier,
         ),
         patch("modern_ui.widgets.modern_canvas.logger"),
     ):

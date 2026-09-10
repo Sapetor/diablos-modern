@@ -25,8 +25,8 @@ Run with:
 import json
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtGui import QImage, QPainter
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QImage, QPainter
 
 from modern_ui.managers.appearance_manager import AppearanceManager
 from modern_ui.managers.command_palette_manager import CommandPaletteManager
@@ -231,7 +231,7 @@ class TestRenderingManager:
     def test_render_content_paints_without_raising(self, window):
         """The same entry point the canvas paintEvent and the image exporter
         both use, so a crash here is a crash on every repaint."""
-        image = QImage(200, 150, QImage.Format_ARGB32)
+        image = QImage(200, 150, QImage.Format.Format_ARGB32)
         image.fill(0)
         painter = QPainter(image)
         try:

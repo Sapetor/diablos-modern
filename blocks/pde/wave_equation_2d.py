@@ -147,7 +147,7 @@ class WaveEquation2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw 2D wave equation icon - grid with wave pattern."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
         import math
 
         path = QPainterPath()

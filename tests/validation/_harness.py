@@ -47,13 +47,13 @@ def ensure_qapp():
     objects for their icons, so a Qt application object has to exist before
     either is constructed. Under pytest the session ``qapp`` fixture supplies
     it; the report script has no fixtures, so it calls this. The instance is
-    parked in a module global: PyQt5 destroys a QApplication whose last Python
+    parked in a module global: PyQt6 destroys a QApplication whose last Python
     reference goes away, and the next QPixmap then aborts the process.
     """
     global _QAPP
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("MPLBACKEND", "Agg")
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
 
     app = QApplication.instance()
     if app is None:

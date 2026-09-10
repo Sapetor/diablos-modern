@@ -19,7 +19,7 @@ where the stub-based tests would silently stay green.
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _build_sine_scope():

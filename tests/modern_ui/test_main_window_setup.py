@@ -20,7 +20,7 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from modern_ui.widgets.modern_toolbar import ModernToolBar
 from modern_ui.platform_config import get_platform_config

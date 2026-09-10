@@ -57,7 +57,7 @@ def _defaults(block):
 
 def _build_pid_loop(dsim, kp, ki, kd):
     """Populate ``dsim`` with Step -> PID -> TranFn(1/(s+1)) -> Scope + feedback."""
-    from PyQt5.QtCore import QRect, QPoint
+    from PyQt6.QtCore import QRect, QPoint
     from blocks.step import StepBlock
     from blocks.pid import PIDBlock
     from blocks.transfer_function import TransferFunctionBlock

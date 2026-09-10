@@ -21,7 +21,7 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 import modern_ui.main_window as main_window
 from modern_ui.main_window import FIRST_RUN_WELCOME_MESSAGE
@@ -54,7 +54,7 @@ def isolated_settings(tmp_path, monkeypatch):
     monkeypatch.setattr(
         main_window,
         "QSettings",
-        lambda *a, **k: QSettings(ini_path, QSettings.IniFormat),
+        lambda *a, **k: QSettings(ini_path, QSettings.Format.IniFormat),
     )
     return ini_path
 
@@ -100,14 +100,14 @@ class TestFirstRunWelcome:
     def test_sets_first_run_done_flag(self, window, isolated_settings, monkeypatch):
         monkeypatch.setattr(window, "toast", _ToastSpy())
         assert (
-            QSettings(isolated_settings, QSettings.IniFormat).value(
+            QSettings(isolated_settings, QSettings.Format.IniFormat).value(
                 "ui/first_run_done", False, type=bool
             )
             is False
         )
         window._maybe_show_first_run_welcome()
         assert (
-            QSettings(isolated_settings, QSettings.IniFormat).value(
+            QSettings(isolated_settings, QSettings.Format.IniFormat).value(
                 "ui/first_run_done", False, type=bool
             )
             is True
@@ -115,7 +115,7 @@ class TestFirstRunWelcome:
 
     def test_preexisting_flag_suppresses_welcome(self, window, isolated_settings, monkeypatch):
         # Pre-mark first run done -> the welcome must not show at all.
-        QSettings(isolated_settings, QSettings.IniFormat).setValue("ui/first_run_done", True)
+        QSettings(isolated_settings, QSettings.Format.IniFormat).setValue("ui/first_run_done", True)
         spy = _ToastSpy()
         monkeypatch.setattr(window, "toast", spy)
         window._maybe_show_first_run_welcome()
@@ -127,7 +127,7 @@ class TestFirstRunWelcome:
         monkeypatch.delattr(window, "toast", raising=False)
         window._maybe_show_first_run_welcome()  # must not raise
         assert (
-            QSettings(isolated_settings, QSettings.IniFormat).value(
+            QSettings(isolated_settings, QSettings.Format.IniFormat).value(
                 "ui/first_run_done", False, type=bool
             )
             is True

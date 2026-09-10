@@ -167,7 +167,7 @@ def available_languages() -> List[Dict[str, str]]:
 def system_language() -> str:
     """Best-effort two-letter language code for the host system."""
     try:
-        from PyQt5.QtCore import QLocale
+        from PyQt6.QtCore import QLocale
 
         name = QLocale.system().name()  # e.g. "es_ES"
         if name:

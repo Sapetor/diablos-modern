@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from PyQt5.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint
 
 from modern_ui.renderers.canvas_renderer import compute_alignment_guides
 from modern_ui.widgets.canvas_state import (
@@ -81,18 +81,18 @@ class InteractionManager:
 
     def handle_mouse_press(self, event):
         """Handle mouse press events from the canvas."""
-        if event.button() == Qt.MiddleButton:
+        if event.button() == Qt.MouseButton.MiddleButton:
             zp = self.canvas.zoom_pan_manager.state
             zp.is_panning = True
             zp.last_pan_pos = event.pos()
-            self.canvas.setCursor(Qt.ClosedHandCursor)
+            self.canvas.setCursor(Qt.CursorShape.ClosedHandCursor)
             return
 
         pos = self.canvas.screen_to_world(event.pos())
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._handle_left_click(pos, event.modifiers())
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self.canvas._handle_right_click(pos)  # Delegate back for context menu for now
 
         self.canvas.update()
@@ -133,7 +133,7 @@ class InteractionManager:
             self.selection.start_selection(pos)
 
             # Clear existing selection unless Shift is held
-            if not (modifiers & Qt.ShiftModifier):
+            if not (modifiers & Qt.KeyboardModifier.ShiftModifier):
                 self.canvas._clear_selections()
 
             logger.debug(f"Started rectangle selection at ({pos.x()}, {pos.y()})")
@@ -298,12 +298,12 @@ class InteractionManager:
     def handle_mouse_release(self, event):
         """Handle mouse release events."""
         try:
-            if event.button() == Qt.MiddleButton:
+            if event.button() == Qt.MouseButton.MiddleButton:
                 self.canvas.zoom_pan_manager.state.is_panning = False
-                self.canvas.setCursor(Qt.ArrowCursor)
+                self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
 
             # Finalize rectangle selection
-            if self.selection.is_selecting and event.button() == Qt.LeftButton:
+            if self.selection.is_selecting and event.button() == Qt.MouseButton.LeftButton:
                 self.canvas._finalize_rect_selection()
                 return
 
@@ -313,7 +313,7 @@ class InteractionManager:
                 self.canvas._finish_resize()
             elif self.canvas.state in [State.DRAGGING_LINE_POINT, State.DRAGGING_LINE_SEGMENT]:
                 self._finish_line_bend()
-            elif event.button() == Qt.LeftButton:
+            elif event.button() == Qt.MouseButton.LeftButton:
                 conn_mgr = self.canvas.connection_manager
                 if conn_mgr.connection_state.creation_state == "start":
                     pos = self.canvas.screen_to_world(event.pos())
@@ -533,21 +533,21 @@ class InteractionManager:
 
             # Visual feedback: change cursor when at limit
             if at_width_limit or at_height_limit:
-                self.canvas.setCursor(Qt.ForbiddenCursor)
+                self.canvas.setCursor(Qt.CursorShape.ForbiddenCursor)
                 self.resize.at_limit = True
             else:
                 # Restore appropriate resize cursor
                 cursor_map = {
-                    "top_left": Qt.SizeFDiagCursor,
-                    "top_right": Qt.SizeBDiagCursor,
-                    "bottom_left": Qt.SizeBDiagCursor,
-                    "bottom_right": Qt.SizeFDiagCursor,
-                    "top": Qt.SizeVerCursor,
-                    "bottom": Qt.SizeVerCursor,
-                    "left": Qt.SizeHorCursor,
-                    "right": Qt.SizeHorCursor,
+                    "top_left": Qt.CursorShape.SizeFDiagCursor,
+                    "top_right": Qt.CursorShape.SizeBDiagCursor,
+                    "bottom_left": Qt.CursorShape.SizeBDiagCursor,
+                    "bottom_right": Qt.CursorShape.SizeFDiagCursor,
+                    "top": Qt.CursorShape.SizeVerCursor,
+                    "bottom": Qt.CursorShape.SizeVerCursor,
+                    "left": Qt.CursorShape.SizeHorCursor,
+                    "right": Qt.CursorShape.SizeHorCursor,
                 }
-                self.canvas.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+                self.canvas.setCursor(cursor_map.get(handle, Qt.CursorShape.ArrowCursor))
                 self.resize.at_limit = False
 
             # Update block position and size
@@ -638,7 +638,7 @@ class InteractionManager:
                 # Reset resize state
                 self.canvas.state = State.IDLE
                 self.resize.end_resize()
-                self.canvas.setCursor(Qt.ArrowCursor)
+                self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
 
                 # Ensure lines are updated after resize
                 self.canvas._update_line_positions()

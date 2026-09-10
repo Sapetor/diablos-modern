@@ -6,7 +6,7 @@ import time
 import sys
 from typing import Dict, Any, Optional
 from tqdm import tqdm
-from PyQt5.QtWidgets import QDialog
+from PyQt6.QtWidgets import QDialog
 from lib.workspace import WorkspaceManager
 from lib.dialogs import SimulationDialog
 import logging
@@ -507,7 +507,7 @@ class DSim:
             atol=self.atol,
             zero_crossing=self.zero_crossing,
         )
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             try:
                 values = dialog.get_values()
                 self.sim_time = values["sim_time"]

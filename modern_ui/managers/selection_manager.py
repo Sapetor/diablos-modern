@@ -1,5 +1,5 @@
 import logging
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 logger = logging.getLogger(__name__)
 

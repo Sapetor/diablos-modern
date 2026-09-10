@@ -8,7 +8,7 @@ wiring into closeEvent.
 """
 
 import pytest
-from PyQt5.QtGui import QCloseEvent
+from PyQt6.QtGui import QCloseEvent
 
 from modern_ui.controllers.experiment_controller import _ORPHANED_WORKERS, _WORKER_JOIN_MS
 

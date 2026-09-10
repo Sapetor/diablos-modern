@@ -25,9 +25,8 @@ Visual changes
 
 from __future__ import annotations
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QToolBar,
-    QAction,
     QWidget,
     QHBoxLayout,
     QLabel,
@@ -38,8 +37,8 @@ from PyQt5.QtWidgets import (
 )
 import math
 
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
+from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF, QAction
 from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import (
     theme_manager,
@@ -66,17 +65,17 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
 
     # Render at 2× for DPI safety, let Qt downscale.
     px = QPixmap(size * 2, size * 2)
-    px.fill(Qt.transparent)
+    px.fill(Qt.GlobalColor.transparent)
     p = QPainter(px)
-    p.setRenderHint(QPainter.Antialiasing, True)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     p.scale(2.0, 2.0)
 
     pen = QPen(QColor(color))
     pen.setWidthF(1.6)
-    pen.setCapStyle(Qt.RoundCap)
-    pen.setJoinStyle(Qt.RoundJoin)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     p.setPen(pen)
-    p.setBrush(Qt.NoBrush)
+    p.setBrush(Qt.BrushStyle.NoBrush)
 
     s = size
     pad = 3
@@ -129,19 +128,19 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
             ]
         )
         p.setBrush(QColor(color))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawPolygon(tri)
 
     elif kind == "pause":
         p.setBrush(QColor(color))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         bar_w = (s - 2 * pad - 2) / 2 - 0.5
         p.drawRoundedRect(QRectF(pad, pad, bar_w, s - 2 * pad), 0.6, 0.6)
         p.drawRoundedRect(QRectF(s - pad - bar_w, pad, bar_w, s - 2 * pad), 0.6, 0.6)
 
     elif kind == "stop":
         p.setBrush(QColor(color))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawRoundedRect(rect, 1.0, 1.0)
 
     elif kind == "step":
@@ -154,7 +153,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
             ]
         )
         p.setBrush(QColor(color))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawPolygon(tri)
         p.drawRoundedRect(QRectF(s - pad - 1.6, pad, 1.6, s - 2 * pad), 0.5, 0.5)
 
@@ -208,7 +207,7 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         path.arcTo(QRectF(pad, pad, s - 2 * pad, s - 2 * pad), 60, 240)
         path.closeSubpath()
         p.setBrush(QColor(color))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawPath(path)
 
     elif kind == "search":
@@ -244,7 +243,7 @@ class _StatusPill(QFrame):
         self.setObjectName("StatusPill")
         self.setProperty("state", "idle")
         self.setMinimumHeight(22)
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(8, 0, 10, 0)
@@ -255,8 +254,8 @@ class _StatusPill(QFrame):
         self._dot = _StateDot(self)
         self._label = QLabel(tr("Ready"), self)
         self._label.setObjectName("StatusPillLabel")
-        lay.addWidget(self._dot, 0, Qt.AlignVCenter)
-        lay.addWidget(self._label, 0, Qt.AlignVCenter)
+        lay.addWidget(self._dot, 0, Qt.AlignmentFlag.AlignVCenter)
+        lay.addWidget(self._label, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def set_state(self, state: str, label: str | None = None):
         if state not in ("idle", "running", "paused", "error"):
@@ -317,7 +316,7 @@ class _StateDot(QWidget):
         self._state = "idle"
         self._pulse_phase = 0.0
         self.setFixedSize(QSize(8, 8))
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         theme_manager.theme_changed.connect(self.update)
 
         self._pulse_timer = QTimer(self)  # parented -> no leak
@@ -349,19 +348,19 @@ class _StateDot(QWidget):
         col_key, glow_key = self._COLORS[self._state]
         col = theme_manager.get_color(col_key)
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         # Soft glow ring for active states
         if glow_key:
             glow = QColor(col)
             glow.setAlpha(self._glow_alpha())
             p.setBrush(glow)
-            p.setPen(Qt.NoPen)
+            p.setPen(Qt.PenStyle.NoPen)
             p.drawEllipse(0, 0, 8, 8)
             p.setBrush(col)
             p.drawEllipse(1, 1, 6, 6)
         else:
             p.setBrush(col)
-            p.setPen(Qt.NoPen)
+            p.setPen(Qt.PenStyle.NoPen)
             p.drawEllipse(1, 1, 6, 6)
         p.end()
 
@@ -391,7 +390,7 @@ class _ZoomRocker(QWidget):
 
         self.label = QLabel("100%")
         self.label.setObjectName("ZoomRockerLabel")
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setMinimumWidth(40)
 
         self.plus_btn = QToolButton()
@@ -467,13 +466,13 @@ class _TransportGroup(QWidget):
         self.time_label.setObjectName("TransportTimeLabel")
         self.time_label.setFont(get_mono_font(TYPE["body"]))
         self.time_label.setMinimumWidth(140)
-        self.time_label.setAlignment(Qt.AlignCenter)
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         for w in (self.play_btn, self.pause_btn, self.stop_btn, self.step_btn):
             lay.addWidget(w)
         sep = QFrame()
         sep.setObjectName("TransportSep")
-        sep.setFrameShape(QFrame.VLine)
+        sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
         lay.addSpacing(4)
         lay.addWidget(sep)
@@ -487,7 +486,7 @@ class _TransportGroup(QWidget):
         b.setIconSize(QSize(16, 16))
         b.setFixedSize(QSize(28, 26))
         b.setToolTip(tip)
-        b.setCursor(Qt.PointingHandCursor)
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
         return b
 
     def refresh_icons(self):
@@ -546,7 +545,7 @@ class ModernToolBar(QToolBar):
         self.setObjectName("ModernToolBar")
         self.setMovable(False)
         self.setFloatable(False)
-        self.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.setIconSize(QSize(18, 18))
 
         self._build_actions()
@@ -622,7 +621,7 @@ class ModernToolBar(QToolBar):
         # cleanest way in a QToolBar is two stretch spacers around a single
         # widget that hosts the transport group.
         left_stretch = QWidget()
-        left_stretch.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        left_stretch.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.addWidget(left_stretch)
 
         self.transport = _TransportGroup(self)
@@ -633,7 +632,7 @@ class ModernToolBar(QToolBar):
         self.addWidget(self.transport)
 
         right_stretch = QWidget()
-        right_stretch.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        right_stretch.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.addWidget(right_stretch)
 
         # Right group: status pill, view actions, zoom, ⌘K, theme
@@ -654,7 +653,7 @@ class ModernToolBar(QToolBar):
         self.cmdk_btn = QPushButton(tr("Search…") + "  ⌘K")
         self.cmdk_btn.setObjectName("CommandPaletteBtn")
         self.cmdk_btn.setFlat(True)
-        self.cmdk_btn.setCursor(Qt.PointingHandCursor)
+        self.cmdk_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cmdk_btn.setToolTip(tr("Search commands and blocks") + "  (Ctrl+K / ⌘K)")
         self.cmdk_btn.clicked.connect(self.command_palette_requested)
         self.addWidget(self.cmdk_btn)

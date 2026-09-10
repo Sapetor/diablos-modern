@@ -8,7 +8,7 @@ effect is present and carries the requested elevation token.
 """
 
 import pytest
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
 from modern_ui.themes.theme_manager import ELEVATION
 

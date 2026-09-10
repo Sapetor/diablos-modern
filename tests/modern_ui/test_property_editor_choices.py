@@ -8,7 +8,7 @@ free-text box (no validation). Both keys must now yield a QComboBox.
 
 import pytest
 
-from PyQt5.QtWidgets import QComboBox, QLineEdit
+from PyQt6.QtWidgets import QComboBox, QLineEdit
 
 
 @pytest.fixture(autouse=True)

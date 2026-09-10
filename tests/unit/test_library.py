@@ -14,7 +14,7 @@ import json
 import os
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.library import (
     LIBRARY_ENV_VAR,

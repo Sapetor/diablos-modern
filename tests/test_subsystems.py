@@ -1,7 +1,7 @@
 import sys
 import os
 import unittest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -169,7 +169,7 @@ class TestSubsystems(unittest.TestCase):
 
 if __name__ == "__main__":
     print("STARTING TEST MAIN", flush=True)
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
 
     if not QApplication.instance():
         app = QApplication(sys.argv)

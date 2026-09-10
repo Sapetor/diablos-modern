@@ -14,7 +14,7 @@ class Subsystem(DBlock):
     """
 
     def __init__(self, block_name="Subsystem", sid=1, coords=(0, 0, 100, 80), color="lightgray"):
-        from PyQt5.QtCore import QRect
+        from PyQt6.QtCore import QRect
 
         if isinstance(coords, tuple):
             rect = QRect(*coords)
@@ -59,7 +59,7 @@ class Subsystem(DBlock):
         Overrides DBlock.update_Block to recalculate port positions based on
         current block dimensions, ensuring ports scale properly when resized.
         """
-        from PyQt5.QtCore import QPoint, QRect
+        from PyQt6.QtCore import QPoint, QRect
 
         self.in_coords = []
         self.out_coords = []

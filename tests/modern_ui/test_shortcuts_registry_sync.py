@@ -16,7 +16,7 @@ Run with:
 
 import pytest
 
-from PyQt5.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel
 
 from modern_ui.managers.command_palette_manager import palette_command_groups
 from modern_ui.widgets.shortcuts_dialog import (

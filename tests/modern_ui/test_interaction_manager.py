@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from PyQt5.QtCore import Qt, QPoint, QPointF
+from PyQt6.QtCore import Qt, QPoint, QPointF
 from modern_ui.interactions.interaction_manager import InteractionManager, State
 
 
@@ -37,9 +37,9 @@ class TestInteractionManager(unittest.TestCase):
     def test_mouse_press_left_select_block(self):
         # mocking event
         mock_event = MagicMock()
-        mock_event.button.return_value = Qt.LeftButton
+        mock_event.button.return_value = Qt.MouseButton.LeftButton
         mock_event.pos.return_value = QPoint(100, 100)
-        mock_event.modifiers.return_value = Qt.NoModifier
+        mock_event.modifiers.return_value = Qt.KeyboardModifier.NoModifier
 
         # Mock canvas helpers
         self.mock_canvas._check_port_clicks.return_value = False
@@ -57,7 +57,7 @@ class TestInteractionManager(unittest.TestCase):
 
     def test_mouse_press_pan(self):
         mock_event = MagicMock()
-        mock_event.button.return_value = Qt.MiddleButton
+        mock_event.button.return_value = Qt.MouseButton.MiddleButton
         mock_event.pos.return_value = QPoint(50, 50)
 
         self.manager.handle_mouse_press(mock_event)

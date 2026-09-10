@@ -16,7 +16,7 @@ Same public class (ModernStyles) and entry point (apply_modern_theme), but:
 
 import logging
 
-from PyQt5.QtGui import QPalette, QColor
+from PyQt6.QtGui import QPalette, QColor
 
 from modern_ui.themes.theme_manager import theme_manager
 
@@ -528,47 +528,43 @@ def _build_qpalette() -> QPalette:
     white = QColor("#FFFFFF")
 
     p = QPalette()
-    p.setColor(QPalette.Window, window_bg)
-    p.setColor(QPalette.WindowText, text)
-    p.setColor(QPalette.Base, surface)
-    p.setColor(QPalette.AlternateBase, panel_bg)
-    p.setColor(QPalette.Text, text)
-    p.setColor(QPalette.PlaceholderText, text_dim)
-    p.setColor(QPalette.Button, panel_bg)
-    p.setColor(QPalette.ButtonText, text)
-    p.setColor(QPalette.BrightText, error)
-    p.setColor(QPalette.ToolTipBase, surface)
-    p.setColor(QPalette.ToolTipText, text)
-    p.setColor(QPalette.Highlight, accent)
-    p.setColor(QPalette.HighlightedText, white)
-    p.setColor(QPalette.Link, accent)
-    p.setColor(QPalette.LinkVisited, accent)
+    p.setColor(QPalette.ColorRole.Window, window_bg)
+    p.setColor(QPalette.ColorRole.WindowText, text)
+    p.setColor(QPalette.ColorRole.Base, surface)
+    p.setColor(QPalette.ColorRole.AlternateBase, panel_bg)
+    p.setColor(QPalette.ColorRole.Text, text)
+    p.setColor(QPalette.ColorRole.PlaceholderText, text_dim)
+    p.setColor(QPalette.ColorRole.Button, panel_bg)
+    p.setColor(QPalette.ColorRole.ButtonText, text)
+    p.setColor(QPalette.ColorRole.BrightText, error)
+    p.setColor(QPalette.ColorRole.ToolTipBase, surface)
+    p.setColor(QPalette.ColorRole.ToolTipText, text)
+    p.setColor(QPalette.ColorRole.Highlight, accent)
+    p.setColor(QPalette.ColorRole.HighlightedText, white)
+    p.setColor(QPalette.ColorRole.Link, accent)
+    p.setColor(QPalette.ColorRole.LinkVisited, accent)
 
-    p.setColor(QPalette.Disabled, QPalette.WindowText, text_off)
-    p.setColor(QPalette.Disabled, QPalette.Text, text_off)
-    p.setColor(QPalette.Disabled, QPalette.ButtonText, text_off)
-    p.setColor(QPalette.Disabled, QPalette.Highlight, panel_bg)
-    p.setColor(QPalette.Disabled, QPalette.HighlightedText, text_off)
+    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, text_off)
+    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, text_off)
+    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, text_off)
+    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Highlight, panel_bg)
+    p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.HighlightedText, text_off)
     return p
 
 
 def _maybe_use_fusion_style(app):
     """Work around QTBUG-109450 on macOS.
 
-    On macOS with Qt 5.15 the native ``macintosh`` style fails to draw the
-    blinking text caret in any QLineEdit/QSpinBox that has a stylesheet
-    setting ``background-color`` — which is every input field in this app.
-    The Fusion style is fully stylesheet-aware and draws the caret itself,
-    so switching to it restores cursor visibility everywhere.
-
-    Scoped to macOS + Qt >= 5.10: the x86_64 release build ships PyQt5 5.9,
-    whose native style renders the caret correctly, so it is left untouched.
+    On macOS the native ``macintosh`` style fails to draw the blinking text
+    caret in any QLineEdit/QSpinBox that has a stylesheet setting
+    ``background-color`` — which is every input field in this app. The Fusion
+    style is fully stylesheet-aware and draws the caret itself, so switching
+    to it restores cursor visibility everywhere.
     """
     import sys
-    from PyQt5.QtCore import QT_VERSION
 
-    if sys.platform == "darwin" and QT_VERSION >= 0x050A00:  # 5.10.0
-        from PyQt5.QtWidgets import QStyleFactory
+    if sys.platform == "darwin":
+        from PyQt6.QtWidgets import QStyleFactory
 
         fusion = QStyleFactory.create("Fusion")
         if fusion is not None:
@@ -598,7 +594,7 @@ def apply_modern_theme(app):
         # onto pyqtgraph/OpenGL windows, re-triggering the segfault noted
         # above. A top-level window that relies purely on inherited QSS and
         # does not self-subscribe will keep stale colors until reconstructed.
-        from PyQt5.QtWidgets import QMainWindow
+        from PyQt6.QtWidgets import QMainWindow
 
         for w in app.topLevelWidgets():
             try:

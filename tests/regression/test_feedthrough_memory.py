@@ -29,7 +29,7 @@ delivery had been cancelling it exactly.
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _run(src_fn, src_params, mid_fn, mid_params, sim_dt, sim_time=0.8):

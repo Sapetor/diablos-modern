@@ -3,8 +3,8 @@ Unit tests for SimulationModel class.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QColor
 
 
 @pytest.mark.unit

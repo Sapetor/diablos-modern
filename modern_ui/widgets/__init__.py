@@ -1,1 +1,1 @@
-"""Widgets for the DiaBloS Modern PyQt5 GUI (canvas, palette, scopes, dialogs)."""
+"""Widgets for the DiaBloS Modern PyQt6 GUI (canvas, palette, scopes, dialogs)."""

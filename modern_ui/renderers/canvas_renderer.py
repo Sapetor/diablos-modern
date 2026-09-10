@@ -5,8 +5,8 @@ Separates rendering logic from the ModernCanvas widget.
 """
 
 import logging
-from PyQt5.QtGui import QPainter, QPen, QColor, QPainterPath, QPolygonF
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
+from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QPolygonF
+from PyQt6.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from modern_ui.themes.theme_manager import theme_manager, font_metrics, text_width
 from lib.i18n import tr
 from lib.simulation.connection import bezier_control_points
@@ -183,15 +183,20 @@ class CanvasRenderer:
                     ]
                 )
                 if not small_points.isEmpty():
-                    painter.setBrush(Qt.NoBrush)
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
                     painter.setPen(
-                        QPen(small_dot_color, _SMALL_DOT_DIAMETER, Qt.SolidLine, Qt.SquareCap)
+                        QPen(
+                            small_dot_color,
+                            _SMALL_DOT_DIAMETER,
+                            Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.SquareCap,
+                        )
                     )
                     painter.drawPoints(small_points)
 
             # Set NoPen unconditionally so the large-dot loop below renders
             # identically whether or not the small dots were drawn.
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(large_dot_color)
             lx0 = _snap_down(rect.left(), large_grid_size)
             ly0 = _snap_down(rect.top(), large_grid_size)
@@ -228,9 +233,11 @@ class CanvasRenderer:
             painter.fillRect(selection_rect, fill_color)
 
             # Draw border
-            border_pen = QPen(theme_manager.get_color("selection_rectangle"), 2, Qt.DashLine)
+            border_pen = QPen(
+                theme_manager.get_color("selection_rectangle"), 2, Qt.PenStyle.DashLine
+            )
             painter.setPen(border_pen)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(selection_rect)
         finally:
             painter.restore()
@@ -253,10 +260,10 @@ class CanvasRenderer:
         try:
             # Cosmetic pen (width 0) -> always 1 device px regardless of zoom,
             # so the guide stays crisp and hairline at any scale.
-            pen = QPen(theme_manager.get_color("selection_rectangle"), 0, Qt.SolidLine)
+            pen = QPen(theme_manager.get_color("selection_rectangle"), 0, Qt.PenStyle.SolidLine)
             pen.setCosmetic(True)
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             for (x1, y1), (x2, y2) in guide_lines:
                 painter.drawLine(int(x1), int(y1), int(x2), int(y2))
         finally:
@@ -277,23 +284,25 @@ class CanvasRenderer:
         forward L-route (stub, vertical, stub).
         """
         src, dst = (end, start) if reverse else (start, end)
-        path = QPainterPath(src)
+        # Qt6's QPainterPath takes QPointF only -- QPoint is no longer
+        # implicitly converted, so widen the integer coordinates here.
+        path = QPainterPath(QPointF(src))
         if routing_mode == "orthogonal":
             if src.x() <= dst.x():
                 mid_x = (src.x() + dst.x()) // 2
-                path.lineTo(QPoint(mid_x, src.y()))
-                path.lineTo(QPoint(mid_x, dst.y()))
+                path.lineTo(QPointF(mid_x, src.y()))
+                path.lineTo(QPointF(mid_x, dst.y()))
             else:
                 # Feedback layout: stub out, drop halfway, come back in.
                 mid_y = (src.y() + dst.y()) // 2
-                path.lineTo(QPoint(src.x() + 20, src.y()))
-                path.lineTo(QPoint(src.x() + 20, mid_y))
-                path.lineTo(QPoint(dst.x() - 20, mid_y))
-                path.lineTo(QPoint(dst.x() - 20, dst.y()))
-            path.lineTo(dst)
+                path.lineTo(QPointF(src.x() + 20, src.y()))
+                path.lineTo(QPointF(src.x() + 20, mid_y))
+                path.lineTo(QPointF(dst.x() - 20, mid_y))
+                path.lineTo(QPointF(dst.x() - 20, dst.y()))
+            path.lineTo(QPointF(dst))
         else:
             cp1, cp2 = bezier_control_points(src, dst)
-            path.cubicTo(cp1, cp2, dst)
+            path.cubicTo(QPointF(cp1), QPointF(cp2), QPointF(dst))
         return path
 
     def draw_temp_line(
@@ -325,22 +334,22 @@ class CanvasRenderer:
         painter.save()
         try:
             # Enable antialiasing for smooth preview
-            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
             # Draw with solid line (not dashed) to avoid shadow artifacts
-            pen = QPen(line_color, 2, Qt.SolidLine)
-            pen.setCapStyle(Qt.RoundCap)
-            pen.setJoinStyle(Qt.RoundJoin)
+            pen = QPen(line_color, 2, Qt.PenStyle.SolidLine)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(pen)
 
             # Explicitly set no brush to prevent fill artifacts
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
 
             painter.drawPath(self.preview_path(start, end, routing_mode, reverse))
 
             # Draw endpoint indicator
             painter.setBrush(line_color)
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(
                 end,
                 5 if (is_valid_target or is_invalid_target) else 4,
@@ -393,7 +402,7 @@ class CanvasRenderer:
                     glow_color = QColor(theme_manager.get_color("accent_primary"))
                     glow_color.setAlpha(glow_alpha)
                     painter.setBrush(glow_color)
-                    painter.setPen(Qt.NoPen)
+                    painter.setPen(Qt.PenStyle.NoPen)
                     painter.drawEllipse(port_pos, 12, 12)
 
                     # Draw brighter center (copy before mutating alpha)
@@ -408,8 +417,8 @@ class CanvasRenderer:
                 hover_color.setAlpha(120)
 
                 # Draw glowing outline
-                painter.setPen(QPen(hover_color, 2.5, Qt.SolidLine))
-                painter.setBrush(Qt.NoBrush)
+                painter.setPen(QPen(hover_color, 2.5, Qt.PenStyle.SolidLine))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
 
                 # Access block geometry - handle potential differences in block object
                 left = getattr(hovered_block, "left", 0)
@@ -427,8 +436,16 @@ class CanvasRenderer:
                     hover_color.setAlpha(150)
 
                     # Draw thicker line underneath
-                    painter.setPen(QPen(hover_color, 3.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-                    painter.setBrush(Qt.NoBrush)
+                    painter.setPen(
+                        QPen(
+                            hover_color,
+                            3.5,
+                            Qt.PenStyle.SolidLine,
+                            Qt.PenCapStyle.RoundCap,
+                            Qt.PenJoinStyle.RoundJoin,
+                        )
+                    )
+                    painter.setBrush(Qt.BrushStyle.NoBrush)
                     painter.drawPath(path)
 
         except Exception as e:
@@ -486,7 +503,7 @@ class CanvasRenderer:
             bg = QColor(theme_manager.get_color("surface"))
             bg.setAlpha(200)
             painter.setBrush(bg)
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRoundedRect(rect, 6, 6)
 
             # Text
@@ -548,7 +565,7 @@ class CanvasRenderer:
         color = theme_manager.get_color("error") if is_error else theme_manager.get_color("warning")
 
         painter.setBrush(color)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(rect)
 
         # Draw symbol
@@ -559,4 +576,4 @@ class CanvasRenderer:
         painter.setFont(font)
 
         text = "!" if is_error else "?"
-        painter.drawText(rect, Qt.AlignCenter, text)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)

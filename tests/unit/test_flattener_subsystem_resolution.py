@@ -14,7 +14,7 @@ older .diablos files.
 """
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.engine.flattener import Flattener
 from lib.simulation.block import DBlock

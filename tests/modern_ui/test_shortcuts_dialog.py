@@ -8,7 +8,7 @@ key bindings (e.g. F1 / Ctrl+S) into the widget tree.
 
 import pytest
 
-from PyQt5.QtWidgets import QDialog, QLabel
+from PyQt6.QtWidgets import QDialog, QLabel
 
 
 @pytest.fixture(autouse=True)

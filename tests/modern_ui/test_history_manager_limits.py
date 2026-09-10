@@ -8,7 +8,7 @@ wrong state with nothing in the log to explain it.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 @pytest.fixture

@@ -31,7 +31,7 @@ THE FIX
 
 import pytest
 import numpy as np
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _build_step_dtf_scope(num, den, sampling_time, sim_time=1.0, sim_dt=0.1):

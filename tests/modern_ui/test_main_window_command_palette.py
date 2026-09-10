@@ -153,7 +153,7 @@ class TestShowCommandPalette:
 
 class TestAddBlockFromPaletteMenu:
     def test_places_block_and_toasts(self, window, monkeypatch):
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         captured = {}
 

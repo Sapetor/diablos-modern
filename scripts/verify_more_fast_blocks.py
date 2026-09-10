@@ -16,7 +16,7 @@ import sys
 # Run from anywhere: put the repo root on sys.path before importing lib/blocks.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 # DBlock builds QPixmap-backed icons, which needs a live QApplication even
 # headless.
@@ -24,7 +24,7 @@ if not QApplication.instance():
     _app = QApplication(sys.argv)
 
 import numpy as np
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.block_loader import load_blocks
 from lib.engine.simulation_engine import SimulationEngine

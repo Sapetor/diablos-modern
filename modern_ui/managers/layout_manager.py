@@ -21,8 +21,8 @@ and stores ``window._prop_scroll_viewport``.
 
 import logging
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -62,7 +62,7 @@ class LayoutManager:
         main_layout.setSpacing(4)
 
         # Create main splitter
-        main_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Orientation.Horizontal)
         main_splitter.setObjectName("MainSplitter")
         main_splitter.setChildrenCollapsible(False)
         main_splitter.setHandleWidth(5)
@@ -73,7 +73,7 @@ class LayoutManager:
         main_splitter.addWidget(window.left_panel)
 
         # Center area (Canvas + Property Panel on right)
-        center_splitter = QSplitter(Qt.Horizontal)
+        center_splitter = QSplitter(Qt.Orientation.Horizontal)
         center_splitter.setObjectName("CenterSplitter")
         center_splitter.setChildrenCollapsible(False)
         center_splitter.setHandleWidth(5)
@@ -222,7 +222,7 @@ class LayoutManager:
         window = self.window
         panel = QFrame()
         panel.setObjectName("ModernPanel")
-        panel.setFrameStyle(QFrame.StyledPanel)
+        panel.setFrameStyle(QFrame.Shape.StyledPanel)
 
         # Get platform configuration
         config = get_platform_config()
@@ -244,16 +244,16 @@ class LayoutManager:
         # Scroll area for properties
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameStyle(QFrame.NoFrame)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll_area.setFocusPolicy(Qt.NoFocus)
+        scroll_area.setFrameStyle(QFrame.Shape.NoFrame)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(scroll_area)
 
         # Property editor
         window.property_editor = PropertyEditor()
         scroll_area.setWidget(window.property_editor)
 
-        # PyQt5 5.15: QScrollArea viewport absorbs mouse clicks and doesn't
+        # A QScrollArea viewport absorbs mouse clicks and doesn't
         # transfer focus to child widgets. Install event filter to fix this.
         window._prop_scroll_viewport = scroll_area.viewport()
         window._prop_scroll_viewport.installEventFilter(window)

@@ -1,7 +1,7 @@
 """Qt file-choosing dialogs for the diagram persistence layer.
 
 Split out of :mod:`lib.services.file_service` so the persistence layer itself
-(serialize / deserialize / read / write) has no ``PyQt5.QtWidgets`` dependency:
+(serialize / deserialize / read / write) has no ``PyQt6.QtWidgets`` dependency:
 asking the user *where* to put a file is a UI concern, reading and writing it is
 not. ``FileService.save``/``load`` only reach in here when no explicit
 ``filepath`` was supplied, so every headless caller (CLI, tests, autosave,
@@ -48,10 +48,10 @@ def default_directory() -> str:
 
 def prompt_save_path(suggested_name: str, directory: str = None) -> str:
     """Ask the user where to save a diagram. Returns "" when cancelled."""
-    from PyQt5.QtWidgets import QFileDialog
+    from PyQt6.QtWidgets import QFileDialog
 
     directory = default_directory() if directory is None else directory
-    options = QFileDialog.Options()
+    options = QFileDialog.Option(0)
     filepath, _ = QFileDialog.getSaveFileName(
         None,
         tr("Save File"),
@@ -64,10 +64,10 @@ def prompt_save_path(suggested_name: str, directory: str = None) -> str:
 
 def prompt_open_path(directory: str = None) -> str:
     """Ask the user which diagram to open. Returns "" when cancelled."""
-    from PyQt5.QtWidgets import QFileDialog
+    from PyQt6.QtWidgets import QFileDialog
 
     directory = default_directory() if directory is None else directory
-    options = QFileDialog.Options()
+    options = QFileDialog.Option(0)
     filepath, _ = QFileDialog.getOpenFileName(
         None,
         tr("Open File"),

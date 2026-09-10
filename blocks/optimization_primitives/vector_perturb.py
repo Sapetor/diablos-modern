@@ -68,7 +68,7 @@ class VectorPerturbBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a bracketed vector with one component nudged by epsilon."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Brackets

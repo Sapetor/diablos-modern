@@ -1,8 +1,8 @@
 """Block outline shapes (BaseBlock.shape) and the decorations drawn on them."""
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor, QFont, QPainter, QPixmap
+from PyQt6.QtCore import QPoint, QPointF, QRect
+from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 
 from modern_ui.renderers.block_renderer import (
     BlockRenderer,
@@ -114,10 +114,12 @@ class TestOutlinePath:
             flipped = block_outline_path(_StubBlock("X", flipped=True), shape)
             # The apex is at the right edge normally, at the left edge flipped;
             # the corner beside the apex lies outside the outline.
-            assert normal.contains(QPoint(179, 130))
-            assert not normal.contains(QPoint(179, 102))
-            assert flipped.contains(QPoint(101, 130))
-            assert not flipped.contains(QPoint(101, 102))
+            # QPainterPath.contains takes a QPointF in Qt6 (QPoint is no
+            # longer implicitly widened).
+            assert normal.contains(QPointF(179, 130))
+            assert not normal.contains(QPointF(179, 102))
+            assert flipped.contains(QPointF(101, 130))
+            assert not flipped.contains(QPointF(101, 102))
 
 
 class TestGainLabel:

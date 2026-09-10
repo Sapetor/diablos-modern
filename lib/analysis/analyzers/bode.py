@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import scipy.signal as signal
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
@@ -46,7 +46,7 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             # Stability margins computed from the magnitude/phase arrays.
             margins = self._compute_stability_margins(w, mag, phase)
 
-            from PyQt5.QtWidgets import QWidget  # Lazy import
+            from PyQt6.QtWidgets import QWidget  # Lazy import
 
             plot_window = QWidget()
 
@@ -62,14 +62,14 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                 plot_widget.plot(w[valid], phase[valid], pen=pg.mkPen("b", width=2))
 
                 # Add -180 deg line
-                plot_widget.addLine(y=-180, pen=pg.mkPen("r", width=1, style=Qt.DashLine))
+                plot_widget.addLine(y=-180, pen=pg.mkPen("r", width=1, style=Qt.PenStyle.DashLine))
 
                 # Annotate phase margin at the 0 dB gain crossover.
                 pm = margins.get("phase_margin_deg")
                 pcw = margins.get("phase_crossover_w")
                 if pcw is not None and np.isfinite(pm):
                     plot_widget.addLine(
-                        x=np.log10(pcw), pen=pg.mkPen("g", width=1, style=Qt.DashLine)
+                        x=np.log10(pcw), pen=pg.mkPen("g", width=1, style=Qt.PenStyle.DashLine)
                     )
                     pm_text = pg.TextItem(f"PM = {pm:.1f} deg @ {pcw:.3g} rad/s", color="g")
                     pm_text.setPos(np.log10(pcw), -180)
@@ -86,14 +86,14 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                 plot_widget.plot(w[valid], mag[valid], pen=pg.mkPen("b", width=2))
 
                 # Add 0 dB line
-                plot_widget.addLine(y=0, pen=pg.mkPen("k", width=1, style=Qt.DashLine))
+                plot_widget.addLine(y=0, pen=pg.mkPen("k", width=1, style=Qt.PenStyle.DashLine))
 
                 # Annotate gain margin at the -180 deg phase crossover.
                 gm = margins.get("gain_margin_db")
                 gcw = margins.get("gain_crossover_w")
                 if gcw is not None and np.isfinite(gm):
                     plot_widget.addLine(
-                        x=np.log10(gcw), pen=pg.mkPen("r", width=1, style=Qt.DashLine)
+                        x=np.log10(gcw), pen=pg.mkPen("r", width=1, style=Qt.PenStyle.DashLine)
                     )
                     gm_text = pg.TextItem(f"GM = {gm:.1f} dB @ {gcw:.3g} rad/s", color="r")
                     gm_text.setPos(np.log10(gcw), 0)
@@ -103,7 +103,7 @@ class BodeAnalyzer(ErrorReportingMixin, BaseAnalyzer):
                 if dt > 0:
                     nyquist_freq = np.pi / dt
                     line = pg.InfiniteLine(
-                        pos=nyquist_freq, angle=90, pen=pg.mkPen("r", style=Qt.DashLine)
+                        pos=nyquist_freq, angle=90, pen=pg.mkPen("r", style=Qt.PenStyle.DashLine)
                     )
                     # We can't easily add text to InfiniteLine in some pg versions, use standard TextItem if needed?
                     # Simpler: Just the line

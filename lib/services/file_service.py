@@ -8,7 +8,7 @@ import os
 import sys
 import logging
 from typing import Dict, Optional, Any
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from lib.services.file_dialogs import prompt_open_path, prompt_save_path
 
@@ -27,7 +27,7 @@ def __getattr__(name):
     the attribute resolves to the single QFileDialog class both modules share.
     """
     if name == "QFileDialog":
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
 
         return QFileDialog
     raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
@@ -597,7 +597,7 @@ class FileService:
     ) -> Optional[Any]:
         """Reconstruct a single connection line from its serialized dict."""
         from lib.simulation.connection import DLine
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         points = [tuple(p) if isinstance(p, list) else p for p in line_data["points"]]
 

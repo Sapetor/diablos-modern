@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import scipy.signal as signal
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 import pyqtgraph as pg
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
@@ -52,7 +52,7 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             margins = self._compute_stability_margins(w, mag_db, phase_deg)
 
             # Plotting
-            from PyQt5.QtWidgets import QWidget
+            from PyQt6.QtWidgets import QWidget
 
             plot_window = QWidget()
             t = f"Nyquist Plot: {sys_block.name}"
@@ -65,7 +65,7 @@ class NyquistAnalyzer(ErrorReportingMixin, BaseAnalyzer):
             # Plot curve
             plot_widget.plot(real, imag, pen=pg.mkPen("b", width=2), name="System")
             # Mirror for full Nyquist
-            plot_widget.plot(real, -imag, pen=pg.mkPen("b", width=2, style=Qt.DashLine))
+            plot_widget.plot(real, -imag, pen=pg.mkPen("b", width=2, style=Qt.PenStyle.DashLine))
 
             # Critical point -1+0j
             plot_widget.plot([-1], [0], symbol="+", symbolSize=12, symbolPen="r")

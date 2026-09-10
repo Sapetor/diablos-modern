@@ -3,7 +3,7 @@ Displays validation errors and warnings in a collapsible panel.
 """
 
 import logging
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -14,8 +14,8 @@ from PyQt5.QtWidgets import (
     QMenu,
     QApplication,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QCursor
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont, QCursor
 from modern_ui.themes.theme_manager import theme_manager, make_shadow
 from lib.diagram_validator import ErrorSeverity
 from lib.i18n import tr
@@ -61,7 +61,7 @@ class ErrorItemWidget(QFrame):
         layout.addWidget(message_label, 1)
 
         # Make clickable
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def _apply_styling(self):
         """Apply theme-aware styling."""
@@ -96,7 +96,7 @@ class ErrorItemWidget(QFrame):
 
     def mousePressEvent(self, event):
         """Handle mouse press - emit clicked signal."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.error)
         super().mousePressEvent(event)
 
@@ -105,7 +105,7 @@ class ErrorItemWidget(QFrame):
         menu = QMenu(self)
         copy_action = menu.addAction(tr("Copy Message"))
         copy_action.triggered.connect(self._copy_to_clipboard)
-        menu.exec_(QCursor.pos())
+        menu.exec(QCursor.pos())
 
     def _copy_to_clipboard(self):
         """Copy the error message to clipboard."""
@@ -151,7 +151,7 @@ class ErrorPanel(QWidget):
 
         # Title
         self.title_label = QLabel(tr("Validation Results"))
-        self.title_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        self.title_label.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         header_layout.addWidget(self.title_label)
 
         # Error count badge
@@ -186,8 +186,8 @@ class ErrorPanel(QWidget):
         # Scroll area for errors
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         # Content widget
         self.content_widget = QWidget()
@@ -338,6 +338,6 @@ class ErrorPanel(QWidget):
         # Visual feedback - briefly change button text
         original_text = self.copy_btn.text()
         self.copy_btn.setText("✓")
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtCore import QTimer
 
         QTimer.singleShot(1000, lambda: self.copy_btn.setText(original_text))

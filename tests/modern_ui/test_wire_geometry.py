@@ -14,7 +14,7 @@ Covers the wire-model half of the wiring overhaul:
 import copy
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.simulation.connection import DLine
 

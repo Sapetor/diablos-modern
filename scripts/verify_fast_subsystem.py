@@ -21,12 +21,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # DBlock builds QPixmap-backed icons, which needs a live QApplication even
 # headless; without this the script aborts with "Must construct a
 # QGuiApplication before a QPixmap".
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 if not QApplication.instance():
     _app = QApplication(sys.argv)
 
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from blocks.gain import GainBlock
 from blocks.inport import Inport

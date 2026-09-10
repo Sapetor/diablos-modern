@@ -52,7 +52,7 @@ class TestSettingsConstants:
 
 class TestUiSettingsAccessor:
     def test_returns_qsettings(self):
-        from PyQt5.QtCore import QSettings
+        from PyQt6.QtCore import QSettings
 
         assert isinstance(ui_settings(), QSettings)
 
@@ -63,7 +63,7 @@ class TestUiSettingsAccessor:
 
     def test_all_call_sites_agree_on_org_app(self):
         """``ui_settings()`` and both call sites resolve to one org/app pair."""
-        from PyQt5.QtCore import QSettings
+        from PyQt6.QtCore import QSettings
 
         helper = ui_settings()
         # How main_window constructs the first-run store.

@@ -15,7 +15,7 @@ without synthesising Qt mouse events:
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 from lib.lib import DSim
 

@@ -113,7 +113,7 @@ class LookupTable1DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a monotone staircase/curve glyph in normalized 0-1 coordinates."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         path.moveTo(0.15, 0.80)
@@ -242,7 +242,7 @@ class LookupTable2DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a small grid glyph in normalized 0-1 coordinates."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         for gx in (0.25, 0.45, 0.65, 0.85):

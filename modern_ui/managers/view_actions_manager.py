@@ -88,7 +88,7 @@ class ViewActionsManager:
         if not hasattr(window, "canvas"):
             return
 
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         # Get all blocks
         blocks = window.canvas.dsim.blocks_list

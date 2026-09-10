@@ -89,7 +89,7 @@ class FieldProbeBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw probe icon - crosshair on a curve."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw a curve
@@ -199,7 +199,7 @@ class FieldIntegralBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw integral icon - integral symbol with curve."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw integral symbol
@@ -301,7 +301,7 @@ class FieldMaxBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw max icon - curve with peak marker."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw a curve with a peak
@@ -415,7 +415,7 @@ class FieldScopeBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw field scope icon - 2D grid/heatmap."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw grid pattern representing heatmap
@@ -505,7 +505,7 @@ class FieldGradientBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw gradient icon - slope with nabla symbol."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw nabla (inverted triangle)
@@ -588,7 +588,7 @@ class FieldLaplacianBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw Laplacian icon - nabla squared symbol."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Draw nabla squared (two inverted triangles)

@@ -15,7 +15,7 @@ Run offscreen:
 import numpy as np
 import pytest
 
-from PyQt5.QtWidgets import QWidget, QComboBox
+from PyQt6.QtWidgets import QWidget, QComboBox
 
 from modern_ui.widgets.ensemble_result_window import EnsembleResultWindow
 

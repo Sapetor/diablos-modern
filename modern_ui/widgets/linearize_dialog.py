@@ -21,7 +21,7 @@ A-only linearization downstream.
 
 import logging
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QGroupBox,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from lib.i18n import tr
 
@@ -87,14 +87,14 @@ class LinearizeDialog(QDialog):
         # Inputs
         in_group = QGroupBox(tr("Inputs (sources)"))
         in_v = QVBoxLayout(in_group)
-        self.input_list.setSelectionMode(QListWidget.ExtendedSelection)
+        self.input_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         in_v.addWidget(self.input_list)
         lists_layout.addWidget(in_group)
 
         # Outputs
         out_group = QGroupBox(tr("Outputs (signals)"))
         out_v = QVBoxLayout(out_group)
-        self.output_list.setSelectionMode(QListWidget.ExtendedSelection)
+        self.output_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         out_v.addWidget(self.output_list)
         lists_layout.addWidget(out_group)
 
@@ -102,7 +102,9 @@ class LinearizeDialog(QDialog):
 
         layout.addWidget(self.trim_checkbox)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
@@ -123,7 +125,7 @@ class LinearizeDialog(QDialog):
         """Build a list item: friendly label as text, block.name as data."""
         name = getattr(block, "name", "")
         item = QListWidgetItem(LinearizeDialog._friendly_label(block))
-        item.setData(Qt.UserRole, name)
+        item.setData(Qt.ItemDataRole.UserRole, name)
         return item
 
     @staticmethod
@@ -183,7 +185,7 @@ class LinearizeDialog(QDialog):
     def _selected_names(list_widget) -> list:
         names = []
         for item in list_widget.selectedItems():
-            name = item.data(Qt.UserRole)
+            name = item.data(Qt.ItemDataRole.UserRole)
             if name:
                 names.append(name)
         return names

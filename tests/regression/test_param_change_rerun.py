@@ -10,8 +10,8 @@ Run with: pytest tests/regression/test_param_change_rerun.py -v
 
 import pytest
 import numpy as np
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
 from lib.engine.system_compiler import SystemCompiler

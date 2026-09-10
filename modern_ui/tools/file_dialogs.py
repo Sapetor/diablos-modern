@@ -2,7 +2,7 @@
 
 import os
 
-from PyQt5.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QFileDialog
 
 
 def ask_save_path(parent, caption, default_path, filters):

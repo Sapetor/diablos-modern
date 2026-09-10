@@ -17,8 +17,8 @@ Run with:
 """
 
 import pytest
-from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QPixmap, QPainter, QColor
+from PyQt6.QtCore import QRect
+from PyQt6.QtGui import QPixmap, QPainter, QColor
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock

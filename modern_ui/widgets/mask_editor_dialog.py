@@ -20,7 +20,7 @@ be committed to a block.
 
 import logging
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QDialog,
@@ -116,7 +116,9 @@ class MaskEditorDialog(QDialog):
         self.error_label.hide()
         layout.addWidget(self.error_label)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         layout.addWidget(self.buttons)
@@ -139,10 +141,10 @@ class MaskEditorDialog(QDialog):
         self.table = QTableWidget(0, len(_COLUMNS))
         self.table.setHorizontalHeaderLabels([tr(c) for c in _COLUMNS])
         self.table.verticalHeader().setVisible(False)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(_COL_DOC, QHeaderView.Stretch)
+        header.setSectionResizeMode(_COL_DOC, QHeaderView.ResizeMode.Stretch)
         v.addWidget(self.table, 1)
 
         row = QHBoxLayout()
@@ -374,7 +376,7 @@ def edit_block_mask(block, parent=None):
     normalized and safe to hand to :func:`lib.masks.set_mask`.
     """
     dialog = MaskEditorDialog(block=block, parent=parent)
-    if dialog.exec_() != QDialog.Accepted:
+    if dialog.exec() != QDialog.DialogCode.Accepted:
         return None
     try:
         return dialog.get_mask()

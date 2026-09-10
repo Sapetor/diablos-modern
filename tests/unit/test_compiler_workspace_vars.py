@@ -23,8 +23,8 @@ strictly-proper TF), and the compiled and interpreted paths agree.
 
 import pytest
 import numpy as np
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
 
 
 def _make_block(block_fn, sid, username, in_ports, out_ports, params, b_type=2):

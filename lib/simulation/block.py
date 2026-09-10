@@ -7,8 +7,8 @@ import copy
 from typing import Dict, List, Optional, Any, Union
 import math
 import numpy as np
-from PyQt5.QtGui import QColor, QFont, QPixmap
-from PyQt5.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor, QFont, QPixmap
+from PyQt6.QtCore import QRect, QPoint
 from lib.dialogs import PortDialog
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,10 @@ class DBlock:
             self.b_color: QColor = color
         elif colors and color in colors:
             self.b_color: QColor = colors[color]
+        elif color is None:
+            # Qt6's QColor raises on None (Qt5 quietly produced an invalid
+            # colour); keep the old "no colour" behaviour explicitly.
+            self.b_color: QColor = QColor()
         else:
             self.b_color: QColor = QColor(color)
         self.image: QPixmap = QPixmap()  # Initialize as null QPixmap since no icons are available
@@ -595,7 +599,7 @@ class DBlock:
         if self.io_edit == "both":
             # Inputs and outputs can be edited
             dialog = PortDialog(self.name, {"inputs": self.in_ports, "outputs": self.out_ports})
-            if dialog.exec_():
+            if dialog.exec():
                 new_io = dialog.get_values()
                 self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
                 self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
@@ -606,7 +610,7 @@ class DBlock:
         elif self.io_edit == "input":
             # Only inputs can be edited
             dialog = PortDialog(self.name, {"inputs": self.in_ports})
-            if dialog.exec_():
+            if dialog.exec():
                 new_io = dialog.get_values()
                 self.in_ports = self._parse_port_count(new_io["inputs"], self.in_ports)
                 logger.debug(f"Changed input ports to {self.in_ports}")
@@ -614,7 +618,7 @@ class DBlock:
         elif self.io_edit == "output":
             # Only outputs can be edited
             dialog = PortDialog(self.name, {"outputs": self.out_ports})
-            if dialog.exec_():
+            if dialog.exec():
                 new_io = dialog.get_values()
                 self.out_ports = self._parse_port_count(new_io["outputs"], self.out_ports)
                 logger.debug(f"Changed output ports to {self.out_ports}")

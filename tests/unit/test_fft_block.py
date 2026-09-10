@@ -213,14 +213,14 @@ class TestFFTBlock:
     def test_draw_icon_returns_path(self):
         """Test that draw_icon returns a QPainterPath."""
         from blocks.fft import FFTBlock
-        from PyQt5.QtCore import QRectF
+        from PyQt6.QtCore import QRectF
 
         block = FFTBlock()
         rect = QRectF(0, 0, 100, 100)
         path = block.draw_icon(rect)
 
         # Should return a QPainterPath
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         assert isinstance(path, QPainterPath)
 

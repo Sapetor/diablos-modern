@@ -5,7 +5,7 @@ Centralizes platform detection logic and provides consistent sizing across compo
 
 import platform
 import logging
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
 

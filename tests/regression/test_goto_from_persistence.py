@@ -111,7 +111,7 @@ def file_service_with_lines(qapp, tmp_path):
         ),
     ]
 
-    from PyQt5.QtCore import QPoint
+    from PyQt6.QtCore import QPoint
 
     real_line = DLine(0, "step__0", 0, "goto__1", 0, [QPoint(50, 0), QPoint(100, 0)])
     virtual_line = DLine(
@@ -170,7 +170,7 @@ class TestVirtualLineNotPersisted:
         """_serialize_block must filter hidden lines in sub_lines too."""
         from lib.services.file_service import FileService
         from lib.simulation.connection import DLine
-        from PyQt5.QtCore import QPoint
+        from PyQt6.QtCore import QPoint
 
         hidden_sub = DLine(0, "a", 0, "from_inside", 0, [QPoint(0, 0), QPoint(10, 10)], hidden=True)
         visible_sub = DLine(1, "a", 0, "b", 0, [QPoint(0, 0), QPoint(10, 10)])

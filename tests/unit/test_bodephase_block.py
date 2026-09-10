@@ -40,7 +40,7 @@ class TestBodePhaseBlock:
             assert block.execute(t, {0: np.array([t])}, params) == {}
 
     def test_draw_icon_returns_path(self):
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         block = BodePhaseBlock()
         path = block.draw_icon(None)

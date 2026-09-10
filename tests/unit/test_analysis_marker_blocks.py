@@ -72,8 +72,8 @@ class TestAnalysisMarkerContract:
             assert "default" in spec, f"{expected_name}.{name} has no default"
 
     def test_draw_icon_returns_a_painter_path(self, block_cls, expected_name, qapp):
-        from PyQt5.QtCore import QRect
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtCore import QRect
+        from PyQt6.QtGui import QPainterPath
 
         path = block_cls().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, QPainterPath)

@@ -72,7 +72,7 @@ class ResidualNormBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a vector arrow between double norm bars."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # Left double bar

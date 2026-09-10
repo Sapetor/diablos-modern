@@ -24,7 +24,7 @@ so the window must not step the same ``DSim`` while it runs -- see
 import logging
 import time
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 logger = logging.getLogger(__name__)
 

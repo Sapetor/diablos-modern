@@ -54,7 +54,7 @@ class SimulationActionsManager:
                 logger.warning(f"Simulation blocked by {error_count} validation error(s)")
 
                 # Show a message box for critical errors
-                from PyQt5.QtWidgets import QMessageBox
+                from PyQt6.QtWidgets import QMessageBox
 
                 QMessageBox.warning(
                     window,

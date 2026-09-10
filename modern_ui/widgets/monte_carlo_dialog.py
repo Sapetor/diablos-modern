@@ -21,7 +21,7 @@ The dialog performs no simulation; it only gathers a selection.
 
 import logging
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QFormLayout,
@@ -106,7 +106,9 @@ class MonteCarloDialog(QDialog):
         helper.setWordWrap(True)
         layout.addWidget(helper)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)

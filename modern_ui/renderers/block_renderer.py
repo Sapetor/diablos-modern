@@ -7,7 +7,7 @@ Separates the view/drawing logic from the data model.
 import logging
 import math
 from typing import Optional
-from PyQt5.QtGui import (
+from PyQt6.QtGui import (
     QColor,
     QPen,
     QPainter,
@@ -18,7 +18,7 @@ from PyQt5.QtGui import (
     QTransform,
     QFont,
 )
-from PyQt5.QtCore import Qt, QRect, QRectF, QPoint, QPointF
+from PyQt6.QtCore import Qt, QRect, QRectF, QPoint, QPointF
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
@@ -308,7 +308,7 @@ def cached_outline_path(block, shape: str, offset: int = 0, expand: int = 0) -> 
     return path
 
 
-def _cached_pen(color: QColor, width, style=Qt.SolidLine) -> QPen:
+def _cached_pen(color: QColor, width, style=Qt.PenStyle.SolidLine) -> QPen:
     """Memoized QPen. Shared instance -- read-only for callers."""
     key = (color.rgba(), width, style)
     pen = _PEN_CACHE.get(key)
@@ -398,12 +398,14 @@ def _cached_name_font(font: QFont) -> QFont:
         font.italic(),
         font.underline(),
         font.strikeOut(),
-        int(font.styleStrategy()),
+        # Qt6's StyleStrategy is a plain (non-int) enum; it is hashable, so use
+        # the member itself rather than coercing it to an int.
+        font.styleStrategy(),
     )
     cached = _NAME_FONT_CACHE.get(key)
     if cached is None:
         cached = QFont(font)
-        cached.setWeight(QFont.Normal)
+        cached.setWeight(QFont.Weight.Normal)
         _cache_put(_NAME_FONT_CACHE, key, cached)
     return cached
 
@@ -569,13 +571,15 @@ class BlockRenderer:
             # memoized rather than rebuilt for every block on every frame.
             painter.setFont(_cached_name_font(block.font))
             text_rect = QRect(block.left, block.top + block.height + 2, block.width, 28)
-            painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, block.username)
+            painter.drawText(
+                text_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, block.username
+            )
 
         # Enhanced selection visualization
         if block.selected:
             selection_color = theme_manager.get_color("block_selected")
-            painter.setPen(QPen(selection_color, 3, Qt.SolidLine))
-            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(selection_color, 3, Qt.PenStyle.SolidLine))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             padding = 4
             selection_rect = QRect(
                 block.left - padding,
@@ -646,7 +650,7 @@ class BlockRenderer:
         if shape is None:
             shape = resolve_block_shape(block)
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         for offset, expand, layer_color in _cached_shadow_layers(
             theme_manager.get_color("block_shadow")
         ):
@@ -735,7 +739,7 @@ class BlockRenderer:
         painter.drawEllipse(location, radius, radius)
 
         # Highlight
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(_PORT_HIGHLIGHT_COLOR)
         highlight_offset = int(radius * 0.3)
         highlight_size = int(radius * 0.4)
@@ -805,7 +809,7 @@ class BlockRenderer:
                 bg_rect = QRect(
                     int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height)
                 )
-                painter.setPen(Qt.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(bg_color)
                 painter.drawRoundedRect(bg_rect, 2, 2)
 
@@ -828,7 +832,7 @@ class BlockRenderer:
                 bg_rect = QRect(
                     int(x - 2), int(y - text_height + 2), int(text_width + 4), int(text_height)
                 )
-                painter.setPen(Qt.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(bg_color)
                 painter.drawRoundedRect(bg_rect, 2, 2)
 
@@ -1070,7 +1074,7 @@ class BlockRenderer:
             rect = QRect(
                 block.left + int(block.width * 0.3), block.top, int(block.width * 0.6), block.height
             )
-        painter.drawText(rect, Qt.AlignCenter, text)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
         font.setPointSize(orig_size)
         font.setBold(orig_bold)
         painter.setFont(font)
@@ -1092,7 +1096,7 @@ class BlockRenderer:
         for glyph, pos in zip(glyphs, coords):
             cx = pos.x() + (inset if not getattr(block, "flipped", False) else -inset)
             rect = QRect(int(cx - box / 2), int(pos.y() - box / 2), box, box)
-            painter.drawText(rect, Qt.AlignCenter, glyph)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, glyph)
         font.setPointSize(orig_size)
         font.setBold(orig_bold)
         painter.setFont(font)
@@ -1108,13 +1112,13 @@ class BlockRenderer:
         painter.setPen(theme_manager.get_color("block_icon_color"))
 
         rect_top = QRect(block.left, block.top, block.width, block.height // 2)
-        painter.drawText(rect_top, Qt.AlignCenter, lines[0])
+        painter.drawText(rect_top, Qt.AlignmentFlag.AlignCenter, lines[0])
 
         line_y = block.top + block.height // 2
         painter.drawLine(block.left + 10, line_y, block.left + block.width - 10, line_y)
 
         rect_bot = QRect(block.left, block.top + block.height // 2, block.width, block.height // 2)
-        painter.drawText(rect_bot, Qt.AlignCenter, lines[1])
+        painter.drawText(rect_bot, Qt.AlignmentFlag.AlignCenter, lines[1])
 
         font.setItalic(False)
         font.setPointSize(orig)
@@ -1131,7 +1135,7 @@ class BlockRenderer:
         painter.setFont(font)
         painter.setPen(QColor(color) if color else theme_manager.get_color("block_icon_color"))
         rect = QRect(block.left, block.top, block.width, block.height)
-        painter.drawText(rect, Qt.AlignCenter, text)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
         font.setBold(False)
         font.setItalic(False)
         font.setPointSize(orig)
@@ -1150,7 +1154,7 @@ class BlockRenderer:
                 int(block.width * 0.6),
                 int(block.height * 0.6),
             ),
-            Qt.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
             text,
         )
         font.setPointSize(orig)
@@ -1169,14 +1173,14 @@ class BlockRenderer:
         painter.setFont(font)
         painter.drawText(
             QRect(block.left + 4, block.top + 2, block.width // 2, block.height // 2),
-            Qt.AlignLeft | Qt.AlignTop,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
             tl,
         )
         painter.drawText(
             QRect(
                 block.left + 4, block.top + block.height // 2, block.width // 2, block.height // 2
             ),
-            Qt.AlignLeft | Qt.AlignBottom,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
             bl,
         )
         font.setPointSize(orig)

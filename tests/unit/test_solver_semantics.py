@@ -21,7 +21,7 @@ import types
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.engine.compiled_runner import (
     AUTO_RESOLVED_METHOD,

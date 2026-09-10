@@ -10,8 +10,8 @@ logging the post-run verification report (built by
 
 import logging
 
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox, QWidget
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from lib.i18n import tr
 from lib.diagram_validator import check_simulation_state, validate_block_connections
@@ -97,12 +97,12 @@ class SimulationController(QObject):
                     # inherits the application theme.
                     parent_widget = self.parent() if isinstance(self.parent(), QWidget) else None
                     msgBox = QMessageBox(parent_widget)
-                    msgBox.setIcon(QMessageBox.Critical)
+                    msgBox.setIcon(QMessageBox.Icon.Critical)
                     msgBox.setText(tr("Simulation Failed to Start"))
                     msgBox.setInformativeText(error_msg)
                     msgBox.setWindowTitle(tr("Simulation Error"))
-                    msgBox.setStandardButtons(QMessageBox.Ok)
-                    msgBox.exec_()
+                    msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
+                    msgBox.exec()
                     return False
             else:
                 logger.error("DSim does not have execution_init method")
@@ -154,12 +154,12 @@ class SimulationController(QObject):
 
     def _run_batch_blocking(self):
         """Synchronous batch run (live-plot path); blocks the GUI thread."""
-        from PyQt5.QtWidgets import QApplication
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import Qt
 
         logger.info("Running simulation in batch mode (blocking, dynamic plot).")
         self.status_changed.emit(tr("Running simulation..."))
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         QApplication.processEvents()
         try:
             self.dsim.execution_batch()

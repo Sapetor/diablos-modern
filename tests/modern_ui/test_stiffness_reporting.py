@@ -9,7 +9,7 @@ run is worse than no diagnostic.
 import types
 
 import pytest
-from PyQt5.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel
 
 from modern_ui.controllers.simulation_controller import SimulationController
 from modern_ui.widgets.property_editor import PropertyEditor

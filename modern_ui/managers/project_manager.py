@@ -1,6 +1,6 @@
 import os
 import logging
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 from lib.app_paths import user_data_path
 from lib.i18n import tr
 from lib.services.diagram_service import DiagramService
@@ -88,11 +88,11 @@ class ProjectManager:
                     tr(
                         "An auto-save file was found. Do you want to recover your previous session?"
                     ),
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes,
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
                 )
 
-                if reply == QMessageBox.Yes:
+                if reply == QMessageBox.StandardButton.Yes:
                     self.recover_autosave()
                 else:
                     os.remove(self.autosave_path)

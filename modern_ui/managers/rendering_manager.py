@@ -6,9 +6,9 @@ Orchestrates rendering of blocks, connections, and visual indicators.
 import logging
 from contextlib import contextmanager
 from typing import List, Any, TYPE_CHECKING
-from PyQt5.QtCore import QRect, QPoint, Qt
-from PyQt5.QtGui import QPainter, QPen, QColor
-from PyQt5.QtWidgets import QToolTip
+from PyQt6.QtCore import QRect, QPoint, Qt
+from PyQt6.QtGui import QPainter, QPen, QColor
+from PyQt6.QtWidgets import QToolTip
 
 from lib.i18n import tr
 from modern_ui.widgets.canvas_state import ValidationState
@@ -170,8 +170,8 @@ class RenderingManager:
                 border_width = 2
 
             # Draw pulsing border around block
-            painter.setPen(QPen(indicator_color, border_width, Qt.SolidLine))
-            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(indicator_color, border_width, Qt.PenStyle.SolidLine))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
 
             # Draw outline around block
             padding = 4
@@ -274,7 +274,7 @@ class RenderingManager:
 
             # Reset cursor if not over resize handle or port
             if not new_hovered_port:
-                self.canvas.setCursor(Qt.ArrowCursor)
+                self.canvas.setCursor(Qt.CursorShape.ArrowCursor)
 
         # Check for hovered block (if no port is hovered)
         hover = self.canvas.interaction_manager.hover
@@ -311,13 +311,13 @@ class RenderingManager:
     def set_resize_cursor(self, handle: str) -> None:
         """Set the appropriate cursor for a resize handle."""
         cursor_map = {
-            "top_left": Qt.SizeFDiagCursor,
-            "top_right": Qt.SizeBDiagCursor,
-            "bottom_left": Qt.SizeBDiagCursor,
-            "bottom_right": Qt.SizeFDiagCursor,
-            "top": Qt.SizeVerCursor,
-            "bottom": Qt.SizeVerCursor,
-            "left": Qt.SizeHorCursor,
-            "right": Qt.SizeHorCursor,
+            "top_left": Qt.CursorShape.SizeFDiagCursor,
+            "top_right": Qt.CursorShape.SizeBDiagCursor,
+            "bottom_left": Qt.CursorShape.SizeBDiagCursor,
+            "bottom_right": Qt.CursorShape.SizeFDiagCursor,
+            "top": Qt.CursorShape.SizeVerCursor,
+            "bottom": Qt.CursorShape.SizeVerCursor,
+            "left": Qt.CursorShape.SizeHorCursor,
+            "right": Qt.CursorShape.SizeHorCursor,
         }
-        self.canvas.setCursor(cursor_map.get(handle, Qt.ArrowCursor))
+        self.canvas.setCursor(cursor_map.get(handle, Qt.CursorShape.ArrowCursor))

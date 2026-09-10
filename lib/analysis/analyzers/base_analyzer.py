@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import scipy.signal as signal
-from PyQt5.QtWidgets import QVBoxLayout
+from PyQt6.QtWidgets import QVBoxLayout
 import pyqtgraph as pg
 from lib.safe_eval import safe_literal
 

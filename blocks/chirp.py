@@ -81,7 +81,7 @@ class ChirpBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a swept-sine (increasing frequency) icon in 0-1 coords."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         path.moveTo(0.1, 0.5)

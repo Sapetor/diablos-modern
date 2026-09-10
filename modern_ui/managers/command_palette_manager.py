@@ -211,8 +211,8 @@ class CommandPaletteManager:
         if not hasattr(window, "canvas"):
             return
 
-        from PyQt5.QtCore import QPoint
-        from PyQt5.QtGui import QCursor
+        from PyQt6.QtCore import QPoint
+        from PyQt6.QtGui import QCursor
 
         canvas = window.canvas
 

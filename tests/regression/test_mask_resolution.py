@@ -13,7 +13,7 @@ Two guarantees:
 import copy
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.engine.flattener import Flattener
 from lib.masks import set_mask

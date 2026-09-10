@@ -10,8 +10,8 @@ from the orthogonal route.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtGui import QPainterPath
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QPainterPath
 
 from lib.simulation.connection import DLine
 

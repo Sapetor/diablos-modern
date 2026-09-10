@@ -9,7 +9,7 @@ These blocks are DBlock subclasses used for hierarchical diagram organization:
 
 import pytest
 from unittest.mock import MagicMock
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 
 @pytest.mark.unit
@@ -79,7 +79,7 @@ class TestInport:
     def test_inport_color(self, qapp):
         """Test Inport default color is green."""
         from blocks.inport import Inport
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Inport()
         assert block.b_color == QColor("green")
@@ -87,7 +87,7 @@ class TestInport:
     def test_inport_custom_color(self, qapp):
         """Test Inport with custom color."""
         from blocks.inport import Inport
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Inport(color="blue")
         assert block.b_color == QColor("blue")
@@ -191,7 +191,7 @@ class TestOutport:
     def test_outport_color(self, qapp):
         """Test Outport default color is red."""
         from blocks.outport import Outport
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Outport()
         assert block.b_color == QColor("red")
@@ -199,7 +199,7 @@ class TestOutport:
     def test_outport_custom_color(self, qapp):
         """Test Outport with custom color."""
         from blocks.outport import Outport
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Outport(color="yellow")
         assert block.b_color == QColor("yellow")
@@ -293,7 +293,7 @@ class TestSubsystem:
     def test_subsystem_color(self, qapp):
         """Test Subsystem default color is lightgray."""
         from blocks.subsystem import Subsystem
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Subsystem()
         assert block.b_color == QColor("lightgray")
@@ -301,7 +301,7 @@ class TestSubsystem:
     def test_subsystem_custom_color(self, qapp):
         """Test Subsystem with custom color."""
         from blocks.subsystem import Subsystem
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtGui import QColor
 
         block = Subsystem(color="cyan")
         assert block.b_color == QColor("cyan")

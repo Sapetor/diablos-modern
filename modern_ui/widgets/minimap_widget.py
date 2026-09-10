@@ -4,9 +4,9 @@ Provides a scaled overview of the entire diagram with viewport indicator.
 """
 
 import logging
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import Qt, QPoint, QRect, QRectF, pyqtSignal
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import Qt, QPoint, QRect, QRectF, pyqtSignal
+from PyQt6.QtGui import QPainter, QPen, QBrush, QColor
 
 from modern_ui.themes.theme_manager import theme_manager
 
@@ -119,7 +119,7 @@ class MinimapWidget(QWidget):
     def paintEvent(self, event):
         """Paint the minimap."""
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Background
         bg_color = theme_manager.get_color("surface_secondary")
@@ -174,7 +174,7 @@ class MinimapWidget(QWidget):
         """Draw simplified connection lines."""
         line_color = theme_manager.get_color("connection_default")
         painter.setPen(QPen(line_color, 1 / self._scale))
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
         for line in self.dsim.line_list:
             if getattr(line, "hidden", False):
@@ -224,12 +224,12 @@ class MinimapWidget(QWidget):
 
     def mousePressEvent(self, event):
         """Handle mouse press for click-to-pan functionality."""
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._pan_to_minimap_pos(event.pos())
 
     def mouseMoveEvent(self, event):
         """Handle mouse drag for continuous panning."""
-        if event.buttons() & Qt.LeftButton:
+        if event.buttons() & Qt.MouseButton.LeftButton:
             self._pan_to_minimap_pos(event.pos())
 
     def _pan_to_minimap_pos(self, minimap_pos):

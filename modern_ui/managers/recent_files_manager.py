@@ -20,7 +20,7 @@ import os
 import json
 import logging
 
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 
 from lib.i18n import tr
 

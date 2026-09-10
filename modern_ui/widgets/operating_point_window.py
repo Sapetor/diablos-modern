@@ -17,7 +17,7 @@ Result-dict contract::
     }
 """
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QHeaderView,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 from lib.i18n import tr
@@ -65,15 +65,15 @@ class OperatingPointWindow(QWidget):
         table = QTableWidget(len(states), 2)
         table.setHorizontalHeaderLabels([tr("State"), tr("Value")])
         table.verticalHeader().setVisible(False)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         for row, st in enumerate(states):
             name_item = QTableWidgetItem(str(st.get("name", f"x{row}")))
             val_item = QTableWidgetItem(f"{float(st.get('value', 0.0)):.6g}")
-            val_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            val_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             table.setItem(row, 0, name_item)
             table.setItem(row, 1, val_item)
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(table, 1)
 
         if not states:
@@ -92,7 +92,7 @@ class OperatingPointWindow(QWidget):
         msg = self.result.get("error") or tr("Operating-point search failed.")
         label = QLabel(str(msg))
         label.setWordWrap(True)
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(
             f"color: {theme_manager.get_color('error').name()}; "
             f"font-size: {TYPE['body_strong']}pt; padding: 24px;"

@@ -13,7 +13,7 @@ Two properties have to hold:
 """
 
 import pytest
-from PyQt5.QtGui import QFont
+from PyQt6.QtGui import QFont
 
 from lib.theming.theme_manager import (
     DEFAULT_PALETTE,
@@ -102,7 +102,7 @@ class TestFontMetricsCache:
     def test_bold_and_italic_are_distinguished(self, qapp):
         plain = get_ui_font(12)
         bold = QFont(plain)
-        bold.setWeight(QFont.Bold)
+        bold.setWeight(QFont.Weight.Bold)
         italic = QFont(plain)
         italic.setItalic(True)
         assert font_metrics(plain) is not font_metrics(bold)

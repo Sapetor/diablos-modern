@@ -269,11 +269,11 @@ def test_draw_icons():
     """Test that all new blocks have draw_icon methods that return valid paths."""
     print("\n=== Test 8: Block Icons ===")
 
-    # We need PyQt5 for this test
+    # We need PyQt6 for this test
     try:
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
     except ImportError:
-        print("PyQt5 not available, skipping icon test")
+        print("PyQt6 not available, skipping icon test")
         return True
 
     from lib.block_loader import load_blocks

@@ -125,7 +125,7 @@ class PacketLossBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a 'lossy pulse train' icon (one pulse missing) in 0-1 coords."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         # pulse 1

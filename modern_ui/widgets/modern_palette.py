@@ -18,7 +18,7 @@ import logging
 import os
 import sys
 from typing import Callable, Dict
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -29,8 +29,8 @@ from PyQt5.QtWidgets import (
     QMenu,
     QToolButton,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
-from PyQt5.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
+from PyQt6.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
+from PyQt6.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterPath
 
 # QSettings org/app — sourced from the shared constants in lib.app_paths so
 # palette UI state lives in the same store as the rest of the app's UI
@@ -165,12 +165,12 @@ class CompactBlockRow(QFrame):
         self.colors = colors
         self.setObjectName("PaletteRow")
         self.setFixedHeight(self.ROW_HEIGHT)
-        self.setCursor(Qt.OpenHandCursor)
-        self.setFrameShape(QFrame.NoFrame)
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         # Keyboard navigation: rows accept focus so Down/Up from the filter box
         # (and Tab) can land on them, and Enter activates the focused row.
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # Tooltip with doc / ports / params, same logic as the original widget
         self._build_tooltip()
@@ -181,18 +181,18 @@ class CompactBlockRow(QFrame):
         lay.setSpacing(8)
 
         self.dot = _CategoryDot(category_name)
-        lay.addWidget(self.dot, 0, Qt.AlignVCenter)
+        lay.addWidget(self.dot, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.glyph = _BlockGlyphLabel(menu_block, colors)
-        lay.addWidget(self.glyph, 0, Qt.AlignVCenter)
+        lay.addWidget(self.glyph, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.name_label = QLabel(getattr(menu_block, "fn_name", "—"))
         font = QFont()
         font.setPointSize(9)
-        font.setStyleHint(QFont.SansSerif)
+        font.setStyleHint(QFont.StyleHint.SansSerif)
         self.name_label.setFont(font)
-        self.name_label.setAttribute(Qt.WA_TransparentForMouseEvents)
-        lay.addWidget(self.name_label, 1, Qt.AlignVCenter)
+        self.name_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        lay.addWidget(self.name_label, 1, Qt.AlignmentFlag.AlignVCenter)
 
         # Small marker so a user block is distinguishable from a built-in at a
         # glance (the tooltip names the file it came from).
@@ -203,7 +203,7 @@ class CompactBlockRow(QFrame):
             badge_font.setPointSize(7)
             self.user_badge.setFont(badge_font)
             self.user_badge.setToolTip(tr("User block"))
-            lay.addWidget(self.user_badge, 0, Qt.AlignVCenter)
+            lay.addWidget(self.user_badge, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self._apply_styling()
         # Theme changes are applied centrally by the owning palette
@@ -283,9 +283,9 @@ class CompactBlockRow(QFrame):
                 background: transparent;
             }}
         """)
-        # Per-Qt-version safety: set the label color directly too, since the
-        # QSS cascade from a per-row stylesheet does not always reach the
-        # child QLabel on Qt 5.9 (renders as default black).
+        # Belt-and-braces: set the label color directly too, since the QSS
+        # cascade from a per-row stylesheet does not always reach the child
+        # QLabel (which then renders as default black).
         if hasattr(self, "name_label"):
             self.name_label.setStyleSheet(f"color: {text}; background: transparent;")
 
@@ -297,12 +297,12 @@ class CompactBlockRow(QFrame):
     # -- Drag ---------------------------------------------------------------
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.setCursor(Qt.ClosedHandCursor)
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.drag_start_position = event.pos()
 
     def mouseMoveEvent(self, event):
-        if not (event.buttons() & Qt.LeftButton):
+        if not (event.buttons() & Qt.MouseButton.LeftButton):
             return
         if not hasattr(self, "drag_start_position"):
             return
@@ -311,7 +311,7 @@ class CompactBlockRow(QFrame):
         self._start_drag(event)
 
     def mouseReleaseEvent(self, event):
-        self.setCursor(Qt.OpenHandCursor)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
 
     # -- Context menu (Favorites) -------------------------------------------
 
@@ -336,7 +336,7 @@ class CompactBlockRow(QFrame):
         # exec_ blocks; mutating favorites here would refresh_blocks() and delete
         # this row mid-menu. Capture the chosen action and act *after* exec_
         # returns, going through the captured ``palette`` (never ``self``).
-        chosen = menu.exec_(event.globalPos())
+        chosen = menu.exec(event.globalPos())
         if chosen is act:
             if is_fav:
                 palette.unpin_favorite(fn_name)
@@ -352,15 +352,15 @@ class CompactBlockRow(QFrame):
         collapsed category) so the keyboard walk matches what is on screen.
         """
         key = event.key()
-        if key in (Qt.Key_Return, Qt.Key_Enter):
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.activate()
             event.accept()
             return
-        if key == Qt.Key_Down:
+        if key == Qt.Key.Key_Down:
             self._focus_sibling(+1)
             event.accept()
             return
-        if key == Qt.Key_Up:
+        if key == Qt.Key.Key_Up:
             self._focus_sibling(-1)
             event.accept()
             return
@@ -376,7 +376,7 @@ class CompactBlockRow(QFrame):
             return
         idx = rows.index(self) + direction
         if 0 <= idx < len(rows):
-            rows[idx].setFocus(Qt.OtherFocusReason)
+            rows[idx].setFocus(Qt.FocusReason.OtherFocusReason)
 
     def _owning_palette(self):
         """Walk up to the ModernBlockPalette that owns this row, if any."""
@@ -428,7 +428,7 @@ class CompactBlockRow(QFrame):
             drag.setPixmap(pix)
             drag.setHotSpot(QPoint(pix.width() // 2, pix.height() // 2))
             drag.setMimeData(mime)
-            drag.exec_(Qt.CopyAction | Qt.MoveAction, Qt.CopyAction)
+            drag.exec(Qt.DropAction.CopyAction | Qt.DropAction.MoveAction, Qt.DropAction.CopyAction)
         except Exception as e:
             logger.error(f"Drag start failed: {e}")
 
@@ -439,10 +439,10 @@ class CompactBlockRow(QFrame):
 
             w, h = 80, 48
             pix = QPixmap(w, h)
-            pix.fill(Qt.transparent)
+            pix.fill(Qt.GlobalColor.transparent)
             p = QPainter(pix)
             p.setOpacity(0.85)
-            p.setRenderHint(QPainter.Antialiasing, True)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
             mb = self.menu_block
             tmp = DBlock(
@@ -480,12 +480,12 @@ class _CategoryDot(QWidget):
         super().__init__(parent)
         self._cat = category
         self.setFixedSize(QSize(self.SIZE, self.SIZE))
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, _ev):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing, True)
-        p.setPen(Qt.NoPen)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(_category_dot_color(self._cat))
         p.drawEllipse(0, 0, self.SIZE, self.SIZE)
 
@@ -511,12 +511,12 @@ class _BlockGlyphLabel(QWidget):
         self._category = _block_category_name(menu_block)
         self._glyph_kind = _glyph_kind_for(getattr(menu_block, "fn_name", "") or "")
         self.setFixedSize(QSize(self.SIZE, self.SIZE))
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         # Repainted on theme change by the owning CompactBlockRow.
 
     def paintEvent(self, _ev):
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         cat = self._category
         bg, accent, fg = _category_chip_colors(cat)
@@ -529,10 +529,10 @@ class _BlockGlyphLabel(QWidget):
         # Glyph
         pen = QPen(fg)
         pen.setWidthF(1.4)
-        pen.setCapStyle(Qt.RoundCap)
-        pen.setJoinStyle(Qt.RoundJoin)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         p.setPen(pen)
-        p.setBrush(Qt.NoBrush)
+        p.setBrush(Qt.BrushStyle.NoBrush)
 
         kind = self._glyph_kind
         _draw_glyph(p, kind, fg, self.SIZE)
@@ -824,7 +824,7 @@ def _glyph_impulse(p: QPainter, color: QColor, s: int):
 
 def _glyph_sum(p: QPainter, color: QColor, s: int):
     p.drawEllipse(_glyph_box(s))
-    _draw_text(p, color, s, "±", italic=False, weight=QFont.Bold)
+    _draw_text(p, color, s, "±", italic=False, weight=QFont.Weight.Bold)
 
 
 def _glyph_gain(p: QPainter, color: QColor, s: int):
@@ -1033,12 +1033,14 @@ def _glyph_sub(p: QPainter, color: QColor, s: int):
 
 def _glyph_letters(p: QPainter, color: QColor, s: int, letters: str):
     """``letter:<initials>`` kinds produced by _glyph_kind_for's fallback."""
-    _draw_text(p, color, s, letters or "?", italic=False, weight=QFont.Bold, size_factor=0.42)
+    _draw_text(
+        p, color, s, letters or "?", italic=False, weight=QFont.Weight.Bold, size_factor=0.42
+    )
 
 
 def _glyph_label(p: QPainter, color: QColor, s: int, kind: str):
     """Final fallback for kinds with no dedicated painter: a short label."""
-    _draw_text(p, color, s, kind[:3], italic=False, weight=QFont.Bold, size_factor=0.36)
+    _draw_text(p, color, s, kind[:3], italic=False, weight=QFont.Weight.Bold, size_factor=0.36)
 
 
 # kind -> painter. Kinds emitted by _glyph_kind_for that are absent here
@@ -1114,10 +1116,10 @@ def _draw_text(
     f.setItalic(italic)
     f.setPointSizeF(max(7.0, s * size_factor))
     if italic:
-        f.setStyleHint(QFont.Serif)
+        f.setStyleHint(QFont.StyleHint.Serif)
     p.setFont(f)
     p.setPen(QPen(color))
-    p.drawText(QRectF(0 + x_off, 0 + y_off, s, s), Qt.AlignCenter, text)
+    p.drawText(QRectF(0 + x_off, 0 + y_off, s, s), Qt.AlignmentFlag.AlignCenter, text)
 
 
 # -----------------------------------------------------------------------------
@@ -1156,11 +1158,11 @@ class _CategorySection(QWidget):
         f = QFont()
         f.setPointSize(8)
         f.setBold(True)
-        f.setLetterSpacing(QFont.PercentageSpacing, 110)
+        f.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 110)
         header.setFont(f)
         header.setContentsMargins(12, 2, 8, 4)
         header.setObjectName("PaletteCategoryHeader")
-        header.setCursor(Qt.PointingHandCursor)
+        header.setCursor(Qt.CursorShape.PointingHandCursor)
         lay.addWidget(header)
         self.header = header
 
@@ -1258,7 +1260,7 @@ class _CategoryHeaderLabel(QLabel):
         self._section = section
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._section.toggle_collapsed()
             event.accept()
             return
@@ -1340,7 +1342,7 @@ class ModernBlockPalette(QWidget):
         tf = QFont()
         tf.setPointSize(9)
         tf.setBold(True)
-        tf.setLetterSpacing(QFont.PercentageSpacing, 105)
+        tf.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 105)
         self.title.setFont(tf)
         hl.addWidget(self.title)
         hl.addStretch(1)
@@ -1354,7 +1356,7 @@ class ModernBlockPalette(QWidget):
         self.refresh_button = QToolButton()
         self.refresh_button.setText("\u21bb")
         self.refresh_button.setAutoRaise(True)
-        self.refresh_button.setCursor(Qt.PointingHandCursor)
+        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setToolTip(tr("Refresh user library blocks"))
         self.refresh_button.clicked.connect(self.refresh_library)
         hl.addWidget(self.refresh_button)
@@ -1377,13 +1379,13 @@ class ModernBlockPalette(QWidget):
         # Scrollable list
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         self.blocks_container = QWidget()
         self.blocks_container.setObjectName("PaletteBlocksContainer")
-        self.blocks_container.setAttribute(Qt.WA_StyledBackground, True)
+        self.blocks_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.blocks_layout = QVBoxLayout(self.blocks_container)
         self.blocks_layout.setContentsMargins(4, 0, 4, 12)
         self.blocks_layout.setSpacing(0)
@@ -1574,7 +1576,7 @@ class ModernBlockPalette(QWidget):
 
     def _add_placeholder(self):
         p = QLabel(tr("No blocks available.\nCheck DSim initialization."))
-        p.setAlignment(Qt.AlignCenter)
+        p.setAlignment(Qt.AlignmentFlag.AlignCenter)
         p.setWordWrap(True)
         p.setStyleSheet(
             f"color:{theme_manager.get_color('text_secondary').name()}; "
@@ -1602,15 +1604,15 @@ class ModernBlockPalette(QWidget):
         the filter box and walk the results without the mouse. Once on a row,
         CompactBlockRow.keyPressEvent handles further arrow/Enter navigation.
         """
-        from PyQt5.QtCore import QEvent
+        from PyQt6.QtCore import QEvent
 
-        if obj is self.search_bar and event.type() == QEvent.KeyPress:
+        if obj is self.search_bar and event.type() == QEvent.Type.KeyPress:
             key = event.key()
-            if key in (Qt.Key_Down, Qt.Key_Up):
+            if key in (Qt.Key.Key_Down, Qt.Key.Key_Up):
                 rows = self.visible_rows()
                 if rows:
-                    target = rows[0] if key == Qt.Key_Down else rows[-1]
-                    target.setFocus(Qt.OtherFocusReason)
+                    target = rows[0] if key == Qt.Key.Key_Down else rows[-1]
+                    target.setFocus(Qt.FocusReason.OtherFocusReason)
                     return True
         return super().eventFilter(obj, event)
 

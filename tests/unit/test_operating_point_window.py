@@ -8,7 +8,7 @@ copies a usable dict literal to the clipboard.
 
 import pytest
 
-from PyQt5.QtWidgets import QWidget, QTableWidget, QApplication
+from PyQt6.QtWidgets import QWidget, QTableWidget, QApplication
 
 from modern_ui.widgets.operating_point_window import OperatingPointWindow
 

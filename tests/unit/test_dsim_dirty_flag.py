@@ -18,7 +18,7 @@ the reset inside ``execution_init`` is gone.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ import logging
 import ast
 import numpy as np
 from scipy.linalg import solve_continuous_are
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -12,8 +12,8 @@ from PyQt5.QtWidgets import (
     QGroupBox,
     QApplication,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from .base_analyzer import BaseAnalyzer
 from .error_reporting import ErrorReportingMixin
 
@@ -178,7 +178,7 @@ class LQRResultDialog(QDialog):
         self.P = P
         self.setWindowTitle(f"LQR Result: {block_name}")
         self.setMinimumWidth(500)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self._build_ui(K, P, A, B, Q, R, eig_cl, eig_ol, stable, plant_source)
 
     def _build_ui(self, K, P, A, B, Q, R, eig_cl, eig_ol, stable, plant_source):
@@ -218,7 +218,7 @@ class LQRResultDialog(QDialog):
         eig_layout = QVBoxLayout(eig_group)
         eig_text = QLabel(self._format_eigenvalues(eig_cl))
         eig_text.setFont(mono)
-        eig_text.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        eig_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         eig_layout.addWidget(eig_text)
 
         status = QLabel("✓ Stable" if stable else "✗ UNSTABLE")
@@ -231,7 +231,7 @@ class LQRResultDialog(QDialog):
         ol_label = QLabel(f"Open-loop eigenvalues: {self._format_eigenvalues(eig_ol)}")
         ol_label.setFont(QFont("Menlo, Consolas, monospace", 10))
         ol_label.setStyleSheet("color: gray;")
-        ol_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        ol_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         eig_layout.addWidget(ol_label)
         layout.addWidget(eig_group)
 

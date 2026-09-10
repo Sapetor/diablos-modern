@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from blocks.transfer_function import TransferFunctionBlock
 from lib.simulation.block import DBlock

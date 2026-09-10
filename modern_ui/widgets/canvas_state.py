@@ -20,7 +20,7 @@ own ``__init__``; nothing wires the slices together.
 
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Set, List, Tuple, Any
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 
 @dataclass

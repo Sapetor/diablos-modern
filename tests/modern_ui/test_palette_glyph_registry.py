@@ -12,8 +12,8 @@ label.
 
 import pytest
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QImage, QPainter, QPen
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QImage, QPainter, QPen
 
 from modern_ui.widgets import modern_palette as mp
 
@@ -95,23 +95,23 @@ _LABEL_KINDS = {
 
 def _render(kind, s=_TILE, colour=_FG):
     """Render ``kind`` the way _BlockGlyphLabel.paintEvent does, into an ARGB image."""
-    img = QImage(s, s, QImage.Format_ARGB32)
+    img = QImage(s, s, QImage.Format.Format_ARGB32)
     img.fill(_BG)
     p = QPainter(img)
-    p.setRenderHint(QPainter.Antialiasing, True)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     pen = QPen(colour)
     pen.setWidthF(1.4)
-    pen.setCapStyle(Qt.RoundCap)
-    pen.setJoinStyle(Qt.RoundJoin)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     p.setPen(pen)
-    p.setBrush(Qt.NoBrush)
+    p.setBrush(Qt.BrushStyle.NoBrush)
     mp._draw_glyph(p, kind, colour, s)
     p.end()
     return img
 
 
 def _blank(s=_TILE):
-    img = QImage(s, s, QImage.Format_ARGB32)
+    img = QImage(s, s, QImage.Format.Format_ARGB32)
     img.fill(_BG)
     return img
 

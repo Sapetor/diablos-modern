@@ -32,13 +32,13 @@ Changes vs v2:
 import math
 from enum import Enum
 from typing import Dict, Any, Optional, Tuple, TYPE_CHECKING
-from PyQt5.QtGui import QColor, QFont, QFontMetrics
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QFontMetrics
+from PyQt6.QtCore import QObject, pyqtSignal
 
 if TYPE_CHECKING:
     # Imported lazily at runtime inside make_shadow(); declared here only so the
     # string return annotation resolves for type checkers and linters.
-    from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+    from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
 
 class ThemeType(Enum):
@@ -72,7 +72,7 @@ TYPE: Dict[str, int] = {
     "heading": 14,  # window / dialog headings
 }
 
-# Font weights on the CSS 100–900 scale (mapped to Qt5's 0–99 enum by helpers).
+# Font weights on the CSS 100–900 scale (mapped to QFont.Weight by the helpers).
 WEIGHT: Dict[str, int] = {"regular": 400, "medium": 500, "semibold": 600, "bold": 700}
 
 # Font stacks: the first installed family wins, the rest are cross-platform
@@ -123,18 +123,18 @@ def pulse_alpha(phase: float, base_alpha: int, depth: float = 0.4) -> int:
     return max(0, min(255, int(round(base_alpha * pulse))))
 
 
-def _qt5_weight(css_weight: int) -> int:
-    """Map a CSS font-weight (400/500/600/700) to the Qt5 QFont 0–99 enum.
+def _qt_weight(css_weight: int) -> "QFont.Weight":
+    """Map a CSS font-weight (400/500/600/700) to a ``QFont.Weight`` member.
 
-    PyQt5 ships Qt5, whose QFont.setWeight expects the legacy 0–99 scale, not
-    the CSS 100–900 scale Qt6 adopted. Unknown values fall back to Normal.
+    Qt6's QFont.setWeight takes a QFont.Weight enum member (whose values are the
+    CSS 100–900 scale), never a bare int. Unknown values fall back to Normal.
     """
     return {
-        400: QFont.Normal,  # 50
-        500: QFont.Medium,  # 57
-        600: QFont.DemiBold,  # 63
-        700: QFont.Bold,  # 75
-    }.get(css_weight, QFont.Normal)
+        400: QFont.Weight.Normal,
+        500: QFont.Weight.Medium,
+        600: QFont.Weight.DemiBold,
+        700: QFont.Weight.Bold,
+    }.get(css_weight, QFont.Weight.Normal)
 
 
 def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
@@ -145,31 +145,24 @@ def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFo
         weight: a CSS weight from ``WEIGHT`` (400/500/600/700). Default if None.
     """
     f = QFont(UI_FONT_STACK[0])
-    # QFont.setFamilies needs Qt >= 5.13; on older Qt the QFont(family)
-    # constructor above already pinned the first stack entry, which is the
-    # intended fallback.
-    if hasattr(f, "setFamilies"):
-        f.setFamilies(UI_FONT_STACK)
-    f.setStyleHint(QFont.SansSerif)
+    f.setFamilies(UI_FONT_STACK)
+    f.setStyleHint(QFont.StyleHint.SansSerif)
     if size is not None:
         f.setPointSize(size)
     if weight is not None:
-        f.setWeight(_qt5_weight(weight))
+        f.setWeight(_qt_weight(weight))
     return f
 
 
 def get_mono_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
     """Build a QFont from the canonical monospace stack (kbd hints, time readout)."""
     f = QFont(MONO_FONT_STACK[0])
-    # See get_ui_font(): setFamilies is Qt >= 5.13 only; the constructor above
-    # is the fallback that pins the first family in the stack.
-    if hasattr(f, "setFamilies"):
-        f.setFamilies(MONO_FONT_STACK)
-    f.setStyleHint(QFont.Monospace)
+    f.setFamilies(MONO_FONT_STACK)
+    f.setStyleHint(QFont.StyleHint.Monospace)
     if size is not None:
         f.setPointSize(size)
     if weight is not None:
-        f.setWeight(_qt5_weight(weight))
+        f.setWeight(_qt_weight(weight))
     return f
 
 
@@ -197,7 +190,9 @@ def _font_key(font: QFont) -> tuple:
         font.strikeOut(),
         int(font.stretch()),
         float(font.letterSpacing()),
-        int(font.styleStrategy()),
+        # Qt6's StyleStrategy is a plain (non-int) enum; it is hashable, so use
+        # the member itself rather than coercing it to an int.
+        font.styleStrategy(),
     )
 
 
@@ -219,16 +214,13 @@ def font_metrics(font: QFont) -> QFontMetrics:
 
 
 def text_width(metrics: QFontMetrics, text: str) -> int:
-    """Width of ``text`` under ``metrics``, portable across Qt 5.9 -> 5.11+.
+    """Width of ``text`` under ``metrics``.
 
-    ``QFontMetrics.horizontalAdvance`` only exists from Qt 5.11; older builds
-    expose ``width``. Centralized here so the renderers stop re-implementing
-    the same hasattr dance per label.
+    Qt6 dropped the deprecated ``QFontMetrics.width``; ``horizontalAdvance`` is
+    the only spelling. Centralized here so the renderers stop re-implementing
+    the same call per label.
     """
-    advance = getattr(metrics, "horizontalAdvance", None)
-    if advance is not None:
-        return advance(text)
-    return metrics.width(text)
+    return metrics.horizontalAdvance(text)
 
 
 def make_shadow(level: str = "e2", color: Optional[QColor] = None) -> "QGraphicsDropShadowEffect":
@@ -249,7 +241,7 @@ def make_shadow(level: str = "e2", color: Optional[QColor] = None) -> "QGraphics
     widget that already calls ``setGraphicsEffect`` (e.g. ToastNotification's
     opacity effect).
     """
-    from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+    from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
     token = ELEVATION.get(level, ELEVATION["e2"])
     effect = QGraphicsDropShadowEffect()
@@ -723,7 +715,7 @@ class ThemeManager(QObject):
             color_hex = theme.get(color_name, "#000000")
 
         # Handle 8-digit #RRGGBBAA (e.g. block_shadow with alpha).
-        # PyQt5's QColor mis-parses 9-char strings, so parse channels by hand.
+        # PyQt6's QColor mis-parses 9-char strings, so parse channels by hand.
         if len(color_hex) == 9 and color_hex.startswith("#"):
             try:
                 r, g, b, a = (int(color_hex[i : i + 2], 16) for i in (1, 3, 5, 7))
@@ -810,7 +802,7 @@ class ThemeManager(QObject):
         return qss_vars
 
     def get_icon_size(self):
-        from PyQt5.QtCore import QSize
+        from PyQt6.QtCore import QSize
 
         return QSize(24, 24)
 

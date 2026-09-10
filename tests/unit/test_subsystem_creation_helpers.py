@@ -8,7 +8,7 @@ is now composed of.
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from lib.managers import subsystem_manager as sm
 

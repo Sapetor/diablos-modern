@@ -18,7 +18,7 @@ import logging
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -26,7 +26,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QStackedWidget,
 )
-from PyQt5.QtCore import Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 from lib.i18n import tr
@@ -80,7 +80,7 @@ class SweepResultWindow(QWidget):
 
         if n_ok <= 0 or not self._signal_names:
             empty = QLabel(tr("No successful runs to display."))
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             empty.setStyleSheet(
                 f"color: {theme_manager.get_color('text_disabled').name()}; "
                 f"font-size: {TYPE['body_strong']}pt; padding: 48px;"

@@ -9,7 +9,7 @@ Layout: options panel (left) | live preview (right) using QSplitter.
 
 import os
 import logging
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -32,8 +32,8 @@ from PyQt5.QtWidgets import (
     QFrame,
     QScrollArea,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 
 from lib.i18n import tr
 
@@ -81,14 +81,14 @@ class TikZExportDialog(QDialog):
         root.addWidget(info_label)
 
         # --- Splitter: options (left) | preview (right) ---
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
 
         # -- Left panel: scrollable options --
         left_scroll = QScrollArea()
         left_scroll.setWidgetResizable(True)
-        left_scroll.setFrameShape(QFrame.NoFrame)
-        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         left_widget = QWidget()
         left = QVBoxLayout(left_widget)
@@ -217,9 +217,9 @@ class TikZExportDialog(QDialog):
         self.preview_edit = QTextEdit()
         self.preview_edit.setReadOnly(True)
         mono = QFont("Menlo", 10)
-        mono.setStyleHint(QFont.Monospace)
+        mono.setStyleHint(QFont.StyleHint.Monospace)
         self.preview_edit.setFont(mono)
-        self.preview_edit.setLineWrapMode(QTextEdit.NoWrap)
+        self.preview_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
 
         preview_layout.addWidget(self.preview_edit)
         splitter.addWidget(preview_frame)
@@ -236,8 +236,10 @@ class TikZExportDialog(QDialog):
         btn_bar.addWidget(self.copy_btn)
         btn_bar.addStretch()
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Save)
-        button_box.button(QDialogButtonBox.Save).setText(tr("Export"))
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Save
+        )
+        button_box.button(QDialogButtonBox.StandardButton.Save).setText(tr("Export"))
         button_box.rejected.connect(self.reject)
         button_box.accepted.connect(self._export)
         btn_bar.addWidget(button_box)
@@ -362,10 +364,10 @@ class TikZExportDialog(QDialog):
                 self,
                 tr("Overwrite File?"),
                 tr("The file already exists:\n{path}\n\nOverwrite it?", path=filepath),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return
 
         try:

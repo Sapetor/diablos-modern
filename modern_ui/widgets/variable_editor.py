@@ -1,16 +1,15 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QTextEdit,
     QLabel,
     QToolBar,
-    QAction,
     QDockWidget,
     QFrame,
 )
-from PyQt5.QtCore import pyqtSignal, QRegExp
-from PyQt5.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
+from PyQt6.QtCore import pyqtSignal, QRegularExpression
+from PyQt6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat, QAction
 import ast
 import logging
 from lib.workspace import WorkspaceManager
@@ -66,38 +65,38 @@ class PythonHighlighter(QSyntaxHighlighter):
         ]
         keyword_format = QTextCharFormat()
         keyword_format.setForeground(QColor("#CC7832"))  # Orange-ish
-        keyword_format.setFontWeight(QFont.Bold)
+        keyword_format.setFontWeight(QFont.Weight.Bold)
         for word in keywords:
-            pattern = QRegExp(r"\b" + word + r"\b")
+            pattern = QRegularExpression(r"\b" + word + r"\b")
             self.highlighting_rules.append((pattern, keyword_format))
 
         # Strings (single and double quotes)
         string_format = QTextCharFormat()
         string_format.setForeground(QColor("#6A8759"))  # Green-ish
-        self.highlighting_rules.append((QRegExp(r'"[^"]*"'), string_format))
-        self.highlighting_rules.append((QRegExp(r"'[^']*'"), string_format))
+        self.highlighting_rules.append((QRegularExpression(r'"[^"]*"'), string_format))
+        self.highlighting_rules.append((QRegularExpression(r"'[^']*'"), string_format))
 
         # Comments
         comment_format = QTextCharFormat()
         comment_format.setForeground(QColor("#808080"))  # Grey
-        self.highlighting_rules.append((QRegExp(r"#[^\n]*"), comment_format))
+        self.highlighting_rules.append((QRegularExpression(r"#[^\n]*"), comment_format))
 
         # Numbers
         number_format = QTextCharFormat()
         number_format.setForeground(QColor("#6897BB"))  # Blue-ish
-        self.highlighting_rules.append((QRegExp(r"\b[0-9]+\b"), number_format))
-        self.highlighting_rules.append((QRegExp(r"\b[0-9]*\.[0-9]+\b"), number_format))
+        self.highlighting_rules.append((QRegularExpression(r"\b[0-9]+\b"), number_format))
+        self.highlighting_rules.append((QRegularExpression(r"\b[0-9]*\.[0-9]+\b"), number_format))
 
     def highlightBlock(self, text):
         for pattern, format in self.highlighting_rules:
-            # Reuse the precompiled QRegExp directly; indexIn does not mutate the
-            # pattern, so reconstructing it per call is unnecessary work.
-            expression = pattern
-            index = expression.indexIn(text)
-            while index >= 0:
-                length = expression.matchedLength()
-                self.setFormat(index, length, format)
-                index = expression.indexIn(text, index + length)
+            # Reuse the precompiled QRegularExpression directly; globalMatch does
+            # not mutate the pattern, so recompiling per call is wasted work.
+            # (Qt6 replaced QRegExp's stateful indexIn/matchedLength pair with
+            # this iterator.)
+            it = pattern.globalMatch(text)
+            while it.hasNext():
+                match = it.next()
+                self.setFormat(match.capturedStart(), match.capturedLength(), format)
 
 
 class VariableEditor(QWidget):
@@ -237,7 +236,7 @@ class VariableEditor(QWidget):
 
     def load_script(self):
         """Load a Python script from a file."""
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
         import os
 
         filename, _ = QFileDialog.getOpenFileName(

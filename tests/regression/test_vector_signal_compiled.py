@@ -26,8 +26,8 @@ scalar inputs every existing test/example uses (``np.ravel(s)[0] == s``).
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
 
 
 def _mk(fn, sid, inp, outp, params, b_type=2):

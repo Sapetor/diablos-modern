@@ -4,7 +4,7 @@ Handles view transformation, zooming, and panning operations.
 """
 
 import logging
-from PyQt5.QtCore import Qt, QPoint
+from PyQt6.QtCore import Qt, QPoint
 
 from modern_ui.widgets.canvas_state import ZoomPanState
 
@@ -147,7 +147,7 @@ class ZoomPanManager:
         """Handle macOS trackpad native gestures (pinch-to-zoom).
 
         On macOS a two-finger pinch is delivered as a QNativeGestureEvent of
-        type ``Qt.ZoomNativeGesture`` whose ``value()`` is the incremental
+        type ``Qt.NativeGestureType.ZoomNativeGesture`` whose ``value()`` is the incremental
         magnification (e.g. +0.03 spread / -0.03 pinch). Returns True if the
         gesture was consumed.
 
@@ -157,10 +157,11 @@ class ZoomPanManager:
         Returns:
             bool: True if handled (zoom gesture), False otherwise
         """
-        if event.gestureType() != Qt.ZoomNativeGesture:
+        if event.gestureType() != Qt.NativeGestureType.ZoomNativeGesture:
             return False
         new_factor = self.state.zoom_factor * (1.0 + event.value())
-        self.zoom_at(event.pos(), new_factor)
+        # Qt6 dropped QNativeGestureEvent.pos(); position() is a QPointF.
+        self.zoom_at(event.position().toPoint(), new_factor)
         return True
 
     def handle_wheel_event(self, event):
@@ -175,13 +176,14 @@ class ZoomPanManager:
         modifiers = event.modifiers()
 
         # Check if Ctrl (or Cmd on macOS) is pressed
-        if modifiers & (Qt.ControlModifier | Qt.MetaModifier):
+        if modifiers & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier):
             # Zoom mode — zoom toward mouse cursor (clamped via zoom_at)
             if event.angleDelta().y() > 0:
                 new_factor = self.state.zoom_factor * 1.1
             else:
                 new_factor = self.state.zoom_factor / 1.1
-            self.zoom_at(event.pos(), new_factor)
+            # Qt6 dropped QWheelEvent.pos(); position() is a QPointF.
+            self.zoom_at(event.position().toPoint(), new_factor)
             return
         else:
             # Pan/scroll mode - pan the canvas with touchpad scrolling

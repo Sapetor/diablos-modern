@@ -54,7 +54,7 @@ def _load(builder, tmp_path, name):
 @pytest.mark.unit
 class TestMonteCarloDialog:
     def test_is_qdialog_and_default_selection(self, qapp, tmp_path):
-        from PyQt5.QtWidgets import QDialog
+        from PyQt6.QtWidgets import QDialog
 
         b = DiagramBuilder()
         n = b.add_block("Noise", 50, 100, params=_params("Noise"))

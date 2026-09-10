@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -69,7 +69,7 @@ class SimulationDialog(QDialog):
         zero_crossing=True,
     ):
         super().__init__(parent)
-        from PyQt5.QtWidgets import (
+        from PyQt6.QtWidgets import (
             QGroupBox,
         )  # Local import to avoid circular dep issues if any, or just convenience
 

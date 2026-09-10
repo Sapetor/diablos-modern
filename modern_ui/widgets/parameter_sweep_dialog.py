@@ -18,7 +18,7 @@ with one axis entry for 1-D and two for 2-D.
 import logging
 
 import numpy as np
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QFormLayout,
@@ -124,10 +124,12 @@ class ParameterSweepDialog(QDialog):
             warn.setWordWrap(True)
             layout.addWidget(warn)
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
-        self.button_box.button(QDialogButtonBox.Ok).setEnabled(bool(self._blocks))
+        self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(bool(self._blocks))
         layout.addWidget(self.button_box)
 
         self._on_mode_changed(0)

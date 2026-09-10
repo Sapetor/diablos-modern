@@ -17,8 +17,8 @@ import types
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QPoint
+from PyQt6.QtWidgets import QWidget
 
 from modern_ui.managers import command_palette_manager as cpm_module
 from modern_ui.managers import menu_manager as menu_module
@@ -95,7 +95,7 @@ class TestCanvasContextMenu:
 
         monkeypatch.setattr(menu_module, "_CanvasSearchWidget", spy_search_widget)
         # Never pop the modal menu in a test run.
-        monkeypatch.setattr(menu_module.QMenu, "exec_", lambda self, *a, **k: None)
+        monkeypatch.setattr(menu_module.QMenu, "exec", lambda self, *a, **k: None)
 
         # QMenu needs a real QWidget parent, so stub the canvas as one.
         canvas = QWidget()

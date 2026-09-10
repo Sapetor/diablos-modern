@@ -98,7 +98,7 @@ def test_goto_from_params_defaults():
 
 
 def test_link_goto_from_adds_line(simulation_model):
-    from PyQt5.QtCore import QRect, QPoint
+    from PyQt6.QtCore import QRect, QPoint
     from lib.simulation.block import DBlock
     from lib.simulation.connection import DLine
     from blocks.step import StepBlock

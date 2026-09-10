@@ -46,7 +46,7 @@ class TerminatorBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw a ground symbol: a stub into three shrinking rails."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         path.moveTo(0.5, 0.2)

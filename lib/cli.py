@@ -52,7 +52,7 @@ def _ensure_headless_qapp():
     global _QAPP
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("MPLBACKEND", "Agg")
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
 
     _QAPP = QApplication.instance() or QApplication(["diablos-run"])
     return _QAPP

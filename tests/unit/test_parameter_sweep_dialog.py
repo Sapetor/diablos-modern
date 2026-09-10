@@ -80,7 +80,7 @@ class TestParameterSweepDialog:
         assert sweepable_blocks(dsim), "Constant/Gain expose numeric params"
 
     def test_default_selection_is_1d(self, qapp, tmp_path):
-        from PyQt5.QtWidgets import QDialog
+        from PyQt6.QtWidgets import QDialog
 
         dsim = _const_gain_scope(tmp_path, "psd_1d.diablos")
         dsim.sim_time = 7.5

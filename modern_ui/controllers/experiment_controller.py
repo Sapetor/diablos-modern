@@ -64,7 +64,7 @@ class ExperimentController:
         Returns None (after showing an error) if the copy cannot be made -- the
         caller must then abort rather than fall back to the live diagram.
         """
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         window = self.window
         try:
@@ -87,7 +87,7 @@ class ExperimentController:
         Opens an input/output picker, runs the numerical linearizer on the
         compiled ODE RHS, and shows a pole-zero / Bode / summary window.
         """
-        from PyQt5.QtWidgets import QMessageBox, QDialog
+        from PyQt6.QtWidgets import QMessageBox, QDialog
 
         window = self.window
         if not window.dsim.blocks_list:
@@ -97,7 +97,7 @@ class ExperimentController:
         from modern_ui.widgets.linearize_dialog import LinearizeDialog
 
         dlg = LinearizeDialog(window.dsim, parent=window)
-        if dlg.exec_() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         sel = dlg.get_selection()
 
@@ -121,7 +121,7 @@ class ExperimentController:
         equilibrium state values in a table. The result's operating point can be
         copied and reused as a starting point for linearization.
         """
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         window = self.window
         if not window.dsim.blocks_list:
@@ -147,8 +147,8 @@ class ExperimentController:
         keeps anything else from mutating the diagram mid-run, and cancelling
         still shows the partial ensemble gathered so far.
         """
-        from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtWidgets import QMessageBox, QDialog, QProgressDialog
+        from PyQt6.QtCore import Qt
 
         window = self.window
         if not window.dsim.blocks_list:
@@ -164,7 +164,7 @@ class ExperimentController:
         from modern_ui.widgets.monte_carlo_dialog import MonteCarloDialog
 
         dlg = MonteCarloDialog(window.dsim, parent=window)
-        if dlg.exec_() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         sel = dlg.get_selection()
         n_runs = int(sel.get("n_runs", 100))
@@ -173,7 +173,7 @@ class ExperimentController:
             tr("Running Monte-Carlo ensemble..."), tr("Cancel"), 0, n_runs, window
         )
         progress.setWindowTitle(tr("Monte Carlo"))
-        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setAutoClose(False)
         progress.setAutoReset(False)
@@ -242,8 +242,8 @@ class ExperimentController:
         from mutating the diagram mid-run, and cancelling still shows the partial
         grid gathered so far.
         """
-        from PyQt5.QtWidgets import QMessageBox, QDialog, QProgressDialog
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtWidgets import QMessageBox, QDialog, QProgressDialog
+        from PyQt6.QtCore import Qt
 
         window = self.window
         if not window.dsim.blocks_list:
@@ -270,7 +270,7 @@ class ExperimentController:
             return
 
         dlg = ParameterSweepDialog(window.dsim, parent=window)
-        if dlg.exec_() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         sel = dlg.get_selection()
         if any(not ax.get("param") for ax in sel.get("axes", [])):
@@ -286,7 +286,7 @@ class ExperimentController:
 
         progress = QProgressDialog(tr("Running parameter sweep..."), tr("Cancel"), 0, total, window)
         progress.setWindowTitle(tr("Parameter Sweep"))
-        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setAutoClose(False)
         progress.setAutoReset(False)

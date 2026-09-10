@@ -22,6 +22,11 @@ if not os.environ.get("DIABLOS_SHOW_WINDOWS"):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("MPLBACKEND", "Agg")
 
+# Pin pyqtgraph's Qt binding. A developer environment can have PyQt5 installed
+# next to PyQt6; pyqtgraph picks a binding the first time it is imported, and
+# two bindings in one process segfault. Must precede any pyqtgraph import.
+os.environ.setdefault("PYQTGRAPH_QT_LIB", "PyQt6")
+
 import sys
 from pathlib import Path
 
@@ -30,9 +35,9 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QColor
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,36 +45,34 @@ def _no_modal_dialogs():
     """Stop modal Qt dialogs from blocking the (headless) test suite.
 
     Engine code such as ``DSim.execution_init_time`` and the simulation
-    controller can pop modal dialogs via ``exec_()``. With no display
+    controller can pop modal dialogs via ``exec()``. With no display
     (CI runs with ``QT_QPA_PLATFORM=offscreen``) those calls block forever.
     Make every dialog report "Accepted" immediately so the surrounding code
     follows its normal path using the widget's default field values.
 
-    No test drives dialogs interactively (none call ``.exec_()`` directly),
+    No test drives dialogs interactively (none call ``.exec()`` directly),
     so this is safe and purely a guardrail against hangs.
     """
-    from PyQt5.QtWidgets import QDialog, QMessageBox
+    from PyQt6.QtWidgets import QDialog, QMessageBox
 
     originals = {}
 
     def _accept(self, *args, **kwargs):
-        return QDialog.Accepted
+        return QDialog.DialogCode.Accepted
 
     for cls in (QDialog, QMessageBox):
-        for meth in ("exec_", "exec"):
-            if hasattr(cls, meth):
-                originals[(cls, meth)] = getattr(cls, meth)
-                setattr(cls, meth, _accept)
+        originals[(cls, "exec")] = cls.exec
+        cls.exec = _accept
 
     # The QMessageBox *static* convenience methods (information/warning/
     # critical/question) construct and exec their own dialog at the C++ level,
-    # bypassing the instance ``exec_`` patch above -- so they still block under
+    # bypassing the instance ``exec`` patch above -- so they still block under
     # ``offscreen``. Neutralize them too, returning a sensible default button.
     static_defaults = {
-        "information": QMessageBox.Ok,
-        "warning": QMessageBox.Ok,
-        "critical": QMessageBox.Ok,
-        "question": QMessageBox.Yes,
+        "information": QMessageBox.StandardButton.Ok,
+        "warning": QMessageBox.StandardButton.Ok,
+        "critical": QMessageBox.StandardButton.Ok,
+        "question": QMessageBox.StandardButton.Yes,
         "about": None,
         "aboutQt": None,
     }
@@ -182,7 +185,7 @@ def sample_block(qapp, sample_block_rect, sample_colors):
 def sample_line(qapp):
     """Create a sample DLine for testing."""
     from lib.simulation.connection import DLine
-    from PyQt5.QtCore import QPoint
+    from PyQt6.QtCore import QPoint
 
     line = DLine(
         sid=0,

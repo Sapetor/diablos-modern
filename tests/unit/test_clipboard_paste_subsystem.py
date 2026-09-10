@@ -9,7 +9,7 @@ so ``_resolve_endpoints`` skipped every line touching it.
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from blocks.subsystem import Subsystem
 from lib.simulation.block import DBlock

@@ -1,8 +1,8 @@
 import collections
 import copy
 import logging
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QColor
 
 # Import DBlock/DSim dependencies for restoration
 # Note: In a cleaner architecture we would use factory methods, but for now we follow existing logic

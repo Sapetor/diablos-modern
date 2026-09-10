@@ -18,7 +18,7 @@ import logging
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _run(method, use_fast):

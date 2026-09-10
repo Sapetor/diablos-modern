@@ -1,6 +1,6 @@
 import sys
 import unittest
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QDoubleSpinBox,
     QSpinBox,
@@ -220,7 +220,7 @@ class TestBlockHeader(unittest.TestCase):
             color="magenta",
         )
         self.editor.set_block(block)
-        from PyQt5.QtWidgets import QLabel
+        from PyQt6.QtWidgets import QLabel
 
         labels = self.editor.findChildren(QLabel)
         cat_labels = [l for l in labels if l.text() == "Control"]
@@ -241,7 +241,7 @@ class TestBlockHeader(unittest.TestCase):
             color="magenta",
         )
         self.editor.set_block(block)
-        from PyQt5.QtWidgets import QLabel
+        from PyQt6.QtWidgets import QLabel
 
         labels = self.editor.findChildren(QLabel)
         port_labels = [l for l in labels if "\u2192" in l.text()]

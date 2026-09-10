@@ -62,7 +62,7 @@ ATOL = 1e-7
 
 
 def _ensure_qapp():
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
     import sys
 
     return QApplication.instance() or QApplication(sys.argv)

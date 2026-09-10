@@ -9,7 +9,7 @@ These tests pin the clamping behavior so the runaway can't return.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint, QPointF
 
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 
@@ -43,8 +43,9 @@ class _WheelEvent:
     def modifiers(self):
         return self._modifiers
 
-    def pos(self):
-        return QPoint(400, 300)
+    def position(self):
+        # Qt6 dropped QWheelEvent.pos(); position() is a QPointF.
+        return QPointF(400.0, 300.0)
 
     class _Angle:
         def __init__(self, y):
@@ -106,11 +107,11 @@ class TestZoomClamping:
         assert world == QPoint(100, 100)
 
     def test_wheel_zoom_out_burst_is_bounded(self):
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtCore import Qt
 
         mgr = ZoomPanManager(_FakeCanvas())
         for _ in range(500):
-            mgr.handle_wheel_event(_WheelEvent(-120, Qt.ControlModifier))
+            mgr.handle_wheel_event(_WheelEvent(-120, Qt.KeyboardModifier.ControlModifier))
         assert mgr.state.zoom_factor >= ZoomPanManager.MIN_ZOOM
         assert abs(mgr.state.pan_offset.x()) < 2**31
 
@@ -118,20 +119,21 @@ class TestZoomClamping:
 @pytest.mark.unit
 class TestNativeGesture:
     def test_pinch_zoom_bounded(self):
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtCore import Qt
 
         class _Gesture:
             def __init__(self, value):
                 self._value = value
 
             def gestureType(self):
-                return Qt.ZoomNativeGesture
+                return Qt.NativeGestureType.ZoomNativeGesture
 
             def value(self):
                 return self._value
 
-            def pos(self):
-                return QPoint(400, 300)
+            def position(self):
+                # Qt6 dropped QNativeGestureEvent.pos(); position() is a QPointF.
+                return QPointF(400.0, 300.0)
 
         mgr = ZoomPanManager(_FakeCanvas())
         # A long pinch-in burst.
@@ -142,11 +144,11 @@ class TestNativeGesture:
         assert abs(mgr.state.pan_offset.x()) < 2**31
 
     def test_non_zoom_gesture_ignored(self):
-        from PyQt5.QtCore import Qt
+        from PyQt6.QtCore import Qt
 
         class _Gesture:
             def gestureType(self):
-                return Qt.SmartZoomNativeGesture
+                return Qt.NativeGestureType.SmartZoomNativeGesture
 
             def value(self):
                 return 0.0

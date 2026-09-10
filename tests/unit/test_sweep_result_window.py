@@ -11,7 +11,7 @@ Run offscreen:
 import numpy as np
 import pytest
 
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget
 
 from lib.analysis.resim import OUTCOME_METRICS
 from modern_ui.widgets.sweep_result_window import SweepResultWindow

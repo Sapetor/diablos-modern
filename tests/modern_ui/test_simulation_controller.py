@@ -13,7 +13,7 @@ import time
 import types
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from modern_ui.controllers import simulation_controller as sc
 from modern_ui.controllers.simulation_controller import SimulationController

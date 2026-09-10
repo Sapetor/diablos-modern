@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
+from PyQt6.QtCore import pyqtSignal, Qt
 import logging
 
 from lib.i18n import tr
@@ -23,7 +23,7 @@ class BreadcrumbBar(QWidget):
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(5, 0, 5, 0)
         self.layout.setSpacing(2)
-        self.layout.setAlignment(Qt.AlignLeft)
+        self.layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         # Initial path
         self.set_path([tr("Main")])
@@ -53,7 +53,7 @@ class BreadcrumbBar(QWidget):
             # Button
             btn = QPushButton(name)
             btn.setFlat(True)
-            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
             # Styling
             is_last = i == len(path_list) - 1

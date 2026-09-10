@@ -13,7 +13,7 @@ class Outport(DBlock):
     """
 
     def __init__(self, block_name="Out1", sid=1, coords=(0, 0, 40, 30), color="red"):
-        from PyQt5.QtCore import QRect
+        from PyQt6.QtCore import QRect
 
         if isinstance(coords, tuple):
             rect = QRect(*coords)

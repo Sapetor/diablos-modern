@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QTableWidget,
@@ -7,10 +7,9 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QMessageBox,
     QToolBar,
-    QAction,
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QAction
 import logging
 from lib.workspace import WorkspaceManager
 from lib.safe_eval import safe_literal, safe_expr, SafeEvalError
@@ -71,12 +70,18 @@ class WorkspaceEditor(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels([tr("Name"), tr("Value"), tr("Type")])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Name
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)  # Value
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
+        self.table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )  # Name
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )  # Value
+        self.table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.ResizeToContents
+        )  # Type
         self.table.verticalHeader().setVisible(False)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
         self.table.cellChanged.connect(self.on_cell_changed)
 
@@ -147,7 +152,7 @@ class WorkspaceEditor(QWidget):
 
             # Name (Read-only for now, created via Add)
             name_item = QTableWidgetItem(name)
-            name_item.setFlags(name_item.flags() ^ Qt.ItemIsEditable)
+            name_item.setFlags(name_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 0, name_item)
 
             # Value (Editable)
@@ -159,7 +164,7 @@ class WorkspaceEditor(QWidget):
 
             # Type (Read-only)
             type_item = QTableWidgetItem(type(value).__name__)
-            type_item.setFlags(type_item.flags() ^ Qt.ItemIsEditable)
+            type_item.setFlags(type_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 2, type_item)
 
             row += 1
@@ -216,9 +221,9 @@ class WorkspaceEditor(QWidget):
                 self,
                 tr("Confirm Delete"),
                 tr("Are you sure you want to delete '{name}'?", name=name),
-                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
-            if confirm == QMessageBox.Yes:
+            if confirm == QMessageBox.StandardButton.Yes:
                 self.workspace_manager.delete_variable(name)
                 self.refresh_variables()
                 logger.info(f"Deleted variable {name}")
@@ -241,7 +246,7 @@ class WorkspaceEditor(QWidget):
                 # Update type column
                 self.table.blockSignals(True)  # Prevent recursion
                 type_item = QTableWidgetItem(type(new_val).__name__)
-                type_item.setFlags(type_item.flags() ^ Qt.ItemIsEditable)
+                type_item.setFlags(type_item.flags() ^ Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, 2, type_item)
                 # Clear any stale error styling from a previous invalid edit
                 self.table.item(row, 1).setForeground(

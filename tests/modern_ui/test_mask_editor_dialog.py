@@ -7,8 +7,8 @@ an invalid one.
 """
 
 import pytest
-from PyQt5.QtCore import QRect
-from PyQt5.QtWidgets import QDialog
+from PyQt6.QtCore import QRect
+from PyQt6.QtWidgets import QDialog
 
 from lib import i18n
 from lib.masks import MaskError, get_mask, set_mask
@@ -154,7 +154,7 @@ class TestMaskEditorDialog:
             dialog.get_mask()
 
         dialog.accept()
-        assert dialog.result() != QDialog.Accepted
+        assert dialog.result() != QDialog.DialogCode.Accepted
         assert dialog.error_label.isVisible() or dialog.error_label.text()
         assert "identifier" in dialog.error_label.text()
 
@@ -162,7 +162,7 @@ class TestMaskEditorDialog:
         dialog = make_dialog(block=subsystem)
         dialog.name_edit.setText("Plant")
         dialog.accept()
-        assert dialog.result() == QDialog.Accepted
+        assert dialog.result() == QDialog.DialogCode.Accepted
 
     def test_round_trip_through_set_mask(self, make_dialog, subsystem):
         dialog = make_dialog(block=subsystem, mask=VEHICLE_MASK)

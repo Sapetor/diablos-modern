@@ -17,7 +17,7 @@ import math
 import os
 import sys
 from collections import OrderedDict
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractSpinBox,
     QLabel,
     QLineEdit,
@@ -35,8 +35,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QSizePolicy,
 )
-from PyQt5.QtCore import pyqtSignal, Qt, QSize
-from PyQt5.QtGui import QColor, QFont, QPalette
+from PyQt6.QtCore import pyqtSignal, Qt, QSize
+from PyQt6.QtGui import QColor, QFont, QPalette
 from modern_ui.themes.theme_manager import theme_manager
 from lib.workspace import WorkspaceManager
 from lib.i18n import tr, tr_noop
@@ -87,12 +87,14 @@ class CollapsibleSection(QWidget):
         main.setSpacing(0)
 
         self.toggle_btn = QToolButton()
-        self.toggle_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.toggle_btn.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        self.toggle_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.toggle_btn.setArrowType(
+            Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow
+        )
         self.toggle_btn.setText(f"  {title}")
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setChecked(expanded)
-        self.toggle_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.toggle_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.toggle_btn.setMinimumHeight(34)
         self.toggle_btn.clicked.connect(self._toggle)
         main.addWidget(self.toggle_btn)
@@ -105,14 +107,14 @@ class CollapsibleSection(QWidget):
         self.content_layout.setContentsMargins(2, 2, 2, 2)
         self.content_layout.setSpacing(4)
         self.content_layout.setVerticalSpacing(6)
-        self.content_layout.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.content_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
-        self.content_layout.setLabelAlignment(Qt.AlignLeft)
+        self.content_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.content_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        self.content_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         main.addWidget(self.content)
         self.content.setVisible(expanded)
 
     def _toggle(self, checked):
-        self.toggle_btn.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+        self.toggle_btn.setArrowType(Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow)
         self.content.setVisible(checked)
 
     def addRow(self, label, widget):
@@ -147,24 +149,24 @@ class SliderSpinBox(QWidget):
         self._max = max_val
         self._steps = 1000
 
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, self._steps)
         self.slider.setValue(self._float_to_slider(value))
         self.slider.setMinimumWidth(40)
-        self.slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         layout.addWidget(self.slider, stretch=1)
 
         self.spinbox = QDoubleSpinBox()
         self.spinbox.setRange(-1e15, 1e15)
         self.spinbox.setDecimals(decimals)
         self.spinbox.setValue(value)
-        self.spinbox.setButtonSymbols(QAbstractSpinBox.PlusMinus)
-        self.spinbox.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.PlusMinus)
+        self.spinbox.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.spinbox.setFixedWidth(78)
         layout.addWidget(self.spinbox, stretch=0)
 
@@ -261,13 +263,13 @@ class PropertyEditor(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("PropertyEditor")
-        self.setFrameStyle(QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.Shape.StyledPanel)
         self.setAutoFillBackground(True)
 
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setContentsMargins(2, 4, 2, 4)
         self._main_layout.setSpacing(6)
-        self._main_layout.setAlignment(Qt.AlignTop)
+        self._main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.logger = logging.getLogger(__name__)
         self.block = None
@@ -361,7 +363,7 @@ class PropertyEditor(QFrame):
 
     def _show_placeholder(self):
         placeholder = QLabel(tr("Select a block to view its properties."))
-        placeholder.setAlignment(Qt.AlignCenter)
+        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         placeholder.setWordWrap(True)
         text_color = theme_manager.get_color("text_secondary").name()
         placeholder.setStyleSheet(f"color: {text_color}; padding: 20px;")
@@ -622,10 +624,10 @@ class PropertyEditor(QFrame):
         """
         c = QColor(hex_color)
         pal = lbl.palette()
-        pal.setColor(QPalette.WindowText, c)
-        pal.setColor(QPalette.Text, c)
+        pal.setColor(QPalette.ColorRole.WindowText, c)
+        pal.setColor(QPalette.ColorRole.Text, c)
         lbl.setPalette(pal)
-        lbl.setAttribute(Qt.WA_StyledBackground, False)
+        lbl.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
         lbl.setStyleSheet(f"color: {hex_color}; background: transparent;")
 
     def _mk_kv_label(self, text, color):
@@ -638,7 +640,7 @@ class PropertyEditor(QFrame):
         # perceived weight Mac users see.
         if sys.platform.startswith("win"):
             f.setPointSize(10)
-            f.setWeight(QFont.Medium)
+            f.setWeight(QFont.Weight.Medium)
         else:
             f.setPointSize(10)
         lbl.setFont(f)
@@ -651,27 +653,26 @@ class PropertyEditor(QFrame):
         if mono:
             primary = "Consolas" if sys.platform.startswith("win") else "Menlo"
             f = QFont(primary)
-            f.setStyleHint(QFont.Monospace)
+            f.setStyleHint(QFont.StyleHint.Monospace)
             if sys.platform.startswith("win"):
                 f.setPointSize(10)
-                f.setWeight(QFont.Medium)
+                f.setWeight(QFont.Weight.Medium)
             else:
                 f.setPointSize(9)
-            if hasattr(f, "setFamilies"):
-                f.setFamilies(
-                    [
-                        primary,
-                        "Menlo",
-                        "Consolas",
-                        "JetBrains Mono",
-                        "DejaVu Sans Mono",
-                        "monospace",
-                    ]
-                )
+            f.setFamilies(
+                [
+                    primary,
+                    "Menlo",
+                    "Consolas",
+                    "JetBrains Mono",
+                    "DejaVu Sans Mono",
+                    "monospace",
+                ]
+            )
             lbl.setFont(f)
         elif sys.platform.startswith("win"):
             f = lbl.font()
-            f.setWeight(QFont.Medium)
+            f.setWeight(QFont.Weight.Medium)
             lbl.setFont(f)
         self._apply_label_color(lbl, color)
         return lbl
@@ -819,8 +820,8 @@ class PropertyEditor(QFrame):
         h_layout.addLayout(info_row)
 
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
         line.setStyleSheet(f"background-color: {theme_manager.get_color('border_primary').name()};")
         h_layout.addWidget(line)
 
@@ -946,7 +947,7 @@ class PropertyEditor(QFrame):
         reset_btn = QPushButton("\u21ba")
         reset_btn.setFixedSize(20, 22)
         reset_btn.setToolTip(tr("Reset to default: {default}", default=default))
-        reset_btn.setCursor(Qt.PointingHandCursor)
+        reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_btn.clicked.connect(lambda checked, k=key: self._reset_param(k))
         # setVisible() deferred until after addWidget below \u2014 calling it on a
         # parentless QPushButton flashes default native chrome on Windows 11.
@@ -964,7 +965,7 @@ class PropertyEditor(QFrame):
             accent = theme_manager.get_color("accent_primary").name()
             pin_btn = QPushButton("\u25c9  " + tr("Pin to tuning"))
             pin_btn.setFlat(True)
-            pin_btn.setCursor(Qt.PointingHandCursor)
+            pin_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             pin_btn.setToolTip(tr("Pin this parameter to the Tuning Panel"))
             pin_btn.setStyleSheet(self._pin_button_stylesheet(accent))
             pin_btn.clicked.connect(lambda checked, k=key: self._on_pin_to_tuning(k))
@@ -982,7 +983,7 @@ class PropertyEditor(QFrame):
         row.addWidget(reset_btn, stretch=0)
         c_layout.addLayout(row)
         if pin_btn:
-            c_layout.addWidget(pin_btn, alignment=Qt.AlignRight)
+            c_layout.addWidget(pin_btn, alignment=Qt.AlignmentFlag.AlignRight)
         c_layout.addWidget(val_label)
 
         section.addRow(label, container)
@@ -1171,7 +1172,7 @@ class PropertyEditor(QFrame):
 
     def _apply_widget_sizing(self, widget):
         """Set flexible sizing: widgets expand to fill available space but can shrink."""
-        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         widget.setMinimumWidth(50)
 
     def _color_name_to_hex(self, name, alpha=None):

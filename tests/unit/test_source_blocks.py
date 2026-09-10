@@ -197,8 +197,8 @@ class TestStepBlock:
         Analytical impulse response of 1/(s+1): y(t) = e^(-t).
         At t=1: y ≈ 0.368, at t=3: y ≈ 0.050.
         """
-        from PyQt5.QtCore import QRect, QPoint
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtCore import QRect, QPoint
+        from PyQt6.QtGui import QColor
         from lib.simulation.block import DBlock
         from lib.simulation.connection import DLine
         from lib.engine.system_compiler import SystemCompiler
@@ -324,8 +324,8 @@ class TestImpulseBlock:
 
     def test_compiled_solver_impulse_response(self, qapp):
         """Impulse -> 1/(s+1) gives e^(-t) in compiled solver."""
-        from PyQt5.QtCore import QRect, QPoint
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtCore import QRect, QPoint
+        from PyQt6.QtGui import QColor
         from lib.simulation.block import DBlock
         from lib.simulation.connection import DLine
         from lib.engine.system_compiler import SystemCompiler

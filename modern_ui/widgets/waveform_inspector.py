@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QCheckBox,
 )
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 # Aliased: this module uses `tr` as a loop variable name for trace dicts
 # (e.g. `for idx, tr in enumerate(self.traces)`), which would shadow the
@@ -59,8 +59,8 @@ class WaveformInspector(QWidget):
         self.run_list.itemChanged.connect(self._on_run_changed)
         for idx, run in enumerate(self.run_history):
             item = QListWidgetItem(self._run_display_name(run))
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
             self.run_list.addItem(item)
         left.addWidget(QLabel(_tr("Runs")))
         left.addWidget(self.run_list)
@@ -90,7 +90,7 @@ class WaveformInspector(QWidget):
         self.plot.showGrid(x=True, y=True)
         self.plot.addLegend()
         self.vline = pg.InfiniteLine(
-            angle=90, movable=True, pen=pg.mkPen(color="r", style=Qt.DashLine)
+            angle=90, movable=True, pen=pg.mkPen(color="r", style=Qt.PenStyle.DashLine)
         )
         self.plot.addItem(self.vline)
         self.vline.sigPositionChanged.connect(self._update_readout)
@@ -101,7 +101,7 @@ class WaveformInspector(QWidget):
         # Scrub slider
         slider_row = QHBoxLayout()
         slider_row.addWidget(QLabel(_tr("Scrub")))
-        self.scrub = QSlider(Qt.Horizontal)
+        self.scrub = QSlider(Qt.Orientation.Horizontal)
         self.scrub.setMinimum(0)
         self.scrub.setMaximum(
             len(self.timeline) - 1 if self.timeline is not None and len(self.timeline) else 0
@@ -161,8 +161,10 @@ class WaveformInspector(QWidget):
         self.trace_list.clear()
         for idx, tr in enumerate(self.traces):
             item = QListWidgetItem(tr["name"])
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked if idx in self.active_traces else Qt.Unchecked)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(
+                Qt.CheckState.Checked if idx in self.active_traces else Qt.CheckState.Unchecked
+            )
             self.trace_list.addItem(item)
         self.trace_list.blockSignals(False)
 
@@ -205,7 +207,7 @@ class WaveformInspector(QWidget):
 
     def _on_trace_changed(self, item):
         idx = self.trace_list.row(item)
-        if item.checkState() == Qt.Checked:
+        if item.checkState() == Qt.CheckState.Checked:
             self.active_traces.add(idx)
         else:
             self.active_traces.discard(idx)
@@ -214,7 +216,7 @@ class WaveformInspector(QWidget):
 
     def _on_run_changed(self, item):
         idx = self.run_list.row(item)
-        if item.checkState() == Qt.Checked:
+        if item.checkState() == Qt.CheckState.Checked:
             self.active_runs.add(idx)
         else:
             self.active_runs.discard(idx)

@@ -18,8 +18,8 @@ sites, and ``AppearanceManager`` reads ``window.theme_status``).
 import os
 import logging
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QLabel, QFrame
+from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QLabel, QFrame
 
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
 
@@ -49,7 +49,7 @@ class StatusBarManager:
 
         def _vsep():
             f = QFrame()
-            f.setFrameShape(QFrame.VLine)
+            f.setFrameShape(QFrame.Shape.VLine)
             f.setObjectName("StatusDivider")
             f.setStyleSheet(
                 f"color: {theme_manager.get_color('border_primary').name()};"
@@ -60,15 +60,12 @@ class StatusBarManager:
             return f
 
         def _mono_label(text=""):
-            from PyQt5.QtGui import QFont as _QF
+            from PyQt6.QtGui import QFont as _QF
 
             lbl = QLabel(text)
             f = _QF("Menlo")
-            f.setStyleHint(_QF.Monospace)
-            if hasattr(f, "setFamilies"):
-                f.setFamilies(
-                    ["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"]
-                )
+            f.setStyleHint(_QF.StyleHint.Monospace)
+            f.setFamilies(["Menlo", "Consolas", "JetBrains Mono", "DejaVu Sans Mono", "monospace"])
             f.setPointSize(8)
             lbl.setFont(f)
             return lbl

@@ -22,8 +22,8 @@ import hashlib
 import time
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QImage, QPainter
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QImage, QPainter
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock
@@ -171,10 +171,10 @@ def _flush_caches():
 
 
 def _render(canvas):
-    image = QImage(CANVAS_W, CANVAS_H, QImage.Format_ARGB32)
+    image = QImage(CANVAS_W, CANVAS_H, QImage.Format.Format_ARGB32)
     image.fill(0)
     painter = QPainter(image)
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     canvas.canvas_renderer.draw_grid(
         painter, QRect(0, 0, CANVAS_W, CANVAS_H), CANVAS_W, CANVAS_H, True
     )
@@ -185,7 +185,8 @@ def _render(canvas):
 
 def _digest(image):
     bits = image.bits()
-    bits.setsize(image.byteCount())
+    # Qt6 renamed QImage.byteCount() to sizeInBytes().
+    bits.setsize(image.sizeInBytes())
     return hashlib.sha256(bytes(bits)).hexdigest()
 
 

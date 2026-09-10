@@ -16,7 +16,7 @@ palette instances.
 
 import pytest
 
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from modern_ui.widgets import modern_palette as mp
 from modern_ui.widgets.modern_palette import (
@@ -74,7 +74,7 @@ def _isolated_settings(tmp_path, monkeypatch):
     ini = str(tmp_path / "palette_settings.ini")
 
     def _fake_ui_settings():
-        return QSettings(ini, QSettings.IniFormat)
+        return QSettings(ini, QSettings.Format.IniFormat)
 
     monkeypatch.setattr(mp, "ui_settings", _fake_ui_settings)
     return _fake_ui_settings
@@ -217,10 +217,10 @@ def test_record_recent_is_capped_and_deduped(palette):
 def test_context_menu_pin_then_unpin(palette, monkeypatch):
     # Drive the right-click menu path: exec_ is monkeypatched to "click" the one
     # action, so we exercise the deferred-after-exec mutation without a display.
-    from PyQt5.QtGui import QContextMenuEvent
-    from PyQt5.QtWidgets import QMenu
+    from PyQt6.QtGui import QContextMenuEvent
+    from PyQt6.QtWidgets import QMenu
 
-    monkeypatch.setattr(QMenu, "exec_", lambda self, *a, **k: self.actions()[0])
+    monkeypatch.setattr(QMenu, "exec", lambda self, *a, **k: self.actions()[0])
 
     rows = palette.findChildren(CompactBlockRow)
     assert rows
@@ -228,7 +228,7 @@ def test_context_menu_pin_then_unpin(palette, monkeypatch):
     target = getattr(row.menu_block, "fn_name", None)
     assert target
 
-    ev = QContextMenuEvent(QContextMenuEvent.Mouse, row.rect().center())
+    ev = QContextMenuEvent(QContextMenuEvent.Reason.Mouse, row.rect().center())
     row.contextMenuEvent(ev)  # menu offers "Pin to Favorites"
     assert palette.is_favorite(target)
 
@@ -237,7 +237,7 @@ def test_context_menu_pin_then_unpin(palette, monkeypatch):
     sec = _pinned_section(palette, "Favorites")
     assert sec is not None
     fav_row = sec.rows[0]
-    ev2 = QContextMenuEvent(QContextMenuEvent.Mouse, fav_row.rect().center())
+    ev2 = QContextMenuEvent(QContextMenuEvent.Reason.Mouse, fav_row.rect().center())
     fav_row.contextMenuEvent(ev2)  # menu now offers "Unpin from Favorites"
     assert not palette.is_favorite(target)
     assert _pinned_section(palette, "Favorites") is None

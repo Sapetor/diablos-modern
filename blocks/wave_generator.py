@@ -88,7 +88,7 @@ Output = Bias + Amplitude * Waveform(Frequency * t + Phase)"""
         return {0: bias + amp * val}
 
     def draw_icon(self, block_rect):
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
 

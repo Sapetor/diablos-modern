@@ -6,7 +6,7 @@ as subscriptable objects (previously caused false algebraic-loop errors).
 """
 
 import pytest
-from PyQt5.QtCore import QRect, QPoint
+from PyQt6.QtCore import QRect, QPoint
 
 from lib.lib import DSim
 from lib.simulation.block import DBlock

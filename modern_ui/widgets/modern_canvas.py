@@ -4,9 +4,9 @@ Handles block rendering, mouse interactions, and drag-and-drop functionality.
 
 import logging
 import math
-from PyQt5.QtWidgets import QWidget, QApplication
-from PyQt5.QtCore import Qt, QRect, QTimer, QEvent, pyqtSignal
-from PyQt5.QtGui import QPainter, QPen
+from PyQt6.QtWidgets import QWidget, QApplication
+from PyQt6.QtCore import Qt, QRect, QTimer, QEvent, pyqtSignal
+from PyQt6.QtGui import QPainter, QPen
 
 # Import DSim and helper modules
 import sys
@@ -66,7 +66,7 @@ class ModernCanvas(QWidget):
         super().__init__(parent)
 
         # Enable keyboard focus
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         # Initialize core DSim functionality
         self.dsim = dsim
@@ -149,7 +149,7 @@ class ModernCanvas(QWidget):
         """Setup canvas properties and styling."""
         self.setMinimumSize(800, 600)
         self.setMouseTracking(True)  # Enable mouse tracking for hover effects
-        self.setFocusPolicy(Qt.StrongFocus)  # Allow keyboard focus
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)  # Allow keyboard focus
 
         # Apply theme-aware styling
         self._update_theme_styling()
@@ -343,7 +343,7 @@ class ModernCanvas(QWidget):
             return
         try:
             self.perf_helper.start_timer("canvas_paint")
-            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
             # Fill viewport background in WIDGET coordinates so panning
             # doesn't expose unfilled areas at the edges.
@@ -506,7 +506,9 @@ class ModernCanvas(QWidget):
             y = (self.height() - block_h) // 2 + fm.ascent()
             for line in lines:
                 rect = QRect(0, int(y - fm.ascent()), self.width(), line_h)
-                painter.drawText(rect, Qt.AlignHCenter | Qt.AlignTop, line)
+                painter.drawText(
+                    rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, line
+                )
                 y += line_h
         finally:
             painter.restore()
@@ -577,7 +579,7 @@ class ModernCanvas(QWidget):
         self.update()
 
         try:
-            if event.button() == Qt.LeftButton:
+            if event.button() == Qt.MouseButton.LeftButton:
                 pos = self.screen_to_world(event.pos())
 
                 # Check if double-clicked on empty space (not on block or line)
@@ -647,9 +649,9 @@ class ModernCanvas(QWidget):
         super().focusInEvent(event)
         # If focus returns without left mouse button pressed, reset any pending rect selection
         # This handles cases where a popup (like command palette) closed and focus returned
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
 
-        if not (QApplication.mouseButtons() & Qt.LeftButton):
+        if not (QApplication.mouseButtons() & Qt.MouseButton.LeftButton):
             if self.interaction_manager.selection.is_selecting:
                 logger.debug("Resetting rect selection on focus return (no mouse button pressed)")
                 self.interaction_manager.selection.clear()
@@ -736,7 +738,7 @@ class ModernCanvas(QWidget):
 
             # NEW: Connection logic with Ctrl+Click (only when a source is already selected)
             if (
-                (modifiers & Qt.ControlModifier)
+                (modifiers & Qt.KeyboardModifier.ControlModifier)
                 and conn_state.source_block
                 and conn_state.source_block is not block
             ):
@@ -792,11 +794,11 @@ class ModernCanvas(QWidget):
                     return  # End of connection logic for this click
 
             # Selection logic based on modifiers
-            if modifiers & Qt.ShiftModifier:
+            if modifiers & Qt.KeyboardModifier.ShiftModifier:
                 # Shift+Click: Add to selection (don't clear others)
                 block.selected = True
                 logger.info(f"Added {block.name} to selection (multi-select)")
-            elif modifiers & Qt.ControlModifier:
+            elif modifiers & Qt.KeyboardModifier.ControlModifier:
                 # Ctrl+Click (when no source block): Toggle selection
                 block.toggle_selection()
                 if block.selected:
@@ -882,10 +884,12 @@ class ModernCanvas(QWidget):
         """Handle keyboard events."""
         try:
             # Check for Control/Command modifier (works on both Mac and Windows/Linux)
-            ctrl_pressed = event.modifiers() & (Qt.ControlModifier | Qt.MetaModifier)
-            shift_pressed = event.modifiers() & Qt.ShiftModifier
+            ctrl_pressed = event.modifiers() & (
+                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier
+            )
+            shift_pressed = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
 
-            if event.key() == Qt.Key_Escape:
+            if event.key() == Qt.Key.Key_Escape:
                 # Cancel any ongoing operations
                 if self.connection_manager.connection_state.creation_state:
                     self._cancel_line_creation()
@@ -905,31 +909,31 @@ class ModernCanvas(QWidget):
                         self.zoom_to_fit()
                         self.scope_changed.emit(self.dsim.get_current_path())
                     self.update()
-            elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
                 # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
-            elif event.key() == Qt.Key_G and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_G and ctrl_pressed:
                 # Ctrl+G: Create subsystem from selection
                 self._create_subsystem_trigger()
-            elif event.key() == Qt.Key_Z and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_Z and ctrl_pressed and shift_pressed:
                 # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
                 self.redo()
-            elif event.key() == Qt.Key_Z and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_Z and ctrl_pressed:
                 # Ctrl+Z: Undo
                 self.undo()
-            elif event.key() == Qt.Key_Y and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_Y and ctrl_pressed:
                 # Ctrl+Y: Redo
                 self.redo()
-            elif event.key() == Qt.Key_F and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_F and ctrl_pressed:
                 self.flip_selected_blocks()
-            elif event.key() == Qt.Key_C and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_C and ctrl_pressed:
                 self.copy_selected_blocks()
-            elif event.key() == Qt.Key_V and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_V and ctrl_pressed:
                 self.paste_blocks()
-            elif event.key() == Qt.Key_A and ctrl_pressed:
+            elif event.key() == Qt.Key.Key_A and ctrl_pressed:
                 # Ctrl+A: Select all blocks
                 self._select_all_blocks()
-            elif event.key() == Qt.Key_F5:
+            elif event.key() == Qt.Key.Key_F5:
                 if shift_pressed:
                     # Shift+F5: Stop simulation
                     self.stop_simulation()
@@ -939,15 +943,15 @@ class ModernCanvas(QWidget):
                     self.start_simulation()
                     logger.info("F5: Started simulation")
             # Alignment shortcuts (Ctrl+Shift+key)
-            elif event.key() == Qt.Key_L and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_L and ctrl_pressed and shift_pressed:
                 self.align_left()
-            elif event.key() == Qt.Key_R and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_R and ctrl_pressed and shift_pressed:
                 self.align_right()
-            elif event.key() == Qt.Key_H and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_H and ctrl_pressed and shift_pressed:
                 self.align_center_horizontal()
-            elif event.key() == Qt.Key_T and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_T and ctrl_pressed and shift_pressed:
                 self.align_top()
-            elif event.key() == Qt.Key_B and ctrl_pressed and shift_pressed:
+            elif event.key() == Qt.Key.Key_B and ctrl_pressed and shift_pressed:
                 self.align_bottom()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
@@ -1176,10 +1180,10 @@ class ModernCanvas(QWidget):
     def event(self, event):
         """Intercept macOS trackpad pinch-to-zoom native gestures.
 
-        PyQt5 has no dedicated nativeGestureEvent override; QNativeGestureEvent
-        is delivered here with type QEvent.NativeGesture.
+        Qt has no dedicated nativeGestureEvent override; QNativeGestureEvent
+        is delivered here with type QEvent.Type.NativeGesture.
         """
-        if event.type() == QEvent.NativeGesture:
+        if event.type() == QEvent.Type.NativeGesture:
             if self.zoom_pan_manager.handle_native_gesture(event):
                 event.accept()
                 return True
@@ -1224,7 +1228,8 @@ class ModernCanvas(QWidget):
                 mime_text = event.mimeData().text()
                 if mime_text.startswith("diablo_block:"):
                     block_name = mime_text.split(":", 1)[1]
-                    drop_pos = self.screen_to_world(event.pos())
+                    # Qt6 dropped QDropEvent.pos(); position() is a QPointF.
+                    drop_pos = self.screen_to_world(event.position().toPoint())
                     logger.info(
                         f"Drop event: Creating {block_name} at ({drop_pos.x()}, {drop_pos.y()})"
                     )
@@ -1269,13 +1274,13 @@ class ModernCanvas(QWidget):
         Injected as ``ControlSystemAnalyzer(error_cb=...)`` so the engine-layer
         analyzers stay Qt-free and headless-safe.
         """
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
+        box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(title)
         box.setText(message)
-        box.exec_()
+        box.exec()
 
     def _validate_connection(self, start_block, start_port, end_block, end_port):
         """Validate a connection between two blocks. Delegates to ConnectionManager."""

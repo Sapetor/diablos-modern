@@ -74,8 +74,8 @@ class TestOptimizerContract:
         assert params == snapshot
 
     def test_draw_icon_returns_a_painter_path(self, qapp):
-        from PyQt5.QtCore import QRect
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtCore import QRect
+        from PyQt6.QtGui import QPainterPath
 
         path = OptimizerBlock().draw_icon(QRect(0, 0, 100, 60))
         assert isinstance(path, QPainterPath)

@@ -6,9 +6,9 @@ Handles connection/wire creation, editing, and deletion.
 import logging
 import types
 from typing import Any, Iterable, Optional, Tuple, TYPE_CHECKING
-from PyQt5.QtCore import QPoint
-from PyQt5.QtWidgets import QApplication, QInputDialog
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import QPoint
+from PyQt6.QtWidgets import QApplication, QInputDialog
+from PyQt6.QtCore import Qt
 
 from lib.i18n import tr
 from lib.diagram_validator import validate_block_connections
@@ -465,7 +465,7 @@ class ConnectionManager:
 
             collision_type, collision_index = collision_result
 
-            if not (QApplication.keyboardModifiers() & Qt.ControlModifier):
+            if not (QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier):
                 self.canvas._clear_selections()
 
             line.selected = True

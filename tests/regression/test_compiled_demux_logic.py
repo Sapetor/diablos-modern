@@ -33,8 +33,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtGui import QColor
 
 
 EXAMPLE = "test_demux_logic.diablos"

@@ -1,7 +1,7 @@
 import os
 import logging
 
-from PyQt5.QtWidgets import QAction, QActionGroup
+from PyQt6.QtGui import QAction, QActionGroup
 
 from lib.i18n import tr
 
@@ -388,11 +388,10 @@ class MenuBuilder:
 
         # F1 opens the shortcuts dialog from anywhere in the window. Held on the
         # window so the QShortcut isn't garbage-collected with this builder.
-        from PyQt5.QtCore import Qt
-        from PyQt5.QtWidgets import QShortcut
-        from PyQt5.QtGui import QKeySequence
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QKeySequence, QShortcut
 
-        self.window._shortcuts_help_shortcut = QShortcut(QKeySequence(Qt.Key_F1), self.window)
+        self.window._shortcuts_help_shortcut = QShortcut(QKeySequence(Qt.Key.Key_F1), self.window)
         self.window._shortcuts_help_shortcut.activated.connect(self._show_shortcuts)
 
     def _show_shortcuts(self):
@@ -400,7 +399,7 @@ class MenuBuilder:
         from modern_ui.widgets.shortcuts_dialog import KeyboardShortcutsDialog
 
         dialog = KeyboardShortcutsDialog(self.window)
-        dialog.exec_()
+        dialog.exec()
 
     def _open_resource_in_os(self, rel_path: str, *, is_dir: bool) -> None:
         """Open a bundled resource (folder or file) with the OS default handler.
@@ -409,8 +408,8 @@ class MenuBuilder:
         resolver) so it works in dev and under PyInstaller frozen builds alike —
         the hand-rolled ``__file__`` walk it replaces broke in frozen mode.
         """
-        from PyQt5.QtCore import QUrl
-        from PyQt5.QtGui import QDesktopServices
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
         from lib.app_paths import resource_path
 
         path = resource_path(rel_path)
@@ -429,7 +428,7 @@ class MenuBuilder:
         self._open_resource_in_os(os.path.join("docs", "USER_MANUAL.md"), is_dir=False)
 
     def _show_about(self):
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         QMessageBox.about(
             self.window,

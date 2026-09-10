@@ -30,7 +30,7 @@ ignores the Integrator's ``method`` entirely and was never affected):
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 
 def _new_dsim():

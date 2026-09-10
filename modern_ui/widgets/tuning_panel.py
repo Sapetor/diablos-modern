@@ -8,7 +8,7 @@ block parameters and watch scope plots update in real-time.
 import logging
 import math
 import re
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -25,8 +25,8 @@ from PyQt5.QtWidgets import (
     QFormLayout,
     QLineEdit,
 )
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QFont
+from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QFont
 from modern_ui.themes.theme_manager import theme_manager
 from lib.i18n import tr
 
@@ -49,9 +49,9 @@ class TuningParameterRow(QFrame):
         self._steps = 2000
         self._suppress_signals = False
 
-        self.setFrameStyle(QFrame.NoFrame)
+        self.setFrameStyle(QFrame.Shape.NoFrame)
         self.setFixedHeight(28)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
         # Compute initial range
@@ -78,7 +78,7 @@ class TuningParameterRow(QFrame):
         row.addWidget(name_label)
 
         # Slider
-        self._slider = QSlider(Qt.Horizontal)
+        self._slider = QSlider(Qt.Orientation.Horizontal)
         self._slider.setRange(0, self._steps)
         self._slider.setValue(self._val_to_slider(value))
         self._slider.setFixedHeight(18)
@@ -89,7 +89,7 @@ class TuningParameterRow(QFrame):
         self._value_edit = QLineEdit(self._fmt_value(value))
         self._value_edit.setFixedWidth(58)
         self._value_edit.setFixedHeight(20)
-        self._value_edit.setAlignment(Qt.AlignRight)
+        self._value_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._value_edit.setFrame(False)
         font = QFont()
         font.setPointSize(11)
@@ -102,7 +102,7 @@ class TuningParameterRow(QFrame):
         reset_btn.setText("\u21ba")
         reset_btn.setFixedSize(18, 18)
         reset_btn.setToolTip(tr("Reset to {value}", value=self._fmt_value(value)))
-        reset_btn.setCursor(Qt.PointingHandCursor)
+        reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_btn.clicked.connect(self._reset_value)
         self._reset_btn = reset_btn
         row.addWidget(reset_btn)
@@ -112,7 +112,7 @@ class TuningParameterRow(QFrame):
         remove_btn.setText("\u2716")
         remove_btn.setFixedSize(18, 18)
         remove_btn.setToolTip(tr("Remove from tuning"))
-        remove_btn.setCursor(Qt.PointingHandCursor)
+        remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         remove_btn.clicked.connect(self._on_remove)
         self._remove_btn = remove_btn
         row.addWidget(remove_btn)
@@ -223,7 +223,7 @@ class TuningParameterRow(QFrame):
         )
         menu.addSeparator()
         remove_action = menu.addAction(tr("Remove"))
-        action = menu.exec_(self.mapToGlobal(pos))
+        action = menu.exec(self.mapToGlobal(pos))
         if action == range_action:
             self._open_range_dialog()
         elif action == reset_action:
@@ -248,12 +248,14 @@ class TuningParameterRow(QFrame):
         max_spin.setValue(self._max)
         form.addRow(tr("Max:"), max_spin)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
         form.addRow(buttons)
 
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             self.set_range(min_spin.value(), max_spin.value())
 
     # ── Theming ──
@@ -328,7 +330,7 @@ class TuningPanel(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("TuningPanel")
-        self.setFrameStyle(QFrame.StyledPanel)
+        self.setFrameStyle(QFrame.Shape.StyledPanel)
         self._rows = {}  # key: (block_name, param_name) -> TuningParameterRow
 
         main_layout = QVBoxLayout(self)
@@ -340,7 +342,7 @@ class TuningPanel(QFrame):
         header.setSpacing(4)
 
         self._toggle_btn = QToolButton()
-        self._toggle_btn.setArrowType(Qt.DownArrow)
+        self._toggle_btn.setArrowType(Qt.ArrowType.DownArrow)
         self._toggle_btn.setFixedSize(16, 16)
         self._toggle_btn.setCheckable(True)
         self._toggle_btn.setChecked(True)
@@ -356,7 +358,7 @@ class TuningPanel(QFrame):
 
         clear_btn = QPushButton(tr("Clear"))
         clear_btn.setFixedHeight(18)
-        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         clear_btn.clicked.connect(self.clear_all)
         self._clear_btn = clear_btn
         header.addWidget(clear_btn)
@@ -366,7 +368,7 @@ class TuningPanel(QFrame):
         # Scrollable content area for parameter rows
         self._content = QScrollArea()
         self._content.setWidgetResizable(True)
-        self._content.setFrameStyle(QFrame.NoFrame)
+        self._content.setFrameStyle(QFrame.Shape.NoFrame)
         self._content.setMaximumHeight(160)
 
         self._rows_widget = QWidget()
@@ -380,7 +382,7 @@ class TuningPanel(QFrame):
 
         # Placeholder hint
         self._hint = QLabel(tr("Right-click block > Add to Tuning"))
-        self._hint.setAlignment(Qt.AlignCenter)
+        self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint.setStyleSheet("color: gray; font-style: italic; padding: 4px; font-size: 11px;")
         main_layout.addWidget(self._hint)
 
@@ -463,7 +465,9 @@ class TuningPanel(QFrame):
         self.param_changed.emit(block_name, param_name, value)
 
     def _toggle_content(self, checked):
-        self._toggle_btn.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+        self._toggle_btn.setArrowType(
+            Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow
+        )
         self._content.setVisible(checked)
         self._hint.setVisible(checked and not self._rows)
 

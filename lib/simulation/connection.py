@@ -6,8 +6,8 @@ import logging
 import copy
 import math
 from typing import List, Tuple, Optional, Union
-from PyQt5.QtGui import QPainterPath, QColor
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtGui import QPainterPath, QColor
+from PyQt6.QtCore import QPoint, QPointF, QRect
 
 logger = logging.getLogger(__name__)
 
@@ -313,8 +313,10 @@ class DLine:
         """
         cp1, cp2 = bezier_control_points(start, finish, src_dir, dst_dir)
 
-        path = QPainterPath(start)
-        path.cubicTo(cp1, cp2, finish)
+        # Qt6's QPainterPath takes QPointF only -- QPoint is no longer
+        # implicitly converted, so widen the integer port coordinates here.
+        path = QPainterPath(QPointF(start))
+        path.cubicTo(QPointF(cp1), QPointF(cp2), QPointF(finish))
 
         # A plain two-endpoint cubic has no intermediate waypoints; the single
         # bounding segment is enough for hover/click collision (the existing
@@ -407,7 +409,7 @@ class DLine:
         all_points = clean_points
 
         # Create path based on routing mode
-        path = QPainterPath(all_points[0])
+        path = QPainterPath(QPointF(all_points[0]))
         segments = []
 
         # Radius for smooth corner fillets on Manhattan-style routes. The
@@ -464,7 +466,7 @@ class DLine:
                         next_point.y() - int(available_space * (1 if dy > 0 else -1)),
                     )
 
-                path.lineTo(pre_corner)
+                path.lineTo(QPointF(pre_corner))
 
                 # Now create curved transition to next segment
                 # Peek at next segment to determine curve direction
@@ -488,10 +490,10 @@ class DLine:
                     )
 
                 # Create smooth quadratic curve through the corner
-                path.quadTo(next_point, post_corner)
+                path.quadTo(QPointF(next_point), QPointF(post_corner))
             else:
                 # No curve needed, just draw straight line
-                path.lineTo(next_point)
+                path.lineTo(QPointF(next_point))
 
             # Add segment for collision detection
             segments.append(QRect(current, next_point).normalized())
@@ -739,7 +741,7 @@ class DLine:
                 # Derived from the (dropped) path; rebuilt lazily on demand.
                 setattr(result, k, None)
             elif k == "segments":
-                # Segments are lists of QRect, which are picklable with PyQt5?
+                # Segments are lists of QRect, which are picklable with PyQt6?
                 # QRect pickles fine.
                 try:
                     setattr(result, k, copy.deepcopy(v, memo))

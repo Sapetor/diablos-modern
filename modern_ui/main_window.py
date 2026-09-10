@@ -7,9 +7,9 @@ import os
 import logging
 import time
 from typing import Any
-from PyQt5.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
+from PyQt6.QtWidgets import QMainWindow, QWidget, QMessageBox, QFileDialog
 from lib.workspace import WorkspaceManager
-from PyQt5.QtCore import Qt, QTimer, QEvent, QSettings
+from PyQt6.QtCore import Qt, QTimer, QEvent, QSettings
 from lib.app_paths import SETTINGS_ORG, SETTINGS_APP
 from lib.i18n import tr
 
@@ -98,13 +98,15 @@ class ModernDiaBloSWindow(QMainWindow):
             self.property_editor.set_diagram_context(self.dsim, self)
 
         # Initialize Variable Editor (Dockable)
-        from PyQt5.QtWidgets import QDockWidget
+        from PyQt6.QtWidgets import QDockWidget
 
         self.variable_editor = VariableEditor(self)
         self.variable_editor_dock = QDockWidget(tr("Variable Editor"), self)
         self.variable_editor_dock.setWidget(self.variable_editor)
-        self.variable_editor_dock.setAllowedAreas(Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.variable_editor_dock)
+        self.variable_editor_dock.setAllowedAreas(
+            Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.variable_editor_dock)
         self.variable_editor_dock.hide()  # Hidden by default
 
         # Connect variable editor signals
@@ -114,16 +116,20 @@ class ModernDiaBloSWindow(QMainWindow):
         self.workspace_editor = WorkspaceEditor(self)
         self.workspace_editor_dock = QDockWidget(tr("Workspace Variables"), self)
         self.workspace_editor_dock.setWidget(self.workspace_editor)
-        self.workspace_editor_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.BottomDockWidgetArea)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.workspace_editor_dock)
+        self.workspace_editor_dock.setAllowedAreas(
+            Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.BottomDockWidgetArea
+        )
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.workspace_editor_dock)
         self.workspace_editor_dock.hide()
 
         # Initialize Minimap (Dockable)
         self.minimap = MinimapWidget(self.canvas, self)
         self.minimap_dock = QDockWidget(tr("Minimap"), self)
         self.minimap_dock.setWidget(self.minimap)
-        self.minimap_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.minimap_dock)
+        self.minimap_dock.setAllowedAreas(
+            Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea
+        )
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.minimap_dock)
         self.minimap_dock.hide()  # Hidden by default
 
         # Create tuning panel and controller
@@ -147,11 +153,10 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_command_palette()
 
         # Global ⌘K / Ctrl+K shortcut so the palette is reachable everywhere.
-        from PyQt5.QtWidgets import QShortcut
-        from PyQt5.QtGui import QKeySequence
+        from PyQt6.QtGui import QKeySequence, QShortcut
 
         self._cmdk_shortcut = QShortcut(QKeySequence("Ctrl+K"), self)
-        self._cmdk_shortcut.setContext(Qt.ApplicationShortcut)
+        self._cmdk_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
         self._cmdk_shortcut.activated.connect(self.show_command_palette)
 
         # Initialize DSim components
@@ -393,8 +398,8 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def open_user_blocks_folder(self):
         """Open the per-user blocks folder in the system file manager."""
-        from PyQt5.QtCore import QUrl
-        from PyQt5.QtGui import QDesktopServices
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
 
         from lib.user_blocks import user_blocks_dir
 
@@ -518,14 +523,14 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         """Forward focus to child input widgets inside the property scroll area.
-        PyQt5 5.15: QScrollArea viewport absorbs clicks without focusing children."""
-        if obj is self._prop_scroll_viewport and event.type() == QEvent.MouseButtonPress:
+        A QScrollArea viewport absorbs clicks without focusing children."""
+        if obj is self._prop_scroll_viewport and event.type() == QEvent.Type.MouseButtonPress:
             child = obj.childAt(event.pos())
             # Walk up to find the first focusable widget
-            while child and child.focusPolicy() == Qt.NoFocus:
+            while child and child.focusPolicy() == Qt.FocusPolicy.NoFocus:
                 child = child.parentWidget()
             if child and child is not obj:
-                child.setFocus(Qt.MouseFocusReason)
+                child.setFocus(Qt.FocusReason.MouseFocusReason)
         return super().eventFilter(obj, event)
 
     # Status-bar facades -> StatusBarManager (see managers/status_bar_manager.py)
@@ -575,18 +580,18 @@ class ModernDiaBloSWindow(QMainWindow):
 
     def export_tikz(self):
         """Open the TikZ export dialog."""
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         if not self.dsim.blocks_list:
             QMessageBox.information(self, tr("Export TikZ"), tr("No blocks to export."))
             return
         from modern_ui.widgets.tikz_export_dialog import TikZExportDialog
 
-        TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec_()
+        TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec()
 
     def export_python_script(self):
         """Export the diagram as a self-contained numpy/scipy simulation script."""
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         from lib.export.python_codegen import CodegenError, PythonCodeGenerator
         from modern_ui.tools.file_dialogs import ask_save_path
@@ -724,15 +729,15 @@ class ModernDiaBloSWindow(QMainWindow):
             return
 
         if not hasattr(self, "waveform_inspector_dock"):
-            from PyQt5.QtWidgets import QDockWidget
+            from PyQt6.QtWidgets import QDockWidget
 
             self.waveform_inspector = WaveformInspector(self.dsim)
             self.waveform_inspector_dock = QDockWidget(tr("Waveforms"), self)
             self.waveform_inspector_dock.setWidget(self.waveform_inspector)
             self.waveform_inspector_dock.setAllowedAreas(
-                Qt.BottomDockWidgetArea | Qt.RightDockWidgetArea
+                Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
             )
-            self.addDockWidget(Qt.BottomDockWidgetArea, self.waveform_inspector_dock)
+            self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.waveform_inspector_dock)
 
             if hasattr(self, "variable_editor_dock"):
                 self.tabifyDockWidget(self.variable_editor_dock, self.waveform_inspector_dock)
@@ -748,7 +753,7 @@ class ModernDiaBloSWindow(QMainWindow):
         Falls back to a chrome-less widget grab if the screen capture is
         unavailable (e.g. some headless/offscreen platforms).
         """
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
 
         default_path = os.path.join(os.getcwd(), "screenshot.png")
         path, _ = QFileDialog.getSaveFileName(
@@ -949,16 +954,20 @@ class ModernDiaBloSWindow(QMainWindow):
         never returns a meaningful button there).
         """
         box = QMessageBox(self)
-        box.setIcon(QMessageBox.Warning)
+        box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(tr("Unsaved Changes"))
         box.setText(tr("This diagram has unsaved changes."))
         box.setInformativeText(tr("Save them before closing?"))
-        box.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
-        box.setDefaultButton(QMessageBox.Save)
-        answer = box.exec_()
-        if answer == QMessageBox.Save:
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Save)
+        answer = box.exec()
+        if answer == QMessageBox.StandardButton.Save:
             return "save"
-        if answer == QMessageBox.Discard:
+        if answer == QMessageBox.StandardButton.Discard:
             return "discard"
         # Anything else (Cancel, Esc, closing the dialog) keeps the window open.
         return "cancel"
@@ -1104,7 +1113,7 @@ class ModernDiaBloSWindow(QMainWindow):
     def _on_error_clicked(self, error):
         """Handle error item click - navigate to error location."""
         try:
-            from PyQt5.QtCore import QPoint
+            from PyQt6.QtCore import QPoint
 
             # Get affected blocks from the error
             affected_blocks = error.blocks if hasattr(error, "blocks") else []

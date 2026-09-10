@@ -78,7 +78,7 @@ class AgentScopeBlock(BaseBlock):
         return False
 
     def draw_icon(self, block_rect):
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
 
         path = QPainterPath()
         path.addRect(0.15, 0.15, 0.7, 0.7)

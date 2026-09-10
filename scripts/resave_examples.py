@@ -20,7 +20,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 # Must create QApplication before importing anything that uses Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 app = QApplication.instance() or QApplication(sys.argv)
 

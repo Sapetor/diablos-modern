@@ -20,8 +20,8 @@ import os
 
 import numpy as np
 import pytest
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QColor
 
 from lib.engine import graph_analysis
 from lib.engine.simulation_engine import SimulationEngine

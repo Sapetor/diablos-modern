@@ -1,13 +1,13 @@
 """
 Animation Export Dialog for FieldScope visualizations.
 
-Provides a PyQt5 dialog for configuring animation export settings
+Provides a PyQt6 dialog for configuring animation export settings
 including format, FPS, quality, and output path.
 """
 
 import os
 import logging
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QMessageBox,
 )
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from lib.i18n import tr
 

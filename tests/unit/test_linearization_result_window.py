@@ -14,7 +14,7 @@ Run offscreen:
 import numpy as np
 import pytest
 
-from PyQt5.QtWidgets import QWidget, QTabWidget, QPushButton, QApplication
+from PyQt6.QtWidgets import QWidget, QTabWidget, QPushButton, QApplication
 
 from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
 
@@ -207,7 +207,7 @@ class TestLinearizationExportBar:
         assert "sys = ss(A, B, C, D);" in text
 
     def test_save_data_writes_loadable_file(self, qapp, tmp_path, monkeypatch):
-        from PyQt5.QtWidgets import QFileDialog
+        from PyQt6.QtWidgets import QFileDialog
 
         out = tmp_path / "exported.mat"
         monkeypatch.setattr(

@@ -131,7 +131,7 @@ class WaveEquation1DBlock(BaseBlock):
 
     def draw_icon(self, block_rect):
         """Draw wave equation icon - sine wave."""
-        from PyQt5.QtGui import QPainterPath
+        from PyQt6.QtGui import QPainterPath
         import math
 
         path = QPainterPath()

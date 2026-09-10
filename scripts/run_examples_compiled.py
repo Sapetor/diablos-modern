@@ -17,7 +17,7 @@ Run (offscreen Qt required):
 ``run`` (default) is a fast in-process loop; ``--orchestrate`` runs each example
 in an isolated subprocess so a native crash in one cannot abort the whole sweep.
 On WSL the bundled .venv-win interpreter can fast-fail under bulk headless Qt;
-the system python3 (with PyQt5/numpy/scipy) is more reliable for this script.
+the system python3 (with PyQt6/numpy/scipy) is more reliable for this script.
 """
 
 import json
@@ -39,10 +39,10 @@ _QAPP = None
 
 
 def ensure_qapp():
-    """DSim builds real PyQt5 objects; a QApplication must exist (and stay
+    """DSim builds real PyQt6 objects; a QApplication must exist (and stay
     alive) first or the interpreter fast-fails under offscreen Qt."""
     global _QAPP
-    from PyQt5.QtWidgets import QApplication
+    from PyQt6.QtWidgets import QApplication
 
     _QAPP = QApplication.instance() or QApplication(sys.argv)
     return _QAPP

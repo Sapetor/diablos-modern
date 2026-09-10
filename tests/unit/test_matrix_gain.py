@@ -102,8 +102,8 @@ class TestMatrixGainBlock:
 
     def test_compiled_solver(self, qapp):
         """MatrixGain works in compiled solver with scalar string gain."""
-        from PyQt5.QtCore import QRect, QPoint
-        from PyQt5.QtGui import QColor
+        from PyQt6.QtCore import QRect, QPoint
+        from PyQt6.QtGui import QColor
         from lib.simulation.block import DBlock
         from lib.simulation.connection import DLine
         from lib.engine.system_compiler import SystemCompiler

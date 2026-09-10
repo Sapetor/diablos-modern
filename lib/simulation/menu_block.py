@@ -2,8 +2,8 @@
 MenuBlocks class - represents blocks in the palette menu.
 """
 
-from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QRect
+from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtCore import Qt, QRect
 
 from lib.app_paths import resource_path
 
@@ -38,8 +38,8 @@ class MenuBlocks:
             self.image = pixmap.scaled(
                 self.side_length[0],
                 self.side_length[1],
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
         else:
             self.image = pixmap
@@ -61,4 +61,6 @@ class MenuBlocks:
         painter.setFont(self.font)
         painter.setPen(theme_manager.get_color("text_primary"))
         text_rect = QRect(90, 80 + 40 * pos, 100, 30)
-        painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, self.fn_name)
+        painter.drawText(
+            text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.fn_name
+        )
