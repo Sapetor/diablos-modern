@@ -458,9 +458,25 @@ complexity 25, all listed here.
   and dirty flag — all identical. Tests: `tests/unit/test_subsystem_creation_helpers.py`.
 - [ ] **Remaining large routine functions**: `ClipboardManager.paste_blocks` (228
   lines); `solve_with_events` (232). Extract when next touched.
-- [ ] **Palette glyphs** — `modern_palette._draw_glyph` (156 lines, C901 = 36)
-  is a second icon system with its own switch; reuse the blocks' `draw_icon`
-  paths (mapped into the palette tile) so a block's icon is defined once.
+- [x] **Palette glyphs** — `modern_palette._draw_glyph` (was 158 lines, C901 = 36)
+  — done 2026-09-10 (agent-driven, worktree). Now a 9-line lookup (C901 = 3) into
+  `_GLYPHS: Dict[str, Callable]` with one `_glyph_<kind>` painter per kind grouped
+  by family, `_GLYPH_PAD` / `_line` / `_glyph_box` for the shared geometry, and the
+  same `letter:` / 3-char-label fallbacks. Verified pixel-identical against the
+  HEAD module: 53 kinds (46 declared + letter/unknown/empty cases) x 5 sizes x 3
+  colours = 795/795 byte-identical QImages. Tests:
+  `tests/modern_ui/test_palette_glyph_registry.py` (55).
+  - [ ] Found while verifying (pre-existing, kept identical): `_glyph_kind_for`
+    is first-match and three keys are shadowed by earlier substrings —
+    `matrixgain`→`gain`, `export`→`exp`, `demux`→`mux` — so `_glyph_export` and
+    `_glyph_demux` never paint (pinned as `_SHADOWED_KINDS` in the new test).
+    Fix is reordering the table; it is a visible change, so it needs a look.
+  - [ ] Not done (assessed): reusing the blocks' `draw_icon` paths in the palette.
+    Feasible for ~70 of 84 icons via `BlockRenderer._icon_source_path` + a
+    `QTransform` into the 22 px chip; the 15 text icons (`_FRACTION_TEXT_ICONS`,
+    `_CENTERED_TEXT_ICONS`, `_DYNAMIC_TEXT_ICONS` read block state) need a
+    stateless variant, and dense canvas icons (Bode, Scope, FFT, Nyquist) turn to
+    mud at 22 px — which is why the label glyphs exist. A visible change, ~a day.
 - [x] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
   and `SystemCompiler` — done 2026-07-05: shared pure ops in `lib/engine/pde_ops.py`
   consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`

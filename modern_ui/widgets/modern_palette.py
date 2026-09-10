@@ -17,6 +17,7 @@ Drag MIME and signal are unchanged, so canvas drop logic doesn't need edits.
 import logging
 import os
 import sys
+from typing import Callable, Dict
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -741,162 +742,351 @@ def _glyph_kind_for(fn_name: str) -> str:
     return "letter:" + (n[:2].upper() if n else "?")
 
 
+# -----------------------------------------------------------------------------
+# Glyphs — one small painter per kind, dispatched through the _GLYPHS registry
+# -----------------------------------------------------------------------------
+#
+# Every painter draws a single-stroke geometric glyph in an s×s box with the
+# pen already configured by the caller (_GlyphTile.paintEvent). Painters share
+# the same inset (_GLYPH_PAD) and the _line / _glyph_box helpers so the
+# geometry is defined once; the expressions themselves are kept verbatim from
+# the original switch so the rendered pixels are unchanged.
+
+# Inset from the tile edge (px) at every size — the whole glyph lives inside
+# the (s - 2 * _GLYPH_PAD) square this leaves.
+_GLYPH_PAD = 5
+
+
+def _line(p: QPainter, x1, y1, x2, y2):
+    p.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+
+
+def _glyph_box(s: int) -> QRectF:
+    """The padded square every circular/boxed glyph is drawn into."""
+    return QRectF(_GLYPH_PAD, _GLYPH_PAD, s - 2 * _GLYPH_PAD, s - 2 * _GLYPH_PAD)
+
+
+# -- Sources --------------------------------------------------------------------
+
+
+def _glyph_sine(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, s / 2)
+    path.quadTo(pad + (s - 2 * pad) * 0.25, pad, s / 2, s / 2)
+    path.quadTo(s - pad - (s - 2 * pad) * 0.25, s - pad, s - pad, s / 2)
+    p.drawPath(path)
+
+
+def _glyph_noise(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    pts = [
+        (pad, s * 0.7),
+        (pad + 2.5, s * 0.35),
+        (pad + 4.5, s * 0.6),
+        (pad + 6.5, s * 0.3),
+        (pad + 8.5, s * 0.65),
+        (s - pad, s * 0.45),
+    ]
+    for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+        _line(p, x1, y1, x2, y2)
+
+
+def _glyph_step(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s / 2, s - pad)
+    _line(p, s / 2, s - pad, s / 2, pad)
+    _line(p, s / 2, pad, s - pad, pad)
+
+
+def _glyph_ramp(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, pad)
+    _line(p, pad, s - pad, s - pad, s - pad)
+
+
+def _glyph_impulse(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, s - pad)
+    _line(p, s / 2, pad, s / 2, s - pad)
+
+
+# -- Math -----------------------------------------------------------------------
+
+
+def _glyph_sum(p: QPainter, color: QColor, s: int):
+    p.drawEllipse(_glyph_box(s))
+    _draw_text(p, color, s, "±", italic=False, weight=QFont.Bold)
+
+
+def _glyph_gain(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, pad)
+    path.lineTo(s - pad, s / 2)
+    path.lineTo(pad, s - pad)
+    path.closeSubpath()
+    p.drawPath(path)
+
+
+def _glyph_product(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad + 2, pad + 2, s - pad - 2, s - pad - 2)
+    _line(p, s - pad - 2, pad + 2, pad + 2, s - pad - 2)
+
+
+# -- Control --------------------------------------------------------------------
+
+
+def _glyph_integ(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad + 1, pad, pad + 1, s - pad)
+    _draw_text(p, color, s, "1/s", italic=True, x_off=2.5, size_factor=0.4)
+
+
+def _glyph_tranfn(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _draw_text(p, color, s, "B", italic=True, y_off=-3.5, size_factor=0.42)
+    _line(p, pad + 1.5, s / 2, s - pad - 1.5, s / 2)
+    _draw_text(p, color, s, "A", italic=True, y_off=4.5, size_factor=0.42)
+
+
+def _glyph_delay(p: QPainter, color: QColor, s: int):
+    p.drawEllipse(_glyph_box(s))
+    _draw_text(p, color, s, "→", italic=False)
+
+
+# -- Nonlinear / filters ----------------------------------------------------------
+
+
+def _glyph_sat(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, pad + 4, s - pad)
+    _line(p, pad + 4, s - pad, s - pad - 4, pad)
+    _line(p, s - pad - 4, pad, s - pad, pad)
+
+
+def _glyph_rate(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s / 2, pad)
+    _line(p, s / 2, pad, s - pad, pad)
+
+
+def _glyph_hys(p: QPainter, color: QColor, s: int):
+    """Shared by the ``hys`` and ``dead`` kinds."""
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s / 2 - 1, s / 2)
+    _line(p, s / 2 - 1, s / 2, s / 2 + 1, pad + 2)
+    _line(p, s / 2 + 1, pad + 2, s - pad, pad + 2)
+
+
+def _glyph_filter(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    path = QPainterPath()
+    path.moveTo(pad, s - pad)
+    path.quadTo(s / 2, s - pad, s / 2, s / 2)
+    path.quadTo(s / 2, pad, s - pad, pad)
+    p.drawPath(path)
+
+
+# -- Sinks / analysis -------------------------------------------------------------
+
+
+def _glyph_scope(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad - 1, pad + 1, s - 2 * pad + 2, s - 2 * pad - 2), 2, 2)
+    path = QPainterPath()
+    path.moveTo(pad + 1, s / 2 + 2)
+    path.quadTo(pad + 4, pad + 2, s / 2, s / 2)
+    path.quadTo(s - pad - 3, s - pad - 1, s - pad - 1, s / 2 - 1)
+    p.drawPath(path)
+
+
+def _glyph_bode(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, pad, pad, s - pad)
+    _line(p, pad, s - pad, s - pad, s - pad)
+    path = QPainterPath()
+    path.moveTo(pad + 1, pad + 3)
+    path.quadTo(s / 2, pad + 4, s / 2 + 1, s / 2)
+    path.quadTo(s - pad - 2, s - pad - 4, s - pad, s - pad - 2)
+    p.drawPath(path)
+
+
+def _glyph_nyq(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s / 2, pad, s / 2, s - pad)
+
+
+def _glyph_roots(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawEllipse(_glyph_box(s))
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s * 0.3, s / 2 - 1.5, s * 0.3 + 1.5, s / 2 + 0.5)
+    _line(p, s * 0.3, s / 2 + 0.5, s * 0.3 + 1.5, s / 2 - 1.5)
+
+
+def _glyph_fft(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    for i, h in enumerate([4, 7, 3, 8, 5, 6, 2, 5]):
+        x = pad + i * (s - 2 * pad) / 8.0
+        _line(p, x, s - pad, x, s - pad - h)
+
+
+def _glyph_xy(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s - pad, s - pad, s - pad)
+    _line(p, pad, s - pad, pad, pad)
+    _line(p, pad + 1, s - pad - 1, s - pad - 1, pad + 1)
+
+
+def _glyph_export(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad, pad + 1, (s - 2 * pad) * 0.55, s - 2 * pad - 2), 1.2, 1.2)
+    _line(p, pad + 7, s / 2, s - pad - 1, s / 2)
+    _line(p, s - pad - 3, s / 2 - 2, s - pad - 1, s / 2)
+    _line(p, s - pad - 3, s / 2 + 2, s - pad - 1, s / 2)
+
+
+def _glyph_term(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad + 2, s - pad - 1, s - pad - 2, s - pad - 1)
+    _line(p, pad + 4, s - pad - 3, s - pad - 4, s - pad - 3)
+    _line(p, s / 2, pad + 1, s / 2, s - pad - 3)
+
+
+# -- Discrete ---------------------------------------------------------------------
+
+
+def _glyph_zoh(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s * 0.72, pad + 4, s * 0.72)
+    _line(p, pad + 4, s * 0.72, pad + 4, s / 2)
+    _line(p, pad + 4, s / 2, s - pad - 4, s / 2)
+    _line(p, s - pad - 4, s / 2, s - pad - 4, pad + 2)
+    _line(p, s - pad - 4, pad + 2, s - pad, pad + 2)
+
+
+def _glyph_foh(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s * 0.7, pad + 5, s * 0.4)
+    _line(p, pad + 5, s * 0.4, s - pad - 5, s * 0.7)
+    _line(p, s - pad - 5, s * 0.7, s - pad, s * 0.3)
+
+
+# -- Routing ----------------------------------------------------------------------
+
+
+def _glyph_mux(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, pad + 1, s / 2, s / 2)
+    _line(p, pad, s - pad - 1, s / 2, s / 2)
+    _line(p, s / 2, s / 2, s - pad, s / 2)
+
+
+def _glyph_demux(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, s - pad, pad + 1, s / 2, s / 2)
+    _line(p, s - pad, s - pad - 1, s / 2, s / 2)
+    _line(p, s / 2, s / 2, pad, s / 2)
+
+
+def _glyph_switch(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s / 2 - 1, s / 2)
+    _line(p, s / 2 + 1, pad + 2, s - pad, s / 2)
+
+
+def _glyph_in(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, s - pad - 3, s / 2 - 2, s - pad, s / 2)
+    _line(p, s - pad - 3, s / 2 + 2, s - pad, s / 2)
+
+
+def _glyph_out(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    _line(p, pad, s / 2, s - pad, s / 2)
+    _line(p, pad + 3, s / 2 - 2, pad, s / 2)
+    _line(p, pad + 3, s / 2 + 2, pad, s / 2)
+
+
+def _glyph_sub(p: QPainter, color: QColor, s: int):
+    pad = _GLYPH_PAD
+    p.drawRoundedRect(QRectF(pad, pad, s - 2 * pad, s - 2 * pad), 1.5, 1.5)
+    p.drawRoundedRect(QRectF(pad + 2, pad + 2, (s - 2 * pad) - 4, (s - 2 * pad) - 4), 1.5, 1.5)
+
+
+# -- Text fallbacks ---------------------------------------------------------------
+
+
+def _glyph_letters(p: QPainter, color: QColor, s: int, letters: str):
+    """``letter:<initials>`` kinds produced by _glyph_kind_for's fallback."""
+    _draw_text(p, color, s, letters or "?", italic=False, weight=QFont.Bold, size_factor=0.42)
+
+
+def _glyph_label(p: QPainter, color: QColor, s: int, kind: str):
+    """Final fallback for kinds with no dedicated painter: a short label."""
+    _draw_text(p, color, s, kind[:3], italic=False, weight=QFont.Bold, size_factor=0.36)
+
+
+# kind -> painter. Kinds emitted by _glyph_kind_for that are absent here
+# (const, abs, deriv, pid, ...) render through _glyph_label on purpose.
+_GLYPHS: Dict[str, Callable[[QPainter, QColor, int], None]] = {
+    # Sources
+    "sine": _glyph_sine,
+    "noise": _glyph_noise,
+    "step": _glyph_step,
+    "ramp": _glyph_ramp,
+    "impulse": _glyph_impulse,
+    # Math
+    "sum": _glyph_sum,
+    "gain": _glyph_gain,
+    "product": _glyph_product,
+    # Control
+    "integ": _glyph_integ,
+    "tranfn": _glyph_tranfn,
+    "delay": _glyph_delay,
+    # Nonlinear / filters
+    "sat": _glyph_sat,
+    "rate": _glyph_rate,
+    "hys": _glyph_hys,
+    "dead": _glyph_hys,
+    "filter": _glyph_filter,
+    # Sinks / analysis
+    "scope": _glyph_scope,
+    "bode": _glyph_bode,
+    "nyq": _glyph_nyq,
+    "roots": _glyph_roots,
+    "fft": _glyph_fft,
+    "xy": _glyph_xy,
+    "export": _glyph_export,
+    "term": _glyph_term,
+    # Discrete
+    "zoh": _glyph_zoh,
+    "foh": _glyph_foh,
+    # Routing
+    "mux": _glyph_mux,
+    "demux": _glyph_demux,
+    "switch": _glyph_switch,
+    "in": _glyph_in,
+    "out": _glyph_out,
+    "sub": _glyph_sub,
+}
+
+
 def _draw_glyph(p: QPainter, kind: str, color: QColor, s: int):
     """Single-stroke geometric glyph in an s×s box. Pen is already configured."""
-    pad = 5
-
-    def L(x1, y1, x2, y2):
-        p.drawLine(QPointF(x1, y1), QPointF(x2, y2))
-
-    R = QRectF(pad, pad, s - 2 * pad, s - 2 * pad)
-
-    if kind == "sine":
-        path = QPainterPath()
-        path.moveTo(pad, s / 2)
-        path.quadTo(pad + (s - 2 * pad) * 0.25, pad, s / 2, s / 2)
-        path.quadTo(s - pad - (s - 2 * pad) * 0.25, s - pad, s - pad, s / 2)
-        p.drawPath(path)
-    elif kind == "noise":
-        pts = [
-            (pad, s * 0.7),
-            (pad + 2.5, s * 0.35),
-            (pad + 4.5, s * 0.6),
-            (pad + 6.5, s * 0.3),
-            (pad + 8.5, s * 0.65),
-            (s - pad, s * 0.45),
-        ]
-        for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
-            L(x1, y1, x2, y2)
-    elif kind == "step":
-        L(pad, s - pad, s / 2, s - pad)
-        L(s / 2, s - pad, s / 2, pad)
-        L(s / 2, pad, s - pad, pad)
-    elif kind == "ramp":
-        L(pad, s - pad, s - pad, pad)
-        L(pad, s - pad, s - pad, s - pad)
-    elif kind == "impulse":
-        L(pad, s - pad, s - pad, s - pad)
-        L(s / 2, pad, s / 2, s - pad)
-    elif kind == "sum":
-        p.drawEllipse(R)
-        _draw_text(p, color, s, "±", italic=False, weight=QFont.Bold)
-    elif kind == "gain":
-        path = QPainterPath()
-        path.moveTo(pad, pad)
-        path.lineTo(s - pad, s / 2)
-        path.lineTo(pad, s - pad)
-        path.closeSubpath()
-        p.drawPath(path)
-    elif kind == "product":
-        p.drawEllipse(R)
-        L(pad + 2, pad + 2, s - pad - 2, s - pad - 2)
-        L(s - pad - 2, pad + 2, pad + 2, s - pad - 2)
-    elif kind == "integ":
-        L(pad + 1, pad, pad + 1, s - pad)
-        _draw_text(p, color, s, "1/s", italic=True, x_off=2.5, size_factor=0.4)
-    elif kind == "tranfn":
-        _draw_text(p, color, s, "B", italic=True, y_off=-3.5, size_factor=0.42)
-        L(pad + 1.5, s / 2, s - pad - 1.5, s / 2)
-        _draw_text(p, color, s, "A", italic=True, y_off=4.5, size_factor=0.42)
-    elif kind == "delay":
-        p.drawEllipse(R)
-        _draw_text(p, color, s, "→", italic=False)
-    elif kind == "sat":
-        L(pad, s - pad, pad + 4, s - pad)
-        L(pad + 4, s - pad, s - pad - 4, pad)
-        L(s - pad - 4, pad, s - pad, pad)
-    elif kind == "rate":
-        L(pad, s - pad, s / 2, pad)
-        L(s / 2, pad, s - pad, pad)
-    elif kind in ("hys", "dead"):
-        L(pad, s / 2, s / 2 - 1, s / 2)
-        L(s / 2 - 1, s / 2, s / 2 + 1, pad + 2)
-        L(s / 2 + 1, pad + 2, s - pad, pad + 2)
-    elif kind == "filter":
-        path = QPainterPath()
-        path.moveTo(pad, s - pad)
-        path.quadTo(s / 2, s - pad, s / 2, s / 2)
-        path.quadTo(s / 2, pad, s - pad, pad)
-        p.drawPath(path)
-    elif kind == "scope":
-        p.drawRoundedRect(QRectF(pad - 1, pad + 1, s - 2 * pad + 2, s - 2 * pad - 2), 2, 2)
-        path = QPainterPath()
-        path.moveTo(pad + 1, s / 2 + 2)
-        path.quadTo(pad + 4, pad + 2, s / 2, s / 2)
-        path.quadTo(s - pad - 3, s - pad - 1, s - pad - 1, s / 2 - 1)
-        p.drawPath(path)
-    elif kind == "bode":
-        L(pad, pad, pad, s - pad)
-        L(pad, s - pad, s - pad, s - pad)
-        path = QPainterPath()
-        path.moveTo(pad + 1, pad + 3)
-        path.quadTo(s / 2, pad + 4, s / 2 + 1, s / 2)
-        path.quadTo(s - pad - 2, s - pad - 4, s - pad, s - pad - 2)
-        p.drawPath(path)
-    elif kind == "nyq":
-        p.drawEllipse(R)
-        L(pad, s / 2, s - pad, s / 2)
-        L(s / 2, pad, s / 2, s - pad)
-    elif kind == "roots":
-        p.drawEllipse(R)
-        L(pad, s / 2, s - pad, s / 2)
-        L(s * 0.3, s / 2 - 1.5, s * 0.3 + 1.5, s / 2 + 0.5)
-        L(s * 0.3, s / 2 + 0.5, s * 0.3 + 1.5, s / 2 - 1.5)
-    elif kind == "fft":
-        for i, h in enumerate([4, 7, 3, 8, 5, 6, 2, 5]):
-            x = pad + i * (s - 2 * pad) / 8.0
-            L(x, s - pad, x, s - pad - h)
-    elif kind == "xy":
-        L(pad, s - pad, s - pad, s - pad)
-        L(pad, s - pad, pad, pad)
-        L(pad + 1, s - pad - 1, s - pad - 1, pad + 1)
-    elif kind == "export":
-        p.drawRoundedRect(QRectF(pad, pad + 1, (s - 2 * pad) * 0.55, s - 2 * pad - 2), 1.2, 1.2)
-        L(pad + 7, s / 2, s - pad - 1, s / 2)
-        L(s - pad - 3, s / 2 - 2, s - pad - 1, s / 2)
-        L(s - pad - 3, s / 2 + 2, s - pad - 1, s / 2)
-    elif kind == "term":
-        L(pad + 2, s - pad - 1, s - pad - 2, s - pad - 1)
-        L(pad + 4, s - pad - 3, s - pad - 4, s - pad - 3)
-        L(s / 2, pad + 1, s / 2, s - pad - 3)
-    elif kind == "zoh":
-        L(pad, s * 0.72, pad + 4, s * 0.72)
-        L(pad + 4, s * 0.72, pad + 4, s / 2)
-        L(pad + 4, s / 2, s - pad - 4, s / 2)
-        L(s - pad - 4, s / 2, s - pad - 4, pad + 2)
-        L(s - pad - 4, pad + 2, s - pad, pad + 2)
-    elif kind == "foh":
-        L(pad, s * 0.7, pad + 5, s * 0.4)
-        L(pad + 5, s * 0.4, s - pad - 5, s * 0.7)
-        L(s - pad - 5, s * 0.7, s - pad, s * 0.3)
-    elif kind == "mux":
-        L(pad, pad + 1, s / 2, s / 2)
-        L(pad, s - pad - 1, s / 2, s / 2)
-        L(s / 2, s / 2, s - pad, s / 2)
-    elif kind == "demux":
-        L(s - pad, pad + 1, s / 2, s / 2)
-        L(s - pad, s - pad - 1, s / 2, s / 2)
-        L(s / 2, s / 2, pad, s / 2)
-    elif kind == "switch":
-        L(pad, s / 2, s / 2 - 1, s / 2)
-        L(s / 2 + 1, pad + 2, s - pad, s / 2)
-    elif kind in ("in", "out"):
-        L(pad, s / 2, s - pad, s / 2)
-        if kind == "in":
-            L(s - pad - 3, s / 2 - 2, s - pad, s / 2)
-            L(s - pad - 3, s / 2 + 2, s - pad, s / 2)
-        else:
-            L(pad + 3, s / 2 - 2, pad, s / 2)
-            L(pad + 3, s / 2 + 2, pad, s / 2)
-    elif kind == "sub":
-        p.drawRoundedRect(QRectF(pad, pad, s - 2 * pad, s - 2 * pad), 1.5, 1.5)
-        p.drawRoundedRect(QRectF(pad + 2, pad + 2, (s - 2 * pad) - 4, (s - 2 * pad) - 4), 1.5, 1.5)
+    painter = _GLYPHS.get(kind)
+    if painter is not None:
+        painter(p, color, s)
     elif kind.startswith("letter:"):
-        letters = kind.split(":", 1)[1] or "?"
-        _draw_text(p, color, s, letters, italic=False, weight=QFont.Bold, size_factor=0.42)
+        _glyph_letters(p, color, s, kind.split(":", 1)[1])
     else:
-        # Final fallback — short label from kind
-        _draw_text(p, color, s, kind[:3], italic=False, weight=QFont.Bold, size_factor=0.36)
+        _glyph_label(p, color, s, kind)
 
 
 def _draw_text(
