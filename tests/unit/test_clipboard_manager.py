@@ -6,7 +6,6 @@ import pytest
 import sys
 import os
 from unittest.mock import MagicMock
-from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QRect, QPoint
 
 # Ensure we can import from the project
@@ -15,15 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from modern_ui.managers.clipboard_manager import ClipboardManager
 from lib.simulation.block import DBlock
 from lib.simulation.connection import DLine
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    """Create QApplication for the test module."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    yield app
 
 
 @pytest.fixture

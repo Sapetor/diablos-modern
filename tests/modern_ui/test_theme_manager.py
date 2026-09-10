@@ -2,8 +2,6 @@
 Unit tests for ThemeManager block-palette system.
 """
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -16,18 +14,6 @@ def _fresh_manager():
     from modern_ui.themes.theme_manager import ThemeManager
 
     return ThemeManager()
-
-
-@pytest.fixture(autouse=True)
-def qt_app():
-    """Ensure a QApplication exists for QObject construction."""
-    import sys
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
-    yield app
 
 
 # ---------------------------------------------------------------------------

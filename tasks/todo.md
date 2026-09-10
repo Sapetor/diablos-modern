@@ -534,6 +534,21 @@ complexity 25, all listed here.
   - [ ] Found by the spike (pre-existing): `_category_chip_colors` falls back to
     `text_secondary` for Analysis, Logic, Optimization(-Primitives) and PDE, so
     those palette chips are nearly blank in the light theme whatever the glyph.
+- [x] **Test-suite ordering fragility** — found 2026-09-10 while committing the
+  clipboard fixes, fixed the same day. `pytest tests/unit tests/modern_ui -k
+  "clipboard or paste or palette"` (unit before modern_ui) gave 8 failures + 23
+  errors, all `wrapped C/C++ object of type ThemeManager has been deleted`; the
+  natural order and the full suite passed. Cause: `tests/unit/test_clipboard_manager.py`
+  shadowed the session `qapp` fixture with a module-scoped one that built its own
+  `QApplication([])`; when that module finished, the application was garbage-
+  collected and Qt destroyed every QObject with it, including the
+  `theme_manager` singleton created in between, so later GUI tests found a dead
+  wrapper. Fix: the conftest `qapp` fixture is now session-scoped **and autouse**
+  (the QApplication is created first and held for the whole run, so every
+  `QApplication.instance() or QApplication(...)` fallback finds it), and the two
+  shadowing fixtures (`test_clipboard_manager.py`, `test_theme_manager.py::qt_app`)
+  were deleted. Rule for new tests: never build a QApplication in a test file;
+  depend on `qapp`.
 - [x] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
   and `SystemCompiler` — done 2026-07-05: shared pure ops in `lib/engine/pde_ops.py`
   consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`

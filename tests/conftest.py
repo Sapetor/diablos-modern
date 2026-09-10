@@ -84,10 +84,21 @@ def _no_modal_dialogs():
         setattr(cls, meth, original)
 
 
-# Need a QApplication instance for PyQt tests
-@pytest.fixture(scope="session")
+# Need a QApplication instance for PyQt tests.
+#
+# Session-scoped AND autouse on purpose: Qt allows one QApplication per process,
+# and destroying it destroys every QObject, including module-level singletons
+# such as ``lib.theming.theme_manager.theme_manager``. A test module that builds
+# its own QApplication in a narrower-scoped fixture (or a bare local variable)
+# lets it be garbage-collected when that scope ends, and every later test that
+# touches a singleton created in between fails with "wrapped C/C++ object ...
+# has been deleted" -- an ordering-dependent failure that only shows up when
+# ``tests/unit`` runs before ``tests/modern_ui``. Creating the application here,
+# first, and holding it for the whole session means any ``QApplication.instance()
+# or QApplication(...)`` fallback elsewhere always finds this one.
+@pytest.fixture(scope="session", autouse=True)
 def qapp():
-    """Create QApplication instance for tests that need Qt."""
+    """The process-wide QApplication, created once and kept alive for the session."""
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
