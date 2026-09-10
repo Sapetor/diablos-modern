@@ -13,7 +13,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
 from lib.i18n import tr
-from lib.improvements import SafetyChecks, ValidationHelper
+from lib.diagram_validator import check_simulation_state, validate_block_connections
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class SimulationController(QObject):
             logger.info("Starting simulation from canvas")
 
             # Run validation first
-            is_valid, errors = ValidationHelper.validate_block_connections(
+            is_valid, errors = validate_block_connections(
                 self.dsim.blocks_list, self.dsim.line_list
             )
 
@@ -62,7 +62,7 @@ class SimulationController(QObject):
                 return False
 
             # Check simulation state safety
-            is_safe, safety_errors = SafetyChecks.check_simulation_state(self.dsim)
+            is_safe, safety_errors = check_simulation_state(self.dsim)
             if not is_safe:
                 error_msg = "\n".join(safety_errors)
                 logger.error(f"Simulation safety check failed: {error_msg}")

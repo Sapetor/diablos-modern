@@ -106,7 +106,7 @@ diablos-modern/
 │   │   └── menu_block.py   # MenuBlocks class
 │   ├── lib.py              # Main DSim controller
 │   ├── dialogs.py          # UI dialogs
-│   └── improvements.py     # Utilities and helpers
+│   └── diagram_validator.py # DiagramValidator report + pre-flight checks
 │
 ├── modern_ui/              # User interface
 │   ├── main_window.py      # Main window

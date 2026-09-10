@@ -494,7 +494,6 @@ any diagram. See *Library blocks and masks* in
 |------|------------|
 | `library/vehicle.diablos` | The published form of the Vehicle library block above. |
 | `optimization_sample_data.csv` | Sample measurements for a `DataFit` block. |
-| `example_usage.py` | A script, not a diagram: shows driving `DSim` and `lib.improvements` from Python. |
 
 ## Adding your own
 

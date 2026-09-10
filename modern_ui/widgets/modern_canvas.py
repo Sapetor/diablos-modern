@@ -17,7 +17,7 @@ _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 if _project_root not in sys.path:
     sys.path.append(_project_root)
 
-from lib.improvements import PerformanceHelper, SafetyChecks, ValidationHelper, SimulationConfig
+from modern_ui.perf_helper import PerformanceHelper
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
@@ -74,9 +74,6 @@ class ModernCanvas(QWidget):
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
 
-        # Simulation configuration
-        self.sim_config = SimulationConfig()
-
         # Grid display/snap state — the one canvas-owned state slice. Every other
         # slice lives with its owning manager (zoom/pan → ZoomPanManager, the
         # gesture slices selection/hover/drag/resize → InteractionManager,
@@ -91,10 +88,6 @@ class ModernCanvas(QWidget):
 
         # Clipboard and undo/redo state live in their managers
         # (clipboard_manager / history_manager) — the single source of truth.
-
-        # Initialize helpers
-        self.validator = ValidationHelper()
-        self.safety = SafetyChecks()
 
         # State
         self.state = State.IDLE

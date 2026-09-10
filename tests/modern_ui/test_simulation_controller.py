@@ -120,9 +120,9 @@ class TestStart:
 
     def test_validation_failure_blocks_the_run(self, make_controller, statuses, monkeypatch):
         monkeypatch.setattr(
-            sc.ValidationHelper,
+            sc,
             "validate_block_connections",
-            staticmethod(lambda blocks, lines: (False, ["port 0 unconnected"])),
+            lambda blocks, lines: (False, ["port 0 unconnected"]),
         )
         dsim = _StubDSim()
         ctrl = make_controller(dsim)

@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QApplication, QInputDialog
 from PyQt5.QtCore import Qt
 
 from lib.i18n import tr
-from lib.improvements import ValidationHelper
+from lib.diagram_validator import validate_block_connections
 from modern_ui.widgets.canvas_state import ConnectionState
 
 if TYPE_CHECKING:
@@ -266,7 +266,8 @@ class ConnectionManager:
                         validation_errors.append(tr("Input port already connected"))
                         break
 
-            # Use ValidationHelper if available
+            # Diagram-level checks with the proposed wire added: duplicate
+            # input-port connections and algebraic loops.
             try:
                 all_blocks = getattr(self.dsim, "blocks_list", [])
                 all_lines = getattr(self.dsim, "line_list", [])
@@ -281,21 +282,14 @@ class ConnectionManager:
                 )
                 temp_lines.append(temp_line)
 
-                is_valid, helper_errors = ValidationHelper.validate_block_connections(
-                    all_blocks, temp_lines
-                )
+                is_valid, helper_errors = validate_block_connections(all_blocks, temp_lines)
                 if not is_valid:
                     validation_errors.extend(helper_errors)
-            except AttributeError as e:
-                # Helper genuinely unavailable (method missing) — expected on
-                # builds without the extended validator; keep it quiet.
-                logger.debug(f"ValidationHelper not available: {str(e)}")
             except Exception as e:
-                # The helper exists but raised while validating: that's a real
-                # bug in the validator, not an absent feature. A validator that
-                # crashed has NOT approved this connection, so treat the crash
-                # as a rejection instead of letting an unvalidated wire through.
-                logger.error(f"ValidationHelper execution failed: {str(e)}", exc_info=True)
+                # A validator that crashed has NOT approved this connection, so
+                # treat the crash as a rejection instead of letting an
+                # unvalidated wire through.
+                logger.error(f"Connection validator failed: {str(e)}", exc_info=True)
                 validation_errors.append(f"Connection validator failed: {str(e)}")
 
             return len(validation_errors) == 0, validation_errors

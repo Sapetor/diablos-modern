@@ -1,7 +1,7 @@
 """
 Unit tests for lib/engine/memory_blocks.py — single source of truth for
 memory-block classification used by both `SimulationEngine.identify_memory_blocks`
-and `ValidationHelper.detect_algebraic_loops`.
+and the pre-flight `detect_algebraic_loops` in lib/diagram_validator.py.
 """
 
 from types import SimpleNamespace
@@ -95,7 +95,7 @@ class TestStrictlyProperTF:
         assert not is_memory_block(block)
 
     def test_falls_back_to_params_when_exec_params_empty(self):
-        """Legacy callers (ValidationHelper) may pass raw params only."""
+        """Pre-flight callers (lib.diagram_validator) may pass raw params only."""
         block = _stub(
             "TranFn",
             params={
@@ -150,23 +150,23 @@ class TestSharedTaxonomyConsistency:
             "memory_blocks module — the taxonomy has drifted again."
         )
 
-    def test_improvements_uses_shared_module(self):
-        """ValidationHelper.detect_algebraic_loops imports the shared helper."""
+    def test_preflight_uses_shared_module(self):
+        """The pre-flight detect_algebraic_loops imports the shared helper."""
         import inspect
-        from lib.improvements import ValidationHelper
+        import lib.diagram_validator as dv
 
-        src = inspect.getsource(ValidationHelper.detect_algebraic_loops)
-        assert "memory_blocks import" in src, (
+        src = inspect.getsource(dv)
+        assert "from lib.engine.memory_blocks import" in src, (
             "detect_algebraic_loops no longer references the shared "
             "memory_blocks module — the taxonomy has drifted again."
         )
 
-    def test_no_inline_MEMORY_BLOCK_TYPES_set_in_improvements(self):
+    def test_no_inline_MEMORY_BLOCK_TYPES_set_in_preflight(self):
         """The duplicate MEMORY_BLOCK_TYPES literal must be gone."""
-        with open("lib/improvements.py") as f:
+        with open("lib/diagram_validator.py") as f:
             content = f.read()
         assert "MEMORY_BLOCK_TYPES = {" not in content, (
-            "lib/improvements.py still defines a local MEMORY_BLOCK_TYPES "
+            "lib/diagram_validator.py defines a local MEMORY_BLOCK_TYPES "
             "set — this duplicates the shared OUTPUT_ONLY_SAFE_BLOCK_FNS "
             "and is exactly the drift this refactor was meant to remove."
         )

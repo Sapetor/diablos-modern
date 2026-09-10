@@ -3,8 +3,11 @@ Validates block diagrams for integrity errors before simulation.
 """
 
 import logging
-from typing import List, Set
+from collections import defaultdict, deque
+from typing import Any, List, Set, Tuple
 from enum import Enum
+
+from lib.engine.memory_blocks import OUTPUT_ONLY_SAFE_BLOCK_FNS, is_memory_block
 
 logger = logging.getLogger(__name__)
 
@@ -460,3 +463,169 @@ class DiagramValidator:
                             suggestion="Consider adding a RateTransition block for proper rate conversion",
                         )
                     )
+
+
+# ---------------------------------------------------------------------------
+# Pre-flight checks (plain functions)
+#
+# DiagramValidator above builds the rich, severity-tagged report shown in the
+# error panel. The functions below are the quick gates the GUI runs on the raw
+# (unflattened, unresolved) diagram: ConnectionManager.validate_connection
+# calls validate_block_connections for every proposed wire, and
+# SimulationController.start calls it plus check_simulation_state before
+# execution_init. Each returns an ``(ok, messages)`` tuple.
+# ---------------------------------------------------------------------------
+
+
+def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]:
+    """Reject duplicate input-port connections and algebraic loops.
+
+    Returns ``(ok, messages)``. ``messages`` holds the errors followed by the
+    warnings (blocks that have ports but no connections), so a diagram can be
+    ok and still carry warnings. Input ports are not required to be connected:
+    partial diagrams and blocks with optional inputs must remain buildable.
+    """
+    errors: List[str] = []
+    warnings: List[str] = []
+
+    connected_blocks = set()
+    for line in line_list:
+        if hasattr(line, "srcblock") and hasattr(line, "dstblock"):
+            connected_blocks.add(line.srcblock)
+            connected_blocks.add(line.dstblock)
+
+    for block in blocks_list:
+        if hasattr(block, "name") and block.name not in connected_blocks:
+            if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
+                if block.in_ports > 0 or block.out_ports > 0:
+                    warnings.append(f"Block '{block.name}' has no connections")
+
+    seen_inputs = set()
+    for line in line_list:
+        if hasattr(line, "dstblock") and hasattr(line, "dstport"):
+            key = (line.dstblock, line.dstport)
+            if key in seen_inputs:
+                errors.append(
+                    f"Multiple connections to same input port: block {line.dstblock}, port {line.dstport}"
+                )
+            seen_inputs.add(key)
+
+    no_loops, loop_errors = detect_algebraic_loops(blocks_list, line_list)
+    if not no_loops:
+        errors.extend(loop_errors)
+
+    return len(errors) == 0, errors + warnings
+
+
+def _subsystem_contains_memory(block) -> bool:
+    """True when a (nested) subsystem holds a block that breaks a loop in time."""
+    if not hasattr(block, "sub_blocks") or not block.sub_blocks:
+        return False
+    for sub_block in block.sub_blocks:
+        if sub_block.b_type == 1:
+            return True
+        if sub_block.block_fn in OUTPUT_ONLY_SAFE_BLOCK_FNS:
+            return True
+        if sub_block.block_fn == "Subsystem" and _subsystem_contains_memory(sub_block):
+            return True
+    return False
+
+
+def detect_algebraic_loops(blocks_list, line_list) -> Tuple[bool, List[str]]:
+    """Topological-sort check for algebraic loops on the raw diagram.
+
+    Memory blocks (Integrator, StateSpace, strictly proper transfer functions,
+    ...) break a loop because their output depends on past state, not on the
+    current input, so edges *into* them are dropped before the sort. The
+    shared ``is_memory_block`` helper is the taxonomy; a Subsystem counts when
+    it contains a memory block anywhere inside.
+
+    Returns ``(no_loops_found, errors)``.
+    """
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
+    block_map = {block.name: block for block in blocks_list}
+
+    for block in blocks_list:
+        in_degree[block.name] = 0
+
+    for line in line_list:
+        src_block = block_map.get(line.srcblock)
+        dst_block = block_map.get(line.dstblock)
+        if not src_block or not dst_block:
+            continue
+
+        breaks_loop = False
+        if dst_block.b_type == 1:
+            breaks_loop = True
+        elif is_memory_block(dst_block):
+            breaks_loop = True
+        elif dst_block.block_fn == "Subsystem" and _subsystem_contains_memory(dst_block):
+            breaks_loop = True
+            logger.debug(f"  {dst_block.name} (Subsystem) contains memory block - breaks loop")
+
+        if breaks_loop:
+            logger.debug(f"Memory block {dst_block.name} breaks loop from {src_block.name}")
+        else:
+            graph[line.srcblock].append(line.dstblock)
+            in_degree[line.dstblock] += 1
+
+    queue = deque([name for name, degree in in_degree.items() if degree == 0])
+    count = 0
+    while queue:
+        u = queue.popleft()
+        count += 1
+        for v in graph[u]:
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+
+    if count < len(blocks_list):
+        cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
+        return False, [f"Algebraic loop detected involving blocks: {cycle_nodes}"]
+    return True, []
+
+
+def check_block_integrity(block: Any) -> Tuple[bool, List[str]]:
+    """Check that a block carries the attributes the engine relies on."""
+    errors: List[str] = []
+    for attr in ("name", "sid", "in_ports", "out_ports", "b_type", "fn_name"):
+        if not hasattr(block, attr):
+            errors.append(f"Block missing required attribute: {attr}")
+
+    if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
+        if block.in_ports < 0:
+            errors.append("Block has negative input ports")
+        if block.out_ports < 0:
+            errors.append("Block has negative output ports")
+
+    if hasattr(block, "b_type") and block.b_type not in (0, 1, 2, 3):
+        errors.append(f"Invalid block type: {block.b_type}")
+
+    return len(errors) == 0, errors
+
+
+def check_simulation_state(dsim_instance: Any) -> Tuple[bool, List[str]]:
+    """Check that a DSim is in a runnable state: blocks present and well-formed,
+    positive simulation time and step."""
+    errors: List[str] = []
+
+    for attr in ("blocks_list", "line_list", "execution_initialized"):
+        if not hasattr(dsim_instance, attr):
+            errors.append(f"DSim missing required attribute: {attr}")
+
+    if hasattr(dsim_instance, "blocks_list"):
+        if not dsim_instance.blocks_list:
+            errors.append("No blocks in simulation")
+        else:
+            for i, block in enumerate(dsim_instance.blocks_list):
+                is_valid, block_errors = check_block_integrity(block)
+                if not is_valid:
+                    errors.extend(f"Block {i}: {error}" for error in block_errors)
+
+    if hasattr(dsim_instance, "sim_time") and dsim_instance.sim_time <= 0:
+        errors.append("Invalid simulation time")
+    if hasattr(dsim_instance, "sim_dt") and dsim_instance.sim_dt <= 0:
+        errors.append("Invalid simulation time step")
+
+    return len(errors) == 0, errors

@@ -6,8 +6,9 @@ Two behaviours are pinned here:
   those blocks. It runs once per mouse-move during a drag, so relaying out the
   whole diagram made drag cost scale with diagram size. The no-argument form
   (used by load/paste/undo/subsystem edits) must still refresh everything.
-* A crash inside ``ValidationHelper`` must REJECT the connection. It used to be
-  downgraded to a warning and the unvalidated wire was accepted.
+* A crash inside the connection validator (``validate_block_connections``)
+  must REJECT the connection. It used to be downgraded to a warning and the
+  unvalidated wire was accepted.
 """
 
 import pytest
@@ -141,25 +142,9 @@ class TestValidatorCrashRejectsConnection:
         def boom(blocks, lines):
             raise RuntimeError("validator is broken")
 
-        monkeypatch.setattr(cm.ValidationHelper, "validate_block_connections", staticmethod(boom))
+        monkeypatch.setattr(cm, "validate_block_connections", boom)
 
         ok, errors = canvas.connection_manager.validate_connection(a, 0, b, 0)
         assert ok is False
         # Specifically the validator-crash branch, not the outer catch-all.
         assert any(e.startswith("Connection validator failed") for e in errors)
-
-    def test_missing_validator_is_still_tolerated(self, canvas, monkeypatch):
-        """An absent helper method is a build difference, not a broken wire."""
-        a, b, _c, _d, _ab, _cd = _populate(canvas)
-        canvas.dsim.line_list.clear()
-
-        import modern_ui.managers.connection_manager as cm
-
-        def absent(blocks, lines):
-            raise AttributeError("validate_block_connections")
-
-        monkeypatch.setattr(cm.ValidationHelper, "validate_block_connections", staticmethod(absent))
-
-        ok, errors = canvas.connection_manager.validate_connection(a, 0, b, 0)
-        assert ok is True
-        assert errors == []

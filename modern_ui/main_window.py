@@ -15,7 +15,8 @@ from lib.i18n import tr
 
 # Import existing DSim functionality
 from lib.lib import DSim
-from lib.improvements import PerformanceHelper, SafetyChecks, SimulationConfig
+from lib.diagram_validator import check_simulation_state
+from modern_ui.perf_helper import PerformanceHelper
 
 # Import modern UI components
 from modern_ui.themes.theme_manager import theme_manager
@@ -68,9 +69,6 @@ class ModernDiaBloSWindow(QMainWindow):
 
         # Performance monitoring
         self.perf_helper = PerformanceHelper()
-
-        # Simulation configuration
-        self.sim_config = SimulationConfig()
 
         # Core Managers (Must be before state init)
         self._init_core_managers()
@@ -1231,7 +1229,7 @@ class ModernDiaBloSWindow(QMainWindow):
                 batch_busy = batch_simulation_active()
 
                 if was_running and not batch_busy:
-                    is_safe, errors = SafetyChecks.check_simulation_state(self.canvas.dsim)
+                    is_safe, errors = check_simulation_state(self.canvas.dsim)
                     if not is_safe:
                         logger.error(f"Simulation state unsafe: {errors}")
                         self.canvas.stop_simulation()

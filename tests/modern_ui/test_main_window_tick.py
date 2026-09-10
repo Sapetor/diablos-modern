@@ -43,7 +43,7 @@ class _StubDSim:
         self.real_time = real_time
         self.execution_time_start = time.time()
         self.time_step = 0.0
-        # SafetyChecks.check_simulation_state wants a non-empty, well-formed
+        # check_simulation_state wants a non-empty, well-formed
         # block list before the tick will step the run.
         self.blocks_list = [
             types.SimpleNamespace(

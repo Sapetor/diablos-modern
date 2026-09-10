@@ -13,7 +13,7 @@ two related but distinct purposes in DiaBloS:
    uses `inputs.get(k, default)` or doesn't read inputs at all.
 
 2. **Algebraic-loop detection** (used by
-   ValidationHelper.detect_algebraic_loops in lib/improvements.py): when
+   detect_algebraic_loops in lib/diagram_validator.py): when
    doing a topological sort to decide whether a feedback cycle is purely
    algebraic, edges into memory blocks are removed because the
    block's output for the current step does not depend on its input
@@ -76,8 +76,8 @@ OUTPUT_ONLY_SAFE_BLOCK_FNS: frozenset = frozenset(
 
 def _params_source(block: Any) -> dict:
     """Prefer resolved exec_params; fall back to raw params for callers
-    that haven't run resolve_params yet (e.g. ValidationHelper which is
-    invoked during canvas validation)."""
+    that haven't run resolve_params yet (e.g. the pre-flight checks in
+    lib/diagram_validator.py, invoked during canvas validation)."""
     return runtime_params(block)
 
 

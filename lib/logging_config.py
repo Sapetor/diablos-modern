@@ -20,7 +20,7 @@ from typing import Optional
 #: entry in the JSON still wins, so per-logger overrides remain possible.
 QUIET_LOGGERS = (
     "lib.lib",
-    "lib.improvements",
+    "lib.diagram_validator",
     "lib.engine",
     "lib.engine.simulation_engine",
     "lib.plotting",

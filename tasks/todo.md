@@ -402,10 +402,24 @@ complexity 25, all listed here.
   by `DBlock.change_port_numbers`; moving them under `modern_ui/` would make
   `lib/` import the GUI package. `lib/simulation/menu_block.py` has ~40 users
   across model/services/GUI; a rename/move is its own round.
-- [ ] **`lib/improvements.py`** (448 lines, five helper classes from an earlier
-  refactor). `SimulationConfig`, `PerformanceHelper`, `LoggingHelper` have no
-  call sites; `ValidationHelper` and `SafetyChecks` have two each. Inline the
-  live bits, delete the module.
+- [x] **`lib/improvements.py`** (448 lines) — deleted 2026-09-10. The earlier
+  call-site count was off: `PerformanceHelper` *was* live (main-window tick /
+  step timers, canvas paint timer) and now lives in `modern_ui/perf_helper.py`;
+  `ValidationHelper.validate_block_connections` / `detect_algebraic_loops` and
+  `SafetyChecks.check_simulation_state` / `check_block_integrity` became plain
+  functions at the bottom of `lib/diagram_validator.py` ("Pre-flight checks"),
+  called by `ConnectionManager.validate_connection` and
+  `SimulationController.start` / `ModernMainWindow.safe_update`. Dead and gone:
+  `SimulationConfig` (instantiated, never read), `LoggingHelper`,
+  `create_default_colors`, `validate_simulation_parameters`,
+  `safe_execute_block_function`, the canvas's unused `validator`/`safety`
+  instances, and `examples/example_usage.py` (a demo of the module; README/wiki
+  rows removed, CHANGELOG "Removed" entry). Behaviour change, deliberate: the
+  connection manager no longer has an `except AttributeError: pass` branch for a
+  "validator not available" build — any validator crash rejects the wire (the
+  tolerated-absence test was dropped). Tests: `tests/unit/test_diagram_preflight.py`
+  (19). Follow-up worth its own round: `validate_block_connections`' duplicate-
+  input check overlaps `DiagramValidator._check_duplicate_connections`.
 - [ ] **`SimulationController._print_terminal_verification`** (225 lines,
   C901 = 40) builds the post-run report inside a GUI controller. Move it to
   `lib/engine` as a `verification_report(engine)` function so the CLI can use it.
