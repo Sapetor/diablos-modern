@@ -1228,7 +1228,6 @@ class ModernCanvas(QWidget):
                 mime_text = event.mimeData().text()
                 if mime_text.startswith("diablo_block:"):
                     block_name = mime_text.split(":", 1)[1]
-                    # Qt6 dropped QDropEvent.pos(); position() is a QPointF.
                     drop_pos = self.screen_to_world(event.position().toPoint())
                     logger.info(
                         f"Drop event: Creating {block_name} at ({drop_pos.x()}, {drop_pos.y()})"

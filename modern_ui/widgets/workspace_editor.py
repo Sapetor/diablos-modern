@@ -70,15 +70,11 @@ class WorkspaceEditor(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels([tr("Name"), tr("Value"), tr("Type")])
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.ResizeToContents
-        )  # Name
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )  # Value
-        self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.ResizeToContents
-        )  # Type
+        Resize = QHeaderView.ResizeMode
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, Resize.ResizeToContents)  # Name
+        header.setSectionResizeMode(1, Resize.Stretch)  # Value
+        header.setSectionResizeMode(2, Resize.ResizeToContents)  # Type
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)

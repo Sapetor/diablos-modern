@@ -110,10 +110,6 @@ class TestFontMetricsCache:
 
     def test_text_width_matches_qt(self, qapp):
         metrics = font_metrics(get_ui_font(12))
-        expected = (
-            metrics.horizontalAdvance("hello")
-            if hasattr(metrics, "horizontalAdvance")
-            else metrics.width("hello")
-        )
+        expected = metrics.horizontalAdvance("hello")
         assert text_width(metrics, "hello") == expected
         assert text_width(metrics, "") == 0

@@ -51,13 +51,11 @@ def prompt_save_path(suggested_name: str, directory: str = None) -> str:
     from PyQt6.QtWidgets import QFileDialog
 
     directory = default_directory() if directory is None else directory
-    options = QFileDialog.Option(0)
     filepath, _ = QFileDialog.getSaveFileName(
         None,
         tr("Save File"),
         os.path.join(directory, suggested_name),
         save_filter(),
-        options=options,
     )
     return filepath or ""
 
@@ -67,12 +65,10 @@ def prompt_open_path(directory: str = None) -> str:
     from PyQt6.QtWidgets import QFileDialog
 
     directory = default_directory() if directory is None else directory
-    options = QFileDialog.Option(0)
     filepath, _ = QFileDialog.getOpenFileName(
         None,
         tr("Open File"),
         directory,
         open_filter(),
-        options=options,
     )
     return filepath or ""

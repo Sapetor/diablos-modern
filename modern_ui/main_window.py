@@ -100,13 +100,14 @@ class ModernDiaBloSWindow(QMainWindow):
         # Initialize Variable Editor (Dockable)
         from PyQt6.QtWidgets import QDockWidget
 
+        Area = Qt.DockWidgetArea
         self.variable_editor = VariableEditor(self)
         self.variable_editor_dock = QDockWidget(tr("Variable Editor"), self)
         self.variable_editor_dock.setWidget(self.variable_editor)
         self.variable_editor_dock.setAllowedAreas(
-            Qt.DockWidgetArea.BottomDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
+            Area.BottomDockWidgetArea | Area.RightDockWidgetArea
         )
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.variable_editor_dock)
+        self.addDockWidget(Area.BottomDockWidgetArea, self.variable_editor_dock)
         self.variable_editor_dock.hide()  # Hidden by default
 
         # Connect variable editor signals
@@ -117,19 +118,17 @@ class ModernDiaBloSWindow(QMainWindow):
         self.workspace_editor_dock = QDockWidget(tr("Workspace Variables"), self)
         self.workspace_editor_dock.setWidget(self.workspace_editor)
         self.workspace_editor_dock.setAllowedAreas(
-            Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.BottomDockWidgetArea
+            Area.RightDockWidgetArea | Area.BottomDockWidgetArea
         )
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.workspace_editor_dock)
+        self.addDockWidget(Area.RightDockWidgetArea, self.workspace_editor_dock)
         self.workspace_editor_dock.hide()
 
         # Initialize Minimap (Dockable)
         self.minimap = MinimapWidget(self.canvas, self)
         self.minimap_dock = QDockWidget(tr("Minimap"), self)
         self.minimap_dock.setWidget(self.minimap)
-        self.minimap_dock.setAllowedAreas(
-            Qt.DockWidgetArea.RightDockWidgetArea | Qt.DockWidgetArea.LeftDockWidgetArea
-        )
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.minimap_dock)
+        self.minimap_dock.setAllowedAreas(Area.RightDockWidgetArea | Area.LeftDockWidgetArea)
+        self.addDockWidget(Area.RightDockWidgetArea, self.minimap_dock)
         self.minimap_dock.hide()  # Hidden by default
 
         # Create tuning panel and controller

@@ -89,10 +89,6 @@ class PythonHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         for pattern, format in self.highlighting_rules:
-            # Reuse the precompiled QRegularExpression directly; globalMatch does
-            # not mutate the pattern, so recompiling per call is wasted work.
-            # (Qt6 replaced QRegExp's stateful indexIn/matchedLength pair with
-            # this iterator.)
             it = pattern.globalMatch(text)
             while it.hasNext():
                 match = it.next()

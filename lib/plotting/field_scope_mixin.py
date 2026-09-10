@@ -20,6 +20,17 @@ from lib.plotting.animation_exporter import AnimationExporter
 logger = logging.getLogger(__name__)
 
 
+def _ensure_qt_backend() -> None:
+    """Switch matplotlib to the interactive Qt backend for the FieldScope windows."""
+    import matplotlib
+
+    try:
+        if matplotlib.get_backend() != "QtAgg":
+            matplotlib.use("QtAgg")
+    except Exception:
+        logger.debug("Could not switch matplotlib backend to QtAgg", exc_info=True)
+
+
 # Injected by the GUI so ``lib`` never has to reach into ``modern_ui``: a
 # ``(exporter, block_name) -> None`` callable that opens the animation export
 # dialog. Registered with :func:`set_animation_dialog_factory` (or per-instance
@@ -65,15 +76,9 @@ class _FieldScopeRenderMixin:
 
         Used for visualizing PDE simulation results.
         """
-        import matplotlib
         import matplotlib.pyplot as plt
 
-        # Try to set the Qt backend if not already set
-        try:
-            if matplotlib.get_backend() != "QtAgg":
-                matplotlib.use("QtAgg")
-        except Exception:
-            pass  # Already using a backend
+        _ensure_qt_backend()
 
         params = getattr(block, "exec_params", block.params)
 
@@ -278,15 +283,10 @@ class _FieldScopeRenderMixin:
 
         Shows the 2D field with interactive time slider to explore evolution.
         """
-        import matplotlib
         import matplotlib.pyplot as plt
         from matplotlib.widgets import Slider
 
-        try:
-            if matplotlib.get_backend() != "QtAgg":
-                matplotlib.use("QtAgg")
-        except Exception:
-            logger.debug("Could not switch matplotlib backend to QtAgg", exc_info=True)
+        _ensure_qt_backend()
 
         params = getattr(block, "exec_params", block.params)
 

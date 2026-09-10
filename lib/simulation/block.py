@@ -40,7 +40,7 @@ class DBlock:
         block_fn: str,
         sid: int,
         coords: QRect,
-        color: Union[str, QColor],
+        color: Optional[Union[str, QColor]],
         in_ports: int = 1,
         out_ports: int = 1,
         b_type: int = 2,
@@ -97,9 +97,7 @@ class DBlock:
         elif colors and color in colors:
             self.b_color: QColor = colors[color]
         elif color is None:
-            # Qt6's QColor raises on None (Qt5 quietly produced an invalid
-            # colour); keep the old "no colour" behaviour explicitly.
-            self.b_color: QColor = QColor()
+            self.b_color: QColor = QColor()  # invalid colour = "no colour"
         else:
             self.b_color: QColor = QColor(color)
         self.image: QPixmap = QPixmap()  # Initialize as null QPixmap since no icons are available

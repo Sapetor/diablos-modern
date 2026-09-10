@@ -160,7 +160,6 @@ class ZoomPanManager:
         if event.gestureType() != Qt.NativeGestureType.ZoomNativeGesture:
             return False
         new_factor = self.state.zoom_factor * (1.0 + event.value())
-        # Qt6 dropped QNativeGestureEvent.pos(); position() is a QPointF.
         self.zoom_at(event.position().toPoint(), new_factor)
         return True
 
@@ -182,7 +181,6 @@ class ZoomPanManager:
                 new_factor = self.state.zoom_factor * 1.1
             else:
                 new_factor = self.state.zoom_factor / 1.1
-            # Qt6 dropped QWheelEvent.pos(); position() is a QPointF.
             self.zoom_at(event.position().toPoint(), new_factor)
             return
         else:

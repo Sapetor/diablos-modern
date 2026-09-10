@@ -9,7 +9,7 @@ These tests pin the clamping behavior so the runaway can't return.
 """
 
 import pytest
-from PyQt6.QtCore import QPoint, QPointF
+from PyQt6.QtCore import QPoint, QPointF, Qt
 
 from modern_ui.managers.zoom_pan_manager import ZoomPanManager
 
@@ -44,7 +44,6 @@ class _WheelEvent:
         return self._modifiers
 
     def position(self):
-        # Qt6 dropped QWheelEvent.pos(); position() is a QPointF.
         return QPointF(400.0, 300.0)
 
     class _Angle:
@@ -116,25 +115,26 @@ class TestZoomClamping:
         assert abs(mgr.state.pan_offset.x()) < 2**31
 
 
+class _Gesture:
+    """Minimal QNativeGestureEvent stand-in (a pinch by default)."""
+
+    def __init__(self, value, gesture_type=Qt.NativeGestureType.ZoomNativeGesture):
+        self._value = value
+        self._type = gesture_type
+
+    def gestureType(self):
+        return self._type
+
+    def value(self):
+        return self._value
+
+    def position(self):
+        return QPointF(400.0, 300.0)
+
+
 @pytest.mark.unit
 class TestNativeGesture:
     def test_pinch_zoom_bounded(self):
-        from PyQt6.QtCore import Qt
-
-        class _Gesture:
-            def __init__(self, value):
-                self._value = value
-
-            def gestureType(self):
-                return Qt.NativeGestureType.ZoomNativeGesture
-
-            def value(self):
-                return self._value
-
-            def position(self):
-                # Qt6 dropped QNativeGestureEvent.pos(); position() is a QPointF.
-                return QPointF(400.0, 300.0)
-
         mgr = ZoomPanManager(_FakeCanvas())
         # A long pinch-in burst.
         for _ in range(1000):
@@ -144,17 +144,6 @@ class TestNativeGesture:
         assert abs(mgr.state.pan_offset.x()) < 2**31
 
     def test_non_zoom_gesture_ignored(self):
-        from PyQt6.QtCore import Qt
-
-        class _Gesture:
-            def gestureType(self):
-                return Qt.NativeGestureType.SmartZoomNativeGesture
-
-            def value(self):
-                return 0.0
-
-            def pos(self):
-                return QPoint(0, 0)
-
         mgr = ZoomPanManager(_FakeCanvas())
-        assert mgr.handle_native_gesture(_Gesture()) is False
+        gesture = _Gesture(0.0, Qt.NativeGestureType.SmartZoomNativeGesture)
+        assert mgr.handle_native_gesture(gesture) is False

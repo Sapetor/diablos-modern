@@ -21,6 +21,9 @@ from modern_ui.themes.theme_manager import (
 
 logger = logging.getLogger(__name__)
 
+# Wires are drawn with round caps and joins everywhere; unpack into QPen(...).
+_ROUND_ENDS = (Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+
 # The chip / label fonts are constants; building them (and their metrics) per
 # frame showed up in the paint profile, so they are created lazily once.
 _CHIP_FONT = None
@@ -223,8 +226,7 @@ class ConnectionRenderer:
                     glow_color,
                     line_width + 4,
                     Qt.PenStyle.SolidLine,
-                    Qt.PenCapStyle.RoundCap,
-                    Qt.PenJoinStyle.RoundJoin,
+                    *_ROUND_ENDS,
                 )
                 painter.setPen(glow_pen)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -240,8 +242,7 @@ class ConnectionRenderer:
                 pen_color,
                 line_width,
                 line_style,
-                Qt.PenCapStyle.RoundCap,
-                Qt.PenJoinStyle.RoundJoin,
+                *_ROUND_ENDS,
             )
             if is_discrete:
                 # Set dash pattern for discrete signals: dash-space-dash-space
@@ -263,8 +264,7 @@ class ConnectionRenderer:
                         segment_glow_color,
                         6,
                         Qt.PenStyle.SolidLine,
-                        Qt.PenCapStyle.RoundCap,
-                        Qt.PenJoinStyle.RoundJoin,
+                        *_ROUND_ENDS,
                     )
                     painter.setPen(glow_pen)
                     painter.drawLine(p1, p2)
@@ -274,8 +274,7 @@ class ConnectionRenderer:
                         active_connection_color,
                         3,
                         Qt.PenStyle.SolidLine,
-                        Qt.PenCapStyle.RoundCap,
-                        Qt.PenJoinStyle.RoundJoin,
+                        *_ROUND_ENDS,
                     )
                     painter.setPen(highlight_pen)
                     painter.drawLine(p1, p2)

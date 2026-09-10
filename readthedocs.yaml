@@ -17,9 +17,6 @@ build:
   # mkdocstrings imports modern_ui/, which imports PyQt6 -- loading the Qt6
   # shared libraries needs these. Same list .github/workflows/docs.yml installs
   # (Qt6 links a wider set than Qt5 did; libxcb-cursor0 is the Qt6 addition).
-  # NOTE: `QT_QPA_PLATFORM=offscreen` cannot be set from this file -- add it as
-  # an environment variable in the Read the Docs project settings if a future
-  # import ever constructs a QApplication at module scope.
   apt_packages:
     - libgl1
     - libegl1
