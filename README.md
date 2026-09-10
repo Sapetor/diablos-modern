@@ -88,7 +88,7 @@ python diablos_modern.py export-python model.diablos -o model.py
 python model.py --out run.csv --no-plot
 ```
 
-`run` also takes `--solver {compiled,interpreter}` and `--no-zero-crossing`.
+`run` also takes `--solver {compiled,interpreter}`, `--no-zero-crossing` and `--verify` (print the verification report, exit 3 on a failed check).
 
 ## Documentation
 

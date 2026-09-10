@@ -355,3 +355,33 @@ class TestCliSolverFlags:
         out = tmp_path / "model.py"
         assert cli.main(["export-python", path, "-o", str(out), "-q"]) == 0
         assert 'METHOD = "LSODA"' in out.read_text()
+
+
+@pytest.mark.integration
+class TestVerifyFlag:
+    def test_verify_prints_report_and_passes_on_plain_scope(self, qapp, diagram, tmp_path, capsys):
+        out = tmp_path / "out.csv"
+        rc = cli.main(
+            ["run", diagram, "-o", str(out), "--time", "1", "--dt", "0.1", "-q", "--verify"]
+        )
+        printed = capsys.readouterr().out
+        assert rc == 0
+        assert "VERIFICATION RESULTS" in printed
+        assert "VERIFICATION PASSED" in printed
+
+    def test_failed_check_exits_with_code_3(self, qapp, diagram, tmp_path, monkeypatch, capsys):
+        from lib.engine import verification_report as vr
+
+        failed = vr.VerificationReport(text="✗ VERIFICATION FAILED", passed=False, has_data=True)
+        monkeypatch.setattr(vr, "build_verification_report", lambda blocks: failed)
+        out = tmp_path / "out.csv"
+        rc = cli.main(
+            ["run", diagram, "-o", str(out), "--time", "1", "--dt", "0.1", "-q", "--verify"]
+        )
+        assert rc == 3
+        assert "VERIFICATION FAILED" in capsys.readouterr().out
+
+    def test_without_verify_nothing_extra_is_printed(self, qapp, diagram, tmp_path, capsys):
+        out = tmp_path / "out.csv"
+        assert cli.main(["run", diagram, "-o", str(out), "--time", "1", "--dt", "0.1", "-q"]) == 0
+        assert capsys.readouterr().out == ""

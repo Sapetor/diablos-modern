@@ -420,9 +420,21 @@ complexity 25, all listed here.
   tolerated-absence test was dropped). Tests: `tests/unit/test_diagram_preflight.py`
   (19). Follow-up worth its own round: `validate_block_connections`' duplicate-
   input check overlaps `DiagramValidator._check_duplicate_connections`.
-- [ ] **`SimulationController._print_terminal_verification`** (225 lines,
-  C901 = 40) builds the post-run report inside a GUI controller. Move it to
-  `lib/engine` as a `verification_report(engine)` function so the CLI can use it.
+- [x] **`SimulationController._print_terminal_verification`** (was 225 lines,
+  C901 = 40) — done 2026-09-10. The report lives in
+  `lib/engine/verification_report.py`: collectors (`collect_display_values`,
+  `collect_state_variables`, `collect_scope_convergence`), judgement
+  (`classify_scope`, `state_variable_lines`, `scope_lines`) and
+  `build_verification_report(blocks) -> VerificationReport(text, passed, has_data)`,
+  plus `report_blocks(dsim)` for the active-list-else-blocks_list choice. The
+  controller method is ~15 lines that log the text. New CLI flag `run --verify`
+  prints the same report and exits 3 on a failed check (README, USER_MANUAL,
+  CHANGELOG). Text format unchanged. Tests: `tests/unit/test_verification_report.py`
+  (44), `tests/integration/test_cli.py::TestVerifyFlag` (3). One fix folded in:
+  Display blocks always reported `---` because the collector read
+  `block.params["_display_value_"]` while the block writes it into the dict
+  `execute()` receives (`exec_params`); it now reads through `runtime_params`
+  like the renderer.
 - [ ] **`SubsystemManager.create_subsystem_from_selection`** (406 lines,
   C901 = 43); `ClipboardManager.paste_blocks` (228); `solve_with_events` (232).
   Large but routine; extract when next touched.

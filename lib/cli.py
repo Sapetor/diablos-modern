@@ -273,6 +273,13 @@ def build_parser():
     run.add_argument(
         "-q", "--quiet", action="store_true", help="Suppress the per-run summary on stdout."
     )
+    run.add_argument(
+        "--verify",
+        action="store_true",
+        help="After the run, print the verification report (Display values, "
+        "StateVariable convergence, Scope first/last samples judged by each "
+        "Scope's verify_mode) and exit with code 3 when a check fails.",
+    )
 
     export = sub.add_parser(
         "export-python",
@@ -366,6 +373,7 @@ def main(argv=None):
         return 1
 
     from lib.analysis.resim import harvest_scope_signals
+    from lib.engine.verification_report import build_verification_report, report_blocks
 
     result = harvest_scope_signals(dsim)
     if result is None or not result["signals"]:
@@ -378,6 +386,14 @@ def main(argv=None):
         print(
             f"ran {args.diagram} [{args.solver}] -> {out_path} ({n_rows} samples, {n_cols} signals)"
         )
+    if args.verify:
+        report = build_verification_report(report_blocks(dsim))
+        if not report.has_data:
+            print("no verification data (no Display, StateVariable or Scope samples)")
+        else:
+            print(report.text)
+            if not report.passed:
+                return 3
     return 0
 
 

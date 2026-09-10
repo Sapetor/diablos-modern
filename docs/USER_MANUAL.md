@@ -410,6 +410,7 @@ python diablos_modern.py run diagram.diablos --solver interpreter -o out.npz
 | `--solver` | `compiled` (default) or `interpreter` |
 | `--no-zero-crossing` | Disable compiled-path zero-crossing detection. Default: the diagram's own setting |
 | `-q`, `--quiet` | Suppress the per-run summary on stdout |
+| `--verify` | Print the post-run verification report (Display values, StateVariable convergence, Scope first→last samples judged by each Scope's `verify_mode`); exit code 3 when a check fails |
 
 The Scope traces are written as columns (`t` first).
 
