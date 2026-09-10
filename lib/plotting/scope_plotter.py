@@ -391,14 +391,25 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         if block.block_fn in continuous_blocks:
             return False
 
-        inputs, _ = self.dsim.get_neighbors(block.name)
-        for conn in inputs:
+        for conn in self._input_connections(block.name):
             src_block = (
                 conn.get("srcblock") if isinstance(conn, dict) else getattr(conn, "srcblock", None)
             )
             if src_block and self._is_discrete_upstream(src_block, visited):
                 return True
         return False
+
+    def _input_connections(self, block_name):
+        """Incoming connections of ``block_name`` from the engine's active graph.
+
+        The engine is the owner of the connection query; a dsim without one
+        (plotting a diagram that was never run) has no upstream to inspect.
+        """
+        engine = getattr(self.dsim, "engine", None)
+        if engine is None:
+            return []
+        inputs, _ = engine.get_neighbors(block_name)
+        return inputs
 
     def _scope_step_modes(self):
         """
@@ -414,15 +425,7 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
 
         for block in source_blocks:
             if block.block_fn == "Scope":
-                # Note: get_neighbors uses active list if execution initialized,
-                # but we need to ensure dsim helper knows which list or engine helper is used.
-                # dsim.get_neighbors delegates to engine.get_neighbors? No, DSim has its own.
-                # We should use engine.get_neighbors if possible.
-                inputs, _ = (
-                    self.dsim.engine.get_neighbors(block.name)
-                    if hasattr(self.dsim, "engine")
-                    else self.dsim.get_neighbors(block.name)
-                )
+                inputs = self._input_connections(block.name)
                 if not inputs:
                     modes.append(False)
                     continue

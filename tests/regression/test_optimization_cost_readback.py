@@ -32,7 +32,6 @@ def _load(sim_time=2.0):
     from lib.lib import DSim
 
     dsim = DSim()
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
     dsim.pyqtPlotScope = lambda: None
     data = dsim.file_service.load(filepath=str(EXAMPLE))
     assert data is not None

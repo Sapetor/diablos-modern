@@ -39,9 +39,6 @@ def _build_step_dtf_scope(num, den, sampling_time, sim_time=1.0, sim_dt=0.1):
     from lib.lib import DSim
 
     dsim = DSim()
-    # The headless harness pokes ``buttons_list[6].active`` after init —
-    # provide a stub so we can run without the GUI buttons attached.
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
 
     menu_by_fn = {b.fn_name: b for b in dsim.menu_blocks}
     step = dsim.add_block(menu_by_fn["step"], QPoint(100, 100))

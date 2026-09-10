@@ -157,7 +157,6 @@ class ModernDiaBloSWindow(QMainWindow):
         self._cmdk_shortcut.activated.connect(self.show_command_palette)
 
         # Initialize DSim components
-        self.dsim.main_buttons_init()
 
         # Setup update timer
         self.update_timer = QTimer(self)

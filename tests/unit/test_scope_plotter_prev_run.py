@@ -34,9 +34,6 @@ class _StubDSim:
         self.sim_dt = 0.1
         self.plotty = None
 
-    def get_neighbors(self, name):
-        return [], []
-
     def new_run(self, vector):
         """Simulate a fresh run: new timeline object + new scope data."""
         self.timeline = np.linspace(0.0, 1.0, len(self.timeline))

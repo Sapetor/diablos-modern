@@ -152,7 +152,7 @@ def run_one(example_file):
             return result
 
         # Match the live path: reset data, identify memory blocks.
-        dsim.reset_execution_data()
+        dsim.engine.reset_execution_data()
         dsim.engine.identify_memory_blocks()
 
         # Force the COMPILED path. If the system is not compilable, note it and

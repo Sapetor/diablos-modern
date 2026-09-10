@@ -25,7 +25,6 @@ def _run(method, use_fast):
     from lib.lib import DSim
 
     dsim = DSim()
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
     menu = {b.fn_name: b for b in dsim.menu_blocks}
     step = dsim.add_block(menu["step"], QPoint(100, 100))
     integ = dsim.add_block(menu["integrator"], QPoint(300, 100))

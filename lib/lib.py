@@ -11,8 +11,6 @@ from lib.workspace import WorkspaceManager
 from lib.dialogs import SimulationDialog
 import logging
 
-# Import refactored classes from new modules
-from lib.ui.button import Button
 
 # Import block size configuration
 
@@ -29,24 +27,16 @@ class DSim:
 
     :param SCREEN_WIDTH: The width of the window
     :param SCREEN_HEIGHT: The height of the window
-    :param canvas_top_limit: Top limit where blocks and lines must be drawn.
-    :param canvas_left_limit: Left limit where blocks and lines must be drawn.
     :param colors: List of predefined colors for elements that show in the canvas.
     :param fps: Base frames per seconds for pygame's loop.
-    :param l_width: Width of the line when a block or a line is selected.
-    :param ls_width: Space between a selected block and the line that indicates the former is selected.
     :param filename: Name of the file that was recently loaded. By default is 'data.dat'.
     :param sim_time: Simulation time for graph execution.
     :param sim_dt: Simulation sampling time for graph execution.
     :param plot_trange: Width in number of elements that must be shown when a graph is getting executed with dynamic plot enabled.
     :type SCREEN_WIDTH: int
     :type SCREEN_HEIGHT: int
-    :type canvas_top_limit: int
-    :type canvas_left_limit: int
     :type colors: dict
     :type fps: int
-    :type l_width: int
-    :type ls_width: int
     :type filename: str
     :type sim_time: float
     :type sim_dt: float
@@ -72,11 +62,7 @@ class DSim:
         # Screen/UI parameters
         self.SCREEN_WIDTH = 1280
         self.SCREEN_HEIGHT = 720 + 50
-        self.canvas_top_limit = 60
-        self.canvas_left_limit = 200
         self.FPS = 60
-        self.l_width = 5
-        self.ls_width = 5
 
         # Delegate commonly used properties to model for backward compatibility
         self.colors = self.model.colors
@@ -86,10 +72,6 @@ class DSim:
         self.connections_list = self.line_list  # Alias for backward/forward compatibility
 
         # UI state
-        self.line_creation = 0
-        self.only_one = False
-        self.enable_line_selection = False
-        self.holding_CTRL = False
         self.ss_count = 0
 
         # Delegate simulation parameters to engine
@@ -302,21 +284,6 @@ class DSim:
     def rk_counter(self, value):
         self.engine.rk_counter = value
 
-    def main_buttons_init(self):
-        """
-        :purpose: Creates a button list with all the basic functions available
-        """
-        new = Button("_new_", (40, 10, 40, 40))
-        load = Button("_load_", (100, 10, 40, 40))
-        save = Button("_save_", (160, 10, 40, 40))
-        sim = Button("_play_", (220, 10, 40, 40))
-        pause = Button("_pause_", (280, 10, 40, 40))
-        stop = Button("_stop_", (340, 10, 40, 40))
-        rplt = Button("_plot_", (400, 10, 40, 40), active=False)
-        capt = Button("_capture_", (460, 10, 40, 40))
-
-        self.buttons_list = [new, load, save, sim, pause, stop, rplt, capt]
-
     ##### ADD OR REMOVE BLOCKS AND LINES #####
 
     def add_block(self, block, m_pos):
@@ -492,9 +459,6 @@ class DSim:
         self.diagram_changed_since_run = True
 
         # Reset UI state
-        self.line_creation = 0
-        self.only_one = False
-        self.enable_line_selection = False
         self.ss_count = 0
         self.filename = "data.dat"
         self.sim_time = 1.0
@@ -701,7 +665,7 @@ class DSim:
             # self.global_computed_list is synced from the engine via property;
             # the engine owns the per-block computation checklist.
 
-            self.reset_execution_data()  # Delegates to engine
+            self.engine.reset_execution_data()
             self.execution_time_start = time.time()
             logger.debug("Execution initialization complete")
         except Exception as e:
@@ -726,7 +690,7 @@ class DSim:
         self.engine.identify_memory_blocks()
 
         # Check for integrators using Runge-Kutta 45 and initialize counter
-        self.rk45_len = self.count_rk45_ints()
+        self.rk45_len = self.engine.count_rk45_integrators()
         self.rk_counter = 0
 
         # Auto-connect Goto/From tags before execution starts
@@ -751,11 +715,6 @@ class DSim:
         # execution_initialized are property bridges onto the engine, which
         # owns them — no re-copy needed here.
         self.rk_counter += 1
-
-        # Enable the plot button if there is at least one scope
-        for block in self.blocks_list:
-            if block.block_fn == "Scope":
-                self.buttons_list[6].active = True
 
         # The dynamic plot function is initialized, if the Boolean is active
         _t4 = time.time()
@@ -839,7 +798,7 @@ class DSim:
                     self.execution_initialized = False
                     if getattr(self, "pbar", None) is not None:
                         self.pbar.close()
-                    self.reset_memblocks()
+                    self.engine.reset_memblocks()
                     break
         finally:
             self._defer_gui_plots = False
@@ -904,9 +863,9 @@ class DSim:
             if not self.engine.initialize_execution(root_blocks, root_lines):
                 return (False, self.engine.error_msg or "Engine init failed")
 
-            self.reset_execution_data()
+            self.engine.reset_execution_data()
             self.engine.identify_memory_blocks()
-            self.rk45_len = self.count_rk45_ints()
+            self.rk45_len = self.engine.count_rk45_integrators()
             self.rk_counter = 0
 
             # Auto-connect Goto/From tags
@@ -928,7 +887,7 @@ class DSim:
 
             if cancel_cb is not None and cancel_cb():
                 self.execution_initialized = False
-                self.reset_memblocks()
+                self.engine.reset_memblocks()
                 return (False, "cancelled")
 
             if use_fast and compilable:
@@ -949,7 +908,7 @@ class DSim:
                 steps += 1
                 if cancel_cb is not None and steps % max(1, int(cancel_every)) == 0 and cancel_cb():
                     self.execution_initialized = False
-                    self.reset_memblocks()
+                    self.engine.reset_memblocks()
                     return (False, "cancelled")
 
             if self.error_msg:
@@ -998,7 +957,7 @@ class DSim:
                 self.time_step += self.sim_dt
                 return
 
-            self.reset_execution_data()
+            self.engine.reset_execution_data()
             sample_recorded = self._advance_clock(interactive)
 
             # Use the active list from engine (flattened if needed); fall back
@@ -1284,7 +1243,7 @@ class DSim:
                 logger.debug("pyqtPlotScope call finished.")
 
         # Resets the initialization of the blocks with special initial executions
-        self.reset_memblocks()
+        self.engine.reset_memblocks()
         if interactive:
             logger.debug("*****EXECUTION DONE*****")
 
@@ -1340,7 +1299,7 @@ class DSim:
         :purpose: If an error is found while executing the graph, this function stops all the processes and resets values to the state before execution.
         """
         self.execution_initialized = False  # Finishes the simulation execution
-        self.reset_memblocks()  # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
+        self.engine.reset_memblocks()  # Restores the initialization of the integrators (in case the error was due to vectors of different dimensions).
         if hasattr(self, "pbar"):
             self.pbar.close()  # Finishes the progress bar
         self.error_msg = msg
@@ -1414,10 +1373,6 @@ class DSim:
         else:
             logger.debug("Signal dimension validation: No mismatches detected")
 
-    def count_rk45_ints(self):
-        """Check if any integrators use RK45 method. Delegates to engine."""
-        return self.engine.count_rk45_integrators()
-
     def create_subsystem_from_selection(self, selected_blocks=None):
         """
         Create a subsystem from selected blocks.
@@ -1426,56 +1381,6 @@ class DSim:
         if selected_blocks is None:
             selected_blocks = [b for b in self.blocks_list if b.selected]
         return self.subsystem_manager.create_subsystem_from_selection(selected_blocks)
-
-    def update_global_list(self, block_name, h_value, h_assign=False):
-        """Update the global execution list. Delegates to engine."""
-        self.engine.update_global_list(block_name, h_value, h_assign)
-
-    def check_global_list(self):
-        """Check if all blocks are computed. Delegates to engine."""
-        return self.engine.check_global_list()
-
-    def count_computed_global_list(self):
-        """Count computed blocks. Delegates to engine."""
-        return self.engine.count_computed_global_list()
-
-    def reset_execution_data(self):
-        """Reset execution state for all blocks. Delegates to engine."""
-        self.engine.reset_execution_data()
-
-    def get_max_hierarchy(self):
-        """Get max hierarchy value. Delegates to engine."""
-        return self.engine.get_max_hierarchy()
-
-    def detect_algebraic_loops(self, uncomputed_blocks):
-        """Detect algebraic loops in uncomputed blocks. Delegates to engine."""
-        return self.engine.detect_algebraic_loops(uncomputed_blocks)
-
-    def get_outputs(self, block_name):
-        """Get output connections for a block. Delegates to SimulationEngine."""
-        return self.engine.get_outputs(block_name)
-
-    def children_recognition(self, block_name, children_list):
-        """Check if block_name is a child in the children_list. Delegates to engine."""
-        is_child, ports = self.engine._children_recognition(block_name, children_list)
-        # Backward compatibility: return -1 instead of [] when not a child
-        return (is_child, ports if is_child else -1)
-
-    def get_neighbors(self, block_name):
-        """Get neighbors for a block. Delegates to SimulationEngine."""
-        return self.engine.get_neighbors(block_name)
-
-    def reset_memblocks(self):
-        """Reset memory blocks. Delegates to engine."""
-        self.engine.reset_memblocks()
-
-    def _plot_xygraph(self, block):
-        """Plot XY graph data for a single XYGraph block. Delegates to ScopePlotter."""
-        self.scope_plotter._plot_xygraph(block)
-
-    def _plot_fft(self, block):
-        """Plot FFT spectrum for a single FFT block. Delegates to ScopePlotter."""
-        self.scope_plotter._plot_fft(block)
 
     def export_data(self):
         """
@@ -1779,27 +1684,6 @@ class DSim:
             logger.info(f"Equations exported to {filename}")
 
         return latex_doc
-
-    def _is_discrete_upstream(self, block_name, visited=None):
-        """
-        Determine if a block (or any of its ancestors) is discrete-time/ZOH.
-        Delegates to ScopePlotter.
-        """
-        return self.scope_plotter._is_discrete_upstream(block_name, visited)
-
-    def _scope_step_modes(self):
-        """
-        Build a list of step-mode flags (one per Scope block) for plotting.
-        Delegates to ScopePlotter.
-        """
-        return self.scope_plotter._scope_step_modes()
-
-    def get_scope_traces(self):
-        """
-        Collect scope data as a flat list of traces for the waveform inspector.
-        Delegates to ScopePlotter.
-        """
-        return self.scope_plotter.get_scope_traces()
 
     def _record_run_history(self):
         """Record the current run data for future inspection."""

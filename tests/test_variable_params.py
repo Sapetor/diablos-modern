@@ -112,7 +112,7 @@ class TestVariableParams(unittest.TestCase):
         print(f"Term name: {term.name}, in_ports: {term.in_ports}, out_ports: {term.out_ports}")
         # print(f"Signals: {self.sim.signals_list}")
 
-        inputs, outputs = self.sim.get_neighbors(step.name)
+        inputs, outputs = self.sim.engine.get_neighbors(step.name)
         print(f"Step neighbors: inputs={len(inputs)}, outputs={len(outputs)}")
 
         # Initialize execution

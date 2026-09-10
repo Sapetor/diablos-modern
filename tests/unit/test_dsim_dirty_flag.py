@@ -81,7 +81,6 @@ class TestPlotGateIsSeparateFromDirty:
     def test_flag_tracks_edits_and_runs(self, dsim, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         menu = {b.fn_name: b for b in dsim.menu_blocks}
-        dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
         step = dsim.add_block(menu["step"], QPoint(100, 100))
         scope = dsim.add_block(menu["scope"], QPoint(300, 100))
         dsim.add_line((step.name, 0, step.out_coords[0]), (scope.name, 0, scope.in_coords[0]))
@@ -135,7 +134,6 @@ class TestRunningDoesNotClearTheFlag:
         # execution_init force-autosaves into ./saves; keep that out of the repo.
         monkeypatch.chdir(tmp_path)
         menu = {b.fn_name: b for b in dsim.menu_blocks}
-        dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
         step = dsim.add_block(menu["step"], QPoint(100, 100))
         scope = dsim.add_block(menu["scope"], QPoint(300, 100))
         dsim.add_line((step.name, 0, step.out_coords[0]), (scope.name, 0, scope.in_coords[0]))

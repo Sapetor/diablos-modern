@@ -37,7 +37,6 @@ def _new_dsim():
     from lib.lib import DSim
 
     dsim = DSim()
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
     dsim.execution_init_time = lambda: dsim.sim_time
     dsim.pyqtPlotScope = lambda: None
     return dsim, {b.fn_name: b for b in dsim.menu_blocks}

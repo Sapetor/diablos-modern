@@ -47,8 +47,6 @@ def _new_dsim(sim_time, sim_dt):
     from lib.lib import DSim
 
     dsim = DSim()
-    # The headless harness pokes ``buttons_list[6].active`` after init.
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
     dsim.sim_time = sim_time
     dsim.sim_dt = sim_dt
     dsim.plot_trange = sim_time

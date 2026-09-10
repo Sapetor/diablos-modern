@@ -209,10 +209,8 @@ are parked here:
   equivalence tests in `tests/regression/test_equiv_pid.py` are the template). If
   it reproduces, a feedthrough PID belongs in the algebraic middle group *after*
   its upstream Sum (`lib/engine/system_compiler.py`, `_is_d0_state_block`).
-- [ ] **`lib/ui/button.py` is vestigial.** Only the `.active` flags are read
-  anywhere; the rest of the console-script button abstraction is dead. Collapse
-  it into whatever still needs the flag (or delete it outright) once the
-  remaining call sites are confirmed.
+- [x] **`lib/ui/button.py` is vestigial.** Deleted 2026-09-10 with the DSim
+  facade cleanup: the single `.active` write in `execution_init` had no reader.
 
 ---
 
@@ -380,11 +378,30 @@ complexity 25, all listed here.
     an error dict, and `DSim._block_failed` does `"E" in out_value`. Make
     `execute_block` return `{'E': True, 'error': ...}` (or make `_block_failed`
     accept non-dicts) so the user sees the block error, not a TypeError.
-- [ ] **`DSim` facade** (`lib/lib.py`, 1825 lines, 87 methods, 27 of them
-  one-line delegations to `engine` / `subsystem_manager`). Finish the facade:
-  callers go to the owner, the shims go. Related core-layer debris:
-  `lib/dialogs.py` (two QDialogs in `lib/`), `lib/ui/button.py` (vestigial, see
-  Follow-ups), `lib/simulation/menu_block.py` (a palette concept in the model layer).
+- [x] **`DSim` facade** (`lib/lib.py`, was 1825 lines / 87 methods) — done
+  2026-09-10 (1736 lines). Measured every one-line delegation against its
+  callers: 13 had no caller anywhere (`update_global_list`, `check_global_list`,
+  `count_computed_global_list`, `get_max_hierarchy`, `detect_algebraic_loops`,
+  `get_outputs`, `children_recognition`, `_plot_xygraph`, `_plot_fft`,
+  `_is_discrete_upstream`, `_scope_step_modes`, `get_scope_traces`,
+  `count_rk45_ints`) and were deleted; `reset_memblocks` / `reset_execution_data`
+  were internal-only and are now direct `self.engine.*` calls (the one script
+  caller moved too); `get_neighbors` went to the owner (`ScopePlotter.
+  _input_connections` queries `dsim.engine`, no-engine stub → no inputs). Kept
+  on purpose: the property bridges (`time_step`, `timeline`, `error_msg`, …),
+  the subsystem navigation, run-history, plotting and `check_diagram_integrity`
+  entry points — each has GUI/test/doc callers and is the intended MVC seam
+  (`docs/DEVELOPER_GUIDE.md` "Controller Layer"). Also removed the pygame-era
+  leftovers: `main_buttons_init` / `buttons_list` / `Button` (`lib/ui/` deleted,
+  the only reader was a write nobody read; 9 test files dropped their
+  `buttons_list` stubs) and the dead `canvas_*_limit`, `l_width`, `ls_width`,
+  `line_creation`, `only_one`, `enable_line_selection`, `holding_CTRL` attributes.
+  Verified: full suite + trace-diff on both solver paths bit-identical.
+  Not done (deliberate): `lib/dialogs.py` stays — `SimulationDialog` is the live
+  Run dialog (`execution_init` → `execution_init_time`) and `PortDialog` is used
+  by `DBlock.change_port_numbers`; moving them under `modern_ui/` would make
+  `lib/` import the GUI package. `lib/simulation/menu_block.py` has ~40 users
+  across model/services/GUI; a rename/move is its own round.
 - [ ] **`lib/improvements.py`** (448 lines, five helper classes from an earlier
   refactor). `SimulationConfig`, `PerformanceHelper`, `LoggingHelper` have no
   call sites; `ValidationHelper` and `SafetyChecks` have two each. Inline the

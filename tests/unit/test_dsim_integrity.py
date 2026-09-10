@@ -68,7 +68,7 @@ def test_check_diagram_integrity_handles_dline_connections(qapp):
     sim.line_list.append(line)
 
     # get_neighbors should yield dicts, not DLine objects
-    inputs, outputs = sim.get_neighbors(sink.name)
+    inputs, outputs = sim.engine.get_neighbors(sink.name)
     assert inputs == [
         {"srcblock": source.name, "srcport": 0, "dstport": 0},
     ]
@@ -85,7 +85,6 @@ def test_execution_init_runs_without_algebraic_loop(monkeypatch, qapp):
     without triggering algebraic loop detection.
     """
     sim = DSim()
-    sim.main_buttons_init()  # needed for execution_init scope button toggle
 
     # Skip UI dialogs and disk writes during the test
     monkeypatch.setattr(sim, "execution_init_time", lambda: 1.0)
@@ -196,7 +195,6 @@ def test_execution_init_runs_without_algebraic_loop(monkeypatch, qapp):
 def test_goto_from_multiple_targets_and_hidden_lines(monkeypatch, qapp):
     """Goto should feed multiple From blocks via hidden lines and label visible connections."""
     sim = DSim()
-    sim.main_buttons_init()
     monkeypatch.setattr(sim, "execution_init_time", lambda: 0.1)
     monkeypatch.setattr(sim, "save", lambda *args, **kwargs: 0)
 

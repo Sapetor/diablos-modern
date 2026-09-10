@@ -37,7 +37,6 @@ def _run(src_fn, src_params, mid_fn, mid_params, sim_dt, sim_time=0.8):
     from lib.lib import DSim
 
     dsim = DSim()
-    dsim.buttons_list = [type("B", (), {"active": False})() for _ in range(20)]
     menu = {b.fn_name: b for b in dsim.menu_blocks}
     src = dsim.add_block(menu[src_fn], QPoint(100, 100))
     mid = dsim.add_block(menu[mid_fn], QPoint(300, 100))
