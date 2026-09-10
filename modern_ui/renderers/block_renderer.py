@@ -425,6 +425,43 @@ def _cached_icon_transform(block) -> QTransform:
     return transform
 
 
+def _nested_squares_path() -> QPainterPath:
+    """Unit-square icon for a plain Subsystem: two nested rectangles."""
+    path = QPainterPath()
+    for lo, hi in ((0.2, 0.8), (0.3, 0.7)):
+        path.moveTo(lo, lo)
+        path.lineTo(hi, lo)
+        path.lineTo(hi, hi)
+        path.lineTo(lo, hi)
+        path.lineTo(lo, lo)
+    return path
+
+
+_SUBSYSTEM_ICON_PATH = _nested_squares_path()
+
+# Painter-drawn text icons. ``BaseBlock.draw_icon`` returns a QPainterPath,
+# which cannot lay out text, so blocks whose glyph *is* text return None from
+# draw_icon and are painted from these tables instead
+# (tests/unit/test_block_icons.py pins that set as LEGACY_TEXT_ICONS).
+#
+# block_fn -> ((numerator, denominator), _draw_text_icon kwargs)
+_FRACTION_TEXT_ICONS = {
+    "TranFn": (("B(s)", "A(s)"), {"italic": True}),
+    "DiscreteTranFn": (("B(z)", "A(z)"), {"italic": True}),
+    "Deriv": (("dy", "dt"), {"italic": True}),
+    "Integrator": (("1", "s"), {"italic": True, "size_delta": 4}),
+}
+
+# block_fn -> (text, _draw_centered_text kwargs)
+_CENTERED_TEXT_ICONS = {
+    "MathFunction": ("f(u)", {"italic": True, "size_delta": 4}),
+    "StateSpace": ("x' = Ax+Bu\ny = Cx+Du", {"size_delta": -1}),
+    # Inport/Outport are intrinsic subsystem ports with no block class.
+    "Inport": ("In", {"bold": True, "size_delta": 2}),
+    "Outport": ("Out", {"bold": True, "size_delta": 2}),
+}
+
+
 class BlockRenderer:
     """
     Stateless renderer for DBlock objects.
@@ -509,18 +546,15 @@ class BlockRenderer:
         # Draw block-specific icon
         painter.setPen(_cached_pen(theme_manager.get_color("block_icon_color"), 2))
 
-        # Try polymorphic draw_icon first. The result depends only on the block
-        # class and the rect it is handed (no draw_icon reads instance state),
-        # so it is memoized and copied out -- the legacy pass below appends to
-        # the path for some block types, and QPainterPath is copy-on-write, so
-        # the copy is O(1) and cannot corrupt the cached original.
-        path = QPainterPath(self._icon_source_path(block))
-
-        # Fallback to legacy switch statement
-        self._draw_legacy_icon(block, painter, path)
-
+        # The block's own draw_icon() path depends only on the block class and
+        # its rect (no draw_icon reads instance state), so it is memoized.
+        path = self._icon_source_path(block)
         if not path.isEmpty():
             painter.drawPath(_cached_icon_transform(block).map(path))
+
+        # Text glyphs (1/s, PID, Sum signs, the Gain value ...) that a
+        # QPainterPath cannot express are painted directly.
+        self._draw_icon_text(block, painter)
 
         # Draw ports
         if draw_ports:
@@ -561,10 +595,14 @@ class BlockRenderer:
         they are handed -- none of the 89 in ``blocks/`` reads instance state --
         so the resulting path only changes when the block is moved or resized.
         Returns an empty path when the block has no instance or draw_icon
-        failed; the caller copies it before the legacy pass mutates it.
+        failed. Callers must treat the result as read-only.
         """
         instance = block.block_instance
         if not instance or not hasattr(instance, "draw_icon"):
+            # Subsystem is intrinsic (no block class); a masked one draws its
+            # mask identity in _draw_icon_text instead of the nested squares.
+            if block.block_fn == "Subsystem" and _block_mask(block) is None:
+                return _SUBSYSTEM_ICON_PATH
             return _EMPTY_PATH
 
         key = (type(instance),) + _geometry_key(block)
@@ -579,9 +617,8 @@ class BlockRenderer:
                 path = custom_path
         except Exception as e:
             # Log once per block type at warning; subsequent identical
-            # failures drop to debug to avoid per-frame log spam. The
-            # legacy-icon fallback recovers cleanly (it guards on
-            # path.isEmpty()), so this is non-fatal.
+            # failures drop to debug to avoid per-frame log spam. The block
+            # is still painted (outline, ports, label), so this is non-fatal.
             if block.block_fn not in self._draw_icon_warned:
                 self._draw_icon_warned.add(block.block_fn)
                 logger.warning(f"draw_icon failed for {block.block_fn}: {e}")
@@ -868,10 +905,16 @@ class BlockRenderer:
 
         return None
 
-    def _draw_legacy_icon(self, block, painter, path):
-        """Helper to draw legacy icons that use direct calls or mess with fonts."""
+    def _draw_icon_text(self, block, painter):
+        """Paint the text part of a block's icon, if it has one.
+
+        Runs after the block's draw_icon() path has been stroked. Static text
+        comes from _FRACTION_TEXT_ICONS / _CENTERED_TEXT_ICONS; glyphs that
+        read block state (Sum signs, the Gain value, a Display's value, a
+        Goto tag ...) go through _DYNAMIC_TEXT_ICONS.
+        """
         # A masked subsystem draws its own identity (icon glyph, else the mask
-        # display name) instead of the generic nested-rectangles glyph.
+        # display name) instead of the generic nested-squares glyph.
         mask = _block_mask(block)
         if mask is not None:
             text = mask.get("icon") or mask.get("name") or ""
@@ -879,351 +922,48 @@ class BlockRenderer:
                 self._draw_centered_text(block, painter, text, bold=True, size_delta=1)
             return
 
-        # Using if/elif chain copied from original block.py
-        if path.isEmpty() and block.block_fn == "Step":
-            path.moveTo(0.1, 0.7)
-            path.lineTo(0.5, 0.7)
-            path.lineTo(0.5, 0.3)
-            path.lineTo(0.9, 0.3)
-        elif path.isEmpty() and block.block_fn == "Ramp":
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.9, 0.1)
-        elif path.isEmpty() and block.block_fn == "Sine":
-            path.moveTo(0.1, 0.5)
-            path.quadTo(0.3, 0.1, 0.5, 0.5)
-            path.quadTo(0.7, 0.9, 0.9, 0.5)
-        elif block.block_fn == "SgProd":
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.8)
-            path.lineTo(0.8, 0.2)
-        elif block.block_fn == "TranFn":
-            self._draw_text_icon(block, painter, ["B(s)", "A(s)"], italic=True)
-        elif block.block_fn == "Demux":
-            path.moveTo(0.2, 0.5)
-            path.lineTo(0.4, 0.5)
-            path.moveTo(0.4, 0.2)
-            path.lineTo(0.4, 0.8)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.3)
-            path.lineTo(1.0, 0.3)
-            path.moveTo(0.8, 0.7)
-            path.lineTo(1.0, 0.7)
-        elif block.block_fn == "Mux":
-            path.moveTo(0.2, 0.3)
-            path.lineTo(0.4, 0.3)
-            path.moveTo(0.2, 0.7)
-            path.lineTo(0.4, 0.7)
-            path.moveTo(0.4, 0.2)
-            path.lineTo(0.8, 0.4)
-            path.lineTo(0.8, 0.6)
-            path.lineTo(0.4, 0.8)
-            path.lineTo(0.4, 0.2)
-            path.moveTo(0.8, 0.5)
-            path.lineTo(1.0, 0.5)
-        elif block.block_fn == "BodeMag":
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.9, 0.9)
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.1, 0.1)
-            path.moveTo(0.1, 0.4)
-            path.lineTo(0.4, 0.4)
-            path.lineTo(0.6, 0.7)
-            path.lineTo(0.9, 0.7)
-        elif block.block_fn == "RootLocus":
-            path.moveTo(0.1, 0.5)
-            path.lineTo(0.9, 0.5)
-            path.moveTo(0.5, 0.1)
-            path.lineTo(0.5, 0.9)
-            p_x, p_y = 0.4, 0.3
-            path.moveTo(p_x - 0.03, p_y - 0.03)
-            path.lineTo(p_x + 0.03, p_y + 0.03)
-            path.moveTo(p_x + 0.03, p_y - 0.03)
-            path.lineTo(p_x - 0.03, p_y + 0.03)
-            p_x, p_y = 0.4, 0.7
-            path.moveTo(p_x - 0.03, p_y - 0.03)
-            path.lineTo(p_x + 0.03, p_y + 0.03)
-            path.moveTo(p_x + 0.03, p_y - 0.03)
-            path.lineTo(p_x - 0.03, p_y + 0.03)
-            path.addEllipse(QPointF(0.2 * block.width, 0.5 * block.height), 3, 3)
-            path.moveTo(0.4, 0.3)
-            path.quadTo(0.3, 0.3, 0.2, 0.5)
-            path.moveTo(0.4, 0.7)
-            path.quadTo(0.3, 0.7, 0.2, 0.5)
-            path.moveTo(0.2, 0.5)
-            path.lineTo(0.1, 0.5)
-        elif path.isEmpty() and block.block_fn == "LQR":
-            self._draw_centered_text(block, painter, "LQR", bold=True, size_delta=2)
-        elif block.block_fn == "Deriv":
-            self._draw_text_icon(block, painter, ["dy", "dt"], italic=True)
-        elif block.block_fn == "DiscreteTranFn":
-            self._draw_text_icon(block, painter, ["B(z)", "A(z)"], italic=True)
-        elif block.block_fn == "Integrator":
-            self._draw_text_icon(block, painter, ["1", "s"], italic=True, size_delta=4)
-        elif block.block_fn == "Scope":
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.9, 0.9)
-            path.moveTo(0.1, 0.9)
-            path.lineTo(0.1, 0.1)
-            path.moveTo(0.1, 0.6)
-            path.quadTo(0.3, 0.2, 0.5, 0.6)
-            path.quadTo(0.7, 1.0, 0.9, 0.6)
-        elif block.block_fn == "Sum":
-            self._draw_port_glyphs(block, painter, self._sum_signs(block))
-        elif block.block_fn == "Product":
-            self._draw_port_glyphs(block, painter, self._product_ops(block))
-        elif block.block_fn in ("Gain", "MatrixGain"):
-            self._draw_gain_value(block, painter)
-        elif block.block_fn in ("Goto", "From"):
-            self._draw_centered_text(block, painter, self._tag_text(block), bold=True, size_delta=2)
-        elif block.block_fn == "Noise":
-            path.moveTo(0.1, 0.5)
-            path.lineTo(0.2, 0.3)
-            path.lineTo(0.3, 0.7)
-            path.lineTo(0.4, 0.4)
-            path.lineTo(0.5, 0.6)
-            path.lineTo(0.6, 0.2)
-            path.lineTo(0.7, 0.8)
-            path.lineTo(0.8, 0.5)
-            path.lineTo(0.9, 0.6)
-        elif path.isEmpty() and block.block_fn == "Exp":
-            self._draw_centered_text(block, painter, "eˣ", italic=True, size_delta=4)
-        elif block.block_fn == "Display":
-            params_source = runtime_params(block)
-            display_val = params_source.get("_display_value_", "---")
-            # Dynamic character limit based on block width (approx 8 pixels per char)
-            block_width = getattr(block, "width", 80)
-            max_chars = max(10, int(block_width / 8))
-            if len(str(display_val)) > max_chars:
-                display_val = str(display_val)[: max_chars - 1] + "…"
-            self._draw_centered_text(block, painter, str(display_val), bold=True, size_delta=2)
-        elif block.block_fn == "Term":
-            path.moveTo(0.5, 0.2)
-            path.lineTo(0.5, 0.6)
-            path.moveTo(0.2, 0.6)
-            path.lineTo(0.8, 0.6)
-            path.moveTo(0.3, 0.75)
-            path.lineTo(0.7, 0.75)
-            path.moveTo(0.4, 0.9)
-            path.lineTo(0.6, 0.9)
-        elif block.block_fn == "Export":
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.2, 0.8)
-            path.lineTo(0.2, 0.2)
-            path.moveTo(0.5, 0.5)
-            path.lineTo(1.0, 0.5)
-            path.moveTo(0.8, 0.3)
-            path.lineTo(1.0, 0.5)
-            path.lineTo(0.8, 0.7)
-        elif block.block_fn == "ZeroOrderHold":
-            path.moveTo(0.1, 0.8)
-            path.lineTo(0.3, 0.8)
-            path.lineTo(0.3, 0.5)
-            path.lineTo(0.6, 0.5)
-            path.lineTo(0.6, 0.2)
-            path.lineTo(0.9, 0.2)
-        elif block.block_fn == "PRBS":
-            path.moveTo(0.1, 0.7)
-            path.lineTo(0.18, 0.7)
-            path.lineTo(0.18, 0.3)
-            path.lineTo(0.32, 0.3)
-            path.lineTo(0.32, 0.7)
-            path.lineTo(0.45, 0.7)
-            path.lineTo(0.45, 0.4)
-            path.lineTo(0.6, 0.4)
-            path.lineTo(0.6, 0.7)
-            path.lineTo(0.78, 0.7)
-            path.lineTo(0.78, 0.3)
-            path.lineTo(0.9, 0.3)
-            path.lineTo(0.9, 0.7)
-        elif block.block_fn == "Hysteresis":
-            path.moveTo(0.15, 0.75)
-            path.lineTo(0.75, 0.75)
-            path.lineTo(0.75, 0.25)
-            path.lineTo(0.85, 0.25)
-            path.moveTo(0.85, 0.25)
-            path.lineTo(0.25, 0.25)
-            path.lineTo(0.25, 0.75)
-            path.lineTo(0.15, 0.75)
-            path.moveTo(0.45, 0.75)
-            path.lineTo(0.45, 0.72)
-            path.lineTo(0.51, 0.75)
-            path.lineTo(0.45, 0.78)
-            path.lineTo(0.45, 0.75)
-            path.moveTo(0.55, 0.25)
-            path.lineTo(0.55, 0.22)
-            path.lineTo(0.49, 0.25)
-            path.lineTo(0.55, 0.28)
-            path.lineTo(0.55, 0.25)
-        elif block.block_fn == "Deadband":
-            path.moveTo(0.15, 0.80)
-            path.lineTo(0.35, 0.50)
-            path.lineTo(0.65, 0.50)
-            path.lineTo(0.85, 0.20)
-            path.moveTo(0.2, 0.5)
-            path.lineTo(0.8, 0.5)
-        elif block.block_fn == "Switch":
-            path.moveTo(0.5, 0.10)
-            path.lineTo(0.5, 0.35)
-            path.moveTo(0.47, 0.30)
-            path.lineTo(0.5, 0.35)
-            path.lineTo(0.53, 0.30)
-            path.moveTo(0.30, 0.35)
-            path.lineTo(0.70, 0.35)
-            path.lineTo(0.70, 0.75)
-            path.lineTo(0.30, 0.75)
-            path.lineTo(0.30, 0.35)
-            path.moveTo(0.30, 0.45)
-            path.lineTo(0.45, 0.45)
-            path.moveTo(0.30, 0.65)
-            path.lineTo(0.45, 0.65)
-            path.moveTo(0.45, 0.45)
-            path.lineTo(0.55, 0.55)
-            path.lineTo(0.70, 0.55)
-            path.moveTo(0.70, 0.55)
-            path.lineTo(0.90, 0.55)
-        elif block.block_fn == "Saturation":
-            path.moveTo(0.1, 0.8)
-            path.lineTo(0.9, 0.8)
-            path.moveTo(0.1, 0.2)
-            path.lineTo(0.9, 0.2)
-            path.moveTo(0.15, 0.5)
-            path.quadTo(0.3, 0.2, 0.45, 0.2)
-            path.lineTo(0.55, 0.2)
-            path.quadTo(0.7, 0.8, 0.85, 0.8)
-        elif block.block_fn == "RateLimiter":
-            # draw_icon already supplies the slew-response shape; only build it
-            # here as a fallback so the same path is not stroked twice.
-            if path.isEmpty():
-                path.moveTo(0.15, 0.75)
-                path.lineTo(0.35, 0.75)
-                path.lineTo(0.65, 0.25)
-                path.lineTo(0.85, 0.25)
-            path.moveTo(0.35, 0.75)
-            path.lineTo(0.35, 0.25)
-            path.lineTo(0.40, 0.25)
-            self._draw_corner_label(block, painter, "du/dt")
-        elif block.block_fn == "PID":
-            self._draw_centered_text(block, painter, "PID", bold=True, size_delta=3)
-            self._draw_corner_labels(block, painter, "sp", "pv")
-        elif block.block_fn == "StateSpace":
-            self._draw_centered_text(block, painter, "x' = Ax+Bu\ny = Cx+Du", size_delta=-1)
-        elif path.isEmpty() and block.block_fn == "DiscreteStateSpace":
-            self._draw_centered_text(block, painter, "x[k+1]=Ax+Bu\ny[k]=Cx+Du", size_delta=-2)
-        elif block.block_fn == "External":
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.2)
-            path.moveTo(0.2, 0.5)
-            path.lineTo(0.6, 0.5)
-            path.moveTo(0.2, 0.8)
-            path.lineTo(0.8, 0.8)
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.2, 0.8)
-        elif path.isEmpty() and block.block_fn == "Constant":
-            # When draw_icon supplies the flat-line "constant level" shape (the
-            # same convention as Step/Ramp/Sine), don't overlay a "K" on it.
-            self._draw_centered_text(block, painter, "K", bold=True, size_delta=4)
-        elif path.isEmpty() and block.block_fn == "Delay":
-            self._draw_centered_text(block, painter, "z⁻ⁿ", size_delta=2)
-        elif path.isEmpty() and block.block_fn == "Abs":
-            self._draw_centered_text(block, painter, "|u|", bold=True, size_delta=4)
-        elif path.isEmpty() and block.block_fn == "TransportDelay":
-            font = painter.font()
-            orig = font.pointSize()
-            font.setPointSize(orig + 3)
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.setPen(theme_manager.get_color("block_icon_color"))
-            cx, cy = block.left + block.width // 2, block.top + block.height // 2
-            painter.drawText(cx - 12, cy + 4, "e")
-            font.setPointSize(orig)
-            painter.setFont(font)
-            painter.drawText(cx - 2, cy - 4, "-τs")
-            font.setItalic(False)
-            painter.setFont(font)
-        elif block.block_fn == "XYGraph":
-            path.moveTo(0.15, 0.85)
-            path.lineTo(0.85, 0.85)
-            path.moveTo(0.15, 0.85)
-            path.lineTo(0.15, 0.15)
-            path.moveTo(0.82, 0.82)
-            path.lineTo(0.85, 0.85)
-            path.lineTo(0.82, 0.88)
-            path.moveTo(0.12, 0.18)
-            path.lineTo(0.15, 0.15)
-            path.lineTo(0.18, 0.18)
-            path.moveTo(0.25, 0.75)
-            path.quadTo(0.35, 0.35, 0.55, 0.45)
-            path.quadTo(0.75, 0.55, 0.70, 0.30)
-        elif path.isEmpty() and block.block_fn == "Assert":
-            self._draw_centered_text(
-                block,
-                painter,
-                "⚠",
-                bold=True,
-                size_delta=6,
-                color=theme_manager.get_current_theme()["error"],
-            )
-        elif block.block_fn == "Selector":
-            path.moveTo(0.15, 0.3)
-            path.lineTo(0.15, 0.7)
-            path.lineTo(0.35, 0.7)
-            path.lineTo(0.35, 0.3)
-            path.lineTo(0.15, 0.3)
-            path.moveTo(0.17, 0.4)
-            path.lineTo(0.33, 0.4)
-            path.moveTo(0.17, 0.5)
-            path.lineTo(0.33, 0.5)
-            path.moveTo(0.17, 0.6)
-            path.lineTo(0.33, 0.6)
-            path.moveTo(0.35, 0.5)
-            path.lineTo(0.65, 0.5)
-            path.moveTo(0.60, 0.45)
-            path.lineTo(0.65, 0.5)
-            path.lineTo(0.60, 0.55)
-            path.moveTo(0.70, 0.45)
-            path.lineTo(0.85, 0.45)
-            path.lineTo(0.85, 0.55)
-            path.lineTo(0.70, 0.55)
-            path.lineTo(0.70, 0.45)
-        elif block.block_fn == "Subsystem":
-            # Nested rectangles icon
-            path.moveTo(0.2, 0.2)
-            path.lineTo(0.8, 0.2)
-            path.lineTo(0.8, 0.8)
-            path.lineTo(0.2, 0.8)
-            path.lineTo(0.2, 0.2)
-            path.moveTo(0.3, 0.3)
-            path.lineTo(0.7, 0.3)
-            path.lineTo(0.7, 0.7)
-            path.lineTo(0.3, 0.7)
-            path.lineTo(0.3, 0.3)
-        elif block.block_fn == "Inport":
-            self._draw_centered_text(block, painter, "In", bold=True, size_delta=2)
-            # Draw arrow?
-            # path.moveTo(0.2, 0.5); path.lineTo(0.8, 0.5); path.lineTo(0.6, 0.3)...
-        elif block.block_fn == "Outport":
-            self._draw_centered_text(block, painter, "Out", bold=True, size_delta=2)
+        fn = block.block_fn
+        fraction = _FRACTION_TEXT_ICONS.get(fn)
+        if fraction is not None:
+            lines, kwargs = fraction
+            self._draw_text_icon(block, painter, list(lines), **kwargs)
+            return
+        centered = _CENTERED_TEXT_ICONS.get(fn)
+        if centered is not None:
+            text, kwargs = centered
+            self._draw_centered_text(block, painter, text, **kwargs)
+            return
+        dynamic = self._DYNAMIC_TEXT_ICONS.get(fn)
+        if dynamic is not None:
+            dynamic(self, block, painter)
 
-        elif block.block_fn == "FFT":
-            path.moveTo(0.15, 0.80)
-            path.lineTo(0.15, 0.20)
-            path.moveTo(0.15, 0.80)
-            path.lineTo(0.85, 0.80)
-            bar_positions = [0.22, 0.32, 0.42, 0.52, 0.62, 0.72]
-            bar_heights = [0.30, 0.55, 0.70, 0.45, 0.25, 0.15]
-            bar_w = 0.06
-            for x, h in zip(bar_positions, bar_heights):
-                path.moveTo(x, 0.80)
-                path.lineTo(x, 0.80 - h * 0.55)
-                path.lineTo(x + bar_w, 0.80 - h * 0.55)
-                path.lineTo(x + bar_w, 0.80)
-        elif block.block_fn == "MathFunction":
-            self._draw_centered_text(block, painter, "f(u)", italic=True, size_delta=4)
+    def _draw_tag_text(self, block, painter):
+        self._draw_centered_text(block, painter, self._tag_text(block), bold=True, size_delta=2)
+
+    def _draw_display_value(self, block, painter):
+        display_val = str(runtime_params(block).get("_display_value_", "---"))
+        # Dynamic character limit based on block width (approx 8 pixels per char)
+        max_chars = max(10, int(getattr(block, "width", 80) / 8))
+        if len(display_val) > max_chars:
+            display_val = display_val[: max_chars - 1] + "\u2026"
+        self._draw_centered_text(block, painter, display_val, bold=True, size_delta=2)
+
+    def _draw_pid_text(self, block, painter):
+        self._draw_centered_text(block, painter, "PID", bold=True, size_delta=3)
+        self._draw_corner_labels(block, painter, "sp", "pv")
+
+    # block_fn -> unbound (renderer, block, painter) callable
+    _DYNAMIC_TEXT_ICONS = {
+        "Sum": lambda r, b, p: r._draw_port_glyphs(b, p, r._sum_signs(b)),
+        "Product": lambda r, b, p: r._draw_port_glyphs(b, p, r._product_ops(b)),
+        "Gain": lambda r, b, p: r._draw_gain_value(b, p),
+        "MatrixGain": lambda r, b, p: r._draw_gain_value(b, p),
+        "Goto": _draw_tag_text,
+        "From": _draw_tag_text,
+        "Display": _draw_display_value,
+        "PID": _draw_pid_text,
+        "RateLimiter": lambda r, b, p: r._draw_corner_label(b, p, "du/dt"),
+    }
 
     # --- Shape-specific decorations (Gain value, Sum signs, tags) ---
 

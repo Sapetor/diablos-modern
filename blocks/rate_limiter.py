@@ -59,6 +59,10 @@ class RateLimiterBlock(BaseBlock):
         path.lineTo(0.35, 0.75)
         path.lineTo(0.65, 0.25)  # Slew-limited ramp
         path.lineTo(0.85, 0.25)
+        # Tick marking the unlimited step the ramp replaces
+        path.moveTo(0.35, 0.75)
+        path.lineTo(0.35, 0.25)
+        path.lineTo(0.40, 0.25)
         return path
 
     def execute(self, time, inputs, params, **kwargs):

@@ -70,6 +70,17 @@ class HysteresisBlock(BaseBlock):
         path.lineTo(0.25, 0.25)
         path.lineTo(0.25, 0.75)
         path.lineTo(0.15, 0.75)
+        # Direction arrows on each branch
+        path.moveTo(0.45, 0.75)
+        path.lineTo(0.45, 0.72)
+        path.lineTo(0.51, 0.75)
+        path.lineTo(0.45, 0.78)
+        path.lineTo(0.45, 0.75)
+        path.moveTo(0.55, 0.25)
+        path.lineTo(0.55, 0.22)
+        path.lineTo(0.49, 0.25)
+        path.lineTo(0.55, 0.28)
+        path.lineTo(0.55, 0.25)
         return path
 
     def execute(self, time, inputs, params, **kwargs):

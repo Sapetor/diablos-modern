@@ -85,6 +85,7 @@ class PRBSBlock(BaseBlock):
         path.lineTo(0.78, 0.7)
         path.lineTo(0.78, 0.3)
         path.lineTo(0.9, 0.3)
+        path.lineTo(0.9, 0.7)
         return path
 
     def execute(self, time, inputs, params, **kwargs):

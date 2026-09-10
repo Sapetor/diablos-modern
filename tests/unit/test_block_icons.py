@@ -1,7 +1,7 @@
 """Every registered block must supply its own ``draw_icon``.
 
-``BaseBlock.draw_icon`` returns ``None`` -- the "use the renderer's legacy
-switch" fallback. A block that never overrides it is invisible on the canvas
+``BaseBlock.draw_icon`` returns ``None`` -- "the renderer paints my icon as
+text" (see ``_draw_icon_text``). A block that never overrides it is invisible on the canvas
 beyond its coloured rounded rectangle, so this module pins two things:
 
 1. every class returned by :func:`lib.block_loader.load_blocks` overrides
@@ -23,7 +23,7 @@ from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPixmap, QPen, QTransfor
 from blocks.base_block import BaseBlock
 from lib.block_loader import load_blocks
 
-# Blocks whose icon is painter-drawn text in BlockRenderer._draw_legacy_icon.
+# Blocks whose icon is painter-drawn text in BlockRenderer._draw_icon_text.
 # They override draw_icon (returning None) to document that on purpose.
 LEGACY_TEXT_ICONS = {
     "Deriv",
@@ -103,8 +103,8 @@ class TestEveryBlockHasAnIcon:
     def test_overrides_base_draw_icon(self, block_cls):
         assert block_cls.draw_icon is not BaseBlock.draw_icon, (
             f"{block_cls.__name__} does not define draw_icon; it would render "
-            "as a bare rounded rectangle unless the renderer's legacy switch "
-            "happens to cover it"
+            "as a bare rounded rectangle unless the renderer's text-icon tables "
+            "happen to cover it"
         )
 
     def test_legacy_text_icon_set_is_exact(self):

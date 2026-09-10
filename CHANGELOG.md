@@ -36,6 +36,13 @@ All notable changes to DiaBloS will be documented in this file.
   longer stalls the run. DiaBloS logs a warning naming the block and finishes
   with a fixed step.
 
+- Block icons were painted twice: the renderer stroked each block's own
+  `draw_icon` path and then appended a second, older copy of the same shape from
+  a hard-coded switch. Fourteen blocks were double-stroked (heavier lines), and
+  FFT, RootLocus and XYGraph showed two different sketches on top of each other.
+  Each block now owns its icon; RateLimiter's icon is stroked at the same pen
+  width as every other block instead of a hairline.
+
 ## [1.0.0] - 2026-09-03
 
 First tagged release. Everything below landed after the 2026-01-29 development

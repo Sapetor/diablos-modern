@@ -1,7 +1,27 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: September 2026
+> Last updated: 2026-09-08
+
+---
+
+## Release 1.1.0 (pending — needs the user's go-ahead to merge/push)
+
+Everything since the local `v1.0.0` tag (2026-09-03) lives on `feat/maturity`
+(~72 commits ahead of `main`, nothing pushed) and in the CHANGELOG `[Unreleased]`
+section: zero-crossing detection, Spanish i18n, library blocks with masks,
+drag-to-connect + wire editing + block shapes, validation suite, solver semantics
+and stiffness guidance, examples gallery test, block API / user blocks, docs site.
+`release.yml` only fires on a pushed `v*` tag, so no packaged build has run yet.
+
+- [ ] Run the full suite + `ruff check .` + `ruff format --check .` on `feat/maturity`
+- [ ] Bump `pyproject.toml` version to 1.1.0; move CHANGELOG `[Unreleased]` to `[1.1.0]`
+- [ ] Merge `feat/maturity` into `main` (fast-forward; `main` has not moved)
+- [ ] Push `main` and tags (`v1.0.0`, `v1.1.0`); confirm `release.yml` and `docs.yml` go green
+- [ ] Delete the merged `feat/*` agent branches (`i18n-spanish`, `zero-crossing`,
+  `library-blocks`, `i18n-masks`, `i18n-events-libraries`, `block-api`, `docs-site`,
+  `examples`); keep `feat/paper` (JOSS draft) and `backup/pre-merge-main`
+  (200 commits that exist nowhere else)
 
 ---
 
@@ -102,12 +122,15 @@ with a pluggable i18n system**, **zero-crossing / event detection** in the compi
 solver, and **user block libraries with masks**. The remaining ideas from that review
 are parked here:
 
-- [ ] **Stiff solver choice in the UI** — expose `engine.solver_method` (RK45 today)
-  as a Simulation Settings dropdown (Radau, BDF, LSODA, DOP853) with rtol/atol.
+- [x] **Stiff solver choice in the UI** — already shipped: the Simulation Settings
+  dialog (`lib/dialogs.py`, `SOLVER_METHODS`) offers RK45/RK23/DOP853/Radau/BDF/
+  LSODA/RK4/Euler/auto with rtol/atol; `auto` resolves to LSODA. The headless `run`
+  command reads the file's solver settings and accepts `--method/--rtol/--atol`.
 - [ ] **Sample-time coloring** — tint blocks/wires by sample rate (continuous vs each
   discrete period) so multirate mistakes around ZOH/FOH/RateTransition are visible.
-- [ ] **User blocks directory for frozen builds** — scan `~/.diablos/blocks/` at
-  startup so packaged installs can be extended without editing the registry.
+- [x] **User blocks directory for frozen builds** — done in the Sept 2026 maturity
+  campaign: `lib/user_blocks.py` (`user_blocks_dir`) is scanned at startup, user
+  blocks appear in the palette with a reload action and a missing-block warning.
 - [ ] **One-click auto-layout** — layered (Sugiyama-style) layout action in the Edit
   menu, generalizing `scripts/fix_diagram_overlaps.py`.
 - [ ] **Block-diagram algebra** — select a source and a sink, show the closed-loop
@@ -123,6 +146,29 @@ are parked here:
 - [ ] **Autosave and crash recovery** — periodic recovery file per open diagram.
 - [ ] **Semantic diff for `.diablos` files** — CLI subcommand diffing by block and
   connection rather than by JSON line.
+
+### Open gaps left by the September 2026 campaigns
+- [ ] **Library / user blocks are not compilable** — diagrams containing them fall
+  back to the interpreted engine (not in `COMPILABLE_BLOCKS`). Compile a library
+  block by flattening its subsystem the way `Flattener` already does for inline ones.
+- [ ] **Outcome-metric labels and validator messages stay English** —
+  `OUTCOME_METRICS` combo labels (`lib/analysis/resim.py`) and the validation-suite
+  messages are not routed through `tr()`; the Spanish catalog is otherwise complete.
+- [ ] **Stiffness diagnostic caps at 64 states** — `STIFFNESS_MAX_STATES` in
+  `lib/engine/solver_diagnostics.py` skips the Jacobian eigen-analysis on larger
+  systems (PDE diagrams), so they get no solver suggestion. Use a sparse/power-
+  iteration estimate or sample the spectrum instead of skipping.
+- [ ] **Event-triggered state reset** — zero-crossing detection locates switching
+  instants but a block cannot yet reset an integrator state at the event (needed for
+  bouncing-ball / impact examples).
+- [ ] **pyqtgraph teardown segfault** in `tests/modern_ui/test_linearization_result_window.py`
+  is only dodged (module-scoped fixture + `gc.collect()`); the result window's own
+  teardown is still unfixed. See `tasks/lessons.md`, "pyqtgraph teardown segfaults".
+- [ ] **PyQt6 migration** — deliberately deferred; PyQt5 is EOL-adjacent and
+  `lib/theming/theme_manager.py` already guards the 5.9-vs-5.15 `setFamilies` split.
+- [ ] **PathSim benchmark** — the competitive analysis asked for a head-to-head
+  timing vs PathSim on the examples gallery; skipped because `pathsim` was not
+  installed in the `diablos` env.
 
 ## Future / Roadmap
 
@@ -150,20 +196,19 @@ are parked here:
 
 ## Follow-ups (flagged September 2026)
 
-- [ ] **PDE BC params should be dropdowns.** `bc_type_left` / `bc_type_right`
-  (and the 2D edge equivalents) are still `{"type": "string"}`, so the property
-  editor shows a free-text field even though only four values are valid. Convert
-  them to `{"type": "choice", "options": [...]}` including the new **Periodic**
-  and **Robin** entries, and register them in
-  `tests/regression/test_choice_param_dispatch.py` so the dropdown options and
-  the runtime dispatch cannot drift apart.
-- [ ] **Compiled-path ordering bug in `examples/pid_control_loop.json`.** On the
-  compiled path a 1-port PID is ordered *before* the Sum that feeds it (the PID
-  is a hierarchy-0 memory block), so the loop error is read as zero and the
-  whole loop freezes at zero. Investigate the middle-group ordering in
-  `lib/engine/system_compiler.py` (see `_is_d0_state_block` / `state_fns` and
-  the three-group order documented in CLAUDE.md); a feedthrough PID belongs in
-  the algebraic middle group *after* its upstream Sum in topological order.
+- [x] **PDE BC params should be dropdowns.** Done: the specs in
+  `lib/engine/pde_helpers.py` carry `options` (Dirichlet/Neumann/Robin/Periodic),
+  the property editor renders any param with `choices`/`options` as a QComboBox,
+  and `tests/regression/test_choice_param_dispatch.py` covers HeatEquation1D/2D.
+- [ ] **Re-verify the reported compiled-path PID ordering bug.** The codegen agent
+  (2026-09-03) claimed that on the compiled path a 1-port PID was ordered *before*
+  the Sum feeding it, freezing the loop at zero. The only reproduction was the
+  legacy `examples/pid_control_loop.json`, which was retired in 5559515, and both
+  engines gave zeros on that stale file, so the claim is unconfirmed. Check with
+  `examples/pid_second_order.diablos` (compiled vs interpreted must agree; the
+  equivalence tests in `tests/regression/test_equiv_pid.py` are the template). If
+  it reproduces, a feedthrough PID belongs in the algebraic middle group *after*
+  its upstream Sum (`lib/engine/system_compiler.py`, `_is_d0_state_block`).
 - [ ] **`lib/ui/button.py` is vestigial.** Only the `.active` flags are read
   anywhere; the rest of the console-script button abstraction is dead. Collapse
   it into whatever still needs the flag (or delete it outright) once the
@@ -283,6 +328,52 @@ performance items with a safe fix are now **fixed** (see
 - [x] Extracted `MainWindow._init_core_managers` (constructor altitude).
 
 ### Remaining — architectural backlog (no behavior change; do with dedicated tests)
+
+#### Refactoring round (started 2026-09-10) — ranked by payoff
+Measured with `ruff check --select C901` (max-complexity 25) and an AST pass over
+function lengths; only eleven functions in `lib/`, `modern_ui/`, `blocks/` exceed
+complexity 25, all listed here.
+- [x] **Legacy icon switch in `block_renderer.py`** — done 2026-09-10.
+  `_draw_legacy_icon` (356 lines, 51 branches, C901 = 52) ran *after* each
+  block's `draw_icon` and appended a second copy of the shape: 14 blocks were
+  double-stroked, FFT/RootLocus/XYGraph drew two different sketches on top of
+  each other, RateLimiter's path was stroked with a width-1 pen. Replaced by
+  table-driven `_draw_icon_text` (`_FRACTION_TEXT_ICONS`, `_CENTERED_TEXT_ICONS`,
+  `_DYNAMIC_TEXT_ICONS`); RateLimiter/Hysteresis/PRBS absorbed their legacy
+  fragments into `draw_icon`; Subsystem's nested squares live in
+  `_icon_source_path`. Renderer 1514 → 1255 lines. Verified by pixel-diffing old
+  vs new `draw_block` for all 82 block types (79 identical; the 20 changed are
+  exactly the double-stroke/overlay set). Tests:
+  `tests/modern_ui/test_block_renderer_icon_text.py`.
+- [ ] **`replay_compiled_signals`** (`lib/engine/compiled_runner.py`, 616 lines,
+  C901 = 100 — the worst in the repo). Four jobs in one body: feedthrough
+  classification, Kahn topological sort, the per-step replay loop with ~40
+  per-block branches, Scope finalization. Split into an order builder, a replay
+  dispatch table extending `_KERNEL_REPLAY_FNS` to the inline Scope/FieldScope/
+  Integrator/Hysteresis/Demux/MathFunction branches, and a finalizer. Safety
+  net: `tests/regression/test_equiv_*.py` and the example gallery test.
+- [ ] **Engine cores**: `SystemCompiler.compile_system` (434 lines, C901 = 41)
+  and `DSim._interpreter_step` (`lib/lib.py`, 296 lines, C901 = 41). Both are
+  phase-structured (classify → assemble state fns → order → run); extract the
+  phases as named methods. Do each alone.
+- [ ] **`DSim` facade** (`lib/lib.py`, 1825 lines, 87 methods, 27 of them
+  one-line delegations to `engine` / `subsystem_manager`). Finish the facade:
+  callers go to the owner, the shims go. Related core-layer debris:
+  `lib/dialogs.py` (two QDialogs in `lib/`), `lib/ui/button.py` (vestigial, see
+  Follow-ups), `lib/simulation/menu_block.py` (a palette concept in the model layer).
+- [ ] **`lib/improvements.py`** (448 lines, five helper classes from an earlier
+  refactor). `SimulationConfig`, `PerformanceHelper`, `LoggingHelper` have no
+  call sites; `ValidationHelper` and `SafetyChecks` have two each. Inline the
+  live bits, delete the module.
+- [ ] **`SimulationController._print_terminal_verification`** (225 lines,
+  C901 = 40) builds the post-run report inside a GUI controller. Move it to
+  `lib/engine` as a `verification_report(engine)` function so the CLI can use it.
+- [ ] **`SubsystemManager.create_subsystem_from_selection`** (406 lines,
+  C901 = 43); `ClipboardManager.paste_blocks` (228); `solve_with_events` (232).
+  Large but routine; extract when next touched.
+- [ ] **Palette glyphs** — `modern_palette._draw_glyph` (156 lines, C901 = 36)
+  is a second icon system with its own switch; reuse the blocks' `draw_icon`
+  paths (mapped into the palette tile) so a block's icon is defined once.
 - [x] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
   and `SystemCompiler` — done 2026-07-05: shared pure ops in `lib/engine/pde_ops.py`
   consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`

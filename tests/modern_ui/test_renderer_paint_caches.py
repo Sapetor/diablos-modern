@@ -35,7 +35,7 @@ pytestmark = pytest.mark.qt
 
 
 # A spread of block types that between them exercise every icon route through
-# the renderer: draw_icon paths, legacy path branches, direct-to-painter text
+# the renderer: draw_icon paths, direct-to-painter text
 # icons (TranFn/PID/Display), the gain-value fitter, the Sum/Product port
 # glyphs, and the four outline shapes (rect / triangle / circle / tag).
 SAMPLE_BLOCK_FNS = (
