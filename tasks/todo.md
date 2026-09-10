@@ -512,17 +512,28 @@ complexity 25, all listed here.
   HEAD module: 53 kinds (46 declared + letter/unknown/empty cases) x 5 sizes x 3
   colours = 795/795 byte-identical QImages. Tests:
   `tests/modern_ui/test_palette_glyph_registry.py` (55).
-  - [ ] Found while verifying (pre-existing, kept identical): `_glyph_kind_for`
-    is first-match and three keys are shadowed by earlier substrings —
-    `matrixgain`→`gain`, `export`→`exp`, `demux`→`mux` — so `_glyph_export` and
-    `_glyph_demux` never paint (pinned as `_SHADOWED_KINDS` in the new test).
-    Fix is reordering the table; it is a visible change, so it needs a look.
-  - [ ] Not done (assessed): reusing the blocks' `draw_icon` paths in the palette.
-    Feasible for ~70 of 84 icons via `BlockRenderer._icon_source_path` + a
-    `QTransform` into the 22 px chip; the 15 text icons (`_FRACTION_TEXT_ICONS`,
-    `_CENTERED_TEXT_ICONS`, `_DYNAMIC_TEXT_ICONS` read block state) need a
-    stateless variant, and dense canvas icons (Bode, Scope, FFT, Nyquist) turn to
-    mud at 22 px — which is why the label glyphs exist. A visible change, ~a day.
+  - [x] Fixed 2026-09-10: `_glyph_kind_for` was first-match over a table where
+    `gain`, `exp`, `mux` preceded `matrixgain`, `export`, `demux`, so MatrixGain
+    showed the gain triangle, Export the "exp" label and Demux the fan-in glyph.
+    The table is now the module constant `_GLYPH_KIND_TABLE` with the long keys
+    ahead of their prefixes, guarded by `test_no_table_key_is_shadowed_by_an_earlier_one`.
+    All-palette before/after over 95 visible blocks: 92 identical, exactly those
+    3 changed. (VectorGain contains no shadowed key and stays `gain`.)
+  - [x] Assessed and DECLINED 2026-09-10: reusing the blocks' `draw_icon` paths in
+    the palette. Spike rendered every canvas icon path into the 22 px tile next to
+    today's glyph for all 95 palette blocks (pens 1.0/1.5, 22 and 44 px). Verdicts:
+    50 usable, 30 too dense at 22 px (Scope/FieldScope, FFT, Nyquist, Delay x3, LQR,
+    the 2-D PDE grids, Mux/Demux/Switch/Selector, most Optimization matrix icons),
+    15 have no path (text/dynamic icons: Sum, Product, Gain, PID, Integrator,
+    Deriv, TranFn, StateSpace, MathFunction, Display, Goto, From, Function). Even
+    the usable ones read softer than the hand-drawn glyphs they would replace, so
+    the result would be a mixed scheme with a 45-name override table, 13 of 32
+    painters deleted, slightly more code and a less uniform palette. Not worth it
+    at the current tile size; revisit only if the tile grows (e.g. 32 px) or the
+    initial-letter blocks (Optimization, PDE, Logic) get hand-drawn glyphs.
+  - [ ] Found by the spike (pre-existing): `_category_chip_colors` falls back to
+    `text_secondary` for Analysis, Logic, Optimization(-Primitives) and PDE, so
+    those palette chips are nearly blank in the light theme whatever the glyph.
 - [x] **Single-source the PDE finite-difference/BC kernels** shared by the blocks
   and `SystemCompiler` — done 2026-07-05: shared pure ops in `lib/engine/pde_ops.py`
   consumed by both `blocks/pde/*` and `lib/engine/compiler_kernels/pde.py`

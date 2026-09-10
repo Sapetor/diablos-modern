@@ -20,6 +20,7 @@ All notable changes to DiaBloS will be documented in this file.
 - The `examples/example_usage.py` demo script and the `lib/improvements.py` helper module it showcased. The checks the GUI still runs before a simulation (duplicate input ports, algebraic loops, block integrity) now live in `lib/diagram_validator.py`; the frame timer moved to `modern_ui/perf_helper.py`.
 
 ### Fixed
+- Palette glyphs for MatrixGain, Export and Demux now show their own icons; a first-match lookup had let shorter keys (`gain`, `exp`, `mux`) shadow them.
 - Copy/paste of a Subsystem keeps the connections to and from it; the pasted Subsystem now gets its ports and geometry before wires are recreated.
 - A paste that fails part-way no longer leaves half of the blocks on the canvas or a dangling undo entry; the diagram, selection and history are restored and the error is shown as before.
 - A block whose `execute()` raises on the interpreted solver path is now reported as that block's error (`Block '<name>' failed: ...`) instead of crashing the run with `argument of type 'bool' is not iterable` (`SimulationEngine.execute_block` returns an error dict).

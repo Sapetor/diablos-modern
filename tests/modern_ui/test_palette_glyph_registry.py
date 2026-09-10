@@ -173,11 +173,11 @@ _MAPPING_KEYS = [
     "sub",
 ]
 
-# Kinds the table declares but can never emit because an earlier, shorter key
-# is a substring of theirs ("gain" in "matrixgain", "exp" in "export", "mux" in
-# "demux"). Pre-existing first-match behaviour, pinned here so a fix to the
-# mapping shows up as a deliberate test change rather than a silent one.
-_SHADOWED_KINDS = {"matrix", "export", "demux"}
+# Names that used to resolve to the wrong kind because a shorter key ("gain",
+# "exp", "mux") preceded the longer key they really matched, plus the
+# neighbours whose kind must not move when that ordering is fixed.
+_FORMERLY_SHADOWED = {"matrixgain": "matrix", "export": "export", "demux": "demux"}
+_UNSHADOWED_NEIGHBOURS = {"gain": "gain", "vectorgain": "gain", "exp": "exp", "mux": "mux"}
 
 
 def _mapping_kinds():
@@ -198,19 +198,42 @@ class TestGlyphRegistryCoverage:
         # them this list must be updated so the two stay in sync.
         assert not (_LABEL_KINDS & set(mp._GLYPHS))
 
-    def test_mapping_emits_exactly_the_declared_kinds_minus_shadowed(self):
-        # Every kind the table can really emit is declared, and the only
-        # declared kinds it never emits are the known shadowed ones.
-        emitted = _mapping_kinds()
-        assert emitted == _MAPPED_KINDS - _SHADOWED_KINDS
+    def test_mapping_keys_match_the_table(self):
+        # The explicit key list above mirrors the module table (order aside),
+        # so a key added or dropped in one place shows up in the other.
+        assert {k for k, _ in mp._GLYPH_KIND_TABLE} == set(_MAPPING_KEYS)
+
+    def test_mapping_emits_exactly_the_declared_kinds(self):
+        # Every kind the table declares is really emitted for some name, and
+        # nothing outside the declared set ever comes out.
+        assert _mapping_kinds() == _MAPPED_KINDS
         for key in _MAPPING_KEYS:
             assert mp._glyph_kind_for(key) in _MAPPED_KINDS
 
-    def test_registry_dead_entries_are_only_the_shadowed_kinds(self):
-        # `_glyph_export` and `_glyph_demux` are registered but unreachable
-        # through the mapping today (see _SHADOWED_KINDS); nothing else is.
-        unreachable = set(mp._GLYPHS) - _mapping_kinds()
-        assert unreachable == _SHADOWED_KINDS & set(mp._GLYPHS) == {"export", "demux"}
+    def test_registry_has_no_dead_entries(self):
+        # Every registered painter is reachable through the mapping.
+        assert set(mp._GLYPHS) <= _mapping_kinds()
+
+    def test_no_table_key_is_shadowed_by_an_earlier_one(self):
+        # First match wins, so a key containing an earlier key could never fire.
+        # "gain" before "matrixgain", "exp" before "export" and "mux" before
+        # "demux" were exactly that bug.
+        keys = [k for k, _ in mp._GLYPH_KIND_TABLE]
+        shadowed = [
+            (earlier, later)
+            for i, later in enumerate(keys)
+            for earlier in keys[:i]
+            if earlier in later
+        ]
+        assert shadowed == []
+
+    def test_formerly_shadowed_names_resolve_to_their_own_kind(self):
+        for name, kind in _FORMERLY_SHADOWED.items():
+            assert mp._glyph_kind_for(name) == kind, name
+            assert mp._glyph_kind_for(name.capitalize()) == kind, name
+        # ...while the short keys that used to swallow them still work as before.
+        for name, kind in _UNSHADOWED_NEIGHBOURS.items():
+            assert mp._glyph_kind_for(name) == kind, name
 
     def test_hys_and_dead_share_one_painter(self):
         assert mp._GLYPHS["hys"] is mp._GLYPHS["dead"]
