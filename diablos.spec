@@ -95,6 +95,15 @@ hidden_imports = (
         'pyqtgraph',
         'PIL',
         'tqdm',
+        # QSvgGenerator (vector "Export diagram as SVG") is imported lazily
+        # inside modern_ui/tools/diagram_image_exporter.py, and QtSvg is a
+        # separate shared library in Qt6 -- name it so PyInstaller ships the
+        # module and its Qt6Svg dylib/DLL. (QSvgWidget lives in
+        # PyQt6.QtSvgWidgets in Qt6; nothing here uses it, so it stays out.)
+        'PyQt6.QtSvg',
+        # matplotlib picks its Qt backend from a runtime string
+        # (`matplotlib.use("QtAgg")`), which static analysis cannot follow.
+        'matplotlib.backends.backend_qtagg',
     ]
 )
 
@@ -123,6 +132,12 @@ a = Analysis(
     excludes=[
         # Project dirs
         'tests', 'tools', 'docs', 'tasks',
+        # Other Qt bindings. A dev machine often has PyQt5 installed next to
+        # PyQt6 (and pyqtgraph/matplotlib probe for every binding at import
+        # time), which would otherwise pull a second, unused Qt into the
+        # bundle -- ~100 MB, and two Qt runtimes fighting over the platform
+        # plugin at startup.
+        'PyQt5', 'PySide2', 'PySide6',
         # Heavy packages not used by DiaBloS
         'torch', 'torchvision', 'torchaudio',
         'pandas', 'pyarrow',

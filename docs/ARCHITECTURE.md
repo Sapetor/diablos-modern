@@ -615,5 +615,6 @@ Tests are organized by component:
 ## References
 
 - Original DiaBloS: [GitHub](https://github.com/Sapetor/diablos-modern)
-- PyQt5 Documentation: [https://doc.qt.io/qtforpython-5/](https://doc.qt.io/qtforpython-5/)
+- Qt 6 Documentation: [https://doc.qt.io/qt-6/](https://doc.qt.io/qt-6/)
+- PyQt6 Reference Guide: [https://www.riverbankcomputing.com/static/Docs/PyQt6/](https://www.riverbankcomputing.com/static/Docs/PyQt6/)
 - MVC Pattern: [Martin Fowler - GUI Architectures](https://martinfowler.com/eaaDev/uiArchs.html)

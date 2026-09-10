@@ -41,8 +41,8 @@ jobs:
           cache-dependency-path: docs/requirements.txt
 
       # mkdocstrings imports lib/, blocks/ and modern_ui/ for the API reference,
-      # which pulls in PyQt5; these are the Qt shared libraries it links against.
-      # Same list as the CI test job.
+      # which pulls in PyQt6; these are the Qt6 shared libraries it links
+      # against. Same list as the CI test job.
       - name: Install Qt runtime system libraries
         run: |
           sudo apt-get update
@@ -50,13 +50,18 @@ jobs:
             libgl1 \
             libegl1 \
             libdbus-1-3 \
+            libfontconfig1 \
+            libfreetype6 \
+            libxkbcommon0 \
             libxkbcommon-x11-0 \
+            libxcb-cursor0 \
             libxcb-icccm4 \
             libxcb-image0 \
             libxcb-keysyms1 \
             libxcb-randr0 \
             libxcb-render-util0 \
             libxcb-shape0 \
+            libxcb-xfixes0 \
             libxcb-xinerama0
 
       - name: Install documentation dependencies

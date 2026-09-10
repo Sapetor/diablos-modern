@@ -1,11 +1,11 @@
 # DiaBloS Modern
 
-Block diagram simulation tool (Simulink-style) built with Python/PyQt5. Entry point: `python diablos_modern.py`.
+Block diagram simulation tool (Simulink-style) built with Python/PyQt6. Entry point: `python diablos_modern.py`.
 
 ## Architecture
 
 ```
-modern_ui/          PyQt5 GUI: main_window.py (top-level); subdirs widgets/ [modern_canvas.py],
+modern_ui/          PyQt6 GUI: main_window.py (top-level); subdirs widgets/ [modern_canvas.py],
                     controllers/, managers/ [undo/redo, clipboard, connections, selection],
                     renderers/, builders/, interactions/, tools/, themes/, styles/
 lib/                Core engine (engine/, simulation/, analysis/, plotting/, services/,
@@ -126,7 +126,7 @@ pytest tests/modern_ui/ -v          # PyQt GUI tests
 
 In addition to those subdirs (and `tests/profiling/`), ~15 `test_*.py` files live directly under `tests/`; `pytest tests/` (or bare `pytest`, via `testpaths = tests`) runs the whole suite. Markers are a fixed set declared in `pytest.ini` (`unit`, `integration`, `regression`, `slow`, `qt`, `file_io`) enforced via `--strict-markers` -- add new ones there before use.
 
-**Headless / WSL / CI**: tests construct real PyQt5 widgets. `tests/conftest.py` forces `QT_QPA_PLATFORM=offscreen` and `MPLBACKEND=Agg` at import time (before any `QApplication` is built), so the suite is headless by default no matter how it's launched -- set `DIABLOS_SHOW_WINDOWS=1` to opt back into visible windows for debugging. This in-process default matters on WSL: the `.venv-win` interpreter is a **Windows** exe, and WSL only forwards env vars listed in `WSLENV` into Win32 processes, so a shell-level `QT_QPA_PLATFORM=offscreen` prefix is silently dropped (Qt then uses the on-screen `windows` plugin and `.show()` calls pop real windows). A session-scoped autouse fixture (`_no_modal_dialogs`) also neutralizes `QDialog`/`QMessageBox` so modal dialogs never block. On Windows/WSL the repo ships a prebuilt interpreter at `.venv-win/Scripts/python.exe` -- use it to run the suite.
+**Headless / WSL / CI**: tests construct real PyQt6 widgets. `tests/conftest.py` forces `QT_QPA_PLATFORM=offscreen` and `MPLBACKEND=Agg` at import time (before any `QApplication` is built), so the suite is headless by default no matter how it's launched -- set `DIABLOS_SHOW_WINDOWS=1` to opt back into visible windows for debugging. This in-process default matters on WSL: the `.venv-win` interpreter is a **Windows** exe, and WSL only forwards env vars listed in `WSLENV` into Win32 processes, so a shell-level `QT_QPA_PLATFORM=offscreen` prefix is silently dropped (Qt then uses the on-screen `windows` plugin and `.show()` calls pop real windows). A session-scoped autouse fixture (`_no_modal_dialogs`) also neutralizes `QDialog`/`QMessageBox` so modal dialogs never block. On Windows/WSL the repo ships a prebuilt interpreter at `.venv-win/Scripts/python.exe` -- use it to run the suite. **That venv was provisioned with PyQt5 and has not been rebuilt for PyQt6**: recreate it (`python -m venv .venv-win && .venv-win/Scripts/python.exe -m pip install -r requirements.txt -r requirements-dev.txt`) before trusting a run from it.
 
 **CI**: `.github/workflows/ci.yml` runs the suite on a Python **3.9 + 3.12** matrix (ubuntu-latest) per push/PR. 3.9 is the baseline (matches the local/readthedocs env), so avoid 3.10+-only syntax -- code that passes locally on a newer Python can still break the 3.9 leg. A separate `lint` job runs `ruff check .`.
 
@@ -161,6 +161,6 @@ Key files: `diablos.spec` (PyInstaller config), `lib/app_paths.py` (frozen vs de
 
 ## Key Dependencies
 
-- **Runtime**: PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, tqdm
+- **Runtime**: PyQt6 (>= 6.7; pinned `<6.11` on Python 3.9, whose wheels 6.11 dropped), numpy, scipy, matplotlib (>= 3.5, for the `QtAgg` backend), pyqtgraph (>= 0.13), Pillow, tqdm
 - **GIF export**: Pillow >= 8.0.0
 - **MP4 export**: ffmpeg (external, `brew install ffmpeg`)

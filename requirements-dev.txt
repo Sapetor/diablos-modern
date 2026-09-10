@@ -15,5 +15,5 @@ pytest-timeout>=2.1.0  # CI backstop: fail a hung test instead of blocking the j
 ruff==0.15.18
 mypy>=1.0.0
 
-# Type stubs
-PyQt5-stubs>=5.15.0
+# Type stubs: PyQt6 ships its own .pyi files, so there is no PyQt6-stubs
+# package to install (PyQt5-stubs was a third-party stopgap and is gone).

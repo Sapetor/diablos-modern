@@ -11,7 +11,7 @@ Draw a block diagram, press <kbd>F5</kbd>, and get a plot. Then linearize it, sw
 a parameter, run a thousand seeded Monte Carlo trials, or export the whole model
 as a standalone numpy + scipy script you can put in a paper or a CI job.
 
-DiaBloS Modern is a desktop application built with PyQt5. It ships as a prebuilt
+DiaBloS Modern is a desktop application built with PyQt6. It ships as a prebuilt
 app for macOS, Windows and Linux, runs from a checkout with
 `python diablos_modern.py`, and speaks English and Spanish.
 

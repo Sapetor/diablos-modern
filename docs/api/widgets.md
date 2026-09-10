@@ -1,6 +1,6 @@
 # UI Widgets API
 
-PyQt5 widgets for the DiaBloS Modern interface.
+PyQt6 widgets for the DiaBloS Modern interface.
 
 ## ModernDiaBloSWindow
 

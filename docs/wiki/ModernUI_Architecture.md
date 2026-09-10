@@ -1,7 +1,7 @@
 # Modern UI Architecture
 
 ## Overview
-The Modern UI is built with PyQt5 and follows a component-based architecture.
+The Modern UI is built with PyQt6 and follows a component-based architecture.
 
 ## Theme System
 Themes are managed by the `ThemeManager` in `modern_ui/themes/theme_manager.py`.

@@ -10,8 +10,11 @@ mkdocstrings[python]>=0.25
 
 numpy
 scipy
-matplotlib
+matplotlib>=3.5.0
 tqdm
-pyqtgraph
-pyqt5
+pyqtgraph>=0.13.0
+# Mirrors requirements.txt: PyQt6 6.11 needs Python >= 3.10. The docs build
+# runs on 3.12, but keep the marker so a 3.9 build still resolves.
+PyQt6>=6.7,<6.11; python_version < "3.10"
+PyQt6>=6.7; python_version >= "3.10"
 Pillow

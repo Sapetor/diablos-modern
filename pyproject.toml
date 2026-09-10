@@ -22,12 +22,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "diablos-modern"
 version = "1.0.0"
-description = "Simulink-style block diagram simulation tool built with Python and PyQt5"
+description = "Simulink-style block diagram simulation tool built with Python and PyQt6"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 authors = [{ name = "DiaBloS Development Team" }]
-keywords = ["simulation", "block-diagram", "control-systems", "pyqt5", "simulink"]
+keywords = ["simulation", "block-diagram", "control-systems", "pyqt6", "simulink"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: X11 Applications :: Qt",
@@ -42,12 +42,21 @@ classifiers = [
 
 # Mirrors requirements.txt. Upper bounds guard reproducibility against
 # breaking major releases of the numerically-sensitive core.
+#
+# The two PyQt6 lines are one requirement split by an environment marker:
+# PyQt6 6.11 ships cp310-abi3 wheels only, but 3.9 is still the supported
+# baseline (see `requires-python` above and [tool.ruff] target-version), so
+# 3.9 installs get the last 3.9-compatible series. Collapse to a single
+# "PyQt6>=6.7" when the 3.9 leg is retired. matplotlib >= 3.5 is the release
+# that added the binding-agnostic `QtAgg` backend; pyqtgraph >= 0.13 is the
+# first with PyQt6 support.
 dependencies = [
     "numpy>=1.20.0,<3.0",
-    "matplotlib>=3.3.0",
+    "matplotlib>=3.5.0",
     "tqdm>=4.60.0",
-    "pyqtgraph>=0.12.0",
-    "PyQt5>=5.15.0,<5.16",
+    "pyqtgraph>=0.13.0",
+    "PyQt6>=6.7,<6.11; python_version < '3.10'",
+    "PyQt6>=6.7; python_version >= '3.10'",
     "scipy>=1.6.0,<2.0",
     "Pillow>=8.0.0",
 ]
@@ -61,7 +70,8 @@ dev = [
     "pytest-timeout>=2.1.0",
     "ruff==0.15.18",  # pinned: matches .github/workflows/ci.yml (formatter output shifts between releases)
     "mypy>=1.0.0",
-    "PyQt5-stubs>=5.15.0",
+    # No Qt stubs entry: PyQt6 ships its own .pyi files (PyQt5-stubs was a
+    # third-party stopgap for PyQt5 and has no PyQt6 successor).
 ]
 
 # Optional: symbolic features (LaTeX/MathML export, `lib/engine/symbolic_engine.py`

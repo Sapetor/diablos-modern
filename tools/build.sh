@@ -19,6 +19,16 @@ cd "$(dirname "$0")/.."
 # Detect architecture from the active Python
 ARCH=$(python -c "import platform; print(platform.machine())")
 
+# Preflight: the app must be built from a PyQt6 environment. Both historical
+# build venvs (see docs/building.md) were provisioned for PyQt5, and
+# diablos.spec now excludes PyQt5 -- building from a stale env would otherwise
+# produce a bundle with no Qt in it at all.
+QT_VERSION=$(python -c "from PyQt6.QtCore import QT_VERSION_STR; print(QT_VERSION_STR)" 2>/dev/null) || {
+  echo "ERROR: PyQt6 is not importable in the active environment." >&2
+  echo "       Re-provision it: pip install -r requirements.txt" >&2
+  exit 1
+}
+
 # Read `version` from the [project] table of pyproject.toml -- the single
 # source of truth that diablos.spec also parses. Pure sed so it works the same
 # under the 3.9 x86_64 conda env and the 3.12 arm64 venv.
@@ -32,6 +42,7 @@ DMG_NAME="DiaBloS-${VERSION}-${ARCH}.dmg"
 
 echo "==> Version:      ${VERSION}"
 echo "==> Architecture: ${ARCH}"
+echo "==> Qt:           ${QT_VERSION}"
 echo "==> Syncing block registry..."
 python tools/sync_block_registry.py
 

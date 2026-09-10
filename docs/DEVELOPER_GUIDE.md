@@ -32,7 +32,7 @@ git clone https://github.com/Sapetor/diablos-modern.git
 cd diablos-modern
 
 # Install runtime dependencies
-pip install numpy matplotlib tqdm pyqtgraph pyqt5 scipy Pillow
+pip install numpy matplotlib tqdm pyqtgraph PyQt6 scipy Pillow
 
 # Install development dependencies
 pip install -r requirements-dev.txt
@@ -291,7 +291,7 @@ from lib.models.simulation_model import SimulationModel
 model = SimulationModel()
 
 # Add a block
-from PyQt5.QtCore import QPoint
+from PyQt6.QtCore import QPoint
 
 menu_block = model.menu_blocks[0]  # Get a block template
 new_block = model.add_block(menu_block, QPoint(100, 100))
@@ -649,8 +649,8 @@ import logging
 
 # Third-party
 import numpy as np
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import QApplication
 
 # Local application
 from lib.models.simulation_model import SimulationModel
@@ -949,7 +949,7 @@ python diablos_modern.py
 
 ## Additional Resources
 
-- **PyQt5 Tutorial**: [https://www.pythonguis.com/pyqt5-tutorial/](https://www.pythonguis.com/pyqt5-tutorial/)
+- **PyQt6 Tutorial**: [https://www.pythonguis.com/pyqt6-tutorial/](https://www.pythonguis.com/pyqt6-tutorial/)
 - **NumPy Documentation**: [https://numpy.org/doc/](https://numpy.org/doc/)
 - **pytest Documentation**: [https://docs.pytest.org/](https://docs.pytest.org/)
 - **Type Hints**: [https://docs.python.org/3/library/typing.html](https://docs.python.org/3/library/typing.html)

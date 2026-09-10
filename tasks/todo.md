@@ -164,8 +164,13 @@ are parked here:
 - [ ] **pyqtgraph teardown segfault** in `tests/modern_ui/test_linearization_result_window.py`
   is only dodged (module-scoped fixture + `gc.collect()`); the result window's own
   teardown is still unfixed. See `tasks/lessons.md`, "pyqtgraph teardown segfaults".
-- [ ] **PyQt6 migration** — deliberately deferred; PyQt5 is EOL-adjacent and
-  `lib/theming/theme_manager.py` already guards the 5.9-vs-5.15 `setFamilies` split.
+- [x] **PyQt6 migration** — done 2026-09-10: the GUI, the test suite, the
+  PyInstaller spec and every dependency list moved to PyQt6 6.7+ (see the
+  `[Unreleased] → Changed` entry in CHANGELOG.md).
+- [ ] **Bump the Python baseline to 3.10 and drop the `PyQt6<6.11` marker** once
+  the 3.9 CI leg is retired — collapse the two marked `PyQt6` lines in
+  `requirements.txt`, `docs/requirements.txt` and `pyproject.toml` into a single
+  `PyQt6>=6.7`, and raise `requires-python` / ruff `target-version`.
 - [ ] **PathSim benchmark** — the competitive analysis asked for a head-to-head
   timing vs PathSim on the examples gallery; skipped because `pathsim` was not
   installed in the `diablos` env.

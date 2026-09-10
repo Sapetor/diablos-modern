@@ -14,6 +14,29 @@ build:
     # 3.12 is the newer leg of the CI matrix (.github/workflows/ci.yml);
     # the code also supports 3.9.
     python: "3.12"
+  # mkdocstrings imports modern_ui/, which imports PyQt6 -- loading the Qt6
+  # shared libraries needs these. Same list .github/workflows/docs.yml installs
+  # (Qt6 links a wider set than Qt5 did; libxcb-cursor0 is the Qt6 addition).
+  # NOTE: `QT_QPA_PLATFORM=offscreen` cannot be set from this file -- add it as
+  # an environment variable in the Read the Docs project settings if a future
+  # import ever constructs a QApplication at module scope.
+  apt_packages:
+    - libgl1
+    - libegl1
+    - libdbus-1-3
+    - libfontconfig1
+    - libfreetype6
+    - libxkbcommon0
+    - libxkbcommon-x11-0
+    - libxcb-cursor0
+    - libxcb-icccm4
+    - libxcb-image0
+    - libxcb-keysyms1
+    - libxcb-randr0
+    - libxcb-render-util0
+    - libxcb-shape0
+    - libxcb-xfixes0
+    - libxcb-xinerama0
 
 # MkDocs is the project's documentation system (mkdocs.yml, Material theme).
 mkdocs:

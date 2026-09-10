@@ -374,7 +374,7 @@ opens the per-user folder, creating it if needed.
 Loading is by file path through `importlib`, so it works identically in a
 PyInstaller bundle — where the bundled `blocks/` package is *not* scanned and
 built-ins come from the static `_BLOCK_MODULES` registry. A user block may
-import anything the bundle ships (numpy, scipy, PyQt5); an import of a
+import anything the bundle ships (numpy, scipy, PyQt6); an import of a
 third-party package that is *not* in the bundle fails cleanly with a logged
 traceback and the block is skipped.
 

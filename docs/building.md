@@ -28,18 +28,29 @@ rm -rf dist/DiaBloS-*.app build/
 
 Both `tools/build.sh` and `diablos.spec` read the version from `[project] version` in `pyproject.toml` -- the single source of truth. `modern_ui.__version__` reads it back at runtime from, in order: `_version.txt` (written into the bundle by `diablos.spec`, since a frozen app ships no `.dist-info`), `pyproject.toml` itself (dev checkout), installed distribution metadata, then a literal fallback. A frozen build therefore reports the real version rather than a hard-coded one. The DMG is named `DiaBloS-<version>-<arch>.dmg` and the bundle's `CFBundleShortVersionString` matches it, so bumping one number in `pyproject.toml` updates the window title, the About/bundle version, and the installer filename together.
 
-> **arm64 cursor bug — FIXED.** PyQt5 5.15 (arm64) had a macOS bug where the text cursor was invisible in styled QLineEdit widgets (QTBUG-109450): the native `macintosh` style fails to draw the caret in any input with a stylesheet `background-color`. Fixed by switching the app to the Fusion style on macOS + Qt >= 5.10 (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. The fix is scoped so the x86_64/PyQt5-5.9 build (native style works there) keeps its native look. arm64 is now ~10x faster to start with a fully working cursor, so it is the preferred release.
+> **macOS cursor bug — FIXED.** The native macOS style fails to draw the blinking text caret in any QLineEdit that has a stylesheet `background-color` (QTBUG-109450) — which is every input field in this app. It first bit the PyQt5 5.15 arm64 builds and is not fixed in Qt 6 either. The app therefore switches to the Fusion style on macOS (`_maybe_use_fusion_style` in `modern_ui/styles/qss_styles.py`); Fusion is stylesheet-aware and draws the caret itself. arm64 is also ~10x faster to start than the Rosetta x86_64 build, so it is the preferred release.
 
 ## Build Venvs
 
 Two separate venvs are used because PyInstaller bundles the Python interpreter from the active venv:
 
-| Env | Python | PyQt5 | Arch | Status |
+| Env | Python | PyQt6 | Arch | Status |
 |------|--------|-------|------|--------|
-| conda env `diablos_x86` (`~/opt/anaconda3/envs/diablos_x86`) | 3.9 (Anaconda) | 5.15.9 | x86_64 | x86_64 release (build via `arch -x86_64`) |
-| `~/.venvs/diablos-arm64/` | 3.12 (Homebrew) | 5.15.11 | arm64 | **Recommended release** (Fusion cursor fix) |
+| conda env `diablos_x86` (`~/opt/anaconda3/envs/diablos_x86`) | 3.9 (Anaconda) | 6.10.x (`<6.11`; 6.11 needs 3.10+) | x86_64 | x86_64 release (build via `arch -x86_64`) |
+| `~/.venvs/diablos-arm64/` | 3.12 (Homebrew) | 6.11.x | arm64 | **Recommended release** (Fusion cursor fix) |
 
-Both envs need: `PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`.
+Both envs need: `PyQt6 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`
+-- install them with `pip install -r requirements.txt pyinstaller` so the
+Python-version marker on the PyQt6 pin is honoured. The PyQt6 macOS wheels are
+`universal2`, so the same wheel serves both arches; the interpreter's
+architecture is what decides the build.
+
+!!! warning "Existing build envs still hold PyQt5"
+    Both envs above were provisioned for PyQt5. After the PyQt6 migration they
+    must be re-provisioned (`pip uninstall PyQt5 PyQt5-Qt5 PyQt5-sip` then
+    `pip install -r requirements.txt`) -- `diablos.spec` now excludes `PyQt5`,
+    so a leftover PyQt5 will not be bundled, but the app will not *run* from
+    such an env either.
 The x86_64 env is a conda env (not a `~/.venvs/` venv) and must be built under
 Rosetta. PyInstaller cannot cross-compile -- it bundles whatever interpreter is
 active, so an arm64 interpreter always yields an arm64 app regardless of flags.
@@ -66,7 +77,7 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 
 - **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date -- run automatically by `tools/build.sh`, and enforced in CI with `python tools/sync_block_registry.py --check`. The scan skips helper modules that define no block: anything listed in `EXCLUDED_MODULES`, plus any module whose name starts with `_` or ends with `_base`.
 - **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` which resolves to `~/Library/Application Support/DiaBloS/` on macOS.
-- **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt5, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included.
+- **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt6, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included. `PyQt5`, `PySide2` and `PySide6` are excluded explicitly: a dev machine often has more than one Qt binding installed, and pyqtgraph/matplotlib probe for all of them at import time, which would otherwise drag a second Qt runtime (~100 MB) into the bundle and let the two fight over the platform plugin at startup.
 - **Optional SymPy**: the symbolic features (LaTeX/MathML export via `lib/export/latex_exporter.py`, `lib/engine/symbolic_engine.py`, and each block's `symbolic_execute()`) import SymPy lazily and degrade to a warning when it is missing. SymPy is *not* in `requirements.txt`, so a default build environment produces a bundle where those features are unavailable. `diablos.spec` no longer hard-excludes it: install it in the build env (`pip install sympy`, or `pip install .[symbolic]`) and the spec picks it up automatically via `collect_submodules('sympy')`. Expect roughly +35-40 MB unpacked. The published releases are currently built **without** SymPy -- symbolic export is a niche feature and the release job installs only `requirements.txt`; add `sympy` there if you want it shipped.
 - **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
 - **Multiprocessing**: `multiprocessing.freeze_support()` is called at entry point to prevent duplicate process spawning.
@@ -102,7 +113,7 @@ cd diablos-modern
 # 3. Create venv and install dependencies
 python -m venv .venv
 .venv\Scripts\activate
-pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
+pip install -r requirements.txt pyinstaller
 
 # 4. Sync block registry and build
 python tools/sync_block_registry.py
@@ -121,15 +132,21 @@ Also works from WSL with a Windows Python, or from a GitHub Actions CI workflow.
 ## Ubuntu/Linux Build
 
 ```bash
-# 1. Install dependencies
-sudo apt install python3 python3-venv python3-pip
+# 1. Install dependencies (plus the Qt6 runtime libraries PyInstaller has to
+#    load while collecting PyQt6 -- see docs/getting-started/installation.md
+#    for the full list; libxcb-cursor0 is the Qt6-only addition)
+sudo apt install python3 python3-venv python3-pip \
+  libgl1 libegl1 libdbus-1-3 libfontconfig1 libfreetype6 \
+  libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 \
+  libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+  libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0
 
 # 2. Clone and setup
 git clone git@github.com:Sapetor/diablos-modern.git
 cd diablos-modern
 python3 -m venv .venv
 source .venv/bin/activate
-pip install PyQt5 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller
+pip install -r requirements.txt pyinstaller
 
 # 3. Build
 python tools/sync_block_registry.py

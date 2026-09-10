@@ -4,9 +4,17 @@
 # Upper bounds guard reproducibility against breaking major releases of the
 # numerically-sensitive core (the suite currently runs on numpy 2.x / scipy 1.x).
 numpy>=1.20.0,<3.0
-matplotlib>=3.3.0
+# 3.5 is the release that added the version-agnostic `QtAgg` backend, which
+# auto-detects PyQt6; older matplotlib only knows Qt5Agg.
+matplotlib>=3.5.0
 tqdm>=4.60.0
-pyqtgraph>=0.12.0
-PyQt5>=5.15.0,<5.16
+# 0.13 is the first pyqtgraph release with PyQt6 support.
+pyqtgraph>=0.13.0
+# PyQt6 6.11 dropped Python 3.9 (its wheels are cp310-abi3), but 3.9 is still
+# the project baseline (CI matrix + readthedocs, ruff target-version = py39).
+# Keep the two-marker split until the 3.9 leg is retired -- then collapse this
+# to a single `PyQt6>=6.7` line. See tasks/todo.md.
+PyQt6>=6.7,<6.11; python_version < "3.10"
+PyQt6>=6.7; python_version >= "3.10"
 scipy>=1.6.0,<2.0
 Pillow>=8.0.0  # GIF animation export

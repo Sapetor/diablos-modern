@@ -72,20 +72,30 @@ DiaBloS needs **Python 3.9 or newer** and a GUI-capable environment. CI tests
     ```
 
     Install the requirements with `pip` inside the conda environment rather than
-    from conda channels — the PyQt5 build on some channels is too old to start
-    the app.
+    from conda channels — the Qt build on some channels is too old (or is a
+    PyQt5 build) and will not start the app.
 
 Runtime dependencies (`requirements.txt`):
 
 ```
 numpy>=1.20.0,<3.0
-matplotlib>=3.3.0
+matplotlib>=3.5.0
 tqdm>=4.60.0
-pyqtgraph>=0.12.0
-PyQt5>=5.15.0,<5.16
+pyqtgraph>=0.13.0
+PyQt6>=6.7,<6.11; python_version < "3.10"
+PyQt6>=6.7; python_version >= "3.10"
 scipy>=1.6.0,<2.0
 Pillow>=8.0.0          # GIF animation export
 ```
+
+!!! note "Why PyQt6 is pinned differently on Python 3.9"
+    The GUI runs on **PyQt6**. PyQt6 6.11 dropped Python 3.9 (its wheels are
+    `cp310-abi3`), but 3.9 is still the supported baseline here, so a 3.9
+    install resolves to the last 3.9-compatible series (6.10.x / 6.9.x) while
+    3.10+ gets the current release. Nothing in the code depends on the newer
+    series; the split exists only so `pip install -r requirements.txt` keeps
+    working on 3.9. It collapses to a plain `PyQt6>=6.7` once the baseline
+    moves to 3.10.
 
 Optional external tool: **ffmpeg** for MP4 animation export from the field
 scopes (`brew install ffmpeg`, `apt install ffmpeg`). GIF export needs only
@@ -93,14 +103,17 @@ Pillow, which is already a requirement.
 
 ### Linux system libraries
 
-On a bare Ubuntu or a container, PyQt5 needs its Qt platform plugin libraries.
-This is the same list the CI jobs install:
+On a bare Ubuntu or a container, PyQt6 needs its Qt platform plugin libraries.
+Qt 6 links a slightly wider set than Qt 5 did — `libxcb-cursor0` is the classic
+addition, and its absence is the usual cause of *"could not load the Qt platform
+plugin xcb"*. This is the same list the CI jobs install:
 
 ```bash
 sudo apt-get install -y --no-install-recommends \
-  libgl1 libegl1 libdbus-1-3 libxkbcommon-x11-0 \
+  libgl1 libegl1 libdbus-1-3 libfontconfig1 libfreetype6 \
+  libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 \
   libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
-  libxcb-render-util0 libxcb-shape0 libxcb-xinerama0
+  libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0
 ```
 
 ### Development install
