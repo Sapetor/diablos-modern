@@ -94,8 +94,6 @@ class TestCanvasContextMenu:
             return real_search_widget(on_add=on_add, all_blocks=all_blocks)
 
         monkeypatch.setattr(menu_module, "_CanvasSearchWidget", spy_search_widget)
-        # Never pop the modal menu in a test run.
-        monkeypatch.setattr(menu_module.QMenu, "exec", lambda self, *a, **k: None)
 
         # QMenu needs a real QWidget parent, so stub the canvas as one.
         canvas = QWidget()

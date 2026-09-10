@@ -47,16 +47,25 @@ def _no_modal_dialogs():
     No test drives dialogs interactively (none call ``.exec()`` directly),
     so this is safe and purely a guardrail against hangs.
     """
-    from PyQt6.QtWidgets import QDialog, QMessageBox
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QDrag
+    from PyQt6.QtWidgets import QDialog, QMenu, QMessageBox
 
     originals = {}
 
-    def _accept(self, *args, **kwargs):
-        return QDialog.DialogCode.Accepted
-
-    for cls in (QDialog, QMessageBox):
+    # Under Qt6's offscreen platform QMenu.exec and QDrag.exec block just like
+    # a modal dialog, so neutralize them here too: a menu returns "nothing
+    # chosen", a drag returns "cancelled". A test that needs a chosen action
+    # monkeypatches QMenu.exec itself.
+    exec_results = {
+        QDialog: QDialog.DialogCode.Accepted,
+        QMessageBox: QDialog.DialogCode.Accepted,
+        QMenu: None,
+        QDrag: Qt.DropAction.IgnoreAction,
+    }
+    for cls, result in exec_results.items():
         originals[(cls, "exec")] = cls.exec
-        cls.exec = _accept
+        cls.exec = (lambda _r: lambda self, *a, **k: _r)(result)
 
     # The QMessageBox *static* convenience methods (information/warning/
     # critical/question) construct and exec their own dialog at the C++ level,

@@ -108,12 +108,9 @@ def test_cancelled_drag_does_not_record_recent(palette, monkeypatch):
     assert rows
     row = rows[0]
 
-    # Neutralize the blocking QDrag.exec_ so no real drag starts. This models a
-    # drag that was cancelled (Escape) or dropped outside the canvas: exec_
-    # returns without the canvas drop path ever running.
-    from PyQt6.QtGui import QDrag
-
-    monkeypatch.setattr(QDrag, "exec", lambda *a, **k: 0)
+    # QDrag.exec is neutralized suite-wide (conftest) and returns "cancelled",
+    # which models a drag dropped outside the canvas: the canvas drop path
+    # never runs.
 
     row._start_drag(None)
 
