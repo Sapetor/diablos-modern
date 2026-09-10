@@ -9,7 +9,7 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QPolygonF
 from PyQt6.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from modern_ui.themes.theme_manager import theme_manager, font_metrics, text_width
 from lib.i18n import tr
-from lib.simulation.connection import bezier_control_points
+from lib.simulation.connection import bezier_path
 
 logger = logging.getLogger(__name__)
 
@@ -278,31 +278,27 @@ class CanvasRenderer:
         ``start`` is the port the drag began on and ``end`` the cursor (or the
         snapped target port). With ``reverse`` the drag began on an *input*
         port, so the wire is oriented cursor -> port to keep the same shape it
-        will have once committed. The bezier branch shares
-        ``bezier_control_points`` with DLine so the committed wire matches the
-        preview exactly; the orthogonal branch mirrors DLine's simple
-        forward L-route (stub, vertical, stub).
+        will have once committed. The bezier branch shares ``bezier_path``
+        with DLine so the committed wire matches the preview exactly; the
+        orthogonal branch mirrors DLine's simple forward L-route (stub,
+        vertical, stub).
         """
         src, dst = (end, start) if reverse else (start, end)
-        # Qt6's QPainterPath takes QPointF only -- QPoint is no longer
-        # implicitly converted, so widen the integer coordinates here.
+        if routing_mode != "orthogonal":
+            return bezier_path(src, dst)
         path = QPainterPath(QPointF(src))
-        if routing_mode == "orthogonal":
-            if src.x() <= dst.x():
-                mid_x = (src.x() + dst.x()) // 2
-                path.lineTo(QPointF(mid_x, src.y()))
-                path.lineTo(QPointF(mid_x, dst.y()))
-            else:
-                # Feedback layout: stub out, drop halfway, come back in.
-                mid_y = (src.y() + dst.y()) // 2
-                path.lineTo(QPointF(src.x() + 20, src.y()))
-                path.lineTo(QPointF(src.x() + 20, mid_y))
-                path.lineTo(QPointF(dst.x() - 20, mid_y))
-                path.lineTo(QPointF(dst.x() - 20, dst.y()))
-            path.lineTo(QPointF(dst))
+        if src.x() <= dst.x():
+            mid_x = (src.x() + dst.x()) // 2
+            path.lineTo(QPointF(mid_x, src.y()))
+            path.lineTo(QPointF(mid_x, dst.y()))
         else:
-            cp1, cp2 = bezier_control_points(src, dst)
-            path.cubicTo(QPointF(cp1), QPointF(cp2), QPointF(dst))
+            # Feedback layout: stub out, drop halfway, come back in.
+            mid_y = (src.y() + dst.y()) // 2
+            path.lineTo(QPointF(src.x() + 20, src.y()))
+            path.lineTo(QPointF(src.x() + 20, mid_y))
+            path.lineTo(QPointF(dst.x() - 20, mid_y))
+            path.lineTo(QPointF(dst.x() - 20, dst.y()))
+        path.lineTo(QPointF(dst))
         return path
 
     def draw_temp_line(

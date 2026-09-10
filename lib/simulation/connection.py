@@ -14,24 +14,35 @@ logger = logging.getLogger(__name__)
 
 def bezier_control_points(
     start: QPoint, finish: QPoint, src_dir: int = 1, dst_dir: int = -1
-) -> Tuple[QPoint, QPoint]:
+) -> Tuple[QPointF, QPointF]:
     """Cubic control points for a wire from ``start`` to ``finish``.
 
-    The single source of truth shared by the live drag preview
-    (``CanvasRenderer.draw_temp_line``) and the committed trajectory
-    (``DLine._create_bezier_path``), so the two can never desync. The offset is
-    proportional to the straight-line distance (clamped to 100 px); the curve
-    leaves the source and enters the destination horizontally. ``src_dir`` /
-    ``dst_dir`` are the outward horizontal stub signs; the defaults (+1 / -1)
-    reproduce the standard unflipped layout the preview draws.
+    The offset is proportional to the straight-line distance (clamped to
+    100 px); the curve leaves the source and enters the destination
+    horizontally. ``src_dir`` / ``dst_dir`` are the outward horizontal stub
+    signs; the defaults (+1 / -1) reproduce the standard unflipped layout.
+    Returned as ``QPointF`` because Qt6's ``QPainterPath`` accepts nothing else.
     """
     dx = finish.x() - start.x()
     dy = finish.y() - start.y()
     distance = (dx * dx + dy * dy) ** 0.5
     offset = min(distance * 0.5, 100)
-    cp1 = QPoint(int(start.x() + src_dir * offset), start.y())
-    cp2 = QPoint(int(finish.x() + dst_dir * offset), finish.y())
+    cp1 = QPointF(int(start.x() + src_dir * offset), start.y())
+    cp2 = QPointF(int(finish.x() + dst_dir * offset), finish.y())
     return cp1, cp2
+
+
+def bezier_path(start: QPoint, finish: QPoint, src_dir: int = 1, dst_dir: int = -1) -> QPainterPath:
+    """The cubic wire path from ``start`` to ``finish``.
+
+    Single source of truth shared by the live drag preview
+    (``CanvasRenderer.preview_path``) and the committed trajectory
+    (``DLine._create_bezier_path``), so the two can never desync.
+    """
+    cp1, cp2 = bezier_control_points(start, finish, src_dir, dst_dir)
+    path = QPainterPath(QPointF(start))
+    path.cubicTo(cp1, cp2, QPointF(finish))
+    return path
 
 
 class DLine:
@@ -311,12 +322,7 @@ class DLine:
         Returns:
             Tuple of (QPainterPath, waypoints, collision segments)
         """
-        cp1, cp2 = bezier_control_points(start, finish, src_dir, dst_dir)
-
-        # Qt6's QPainterPath takes QPointF only -- QPoint is no longer
-        # implicitly converted, so widen the integer port coordinates here.
-        path = QPainterPath(QPointF(start))
-        path.cubicTo(QPointF(cp1), QPointF(cp2), QPointF(finish))
+        path = bezier_path(start, finish, src_dir, dst_dir)
 
         # A plain two-endpoint cubic has no intermediate waypoints; the single
         # bounding segment is enough for hover/click collision (the existing
