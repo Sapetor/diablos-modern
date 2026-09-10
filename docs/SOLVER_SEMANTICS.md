@@ -195,11 +195,14 @@ only as an input ordering that it then re-sorts (4.3).
 
 Each `_interpreter_step` call:
 
-1. Advance the clock and record a timeline sample (see 5.1 for the RK4 case).
-2. **Memory pass** — every memory block runs `output_only=True` and propagates,
+1. Advance the clock and record a timeline sample (`_advance_clock`; see 5.1
+   for the RK4 case).
+2. **Memory pass** (`_publish_memory_outputs`) — every memory block runs
+   `output_only=True` and propagates,
    so consumers see last step's state. A discrete block that is not due
    propagates its held output instead.
-3. **Hierarchy passes** — for `hier` in `0 .. max_hier`, execute every
+3. **Hierarchy passes** (`_run_hierarchy_passes` / `_execute_ready_block`) —
+   for `hier` in `0 .. max_hier`, execute every
    uncomputed block at that level whose required inputs have arrived, repeating
    within the level until no progress is made, and repeating the whole sweep
    until no progress is made anywhere. (The inner repeat handles two blocks at

@@ -364,9 +364,22 @@ complexity 25, all listed here.
   `_execution_groups`, `_state_output_preloads`, `_make_model_func`, and a
   `_build_executors` method. Same trace-diff verification as the replay split
   (115/115 arrays bit-identical). Tests: `tests/unit/test_system_compiler_phases.py`.
-- [ ] **`DSim._interpreter_step`** (`lib/lib.py`, 296 lines, C901 = 41). Same
-  treatment: extract the phases as named methods; verify with the interpreted-path
-  variant of the trace-diff recipe (`use_fast_solver=False`).
+- [x] **`DSim._interpreter_step`** (`lib/lib.py`, was 296 lines, C901 = 41) —
+  done 2026-09-10. Now a ~50-line sequence over named phases: `_advance_clock`,
+  `_publish_memory_outputs`, `_run_hierarchy_passes` / `_execute_ready_block`,
+  `_is_end_of_run`, `_finish_run`, plus `_block_failed`, `_propagate_held_outputs`
+  and `_has_enough_inputs` (worst remaining C901 = 10). Verified with the
+  interpreted-path trace-diff (`use_fast_solver=False`, all 55 examples: 114/114
+  arrays bit-identical). Tests: `tests/unit/test_interpreter_step_phases.py` (39).
+  `docs/SOLVER_SEMANTICS.md` 4.2 names the phase methods.
+  - [ ] Found while verifying (pre-existing, not fixed to keep the refactor
+    behaviour-preserving): `examples/van_der_pol_stiff.diablos` on the
+    **interpreted** path dies with `argument of type 'bool' is not iterable`.
+    A block's `execute()` raises inside `solve_ivp` (`array must not contain
+    infs or NaNs`), `SimulationEngine.execute_block` returns a bool instead of
+    an error dict, and `DSim._block_failed` does `"E" in out_value`. Make
+    `execute_block` return `{'E': True, 'error': ...}` (or make `_block_failed`
+    accept non-dicts) so the user sees the block error, not a TypeError.
 - [ ] **`DSim` facade** (`lib/lib.py`, 1825 lines, 87 methods, 27 of them
   one-line delegations to `engine` / `subsystem_manager`). Finish the facade:
   callers go to the owner, the shims go. Related core-layer debris:
