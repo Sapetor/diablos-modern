@@ -456,8 +456,29 @@ complexity 25, all listed here.
   line, partially connected Sum, fan-out from one port, single block, empty) and
   comparing ports, sub-blocks, sub-lines (incl. routed points), remaining lines
   and dirty flag — all identical. Tests: `tests/unit/test_subsystem_creation_helpers.py`.
-- [ ] **Remaining large routine functions**: `ClipboardManager.paste_blocks` (228
-  lines); `solve_with_events` (232). Extract when next touched.
+- [x] **`ClipboardManager.paste_blocks`** (was 228 lines, C901 = 23) — done
+  2026-09-10 (agent-driven, worktree). Now a 28-line orchestrator (C901 = 5):
+  `_deselect_all_blocks` → `_instantiate_pasted_blocks` (`_instantiate_block` →
+  `_build_dblock` / `_build_subsystem` → `_restore_subsystem_contents`,
+  `_keep_mask_appearance`) → `_recreate_connections` (`_paste_connection`) →
+  `_finish_paste`; pure helpers `_paste_offset`, `_next_block_sid`, `_next_line_sid`,
+  `_find_block_class`, `_user_param_keys`, `_resolve_endpoints`;
+  `KEYBOARD_PASTE_OFFSET = 30`; the lazy DBlock/DLine/Subsystem imports moved to
+  module top (import graph checked acyclic). Verified old-vs-new on 11 paste
+  scenarios (Ctrl+V, explicit pos, partial selection, sid/line-id collision, triple
+  re-paste, empty clipboard, Subsystem with sub-blocks/lines/ports, masked
+  Subsystem, bad connection indices, no history manager, mid-paste failure) — all
+  identical incl. signals and undo stack. Tests: `tests/unit/test_clipboard_paste_phases.py` (26).
+  - [ ] Found while verifying (pre-existing, kept identical): (a) pasting a
+    Subsystem drops every copied connection to/from it — `_build_subsystem`
+    creates it with 0 in/out ports and never re-runs `update_Block()`, so
+    `in_coords`/`out_coords` are empty when `_resolve_endpoints` runs; (b) pasted
+    Subsystems get `username="Subsystem{sid}"` vs `name="subsystem{sid}"`, so
+    `apply_mask_appearance` (`lib/masks.py:383`) never adopts the mask name; (c) a
+    failure mid-paste leaves the already-pasted blocks in place with an undo entry
+    pushed but `dirty` unset and no redraw.
+- [ ] **`solve_with_events`** (`lib/engine/zero_crossing.py`, 232 lines, C901 = 25).
+  Extract when next touched.
 - [x] **Palette glyphs** — `modern_palette._draw_glyph` (was 158 lines, C901 = 36)
   — done 2026-09-10 (agent-driven, worktree). Now a 9-line lookup (C901 = 3) into
   `_GLYPHS: Dict[str, Callable]` with one `_glyph_<kind>` painter per kind grouped

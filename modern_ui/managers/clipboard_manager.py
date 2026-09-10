@@ -7,9 +7,98 @@ import logging
 import copy
 from PyQt5.QtCore import QRect, QPoint
 
+from blocks.subsystem import Subsystem
 from lib.i18n import tr
+from lib.masks import apply_mask_appearance
+from lib.simulation.block import DBlock
+from lib.simulation.connection import DLine
 
 logger = logging.getLogger(__name__)
+
+# Keyboard paste (Ctrl+V) lands this far right/down from the copied position so
+# the pasted blocks don't sit exactly on top of the originals.
+KEYBOARD_PASTE_OFFSET = 30
+
+
+def _paste_offset(pos, first_coords):
+    """Translation applied to every copied rect.
+
+    ``pos`` (context-menu "paste here") puts the first copied block's top-left
+    on it; ``None`` (Ctrl+V) uses the fixed keyboard offset.
+    """
+    if pos is None:
+        return QPoint(KEYBOARD_PASTE_OFFSET, KEYBOARD_PASTE_OFFSET)
+    return QPoint(pos.x() - first_coords.x(), pos.y() - first_coords.y())
+
+
+def _next_block_sid(blocks_list, block_fn):
+    """Next free numeric id for ``block_fn`` (same rule as SimulationModel.add_block)."""
+    id_list = [
+        int(b_elem.name[len(b_elem.block_fn) :])
+        for b_elem in blocks_list
+        if b_elem.block_fn == block_fn
+    ]
+    return max(id_list) + 1 if id_list else 0
+
+
+def _next_line_sid(line_list):
+    """Next free line id."""
+    line_ids = [line.sid for line in line_list]
+    return max(line_ids) + 1 if line_ids else 0
+
+
+def _find_block_class(menu_blocks, block_fn):
+    """Block class of the palette entry for ``block_fn`` (None when there is none)."""
+    for menu_block in menu_blocks:
+        if menu_block.block_fn == block_fn:
+            return menu_block.block_class
+    return None
+
+
+def _user_param_keys(params):
+    """Keys that DBlock would put in ``init_params_list``: everything not ``_dunder_``."""
+    return [key for key in params if not (key.startswith("_") and key.endswith("_"))]
+
+
+def _resolve_endpoints(conn_data, pasted_blocks):
+    """Map a copied connection onto the pasted blocks.
+
+    Returns ``(start_block, start_port, end_block, end_port)``, or ``None``
+    (after logging a warning) when a block or port index is out of range.
+    """
+    start_idx = conn_data["start_index"]
+    end_idx = conn_data["end_index"]
+    start_port = conn_data["start_port"]
+    end_port = conn_data["end_port"]
+    n_pasted = len(pasted_blocks)
+
+    logger.info(
+        f"Paste: Connection start_idx={start_idx}, end_idx={end_idx}, ports=({start_port},{end_port}), pasted_blocks len={n_pasted}"
+    )
+    if start_idx >= n_pasted:
+        logger.warning(
+            f"Skipping connection: start_index {start_idx} >= pasted_blocks length {n_pasted}"
+        )
+        return None
+    if end_idx >= n_pasted:
+        logger.warning(
+            f"Skipping connection: end_index {end_idx} >= pasted_blocks length {n_pasted}"
+        )
+        return None
+
+    start_block = pasted_blocks[start_idx]
+    end_block = pasted_blocks[end_idx]
+    if start_port >= len(start_block.out_coords):
+        logger.warning(
+            f"Skipping connection: start_port {start_port} >= out_coords length {len(start_block.out_coords)} for {start_block.name}"
+        )
+        return None
+    if end_port >= len(end_block.in_coords):
+        logger.warning(
+            f"Skipping connection: end_port {end_port} >= in_coords length {len(end_block.in_coords)} for {end_block.name}"
+        )
+        return None
+    return start_block, start_port, end_block, end_port
 
 
 class ClipboardManager:
@@ -159,217 +248,158 @@ class ClipboardManager:
             # Push undo state before pasting
             if hasattr(self.canvas, "history_manager"):
                 self.canvas.history_manager.push_undo("Paste")
+            self._deselect_all_blocks()
 
-            # Deselect all current blocks
-            for block in self.dsim.blocks_list:
-                block.selected = False
-
-            if pos is None:
-                paste_offset = QPoint(30, 30)
-            else:
-                first_coords = self.clipboard_blocks[0]["coords"]
-                paste_offset = QPoint(pos.x() - first_coords.x(), pos.y() - first_coords.y())
-
-            # Create new blocks from clipboard
-            pasted_blocks = []
-            for block_data in self.clipboard_blocks:
-                # Offset the position
-                new_coords = block_data["coords"].translated(paste_offset)
-
-                # Import DBlock class
-                from lib.simulation.block import DBlock
-
-                # Calculate unique ID for this block type (same logic as SimulationModel.add_block)
-                block_fn = block_data["block_fn"]
-                id_list = [
-                    int(b_elem.name[len(b_elem.block_fn) :])
-                    for b_elem in self.dsim.blocks_list
-                    if b_elem.block_fn == block_fn
-                ]
-                sid = max(id_list) + 1 if id_list else 0
-
-                # Find the corresponding MenuBlock to get block_class
-                block_class = None
-                for menu_block in self.dsim.menu_blocks:
-                    if menu_block.block_fn == block_fn:
-                        block_class = menu_block.block_class
-                        break
-
-                # SPECIAL HANDLING FOR SUBSYSTEM
-                if block_fn == "Subsystem":
-                    from blocks.subsystem import Subsystem
-
-                    new_block = Subsystem(
-                        block_name=f"Subsystem{sid}",  # Default name will be corrected by DBlock init logic or manually set below
-                        sid=sid,
-                        coords=new_coords,
-                        color=block_data["color"],
-                    )
-                    # Restore other attributes
-                    new_block.io_edit = block_data["io_edit"]
-                    new_block.fn_name = block_data["fn_name"]
-                    # Deep copy so repeated pastes get independent (possibly nested) params
-                    new_block.params = copy.deepcopy(block_data["params"])
-                    # Subsystem() starts with an empty params dict, so its
-                    # init_params_list (which gates saving_params) would drop
-                    # everything pasted here -- the mask, its parameter values,
-                    # a library back-reference -- on the next save. Recompute
-                    # it with the same rule DBlock uses.
-                    new_block.init_params_list = [
-                        key
-                        for key in new_block.params
-                        if not (key.startswith("_") and key.endswith("_"))
-                    ]
-                    new_block.params["_name_"] = new_block.name  # Ensure params name matches
-                    new_block.external = block_data["external"]
-                    new_block.category = block_data.get("category", "Other")
-
-                    # Restore internal structure if available
-                    if "sub_blocks" in block_data:
-                        try:
-                            new_block.sub_blocks = copy.deepcopy(block_data["sub_blocks"])
-                            new_block.sub_lines = copy.deepcopy(block_data["sub_lines"])
-                            new_block.ports = copy.deepcopy(block_data.get("ports", {}))
-                            new_block.ports_map = copy.deepcopy(block_data.get("ports_map", {}))
-
-                            logger.info(
-                                f"Restored {len(new_block.sub_blocks)} internal blocks for {new_block.name}"
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"Error restoring subsystem contents for {new_block.name}: {e}"
-                            )
-
-                else:
-                    new_block = DBlock(
-                        block_fn=block_fn,
-                        sid=sid,
-                        coords=new_coords,
-                        color=block_data["color"],
-                        in_ports=block_data["in_ports"],
-                        out_ports=block_data["out_ports"],
-                        b_type=block_data["b_type"],
-                        io_edit=block_data["io_edit"],
-                        fn_name=block_data["fn_name"],
-                        # Deep copy so repeated pastes get independent (possibly nested) params
-                        params=copy.deepcopy(block_data["params"]),
-                        external=block_data["external"],
-                        username="",  # Let it default to new name
-                        block_class=block_class,
-                        colors=self.dsim.colors,
-                        category=block_data.get("category", "Other"),
-                    )
-                new_block.flipped = block_data["flipped"]
-                new_block.selected = True  # Select the pasted blocks
-
-                # A pasted masked subsystem keeps showing its mask name.
-                try:
-                    from lib.masks import apply_mask_appearance
-
-                    apply_mask_appearance(new_block)
-                except Exception as e:  # pragma: no cover - defensive
-                    logger.debug(f"Could not apply mask appearance on paste: {e}")
-
-                # Add to blocks list
-                self.dsim.blocks_list.append(new_block)
-                pasted_blocks.append(new_block)
-
-            # Recreate Connections
-            from lib.simulation.connection import DLine
-
-            logger.info(
-                f"Paste: {len(pasted_blocks)} pasted blocks, {len(self.clipboard_connections)} connections to recreate"
-            )
-            logger.info(f"Paste: clipboard_blocks has {len(self.clipboard_blocks)} entries")
-            for conn_data in self.clipboard_connections:
-                try:
-                    start_idx = conn_data["start_index"]
-                    end_idx = conn_data["end_index"]
-                    start_port = conn_data["start_port"]
-                    end_port = conn_data["end_port"]
-
-                    logger.info(
-                        f"Paste: Connection start_idx={start_idx}, end_idx={end_idx}, ports=({start_port},{end_port}), pasted_blocks len={len(pasted_blocks)}"
-                    )
-
-                    # Get blocks with explicit error checking
-                    if start_idx >= len(pasted_blocks):
-                        logger.warning(
-                            f"Skipping connection: start_index {start_idx} >= pasted_blocks length {len(pasted_blocks)}"
-                        )
-                        continue
-                    if end_idx >= len(pasted_blocks):
-                        logger.warning(
-                            f"Skipping connection: end_index {end_idx} >= pasted_blocks length {len(pasted_blocks)}"
-                        )
-                        continue
-
-                    start_block = pasted_blocks[start_idx]
-                    end_block = pasted_blocks[end_idx]
-
-                    # Check port indices
-                    if start_port >= len(start_block.out_coords):
-                        logger.warning(
-                            f"Skipping connection: start_port {start_port} >= out_coords length {len(start_block.out_coords)} for {start_block.name}"
-                        )
-                        continue
-                    if end_port >= len(end_block.in_coords):
-                        logger.warning(
-                            f"Skipping connection: end_port {end_port} >= in_coords length {len(end_block.in_coords)} for {end_block.name}"
-                        )
-                        continue
-
-                    # Create new line
-                    # Need new SID
-                    line_ids = [l.sid for l in self.dsim.line_list]
-                    new_sid = max(line_ids) + 1 if line_ids else 0
-
-                    # Minimal points (start/end)
-                    p1 = start_block.out_coords[start_port]
-                    p2 = end_block.in_coords[end_port]
-
-                    new_line = DLine(
-                        sid=new_sid,
-                        srcblock=start_block.name,
-                        srcport=start_port,
-                        dstblock=end_block.name,
-                        dstport=end_port,
-                        points=[p1, p2],
-                    )
-
-                    # Ensure path is calculated
-                    # Add to list FIRST so update_line can see it if it needs to check existence (though it mainly checks blocks)
-                    self.dsim.line_list.append(new_line)
-
-                    try:
-                        # Pass the full block list including new ones
-                        new_line.update_line(self.dsim.blocks_list)
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to update trajectory for pasted line {new_sid}: {e}"
-                        )
-
-                except IndexError:
-                    logger.warning("Skipping connection: Block index out of range")
-                except Exception as e:
-                    logger.error(f"Error pasting connection: {e}")
-
-            # Mark as dirty
-            self.dsim.dirty = True
-
-            # Redraw canvas
-            self.canvas.update()
-
-            logger.info(f"Pasted {len(pasted_blocks)} block(s)")
-
-            # Emit signal for first pasted block if any
-            if pasted_blocks:
-                self.canvas.block_selected.emit(pasted_blocks[0])
+            offset = _paste_offset(pos, self.clipboard_blocks[0]["coords"])
+            pasted_blocks = self._instantiate_pasted_blocks(offset)
+            self._recreate_connections(pasted_blocks)
+            self._finish_paste(pasted_blocks)
 
         except Exception as e:
             logger.error(f"Error pasting blocks: {str(e)}")
             if hasattr(self.canvas, "simulation_status_changed"):
                 self.canvas.simulation_status_changed.emit(tr("Paste failed: {error}", error=e))
+
+    def _deselect_all_blocks(self):
+        """Clear the selection so only the pasted blocks end up selected."""
+        for block in self.dsim.blocks_list:
+            block.selected = False
+
+    def _instantiate_pasted_blocks(self, offset):
+        """Create one new block per clipboard entry and append it to the diagram in order."""
+        pasted_blocks = []
+        for block_data in self.clipboard_blocks:
+            new_block = self._instantiate_block(block_data, block_data["coords"].translated(offset))
+            new_block.flipped = block_data["flipped"]
+            new_block.selected = True  # Select the pasted blocks
+            self._keep_mask_appearance(new_block)
+            self.dsim.blocks_list.append(new_block)
+            pasted_blocks.append(new_block)
+        return pasted_blocks
+
+    def _instantiate_block(self, block_data, coords):
+        """Build the DBlock or Subsystem for one clipboard entry at ``coords``."""
+        block_fn = block_data["block_fn"]
+        # Computed against the live list, so blocks pasted earlier in this batch count.
+        sid = _next_block_sid(self.dsim.blocks_list, block_fn)
+        if block_fn == "Subsystem":
+            return self._build_subsystem(block_data, sid, coords)
+        block_class = _find_block_class(self.dsim.menu_blocks, block_fn)
+        return self._build_dblock(block_data, sid, coords, block_class)
+
+    def _build_dblock(self, block_data, sid, coords, block_class):
+        """Plain block: a DBlock reconstructed from the copied attributes."""
+        return DBlock(
+            block_fn=block_data["block_fn"],
+            sid=sid,
+            coords=coords,
+            color=block_data["color"],
+            in_ports=block_data["in_ports"],
+            out_ports=block_data["out_ports"],
+            b_type=block_data["b_type"],
+            io_edit=block_data["io_edit"],
+            fn_name=block_data["fn_name"],
+            # Deep copy so repeated pastes get independent (possibly nested) params
+            params=copy.deepcopy(block_data["params"]),
+            external=block_data["external"],
+            username="",  # Let it default to new name
+            block_class=block_class,
+            colors=self.dsim.colors,
+            category=block_data.get("category", "Other"),
+        )
+
+    def _build_subsystem(self, block_data, sid, coords):
+        """Subsystem: built with its own constructor, then attributes and contents restored."""
+        new_block = Subsystem(
+            block_name=f"Subsystem{sid}",
+            sid=sid,
+            coords=coords,
+            color=block_data["color"],
+        )
+        new_block.io_edit = block_data["io_edit"]
+        new_block.fn_name = block_data["fn_name"]
+        # Deep copy so repeated pastes get independent (possibly nested) params
+        new_block.params = copy.deepcopy(block_data["params"])
+        # Subsystem() starts with an empty params dict, so its init_params_list
+        # (which gates saving_params) would drop everything pasted here -- the
+        # mask, its parameter values, a library back-reference -- on the next
+        # save. Recompute it with the same rule DBlock uses.
+        new_block.init_params_list = _user_param_keys(new_block.params)
+        new_block.params["_name_"] = new_block.name  # Ensure params name matches
+        new_block.external = block_data["external"]
+        new_block.category = block_data.get("category", "Other")
+        if "sub_blocks" in block_data:
+            self._restore_subsystem_contents(new_block, block_data)
+        return new_block
+
+    @staticmethod
+    def _restore_subsystem_contents(new_block, block_data):
+        """Copy the internal blocks, lines and port maps captured at copy time onto ``new_block``."""
+        try:
+            new_block.sub_blocks = copy.deepcopy(block_data["sub_blocks"])
+            new_block.sub_lines = copy.deepcopy(block_data["sub_lines"])
+            new_block.ports = copy.deepcopy(block_data.get("ports", {}))
+            new_block.ports_map = copy.deepcopy(block_data.get("ports_map", {}))
+            logger.info(
+                f"Restored {len(new_block.sub_blocks)} internal blocks for {new_block.name}"
+            )
+        except Exception as e:
+            logger.error(f"Error restoring subsystem contents for {new_block.name}: {e}")
+
+    @staticmethod
+    def _keep_mask_appearance(new_block):
+        """A pasted masked subsystem keeps showing its mask name."""
+        try:
+            apply_mask_appearance(new_block)
+        except Exception as e:  # pragma: no cover - defensive
+            logger.debug(f"Could not apply mask appearance on paste: {e}")
+
+    def _recreate_connections(self, pasted_blocks):
+        """Re-point every copied connection at the pasted blocks and add it to the diagram."""
+        logger.info(
+            f"Paste: {len(pasted_blocks)} pasted blocks, {len(self.clipboard_connections)} connections to recreate"
+        )
+        logger.info(f"Paste: clipboard_blocks has {len(self.clipboard_blocks)} entries")
+        for conn_data in self.clipboard_connections:
+            try:
+                self._paste_connection(conn_data, pasted_blocks)
+            except IndexError:
+                logger.warning("Skipping connection: Block index out of range")
+            except Exception as e:
+                logger.error(f"Error pasting connection: {e}")
+
+    def _paste_connection(self, conn_data, pasted_blocks):
+        """Create one DLine between two pasted blocks; skipped when the endpoints don't resolve."""
+        endpoints = _resolve_endpoints(conn_data, pasted_blocks)
+        if endpoints is None:
+            return
+        start_block, start_port, end_block, end_port = endpoints
+
+        new_sid = _next_line_sid(self.dsim.line_list)
+        new_line = DLine(
+            sid=new_sid,
+            srcblock=start_block.name,
+            srcport=start_port,
+            dstblock=end_block.name,
+            dstport=end_port,
+            # Minimal points (start/end); update_line computes the real path
+            points=[start_block.out_coords[start_port], end_block.in_coords[end_port]],
+        )
+        # Add to list FIRST so update_line can see it if it needs to check existence
+        self.dsim.line_list.append(new_line)
+        try:
+            # Pass the full block list including new ones
+            new_line.update_line(self.dsim.blocks_list)
+        except Exception as e:
+            logger.warning(f"Failed to update trajectory for pasted line {new_sid}: {e}")
+
+    def _finish_paste(self, pasted_blocks):
+        """Mark the diagram dirty, redraw, and announce the first pasted block."""
+        self.dsim.dirty = True
+        self.canvas.update()
+        logger.info(f"Pasted {len(pasted_blocks)} block(s)")
+        if pasted_blocks:
+            self.canvas.block_selected.emit(pasted_blocks[0])
 
     def cut_selected_blocks(self):
         """Cut selected blocks to clipboard."""
