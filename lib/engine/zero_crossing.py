@@ -262,6 +262,27 @@ def _reset_mode_states(mode_states, frozen: bool) -> None:
         holder["frozen"] = bool(frozen) and bool(holder.get("event_driven", False))
 
 
+@dataclass
+class _SegmentLoop:
+    """Mutable state the segmented driver carries from one segment to the next.
+
+    Attributes:
+        idx: Next unfilled column of the output grid.
+        t_start, y_start: Where the next segment starts (a nudge past the
+            last root, with the state carried across the gap).
+        events_active: False once the chattering guard has tripped.
+        last_event_t: Instant of the previous located root, or None.
+        chatter_streak: Consecutive roots closer than the minimum separation.
+    """
+
+    idx: int
+    t_start: float
+    y_start: np.ndarray
+    events_active: bool = True
+    last_event_t: Optional[float] = None
+    chatter_streak: int = 0
+
+
 def solve_with_events(
     model_func,
     t_span,
@@ -287,6 +308,17 @@ def solve_with_events(
     the returned ``t`` is exactly ``t_eval`` and ``y`` has the same
     ``(n_states, len(t_eval))`` shape a plain ``solve_ivp`` would return --
     replay, scope capture, CSV/NPZ export and plotting see no difference.
+
+    The phases, in order, are the private helpers below: ``_step_cap`` (cap the
+    solver stride when a non-monotonic event is present), ``_seed_modes`` (run
+    the ``on_start`` hooks at ``t0``), then per segment ``_fill_gap_samples``
+    (grid points inside a restart nudge), ``_run_segment`` (one ``solve_ivp``
+    call, output written in place), ``_resolve_event`` (earliest root and every
+    event at that instant), ``_apply_discrete_updates`` (``on_event`` hooks),
+    ``_record_event`` (log, mode snapshot, count), ``_update_chatter_guard``
+    (streak / cap bookkeeping), ``_restart_point`` (nudged ``t`` and the state
+    one Euler step past the root) and, once the guard trips, ``_disable_events``
+    followed by ``_finish_fixed_step``.
 
     Args:
         model_func: Compiled RHS with an ``.evaluate(t, y)`` attribute (see
@@ -337,163 +369,265 @@ def solve_with_events(
     result.y = np.zeros((y0.size, n_points))
 
     _reset_mode_states(mode_states, frozen=True)
-
-    # A monotonic event (a Step edge, say) cannot hide a round trip through
-    # zero inside one step, so a diagram whose only discontinuities are
-    # scheduled in time keeps the solver's full stride.
-    step_cap = np.inf
-    if max_step and np.isfinite(max_step) and max_step > 0:
-        if any(not spec.monotonic for spec in specs):
-            step_cap = float(max_step)
-
+    step_cap = _step_cap(max_step, specs)
     cache = _SignalCache(model_func.evaluate)
-
-    # Seed discrete modes from the initial condition before the first segment,
-    # so a latch whose input already sits past a threshold starts in the right
-    # mode instead of switching spuriously on the way back.
-    if any(spec.on_start is not None for spec in specs):
-        try:
-            initial_signals = cache.signals(t0, y0)
-            for spec in specs:
-                if spec.on_start is not None:
-                    spec.on_start(t0, y0, initial_signals)
-        except Exception:  # noqa: BLE001 - seeding is best-effort
-            logger.debug("Event mode seeding failed at t0", exc_info=True)
-        cache.invalidate()
+    _seed_modes(specs, cache, t0, y0)
     result.mode_history.append((t0, _snapshot_modes(mode_states)))
-
     event_callables = [_make_event_callable(spec, cache) for spec in specs]
 
-    idx = 0
-    t_start = t0
-    y_start = y0.copy()
-    events_active = True
-    last_event_t = None
-    chatter_streak = 0
-
+    loop = _SegmentLoop(idx=0, t_start=t0, y_start=y0.copy())
     while True:
-        # Grid points inside a restart nudge gap: the state is continuous
-        # there, so carry the event-time state across the (sub-picosecond) gap
-        # rather than dropping the sample and shortening the output.
-        while idx < n_points and t_eval[idx] < t_start:
-            result.y[:, idx] = y_start
-            idx += 1
-        if idx >= n_points:
+        loop.idx = _fill_gap_samples(result, t_eval, loop.idx, loop.t_start, loop.y_start)
+        if loop.idx >= n_points:
             break
 
-        segment_eval = t_eval[idx:]
-        sol = solve_ivp(
+        sol = _run_segment(
+            solve_ivp,
             model_func,
-            (t_start, tf),
-            y_start,
-            t_eval=segment_eval,
-            method=method,
-            rtol=rtol,
-            atol=atol,
-            max_step=step_cap if events_active else np.inf,
-            events=event_callables if events_active else None,
+            tf,
+            t_eval,
+            loop,
+            result,
+            method,
+            rtol,
+            atol,
+            step_cap,
+            event_callables,
         )
-        result.n_segments += 1
-        result.nfev += int(getattr(sol, "nfev", 0) or 0)
-        result.njev += int(getattr(sol, "njev", 0) or 0)
-        result.nlu += int(getattr(sol, "nlu", 0) or 0)
-        result.message = str(getattr(sol, "message", "") or "")
-        result.status = int(getattr(sol, "status", 0) or 0)
-
-        # A segment that ends before the next grid point produces no output
-        # samples at all -- and scipy then leaves `t`/`y` as the empty *lists*
-        # it accumulates into, so normalise before touching `.size`.
-        seg_t = np.asarray(sol.t, dtype=float)
-        produced = int(seg_t.size)
-        if produced:
-            result.y[:, idx : idx + produced] = np.asarray(sol.y, dtype=float)
-            idx += produced
-
         if not sol.success:
             result.success = False
             break
-
         if sol.status != 1:
             # Reached t_end with no further event: every remaining grid point
             # was produced by this segment.
             result.status = 0
             break
 
-        t_event, y_event, fired = _resolve_event(sol, specs, min_separation, y_start)
+        t_event, y_event, fired = _resolve_event(sol, specs, min_separation, loop.y_start)
         if t_event is None:
             # Terminal status without a locatable root (defensive).
             result.status = 0
             break
 
-        cache.invalidate()
-        signals_at_event = cache.signals(t_event, y_event)
-        for spec in fired:
-            if spec.on_event is not None:
-                try:
-                    spec.on_event(t_event, y_event, signals_at_event)
-                except Exception:  # noqa: BLE001 - a bad update must not abort the run
-                    logger.warning(
-                        "Discrete update for event %s failed at t=%.12g", spec.name, t_event
-                    )
+        _apply_discrete_updates(fired, t_event, y_event, cache)
+        _record_event(result, mode_states, t_event, fired)
+        _update_chatter_guard(result, loop, t_event, fired, min_separation, max_events)
+        loop.t_start, loop.y_start = _restart_point(model_func, t_event, y_event, nudge, tf)
         cache.invalidate()
 
-        result.event_log.append((float(t_event), [spec.name for spec in fired]))
-        result.mode_history.append((float(t_event), _snapshot_modes(mode_states)))
-        result.n_events += 1
-
-        if last_event_t is not None and (t_event - last_event_t) < min_separation:
-            chatter_streak += 1
-        else:
-            chatter_streak = 0
-        last_event_t = t_event
-
-        if chatter_streak >= CHATTER_STREAK_LIMIT:
-            result.guard_tripped = True
-            result.guard_reason = (
-                "chattering: {} consecutive events closer than {:.3g}s "
-                "(around t={:.6g}s, {})".format(
-                    CHATTER_STREAK_LIMIT,
-                    min_separation,
-                    t_event,
-                    ", ".join(spec.name for spec in fired),
-                )
-            )
-        elif result.n_events >= max_events:
-            result.guard_tripped = True
-            result.guard_reason = "event cap of {} reached at t={:.6g}s".format(max_events, t_event)
-
-        t_start = t_event + nudge
-        if not (t_start > t_event):  # nudge lost to rounding at huge |t|
-            t_start = float(np.nextafter(t_event, tf + 1.0))
-        y_start = _state_at_restart(model_func, t_event, y_event, t_start - t_event)
-        cache.invalidate()
-
-        if result.guard_tripped and events_active:
-            logger.warning(
-                "Zero-crossing detection disabled for the rest of this run -- %s. "
-                "Switching instants after this point are located only to step "
-                "accuracy. Add hysteresis to the switching element, or turn "
-                "zero-crossing off in Simulation settings to silence this.",
-                result.guard_reason,
-            )
-            events_active = False
-            result.events_off_at = float(t_start)
-            # Latching blocks go back to updating their mode from the RHS: with
-            # events off nothing else would ever advance them.
-            _reset_mode_states_frozen(mode_states, False)
+        if result.guard_tripped and loop.events_active:
+            _disable_events(result, loop, mode_states)
             if fallback_integrator is not None:
-                idx = _finish_fixed_step(
-                    result, model_func, t_eval, idx, t_start, y_start, fallback_integrator
+                loop.idx = _finish_fixed_step(
+                    result,
+                    model_func,
+                    t_eval,
+                    loop.idx,
+                    loop.t_start,
+                    loop.y_start,
+                    fallback_integrator,
                 )
                 break
 
-    # A failed or truncated solve leaves the tail unfilled; mirror scipy by
-    # reporting only what was integrated so callers see the short array.
-    if idx < n_points:
+    _truncate_to_produced(result, t_eval, loop.idx)
+    return result
+
+
+def _step_cap(max_step, specs: List[EventSpec]) -> float:
+    """Solver step cap: ``max_step`` when some event is non-monotonic, else unbounded.
+
+    A monotonic event (a Step edge, say) cannot hide a round trip through zero
+    inside one step, so a diagram whose only discontinuities are scheduled in
+    time keeps the solver's full stride.
+    """
+    step_cap = np.inf
+    if max_step and np.isfinite(max_step) and max_step > 0:
+        if any(not spec.monotonic for spec in specs):
+            step_cap = float(max_step)
+    return step_cap
+
+
+def _seed_modes(specs: List[EventSpec], cache: _SignalCache, t0: float, y0: np.ndarray) -> None:
+    """Run every ``on_start`` hook at ``(t0, y0)`` and drop the cached signals.
+
+    Seeds discrete modes from the initial condition before the first segment,
+    so a latch whose input already sits past a threshold starts in the right
+    mode instead of switching spuriously on the way back.  A diagram with no
+    ``on_start`` hooks costs nothing here.
+    """
+    if not any(spec.on_start is not None for spec in specs):
+        return
+    try:
+        initial_signals = cache.signals(t0, y0)
+        for spec in specs:
+            if spec.on_start is not None:
+                spec.on_start(t0, y0, initial_signals)
+    except Exception:  # noqa: BLE001 - seeding is best-effort
+        logger.debug("Event mode seeding failed at t0", exc_info=True)
+    cache.invalidate()
+
+
+def _fill_gap_samples(result, t_eval, idx: int, t_start: float, y_start) -> int:
+    """Write ``y_start`` into every grid point before ``t_start``; return the new index.
+
+    Grid points inside a restart nudge gap: the state is continuous there, so
+    carry the event-time state across the (sub-picosecond) gap rather than
+    dropping the sample and shortening the output.
+    """
+    n_points = int(t_eval.size)
+    while idx < n_points and t_eval[idx] < t_start:
+        result.y[:, idx] = y_start
+        idx += 1
+    return idx
+
+
+def _run_segment(
+    solve_ivp,
+    model_func,
+    tf: float,
+    t_eval,
+    loop: _SegmentLoop,
+    result: EventSolveResult,
+    method: str,
+    rtol: float,
+    atol: float,
+    step_cap: float,
+    event_callables,
+):
+    """One ``solve_ivp`` call from ``loop.t_start`` towards ``tf``.
+
+    Writes whatever samples the segment produced into ``result.y`` (advancing
+    ``loop.idx``), folds the solver counters and the last message/status into
+    ``result``, and returns the raw scipy result so the caller can tell a
+    finished run from a terminal event.  With events switched off (after a
+    guard trip) the call is a plain, uncapped ``solve_ivp``.
+    """
+    sol = solve_ivp(
+        model_func,
+        (loop.t_start, tf),
+        loop.y_start,
+        t_eval=t_eval[loop.idx :],
+        method=method,
+        rtol=rtol,
+        atol=atol,
+        max_step=step_cap if loop.events_active else np.inf,
+        events=event_callables if loop.events_active else None,
+    )
+    result.n_segments += 1
+    result.nfev += int(getattr(sol, "nfev", 0) or 0)
+    result.njev += int(getattr(sol, "njev", 0) or 0)
+    result.nlu += int(getattr(sol, "nlu", 0) or 0)
+    result.message = str(getattr(sol, "message", "") or "")
+    result.status = int(getattr(sol, "status", 0) or 0)
+
+    # A segment that ends before the next grid point produces no output
+    # samples at all -- and scipy then leaves `t`/`y` as the empty *lists*
+    # it accumulates into, so normalise before touching `.size`.
+    seg_t = np.asarray(sol.t, dtype=float)
+    produced = int(seg_t.size)
+    if produced:
+        result.y[:, loop.idx : loop.idx + produced] = np.asarray(sol.y, dtype=float)
+        loop.idx += produced
+    return sol
+
+
+def _apply_discrete_updates(fired: List[EventSpec], t_event: float, y_event, cache) -> None:
+    """Run the ``on_event`` hook of every event that fired at ``t_event``.
+
+    All hooks see the same signals, evaluated once at the root; the cache is
+    dropped afterwards because a hook may have flipped a latch the signals
+    depended on.  A failing hook is logged and skipped -- it must not abort
+    the run.
+    """
+    cache.invalidate()
+    signals_at_event = cache.signals(t_event, y_event)
+    for spec in fired:
+        if spec.on_event is not None:
+            try:
+                spec.on_event(t_event, y_event, signals_at_event)
+            except Exception:  # noqa: BLE001 - a bad update must not abort the run
+                logger.warning("Discrete update for event %s failed at t=%.12g", spec.name, t_event)
+    cache.invalidate()
+
+
+def _record_event(result: EventSolveResult, mode_states, t_event: float, fired) -> None:
+    """Append the located root to the event log and the post-event modes to the history."""
+    result.event_log.append((float(t_event), [spec.name for spec in fired]))
+    result.mode_history.append((float(t_event), _snapshot_modes(mode_states)))
+    result.n_events += 1
+
+
+def _update_chatter_guard(
+    result: EventSolveResult,
+    loop: _SegmentLoop,
+    t_event: float,
+    fired,
+    min_separation: float,
+    max_events: int,
+) -> None:
+    """Advance the chattering streak and trip the guard on a streak or the event cap.
+
+    Sets ``result.guard_tripped`` / ``guard_reason``; the caller decides what
+    to do about it (see ``_disable_events``).
+    """
+    if loop.last_event_t is not None and (t_event - loop.last_event_t) < min_separation:
+        loop.chatter_streak += 1
+    else:
+        loop.chatter_streak = 0
+    loop.last_event_t = t_event
+
+    if loop.chatter_streak >= CHATTER_STREAK_LIMIT:
+        result.guard_tripped = True
+        result.guard_reason = (
+            "chattering: {} consecutive events closer than {:.3g}s (around t={:.6g}s, {})".format(
+                CHATTER_STREAK_LIMIT,
+                min_separation,
+                t_event,
+                ", ".join(spec.name for spec in fired),
+            )
+        )
+    elif result.n_events >= max_events:
+        result.guard_tripped = True
+        result.guard_reason = "event cap of {} reached at t={:.6g}s".format(max_events, t_event)
+
+
+def _restart_point(model_func, t_event: float, y_event, nudge: float, tf: float):
+    """``(t_start, y_start)`` for the segment after a root: a nudge past it in both coordinates."""
+    t_start = t_event + nudge
+    if not (t_start > t_event):  # nudge lost to rounding at huge |t|
+        t_start = float(np.nextafter(t_event, tf + 1.0))
+    y_start = _state_at_restart(model_func, t_event, y_event, t_start - t_event)
+    return t_start, y_start
+
+
+def _disable_events(result: EventSolveResult, loop: _SegmentLoop, mode_states) -> None:
+    """Turn event detection off for the rest of the run after a guard trip.
+
+    Logs the reason once, records the instant, and lets latching blocks go
+    back to updating their mode from the RHS: with events off nothing else
+    would ever advance them.
+    """
+    logger.warning(
+        "Zero-crossing detection disabled for the rest of this run -- %s. "
+        "Switching instants after this point are located only to step "
+        "accuracy. Add hysteresis to the switching element, or turn "
+        "zero-crossing off in Simulation settings to silence this.",
+        result.guard_reason,
+    )
+    loop.events_active = False
+    result.events_off_at = float(loop.t_start)
+    _reset_mode_states_frozen(mode_states, False)
+
+
+def _truncate_to_produced(result: EventSolveResult, t_eval, idx: int) -> None:
+    """Shorten ``result.t`` / ``result.y`` to the columns actually integrated.
+
+    A failed or truncated solve leaves the tail unfilled; mirror scipy by
+    reporting only what was integrated so callers see the short array.
+    """
+    if idx < int(t_eval.size):
         result.t = t_eval[:idx]
         result.y = result.y[:, :idx]
-
-    return result
 
 
 def _state_at_restart(model_func, t_event, y_event, gap: float) -> np.ndarray:

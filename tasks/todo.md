@@ -477,8 +477,23 @@ complexity 25, all listed here.
     `apply_mask_appearance` (`lib/masks.py:383`) never adopts the mask name; (c) a
     failure mid-paste leaves the already-pasted blocks in place with an undo entry
     pushed but `dirty` unset and no redraw.
-- [ ] **`solve_with_events`** (`lib/engine/zero_crossing.py`, 232 lines, C901 = 25).
-  Extract when next touched.
+- [x] **`solve_with_events`** (`lib/engine/zero_crossing.py`, was 232 lines,
+  C901 = 25) — done 2026-09-10 (agent-driven, worktree). Now an ~80-line loop body
+  (C901 = 9) over a `_SegmentLoop` state dataclass and phase helpers `_step_cap`,
+  `_seed_modes`, `_fill_gap_samples`, `_run_segment`, `_apply_discrete_updates`,
+  `_record_event`, `_update_chatter_guard`, `_restart_point`, `_disable_events`,
+  `_truncate_to_produced`; every statement kept its order and expression. Verified:
+  compiled trace-diff 115/115 arrays bit-identical (17 of 56 examples reach the
+  function); old-vs-new synthetic harness 33/33 identical (bouncing ball, latched
+  relay, saturation, simultaneous events, grid-point time event, chatter →
+  fixed-step fallback, event cap with/without fallback, raising hooks, injected
+  failing segment). Tests: `tests/unit/test_zero_crossing_phases.py` (28).
+  - [ ] Found while verifying (pre-existing, kept): `_restart_point`'s
+    `np.nextafter(t_event, tf + 1.0)` is a no-op when `tf + 1.0` rounds to
+    `t_event` (|t| ~ 1e17, span under one ulp) so the restart lands on the root
+    again; degenerate input only. Also documented but sharp: with
+    `fallback_integrator=None` a sliding-mode chatterer never terminates once the
+    guard trips (adaptive solver, events off).
 - [x] **Palette glyphs** — `modern_palette._draw_glyph` (was 158 lines, C901 = 36)
   — done 2026-09-10 (agent-driven, worktree). Now a 9-line lookup (C901 = 3) into
   `_GLYPHS: Dict[str, Callable]` with one `_glyph_<kind>` painter per kind grouped
