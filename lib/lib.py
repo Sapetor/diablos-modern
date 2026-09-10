@@ -1018,11 +1018,18 @@ class DSim:
         return True
 
     def _block_failed(self, out_value) -> bool:
-        """Stop the run and return True when a block reported an error."""
-        if out_value is None or ("E" in out_value and out_value["E"]):
+        """Stop the run and return True when a block reported an error.
+
+        Anything that is not a dict (``None``, or the ``False`` the engine
+        returns when a block cannot be run at all) is a failure too.
+        """
+        if not isinstance(out_value, dict):
             self.execution_failed(
-                out_value.get("error", "Unknown error") if out_value else "Block returned None"
+                "Block returned None" if out_value is None else f"Block returned {out_value!r}"
             )
+            return True
+        if out_value.get("E"):
+            self.execution_failed(out_value.get("error", "Unknown error"))
             return True
         return False
 

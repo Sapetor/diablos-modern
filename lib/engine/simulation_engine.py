@@ -601,7 +601,9 @@ class SimulationEngine:
     ) -> Union[Dict[int, Any], bool]:
         """
         Execute a single block.
-        Returns output value (dict) or False on failure.
+        Returns the output dict, an ``{"E": True, "error": msg}`` dict when the
+        block raised or reported an error, or False when it could not be run
+        at all (external stub, missing instance, ``None`` output).
         """
         try:
             # Lazy %s args: this runs for every block on every step, so the
@@ -653,9 +655,15 @@ class SimulationEngine:
             return out_value
 
         except Exception as e:
+            # Report the failure the same way a block reports its own errors:
+            # every caller (the init loops here and DSim._block_failed on the
+            # interpreted path) already understands an ``{"E": True, "error"}``
+            # dict, whereas a bare ``False`` made DSim's ``"E" in out_value``
+            # raise TypeError and hid the block's message behind
+            # "argument of type 'bool' is not iterable".
             logger.error(f"Error executing block {block.name}: {e}", exc_info=True)
             self.error_msg = f"Block '{block.name}' failed: {e}"
-            return False
+            return {"E": True, "error": self.error_msg}
 
     def _active_line_source(self):
         """Lines to analyze: the active (post-init) list once execution is set

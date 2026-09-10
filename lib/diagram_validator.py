@@ -4,7 +4,7 @@ Validates block diagrams for integrity errors before simulation.
 
 import logging
 from collections import defaultdict, deque
-from typing import Any, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 from enum import Enum
 
 from lib.engine.memory_blocks import OUTPUT_ONLY_SAFE_BLOCK_FNS, is_memory_block
@@ -51,6 +51,25 @@ class ValidationError:
         return f"[{self.severity.value.upper()}] {self.message}"
 
 
+def find_duplicate_input_connections(line_list) -> Dict[Tuple[Any, Any], List[Any]]:
+    """Group the lines that feed the same ``(dstblock, dstport)`` input port.
+
+    Returns only the ports with more than one incoming line, keyed in order of
+    each port's first line, with the lines in ``line_list`` order. Lines that
+    carry no destination (partial stubs) are ignored. This is the one place
+    that decides what a duplicate input connection is; both
+    ``DiagramValidator._check_duplicate_connections`` (the error panel) and
+    ``validate_block_connections`` (the GUI pre-flight gate) format their own
+    messages from it.
+    """
+    by_port: Dict[Tuple[Any, Any], List[Any]] = {}
+    for line in line_list:
+        if not (hasattr(line, "dstblock") and hasattr(line, "dstport")):
+            continue
+        by_port.setdefault((line.dstblock, line.dstport), []).append(line)
+    return {key: lines for key, lines in by_port.items() if len(lines) > 1}
+
+
 class DiagramValidator:
     """Validates block diagrams for common errors and issues."""
 
@@ -81,7 +100,7 @@ class DiagramValidator:
         self._check_disconnected_outputs(connection_maps)
         self._check_isolated_blocks(connection_maps)
         self._check_invalid_connections(connection_maps)
-        self._check_duplicate_connections(connection_maps)
+        self._check_duplicate_connections()
         self._check_goto_from_tags()
         self._check_rate_mismatches(connection_maps)
 
@@ -303,28 +322,28 @@ class DiagramValidator:
                 )
                 self.errors.append(error)
 
-    def _check_duplicate_connections(self, connection_maps: dict) -> None:
+    def _check_duplicate_connections(self) -> None:
         """Check for multiple connections to the same input port."""
-        input_connections = connection_maps["input_connections"]
+        # Same visibility rule as _build_connection_maps: hidden lines don't count.
+        visible_lines = [line for line in self.dsim.line_list if not getattr(line, "hidden", False)]
+        duplicates = find_duplicate_input_connections(visible_lines)
 
-        # Find duplicates
-        for (block_name, port_idx), connections in input_connections.items():
-            if len(connections) > 1:
-                # Find the block
-                block = None
-                for b in self.dsim.blocks_list:
-                    if b.name == block_name:
-                        block = b
-                        break
+        for (block_name, port_idx), connections in duplicates.items():
+            # Find the block
+            block = None
+            for b in self.dsim.blocks_list:
+                if b.name == block_name:
+                    block = b
+                    break
 
-                error = ValidationError(
-                    severity=ErrorSeverity.ERROR,
-                    message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx + 1} has {len(connections)} connections",
-                    blocks=[block] if block else [],
-                    connections=connections,
-                    suggestion=f"Remove all but one connection to input port {port_idx + 1}",
-                )
-                self.errors.append(error)
+            error = ValidationError(
+                severity=ErrorSeverity.ERROR,
+                message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx + 1} has {len(connections)} connections",
+                blocks=[block] if block else [],
+                connections=connections,
+                suggestion=f"Remove all but one connection to input port {port_idx + 1}",
+            )
+            self.errors.append(error)
 
     def has_errors(self) -> bool:
         """Check if there are any errors (not warnings)."""
@@ -500,15 +519,14 @@ def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]
                 if block.in_ports > 0 or block.out_ports > 0:
                     warnings.append(f"Block '{block.name}' has no connections")
 
-    seen_inputs = set()
+    # One message per extra line into a duplicated port, in line order.
+    duplicates = find_duplicate_input_connections(line_list)
     for line in line_list:
-        if hasattr(line, "dstblock") and hasattr(line, "dstport"):
-            key = (line.dstblock, line.dstport)
-            if key in seen_inputs:
-                errors.append(
-                    f"Multiple connections to same input port: block {line.dstblock}, port {line.dstport}"
-                )
-            seen_inputs.add(key)
+        key = (getattr(line, "dstblock", None), getattr(line, "dstport", None))
+        if key in duplicates and line is not duplicates[key][0]:
+            errors.append(
+                f"Multiple connections to same input port: block {line.dstblock}, port {line.dstport}"
+            )
 
     no_loops, loop_errors = detect_algebraic_loops(blocks_list, line_list)
     if not no_loops:

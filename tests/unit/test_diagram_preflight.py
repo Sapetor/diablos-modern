@@ -12,9 +12,12 @@ from types import SimpleNamespace
 import pytest
 
 from lib.diagram_validator import (
+    DiagramValidator,
+    ErrorSeverity,
     check_block_integrity,
     check_simulation_state,
     detect_algebraic_loops,
+    find_duplicate_input_connections,
     validate_block_connections,
 )
 
@@ -64,6 +67,54 @@ class TestValidateBlockConnections:
         assert ok is False
         assert messages[0].startswith("Algebraic loop detected")
         assert messages[1] == "Block 'lonely' has no connections"
+
+    def test_three_lines_into_one_port_report_each_extra_line_in_order(self):
+        blocks = [_blk(n, "Step", 0, 0, 1) for n in "abc"] + [_blk("gain")]
+        lines = [_line("a", "gain"), _line("b", "gain"), _line("c", "gain")]
+        ok, messages = validate_block_connections(blocks, lines)
+        assert ok is False
+        assert messages == ["Multiple connections to same input port: block gain, port 0"] * 2
+
+
+@pytest.mark.unit
+class TestDuplicateInputCheckIsShared:
+    """Both entry points read the duplicated pair off find_duplicate_input_connections."""
+
+    def _diagram(self):
+        blocks = [_blk("a", "Step", 0, 0, 1), _blk("b", "Step", 0, 0, 1), _blk("gain")]
+        for b in blocks:
+            b.username = None
+        lines = [_line("a", "gain"), _line("b", "gain"), _line("a", "gain", dstport=1)]
+        return blocks, lines
+
+    def test_helper_finds_the_pair_with_its_lines(self):
+        _, lines = self._diagram()
+        assert find_duplicate_input_connections(lines) == {("gain", 0): lines[:2]}
+
+    def test_both_entry_points_report_the_same_pair(self):
+        blocks, lines = self._diagram()
+
+        ok, messages = validate_block_connections(blocks, lines)
+        assert ok is False
+        assert messages == ["Multiple connections to same input port: block gain, port 0"]
+
+        validator = DiagramValidator(SimpleNamespace(blocks_list=blocks, line_list=lines))
+        validator._check_duplicate_connections()
+        assert len(validator.errors) == 1
+        err = validator.errors[0]
+        assert err.severity is ErrorSeverity.ERROR
+        assert err.message == "Block 'gain' input port 1 has 2 connections"
+        assert err.connections == lines[:2]
+        assert err.blocks == [blocks[2]]
+
+    def test_hidden_lines_are_ignored_by_the_validator_only(self):
+        blocks, lines = self._diagram()
+        lines[1].hidden = True
+        validator = DiagramValidator(SimpleNamespace(blocks_list=blocks, line_list=lines))
+        validator._check_duplicate_connections()
+        assert validator.errors == []
+        # The pre-flight gate works on the raw line list and keeps flagging it.
+        assert validate_block_connections(blocks, lines)[0] is False
 
 
 @pytest.mark.unit

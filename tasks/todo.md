@@ -370,9 +370,15 @@ complexity 25, all listed here.
   interpreted-path trace-diff (`use_fast_solver=False`, all 55 examples: 114/114
   arrays bit-identical). Tests: `tests/unit/test_interpreter_step_phases.py` (39).
   `docs/SOLVER_SEMANTICS.md` 4.2 names the phase methods.
-  - [ ] Found while verifying (pre-existing, not fixed to keep the refactor
-    behaviour-preserving): `examples/van_der_pol_stiff.diablos` on the
-    **interpreted** path dies with `argument of type 'bool' is not iterable`.
+  - [x] Fixed 2026-09-10 (agent-driven): `SimulationEngine.execute_block` now
+    returns `{"E": True, "error": "Block '<name>' failed: <exc>"}` when a block's
+    `execute()` raises (the other cannot-run paths still return False, and every
+    caller already handled both), and `DSim._block_failed` treats any non-dict as
+    a failure. `van_der_pol_stiff` on the interpreted path now reports
+    `Block 'integrator1' failed: array must not contain infs or NaNs`. Interpreted
+    trace-diff 114/114 identical (`equal_nan`). Tests:
+    `tests/unit/test_execute_block_errors.py` (6). Original note: `examples/van_der_pol_stiff.diablos` on the
+    **interpreted** path died with `argument of type 'bool' is not iterable`.
     A block's `execute()` raises inside `solve_ivp` (`array must not contain
     infs or NaNs`), `SimulationEngine.execute_block` returns a bool instead of
     an error dict, and `DSim._block_failed` does `"E" in out_value`. Make
@@ -418,8 +424,12 @@ complexity 25, all listed here.
   connection manager no longer has an `except AttributeError: pass` branch for a
   "validator not available" build — any validator crash rejects the wire (the
   tolerated-absence test was dropped). Tests: `tests/unit/test_diagram_preflight.py`
-  (19). Follow-up worth its own round: `validate_block_connections`' duplicate-
-  input check overlaps `DiagramValidator._check_duplicate_connections`.
+  (19). Follow-up done 2026-09-10 (agent-driven): both duplicate-input checks now
+  call one module-level `find_duplicate_input_connections(line_list)` in
+  `lib/diagram_validator.py` (`{(dstblock, dstport): [lines]}`); the validator
+  feeds it non-hidden lines and keeps its `Block '...' input port N has K
+  connections` error, the pre-flight function keeps its per-extra-line message.
+  Tests: `TestDuplicateInputCheckIsShared` in `tests/unit/test_diagram_preflight.py`.
 - [x] **`SimulationController._print_terminal_verification`** (was 225 lines,
   C901 = 40) — done 2026-09-10. The report lives in
   `lib/engine/verification_report.py`: collectors (`collect_display_values`,
