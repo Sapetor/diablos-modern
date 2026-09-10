@@ -1,0 +1,4028 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A Python-native visual laboratory for dynamics and control.">
+      
+      
+        <meta name="author" content="DiaBloS Project">
+      
+      
+        <link rel="canonical" href="https://sapetor.github.io/diablos-modern/wiki/Examples/">
+      
+      
+        <link rel="prev" href="../Home/">
+      
+      
+        <link rel="next" href="../Sources/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Examples - DiaBloS Modern</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#example-gallery" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DiaBloS Modern" class="md-header__button md-logo" aria-label="DiaBloS Modern" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m3 14 .5.07L8.07 9.5a1.95 1.95 0 0 1 .52-1.91c.78-.79 2.04-.79 2.82 0 .53.52.7 1.26.52 1.91l2.57 2.57.5-.07c.18 0 .35 0 .5.07l3.57-3.57C19 8.35 19 8.18 19 8a2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2c-.18 0-.35 0-.5-.07l-3.57 3.57c.07.15.07.32.07.5a2 2 0 0 1-2 2 2 2 0 0 1-2-2l.07-.5-2.57-2.57c-.32.07-.68.07-1 0L4.93 15.5 5 16a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DiaBloS Modern
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Examples
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Sapetor/diablos-modern" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Sapetor/diablos-modern
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../user-guide/creating-diagrams/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../Home/" class="md-tabs__link">
+          
+  
+  
+  Block Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/lib/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="DiaBloS Modern" class="md-nav__button md-logo" aria-label="DiaBloS Modern" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m3 14 .5.07L8.07 9.5a1.95 1.95 0 0 1 .52-1.91c.78-.79 2.04-.79 2.82 0 .53.52.7 1.26.52 1.91l2.57 2.57.5-.07c.18 0 .35 0 .5.07l3.57-3.57C19 8.35 19 8.18 19 8a2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 1-2 2c-.18 0-.35 0-.5-.07l-3.57 3.57c.07.15.07.32.07.5a2 2 0 0 1-2 2 2 2 0 0 1-2-2l.07-.5-2.57-2.57c-.32.07-.68.07-1 0L4.93 15.5 5 16a2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2"/></svg>
+
+    </a>
+    DiaBloS Modern
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Sapetor/diablos-modern" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Sapetor/diablos-modern
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_MANUAL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Manual
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/creating-diagrams/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating Diagrams
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/running-simulations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running Simulations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis & Experiments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language & Translations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/block-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VARIABLE_EDITOR_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Variable Editor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FAST_SOLVER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fast Solver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SOLVER_SEMANTICS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Solver Semantics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Block Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Home/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first_order_step_responsediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        first_order_step_response.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pi_loop_three_plantsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pi_loop_three_plants.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_demux_logicdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        test_demux_logic.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pid_second_orderdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pid_second_order.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c01_tank_feedbackdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c01_tank_feedback.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c02_vehicle_single_agentdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c02_vehicle_single_agent.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c03_bode_frequency_responsediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c03_bode_frequency_response.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c05_mass_spring_state_spacediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c05_mass_spring_state_space.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c05_lqr_vs_open_loopdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c05_lqr_vs_open_loop.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c06_lqr_state_feedbackdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c06_lqr_state_feedback.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c06_observer_estimationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c06_observer_estimation.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inverted_pendulum_lqrdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inverted_pendulum_lqr.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pendulum_nonlinear_vs_lineardiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pendulum_nonlinear_vs_linear.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#van_der_pol_stiffdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        van_der_pol_stiff.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events-and-hybrid-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Events and hybrid systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Events and hybrid systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#relay_thermostat_eventsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relay_thermostat_events.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nonlinear_blocksdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nonlinear_blocks.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discrete-and-multi-rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discrete and multi-rate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discrete and multi-rate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discrete_pi_zohdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        discrete_pi_zoh.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multirate_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multirate_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networks-and-multi-agent-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networks and multi-agent systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Networks and multi-agent systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c02_string_instabilitydiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c02_string_instability.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c08_consensus_ringdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c08_consensus_ring.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c08_consensus_topologydiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c08_consensus_topology.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c09_formacion_distanciadiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c09_formacion_distancia.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c11_opinion_dynamicsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c11_opinion_dynamics.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c12_sis_epidemicsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c12_sis_epidemics.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c12x_kuramoto_syncdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c12x_kuramoto_sync.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c13_distributed_subgradientdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c13_distributed_subgradient.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optimization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimization_basic_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_basic_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_pid_tuning_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_pid_tuning_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_constrained_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_constrained_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_data_fit_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_data_fit_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-primitives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization primitives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_simplediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_simple.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#momentum_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        momentum_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adam_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        adam_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newton_method_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        newton_method_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newton_method_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        newton_method_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linear_system_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linear_system_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linear_system_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linear_system_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#learning_rate_comparisondiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        learning_rate_comparison.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimizer_comparisondiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimizer_comparison.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convergence_ratesdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        convergence_rates.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partial-differential-equations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial differential equations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Partial differential equations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#demonstrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demonstrations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wave_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advection_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        advection_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffusion_reaction_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diffusion_reaction_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_2d_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_2d_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pde_comparison_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pde_comparison_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pde_neumann_bc_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pde_neumann_bc_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification diagrams
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wave_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advection_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        advection_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffusion_reaction_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diffusion_reaction_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_2d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_2d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Experiments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monte_carlo_robustnessdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        monte_carlo_robustness.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-blocks-and-masks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library blocks and masks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library blocks and masks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#library_block_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        library_block_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-files-in-this-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other files in this folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding your own
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Sinks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sinks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Control/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Control
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Logic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Other/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Multi-Rate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Rate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDE
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Optimization-Primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimization Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Subsystems_Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ModernUI_Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modern UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEVELOPER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VALIDATION/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Numerical Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYMBOL_DRAWING_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block Symbol Drawing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building & Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PDE_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDE Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BLOCK_API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Block API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/lib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Library
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simulation Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/blocks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blocks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#first_order_step_responsediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        first_order_step_response.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pi_loop_three_plantsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pi_loop_three_plants.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test_demux_logicdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        test_demux_logic.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Control">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pid_second_orderdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pid_second_order.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c01_tank_feedbackdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c01_tank_feedback.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c02_vehicle_single_agentdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c02_vehicle_single_agent.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c03_bode_frequency_responsediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c03_bode_frequency_response.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c05_mass_spring_state_spacediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c05_mass_spring_state_space.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c05_lqr_vs_open_loopdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c05_lqr_vs_open_loop.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c06_lqr_state_feedbackdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c06_lqr_state_feedback.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c06_observer_estimationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c06_observer_estimation.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inverted_pendulum_lqrdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inverted_pendulum_lqr.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pendulum_nonlinear_vs_lineardiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pendulum_nonlinear_vs_linear.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#van_der_pol_stiffdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        van_der_pol_stiff.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events-and-hybrid-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Events and hybrid systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Events and hybrid systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#relay_thermostat_eventsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relay_thermostat_events.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nonlinear_blocksdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nonlinear_blocks.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#discrete-and-multi-rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discrete and multi-rate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discrete and multi-rate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discrete_pi_zohdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        discrete_pi_zoh.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multirate_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        multirate_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#networks-and-multi-agent-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Networks and multi-agent systems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Networks and multi-agent systems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c02_string_instabilitydiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c02_string_instability.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c08_consensus_ringdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c08_consensus_ring.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c08_consensus_topologydiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c08_consensus_topology.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c09_formacion_distanciadiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c09_formacion_distancia.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c11_opinion_dynamicsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c11_opinion_dynamics.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c12_sis_epidemicsdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c12_sis_epidemics.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c12x_kuramoto_syncdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c12x_kuramoto_sync.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c13_distributed_subgradientdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        c13_distributed_subgradient.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optimization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optimization_basic_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_basic_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_pid_tuning_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_pid_tuning_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_constrained_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_constrained_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization_data_fit_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimization_data_fit_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-primitives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization primitives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_simplediablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_simple.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gradient_descent_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gradient_descent_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#momentum_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        momentum_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adam_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        adam_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newton_method_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        newton_method_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#newton_method_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        newton_method_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linear_system_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linear_system_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linear_system_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        linear_system_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#learning_rate_comparisondiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        learning_rate_comparison.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimizer_comparisondiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimizer_comparison.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convergence_ratesdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        convergence_rates.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#partial-differential-equations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Partial differential equations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Partial differential equations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#demonstrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Demonstrations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wave_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advection_equation_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        advection_equation_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffusion_reaction_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diffusion_reaction_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_2d_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_2d_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pde_comparison_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pde_comparison_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pde_neumann_bc_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pde_neumann_bc_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification diagrams
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wave_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wave_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advection_equation_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        advection_equation_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diffusion_reaction_1d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diffusion_reaction_1d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#heat_equation_2d_verificationdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        heat_equation_2d_verification.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Experiments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monte_carlo_robustnessdiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        monte_carlo_robustness.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#library-blocks-and-masks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library blocks and masks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Library blocks and masks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#library_block_demodiablos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        library_block_demo.diablos
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-files-in-this-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other files in this folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-your-own" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding your own
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/Sapetor/diablos-modern/edit/main/docs/wiki/Examples.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="example-gallery">Example gallery<a class="headerlink" href="#example-gallery" title="Permanent link">&para;</a></h1>
+<p>Every diagram in <code>examples/</code> loads, runs headlessly and produces finite Scope
+data — <code>tests/integration/test_example_gallery.py</code> runs all of them on every
+push. Start at <code>first_order_step_response.diablos</code> and work down.</p>
+<p><strong>In the app:</strong> <em>File → Open</em>, pick a <code>.diablos</code> file, press <code>F5</code>.
+Results appear in Scope / FieldScope windows.</p>
+<p><strong>From a terminal</strong>, without a display:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>diablos_modern.py<span class="w"> </span>run<span class="w"> </span>examples/pid_second_order.diablos<span class="w"> </span>-o<span class="w"> </span>out.csv
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>diablos_modern.py<span class="w"> </span>export-python<span class="w"> </span>examples/pid_second_order.diablos<span class="w"> </span>-o<span class="w"> </span>model.py
+</code></pre></div>
+<p>The <code>.diablos</code> format has no diagram-level description field, so the notes below
+are the documentation for each file. Verification diagrams additionally carry a
+<code>_verification_notes</code> JSON key with the analytical solution they are checked
+against. This page mirrors <code>examples/README.md</code>; a test fails if either omits a
+shipped diagram.</p>
+<hr />
+<h2 id="getting-started">Getting started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h2>
+<h3 id="first_order_step_responsediablos"><code>first_order_step_response.diablos</code><a class="headerlink" href="#first_order_step_responsediablos" title="Permanent link">&para;</a></h3>
+<p><img alt="first_order_step_response" src="../../images/examples/first_order_step_response.png" /></p>
+<p>Three blocks: a <code>Step</code> into <code>1/(2s+1)</code> into a two-input <code>Scope</code>. The smallest
+complete diagram in the folder and the one to copy when starting from scratch —
+it shows the wiring convention (reference tapped twice, once into the plant and
+once into the scope) that every other control example reuses. Watch the output
+reach 63 % of the reference one time constant (2 s) after the step at t = 1 s.
+Try <strong>Tools → Linearize</strong> on it: the recovered transfer function should be the
+one written on the block.</p>
+<h3 id="pi_loop_three_plantsdiablos"><code>pi_loop_three_plants.diablos</code><a class="headerlink" href="#pi_loop_three_plantsdiablos" title="Permanent link">&para;</a></h3>
+<p>A PI controller <code>(2s+1)/s</code> closed around <code>1/(s+1)</code> and an integrator <code>1/s</code>. Its
+value is what it exercises rather than what it teaches: the PI has a non-zero
+feedthrough term (D = 2), so the compiled solver must schedule it with the
+algebraic group rather than with the strictly-proper state blocks. If a change
+to the execution ordering ever regresses, this is the diagram whose output goes
+visibly sluggish. See "Compiled Solver Execution Order" in <code>CLAUDE.md</code>.</p>
+<h3 id="test_demux_logicdiablos"><code>test_demux_logic.diablos</code><a class="headerlink" href="#test_demux_logicdiablos" title="Permanent link">&para;</a></h3>
+<p>A three-element <code>Constant</code> split by a <code>Demux</code> and recombined through an XOR
+<code>LogicalOperator</code>. Small enough to read at a glance, and it is the fixture
+behind <code>tests/regression/test_compiled_demux_logic.py</code>, so it doubles as the
+worked example of vector routing.</p>
+<hr />
+<h2 id="control">Control<a class="headerlink" href="#control" title="Permanent link">&para;</a></h2>
+<h3 id="pid_second_orderdiablos"><code>pid_second_order.diablos</code><a class="headerlink" href="#pid_second_orderdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="pid_second_order" src="../../images/examples/pid_second_order.png" /></p>
+<p>A PID controller with output clamping (<code>u_min</code>/<code>u_max</code> = ±10) driving the
+lightly damped plant <code>4/(s² + 0.8s + 4)</code>. The reference steps at t = 1 s and a
+labelled load disturbance of −0.5 is injected at the plant input at t = 15 s.
+Watch two things on the scope: the control signal sitting on its +10 limit
+during the first transient (integrator windup is bounded, not eliminated), and
+the integral action pulling the output back to the reference after the
+disturbance. Good first target for <strong>Tools → Parameter Sweep</strong> over <code>Kp</code>.</p>
+<h3 id="c01_tank_feedbackdiablos"><code>c01_tank_feedback.diablos</code><a class="headerlink" href="#c01_tank_feedbackdiablos" title="Permanent link">&para;</a></h3>
+<p>Proportional level control of a tank <code>1/(s + 0.2)</code> with a step reference of
+8 units. The classic demonstration of proportional droop: the level settles
+below the reference, and the gap shrinks as you raise <code>Kp</code> without ever closing.</p>
+<h3 id="c02_vehicle_single_agentdiablos"><code>c02_vehicle_single_agent.diablos</code><a class="headerlink" href="#c02_vehicle_single_agentdiablos" title="Permanent link">&para;</a></h3>
+<p>First-order velocity dynamics <code>1/(s + 1)</code> followed by an <code>Integrator</code> to get
+position. The building block every platoon and formation example in this folder
+is assembled from.</p>
+<h3 id="c03_bode_frequency_responsediablos"><code>c03_bode_frequency_response.diablos</code><a class="headerlink" href="#c03_bode_frequency_responsediablos" title="Permanent link">&para;</a></h3>
+<p>A sine of unit amplitude through <code>1/(s + 1)</code>, with input and output on one
+scope. Read the gain and phase lag straight off the traces, then change <code>omega</code>
+and confirm the −20 dB/decade roll-off by hand. <strong>Tools → Bode</strong> plots the same
+information analytically.</p>
+<h3 id="c05_mass_spring_state_spacediablos"><code>c05_mass_spring_state_space.diablos</code><a class="headerlink" href="#c05_mass_spring_state_spacediablos" title="Permanent link">&para;</a></h3>
+<p>A mass-spring-damper written as a <code>StateSpace</code> block with a 2×2 <code>C</code>, so position
+and velocity come out as one vector and land on separate scope traces. The
+starting point for anything that needs full state access.</p>
+<h3 id="c05_lqr_vs_open_loopdiablos"><code>c05_lqr_vs_open_loop.diablos</code><a class="headerlink" href="#c05_lqr_vs_open_loopdiablos" title="Permanent link">&para;</a></h3>
+<p>The same oscillator twice: once with its own damping (<code>A[1][1] = −0.5</code>) and once
+with the damping an LQR gain would produce (<code>−4</code>), both released from x = 2.
+Two <code>StateSpace</code> blocks and no wiring between them — the cheapest possible
+before/after comparison.</p>
+<h3 id="c06_lqr_state_feedbackdiablos"><code>c06_lqr_state_feedback.diablos</code><a class="headerlink" href="#c06_lqr_state_feedbackdiablos" title="Permanent link">&para;</a></h3>
+<p>A double integrator stabilised by <code>u = −Kx</code>, with <code>K</code> in a <code>MatrixGain</code> and an
+unconnected <code>LQR</code> marker block holding the <code>A</code>, <code>B</code>, <code>Q</code>, <code>R</code> that produced it.
+Select the marker and run <strong>Tools → LQR</strong> to recompute the gain, then paste it
+back into the <code>MatrixGain</code> and re-run.</p>
+<h3 id="c06_observer_estimationdiablos"><code>c06_observer_estimation.diablos</code><a class="headerlink" href="#c06_observer_estimationdiablos" title="Permanent link">&para;</a></h3>
+<p>A second-order plant next to a Luenberger observer built from a second
+<code>StateSpace</code> whose <code>B</code> carries both the input and the measurement injection.
+The error scope is the one to watch: it starts at the initial-condition mismatch
+and decays at the observer poles, not the plant poles.</p>
+<h3 id="inverted_pendulum_lqrdiablos"><code>inverted_pendulum_lqr.diablos</code><a class="headerlink" href="#inverted_pendulum_lqrdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="inverted_pendulum_lqr" src="../../images/examples/inverted_pendulum_lqr.png" /></p>
+<p>Cart-pole linearised about the upright equilibrium (M = 1 kg, m = 0.1 kg,
+l = 0.5 m), released 0.2 rad off vertical and caught by LQR state feedback. The
+plant's <code>C</code> is the 4×4 identity, so a <code>Demux</code> fans the full state onto four
+scope traces and a <code>MatrixGain</code> carrying <code>K</code> closes the loop. The story is in
+the first two seconds: the controller drives the cart <em>under</em> the falling pole
+(x goes positive before it comes back), which is exactly the non-minimum-phase
+behaviour that makes the problem interesting. An unconnected <code>LQR</code> block records
+the <code>Q = diag(5, 1, 20, 1)</code>, <code>R = 1</code> weights the gain came from — change them,
+run <strong>Tools → LQR</strong>, and paste the new gain in.</p>
+<h3 id="pendulum_nonlinear_vs_lineardiablos"><code>pendulum_nonlinear_vs_linear.diablos</code><a class="headerlink" href="#pendulum_nonlinear_vs_lineardiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="pendulum_nonlinear_vs_linear" src="../../images/examples/pendulum_nonlinear_vs_linear.png" /></p>
+<p>A pendulum released at 2 rad (115°), integrated twice with <code>sin θ</code> in the loop
+via a <code>MathFunction</code>, overlaid on the same scope with a <code>StateSpace</code> small-angle
+model started from the same state. Both traces leave together and are visibly
+out of phase within two swings: the nonlinear pendulum is slower, because its
+period grows with amplitude. Drop the initial angle to 0.2 rad and the two
+curves become indistinguishable — that is the small-angle approximation stated
+as an experiment.</p>
+<h3 id="van_der_pol_stiffdiablos"><code>van_der_pol_stiff.diablos</code><a class="headerlink" href="#van_der_pol_stiffdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="van_der_pol_stiff" src="../../images/examples/van_der_pol_stiff.png" /></p>
+<p>The Van der Pol oscillator at μ = 1000, built from two <code>Integrator</code>s, a
+<code>MathFunction</code> square and a <code>Product</code>, saved with <code>solver_method = Radau</code>. A
+relaxation oscillation: x sits on the cubic nullcline near ±2 for hundreds of
+seconds, then flips in a fraction of a second. This is the diagram to open when
+choosing a solver — Radau finishes in about a second, while RK45 grinds through
+the same 3000 s horizon in over a minute and produces the same picture.</p>
+<hr />
+<h2 id="events-and-hybrid-systems">Events and hybrid systems<a class="headerlink" href="#events-and-hybrid-systems" title="Permanent link">&para;</a></h2>
+<h3 id="relay_thermostat_eventsdiablos"><code>relay_thermostat_events.diablos</code><a class="headerlink" href="#relay_thermostat_eventsdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="relay_thermostat_events" src="../../images/examples/relay_thermostat_events.png" /></p>
+<p>A <code>Hysteresis</code> relay (±0.5 °C band) heating a room modelled as <code>1/(60s + 1)</code>
+above a 5 °C ambient, with a 21 °C setpoint. Bang-bang control with a genuine
+limit cycle: the temperature saws between 20.5 °C and 21.5 °C forever, and the
+switching instants are located by the compiled solver's zero-crossing detection
+rather than being smeared across an integration step. Widen the band and the
+cycle slows down; set <code>zero_crossing</code> to <code>off</code> in the simulation settings and
+the corners of the sawtooth soften.</p>
+<h3 id="nonlinear_blocksdiablos"><code>nonlinear_blocks.diablos</code><a class="headerlink" href="#nonlinear_blocksdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="nonlinear_blocks" src="../../images/examples/nonlinear_blocks.png" /></p>
+<p>One sine wave fanned into <code>Saturation</code>, <code>Deadband</code>, <code>Hysteresis</code> and
+<code>RateLimiter</code>, with all five signals on one scope. The reference card for what
+each nonlinearity does to a smooth input: clipping at ±1, a flat spot through
+zero, a two-valued switch that depends on the direction of travel, and a slope
+limit that turns the sine into a triangle.</p>
+<hr />
+<h2 id="discrete-and-multi-rate">Discrete and multi-rate<a class="headerlink" href="#discrete-and-multi-rate" title="Permanent link">&para;</a></h2>
+<h3 id="discrete_pi_zohdiablos"><code>discrete_pi_zoh.diablos</code><a class="headerlink" href="#discrete_pi_zohdiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="discrete_pi_zoh" src="../../images/examples/discrete_pi_zoh.png" /></p>
+<p>A sampled-data loop: the continuous error passes through a <code>ZeroOrderHold</code> at
+Ts = 0.1 s into a <code>DiscreteTranFn</code> PI controller <code>(1.2 − z⁻¹)/(1 − z⁻¹)</code>, which
+drives the continuous plant <code>2/((s+1)(s+2))</code>. The command trace is a staircase
+while the plant output is smooth — the visual definition of a sampled-data
+system. Raise the sample time towards 0.5 s and watch the loop lose phase margin
+and start ringing.</p>
+<h3 id="multirate_demodiablos"><code>multirate_demo.diablos</code><a class="headerlink" href="#multirate_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A 2 Hz sine sampled at 10 Hz by a <code>ZeroOrderHold</code>, then upsampled to 100 Hz by a
+<code>RateTransition</code> in Linear mode, with a <code>FirstOrderHold</code> on a second scope for
+comparison. Shows the three reconstruction behaviours side by side: staircase,
+interpolating ramps and extrapolating sawtooth. See the
+<a href="../Multi-Rate/">Multi-Rate</a> page for the full treatment.</p>
+<hr />
+<h2 id="networks-and-multi-agent-systems">Networks and multi-agent systems<a class="headerlink" href="#networks-and-multi-agent-systems" title="Permanent link">&para;</a></h2>
+<h3 id="c02_string_instabilitydiablos"><code>c02_string_instability.diablos</code><a class="headerlink" href="#c02_string_instabilitydiablos" title="Permanent link">&para;</a></h3>
+<p>Three identical vehicles in a string, each following the one ahead through
+<code>(0.9s + 0.2)/(s³ + s² + 0.9s + 0.2)</code>. The leader's step is amplified as it
+propagates: vehicle 3 overshoots more than vehicle 1. That growth along the
+string is string instability, and it is why constant-headway spacing policies
+exist.</p>
+<h3 id="c08_consensus_ringdiablos"><code>c08_consensus_ring.diablos</code><a class="headerlink" href="#c08_consensus_ringdiablos" title="Permanent link">&para;</a></h3>
+<p>Four agents on a ring, written as a single <code>StateSpace</code> whose <code>A</code> is the
+negative graph Laplacian. All four states converge to the average of their
+initial conditions — the canonical consensus result, in one block.</p>
+<h3 id="c08_consensus_topologydiablos"><code>c08_consensus_topology.diablos</code><a class="headerlink" href="#c08_consensus_topologydiablos" title="Permanent link">&para;</a></h3>
+<p>The same experiment on a path graph and on a complete graph, side by side from
+identical initial conditions. The complete graph settles several times faster:
+the convergence rate is the second-smallest Laplacian eigenvalue, and you can
+see the ratio directly in the two scopes.</p>
+<h3 id="c09_formacion_distanciadiablos"><code>c09_formacion_distancia.diablos</code><a class="headerlink" href="#c09_formacion_distanciadiablos" title="Permanent link">&para;</a></h3>
+<p>Two agents in the plane running a distance-based formation law, with the
+position error driven through <code>MatrixGain</code> and <code>SgProd</code> blocks and the squared
+inter-agent distance on its own scope converging to the desired 4. Includes an
+<code>AgentScope</code> that animates the agents in the plane rather than against time.</p>
+<h3 id="c11_opinion_dynamicsdiablos"><code>c11_opinion_dynamics.diablos</code><a class="headerlink" href="#c11_opinion_dynamicsdiablos" title="Permanent link">&para;</a></h3>
+<p>Six people on a social graph running the same Laplacian flow as the consensus
+examples, started from spread-out opinions. Watch the sub-communities agree with
+each other before the whole network does.</p>
+<h3 id="c12_sis_epidemicsdiablos"><code>c12_sis_epidemics.diablos</code><a class="headerlink" href="#c12_sis_epidemicsdiablos" title="Permanent link">&para;</a></h3>
+<p>Networked SIS epidemics: an <code>Integrator</code> holding six infection probabilities, a
+<code>MatrixGain</code> carrying the adjacency matrix, and a <code>Function</code> block evaluating
+<code>0.5·(Ax)ᵢ·(1 − xᵢ) − xᵢ</code>. One node starts at 30 % infected; the endemic
+equilibrium the whole network settles to depends on the ratio of infection to
+recovery rate.</p>
+<h3 id="c12x_kuramoto_syncdiablos"><code>c12x_kuramoto_sync.diablos</code><a class="headerlink" href="#c12x_kuramoto_syncdiablos" title="Permanent link">&para;</a></h3>
+<p>Six Kuramoto oscillators with heterogeneous natural frequencies and coupling
+strength 3.0, written as a single <code>Function</code> block over the phase vector. The
+phases fan out, then lock into a common drift. Lower the coupling in the
+expression and synchronisation is lost.</p>
+<h3 id="c13_distributed_subgradientdiablos"><code>c13_distributed_subgradient.diablos</code><a class="headerlink" href="#c13_distributed_subgradientdiablos" title="Permanent link">&para;</a></h3>
+<p>Six agents minimising the sum of their local costs by combining a consensus term
+with a pull towards their own target, again folded into one <code>StateSpace</code>. The
+estimates converge to the average of the local targets rather than to any single
+agent's optimum.</p>
+<hr />
+<h2 id="optimization">Optimization<a class="headerlink" href="#optimization" title="Permanent link">&para;</a></h2>
+<p>The first four diagrams here drive <strong>Tools → Run Optimization</strong>, which searches
+over the <code>Parameter</code> blocks to minimise the <code>CostFunction</code> block. Open one, run
+the optimizer, and the tuned values are written back into the <code>Parameter</code>
+blocks.</p>
+<h3 id="optimization_basic_demodiablos"><code>optimization_basic_demo.diablos</code><a class="headerlink" href="#optimization_basic_demodiablos" title="Permanent link">&para;</a></h3>
+<p>One tunable gain. A <code>Parameter</code> block feeds an <code>SgProd</code> acting as the
+controller, and an ISE <code>CostFunction</code> measures tracking error on
+<code>1/(s² + 2s + 1)</code>. The simplest possible optimization setup, and the wiring
+pattern the others extend: parameters are ordinary signals, and the <code>Optimizer</code>
+block is an unconnected marker.</p>
+<h3 id="optimization_pid_tuning_demodiablos"><code>optimization_pid_tuning_demo.diablos</code><a class="headerlink" href="#optimization_pid_tuning_demodiablos" title="Permanent link">&para;</a></h3>
+<p>Three tunable parameters (<code>Kp</code>, <code>Ki</code>, <code>Kd</code>) multiplying the proportional,
+integral and derivative branches of a hand-built PID, minimising ITAE on
+<code>1/(s² + 1.5s + 1)</code> with Nelder-Mead. ITAE weights late error more heavily than
+early error, so the tuned response settles rather than merely rising fast.</p>
+<h3 id="optimization_constrained_demodiablos"><code>optimization_constrained_demo.diablos</code><a class="headerlink" href="#optimization_constrained_demodiablos" title="Permanent link">&para;</a></h3>
+<p>The same loop under a <code>Constraint</code> block: peak output ≤ 1.15. With the shipped
+gains the plant overshoots to about 1.45, so the constraint scope starts at a
+non-zero violation — that is the point. SLSQP is required here; the
+unconstrained methods ignore <code>Constraint</code> blocks.</p>
+<h3 id="optimization_data_fit_demodiablos"><code>optimization_data_fit_demo.diablos</code><a class="headerlink" href="#optimization_data_fit_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A gain and a first-order lag producing the reference response that
+<code>optimization_sample_data.csv</code> was generated from. Point a <code>DataFit</code> block at
+that CSV and add <code>Parameter</code> blocks for the gain and the time constant to turn
+it into a model-calibration exercise.</p>
+<h3 id="optimization-primitives">Optimization primitives<a class="headerlink" href="#optimization-primitives" title="Permanent link">&para;</a></h3>
+<p>These build optimizers out of ordinary blocks in a feedback loop, one iteration
+per time step (<code>sim_dt = 1.0</code>), so the "time" axis on their scopes is an
+iteration counter.</p>
+<h3 id="gradient_descent_simplediablos"><code>gradient_descent_simple.diablos</code><a class="headerlink" href="#gradient_descent_simplediablos" title="Permanent link">&para;</a></h3>
+<p>The minimal loop: a <code>StateVariable</code> holding x, an <code>ObjectiveFunction</code> for
+<code>x₁² + x₂²</code>, a <code>NumericalGradient</code> built from two <code>VectorPerturb</code> evaluations,
+and a <code>VectorGain</code> of −0.2 closing the loop. Read this one before the others.</p>
+<h3 id="gradient_descent_demodiablos"><code>gradient_descent_demo.diablos</code><a class="headerlink" href="#gradient_descent_demodiablos" title="Permanent link">&para;</a></h3>
+<p>The same descent at α = 0.1 with a <code>ResidualNorm</code> on the gradient, so you can
+watch <code>‖∇f‖</code> decay geometrically alongside the cost.</p>
+<h3 id="gradient_descent_verificationdiablos"><code>gradient_descent_verification.diablos</code><a class="headerlink" href="#gradient_descent_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p>Runs the numerical descent against the closed form <code>x(k) = (1 − 2α)ᵏ x₀</code>
+computed in parallel from a <code>Ramp</code> and a <code>MathFunction</code>, and displays the
+absolute difference. It should stay below 1e-10 for the whole run.</p>
+<h3 id="momentum_demodiablos"><code>momentum_demo.diablos</code><a class="headerlink" href="#momentum_demodiablos" title="Permanent link">&para;</a></h3>
+<p>Momentum (α = 1e-4, β = 0.9) on the Rosenbrock function from the classic start
+x₀ = [−1.2, 1]. The cost spikes as the iterate is flung across the valley, then
+descends — velocity is what lets it make progress along the valley floor at all,
+and also what makes it overshoot.</p>
+<h3 id="adam_demodiablos"><code>adam_demo.diablos</code><a class="headerlink" href="#adam_demodiablos" title="Permanent link">&para;</a></h3>
+<p>Adam on the same Rosenbrock function from [−2, 2]. Per-coordinate step sizes
+cope with the enormously different curvatures along and across the valley
+without any hand-tuning of α.</p>
+<h3 id="newton_method_demodiablos"><code>newton_method_demo.diablos</code><a class="headerlink" href="#newton_method_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A <code>RootFinder</code> block solving <code>x₁² + x₂ − 1 = 0</code>, <code>x₁ + x₂² − 1 = 0</code> from
+[0.5, 0.5], with both residuals and <code>‖F(x)‖</code> on scopes. Convergence is
+quadratic — the residual norm falls off the bottom of the plot in a handful of
+iterations.</p>
+<h3 id="newton_method_verificationdiablos"><code>newton_method_verification.diablos</code><a class="headerlink" href="#newton_method_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p>The same system from [0.8, 0.2], measured against the exact root [1, 0]. Both
+<code>‖x − x*‖</code> and <code>‖F(x)‖</code> should reach 1e-10 or below.</p>
+<h3 id="linear_system_demodiablos"><code>linear_system_demo.diablos</code><a class="headerlink" href="#linear_system_demodiablos" title="Permanent link">&para;</a></h3>
+<p><code>LinearSystemSolver</code> solving <code>Ax = b</code> for A = [[2, 1], [1, 3]], b = [5, 7], with
+the answer and the recomputed <code>Ax</code> shown on <code>Display</code> blocks. Note that this
+diagram has no <code>Scope</code> at all — the result is a number, not a trajectory.</p>
+<h3 id="linear_system_verificationdiablos"><code>linear_system_verification.diablos</code><a class="headerlink" href="#linear_system_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p>The same solve, with <code>‖x − x*‖</code> against the exact [1.6, 1.8] and the residual
+<code>‖Ax − b‖</code> on <code>Display</code> blocks. Both should read below 1e-14.</p>
+<h3 id="learning_rate_comparisondiablos"><code>learning_rate_comparison.diablos</code><a class="headerlink" href="#learning_rate_comparisondiablos" title="Permanent link">&para;</a></h3>
+<p>Four independent gradient-descent loops on <code>f(x) = x²</code> at α = 0.1, 0.4, 0.6 and
+1.2, sharing one scope. The four regimes of <code>|1 − 2α|</code>: slow, near-optimal,
+oscillating and divergent. The α = 1.2 trace is <em>supposed</em> to run away — it is
+the lesson, not a bug.</p>
+<h3 id="optimizer_comparisondiablos"><code>optimizer_comparison.diablos</code><a class="headerlink" href="#optimizer_comparisondiablos" title="Permanent link">&para;</a></h3>
+<p><img alt="optimizer_comparison" src="../../images/examples/optimizer_comparison.png" /></p>
+<p>Gradient descent, momentum and Adam on Rosenbrock from x₀ = [−1.2, 1] with the
+step sizes each needs to stay stable (2e-4, 5e-5 and 5e-3). Momentum reaches the
+lowest cost; plain descent is monotone but slow. The honest takeaway is that
+each method needs its own learning rate — the same α makes two of the three
+diverge.</p>
+<h3 id="convergence_ratesdiablos"><code>convergence_rates.diablos</code><a class="headerlink" href="#convergence_ratesdiablos" title="Permanent link">&para;</a></h3>
+<p>Gradient descent against Newton's method on the root of <code>4x³</code>, with a
+<code>log₁₀|x|</code> scope. Linear convergence is a straight line on that scope; quadratic
+convergence falls off a cliff.</p>
+<hr />
+<h2 id="partial-differential-equations">Partial differential equations<a class="headerlink" href="#partial-differential-equations" title="Permanent link">&para;</a></h2>
+<p>PDE blocks discretise space with the method of lines and hand the resulting ODE
+system to the same solver everything else uses. <code>FieldProbe</code> extracts a scalar
+for a <code>Scope</code>; <code>FieldScope</code> shows the whole field over time as a heatmap.</p>
+<h3 id="demonstrations">Demonstrations<a class="headerlink" href="#demonstrations" title="Permanent link">&para;</a></h3>
+<h3 id="heat_equation_demodiablos"><code>heat_equation_demo.diablos</code><a class="headerlink" href="#heat_equation_demodiablos" title="Permanent link">&para;</a></h3>
+<p><code>∂T/∂t = α∇²T</code> on a rod with N = 20 nodes, held at 100 °C on the left and 0 °C
+on the right from a uniform 20 °C start. Two <code>FieldProbe</code>s at x = 0.25 and
+x = 0.5 track the interior temperatures towards the steady linear gradient
+(75 °C and 50 °C), and the <code>FieldScope</code> shows the heat front sweeping right.</p>
+<h3 id="wave_equation_demodiablos"><code>wave_equation_demo.diablos</code><a class="headerlink" href="#wave_equation_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A vibrating string released from a sinusoidal displacement with fixed ends. The
+<code>FieldScope</code> shows a standing wave; the probes show simple harmonic motion at
+the fundamental.</p>
+<h3 id="advection_equation_demodiablos"><code>advection_equation_demo.diablos</code><a class="headerlink" href="#advection_equation_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A Gaussian pulse transported at constant velocity past three probes. Watch the
+pulse broaden as it travels — that spreading is numerical diffusion from the
+first-order upwind scheme, not physics. Raise <code>N</code> and it shrinks.</p>
+<h3 id="diffusion_reaction_demodiablos"><code>diffusion_reaction_demo.diablos</code><a class="headerlink" href="#diffusion_reaction_demodiablos" title="Permanent link">&para;</a></h3>
+<p><code>∂c/∂t = D∇²c − kc</code>: diffusion and first-order decay together, sampled at three
+positions. The profile spreads and sinks at the same time.</p>
+<h3 id="heat_equation_2d_demodiablos"><code>heat_equation_2d_demo.diablos</code><a class="headerlink" href="#heat_equation_2d_demodiablos" title="Permanent link">&para;</a></h3>
+<p>The 2D heat equation on a 25×25 plate, hot on the left edge, insulated top and
+bottom. <code>FieldScope2D</code> renders the plate with a time slider; <code>FieldProbe2D</code>
+blocks pull out the centre and off-centre temperatures.</p>
+<h3 id="pde_comparison_demodiablos"><code>pde_comparison_demo.diablos</code><a class="headerlink" href="#pde_comparison_demodiablos" title="Permanent link">&para;</a></h3>
+<p>Heat, wave and advection equations from the same sinusoidal initial condition,
+each with its own <code>FieldScope</code>, plus one shared scope comparing the value at
+x = 0.5. Diffusion decays, the wave oscillates, the pulse translates — three
+behaviours from three one-line PDEs.</p>
+<h3 id="pde_neumann_bc_demodiablos"><code>pde_neumann_bc_demo.diablos</code><a class="headerlink" href="#pde_neumann_bc_demodiablos" title="Permanent link">&para;</a></h3>
+<p>An insulated rod (zero-flux Neumann boundaries) with a Gaussian hot spot. The
+<code>FieldIntegral</code> scope is the one to watch: total heat stays constant while the
+profile flattens, which is the numerical statement that no energy leaves through
+the ends.</p>
+<h3 id="verification-diagrams">Verification diagrams<a class="headerlink" href="#verification-diagrams" title="Permanent link">&para;</a></h3>
+<p>Each of these runs the numerical solution alongside its analytical counterpart
+and plots the difference. They carry the problem statement and the closed-form
+solution in a <code>_verification_notes</code> key inside the file.</p>
+<h3 id="heat_equation_1d_verificationdiablos"><code>heat_equation_1d_verification.diablos</code><a class="headerlink" href="#heat_equation_1d_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p><code>T(x, 0) = sin(πx/L)</code> decays as <code>exp(−απ²t/L²)</code> with the shape preserved; the
+error scope should stay near zero.</p>
+<h3 id="wave_equation_1d_verificationdiablos"><code>wave_equation_1d_verification.diablos</code><a class="headerlink" href="#wave_equation_1d_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p><code>u(x, t) = sin(πx/L)·cos(πct/L)</code>: a standing wave of period 2L/c = 2 s.</p>
+<h3 id="advection_equation_1d_verificationdiablos"><code>advection_equation_1d_verification.diablos</code><a class="headerlink" href="#advection_equation_1d_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p>A Gaussian translated at velocity v. The error here is dominated by the upwind
+scheme's numerical diffusion, so it is larger than in the other three — this
+diagram is where you see the cost of a first-order scheme.</p>
+<h3 id="diffusion_reaction_1d_verificationdiablos"><code>diffusion_reaction_1d_verification.diablos</code><a class="headerlink" href="#diffusion_reaction_1d_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p><code>c(x, t) = sin(πx/L)·exp(−(Dπ²/L² + k)t)</code>: diffusion and reaction contribute
+additively to the decay rate.</p>
+<h3 id="heat_equation_2d_verificationdiablos"><code>heat_equation_2d_verification.diablos</code><a class="headerlink" href="#heat_equation_2d_verificationdiablos" title="Permanent link">&para;</a></h3>
+<p><code>T = sin(πx)·sin(πy)·exp(−2απ²t)</code> on the unit square — the 2D separable mode,
+with a time slider on the field view.</p>
+<hr />
+<h2 id="experiments">Experiments<a class="headerlink" href="#experiments" title="Permanent link">&para;</a></h2>
+<h3 id="monte_carlo_robustnessdiablos"><code>monte_carlo_robustness.diablos</code><a class="headerlink" href="#monte_carlo_robustnessdiablos" title="Permanent link">&para;</a></h3>
+<p>A PI loop whose measurement path passes through a <code>Noise</code> block (σ = 0.02) and a
+<code>PacketLoss</code> block (20 % Bernoulli loss, sampled at 20 Hz, hold-last-value on
+drop). Both expose a <code>seed</code>, which is what makes this diagram an <em>experiment</em>
+rather than a single run: <strong>Tools → Monte Carlo</strong> derives a per-block sub-seed
+from one master seed for each replicate, so the whole ensemble is reproducible
+from a single number. Run 50 replicates and read the spread of overshoot and
+settling time off the ensemble window. <code>parameter_sweep</code> works the same way for
+deterministic sweeps — try it on <code>pid_second_order.diablos</code> over <code>Kp</code>.</p>
+<hr />
+<h2 id="library-blocks-and-masks">Library blocks and masks<a class="headerlink" href="#library-blocks-and-masks" title="Permanent link">&para;</a></h2>
+<h3 id="library_block_demodiablos"><code>library_block_demo.diablos</code><a class="headerlink" href="#library_block_demodiablos" title="Permanent link">&para;</a></h3>
+<p>A masked <strong>Vehicle</strong> subsystem — <code>v(s)/F(s) = 1/(ms + b)</code> — inside a
+proportional speed loop tracking 20 m/s. The mask exposes the mass <code>m</code> and
+damping <code>b</code> as ordinary parameters; the inner <code>TranFn</code> stores
+<code>denominator = "[m, b]"</code> and the mask resolves those names before flattening, so
+the symbolic expression survives every save and re-run. Select the Vehicle block
+and edit <code>m</code> in the property panel to see the response change; the steady state
+is <code>20·K/(K + b)</code>.</p>
+<p>The same block is published as a library block in <code>examples/library/</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">DIABLOS_LIBRARY_PATH</span><span class="o">=</span>examples/library<span class="w"> </span>python<span class="w"> </span>diablos_modern.py
+</code></pre></div>
+<p>"Vehicle" then appears in the palette under <strong>User Library</strong>, ready to drop into
+any diagram. See <em>Library blocks and masks</em> in
+<a href="../../USER_MANUAL/">USER_MANUAL.md</a>.</p>
+<hr />
+<h2 id="other-files-in-this-folder">Other files in this folder<a class="headerlink" href="#other-files-in-this-folder" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>library/vehicle.diablos</code></td>
+<td>The published form of the Vehicle library block above.</td>
+</tr>
+<tr>
+<td><code>optimization_sample_data.csv</code></td>
+<td>Sample measurements for a <code>DataFit</code> block.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="adding-your-own">Adding your own<a class="headerlink" href="#adding-your-own" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Build the diagram, set <em>sim_time</em> / <em>sim_dt</em> (and the solver, if it is stiff)
+   in the simulation settings, and add a <code>Scope</code>.</li>
+<li>Save it in <code>examples/</code> as <code>&lt;topic&gt;_&lt;what_it_shows&gt;.diablos</code>.</li>
+<li>Add a paragraph to <code>examples/README.md</code> <strong>and</strong> to this page — a test fails if either
+   omits a shipped diagram.</li>
+<li>Optionally add a <code>_verification_notes</code> key with the analytical solution:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="nt">"sim_data"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"sim_time"</span><span class="p">:</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="nt">"sim_dt"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">"blocks_data"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">],</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="nt">"lines_data"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">],</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="nt">"_verification_notes"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="nt">"problem"</span><span class="p">:</span><span class="w"> </span><span class="s2">"What is being solved"</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="nt">"analytical_solution"</span><span class="p">:</span><span class="w"> </span><span class="s2">"The closed form"</span><span class="p">,</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">        </span><span class="nt">"parameters"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"alpha"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="w"> </span><span class="p">}</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">}</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      MIT licensed. Built with MkDocs and Material for MkDocs.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Sapetor/diablos-modern" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "search.suggest", "search.highlight", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,12 @@
+# Documentation build dependencies.
+#
+# Used by .github/workflows/docs.yml and by Read the Docs (readthedocs.yaml).
+# The runtime packages are pulled in because mkdocstrings imports lib/, blocks/
+# and modern_ui/ to generate the API reference pages; pip resolves the nested
+# -r relative to this file.
+
+-r ../requirements.txt
+
+mkdocs>=1.6
+mkdocs-material>=9.5
+mkdocstrings[python]>=0.25
