@@ -17,12 +17,16 @@ and stiffness guidance, examples gallery test, block API / user blocks, docs sit
 - [x] Run the full suite + `ruff check .` + `ruff format --check .` on `feat/maturity`
   (2026-09-10: 4064 passed / 28 skipped / 1 xfailed, ruff clean)
 - [x] Bump `pyproject.toml` version to 1.1.0; move CHANGELOG `[Unreleased]` to `[1.1.0]` (2026-09-10)
-- [ ] Merge `feat/maturity` into `main` (fast-forward; `main` has not moved)
-- [ ] Push `main` and tags (`v1.0.0`, `v1.1.0`); confirm `release.yml` and `docs.yml` go green
-- [ ] Delete the merged `feat/*` agent branches (`i18n-spanish`, `zero-crossing`,
+- [x] Merge `feat/maturity` into `main` (fast-forward; `main` has not moved) (2026-09-10: main 1999c56 -> 9e5f74d)
+- [x] Push `main` and tags (`v1.0.0`, `v1.1.0`); confirm `release.yml` and `docs.yml` go green
+  (2026-09-10: `v1.0.0` was already on the remote; pushed `main` + `v1.1.0`; CI (3.9, 3.12, ruff), Docs and
+  Release all green -- release v1.1.0 published with arm64 DMG, linux tar.gz and windows zip)
+- [x] Delete the merged `feat/*` agent branches (`i18n-spanish`, `zero-crossing`,
   `library-blocks`, `i18n-masks`, `i18n-events-libraries`, `block-api`, `docs-site`,
   `examples`); keep `feat/paper` (JOSS draft) and `backup/pre-merge-main`
-  (200 commits that exist nowhere else)
+  (200 commits that exist nowhere else) (2026-09-10: deleted those eight plus the also-merged
+  `solver-semantics`, `validation`, `validation-bugfixes`, `wire-routing-and-block-shapes`; kept
+  `feat/paper`, `feat/maturity`, `backup/pre-merge-main`; `origin/feat/wire-routing-and-block-shapes` left on the remote)
 
 ---
 
