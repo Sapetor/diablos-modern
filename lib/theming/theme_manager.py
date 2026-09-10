@@ -126,15 +126,13 @@ def pulse_alpha(phase: float, base_alpha: int, depth: float = 0.4) -> int:
 def _qt_weight(css_weight: int) -> "QFont.Weight":
     """Map a CSS font-weight (400/500/600/700) to a ``QFont.Weight`` member.
 
-    Qt6's QFont.setWeight takes a QFont.Weight enum member (whose values are the
-    CSS 100–900 scale), never a bare int. Unknown values fall back to Normal.
+    ``QFont.Weight`` members are the CSS 100-900 scale, so the value converts
+    directly; anything off the scale falls back to Normal.
     """
-    return {
-        400: QFont.Weight.Normal,
-        500: QFont.Weight.Medium,
-        600: QFont.Weight.DemiBold,
-        700: QFont.Weight.Bold,
-    }.get(css_weight, QFont.Weight.Normal)
+    try:
+        return QFont.Weight(css_weight)
+    except ValueError:
+        return QFont.Weight.Normal
 
 
 def get_ui_font(size: Optional[int] = None, weight: Optional[int] = None) -> QFont:
@@ -177,8 +175,8 @@ _FONT_METRICS_CACHE: Dict[tuple, QFontMetrics] = {}
 _FONT_METRICS_CACHE_MAX = 256
 
 
-def _font_key(font: QFont) -> tuple:
-    """Identifying attributes of ``font`` for metrics memoization."""
+def font_key(font: QFont) -> tuple:
+    """Hashable identity of ``font`` for memoizing per-font derived objects."""
     return (
         font.family(),
         font.pointSize(),
@@ -190,9 +188,7 @@ def _font_key(font: QFont) -> tuple:
         font.strikeOut(),
         int(font.stretch()),
         float(font.letterSpacing()),
-        # Qt6's StyleStrategy is a plain (non-int) enum; it is hashable, so use
-        # the member itself rather than coercing it to an int.
-        font.styleStrategy(),
+        font.styleStrategy(),  # a hashable (non-int) enum on Qt6
     )
 
 
@@ -203,7 +199,7 @@ def font_metrics(font: QFont) -> QFontMetrics:
     returned object must be treated as read-only (QFontMetrics exposes no
     mutators, so this is automatic in practice).
     """
-    key = _font_key(font)
+    key = font_key(font)
     metrics = _FONT_METRICS_CACHE.get(key)
     if metrics is None:
         if len(_FONT_METRICS_CACHE) >= _FONT_METRICS_CACHE_MAX:
@@ -214,12 +210,7 @@ def font_metrics(font: QFont) -> QFontMetrics:
 
 
 def text_width(metrics: QFontMetrics, text: str) -> int:
-    """Width of ``text`` under ``metrics``.
-
-    Qt6 dropped the deprecated ``QFontMetrics.width``; ``horizontalAdvance`` is
-    the only spelling. Centralized here so the renderers stop re-implementing
-    the same call per label.
-    """
+    """Width of ``text`` under ``metrics`` (the one place that spells ``horizontalAdvance``)."""
     return metrics.horizontalAdvance(text)
 
 

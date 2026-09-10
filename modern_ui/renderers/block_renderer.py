@@ -22,6 +22,7 @@ from PyQt6.QtCore import Qt, QRect, QRectF, QPoint, QPointF
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
+    font_key,
     font_metrics,
     text_width as measure_text,
     TYPE,
@@ -390,18 +391,7 @@ def _cached_name_font(font: QFont) -> QFont:
     so it used to copy it every frame just to force Normal weight. The copy is
     a pure function of the source font's attributes, so it is memoized.
     """
-    key = (
-        font.family(),
-        font.pointSize(),
-        font.pointSizeF(),
-        font.pixelSize(),
-        font.italic(),
-        font.underline(),
-        font.strikeOut(),
-        # Qt6's StyleStrategy is a plain (non-int) enum; it is hashable, so use
-        # the member itself rather than coercing it to an int.
-        font.styleStrategy(),
-    )
+    key = font_key(font)
     cached = _NAME_FONT_CACHE.get(key)
     if cached is None:
         cached = QFont(font)
