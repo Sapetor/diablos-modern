@@ -45,12 +45,17 @@ Python-version marker on the PyQt6 pin is honoured. The PyQt6 macOS wheels are
 `universal2`, so the same wheel serves both arches; the interpreter's
 architecture is what decides the build.
 
-!!! warning "Existing build envs still hold PyQt5"
-    Both envs above were provisioned for PyQt5. After the PyQt6 migration they
-    must be re-provisioned (`pip uninstall PyQt5 PyQt5-Qt5 PyQt5-sip` then
-    `pip install -r requirements.txt`) -- `diablos.spec` now excludes `PyQt5`,
-    so a leftover PyQt5 will not be bundled, but the app will not *run* from
-    such an env either.
+!!! note "Conda envs: disable Anaconda's `qt.conf`"
+    Both envs were re-provisioned for PyQt6 on 2026-09-10 (`pip uninstall
+    PyQt5 PyQt5-Qt5 PyQt5-sip`, then `pip install -r requirements.txt
+    pyinstaller`). In the conda env that alone was not enough: Anaconda's own
+    `qt-main` (Qt 5.15) package ships `<env>/bin/qt.conf`, which Qt reads from
+    the directory of the running executable and which points every Qt -- PyQt6
+    included -- at conda's Qt5 plugin directory. The symptom is
+    *"This application failed to start because no Qt platform plugin could be
+    initialized"* with `QT_DEBUG_PLUGINS=1` reporting *"uses incompatible Qt
+    library (5.15.0)"*. Fix: rename `<env>/bin/qt.conf` (kept as
+    `qt.conf.disabled-for-pyqt6`); a conda update of `qt-main` may put it back.
 The x86_64 env is a conda env (not a `~/.venvs/` venv) and must be built under
 Rosetta. PyInstaller cannot cross-compile -- it bundles whatever interpreter is
 active, so an arm64 interpreter always yields an arm64 app regardless of flags.
