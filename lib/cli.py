@@ -50,8 +50,9 @@ def _ensure_headless_qapp():
     appears (mirrors tests/conftest.py). Must run before QApplication is built.
     """
     global _QAPP
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    os.environ.setdefault("MPLBACKEND", "Agg")
+    from lib.qt_setup import configure_qt_env
+
+    configure_qt_env(headless=True)
     from PyQt6.QtWidgets import QApplication
 
     _QAPP = QApplication.instance() or QApplication(["diablos-run"])

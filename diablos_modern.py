@@ -51,14 +51,11 @@ if sys.stderr is None:
 import os
 import logging
 import json
-import warnings
 import threading
 
-# Pin pyqtgraph's Qt binding before anything can import it. PyQt5 may still be
-# installed alongside PyQt6 in a developer environment, and pyqtgraph picks a
-# binding at import time -- letting it choose PyQt5 would load two bindings
-# into one process and crash.
-os.environ.setdefault("PYQTGRAPH_QT_LIB", "PyQt6")
+from lib.qt_setup import configure_qt_env
+
+configure_qt_env()  # must precede the first Qt / pyqtgraph import
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
@@ -115,12 +112,6 @@ logger = logging.getLogger(__name__)
 
 def setup_application():
     """Setup application-wide settings and styling."""
-    # Silence PyQtGraph Qt version warning on older Qt (harmless noise)
-    warnings.filterwarnings(
-        "ignore",
-        message="PyQtGraph supports Qt version >= 5.15",
-        category=RuntimeWarning,
-    )
     # Qt6 scales for high DPI unconditionally; the Qt5 opt-in attributes
     # (AA_EnableHighDpiScaling / AA_UseHighDpiPixmaps) no longer exist.
     # Create application

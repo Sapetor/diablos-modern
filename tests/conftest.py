@@ -3,6 +3,14 @@ Pytest configuration and shared fixtures for DiaBloS tests.
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Add parent directory to path so we can import diablos modules
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from lib.qt_setup import configure_qt_env  # noqa: E402
 
 # Force a headless Qt / matplotlib backend for the whole suite, unless the
 # developer explicitly opts into visible windows (DIABLOS_SHOW_WINDOWS=1).
@@ -18,21 +26,7 @@ import os
 # plugin is selected -- makes the suite reliably headless no matter how pytest
 # is launched (CLI, IDE, CI). setdefault() still lets an explicitly-set value
 # win on platforms where the shell env does propagate.
-if not os.environ.get("DIABLOS_SHOW_WINDOWS"):
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    os.environ.setdefault("MPLBACKEND", "Agg")
-
-# Pin pyqtgraph's Qt binding. A developer environment can have PyQt5 installed
-# next to PyQt6; pyqtgraph picks a binding the first time it is imported, and
-# two bindings in one process segfault. Must precede any pyqtgraph import.
-os.environ.setdefault("PYQTGRAPH_QT_LIB", "PyQt6")
-
-import sys
-from pathlib import Path
-
-# Add parent directory to path so we can import diablos modules
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+configure_qt_env(headless=not os.environ.get("DIABLOS_SHOW_WINDOWS"))
 
 import pytest
 from PyQt6.QtWidgets import QApplication
