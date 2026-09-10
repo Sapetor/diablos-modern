@@ -4,6 +4,8 @@ All notable changes to DiaBloS will be documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-10
+
 ### Added
 - **Drag-to-connect**: press an output port, drag, release on an input port. Click-click still works, a wire can be started from a free input port, and the preview snaps to the hovered port and turns green/red for accepted/rejected targets.
 - **Wire editing**: right-click a wire for **Auto-route wire** and **Reset routing**; double-click a bend handle to remove it; dragging a straight or curved wire creates a proper three-segment bend; bends snap to the grid.

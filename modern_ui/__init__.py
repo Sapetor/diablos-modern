@@ -25,7 +25,7 @@ from importlib.metadata import version as _package_version
 #: Last-resort literal, used only when every source above fails. Keep in sync
 #: with ``[project] version`` in pyproject.toml, which is the single source of
 #: truth; nothing in a normal dev checkout or frozen build should reach it.
-_FALLBACK_VERSION = "1.0.0"
+_FALLBACK_VERSION = "1.1.0"
 
 #: Plain-text file the PyInstaller spec drops at the root of the bundle.
 _VERSION_FILENAME = "_version.txt"

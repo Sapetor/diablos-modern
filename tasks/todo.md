@@ -14,8 +14,9 @@ drag-to-connect + wire editing + block shapes, validation suite, solver semantic
 and stiffness guidance, examples gallery test, block API / user blocks, docs site.
 `release.yml` only fires on a pushed `v*` tag, so no packaged build has run yet.
 
-- [ ] Run the full suite + `ruff check .` + `ruff format --check .` on `feat/maturity`
-- [ ] Bump `pyproject.toml` version to 1.1.0; move CHANGELOG `[Unreleased]` to `[1.1.0]`
+- [x] Run the full suite + `ruff check .` + `ruff format --check .` on `feat/maturity`
+  (2026-09-10: 4064 passed / 28 skipped / 1 xfailed, ruff clean)
+- [x] Bump `pyproject.toml` version to 1.1.0; move CHANGELOG `[Unreleased]` to `[1.1.0]` (2026-09-10)
 - [ ] Merge `feat/maturity` into `main` (fast-forward; `main` has not moved)
 - [ ] Push `main` and tags (`v1.0.0`, `v1.1.0`); confirm `release.yml` and `docs.yml` go green
 - [ ] Delete the merged `feat/*` agent branches (`i18n-spanish`, `zero-crossing`,

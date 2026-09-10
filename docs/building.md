@@ -8,7 +8,7 @@ DiaBloS can be packaged as a standalone app using PyInstaller. Users don't need 
 # arm64 -- RECOMMENDED for releases (fast, working cursor)
 source ~/.venvs/diablos-arm64/bin/activate
 ./tools/build.sh
-# Output: dist/DiaBloS-arm64.app + dist/DiaBloS-1.0.0-arm64.dmg (72MB)
+# Output: dist/DiaBloS-arm64.app + dist/DiaBloS-1.1.0-arm64.dmg (72MB)
 
 # x86_64 (Rosetta) -- fallback for older Intel Macs.
 # Built from the x86_64 conda env under Rosetta (PyInstaller bundles the
@@ -17,7 +17,7 @@ arch -x86_64 /bin/bash -c '
   source ~/opt/anaconda3/etc/profile.d/conda.sh
   conda activate diablos_x86
   ./tools/build.sh'
-# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-1.0.0-x86_64.dmg (~117MB)
+# Output: dist/DiaBloS-x86_64.app + dist/DiaBloS-1.1.0-x86_64.dmg (~117MB)
 
 # Move DMG out of vault and clean up
 mv dist/DiaBloS-*.dmg ~/Desktop/
