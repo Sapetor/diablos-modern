@@ -356,10 +356,17 @@ complexity 25, all listed here.
   and after and comparing every Scope / FieldScope history: 115 arrays across 33
   compiled diagrams, all bit-identical. Tests: `tests/unit/test_replay_handlers.py`
   (40) plus the existing golden / equivalence suites.
-- [ ] **Engine cores**: `SystemCompiler.compile_system` (434 lines, C901 = 41)
-  and `DSim._interpreter_step` (`lib/lib.py`, 296 lines, C901 = 41). Both are
-  phase-structured (classify → assemble state fns → order → run); extract the
-  phases as named methods. Do each alone.
+- [x] **`SystemCompiler.compile_system`** — done 2026-09-10. Was 434 lines, C901 = 41.
+  Now a ~40-line phase sequence over module-level helpers in `system_compiler.py`:
+  `_build_input_map`, `STATE_ALLOCATORS` + `_allocate_states` (the 12-way state
+  allocation if/elif as a table of `(block, params) -> (n, y0, matrices)`
+  functions), `SOURCE_FNS` / `STATE_FNS` / `_is_d0_state_block` /
+  `_execution_groups`, `_state_output_preloads`, `_make_model_func`, and a
+  `_build_executors` method. Same trace-diff verification as the replay split
+  (115/115 arrays bit-identical). Tests: `tests/unit/test_system_compiler_phases.py`.
+- [ ] **`DSim._interpreter_step`** (`lib/lib.py`, 296 lines, C901 = 41). Same
+  treatment: extract the phases as named methods; verify with the interpreted-path
+  variant of the trace-diff recipe (`use_fast_solver=False`).
 - [ ] **`DSim` facade** (`lib/lib.py`, 1825 lines, 87 methods, 27 of them
   one-line delegations to `engine` / `subsystem_manager`). Finish the facade:
   callers go to the owner, the shims go. Related core-layer debris:

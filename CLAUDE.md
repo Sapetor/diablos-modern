@@ -34,7 +34,7 @@ tasks/              TODO list (todo.md) and lessons learned (lessons.md)
 
 ### Compiled Solver Execution Order
 
-Blocks execute in three groups: **sources -> middle (algebraic) -> D=0 state blocks**. State blocks (TranFn/StateSpace, Integrator, PID, RateLimiter, PDE) are classified by their feedthrough term D. Strictly-proper state blocks (D=0: strictly-proper TFs, Integrator, RateLimiter, PDE) run last so their derivative computations use correct inputs; feedthrough state blocks (D!=0, which always includes PID) execute with the algebraic middle group instead. See `system_compiler.py` (`_is_d0_state_block`, `state_fns`) and `tasks/lessons.md` for the full rationale.
+Blocks execute in three groups: **sources -> middle (algebraic) -> D=0 state blocks**. State blocks (TranFn/StateSpace, Integrator, PID, RateLimiter, PDE) are classified by their feedthrough term D. Strictly-proper state blocks (D=0: strictly-proper TFs, Integrator, RateLimiter, PDE) run last so their derivative computations use correct inputs; feedthrough state blocks (D!=0, which always includes PID) execute with the algebraic middle group instead. See `system_compiler.py` (`_is_d0_state_block`, `STATE_FNS`, `_execution_groups`) and `tasks/lessons.md` for the full rationale.
 
 ### Analysis & Experiment Subsystem (`lib/analysis/`)
 

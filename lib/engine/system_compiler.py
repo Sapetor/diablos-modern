@@ -35,6 +35,303 @@ def _declared_sample_time(block) -> float:
         return -1.0
 
 
+# ---------------------------------------------------------------------------
+# compile_system phases (module-level so each is testable on its own)
+# ---------------------------------------------------------------------------
+
+
+def _build_input_map(blocks, lines) -> Dict[str, Dict[int, Tuple[str, int]]]:
+    """Static pull-based wiring: ``dst_name -> {dst_port: (src_name, src_port)}``."""
+    input_map = {b.name: {} for b in blocks}
+    for line in lines:
+        input_map[line.dstblock][line.dstport] = (line.srcblock, line.srcport)
+    return input_map
+
+
+def _pad_initial_conditions(ic, n: int) -> np.ndarray:
+    """``ic`` as a length-``n`` float vector: zero-padded or truncated."""
+    ic_flat = np.atleast_1d(np.array(ic, dtype=float)).flatten()
+    if len(ic_flat) < n:
+        padded = np.zeros(n)
+        padded[: len(ic_flat)] = ic_flat
+        return padded
+    return ic_flat[:n]
+
+
+# A state allocator maps (block, resolved params) -> (n_states, y0_slice,
+# matrices), where matrices is the (A, B, C, D) tuple for linear state blocks
+# and None otherwise. Params are the *resolved* ones (runtime_params): raw
+# params may still hold workspace-variable names as strings, which would
+# misbuild the matrices and hence the D=0 / D!=0 execution-order classification.
+
+
+def _alloc_integrator(block, p):
+    ic = np.atleast_1d(np.array(p.get("init_conds", 0.0), dtype=float)).flatten()
+    return ic.size, ic, None
+
+
+def _alloc_state_space(block, p):
+    A = np.array(p["A"], dtype=float)
+    B = np.array(p["B"], dtype=float)
+    C = np.array(p["C"], dtype=float)
+    D = np.array(p["D"], dtype=float)
+    n = A.shape[0] if len(A.shape) > 1 else 1
+    A = A.reshape(n, n)
+    return n, _pad_initial_conditions(p.get("init_conds", [0.0] * n), n), (A, B, C, D)
+
+
+def _alloc_transfer_fcn(block, p):
+    A, B, C, D = signal.tf2ss(p.get("numerator", [1.0]), p.get("denominator", [1.0, 1.0]))
+    n = A.shape[0]
+    return n, _pad_initial_conditions(p.get("init_conds", [0.0] * n), n), (A, B, C, D)
+
+
+def _alloc_pid(block, p):
+    # [x_i, x_d]: integrator + derivative-filter states, both starting at 0.
+    return 2, np.zeros(2), None
+
+
+def _alloc_rate_limiter(block, p):
+    # State is the output y. The block has no initial-output parameter (it
+    # latches its first input at runtime), so the compiled state starts at 0.
+    return 1, np.zeros(1), None
+
+
+def _alloc_heat_1d(block, p):
+    N = int(p.get("N", 20))
+    ic = parse_pde_initial_condition(
+        p.get("init_conds", [0.0]),
+        N,
+        float(p.get("L", 1.0)),
+        pde_type="heat",
+        seed=p.get("seed", 0),
+    )
+    return N, ic, None
+
+
+def _alloc_wave_1d(block, p):
+    # 2N states: N displacement + N velocity.
+    N = int(p.get("N", 50))
+    L = float(p.get("L", 1.0))
+    seed = p.get("seed", 0)
+    u0 = parse_pde_initial_condition(
+        p.get("init_displacement", [0.0]), N, L, pde_type="wave", seed=seed
+    )
+    v0 = parse_pde_initial_condition(
+        p.get("init_velocity", [0.0]), N, L, pde_type="wave", seed=companion_seed(seed)
+    )
+    return 2 * N, np.concatenate([np.ravel(u0), np.ravel(v0)]), None
+
+
+def _alloc_advection_1d(block, p):
+    N = int(p.get("N", 50))
+    c0 = parse_pde_initial_condition(
+        p.get("init_conds", [0.0]), N, float(p.get("L", 1.0)), pde_type="advection"
+    )
+    return N, c0, None
+
+
+def _alloc_diffusion_reaction_1d(block, p):
+    N = int(p.get("N", 30))
+    c0 = parse_pde_initial_condition(
+        p.get("init_conds", [1.0]), N, float(p.get("L", 1.0)), pde_type="diffusion_reaction"
+    )
+    return N, c0, None
+
+
+def _alloc_heat_2d(block, p):
+    Nx = int(p.get("Nx", 20))
+    Ny = int(p.get("Ny", 20))
+    T0 = parse_pde_2d_initial_condition(
+        p.get("init_temp", "0.0"),
+        Nx,
+        Ny,
+        float(p.get("Lx", 1.0)),
+        float(p.get("Ly", 1.0)),
+        float(p.get("init_amplitude", 1.0)),
+        seed=p.get("seed", 0),
+    )
+    return Nx * Ny, T0.flatten(), None
+
+
+def _alloc_wave_2d(block, p):
+    # 2*Nx*Ny states (displacement u + velocity v); the block owns the layout.
+    from blocks.pde.wave_equation_2d import WaveEquation2DBlock
+
+    n_states = 2 * int(p.get("Nx", 20)) * int(p.get("Ny", 20))
+    return n_states, WaveEquation2DBlock().get_initial_state(p), None
+
+
+def _alloc_advection_2d(block, p):
+    from blocks.pde.advection_equation_2d import AdvectionEquation2DBlock
+
+    n_states = int(p.get("Nx", 30)) * int(p.get("Ny", 30))
+    return n_states, AdvectionEquation2DBlock().get_initial_state(p), None
+
+
+# canonical_fn -> allocator. Blocks absent here carry no ODE state (algebraic
+# blocks, sinks, and StateVariable, whose discrete state lives in its closure).
+STATE_ALLOCATORS = {
+    "Integrator": _alloc_integrator,
+    "StateSpace": _alloc_state_space,
+    "TransferFcn": _alloc_transfer_fcn,
+    "PID": _alloc_pid,
+    "RateLimiter": _alloc_rate_limiter,
+    "Heatequation1D": _alloc_heat_1d,
+    "Waveequation1D": _alloc_wave_1d,
+    "Advectionequation1D": _alloc_advection_1d,
+    "Diffusionreaction1D": _alloc_diffusion_reaction_1d,
+    "Heatequation2D": _alloc_heat_2d,
+    "Waveequation2D": _alloc_wave_2d,
+    "Advectionequation2D": _alloc_advection_2d,
+}
+
+
+def _allocate_states(blocks) -> Tuple[Dict[str, Tuple[int, int]], Dict[str, tuple], np.ndarray]:
+    """Lay the ODE state vector out block by block, in ``blocks`` order.
+
+    Returns ``(state_map, block_matrices, y0)`` with
+    ``state_map[name] = (start_idx, size)`` and ``block_matrices[name] =
+    (A, B, C, D)`` for the linear state blocks.
+    """
+    state_map: Dict[str, Tuple[int, int]] = {}
+    block_matrices: Dict[str, tuple] = {}
+    y0_parts: List[np.ndarray] = []
+    next_idx = 0
+    for block in blocks:
+        fn = canonical_fn(block.block_fn)
+        allocator = STATE_ALLOCATORS.get(fn)
+        if allocator is None:
+            continue
+        try:
+            size, y0_slice, matrices = allocator(block, runtime_params(block))
+        except Exception as e:
+            logger.error(f"Failed to compile {fn} {block.name}: {e}")
+            raise
+        state_map[block.name] = (next_idx, size)
+        if matrices is not None:
+            block_matrices[block.name] = matrices
+        y0_parts.append(np.asarray(y0_slice, dtype=float).ravel())
+        next_idx += size
+    y0 = np.concatenate(y0_parts) if y0_parts else np.zeros(0)
+    return state_map, block_matrices, y0
+
+
+# Execution is in three groups (see docs/SOLVER_SEMANTICS.md and CLAUDE.md):
+#   (a) sources         -- no inputs, run first;
+#   (b) middle          -- algebraic blocks AND D!=0 state blocks (their output
+#                          C*x + D*u needs this step's input), in topological
+#                          order;
+#   (c) D=0 state blocks -- strictly proper TFs, Integrator, RateLimiter, PDEs.
+#                          Their output C*x is pre-populated exactly, so they
+#                          run last and their derivatives see final inputs.
+# Both sets hold canonical spellings only (canonical_fn is the one normalizer).
+SOURCE_FNS = frozenset(
+    {"Step", "Sine", "Constant", "From", "Ramp", "Noise", "Wavegenerator", "Prbs", "Impulse"}
+)
+STATE_FNS = frozenset(
+    {
+        "TransferFcn",
+        "StateSpace",
+        "Integrator",
+        "PID",
+        # canonical_fn only maps the exact upstream spelling 'PID' to 'PID';
+        # a block_fn of 'pid'/'Pid' canonicalizes to 'Pid'.
+        "Pid",
+        "RateLimiter",
+        "Heatequation1D",
+        "Waveequation1D",
+        "Advectionequation1D",
+        "Diffusionreaction1D",
+        "Heatequation2D",
+        "Waveequation2D",
+        "Advectionequation2D",
+    }
+)
+
+
+def _is_d0_state_block(block, fn: str, block_matrices) -> bool:
+    """True if ``block`` is a state block with D=0 (safe to pre-populate)."""
+    if fn not in STATE_FNS:
+        return False
+    if block.name in block_matrices:
+        _, _, _, D = block_matrices[block.name]
+        return not np.any(D != 0)
+    if fn in ("Pid", "PID"):
+        return False  # PID output depends on the current error (feedthrough)
+    return True  # Integrator, RateLimiter, PDE blocks: D=0
+
+
+def _execution_groups(sorted_order, block_matrices):
+    """Split ``sorted_order`` into (sources, middle, d0_state_blocks), each in
+    the original topological order."""
+    source_names = set()
+    d0_names = set()
+    for b in sorted_order:
+        fn = canonical_fn(b.block_fn)
+        if fn in SOURCE_FNS:
+            source_names.add(b.name)
+        elif _is_d0_state_block(b, fn, block_matrices):
+            d0_names.add(b.name)
+    sources = [b for b in sorted_order if b.name in source_names]
+    middle = [b for b in sorted_order if b.name not in source_names and b.name not in d0_names]
+    d0_state_blocks = [b for b in sorted_order if b.name in d0_names]
+    return sources, middle, d0_state_blocks
+
+
+def _state_output_preloads(state_map, block_matrices, d0_names):
+    """``(name, start, size, C)`` for every D=0 state block; ``C`` is None for
+    an Integrator (output = state). D!=0 blocks run in the middle group and
+    are deliberately absent."""
+    preloads = []
+    for b_name, (start, size) in state_map.items():
+        if b_name not in d0_names:
+            continue
+        matrices = block_matrices.get(b_name)
+        preloads.append((b_name, start, size, matrices[2] if matrices is not None else None))
+    return preloads
+
+
+def _make_model_func(execution_sequence, n_sources: int, state_output_preloads):
+    """Build the ODE right-hand side ``f(t, y) -> dy`` over the compiled executors.
+
+    ``execution_sequence`` is sources-first, so it is split at ``n_sources``:
+    a linearization helper can override input-source signals *after* the
+    sources run but *before* downstream/state blocks consume them, without
+    disturbing normal solves. The richer ``evaluate`` is exposed as an
+    attribute so the ``compile_system`` return contract stays unchanged.
+    """
+
+    def _evaluate(t, y, input_overrides=None):
+        """Run the compiled diagram once; return (dy_vec, signals)."""
+        signals = {}
+        dy_vec = np.zeros_like(y)
+
+        # Pre-populate D=0 state-block outputs so feedback loops resolve;
+        # their output C*x is exact because D*u = 0.
+        for b_name, start, size, C_mat in state_output_preloads:
+            if C_mat is not None:
+                x = y[start : start + size].reshape(-1, 1)
+                out = C_mat @ x
+                signals[b_name] = out.item() if out.size == 1 else out.flatten()
+            else:
+                signals[b_name] = y[start] if size == 1 else y[start : start + size]
+
+        for exec_fn in execution_sequence[:n_sources]:
+            exec_fn(t, y, dy_vec, signals)
+        if input_overrides:
+            signals.update(input_overrides)
+        for exec_fn in execution_sequence[n_sources:]:
+            exec_fn(t, y, dy_vec, signals)
+        return dy_vec, signals
+
+    def model_func(t, y):
+        return _evaluate(t, y)[0]
+
+    model_func.evaluate = _evaluate
+    return model_func
+
+
 class SystemCompiler:
     """
     Compiles a block diagram into a flat numerical function for fast ODE solving.
@@ -341,428 +638,58 @@ class SystemCompiler:
                 )
         return specs
 
-    def compile_system(
-        self, blocks: List[DBlock], sorted_order: List[DBlock], lines: List[Any]
-    ) -> Tuple[Callable, np.ndarray, Dict]:
+    def _build_executors(self, sorted_order, input_map, state_map, block_matrices):
+        """One kernel closure per block, in execution order.
+
+        Also exposes the ``name -> executor`` map on ``self.block_executors``
+        so the post-solve replay reuses these same kernels for pure-function
+        blocks (single source of truth for that math).
         """
-        Generate a fast derivative function f(t, y) using closure-based optimization.
-        """
-        # 0. Block ordering is deferred to after state identification (section 2)
-        # so we can inspect D matrices to classify D=0 vs D≠0 state blocks.
-        # Latch holders belong to this compile only: a stale registry would hand
-        # the new closures the previous diagram's relay modes.
-        self._mode_registry = {}
-
-        # 1. Build Dependency Graph (Static Pull-based connections)
-        # map: dest_block_name -> port_idx -> (source_block_name, source_port_idx)
-        input_map = {b.name: {} for b in blocks}
-
-        for line in lines:
-            dst_block = line.dstblock
-            dst_port = line.dstport
-            src_block = line.srcblock
-            src_port = line.srcport
-
-            input_map[dst_block][dst_port] = (src_block, src_port)
-
-        # 2. Identify States (Integrators, StateSpace, TransferFcn)
-        state_map = {}  # block_name -> (start_idx, size)
-        block_matrices = {}  # block_name -> (A, B, C, D)
-        y0_list = []
-        current_state_idx = 0
-
-        for block in blocks:
-            b_name = block.name
-            fn = canonical_fn(block.block_fn)
-
-            # Use resolved params if available (exec_params), otherwise fall
-            # back to raw params. exec_params is populated by
-            # SimulationEngine.run_compiled_simulation before compile_system is
-            # called, and contains workspace variables resolved to numeric
-            # values. Reading raw params here would misbuild block_matrices
-            # (and therefore the D!=0 vs D=0 classification for execution
-            # ordering) whenever a state block is parameterised by a workspace
-            # variable. Same convention used by the PDE branches below.
-            sparams = runtime_params(block)
-
-            if fn == "Integrator":
-                ic = np.array(sparams.get("init_conds", 0.0), dtype=float)
-                ic_flat = np.atleast_1d(ic).flatten()
-                size = ic_flat.size
-                state_map[b_name] = (current_state_idx, size)
-                y0_list.extend(ic_flat)
-                current_state_idx += size
-
-            elif fn in ("StateVariable", "Statevariable"):
-                # StateVariable uses closure-based state, not ODE state
-                # State is managed directly in the executor closure
-                pass
-
-            elif fn == "StateSpace":
-                try:
-                    A = np.array(sparams["A"], dtype=float)
-                    B = np.array(sparams["B"], dtype=float)
-                    C = np.array(sparams["C"], dtype=float)
-                    D = np.array(sparams["D"], dtype=float)
-
-                    # Fix dimensions
-                    n = A.shape[0] if len(A.shape) > 1 else 1  # Basic check
-                    A = A.reshape(n, n)
-
-                    # Store matrices
-                    block_matrices[b_name] = (A, B, C, D)
-
-                    # Init conditions
-                    ic = np.array(sparams.get("init_conds", [0.0] * n), dtype=float)
-                    ic_flat = np.atleast_1d(ic).flatten()
-
-                    # Resize/Pad ICs to match n
-                    if len(ic_flat) < n:
-                        padded = np.zeros(n)
-                        padded[: len(ic_flat)] = ic_flat
-                        ic_flat = padded
-                    elif len(ic_flat) > n:
-                        ic_flat = ic_flat[:n]
-
-                    state_map[b_name] = (current_state_idx, n)
-                    y0_list.extend(ic_flat)
-                    current_state_idx += n
-                except Exception as e:
-                    logger.error(f"Failed to compile StateSpace {b_name}: {e}")
-                    raise e
-
-            elif fn == "TransferFcn":
-                try:
-                    num = sparams.get("numerator", [1.0])
-                    den = sparams.get("denominator", [1.0, 1.0])
-
-                    # Convert to State Space
-                    A, B, C, D = signal.tf2ss(num, den)
-
-                    block_matrices[b_name] = (A, B, C, D)
-
-                    n = A.shape[0]
-
-                    # Init conditions
-                    ic = np.array(sparams.get("init_conds", [0.0] * n), dtype=float)
-                    ic_flat = np.atleast_1d(ic).flatten()
-
-                    if len(ic_flat) < n:
-                        padded = np.zeros(n)
-                        padded[: len(ic_flat)] = ic_flat
-                        ic_flat = padded
-                    elif len(ic_flat) > n:
-                        ic_flat = ic_flat[:n]
-
-                    state_map[b_name] = (current_state_idx, n)
-                    y0_list.extend(ic_flat)
-                    current_state_idx += n
-
-                except Exception as e:
-                    logger.error(f"Failed to compile TransferFcn {b_name}: {e}")
-                    raise e
-
-            elif fn == "PID":
-                # PID has 2 states: Integrator (1) + Derivative Filter (1)
-                # State layout: [x_i, x_d]
-                state_map[b_name] = (current_state_idx, 2)
-                y0_list.extend([0.0, 0.0])  # Initial conditions for PID usually 0
-                current_state_idx += 2
-
-            elif fn == "RateLimiter":
-                # State is the output y. RateLimiterBlock has no initial-output
-                # parameter (it latches its first input at runtime), so the
-                # compiled state starts at 0.0.
-                state_map[b_name] = (current_state_idx, 1)
-                y0_list.append(0.0)
-                current_state_idx += 1
-
-            # ==================== PDE BLOCKS STATE ALLOCATION ====================
-            # NOTE: PDE blocks need resolved params (exec_params) for initial conditions
-            # because they may be set dynamically or through workspace variables
-
-            elif fn == "Heatequation1D":
-                # HeatEquation1D has N states (one per spatial node)
-                pde_params = runtime_params(block)
-                N = int(pde_params.get("N", 20))
-                L = float(pde_params.get("L", 1.0))
-                state_map[b_name] = (current_state_idx, N)
-
-                # Get initial conditions using helper
-                ic = pde_params.get("init_conds", [0.0])
-                ic_flat = parse_pde_initial_condition(
-                    ic, N, L, pde_type="heat", seed=pde_params.get("seed", 0)
-                )
-
-                y0_list.extend(ic_flat)
-                current_state_idx += N
-
-            elif fn == "Waveequation1D":
-                # WaveEquation1D has 2N states (N displacement + N velocity)
-                pde_params = runtime_params(block)
-                N = int(pde_params.get("N", 50))
-                L = float(pde_params.get("L", 1.0))
-                state_map[b_name] = (current_state_idx, 2 * N)
-
-                # Initial displacement using helper
-                init_u = pde_params.get("init_displacement", [0.0])
-                u0 = parse_pde_initial_condition(
-                    init_u, N, L, pde_type="wave", seed=pde_params.get("seed", 0)
-                )
-
-                # Initial velocity using helper
-                init_v = pde_params.get("init_velocity", [0.0])
-                v0 = parse_pde_initial_condition(
-                    init_v,
-                    N,
-                    L,
-                    pde_type="wave",
-                    seed=companion_seed(pde_params.get("seed", 0)),
-                )
-
-                y0_list.extend(u0)
-                y0_list.extend(v0)
-                current_state_idx += 2 * N
-
-            elif fn == "Advectionequation1D":
-                # AdvectionEquation1D has N states
-                pde_params = runtime_params(block)
-                N = int(pde_params.get("N", 50))
-                L = float(pde_params.get("L", 1.0))
-                state_map[b_name] = (current_state_idx, N)
-
-                # Get initial conditions using helper
-                ic = pde_params.get("init_conds", [0.0])
-                c0 = parse_pde_initial_condition(ic, N, L, pde_type="advection")
-
-                y0_list.extend(c0)
-                current_state_idx += N
-
-            elif fn == "Diffusionreaction1D":
-                # DiffusionReaction1D has N states
-                pde_params = runtime_params(block)
-                N = int(pde_params.get("N", 30))
-                L = float(pde_params.get("L", 1.0))
-                state_map[b_name] = (current_state_idx, N)
-
-                # Get initial conditions using helper
-                ic = pde_params.get("init_conds", [1.0])
-                c0 = parse_pde_initial_condition(ic, N, L, pde_type="diffusion_reaction")
-
-                y0_list.extend(c0)
-                current_state_idx += N
-
-            # ==================== 2D PDE BLOCKS STATE ALLOCATION ====================
-
-            elif fn == "Heatequation2D":
-                # HeatEquation2D has Nx*Ny states (one per spatial node)
-                pde_params = runtime_params(block)
-                Nx = int(pde_params.get("Nx", 20))
-                Ny = int(pde_params.get("Ny", 20))
-                Lx = float(pde_params.get("Lx", 1.0))
-                Ly = float(pde_params.get("Ly", 1.0))
-                n_states = Nx * Ny
-                state_map[b_name] = (current_state_idx, n_states)
-
-                # Get initial temperature using 2D helper
-                init_temp = pde_params.get("init_temp", "0.0")
-                amplitude = float(pde_params.get("init_amplitude", 1.0))
-                T0 = parse_pde_2d_initial_condition(
-                    init_temp, Nx, Ny, Lx, Ly, amplitude, seed=pde_params.get("seed", 0)
-                )
-
-                ic_flat = T0.flatten()
-                y0_list.extend(ic_flat)
-                current_state_idx += n_states
-
-            elif fn == "Waveequation2D":
-                # WaveEquation2D has 2*Nx*Ny states (displacement u + velocity v)
-                pde_params = runtime_params(block)
-                Nx = int(pde_params.get("Nx", 20))
-                Ny = int(pde_params.get("Ny", 20))
-                n_states = 2 * Nx * Ny
-                state_map[b_name] = (current_state_idx, n_states)
-
-                # Use block's own initial state method
-                from blocks.pde.wave_equation_2d import WaveEquation2DBlock
-
-                ic = WaveEquation2DBlock().get_initial_state(pde_params)
-                y0_list.extend(ic)
-                current_state_idx += n_states
-
-            elif fn == "Advectionequation2D":
-                # AdvectionEquation2D has Nx*Ny states (concentration field)
-                pde_params = runtime_params(block)
-                Nx = int(pde_params.get("Nx", 30))
-                Ny = int(pde_params.get("Ny", 30))
-                n_states = Nx * Ny
-                state_map[b_name] = (current_state_idx, n_states)
-
-                # Use block's own initial state method
-                from blocks.pde.advection_equation_2d import AdvectionEquation2DBlock
-
-                ic = AdvectionEquation2DBlock().get_initial_state(pde_params)
-                y0_list.extend(ic)
-                current_state_idx += n_states
-
-        y0 = np.array(y0_list, dtype=float)
-
-        # 3. Re-order blocks into three groups:
-        #   (a) Sources — no inputs, always execute first
-        #   (b) Middle  — algebraic blocks AND D≠0 state blocks, in original
-        #                 topological order.  D≠0 state blocks have direct
-        #                 feedthrough (output = C*x + D*u depends on current
-        #                 input), so they CANNOT be pre-populated with just C*x.
-        #                 They must execute alongside algebraic blocks so their
-        #                 input is available when they run.
-        #   (c) D=0 state blocks — strictly proper TFs, integrators, PDE blocks.
-        #                 Pre-populated with C*x (exact since D*u = 0), execute last.
-        #
-        # block_matrices is now populated, so we can inspect D to classify.
-        # Classification uses canonical_fn (the same normalizer as
-        # _create_block_executor and the replay loop), so these sets hold
-        # canonical spellings only -- no hand-maintained "Tranfn"/"TransferFcn"
-        # pairs that can drift apart from the dispatch ladders.
-        source_fns = frozenset(
-            {
-                "Step",
-                "Sine",
-                "Constant",
-                "From",
-                "Ramp",
-                "Noise",
-                "Wavegenerator",
-                "Prbs",
-                "Impulse",
-            }
-        )
-        state_fns = frozenset(
-            {
-                "TransferFcn",
-                "StateSpace",
-                "Integrator",
-                "PID",
-                # canonical_fn only maps the exact upstream spelling 'PID' to
-                # 'PID'; a block_fn of 'pid'/'Pid' canonicalizes to 'Pid'.
-                "Pid",
-                "RateLimiter",
-                "Heatequation1D",
-                "Waveequation1D",
-                "Advectionequation1D",
-                "Diffusionreaction1D",
-                "Heatequation2D",
-                "Waveequation2D",
-                "Advectionequation2D",
-            }
-        )
-
-        def _is_d0_state_block(b, fn):
-            """True if b is a state block with D=0 (safe to pre-populate)."""
-            if fn not in state_fns:
-                return False
-            if b.name in block_matrices:
-                _, _, _, D = block_matrices[b.name]
-                return not np.any(D != 0)
-            if fn in ("Pid", "PID"):
-                return False  # PID output depends on current error (feedthrough)
-            return True  # Integrator, RateLimiter, PDE blocks: D=0
-
-        source_set = set()
-        d0_state_set = set()
-        for b in sorted_order:
-            fn = canonical_fn(b.block_fn)
-            if fn in source_fns:
-                source_set.add(b.name)
-            elif _is_d0_state_block(b, fn):
-                d0_state_set.add(b.name)
-
-        sources = [b for b in sorted_order if b.name in source_set]
-        middle = [
-            b for b in sorted_order if b.name not in source_set and b.name not in d0_state_set
-        ]
-        state_blocks_d0 = [b for b in sorted_order if b.name in d0_state_set]
-
-        sorted_order = sources + middle + state_blocks_d0
-
-        # 4. Compile Execution Sequence
         execution_sequence = []
-        # Also expose a name -> executor map so the post-solve replay loop in
-        # SimulationEngine.run_compiled_simulation can reuse these same kernels
-        # for pure-function blocks instead of re-deriving each block's output
-        # math in a parallel if/elif (single source of truth for that math).
         block_executors = {}
         for block in sorted_order:
             executor = self._create_block_executor(block, input_map, state_map, block_matrices)
             execution_sequence.append(executor)
             block_executors[block.name] = executor
         self.block_executors = block_executors
+        return execution_sequence
 
-        # 5. Build pre-population list for D=0 state-block outputs ONLY.
-        # D≠0 blocks execute in the middle group and are NOT pre-populated.
-        state_output_preloads = []
-        for b_name, (start, size) in state_map.items():
-            if b_name not in d0_state_set:
-                continue  # D≠0 or PID: skip pre-population
-            if b_name in block_matrices:
-                A, B, C, D = block_matrices[b_name]
-                state_output_preloads.append((b_name, start, size, C))
-            else:
-                # Integrator: output = state
-                state_output_preloads.append((b_name, start, size, None))
+    def compile_system(
+        self, blocks: List[DBlock], sorted_order: List[DBlock], lines: List[Any]
+    ) -> Tuple[Callable, np.ndarray, Dict]:
+        """Compile the diagram into one ODE right-hand side ``f(t, y)``.
 
-        # 6. Create optimized closure.
-        # The executor list is ordered sources-first (sorted_order above), so we
-        # can split it at the source boundary. This lets a linearization helper
-        # override input-source signals *after* the sources run but *before* the
-        # downstream/state blocks consume them, without disturbing normal solves.
-        n_sources = len(sources)
+        Returns ``(model_func, y0, state_map, block_matrices)``. ``model_func``
+        also carries ``evaluate`` (dy and every signal, with optional input
+        overrides, for the linearizer), ``source_names``, ``state_map``,
+        ``event_specs`` and ``mode_states`` (zero-crossing support).
+        """
+        # Latch holders belong to this compile only: a stale registry would
+        # hand the new closures the previous diagram's relay modes.
+        self._mode_registry = {}
 
-        def _evaluate(t, y, input_overrides=None):
-            """Run the compiled diagram once; return (dy_vec, signals).
+        input_map = _build_input_map(blocks, lines)
+        state_map, block_matrices, y0 = _allocate_states(blocks)
 
-            input_overrides: optional {block_name: value} merged into the signal
-            dict immediately after the source blocks execute. Used by the
-            numerical linearizer to perturb inputs; pass None for normal solves.
-            """
-            signals = {}
-            dy_vec = np.zeros_like(y)
+        # Ordering waits until the states are allocated because the D matrices
+        # decide which state blocks are feedthrough (middle) vs D=0 (last).
+        sources, middle, d0_state_blocks = _execution_groups(sorted_order, block_matrices)
+        sorted_order = sources + middle + d0_state_blocks
 
-            # Pre-populate D=0 state-block outputs so feedback loops resolve.
-            # Only D=0 blocks are here — their output C*x is exact (D*u = 0).
-            for b_name, start, size, C_mat in state_output_preloads:
-                if C_mat is not None:
-                    # StateSpace/TranFn (D=0): y_out = C * x
-                    x = y[start : start + size].reshape(-1, 1)
-                    out = C_mat @ x
-                    signals[b_name] = out.item() if out.size == 1 else out.flatten()
-                else:
-                    # Integrator: output = state
-                    signals[b_name] = y[start] if size == 1 else y[start : start + size]
-
-            # Sources first, then optional input overrides, then the rest.
-            for exec_fn in execution_sequence[:n_sources]:
-                exec_fn(t, y, dy_vec, signals)
-            if input_overrides:
-                signals.update(input_overrides)
-            for exec_fn in execution_sequence[n_sources:]:
-                exec_fn(t, y, dy_vec, signals)
-
-            return dy_vec, signals
-
-        def model_func(t, y):
-            return _evaluate(t, y)[0]
-
-        # Expose the richer evaluator + source names for numerical linearization
-        # (lib/analysis/linearizer.py). Attached as attributes so the
-        # compile_system return contract is unchanged.
-        model_func.evaluate = _evaluate
+        execution_sequence = self._build_executors(
+            sorted_order, input_map, state_map, block_matrices
+        )
+        preloads = _state_output_preloads(
+            state_map, block_matrices, {b.name for b in d0_state_blocks}
+        )
+        model_func = _make_model_func(execution_sequence, len(sources), preloads)
         model_func.source_names = [b.name for b in sources]
         model_func.state_map = state_map
 
-        # 7. Zero-crossing events. Collected here (not in the runner) because
+        # Zero-crossing events are collected here (not in the runner) because
         # they need the same input_map / state_map / latch holders the kernels
-        # were built from; they ride along on model_func so the compiled-system
-        # cache carries them too. Whether they are used is the runner's call.
+        # were built from; riding on model_func, the compiled-system cache
+        # carries them too. Whether they are used is the runner's call.
         model_func.event_specs = self._collect_event_specs(
             sorted_order, input_map, state_map, block_matrices
         )
