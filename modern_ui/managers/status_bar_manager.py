@@ -71,7 +71,10 @@ class StatusBarManager:
             return lbl
 
         # Left: status pill (reused from toolbar)
-        window.status_pill = _StatusPill(window)
+        # The bottom bar is where a long message belongs, so it gets a more
+        # generous cap than the toolbar copy (which must leave room for the
+        # tools to its right).
+        window.status_pill = _StatusPill(window, max_text_width=520)
         window.status_pill.setToolTip(tr("Simulation state"))
         statusbar.addWidget(window.status_pill)
 

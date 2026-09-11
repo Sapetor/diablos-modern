@@ -38,7 +38,17 @@ from PyQt6.QtWidgets import (
 import math
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QRectF, QPointF, QTimer
-from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen, QPainterPath, QPolygonF, QAction
+from PyQt6.QtGui import (
+    QIcon,
+    QPixmap,
+    QPainter,
+    QColor,
+    QPen,
+    QPainterPath,
+    QPolygonF,
+    QAction,
+    QFontMetrics,
+)
 from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import (
     theme_manager,
@@ -238,12 +248,20 @@ class _StatusPill(QFrame):
     regardless of QSS text-color rules.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, max_text_width: int = 360):
         super().__init__(parent)
         self.setObjectName("StatusPill")
         self.setProperty("state", "idle")
         self.setMinimumHeight(22)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # Hard width cap. The pill doubles as the status-message display, and
+        # an uncapped QLabel grew it to whatever the message needed -- 726px
+        # for the stiffness warning. In the toolbar that pushed the size hint
+        # past the window width and QToolBar silently moved the trailing tools
+        # (Plot, Capture, Auto-route, theme) into the overflow menu, so they
+        # looked like they had vanished. The full text stays in the tooltip.
+        self._max_text_width = max(80, int(max_text_width))
+        self.setMaximumWidth(self._max_text_width)
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(8, 0, 10, 0)
@@ -251,6 +269,7 @@ class _StatusPill(QFrame):
 
         self._state = "idle"
         self._custom_label = None
+        self._full_text = tr("Ready")
         self._dot = _StateDot(self)
         self._label = QLabel(tr("Ready"), self)
         self._label.setObjectName("StatusPillLabel")
@@ -276,7 +295,7 @@ class _StatusPill(QFrame):
                 "error": tr("Error"),
             }[state]
         )
-        self._label.setText(text)
+        self._set_label_text(text)
         # Force re-polish so the [state=…] selector reapplies on dark/light swap.
         self.style().unpolish(self)
         self.style().polish(self)
@@ -292,7 +311,23 @@ class _StatusPill(QFrame):
         if self._state != "idle":
             return
         self._custom_label = message or None
-        self._label.setText(message or tr("Ready"))
+        self._set_label_text(message or tr("Ready"))
+
+    def _set_label_text(self, text: str):
+        """Set the label, elided to the pill's cap, full text in the tooltip."""
+        self._full_text = text or ""
+        # Room left for the text: the cap minus the dot, the spacing and the
+        # layout margins.
+        lay = self.layout()
+        margins = lay.contentsMargins()
+        reserved = self._dot.width() + lay.spacing() + margins.left() + margins.right()
+        available = max(0, self._max_text_width - reserved)
+        elided = QFontMetrics(self._label.font()).elidedText(
+            self._full_text, Qt.TextElideMode.ElideRight, available
+        )
+        self._label.setText(elided)
+        # Only worth a tooltip when something was actually cut.
+        self.setToolTip(self._full_text if elided != self._full_text else "")
 
     def retranslate_ui(self):
         # Only the built-in state labels can be re-derived; a caller-supplied
