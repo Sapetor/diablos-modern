@@ -40,7 +40,10 @@ class StatusBarManager:
         Layout left-to-right:  state-pill · file-pill · counts · ⟶ · cursor · zoom · theme-pill
         Segments are separated by 1px vertical dividers (no pipes).
         """
-        from modern_ui.widgets.modern_toolbar import _StatusPill  # reuse toolbar pill
+        from modern_ui.widgets.modern_toolbar import (  # reuse toolbar pill
+            _StatusPill,
+            PILL_CAP_STATUSBAR,
+        )
 
         window = self.window
         statusbar = window.statusBar()
@@ -74,8 +77,8 @@ class StatusBarManager:
         # The bottom bar is where a long message belongs, so it gets a more
         # generous cap than the toolbar copy (which must leave room for the
         # tools to its right).
-        window.status_pill = _StatusPill(window, max_text_width=520)
-        window.status_pill.setToolTip(tr("Simulation state"))
+        window.status_pill = _StatusPill(window, max_text_width=PILL_CAP_STATUSBAR)
+        window.status_pill.set_base_tooltip(tr("Simulation state"))
         statusbar.addWidget(window.status_pill)
 
         # Hidden compatibility shim — many call sites still call status_message.setText(...)
@@ -208,7 +211,6 @@ class StatusBarManager:
         """
         window = self.window
         for widget, text in (
-            (getattr(window, "status_pill", None), tr("Simulation state")),
             (getattr(window, "file_status", None), tr("Current diagram file")),
             (getattr(window, "file_unsaved_status", None), tr("Unsaved changes indicator")),
             (getattr(window, "counts_status", None), tr("Blocks · wires · scopes")),
@@ -218,10 +220,12 @@ class StatusBarManager:
         ):
             if widget is not None:
                 widget.setToolTip(text)
-        # The status pill re-derives its own "Ready"/"Paused"/... label.
+        # The status pill owns its tooltip slot (it borrows it while its label
+        # is elided), so it gets the text through set_base_tooltip -- which also
+        # re-derives its own "Ready"/"Paused"/... label.
         pill = getattr(window, "status_pill", None)
-        if pill is not None and hasattr(pill, "retranslate_ui"):
-            pill.retranslate_ui()
+        if pill is not None and hasattr(pill, "set_base_tooltip"):
+            pill.set_base_tooltip(tr("Simulation state"))
         self.refresh_counts()
         self.refresh_file_status()
         # Rebuilds the "Dark · Solarized" pill text, which embeds a translated

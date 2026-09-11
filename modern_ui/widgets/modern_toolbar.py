@@ -47,11 +47,11 @@ from PyQt6.QtGui import (
     QPainterPath,
     QPolygonF,
     QAction,
-    QFontMetrics,
 )
 from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import (
     theme_manager,
+    font_metrics,
     get_mono_font,
     TYPE,
     pulse_alpha,
@@ -240,6 +240,16 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
 # -----------------------------------------------------------------------------
 
 
+#: Width budgets for the status pill, which doubles as the status-message
+#: display. Uncapped it grew to fit the message (726px for the stiffness
+#: warning), pushing the toolbar's size hint past the window's 1200px minimum
+#: width so QToolBar moved the trailing tools into its overflow menu. The
+#: toolbar copy has to leave room for those tools; the bottom bar is where a
+#: long message belongs, so it gets more.
+PILL_CAP_TOOLBAR = 360
+PILL_CAP_STATUSBAR = 520
+
+
 class _StatusPill(QFrame):
     """Colored-dot widget + text ('Ready', 'Simulating…', etc.).
 
@@ -248,20 +258,14 @@ class _StatusPill(QFrame):
     regardless of QSS text-color rules.
     """
 
-    def __init__(self, parent=None, max_text_width: int = 360):
+    def __init__(self, parent=None, max_text_width: int = PILL_CAP_TOOLBAR):
         super().__init__(parent)
         self.setObjectName("StatusPill")
         self.setProperty("state", "idle")
         self.setMinimumHeight(22)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        # Hard width cap. The pill doubles as the status-message display, and
-        # an uncapped QLabel grew it to whatever the message needed -- 726px
-        # for the stiffness warning. In the toolbar that pushed the size hint
-        # past the window width and QToolBar silently moved the trailing tools
-        # (Plot, Capture, Auto-route, theme) into the overflow menu, so they
-        # looked like they had vanished. The full text stays in the tooltip.
-        self._max_text_width = max(80, int(max_text_width))
-        self.setMaximumWidth(self._max_text_width)
+        # See PILL_CAP_TOOLBAR. Qt holds the cap; nothing here keeps a copy.
+        self.setMaximumWidth(max(80, int(max_text_width)))
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(8, 0, 10, 0)
@@ -269,12 +273,15 @@ class _StatusPill(QFrame):
 
         self._state = "idle"
         self._custom_label = None
-        self._full_text = tr("Ready")
+        # Tooltip the container gave us. _refresh_label borrows the slot while
+        # the text is elided, then hands it back.
+        self._base_tooltip = ""
         self._dot = _StateDot(self)
-        self._label = QLabel(tr("Ready"), self)
+        self._label = QLabel(self)
         self._label.setObjectName("StatusPillLabel")
         lay.addWidget(self._dot, 0, Qt.AlignmentFlag.AlignVCenter)
         lay.addWidget(self._label, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._refresh_label()
 
     def set_state(self, state: str, label: str | None = None):
         if state not in ("idle", "running", "paused", "error"):
@@ -286,16 +293,7 @@ class _StatusPill(QFrame):
         self._custom_label = label
         self.setProperty("state", state)
         self._dot.set_state(state)
-        text = (
-            label
-            or {
-                "idle": tr("Ready"),
-                "running": tr("Simulating…"),
-                "paused": tr("Paused"),
-                "error": tr("Error"),
-            }[state]
-        )
-        self._set_label_text(text)
+        self._refresh_label()
         # Force re-polish so the [state=…] selector reapplies on dark/light swap.
         self.style().unpolish(self)
         self.style().polish(self)
@@ -311,29 +309,41 @@ class _StatusPill(QFrame):
         if self._state != "idle":
             return
         self._custom_label = message or None
-        self._set_label_text(message or tr("Ready"))
+        self._refresh_label()
 
-    def _set_label_text(self, text: str):
-        """Set the label, elided to the pill's cap, full text in the tooltip."""
-        self._full_text = text or ""
+    def set_base_tooltip(self, text: str):
+        """Set the tooltip the pill returns to when its label is not elided."""
+        self._base_tooltip = text or ""
+        self._refresh_label()
+
+    def _refresh_label(self):
+        """Render the current label, elided to the cap, full text in the tooltip."""
+        full = (
+            self._custom_label
+            or {
+                "idle": tr("Ready"),
+                "running": tr("Simulating…"),
+                "paused": tr("Paused"),
+                "error": tr("Error"),
+            }[self._state]
+        )
         # Room left for the text: the cap minus the dot, the spacing and the
         # layout margins.
         lay = self.layout()
         margins = lay.contentsMargins()
         reserved = self._dot.width() + lay.spacing() + margins.left() + margins.right()
-        available = max(0, self._max_text_width - reserved)
-        elided = QFontMetrics(self._label.font()).elidedText(
-            self._full_text, Qt.TextElideMode.ElideRight, available
+        available = max(0, self.maximumWidth() - reserved)
+        elided = font_metrics(self._label.font()).elidedText(
+            full, Qt.TextElideMode.ElideRight, available
         )
         self._label.setText(elided)
-        # Only worth a tooltip when something was actually cut.
-        self.setToolTip(self._full_text if elided != self._full_text else "")
+        # Borrow the tooltip only while something is actually cut.
+        self.setToolTip(full if elided != full else self._base_tooltip)
 
     def retranslate_ui(self):
-        # Only the built-in state labels can be re-derived; a caller-supplied
-        # label stays as it is.
-        if self._custom_label is None:
-            self.set_state(self._state)
+        # A caller-supplied label is already translated text; only the built-in
+        # state words need re-deriving, which _refresh_label does.
+        self._refresh_label()
 
 
 class _StateDot(QWidget):

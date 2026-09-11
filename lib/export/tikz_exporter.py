@@ -77,11 +77,14 @@ _ESCAPE_MAP = {
     # mode and makes the whole document uncompilable.
     "$": r"\$",
     # <, > and | are not errors but render as the OT1 ligatures ż, ¡ and --.
-    # The math-mode forms are correct under every font encoding, whereas
-    # \textless and friends need T1.
-    "<": r"$<$",
-    ">": r"$>$",
-    "|": r"$|$",
+    # \ensuremath rather than a bare $<$ because this escaper also feeds
+    # contexts that are already in math mode (_name_to_math wraps its result in
+    # \text{} inside $...$, and BloxExporter._latex_label wraps in $...$), where
+    # a literal $ would switch *out* of math and reintroduce the ligature.
+    # \ensuremath is right in both, and needs no font-encoding package.
+    "<": r"\ensuremath{<}",
+    ">": r"\ensuremath{>}",
+    "|": r"\ensuremath{|}",
 }
 _ESCAPE_RE = re.compile(r"[\\{}_&%#~^$<>|]")
 
@@ -121,8 +124,13 @@ _UNSAFE_TEX_COMMANDS = frozenset(
         "special",
         "usepackage",
         "write",
-        "write18",
         "xdef",
+        # \newcommand and friends redefine macros for the rest of the document
+        # without doing any I/O, so they clear the checks above.
+        "declarerobustcommand",
+        "newcommand",
+        "providecommand",
+        "renewcommand",
     }
 )
 
@@ -130,12 +138,29 @@ _TEX_COMMAND_RE = re.compile(r"\\([a-zA-Z]+)")
 
 
 def _math_body_is_safe(body: str) -> bool:
-    r"""True when *body* contains only typesetting commands.
+    r"""True when *body* is a self-contained piece of math worth passing through.
+
+    Checking only that a label starts and ends with ``$`` is not enough: a body
+    can close the group and keep going, as in ``x$} \renewcommand{..}{..} \node{$z``,
+    after which no command blocklist means anything. So the structure is checked
+    first -- the body may not leave math mode or unbalance the braces -- and only
+    then are commands that do I/O or redefinition rejected.
 
     Legitimate labels carry real math (``\frac``, ``\dot``, ``\alpha``), so a
-    blanket ban on backslashes is not an option; this rejects the commands that
-    do I/O or redefinition instead.
+    blanket ban on backslashes is not an option.
     """
+    if "$" in body:
+        return False
+    depth = 0
+    for ch in body:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth < 0:
+                return False
+    if depth != 0:
+        return False
     return not any(cmd.lower() in _UNSAFE_TEX_COMMANDS for cmd in _TEX_COMMAND_RE.findall(body))
 
 
@@ -160,6 +185,42 @@ def _name_to_math(name: str) -> str:
     return f"\\text{{{_escape_latex(name)}}}"
 
 
+#: Node and coordinate names the exporter emits for itself.
+_OUTPUT_NODE = "output"
+_BRANCH_NODE = "bpt"
+
+#: \usetikzlibrary is legal in the document body, so a snippet can carry the
+#: libraries it needs and still paste into a paper that only loaded tikz.
+_TIKZ_LIBRARIES = r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}"
+
+#: amsmath (for \dfrac) can only be loaded in a preamble, hence the comment.
+_SNIPPET_REQUIREMENTS = [
+    r"% Requires \usepackage{tikz} and \usepackage{amsmath} in your preamble.",
+    _TIKZ_LIBRARIES,
+]
+
+#: Opens an exported document. The output is meant to be hand-finished, so the
+#: file says how to include it and which knobs matter, in order of usefulness.
+_DOCUMENT_HEADER = [
+    r"% ---------------------------------------------------------------",
+    r"%  Block diagram exported from DiaBloS.",
+    r"%",
+    r"%  Compile on its own:  pdflatex <this file>",
+    r"%",
+    r"%  Use it in a paper:   \usepackage{standalone}   % in the preamble",
+    r"%                       \includestandalone[width=\columnwidth]{<this file>}",
+    r"%                       % plain \input{<this file>} also works",
+    r"%",
+    r"%  Hand-tuning, in order of usefulness:",
+    r"%    the (x,y) in each \node ......  moves a block",
+    r"%    block/.style, tf/.style .....  size and look of every such node",
+    r"%    signal/.style ...............  wire weight and arrowhead",
+    r"%  The styles are scoped to this picture, so they cannot collide",
+    r"%  with your document's own. Nothing here depends on DiaBloS.",
+    r"% ---------------------------------------------------------------",
+]
+
+
 def _sanitize_node_id(name: str) -> str:
     """Convert block name/username to a valid TikZ node identifier."""
     sanitized = re.sub(r"[^a-zA-Z0-9]", "_", name)
@@ -181,8 +242,9 @@ class TikZExporter:
     #: Node/coordinate names the exporter emits itself (see _output_continuation).
     #: A block allowed to take one of these silently redefines it, and every
     #: wire that referenced it then resolves to the wrong point -- which still
-    #: compiles, so the damage only shows up in the rendered PDF.
-    _RESERVED_NODE_IDS = frozenset({"output", "bpt"})
+    #: compiles, so the damage only shows up in the rendered PDF. Derived from
+    #: the emitting code rather than restated, so the two cannot drift.
+    _RESERVED_NODE_IDS = frozenset({_OUTPUT_NODE, _BRANCH_NODE})
 
     def _build_node_ids(self, blocks):
         """Assign unique TikZ node IDs to all blocks, avoiding collisions."""
@@ -205,58 +267,31 @@ class TikZExporter:
 
     def export_document(self, options: Optional[Dict] = None) -> str:
         """Return a full standalone .tex document."""
-        options = dict(options or {})
-        options["emit_requirements"] = False
-        snippet = self.export_snippet(options)
-        lines = self._document_header() + [
+        lines = _DOCUMENT_HEADER + [
             r"\documentclass[border=5mm]{standalone}",
             r"\usepackage[T1]{fontenc}",
             r"\usepackage{tikz}",
             r"\usepackage{amsmath}",
-            r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}",
+            _TIKZ_LIBRARIES,
             r"",
             r"\begin{document}",
-            snippet,
+            self._picture(options),
             r"\end{document}",
         ]
         return "\n".join(lines)
 
-    #: Emitted at the top of a snippet. \usetikzlibrary is legal in the document
-    #: body, so pasting the snippet into a paper that only loaded tikz now works;
-    #: amsmath (for \dfrac) can only be loaded in a preamble, hence the comment.
-    _SNIPPET_REQUIREMENTS = [
-        r"% Requires \usepackage{tikz} and \usepackage{amsmath} in your preamble.",
-        r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}",
-    ]
-
-    def _document_header(self):
-        """Comment block explaining how to use the file and what to tune.
-
-        The output is meant to be hand-finished -- an academic will paste it
-        into a paper and then adjust it -- so the file says how to include it
-        and which knobs matter, in order of usefulness.
-        """
-        return [
-            r"% ---------------------------------------------------------------",
-            r"%  Block diagram exported from DiaBloS.",
-            r"%",
-            r"%  Compile on its own:  pdflatex <this file>",
-            r"%",
-            r"%  Use it in a paper:   \usepackage{standalone}   % in the preamble",
-            r"%                       \includestandalone[width=\columnwidth]{<this file>}",
-            r"%                       % plain \input{<this file>} also works",
-            r"%",
-            r"%  Hand-tuning, in order of usefulness:",
-            r"%    the (x,y) in each \node ......  moves a block",
-            r"%    block/.style, tf/.style .....  size and look of every such node",
-            r"%    signal/.style ...............  wire weight and arrowhead",
-            r"%  The styles are scoped to this picture, so they cannot collide",
-            r"%  with your document's own. Nothing here depends on DiaBloS.",
-            r"% ---------------------------------------------------------------",
-        ]
-
     def export_snippet(self, options: Optional[Dict] = None) -> str:
-        """Return tikzset + tikzpicture (no document preamble).
+        """Return the tikzpicture plus the \\usetikzlibrary line it needs.
+
+        Both entry points compose ``_picture``; neither un-composes the other.
+        """
+        picture = self._picture(options)
+        if picture.startswith("% No blocks"):
+            return picture
+        return "\n".join(_SNIPPET_REQUIREMENTS + [picture])
+
+    def _picture(self, options: Optional[Dict] = None) -> str:
+        """Return the ``tikzpicture`` itself (styles included, no preamble).
 
         When used inside a LaTeX document with known ``\\textwidth``,
         wrap the output in ``\\resizebox{\\textwidth}{!}{...}`` to scale
@@ -272,8 +307,6 @@ class TikZExporter:
             "fill_blocks": True,
             "page_width_cm": 14.0,
             "use_resizebox": False,
-            # Off for export_document, whose preamble already loads them.
-            "emit_requirements": True,
         }
         if options:
             opts.update(options)
@@ -327,8 +360,6 @@ class TikZExporter:
 
         # Build output
         parts = []
-        if opts.get("emit_requirements", True):
-            parts.extend(self._SNIPPET_REQUIREMENTS)
         if opts.get("use_resizebox"):
             parts.append(r"\resizebox{\textwidth}{!}{%")
 
@@ -607,14 +638,18 @@ class TikZExporter:
 
         lines = []
         # Output coordinate
-        lines.append(f"  \\coordinate (output) at ($({nid}.{anchor})+({arrow_len + 0.5},0)$);")
+        lines.append(
+            f"  \\coordinate ({_OUTPUT_NODE}) at ($({nid}.{anchor})+({arrow_len + 0.5},0)$);"
+        )
         # Output arrow with signal label
         label_node = ""
         if self._output_label:
             label_node = f" node[midway, above, font=\\small] {{{self._output_label}}}"
         lines.append(f"  \\draw[signal] ({nid}.{anchor}) --{label_node} (output);")
         # Branch dot at 60% along the output segment
-        lines.append(f"  \\node[branch] at ($({nid}.{anchor})!0.6!(output)$) (bpt) {{}};")
+        lines.append(
+            f"  \\node[branch] at ($({nid}.{anchor})!0.6!({_OUTPUT_NODE})$) ({_BRANCH_NODE}) {{}};"
+        )
 
         self._branch_point_id = "bpt"
         self._branch_source = last_fb
@@ -627,39 +662,35 @@ class TikZExporter:
     def _tikz_styles(self, opts):
         """Return the style definitions as a ``tikzpicture`` option list.
 
-        These used to be emitted as a document-scope ``\\tikzset{...}``, which
-        made the snippet hostile to the document it was pasted into: the names
-        are generic (``block``, ``sum``, ``signal``...), ``\\tikzset`` is global,
-        and a paper with its own ``block/.style`` silently lost it. Scoping them
-        to the picture makes the fragment collision-proof and idempotent -- two
-        exported figures with different sizing can sit in the same document.
+        Scoped to the picture rather than set globally, so the generic names
+        (``block``, ``sum``, ``signal``...) cannot displace a host document's.
         """
-        fill_opt = ", fill=blue!5" if opts.get("fill_blocks") else ""
+        fill = ", fill=blue!5" if opts.get("fill_blocks") else ""
+        tf_fill = ", fill=blue!8" if opts.get("fill_blocks") else ""
         source_fill = ", fill=green!8" if opts.get("fill_blocks") else ""
         sink_fill = ", fill=red!8" if opts.get("fill_blocks") else ""
-        tf_fill = ", fill=blue!8" if opts.get("fill_blocks") else ""
-        gain_fill = ", fill=blue!5" if opts.get("fill_blocks") else ""
-
-        return (
-            r"  block/.style={draw, rectangle, rounded corners=2pt, align=center,"
-            f" minimum height=10mm, minimum width=14mm, thick{fill_opt}" + "},\n"
-            r"  sum/.style={draw, circle, minimum size=9mm, thick, inner sep=0pt}," + "\n"
-            r"  gain/.style={draw, isosceles triangle, isosceles triangle apex angle=70,"
-            r" shape border rotate=0, minimum height=10mm, thick,"
-            f" inner sep=2pt{gain_fill}" + "},\n"
-            r"  gain flipped/.style={draw, isosceles triangle, isosceles triangle apex angle=70,"
-            r" shape border rotate=180, minimum height=10mm, thick,"
-            f" inner sep=2pt{gain_fill}" + "},\n"
-            r"  tf/.style={draw, rectangle, align=center, minimum height=12mm,"
-            f" minimum width=16mm, thick{tf_fill}" + "},\n"
-            r"  source/.style={draw, rectangle, rounded corners=2pt, align=center,"
-            f" minimum height=10mm, minimum width=12mm, thick{source_fill}" + "},\n"
-            r"  sink/.style={draw, rectangle, rounded corners=2pt, align=center,"
-            f" minimum height=10mm, minimum width=12mm, thick{sink_fill}" + "},\n"
-            r"  signal/.style={-{Stealth[length=2.5mm, width=2mm]}, semithick}," + "\n"
-            r"  signal wide/.style={-{Stealth[length=2.5mm, width=2mm]}, thick}," + "\n"
-            r"  branch/.style={fill, circle, minimum size=3.5pt, inner sep=0pt},"
-        )
+        # align=center on every rectangular style: without it a node whose text
+        # contains \\ does not typeset at all.
+        rounded = "draw, rectangle, rounded corners=2pt, align=center"
+        triangle = "draw, isosceles triangle, isosceles triangle apex angle=70"
+        arrow = "-{Stealth[length=2.5mm, width=2mm]}"
+        styles = [
+            f"block/.style={{{rounded}, minimum height=10mm, minimum width=14mm, thick{fill}}}",
+            "sum/.style={draw, circle, minimum size=9mm, thick, inner sep=0pt}",
+            f"gain/.style={{{triangle}, shape border rotate=0,"
+            f" minimum height=10mm, thick, inner sep=2pt{fill}}}",
+            f"gain flipped/.style={{{triangle}, shape border rotate=180,"
+            f" minimum height=10mm, thick, inner sep=2pt{fill}}}",
+            f"tf/.style={{draw, rectangle, align=center, minimum height=12mm,"
+            f" minimum width=16mm, thick{tf_fill}}}",
+            f"source/.style={{{rounded},"
+            f" minimum height=10mm, minimum width=12mm, thick{source_fill}}}",
+            f"sink/.style={{{rounded}, minimum height=10mm, minimum width=12mm, thick{sink_fill}}}",
+            f"signal/.style={{{arrow}, semithick}}",
+            f"signal wide/.style={{{arrow}, thick}}",
+            "branch/.style={fill, circle, minimum size=3.5pt, inner sep=0pt}",
+        ]
+        return ",\n".join("  " + style for style in styles)
 
     # ------------------------------------------------------------------
     # Block -> TikZ node

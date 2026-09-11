@@ -15,6 +15,7 @@ from typing import Dict, Optional
 from lib.export.tikz_exporter import (
     _poly_to_latex,
     _escape_latex,
+    _math_body_is_safe,
     _sanitize_node_id,
 )
 
@@ -257,15 +258,22 @@ class BloxExporter:
     def _latex_label(raw_label):
         """Convert a raw line label into a LaTeX-safe math snippet.
 
-        Mirrors the escaping used by ``_find_label``: already math-delimited
-        labels are passed through untouched, anything else is escaped and
-        wrapped in math mode so characters like ``_ & # % { }`` cannot break
-        or inject LaTeX.
+        Mirrors ``TikZExporter._format_explicit_label``: a label that is already
+        math-delimited *and* passes ``_math_body_is_safe`` is handed through
+        untouched, anything else is escaped and wrapped in math mode so
+        characters like ``_ & # % { }`` -- or a command that does I/O -- cannot
+        break or inject LaTeX. Both exporters are reachable from the same
+        export dialog, so the rule has to be the same on both.
         """
         label = raw_label.strip()
         if not label:
             return ""
-        if label.startswith("$") and label.endswith("$"):
+        if (
+            len(label) >= 2
+            and label.startswith("$")
+            and label.endswith("$")
+            and _math_body_is_safe(label[1:-1])
+        ):
             return label
         return f"${_escape_latex(label)}$"
 

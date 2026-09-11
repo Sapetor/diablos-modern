@@ -17,14 +17,6 @@ pytestmark = pytest.mark.regression
 
 @pytest.mark.qt
 class TestStatusPillClearsAfterRun:
-    @pytest.fixture(scope="class")
-    def window(self, qapp):
-        from modern_ui.main_window import ModernDiaBloSWindow
-
-        w = ModernDiaBloSWindow()
-        yield w
-        w.close()
-
     def _pill_state(self, window):
         return window.toolbar.status_pill.property("state")
 
@@ -64,14 +56,6 @@ class TestStatusPillClearsAfterRun:
 @pytest.mark.qt
 class TestFailedRunFeedback:
     """A failed run must show red *and* release the transport buttons."""
-
-    @pytest.fixture(scope="class")
-    def window(self, qapp):
-        from modern_ui.main_window import ModernDiaBloSWindow
-
-        w = ModernDiaBloSWindow()
-        yield w
-        w.close()
 
     def test_failure_turns_the_pill_red(self, window):
         window.toolbar.set_simulation_state(True, False)

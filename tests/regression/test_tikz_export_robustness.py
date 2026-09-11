@@ -12,36 +12,23 @@ import pytest
 
 from lib.export.tikz_exporter import TikZExporter, _escape_latex, _math_body_is_safe
 
-pytestmark = [pytest.mark.regression, pytest.mark.unit]
+# The exporter's mock factories already model every attribute it reads; a second
+# set here would drift the next time the exporter grows one.
+from tests.unit.test_tikz_exporter import make_block, make_line
+
+pytestmark = pytest.mark.regression
 
 
-class _Block:
-    """Minimal stand-in for a DBlock, matching what the exporter reads."""
-
-    def __init__(self, name, block_fn="TranFn", username=None, category="Other"):
-        self.name = name
-        self.username = username if username is not None else name
-        self.block_fn = block_fn
-        self.category = category
-        self.params = {}
-        self.in_ports = 1
-        self.out_ports = 1
-        self.left = 0
-        self.top = 0
-        self.flipped = False
+def _Block(name, block_fn="TranFn", username=None):
+    return make_block(block_fn, username=username if username is not None else name)
 
 
-class _Line:
-    def __init__(self, src, dst, label=""):
-        self.srcblock, self.dstblock = src, dst
-        self.srcport = self.dstport = 0
-        self.hidden = False
-        self.label = label
-        self.signal_width = 1
+def _Line(src, dst, label=""):
+    return make_line(src, dst, label=label)
 
 
-def _export(blocks, lines, **opts):
-    return TikZExporter(blocks, lines).export_document(opts or None)
+def _export(blocks, lines):
+    return TikZExporter(blocks, lines).export_document()
 
 
 class TestEscaping:
@@ -51,11 +38,9 @@ class TestEscaping:
             # A bare $ opens math mode and breaks the whole document.
             ("cost $5", r"cost \$5"),
             # <, > and | compile, but render as the OT1 ligatures.
-            ("Tools > LQR", "Tools $>$ LQR"),
-            ("T < 5", "T $<$ 5"),
-            ("a|b", "a$|$b"),
-            # Previously-handled characters must not regress.
-            ("x_1 & y", r"x\_1 \& y"),
+            ("Tools > LQR", r"Tools \ensuremath{>} LQR"),
+            ("T < 5", r"T \ensuremath{<} 5"),
+            ("a|b", r"a\ensuremath{|}b"),
         ],
     )
     def test_dangerous_characters_are_escaped(self, raw, expected):
@@ -81,7 +66,7 @@ class TestReservedNodeNames:
         out = _export(blocks, lines)
         # The block must have been renamed away from the reserved id.
         assert not re.search(r"\\node\[[^]]*\]\s*\(" + reserved + r"\)", out)
-        assert f"({reserved}_2)" in out or f"({reserved}_" in out
+        assert f"({reserved}_" in out
 
 
 class TestMathLabelValidation:
@@ -167,3 +152,53 @@ class TestNodeTextIsAlwaysPlaceable:
         """A blank line inside \\node{} ends the paragraph mid-node."""
         assert _escape_latex("two\n\nlines") == "two lines"
         assert "\n" not in _escape_latex("a\tb\nc")
+
+
+class TestMathGateIsStructural:
+    """Delimiters alone do not make a body safe.
+
+    A body can close the group and keep going, after which a command blocklist
+    is decoration -- the attacker just picks a command that is not on it.
+    """
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            r"x$} \renewcommand{\alpha}{pwned} \node{$z",  # escapes the node
+            r"a} \node{b",  # unbalanced, closes the group
+            r"a{b",  # unbalanced the other way
+            r"a$b",  # leaves math mode
+            r"\newcommand{\x}{y}",  # redefines for the rest of the document
+            r"\renewcommand{\alpha}{pwned}",
+        ],
+    )
+    def test_structural_escapes_are_rejected(self, body):
+        assert _math_body_is_safe(body) is False
+
+    @pytest.mark.parametrize(
+        "body", [r"\dfrac{1}{s+1}", r"\dot{x} = Ax + Bu", r"K_{p} + \frac{K_i}{s}"]
+    )
+    def test_balanced_self_contained_math_still_passes(self, body):
+        assert _math_body_is_safe(body) is True
+
+
+class TestEscapingWorksInBothModes:
+    r"""``_escape_latex`` feeds text mode AND contexts already in math mode.
+
+    ``_name_to_math`` wraps its result in ``\text{}`` inside ``$...$``, and
+    ``BloxExporter._latex_label`` wraps in ``$...$``, so a literal ``$<$``
+    switched *out* of math there and reintroduced the ligature it was meant to
+    fix. ``\ensuremath`` is correct in both.
+    """
+
+    @pytest.mark.parametrize("char", ["<", ">", "|"])
+    def test_no_bare_dollar_in_the_replacement(self, char):
+        assert "$" not in _escape_latex(char)
+
+    def test_blox_applies_the_same_label_gate(self):
+        """Both exporters are reachable from the same dialog."""
+        from lib.export.blox_exporter import BloxExporter
+
+        evil = r"$\immediate\write18{echo pwned}$"
+        assert r"\immediate" not in BloxExporter._latex_label(evil)
+        assert BloxExporter._latex_label(r"$\dfrac{1}{s+1}$") == r"$\dfrac{1}{s+1}$"

@@ -25,16 +25,6 @@ STIFFNESS = (
 )
 
 
-@pytest.fixture(scope="module")
-def window(qapp):
-    from modern_ui.main_window import ModernDiaBloSWindow
-
-    w = ModernDiaBloSWindow()
-    w.resize(1280, 800)
-    yield w
-    w.close()
-
-
 @pytest.fixture(autouse=True)
 def _clear_status(window):
     yield
@@ -79,3 +69,25 @@ def test_pill_shrinks_back_after_a_long_message(window):
     wide = window.toolbar.status_pill.sizeHint().width()
     window.status_message.setText("Ready")
     assert window.toolbar.status_pill.sizeHint().width() < wide
+
+
+class TestTooltipOwnership:
+    """Eliding borrows the tooltip slot; it must hand it back.
+
+    The pill's tooltip has an owner -- status_bar_manager sets "Simulation
+    state" and re-sets it on every language change. Writing the elided full
+    text there unconditionally wiped that, and the invariant in
+    tests/modern_ui/test_toolbar_statusbar_tooltips.py ("core pills have
+    non-empty tooltips") became false as soon as any status message arrived.
+    """
+
+    def test_base_tooltip_survives_a_short_message(self, window):
+        window.status_message.setText("Diagram opened")
+        assert window.status_pill.toolTip() == "Simulation state"
+
+    def test_long_message_borrows_the_slot_then_returns_it(self, window):
+        pill = window.status_pill
+        window.status_message.setText(STIFFNESS)
+        assert pill.toolTip() == STIFFNESS, "full text should be reachable while elided"
+        window.status_message.setText("Ready")
+        assert pill.toolTip() == "Simulation state"
