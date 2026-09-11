@@ -73,13 +73,67 @@ _ESCAPE_MAP = {
     "#": r"\#",
     "~": r"\textasciitilde{}",
     "^": r"\textasciicircum{}",
+    # A block named e.g. "cost $5" used to emit a bare $, which opens math
+    # mode and makes the whole document uncompilable.
+    "$": r"\$",
+    # <, > and | are not errors but render as the OT1 ligatures ż, ¡ and --.
+    # The math-mode forms are correct under every font encoding, whereas
+    # \textless and friends need T1.
+    "<": r"$<$",
+    ">": r"$>$",
+    "|": r"$|$",
 }
-_ESCAPE_RE = re.compile(r"[\\{}_&%#~^]")
+_ESCAPE_RE = re.compile(r"[\\{}_&%#~^$<>|]")
 
 
 def _escape_latex(text: str) -> str:
     """Escape special LaTeX characters in text (single-pass to avoid double-escaping)."""
     return _ESCAPE_RE.sub(lambda m: _ESCAPE_MAP[m.group()], text)
+
+
+#: TeX control sequences that read, write or execute rather than typeset.
+#: A .diablos file is a document users exchange, and its labels end up inside
+#: a .tex file that someone else compiles, so "starts and ends with $" is not
+#: enough to justify passing the body through verbatim.
+_UNSAFE_TEX_COMMANDS = frozenset(
+    {
+        "catcode",
+        "csname",
+        "def",
+        "directlua",
+        "edef",
+        "expandafter",
+        "gdef",
+        "immediate",
+        "include",
+        "input",
+        "let",
+        "loop",
+        "newread",
+        "newwrite",
+        "openin",
+        "openout",
+        "read",
+        "shipout",
+        "special",
+        "usepackage",
+        "write",
+        "write18",
+        "xdef",
+    }
+)
+
+_TEX_COMMAND_RE = re.compile(r"\\([a-zA-Z]+)")
+
+
+def _math_body_is_safe(body: str) -> bool:
+    r"""True when *body* contains only typesetting commands.
+
+    Legitimate labels carry real math (``\frac``, ``\dot``, ``\alpha``), so a
+    blanket ban on backslashes is not an option; this rejects the commands that
+    do I/O or redefinition instead.
+    """
+    return not any(cmd.lower() in _UNSAFE_TEX_COMMANDS for cmd in _TEX_COMMAND_RE.findall(body))
 
 
 def _name_to_math(name: str) -> str:
@@ -121,10 +175,16 @@ class TikZExporter:
         self._username_map = {b.username: b for b in blocks_list}
         self._node_ids: Dict[str, str] = {}
 
+    #: Node/coordinate names the exporter emits itself (see _output_continuation).
+    #: A block allowed to take one of these silently redefines it, and every
+    #: wire that referenced it then resolves to the wrong point -- which still
+    #: compiles, so the damage only shows up in the rendered PDF.
+    _RESERVED_NODE_IDS = frozenset({"output", "bpt"})
+
     def _build_node_ids(self, blocks):
         """Assign unique TikZ node IDs to all blocks, avoiding collisions."""
         self._node_ids = {}
-        used: set = set()
+        used: set = set(self._RESERVED_NODE_IDS)
         for b in blocks:
             raw = b.username if b.username != b.name else b.name
             base = _sanitize_node_id(raw)
@@ -142,10 +202,12 @@ class TikZExporter:
 
     def export_document(self, options: Optional[Dict] = None) -> str:
         """Return a full standalone .tex document."""
-        options = options or {}
+        options = dict(options or {})
+        options["emit_requirements"] = False
         snippet = self.export_snippet(options)
         lines = [
             r"\documentclass[border=5mm]{standalone}",
+            r"\usepackage[T1]{fontenc}",
             r"\usepackage{tikz}",
             r"\usepackage{amsmath}",
             r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}",
@@ -155,6 +217,14 @@ class TikZExporter:
             r"\end{document}",
         ]
         return "\n".join(lines)
+
+    #: Emitted at the top of a snippet. \usetikzlibrary is legal in the document
+    #: body, so pasting the snippet into a paper that only loaded tikz now works;
+    #: amsmath (for \dfrac) can only be loaded in a preamble, hence the comment.
+    _SNIPPET_REQUIREMENTS = [
+        r"% Requires \usepackage{tikz} and \usepackage{amsmath} in your preamble.",
+        r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}",
+    ]
 
     def export_snippet(self, options: Optional[Dict] = None) -> str:
         """Return tikzset + tikzpicture (no document preamble).
@@ -173,6 +243,8 @@ class TikZExporter:
             "fill_blocks": True,
             "page_width_cm": 14.0,
             "use_resizebox": False,
+            # Off for export_document, whose preamble already loads them.
+            "emit_requirements": True,
         }
         if options:
             opts.update(options)
@@ -226,6 +298,8 @@ class TikZExporter:
 
         # Build output
         parts = []
+        if opts.get("emit_requirements", True):
+            parts.extend(self._SNIPPET_REQUIREMENTS)
         parts.append(self._tikz_styles(opts))
 
         if opts.get("use_resizebox"):
@@ -824,7 +898,12 @@ class TikZExporter:
         generated (and later compiled) .tex output.
         """
         label = label.strip()
-        if len(label) >= 2 and label.startswith("$") and label.endswith("$"):
+        if (
+            len(label) >= 2
+            and label.startswith("$")
+            and label.endswith("$")
+            and _math_body_is_safe(label[1:-1])
+        ):
             return label
         return _escape_latex(label)
 
