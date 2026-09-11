@@ -1051,7 +1051,12 @@ class ModernDiaBloSWindow(QMainWindow):
 
             lowered = status.lower()
             if "finished" in lowered or "stopped" in lowered or "failed" in lowered:
+                # Always clear the transport (Play/Stop) first, then paint the
+                # pill red on a failure -- set_status() no longer infers the
+                # error state from the message text.
                 self.toolbar.set_simulation_state(False, False)
+                if "failed" in lowered:
+                    self.toolbar.set_error_state(status)
                 if "finished" in lowered:
                     self._report_solver_diagnostics(status)
                     # Arm live tuning with the params of the run that just

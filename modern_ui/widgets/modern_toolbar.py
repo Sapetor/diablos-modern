@@ -281,6 +281,19 @@ class _StatusPill(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
+    def set_message(self, message: str | None):
+        """Show ``message`` on the pill without changing its state.
+
+        The state (and therefore the dot color) belongs to
+        ``set_simulation_state()`` and the explicit error path; a status line
+        must never infer it.  While a run is active the state word wins, so a
+        per-step progress message cannot overwrite "Simulating…".
+        """
+        if self._state != "idle":
+            return
+        self._custom_label = message or None
+        self._label.setText(message or tr("Ready"))
+
     def retranslate_ui(self):
         # Only the built-in state labels can be re-derived; a caller-supplied
         # label stays as it is.
@@ -713,16 +726,20 @@ class ModernToolBar(QToolBar):
     # -- Public API (preserved) --------------------------------------------
 
     def set_status(self, message: str):
-        """Compatibility shim — also drives the status pill color."""
-        m = (message or "").lower()
-        if "paus" in m:
-            self.status_pill.set_state("paused")
-        elif "run" in m or "simulat" in m:
-            self.status_pill.set_state("running")
-        elif "error" in m or "fail" in m:
-            self.status_pill.set_state("error")
-        else:
-            self.status_pill.set_state("idle", message if message else None)
+        """Compatibility shim — sets the pill label, never its state.
+
+        This used to guess the state from the message text, which broke the
+        end of every run: "Simulation finished" contains "simulat", so the
+        closing status line put the pill back to "Simulating…" just after
+        ``set_simulation_state(False, ...)`` had cleared it, and there it
+        stayed.  The keywords never worked in a translated UI either.  State
+        now comes only from ``set_simulation_state()`` / ``set_error_state()``.
+        """
+        self.status_pill.set_message(message)
+
+    def set_error_state(self, message: str | None = None):
+        """Turn the pill red — the one state a message alone cannot produce."""
+        self.status_pill.set_state("error", message or None)
 
     def set_simulation_state(self, running: bool, paused: bool = False):
         self.transport.set_state(running, paused)
