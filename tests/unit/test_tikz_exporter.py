@@ -572,7 +572,11 @@ class TestFullExport:
         blocks, lines = self._simple_feedback_diagram()
         exporter = TikZExporter(blocks, lines)
         snippet = exporter.export_snippet()
-        assert r"\tikzset{" in snippet
+        # Styles are scoped to the picture, not \tikzset at document scope:
+        # the names are generic, and a paper with its own block/.style used to
+        # lose it to ours.
+        assert r"\tikzset{" not in snippet
+        assert snippet.count(r"\begin{tikzpicture}[") == 1
         assert "block/.style" in snippet
         assert "sum/.style" in snippet
         assert "gain/.style" in snippet

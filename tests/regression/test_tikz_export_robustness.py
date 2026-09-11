@@ -124,3 +124,46 @@ class TestSnippetCarriesItsDependencies:
     def test_document_does_not_duplicate_the_library_line(self):
         out = _export([_Block("a")], [])
         assert out.count(r"\usetikzlibrary{") == 1
+
+
+class TestStylesAreScopedToThePicture:
+    """A fragment must not redefine styles in the document it is pasted into.
+
+    The style names are generic (block, sum, signal, tf...), so a document-scope
+    \\tikzset silently replaced a paper's own definitions from the point of the
+    import onwards -- verified by rendering: the host's red star node became a
+    DiaBloS blue rectangle.
+    """
+
+    def test_no_document_scope_tikzset(self):
+        snippet = TikZExporter([_Block("a")], []).export_snippet()
+        assert r"\tikzset{" not in snippet
+
+    def test_styles_ride_in_the_picture_options(self):
+        snippet = TikZExporter([_Block("a")], []).export_snippet()
+        head = snippet.split(r"\end{tikzpicture}")[0]
+        opening = head.index(r"\begin{tikzpicture}[")
+        for style in ("block/.style", "sum/.style", "signal/.style", "tf/.style"):
+            assert head.index(style) > opening, f"{style} escaped the picture scope"
+
+    def test_two_figures_can_coexist(self):
+        """Both fragments carry their own styles, so neither wins globally."""
+        one = TikZExporter([_Block("a")], []).export_snippet({"fill_blocks": True})
+        two = TikZExporter([_Block("b")], []).export_snippet({"fill_blocks": False})
+        assert r"\tikzset{" not in one + two
+        assert "fill=blue!5" in one
+        assert "fill=blue!5" not in two
+
+
+class TestNodeTextIsAlwaysPlaceable:
+    @pytest.mark.parametrize("style", ["block/.style", "tf/.style", "source/.style"])
+    def test_rectangular_styles_set_align(self, style):
+        r"""Without align=, a node containing \\ fails to typeset."""
+        snippet = TikZExporter([_Block("a")], []).export_snippet()
+        body = snippet.split(style)[1].split("},")[0]
+        assert "align=center" in body
+
+    def test_newlines_in_a_name_are_collapsed(self):
+        """A blank line inside \\node{} ends the paragraph mid-node."""
+        assert _escape_latex("two\n\nlines") == "two lines"
+        assert "\n" not in _escape_latex("a\tb\nc")

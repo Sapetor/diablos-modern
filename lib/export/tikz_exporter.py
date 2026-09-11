@@ -88,7 +88,10 @@ _ESCAPE_RE = re.compile(r"[\\{}_&%#~^$<>|]")
 
 def _escape_latex(text: str) -> str:
     """Escape special LaTeX characters in text (single-pass to avoid double-escaping)."""
-    return _ESCAPE_RE.sub(lambda m: _ESCAPE_MAP[m.group()], text)
+    # A newline inside a username becomes a blank line in the .tex, which ends
+    # the paragraph mid-node: "Paragraph ended before \\node was complete".
+    collapsed = " ".join(text.split())
+    return _ESCAPE_RE.sub(lambda m: _ESCAPE_MAP[m.group()], collapsed)
 
 
 #: TeX control sequences that read, write or execute rather than typeset.
@@ -205,7 +208,7 @@ class TikZExporter:
         options = dict(options or {})
         options["emit_requirements"] = False
         snippet = self.export_snippet(options)
-        lines = [
+        lines = self._document_header() + [
             r"\documentclass[border=5mm]{standalone}",
             r"\usepackage[T1]{fontenc}",
             r"\usepackage{tikz}",
@@ -225,6 +228,32 @@ class TikZExporter:
         r"% Requires \usepackage{tikz} and \usepackage{amsmath} in your preamble.",
         r"\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}",
     ]
+
+    def _document_header(self):
+        """Comment block explaining how to use the file and what to tune.
+
+        The output is meant to be hand-finished -- an academic will paste it
+        into a paper and then adjust it -- so the file says how to include it
+        and which knobs matter, in order of usefulness.
+        """
+        return [
+            r"% ---------------------------------------------------------------",
+            r"%  Block diagram exported from DiaBloS.",
+            r"%",
+            r"%  Compile on its own:  pdflatex <this file>",
+            r"%",
+            r"%  Use it in a paper:   \usepackage{standalone}   % in the preamble",
+            r"%                       \includestandalone[width=\columnwidth]{<this file>}",
+            r"%                       % plain \input{<this file>} also works",
+            r"%",
+            r"%  Hand-tuning, in order of usefulness:",
+            r"%    the (x,y) in each \node ......  moves a block",
+            r"%    block/.style, tf/.style .....  size and look of every such node",
+            r"%    signal/.style ...............  wire weight and arrowhead",
+            r"%  The styles are scoped to this picture, so they cannot collide",
+            r"%  with your document's own. Nothing here depends on DiaBloS.",
+            r"% ---------------------------------------------------------------",
+        ]
 
     def export_snippet(self, options: Optional[Dict] = None) -> str:
         """Return tikzset + tikzpicture (no document preamble).
@@ -300,12 +329,14 @@ class TikZExporter:
         parts = []
         if opts.get("emit_requirements", True):
             parts.extend(self._SNIPPET_REQUIREMENTS)
-        parts.append(self._tikz_styles(opts))
-
         if opts.get("use_resizebox"):
             parts.append(r"\resizebox{\textwidth}{!}{%")
 
-        parts.append(r"\begin{tikzpicture}")
+        # Styles ride in the picture's own option list, so they are scoped to
+        # this figure rather than redefined globally.
+        parts.append(r"\begin{tikzpicture}[")
+        parts.append(self._tikz_styles(opts))
+        parts.append(r"  ]")
 
         # Nodes — placed at computed coordinates
         parts.append("  % --- Blocks ---")
@@ -594,7 +625,15 @@ class TikZExporter:
     # ------------------------------------------------------------------
 
     def _tikz_styles(self, opts):
-        """Return \\tikzset{...} block with style definitions."""
+        """Return the style definitions as a ``tikzpicture`` option list.
+
+        These used to be emitted as a document-scope ``\\tikzset{...}``, which
+        made the snippet hostile to the document it was pasted into: the names
+        are generic (``block``, ``sum``, ``signal``...), ``\\tikzset`` is global,
+        and a paper with its own ``block/.style`` silently lost it. Scoping them
+        to the picture makes the fragment collision-proof and idempotent -- two
+        exported figures with different sizing can sit in the same document.
+        """
         fill_opt = ", fill=blue!5" if opts.get("fill_blocks") else ""
         source_fill = ", fill=green!8" if opts.get("fill_blocks") else ""
         sink_fill = ", fill=red!8" if opts.get("fill_blocks") else ""
@@ -602,8 +641,7 @@ class TikZExporter:
         gain_fill = ", fill=blue!5" if opts.get("fill_blocks") else ""
 
         return (
-            r"\tikzset{" + "\n"
-            r"  block/.style={draw, rectangle, rounded corners=2pt,"
+            r"  block/.style={draw, rectangle, rounded corners=2pt, align=center,"
             f" minimum height=10mm, minimum width=14mm, thick{fill_opt}" + "},\n"
             r"  sum/.style={draw, circle, minimum size=9mm, thick, inner sep=0pt}," + "\n"
             r"  gain/.style={draw, isosceles triangle, isosceles triangle apex angle=70,"
@@ -612,16 +650,15 @@ class TikZExporter:
             r"  gain flipped/.style={draw, isosceles triangle, isosceles triangle apex angle=70,"
             r" shape border rotate=180, minimum height=10mm, thick,"
             f" inner sep=2pt{gain_fill}" + "},\n"
-            r"  tf/.style={draw, rectangle, minimum height=12mm,"
+            r"  tf/.style={draw, rectangle, align=center, minimum height=12mm,"
             f" minimum width=16mm, thick{tf_fill}" + "},\n"
-            r"  source/.style={draw, rectangle, rounded corners=2pt,"
+            r"  source/.style={draw, rectangle, rounded corners=2pt, align=center,"
             f" minimum height=10mm, minimum width=12mm, thick{source_fill}" + "},\n"
-            r"  sink/.style={draw, rectangle, rounded corners=2pt,"
+            r"  sink/.style={draw, rectangle, rounded corners=2pt, align=center,"
             f" minimum height=10mm, minimum width=12mm, thick{sink_fill}" + "},\n"
             r"  signal/.style={-{Stealth[length=2.5mm, width=2mm]}, semithick}," + "\n"
             r"  signal wide/.style={-{Stealth[length=2.5mm, width=2mm]}, thick}," + "\n"
-            r"  branch/.style={fill, circle, minimum size=3.5pt, inner sep=0pt}," + "\n"
-            r"}"
+            r"  branch/.style={fill, circle, minimum size=3.5pt, inner sep=0pt},"
         )
 
     # ------------------------------------------------------------------
