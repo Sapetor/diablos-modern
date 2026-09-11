@@ -89,7 +89,10 @@ class SimulationEngine:
         # may compile, so it is a property rather than a plain attribute.
         self.zero_crossing = True
         self.zero_crossing_max_events: int = DEFAULT_MAX_EVENTS
-        self.real_time: bool = True
+        # Off by default so Play reaches the compiled fast solver
+        # (SimulationController.start sends a real-time run down the paced
+        # interpreter instead, where wall-clock time bounds the run).
+        self.real_time: bool = False
         self.execution_time: float = 1.0
         self.time_step: float = 0.0
 

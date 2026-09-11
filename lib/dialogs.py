@@ -67,6 +67,8 @@ class SimulationDialog(QDialog):
         rtol=1e-9,
         atol=1e-12,
         zero_crossing=True,
+        real_time=False,
+        dynamic_plot=False,
     ):
         super().__init__(parent)
         from PyQt6.QtWidgets import (
@@ -154,6 +156,17 @@ class SimulationDialog(QDialog):
 
         # Real-time Checkbox
         self.real_time_checkbox = QCheckBox(tr("Run in real-time"))
+        # Initialised from the live value: the box used to open unchecked
+        # whatever the setting was, so merely accepting this dialog silently
+        # forced real_time (and dynamic plotting) off.
+        self.real_time_checkbox.setChecked(bool(real_time))
+        self.real_time_checkbox.setToolTip(
+            tr(
+                "Pace the run to the wall clock and animate the canvas as it goes. "
+                "This uses the step-by-step interpreter, so a 60 s diagram takes "
+                "60 s. Leave it off to run the compiled fast solver instead."
+            )
+        )
         solver_layout.addWidget(self.real_time_checkbox)
 
         solver_group.setLayout(solver_layout)
@@ -168,6 +181,7 @@ class SimulationDialog(QDialog):
         viz_layout.addWidget(self.plot_range_input)
 
         self.dynamic_plot_checkbox = QCheckBox(tr("Enable Dynamic Plotting"))
+        self.dynamic_plot_checkbox.setChecked(bool(dynamic_plot))
         viz_layout.addWidget(self.dynamic_plot_checkbox)
 
         viz_group.setLayout(viz_layout)

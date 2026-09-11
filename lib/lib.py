@@ -506,6 +506,8 @@ class DSim:
             rtol=self.rtol,
             atol=self.atol,
             zero_crossing=self.zero_crossing,
+            real_time=self.real_time,
+            dynamic_plot=self.dynamic_plot,
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             try:

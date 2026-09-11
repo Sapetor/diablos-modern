@@ -29,7 +29,9 @@ class TestSimulationEngineInitialization:
         """Test that engine has default simulation parameters."""
         assert simulation_engine.sim_time == 1.0
         assert simulation_engine.sim_dt == 0.01
-        assert simulation_engine.real_time == True
+        # Off by default: a real-time run is paced to the wall clock on the
+        # interpreter path, which bypasses the compiled fast solver entirely.
+        assert simulation_engine.real_time == False
 
 
 @pytest.mark.unit
