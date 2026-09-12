@@ -99,19 +99,16 @@ class SimulationActionsManager:
                 window.tuning_controller.store_sim_params(sim_time, sim_dt)
 
     def stop(self):
-        """Stop simulation."""
+        """Stop simulation (the controller emits the idle state and message)."""
         window = self.window
         if hasattr(window, "canvas"):
             window.canvas.stop_simulation()
-        window.toolbar.set_simulation_state(False, False)
-        window.status_message.setText(tr("Simulation stopped"))
+        else:
+            window.status_message.setText(tr("Simulation stopped"))
 
     def pause(self):
-        """Pause simulation."""
-        window = self.window
-        if hasattr(window.dsim, "execution_pause"):
-            window.dsim.execution_pause = True
-        window.toolbar.set_simulation_state(True, True)
+        """Pause simulation (the controller emits the paused state)."""
+        self.window.canvas.pause_simulation()
 
     def step(self):
         """Execute a single timestep of the simulation.
@@ -138,12 +135,12 @@ class SimulationActionsManager:
                     tr("Stepped to t={time:.4f}s", time=window.dsim.time_step)
                 )
             window.canvas.update()
-            # Keep toolbar in paused state (step always pauses)
-            window.toolbar.set_simulation_state(True, True)
+            # Stepping is a paused run: the loop is armed but not free-running.
+            window._on_simulation_state_changed("paused")
         else:
             # Check if simulation ended or failed to start
             if not window.dsim.execution_initialized:
-                window.toolbar.set_simulation_state(False, False)
+                window._on_simulation_state_changed("idle")
                 if was_initialized:
                     window.status_message.setText(tr("Simulation finished"))
                 else:

@@ -95,12 +95,19 @@ def statuses():
 
 
 @pytest.fixture
-def make_controller(qapp, statuses):
+def states():
+    """Every (state, message) pair emitted on ``state_changed``."""
+    return []
+
+
+@pytest.fixture
+def make_controller(qapp, statuses, states):
     created = []
 
     def _make(dsim):
         ctrl = SimulationController(dsim)
         ctrl.status_changed.connect(statuses.append)
+        ctrl.state_changed.connect(lambda s, m: states.append((s, m)))
         created.append(ctrl)
         return ctrl
 
@@ -143,6 +150,66 @@ class TestStart:
         ctrl = make_controller(dsim)
         assert ctrl.start() is False
         assert any("failed to start" in s for s in statuses)
+
+
+@pytest.mark.qt
+class TestStateSignal:
+    """Widgets take their state from ``state_changed``, never from the text."""
+
+    def test_interactive_start_is_running(self, make_controller, states):
+        ctrl = make_controller(_StubDSim(real_time=True))
+        ctrl.start()
+        assert states == [("running", "")]
+
+    def test_batch_runs_running_then_idle(self, make_controller, states):
+        ctrl = make_controller(_StubDSim(real_time=False))
+        ctrl.start()
+        assert states[0] == ("running", "")
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert states[-1] == ("idle", "")
+
+    def test_failed_init_is_an_error_with_the_message(self, make_controller, states):
+        dsim = _StubDSim(init_ok=False)
+        dsim.error_msg = "boom"
+        make_controller(dsim).start()
+        assert len(states) == 1
+        state, message = states[0]
+        assert state == "error"
+        assert "boom" in message
+
+    def test_worker_failure_is_an_error(self, make_controller, states):
+        dsim = _StubDSim(real_time=False)
+        dsim.raise_in_batch = "solver exploded"
+        ctrl = make_controller(dsim)
+        ctrl.start()
+        assert _pump(lambda: not ctrl.is_batch_running())
+        assert states[-1][0] == "error"
+        assert "solver exploded" in states[-1][1]
+
+    def test_pause_and_stop(self, make_controller, states):
+        dsim = _StubDSim(real_time=True)
+        ctrl = make_controller(dsim)
+        ctrl.start()
+        ctrl.pause()
+        assert dsim.execution_pause is True
+        ctrl.stop()
+        assert [s for s, _ in states] == ["running", "paused", "idle"]
+
+    def test_state_precedes_its_status_line(self, make_controller, qapp):
+        """The idle transition resets the pill to "Ready", so the closing
+        message has to arrive *after* it or it is lost."""
+        order = []
+        ctrl = make_controller(_StubDSim(real_time=True))
+        ctrl.state_changed.connect(lambda s, m: order.append(("state", s)))
+        ctrl.status_changed.connect(lambda t: order.append(("status", t)))
+        ctrl.start()
+        ctrl.stop()
+        assert order == [
+            ("state", "running"),
+            ("status", "Simulation started"),
+            ("state", "idle"),
+            ("status", "Simulation stopped"),
+        ]
 
 
 @pytest.mark.qt

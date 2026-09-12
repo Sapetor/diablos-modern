@@ -85,7 +85,7 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_window()
         self._setup_menubar()
         self._setup_toolbar()
-        self.toolbar.set_simulation_state(False, False)
+        self._on_simulation_state_changed("idle")
         self._setup_layout()
         self._setup_statusbar()
 
@@ -1044,47 +1044,38 @@ class ModernDiaBloSWindow(QMainWindow):
             logger.error(f"Error handling connection creation: {str(e)}")
 
     def _on_simulation_status_changed(self, status):
-        """Handle simulation status changes from canvas."""
+        """Show a simulation status line. Text only -- the state arrives separately."""
         try:
             self.status_message.setText(status)
             logger.info(f"Simulation status: {status}")
-
-            lowered = status.lower()
-            if "finished" in lowered or "stopped" in lowered or "failed" in lowered:
-                # Always clear the transport (Play/Stop) first, then paint the
-                # pill red on a failure -- set_status() no longer infers the
-                # error state from the message text.
-                self.toolbar.set_simulation_state(False, False)
-                if "failed" in lowered:
-                    self.toolbar.set_error_state(status)
-                if "finished" in lowered:
-                    self._report_solver_diagnostics(status)
-                    # Arm live tuning with the params of the run that just
-                    # ended. The tick's running -> not-running transition also
-                    # does this, but it cannot see a batch run that finished on
-                    # a worker thread between two ticks.
-                    self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
-            elif "started" in lowered or "running" in lowered:
-                self.toolbar.set_simulation_state(True, False)
-
         except Exception as e:
             logger.error(f"Error handling simulation status change: {str(e)}")
 
-    def _report_solver_diagnostics(self, status):
-        """Surface the compiled-solver one-line diagnostics once a run finishes.
+    def _on_simulation_state_changed(self, state, message=""):
+        """Put every state-bearing widget into ``state``.
 
-        No-op when the interpreter path ran (no diagnostics recorded), so the
-        status bar keeps the plain finished message.
+        The single place the transport buttons and the two status pills take
+        their state from, fed by ``SimulationController.state_changed`` and by
+        the window-side transitions (interactive run ended, single-step). No
+        message text is ever inspected to decide the state.
         """
-        try:
-            summary = self.dsim.last_solver_diagnostics_summary
-        except Exception:
-            logger.debug("Could not read solver diagnostics", exc_info=True)
-            return
-        if not summary:
-            return
-        self.status_message.setText(f"{status}  |  {summary}")
-        logger.info("Solver diagnostics: %s", summary)
+        running = state in ("running", "paused")
+        self.toolbar.set_simulation_state(running, state == "paused")
+        if state == "error":
+            self.toolbar.set_error_state(message or None)
+        pill = getattr(self, "status_pill", None)  # built after the toolbar
+        if pill is not None:
+            pill.set_state(state, message or None)
+
+    def _on_batch_finished(self, ok):
+        """A batch run ended on the worker thread.
+
+        Arm live tuning with the params of the run that just ended. The tick's
+        running -> not-running transition also does this, but it cannot see a
+        batch run that finished between two ticks.
+        """
+        if ok:
+            self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
 
     def show_error(self, message):
         """Show an error message to the user."""
@@ -1246,7 +1237,6 @@ class ModernDiaBloSWindow(QMainWindow):
                     if not is_safe:
                         logger.error(f"Simulation state unsafe: {errors}")
                         self.canvas.stop_simulation()
-                        self.toolbar.set_simulation_state(False, False)
                         return
 
                     self.perf_helper.start_timer("simulation_step")
@@ -1275,7 +1265,7 @@ class ModernDiaBloSWindow(QMainWindow):
                 is_running = self.canvas.is_simulation_running()
 
                 if was_running and not is_running:
-                    self.toolbar.set_simulation_state(False, False)
+                    self._on_simulation_state_changed("idle")
                     self.status_message.setText(tr("Simulation finished"))
                     # Arm tuning controller with sim params from completed run
                     self.tuning_controller.store_sim_params(self.dsim.sim_time, self.dsim.sim_dt)
@@ -1286,7 +1276,6 @@ class ModernDiaBloSWindow(QMainWindow):
             logger.error(f"Error in safe_update: {str(e)}")
             if hasattr(self, "canvas"):
                 self.canvas.stop_simulation()
-                self.toolbar.set_simulation_state(False, False)
 
     # Override toolbar actions to use canvas methods
     def new_diagram(self):

@@ -57,15 +57,48 @@ class TestStatusPillClearsAfterRun:
 class TestFailedRunFeedback:
     """A failed run must show red *and* release the transport buttons."""
 
-    def test_failure_turns_the_pill_red(self, window):
-        window.toolbar.set_simulation_state(True, False)
-        window._on_simulation_status_changed("Simulation failed to start. Bad D matrix")
+    MESSAGE = "Simulation failed to start. Bad D matrix"
+
+    def test_failure_turns_both_pills_red(self, window):
+        window._on_simulation_state_changed("running")
+        window._on_simulation_state_changed("error", self.MESSAGE)
         assert window.toolbar.status_pill.property("state") == "error"
+        assert window.status_pill.property("state") == "error"
+        assert window.status_pill._label.text() == self.MESSAGE
 
     def test_failure_still_resets_the_transport(self, window):
         """The transport has no state accessor; assert on the buttons it drives."""
-        window.toolbar.set_simulation_state(True, False)
-        window._on_simulation_status_changed("Simulation failed to start. Bad D matrix")
+        window._on_simulation_state_changed("running")
+        window._on_simulation_state_changed("error", self.MESSAGE)
         transport = window.toolbar.transport
         assert transport.play_btn.isEnabled() is True
         assert transport.stop_btn.isEnabled() is False
+
+
+@pytest.mark.qt
+class TestStateIsNotSniffedFromText:
+    """Both pills used to derive their state from the status text, with
+    *different* keyword sets, so they could disagree -- and a file named by a
+    user called "bruno" turned the status-bar pill green."""
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "Saved /Users/bruno/model.diablos",
+            "Simulation finished",
+            "Error: not really",
+            "Simulation paused",
+        ],
+    )
+    def test_text_leaves_both_pills_alone(self, window, message):
+        window._on_simulation_state_changed("idle")
+        window.status_message.setText(message)
+        assert window.toolbar.status_pill.property("state") == "idle"
+        assert window.status_pill.property("state") == "idle"
+
+    def test_the_two_pills_always_agree(self, window):
+        controller = window.canvas._sim_controller
+        for state in ("running", "paused", "error", "idle"):
+            controller.state_changed.emit(state, "")
+            assert window.toolbar.status_pill.property("state") == state
+            assert window.status_pill.property("state") == state

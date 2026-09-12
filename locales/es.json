@@ -825,6 +825,7 @@
   "Simulation Error": "Error de simulación",
   "Simulation Failed to Start": "Error al iniciar la simulación",
   "Simulation failed to start. {error}": "Error al iniciar la simulación. {error}",
+  "Simulation failed: {error}": "La simulación falló: {error}",
   "Simulation finished": "Simulación finalizada",
   "Simulation finished [{solver}]": "Simulación finalizada [{solver}]",
   "Simulation start failed": "Error al iniciar la simulación",

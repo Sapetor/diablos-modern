@@ -3,9 +3,17 @@
 Extracted from ModernCanvas to keep the canvas focused on rendering and
 interaction. Owns validation, execution start/stop, batch execution, and
 logging the post-run verification report (built by
-``lib.engine.verification_report``, which the headless CLI shares). Communicates status to the UI via the
-``status_changed`` signal (the canvas re-emits it as its own
-``simulation_status_changed`` so existing listeners are unaffected).
+``lib.engine.verification_report``, which the headless CLI shares).
+
+Two signals face the UI, and the canvas re-emits both under its own names:
+
+* ``status_changed(str)`` -- a human-readable, translated status line.
+* ``state_changed(str, str)`` -- the run *state* (``idle`` / ``running`` /
+  ``paused`` / ``error``) plus the message that explains an error.  Widgets
+  take their state from this signal only; a status line is never parsed for
+  keywords (that broke in translated UIs and on any file name containing
+  "run").  The state is emitted *before* the matching status line, so a pill
+  reset to "Ready" by the idle transition still receives the closing message.
 """
 
 import logging
@@ -28,6 +36,9 @@ logger = logging.getLogger(__name__)
 _ACTIVE_BATCH_WORKERS = set()
 
 
+SIM_STATES = ("idle", "running", "paused", "error")
+
+
 def batch_simulation_active() -> bool:
     """True while any batch simulation is running on a worker thread."""
     return bool(_ACTIVE_BATCH_WORKERS)
@@ -38,6 +49,10 @@ class SimulationController(QObject):
 
     status_changed = pyqtSignal(str)  # Emitted when simulation status changes
 
+    # (state, message): state is one of SIM_STATES; message is the text that
+    # explains an "error" state and "" otherwise.
+    state_changed = pyqtSignal(str, str)
+
     # Emitted when a threaded batch run ends (completed, cancelled or failed).
     # The window uses it to re-arm the tuning panel and reset the toolbar.
     batch_finished = pyqtSignal(bool)  # ok
@@ -46,6 +61,16 @@ class SimulationController(QObject):
         super().__init__(parent)
         self.dsim = dsim
         self._batch_worker = None
+
+    def _set_state(self, state, message=""):
+        if state not in SIM_STATES:
+            raise ValueError(f"unknown simulation state {state!r}")
+        self.state_changed.emit(state, message)
+
+    def _report_error(self, message):
+        """Put the UI in the error state and show ``message``."""
+        self._set_state("error", message)
+        self.status_changed.emit(message)
 
     def start(self):
         """Start simulation with validation."""
@@ -60,7 +85,7 @@ class SimulationController(QObject):
             if not is_valid:
                 error_msg = "\n".join(errors)
                 logger.error(f"Simulation validation failed: {error_msg}")
-                self.status_changed.emit(tr("Validation failed: {error}", error=error_msg))
+                self._report_error(tr("Validation failed: {error}", error=error_msg))
                 return False
 
             # Check simulation state safety
@@ -68,7 +93,7 @@ class SimulationController(QObject):
             if not is_safe:
                 error_msg = "\n".join(safety_errors)
                 logger.error(f"Simulation safety check failed: {error_msg}")
-                self.status_changed.emit(tr("Safety check failed: {error}", error=error_msg))
+                self._report_error(tr("Safety check failed: {error}", error=error_msg))
                 return False
 
             # Start simulation
@@ -76,6 +101,7 @@ class SimulationController(QObject):
                 success = self.dsim.execution_init()
                 if success:
                     if self.dsim.real_time:
+                        self._set_state("running")
                         self.status_changed.emit(tr("Simulation started"))
                         logger.info("Simulation started successfully")
                         return True
@@ -89,9 +115,7 @@ class SimulationController(QObject):
                         else tr("Initialization failed (see logs).")
                     )
                     logger.error(f"Simulation initialization failed. {error_msg}")
-                    self.status_changed.emit(
-                        tr("Simulation failed to start. {error}", error=error_msg)
-                    )
+                    self._report_error(tr("Simulation failed to start. {error}", error=error_msg))
                     # Also pop up a message box, parented to the owning widget so
                     # it stays attached to / centered on the main window and
                     # inherits the application theme.
@@ -106,12 +130,12 @@ class SimulationController(QObject):
                     return False
             else:
                 logger.error("DSim does not have execution_init method")
-                self.status_changed.emit(tr("Simulation start failed"))
+                self._report_error(tr("Simulation start failed"))
                 return False
 
         except Exception as e:
             logger.error(f"Error starting simulation: {str(e)}", exc_info=True)
-            self.status_changed.emit(tr("Error: {error}", error=str(e)))
+            self._report_error(tr("Error: {error}", error=str(e)))
             return False
 
     def run_batch(self):
@@ -137,6 +161,7 @@ class SimulationController(QObject):
         from modern_ui.widgets.batch_simulation_worker import BatchSimulationWorker
 
         logger.info("Running simulation in batch mode (worker thread).")
+        self._set_state("running")
         self.status_changed.emit(tr("Running simulation..."))
 
         worker = BatchSimulationWorker(self.dsim, parent=self)
@@ -158,6 +183,7 @@ class SimulationController(QObject):
         from PyQt6.QtCore import Qt
 
         logger.info("Running simulation in batch mode (blocking, dynamic plot).")
+        self._set_state("running")
         self.status_changed.emit(tr("Running simulation..."))
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         QApplication.processEvents()
@@ -197,12 +223,17 @@ class SimulationController(QObject):
         """Post-run work: status, plots, verification report. GUI thread only."""
         if not ok:
             logger.error(f"Batch simulation failed: {message}")
-            self.status_changed.emit(f"Simulation failed: {message}")
+            self._report_error(tr("Simulation failed: {error}", error=message))
             self.batch_finished.emit(False)
             return
 
         solver_type = getattr(self.dsim, "last_solver_type", "Standard")
-        self.status_changed.emit(tr("Simulation finished [{solver}]", solver=solver_type))
+        finished = tr("Simulation finished [{solver}]", solver=solver_type)
+        summary = self._solver_diagnostics_summary()
+        if summary:
+            finished = f"{finished}  |  {summary}"
+        self._set_state("idle")
+        self.status_changed.emit(finished)
         logger.info(f"Batch simulation finished. Solver: {solver_type}")
         # Non-modal, and deliberately the *last* status line so it is what the
         # user is left looking at. Same channel the run already reports through
@@ -213,6 +244,21 @@ class SimulationController(QObject):
         self.dsim.plot_again()
         self._print_terminal_verification()
         self.batch_finished.emit(True)
+
+    def _solver_diagnostics_summary(self):
+        """The compiled solver's one-line diagnostics for the run that just ended.
+
+        Empty when the interpreter ran (it records none), so the status bar
+        keeps the plain finished message.
+        """
+        try:
+            summary = self.dsim.last_solver_diagnostics_summary
+        except Exception:  # noqa: BLE001 - never break the end of a good run
+            logger.debug("Could not read solver diagnostics", exc_info=True)
+            return ""
+        if summary:
+            logger.info("Solver diagnostics: %s", summary)
+        return summary or ""
 
     def _report_stiffness(self):
         """Suggest an implicit solver when the last run looked stiff.
@@ -295,11 +341,18 @@ class SimulationController(QObject):
             if hasattr(self.dsim, "execution_initialized"):
                 self.dsim.execution_initialized = False
 
+            self._set_state("idle")
             self.status_changed.emit(tr("Simulation stopped"))
             logger.info("Simulation stopped")
 
         except Exception as e:
             logger.error(f"Error stopping simulation: {str(e)}")
+
+    def pause(self):
+        """Pause the interactive step loop (Play resumes it via ``start``)."""
+        if hasattr(self.dsim, "execution_pause"):
+            self.dsim.execution_pause = True
+        self._set_state("paused")
 
     def current_time(self):
         """Get current simulation time."""

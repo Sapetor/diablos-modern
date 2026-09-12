@@ -85,21 +85,15 @@ class StatusBarManager:
         window.status_message = QLabel()
         window.status_message.hide()
 
-        # Forward text changes to the pill (idle/running/paused detection)
+        # Forward text changes to both pills. Only the *label* travels this
+        # way: the state comes from SimulationController.state_changed (via
+        # window._on_simulation_state_changed), never from the message text.
         def _on_status_text_changed(text):
             try:
                 window.toolbar.set_status(text)
             except Exception:
                 logger.debug("Failed to forward status text to toolbar", exc_info=True)
-            t = (text or "").lower()
-            if "run" in t and "paus" not in t:
-                window.status_pill.set_state("running")
-            elif "paus" in t:
-                window.status_pill.set_state("paused")
-            elif "error" in t or "fail" in t:
-                window.status_pill.set_state("error", text)
-            else:
-                window.status_pill.set_state("idle", text if text else None)
+            window.status_pill.set_message(text)
 
         # Replace setText to propagate to the pill
         _orig_setText = window.status_message.setText

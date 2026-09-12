@@ -89,35 +89,57 @@ class TestStatusbarConstruction:
 
 
 # ---------------------------------------------------------------------------
-# status_message.setText -> status_pill state propagation
+# status_message.setText -> status_pill label; state comes from the controller
 # ---------------------------------------------------------------------------
 
 
 class TestStatusMessagePropagation:
+    @pytest.fixture(autouse=True)
+    def _idle(self, window):
+        window._on_simulation_state_changed("idle")
+        yield
+        window._on_simulation_state_changed("idle")
+
     def test_setText_updates_underlying_label(self, window):
         window.status_message.setText("hello world")
         assert window.status_message.text() == "hello world"
 
-    def test_running_sets_running_state(self, window):
-        window.status_message.setText("Running simulation...")
-        assert window.status_pill.property("state") == "running"
-
-    def test_paused_sets_paused_state(self, window):
-        window.status_message.setText("Simulation paused")
-        assert window.status_pill.property("state") == "paused"
-
-    def test_error_sets_error_state(self, window):
-        window.status_message.setText("Error: something failed")
-        assert window.status_pill.property("state") == "error"
-
-    def test_plain_text_sets_idle_state(self, window):
-        window.status_message.setText("Ready")
+    def test_setText_shows_the_message_on_the_idle_pill(self, window):
+        window.status_message.setText("Diagram opened")
+        assert window.status_pill._label.text() == "Diagram opened"
         assert window.status_pill.property("state") == "idle"
 
-    def test_running_takes_priority_only_without_paused(self, window):
-        # 'run' present but 'paus' also present -> paused branch wins.
-        window.status_message.setText("run paused")
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Running simulation...",
+            "Simulation paused",
+            "Error: something failed",
+            # The old keyword sniffer turned this one green ("brun" contains "run").
+            "Saved /Users/bruno/model.diablos",
+        ],
+    )
+    def test_text_never_changes_the_state(self, window, text):
+        window.status_message.setText(text)
+        assert window.status_pill.property("state") == "idle"
+
+    def test_state_comes_from_the_controller_signal(self, window):
+        window.canvas._sim_controller.state_changed.emit("running", "")
+        assert window.status_pill.property("state") == "running"
+        assert window.toolbar.status_pill.property("state") == "running"
+        window.canvas._sim_controller.state_changed.emit("paused", "")
         assert window.status_pill.property("state") == "paused"
+        window.canvas._sim_controller.state_changed.emit("error", "Bad D matrix")
+        assert window.status_pill.property("state") == "error"
+        assert window.status_pill._label.text() == "Bad D matrix"
+        window.canvas._sim_controller.state_changed.emit("idle", "")
+        assert window.status_pill.property("state") == "idle"
+
+    def test_progress_text_does_not_wipe_the_running_label(self, window):
+        window._on_simulation_state_changed("running")
+        window.status_message.setText("Running simulation... t = 3.5 / 20 s")
+        assert window.status_pill.property("state") == "running"
+        assert window.status_pill._label.text() == "Simulating…"
 
 
 # ---------------------------------------------------------------------------

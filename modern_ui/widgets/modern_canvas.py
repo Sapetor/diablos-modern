@@ -58,6 +58,9 @@ class ModernCanvas(QWidget):
     block_selected = pyqtSignal(object)  # Emitted when a block is selected
     connection_created = pyqtSignal(object, object)  # Emitted when a connection is made
     simulation_status_changed = pyqtSignal(str)  # Emitted when simulation status changes
+    # (state, message) -- see SimulationController.state_changed.
+    simulation_state_changed = pyqtSignal(str, str)
+    simulation_batch_finished = pyqtSignal(bool)  # ok
     command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     scope_changed = pyqtSignal(list)  # Emitted when navigation scope changes (path)
     cursor_moved = pyqtSignal(int, int)  # (x, y) in canvas coordinates — drives status bar
@@ -113,6 +116,8 @@ class ModernCanvas(QWidget):
         # Simulation lifecycle controller (re-emits status as our own signal)
         self._sim_controller = SimulationController(self.dsim, parent=self)
         self._sim_controller.status_changed.connect(self.simulation_status_changed)
+        self._sim_controller.state_changed.connect(self.simulation_state_changed)
+        self._sim_controller.batch_finished.connect(self.simulation_batch_finished)
 
         # Initialize Analysis Tool. The analyzers live in lib/ and must not
         # import QMessageBox themselves, so the GUI injects the error sink.
@@ -134,8 +139,8 @@ class ModernCanvas(QWidget):
         self._animation_timer.timeout.connect(self._on_animation_tick)
         # Let the connection renderer pulse its active-wire glow via our phase.
         self.connection_renderer.pulse_alpha = self.glow_pulse_alpha
-        # Re-evaluate the gate whenever simulation status flips (start/stop).
-        self.simulation_status_changed.connect(lambda _msg: self._evaluate_animation_state())
+        # Re-evaluate the gate whenever the simulation state flips (start/stop).
+        self.simulation_state_changed.connect(lambda _s, _m: self._evaluate_animation_state())
 
         # Setup UI
         self._setup_canvas()
@@ -263,6 +268,10 @@ class ModernCanvas(QWidget):
     def stop_simulation(self):
         """Stop simulation safely (delegates to SimulationController)."""
         return self._sim_controller.stop()
+
+    def pause_simulation(self):
+        """Pause the interactive run (delegates to SimulationController)."""
+        return self._sim_controller.pause()
 
     def get_simulation_time(self):
         """Get current simulation time (delegates to SimulationController)."""

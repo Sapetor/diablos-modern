@@ -197,6 +197,8 @@ class LayoutManager:
         window.canvas.block_selected.connect(window._on_block_selected)
         window.canvas.connection_created.connect(window._on_connection_created)
         window.canvas.simulation_status_changed.connect(window._on_simulation_status_changed)
+        window.canvas.simulation_state_changed.connect(window._on_simulation_state_changed)
+        window.canvas.simulation_batch_finished.connect(window._on_batch_finished)
         window.canvas.command_palette_requested.connect(window.show_command_palette)
         window.toolbar.auto_route_wires.connect(window.canvas.auto_route_lines)
 

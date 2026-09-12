@@ -99,8 +99,12 @@ class TestPause:
 class TestStop:
     def test_stops_canvas_and_resets_toolbar(self, window, monkeypatch):
         captured = {}
+        controller = window.canvas._sim_controller
+        real_stop = controller.stop
         monkeypatch.setattr(
-            window.canvas, "stop_simulation", lambda: captured.__setitem__("stopped", True)
+            controller,
+            "stop",
+            lambda: (captured.__setitem__("stopped", True), real_stop()),
         )
         monkeypatch.setattr(
             window.toolbar,
@@ -109,6 +113,8 @@ class TestStop:
         )
         window.stop_simulation()
         assert captured.get("stopped") is True
+        # The controller's idle transition drives the toolbar; nothing in the
+        # window sets it directly any more.
         assert captured["state"] == (False, False)
         assert window.status_message.text() == "Simulation stopped"
 
