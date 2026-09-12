@@ -60,67 +60,91 @@ def _empty(mode="1d"):
     return base
 
 
+@pytest.fixture
+def make_window(qapp):
+    """Build result windows that are torn down *deterministically*.
+
+    The window holds pyqtgraph plots, which queue deferred events on their
+    children. Letting Python garbage-collect the widget whenever a test's
+    local went out of scope destroyed the C++ side while Qt was still
+    dispatching those events -- a "Pure virtual function called" abort that
+    surfaced (flakily) in whichever test happened to process events next.
+    """
+    windows = []
+
+    def _make(*args, **kwargs):
+        win = SweepResultWindow(*args, **kwargs)
+        windows.append(win)
+        return win
+
+    yield _make
+    for win in windows:
+        win.close()
+        win.deleteLater()
+    qapp.processEvents()
+
+
 @pytest.mark.unit
 class TestSweepResultWindow:
     # ------------------------------------------------------------------- 1-D
-    def test_1d_builds(self, qapp):
-        win = SweepResultWindow(_sweep_1d())
+    def test_1d_builds(self, qapp, make_window):
+        win = make_window(_sweep_1d())
         assert isinstance(win, QWidget)
         assert win.windowTitle() == "Parameter Sweep"
         assert win.combo is not None
         assert win.view_combo is not None and win.metric_combo is not None
         assert win.plot is not None and win.metric_plot is not None
 
-    def test_1d_header_counts(self, qapp):
-        win = SweepResultWindow(_sweep_1d(n=5))
+    def test_1d_header_counts(self, qapp, make_window):
+        win = make_window(_sweep_1d(n=5))
         assert "5/5" in win.header_label.text()
 
-    def test_1d_view_toggle_enables_metric(self, qapp):
-        win = SweepResultWindow(_sweep_1d())
+    def test_1d_view_toggle_enables_metric(self, qapp, make_window):
+        win = make_window(_sweep_1d())
         assert win.stack.currentIndex() == 0
         assert not win.metric_combo.isEnabled()
         win.view_combo.setCurrentIndex(1)  # Metric vs parameter
         assert win.stack.currentIndex() == 1
         assert win.metric_combo.isEnabled()
 
-    def test_1d_metric_change_rerenders(self, qapp):
-        win = SweepResultWindow(_sweep_1d())
+    def test_1d_metric_change_rerenders(self, qapp, make_window):
+        win = make_window(_sweep_1d())
         win.view_combo.setCurrentIndex(1)
         win.metric_combo.setCurrentText("max")  # must not raise
         assert "gain" in win.metric_plot.getPlotItem().titleLabel.text
 
-    def test_1d_view_combo_labels(self, qapp):
-        win = SweepResultWindow(_sweep_1d())
+    def test_1d_view_combo_labels(self, qapp, make_window):
+        win = make_window(_sweep_1d())
         labels = [win.view_combo.itemText(i) for i in range(win.view_combo.count())]
         assert labels == ["Response family", "Metric vs parameter"]
 
     # ------------------------------------------------------------------- 2-D
-    def test_2d_builds(self, qapp):
-        win = SweepResultWindow(_sweep_2d())
+    def test_2d_builds(self, qapp, make_window):
+        win = make_window(_sweep_2d())
         assert isinstance(win, QWidget)
         assert win.combo is not None and win.metric_combo is not None
         assert win.plot is not None and win.img is not None
         assert win.view_combo is None  # no view toggle in 2-D
 
-    def test_2d_metric_change_rerenders(self, qapp):
-        win = SweepResultWindow(_sweep_2d())
+    def test_2d_metric_change_rerenders(self, qapp, make_window):
+        win = make_window(_sweep_2d())
         win.metric_combo.setCurrentText("rms")  # must not raise
         assert "rms" in win.plot.getPlotItem().titleLabel.text
 
-    def test_2d_two_signals_switch(self, qapp):
-        win = SweepResultWindow(_sweep_2d(nsig=2))
+    def test_2d_two_signals_switch(self, qapp, make_window):
+        win = make_window(_sweep_2d(nsig=2))
         assert win.combo.count() == 2
         win.combo.setCurrentIndex(1)  # must not raise
         assert "S1" in win.plot.getPlotItem().titleLabel.text
 
     # ----------------------------------------------------------------- empty
-    def test_empty_1d_no_plot(self, qapp):
-        win = SweepResultWindow(_empty("1d"))
+    def test_empty_1d_no_plot(self, qapp, make_window):
+        win = make_window(_empty("1d"))
         assert isinstance(win, QWidget)
         assert win.plot is None and win.combo is None and win.metric_combo is None
         assert "0/4" in win.header_label.text()
 
-    def test_none_result_builds(self, qapp):
-        win = SweepResultWindow(None)
+    def test_none_result_builds(self, qapp, make_window):
+        win = make_window(None)
         assert isinstance(win, QWidget)
         assert win.plot is None

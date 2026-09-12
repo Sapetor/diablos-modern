@@ -69,18 +69,42 @@ def _sample_ok_result(with_bode=True):
     }
 
 
+@pytest.fixture
+def make_window(qapp):
+    """Build result windows that are torn down *deterministically*.
+
+    Each window holds several pyqtgraph plots, which queue deferred events on
+    their children. Letting Python garbage-collect the widget whenever a test's
+    local went out of scope destroyed the C++ side while Qt was still
+    dispatching those events -- a "Pure virtual function called" abort that
+    surfaced (flakily) in whichever test happened to process events next.
+    """
+    windows = []
+
+    def _make(result):
+        win = LinearizationResultWindow(result)
+        windows.append(win)
+        return win
+
+    yield _make
+    for win in windows:
+        win.close()
+        win.deleteLater()
+    qapp.processEvents()
+
+
 @pytest.mark.unit
 class TestLinearizationResultWindow:
-    def test_builds_as_qwidget(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_builds_as_qwidget(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         assert isinstance(win, QWidget)
 
-    def test_window_title_set(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_window_title_set(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         assert "Linearized" in win.windowTitle()
 
-    def test_has_all_tabs(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_has_all_tabs(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
         assert tabs.count() == 5
@@ -91,17 +115,17 @@ class TestLinearizationResultWindow:
         assert "Impulse" in labels
         assert "Summary" in labels
 
-    def test_bode_none_builds_without_error(self, qapp):
+    def test_bode_none_builds_without_error(self, qapp, make_window):
         """A result without Bode (no I/O designated) still builds with all tabs.
 
         Step/Impulse tabs are present too, showing their 'designate I/O' hint.
         """
-        win = LinearizationResultWindow(_sample_ok_result(with_bode=False))
+        win = make_window(_sample_ok_result(with_bode=False))
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
         assert tabs.count() == 5
 
-    def test_error_result_builds_without_tabs(self, qapp):
+    def test_error_result_builds_without_tabs(self, qapp, make_window):
         """When ok is False the window shows the error, not the tab widget."""
         result = {
             "ok": False,
@@ -131,12 +155,12 @@ class TestLinearizationResultWindow:
             "operating_point": {},
             "summary": "",
         }
-        win = LinearizationResultWindow(result)
+        win = make_window(result)
         assert isinstance(win, QWidget)
         # No tab widget in the error path.
         assert win.findChild(QTabWidget) is None
 
-    def test_minimal_ok_result_builds(self, qapp):
+    def test_minimal_ok_result_builds(self, qapp, make_window):
         """A-only result (no B/C/D, no poles/zeros, no bode) still builds."""
         result = {
             "ok": True,
@@ -166,7 +190,7 @@ class TestLinearizationResultWindow:
             "operating_point": {"Integrator0": 0.0},
             "summary": "x' = -3x",
         }
-        win = LinearizationResultWindow(result)
+        win = make_window(result)
         tabs = win.findChild(QTabWidget)
         assert tabs is not None
         assert tabs.count() == 5
@@ -178,35 +202,35 @@ def _export_buttons(win):
 
 @pytest.mark.unit
 class TestLinearizationExportBar:
-    def test_export_bar_present_when_ok(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_export_bar_present_when_ok(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         btns = _export_buttons(win)
         assert "Copy as Python" in btns
         assert "Copy as MATLAB" in btns
         assert "Save Data..." in btns
 
-    def test_export_bar_absent_when_not_ok(self, qapp):
-        win = LinearizationResultWindow({"ok": False, "error": "nope"})
+    def test_export_bar_absent_when_not_ok(self, qapp, make_window):
+        win = make_window({"ok": False, "error": "nope"})
         btns = _export_buttons(win)
         assert "Copy as Python" not in btns
         assert "Save Data..." not in btns
 
-    def test_copy_python_puts_code_on_clipboard(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_copy_python_puts_code_on_clipboard(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         _export_buttons(win)["Copy as Python"].click()
         text = QApplication.clipboard().text()
         assert text.startswith("# Linearized state-space model")
         assert "import numpy as np" in text
         assert "control.ss(A, B, C, D)" in text
 
-    def test_copy_matlab_puts_code_on_clipboard(self, qapp):
-        win = LinearizationResultWindow(_sample_ok_result())
+    def test_copy_matlab_puts_code_on_clipboard(self, qapp, make_window):
+        win = make_window(_sample_ok_result())
         _export_buttons(win)["Copy as MATLAB"].click()
         text = QApplication.clipboard().text()
         assert text.lstrip().startswith("%")
         assert "sys = ss(A, B, C, D);" in text
 
-    def test_save_data_writes_loadable_file(self, qapp, tmp_path, monkeypatch):
+    def test_save_data_writes_loadable_file(self, qapp, make_window, tmp_path, monkeypatch):
         from PyQt6.QtWidgets import QFileDialog
 
         out = tmp_path / "exported.mat"
@@ -215,7 +239,7 @@ class TestLinearizationExportBar:
             "getSaveFileName",
             staticmethod(lambda *a, **k: (str(out), "MAT-file (*.mat)")),
         )
-        win = LinearizationResultWindow(_sample_ok_result())
+        win = make_window(_sample_ok_result())
         _export_buttons(win)["Save Data..."].click()
 
         assert out.exists()
