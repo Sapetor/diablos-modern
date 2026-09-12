@@ -5,6 +5,7 @@ Uses SimpleNamespace mock objects to avoid Qt dependency.
 Tests are organized by component, with regression tests for known bugs.
 """
 
+import re
 from types import SimpleNamespace
 
 from lib.export.tikz_exporter import (
@@ -249,9 +250,13 @@ class TestSanitizeNodeId:
 
 
 class TestGainPortAnchor:
-    """Tests for gain block port anchor selection.
+    """Port anchors for a gain, including what ``flipped`` means on export.
 
-    Regression tests for Bug 2: flipped case was reversed.
+    The export re-orders the diagram by signal flow, so on the left-to-right
+    spine a flipped block still reads left to right -- honouring the flag there
+    would put the input on the far side and drag its wire across the block.
+    The flag earns its meaning in the return path, where the layout moves a
+    flipped block into the loop lane and turns it around.
     """
 
     def _make_exporter_with_gain(self, flipped=False):
@@ -267,13 +272,47 @@ class TestGainPortAnchor:
         exp, gain = self._make_exporter_with_gain(flipped=False)
         assert exp._get_port_anchor(gain, 0, is_output=True) == "east"
 
-    def test_flipped_input(self):
+    def test_flipped_on_the_spine_is_ignored(self):
+        """Nothing in the spine runs right to left, so the flag is dropped."""
         exp, gain = self._make_exporter_with_gain(flipped=True)
         assert exp._get_port_anchor(gain, 0, is_output=False) == "west"
-
-    def test_flipped_output(self):
-        exp, gain = self._make_exporter_with_gain(flipped=True)
         assert exp._get_port_anchor(gain, 0, is_output=True) == "east"
+        assert exp._get_block_style(gain) == "gain"
+
+    def test_flipped_in_the_return_path_turns_the_block_around(self):
+        """Input on the east, output on the west, triangle pointing left."""
+        blocks, lines = _return_path_diagram()
+        exp = TikZExporter(blocks, lines)
+        exp.export_snippet()
+        gain = next(b for b in blocks if b.block_fn == "Gain")
+        assert gain.name in exp._lane_blocks
+        assert exp._get_port_anchor(gain, 0, is_output=False) == "east"
+        assert exp._get_port_anchor(gain, 0, is_output=True) == "west"
+        assert exp._get_block_style(gain) == "gain flipped"
+
+
+def _return_path_diagram():
+    """Step -> Sum -> TF -> Scope with a *flipped* gain closing the loop."""
+    step = make_block("Step", sid=0, category="Sources", left=0)
+    s = make_block("Sum", sid=1, category="Math", params={"sign": "+-"}, in_ports=2, left=100)
+    tf = make_block(
+        "TranFn",
+        sid=2,
+        category="Control",
+        params={"numerator": [1.0], "denominator": [1.0, 1.0]},
+        left=200,
+    )
+    h = make_block("Gain", sid=3, username="H", params={"gain": 0.5}, flipped=True, left=300)
+    scope = make_block("Scope", sid=4, category="Sinks", left=400)
+    blocks = [step, s, tf, h, scope]
+    lines = [
+        make_line(step.name, s.name, dstport=0),
+        make_line(s.name, tf.name),
+        make_line(tf.name, scope.name),
+        make_line(tf.name, h.name),
+        make_line(h.name, s.name, dstport=1),
+    ]
+    return blocks, lines
 
 
 # ---------------------------------------------------------------------------
@@ -643,7 +682,7 @@ class TestFullExport:
         blocks, lines = self._simple_feedback_diagram()
         exporter = TikZExporter(blocks, lines)
         snippet = exporter.export_snippet()
-        assert "(bpt)" in snippet
+        assert "(bpt1)" in snippet
         assert "(output)" in snippet
         assert "\\node[branch]" in snippet
 
@@ -652,8 +691,8 @@ class TestFullExport:
         blocks, lines = self._simple_feedback_diagram()
         exporter = TikZExporter(blocks, lines)
         snippet = exporter.export_snippet()
-        # Feedback draw should reference 'bpt' as start
-        assert "(bpt)" in snippet
+        # Feedback draw should reference the numbered dot as its start
+        assert "(bpt1)" in snippet
         # Should use -| (vert-then-horiz) routing
         assert "-|" in snippet
 
@@ -675,7 +714,7 @@ class TestFullExport:
         ]
         exporter = TikZExporter(blocks, lines)
         snippet = exporter.export_snippet()
-        assert "(bpt)" not in snippet
+        assert "(bpt" not in snippet
         assert "(output)" not in snippet
 
     def test_output_label_on_continuation_arrow(self):
@@ -703,97 +742,174 @@ class TestFullExport:
 # ---------------------------------------------------------------------------
 
 
-class TestAdaptiveSpacing:
-    """Tests for the new per-block adaptive spacing layout."""
+class TestSpineLayout:
+    """The signal-flow spine: ordering, relative placement and gaps.
 
-    def test_spacing_smaller_than_page_width(self):
-        """Three blocks should produce ~5-6cm total, not 14cm."""
-        s = make_block("Sum", sid=0, category="Math", params={"sign": "+-"}, in_ports=2, left=0)
-        gain = make_block("Gain", sid=1, category="Math", params={"gain": 2.0}, left=100)
-        tf = make_block(
-            "TranFn",
-            sid=2,
-            category="Control",
-            params={"numerator": [1.0], "denominator": [1.0, 1.0]},
-            left=200,
-        )
-        blocks = [s, gain, tf]
+    Blocks are no longer placed at absolute coordinates: they are chained with
+    the ``positioning`` library, so the gap is measured border to border and a
+    long caption pushes its neighbour instead of growing into it.
+    """
+
+    def _chain(self, *fns):
+        blocks = []
+        for i, fn in enumerate(fns):
+            params = (
+                {"numerator": [1.0], "denominator": [1.0, 1.0]}
+                if fn in ("TranFn", "DiscreteTranFn")
+                else {"gain": 1.0, "sign": "++"}
+            )
+            blocks.append(
+                make_block(fn, sid=i, category="Control", params=params, in_ports=2, left=i * 100)
+            )
+        lines = [make_line(blocks[i].name, blocks[i + 1].name) for i in range(len(blocks) - 1)]
+        return blocks, lines
+
+    def test_blocks_are_chained_not_placed_at_coordinates(self):
+        blocks, lines = self._chain("Sum", "Gain", "TranFn")
+        snippet = TikZExporter(blocks, lines).export_snippet()
+        node_lines = [ln for ln in snippet.splitlines() if ln.strip().startswith("\\node[")]
+        block_nodes = [ln for ln in node_lines if "branch" not in ln and "footnotesize" not in ln]
+        assert len(block_nodes) == 3
+        # The first node anchors the picture; the rest hang off their neighbour.
+        assert sum("right=" in ln for ln in block_nodes) == 2
+        assert not re.search(r"\\node\[(?:block|sum|gain|tf)[^]]*\]\s*\([^)]+\) at \(", snippet)
+
+    def test_node_distance_is_a_picture_option(self):
+        """One knob, stated once, that a reader can retune by hand."""
+        blocks, lines = self._chain("Sum", "Gain", "TranFn")
+        snippet = TikZExporter(blocks, lines).export_snippet({"node_distance_cm": 2.2})
+        assert "node distance=2.2cm" in snippet
+        # Default gaps say `right=of', so the one knob really does drive them.
+        assert "right=of " in snippet
+
+    def test_order_follows_the_signal_not_the_canvas(self):
+        blocks, lines = self._chain("Sum", "Gain", "TranFn")
+        # Scramble the canvas positions; the export must not care.
+        blocks[0].left, blocks[2].left = 900, 10
+        exporter = TikZExporter(blocks, lines)
+        exporter._build_node_ids(blocks)
+        exporter._compute_textbook_layout(blocks, lines, {"page_width_cm": 14.0})
+        assert exporter._ordered_names == [b.name for b in blocks]
+
+    def test_a_chain_is_not_broken_up_by_a_fan_out(self):
+        """Breadth-first put both successors first and made the rest a skip."""
+        a = make_block("Gain", sid=0, category="Math", params={"gain": 1.0}, left=0)
+        b = make_block("Gain", sid=1, category="Math", params={"gain": 2.0}, left=100)
+        c = make_block("Gain", sid=2, category="Math", params={"gain": 3.0}, left=200)
+        d = make_block("Sum", sid=3, category="Math", params={"sign": "++"}, in_ports=2, left=300)
+        blocks = [a, b, c, d]
         lines = [
-            make_line(s.name, gain.name),
-            make_line(gain.name, tf.name),
+            make_line(a.name, b.name),
+            make_line(b.name, c.name),
+            make_line(c.name, d.name, dstport=0),
+            make_line(a.name, d.name, dstport=1),
         ]
         exporter = TikZExporter(blocks, lines)
         exporter._build_node_ids(blocks)
-        exporter._compute_textbook_layout(blocks, {"page_width_cm": 14.0})
-        positions = exporter._textbook_pos
-        # Total width should be much less than 14
-        total_width = max(p[0] for p in positions.values())
-        assert total_width < 10.0, f"Total width {total_width} too large"
-        assert total_width > 2.0, f"Total width {total_width} too small"
+        exporter._compute_textbook_layout(blocks, lines, {"page_width_cm": 14.0})
+        assert exporter._ordered_names == [a.name, b.name, c.name, d.name]
 
-    def test_tf_blocks_get_wider_gap(self):
-        """TranFn blocks should get extra spacing."""
-        gain = make_block("Gain", sid=0, category="Math", params={"gain": 1.0}, left=0)
-        tf = make_block(
-            "TranFn",
-            sid=1,
-            category="Control",
-            params={"numerator": [1.0], "denominator": [1.0, 1.0]},
-            left=100,
-        )
-        blocks = [gain, tf]
-        lines = [make_line(gain.name, tf.name)]
-        exporter = TikZExporter(blocks, lines)
-        exporter._build_node_ids(blocks)
-        exporter._compute_textbook_layout(blocks, {"page_width_cm": 14.0})
-        gap = exporter._layout_gaps[0]
-        # Gain neighbor gets -0.3, TF neighbor gets +0.5: base 2.5 + 0.5 - 0.3 = 2.7
-        assert gap > 2.5, f"Gap {gap} should be > 2.5 for Gain->TF"
+    def test_unconnected_blocks_are_parked_at_the_end(self):
+        """An orphan block in the middle used to split the signal path in two."""
+        orphan = make_block("Gain", sid=9, category="Math", params={"gain": 1.0}, left=-500)
+        blocks, lines = self._chain("Sum", "Gain", "TranFn")
+        exporter = TikZExporter(blocks + [orphan], lines)
+        exporter._build_node_ids(blocks + [orphan])
+        exporter._compute_textbook_layout(blocks + [orphan], lines, {"page_width_cm": 14.0})
+        assert exporter._ordered_names[-1] == orphan.name
 
-    def test_gain_blocks_get_tighter_gap(self):
-        """Gain blocks should produce a tighter gap."""
-        s = make_block("Sum", sid=0, category="Math", params={"sign": "++"}, in_ports=2, left=0)
-        gain = make_block("Gain", sid=1, category="Math", params={"gain": 1.0}, left=100)
-        blocks = [s, gain]
-        lines = [make_line(s.name, gain.name)]
-        exporter = TikZExporter(blocks, lines)
-        exporter._build_node_ids(blocks)
-        exporter._compute_textbook_layout(blocks, {"page_width_cm": 14.0})
-        gap = exporter._layout_gaps[0]
-        assert gap < 2.5, f"Gap {gap} should be < 2.5 for Sum->Gain"
-
-    def test_scale_down_when_exceeds_page_width(self):
-        """Many blocks should scale down to fit within page_width."""
-        blocks = []
-        lines_list = []
-        for i in range(8):
-            blocks.append(
-                make_block(
-                    "TranFn",
-                    sid=i,
-                    category="Control",
-                    params={"numerator": [1.0], "denominator": [1.0, 1.0]},
-                    left=i * 100,
-                )
+    def test_gaps_shrink_to_fit_the_page_width(self):
+        blocks = [
+            make_block(
+                "TranFn",
+                sid=i,
+                category="Control",
+                params={"numerator": [1.0], "denominator": [1.0, 1.0]},
+                left=i * 100,
             )
-        for i in range(7):
-            lines_list.append(make_line(blocks[i].name, blocks[i + 1].name))
-        exporter = TikZExporter(blocks, lines_list)
+            for i in range(8)
+        ]
+        lines = [make_line(blocks[i].name, blocks[i + 1].name) for i in range(7)]
+        exporter = TikZExporter(blocks, lines)
         exporter._build_node_ids(blocks)
-        exporter._compute_textbook_layout(blocks, {"page_width_cm": 14.0})
-        positions = exporter._textbook_pos
-        total_width = max(p[0] for p in positions.values())
-        assert total_width <= 14.0, f"Total width {total_width} exceeds page_width"
+        exporter._compute_textbook_layout(blocks, lines, {"page_width_cm": 14.0})
+        assert exporter._spine_gaps
+        assert max(exporter._spine_gaps) < 1.5
+        assert min(exporter._spine_gaps) >= TikZExporter._MIN_GAP
 
-    def test_single_block_at_origin(self):
-        """Single block should be placed at x=0."""
+    def test_single_block_needs_no_gap(self):
         tf = make_block("TranFn", sid=0, category="Control", left=0)
-        blocks = [tf]
-        exporter = TikZExporter(blocks, [])
-        exporter._build_node_ids(blocks)
-        exporter._compute_textbook_layout(blocks, {"page_width_cm": 14.0})
-        assert exporter._textbook_pos[tf.name] == (0.0, 0.0)
-        assert exporter._layout_gaps == []
+        exporter = TikZExporter([tf], [])
+        exporter._build_node_ids([tf])
+        exporter._compute_textbook_layout([tf], [], {"page_width_cm": 14.0})
+        assert exporter._spine_gaps == []
+        assert exporter._ordered_names == [tf.name]
+
+
+class TestPortDistribution:
+    """Several ports on one side must land on several points, not one anchor."""
+
+    def _demux(self, out_ports=4):
+        dm = make_block("Demux", sid=0, category="Routing", in_ports=1, out_ports=out_ports)
+        return TikZExporter([dm], []), dm
+
+    def test_ports_are_spread_down_the_side_in_order(self):
+        exp, dm = self._demux(4)
+        exp._build_node_ids([dm])
+        points = [exp._port_point(dm, k, is_output=True) for k in range(4)]
+        assert len(set(points)) == 4
+        fractions = [float(re.search(r"!([0-9.]+)!", p).group(1)) for p in points]
+        assert fractions == sorted(fractions), "port 0 must be the topmost"
+        assert all("north east" in p and "south east" in p for p in points)
+
+    def test_a_single_port_stays_on_the_plain_anchor(self):
+        exp, dm = self._demux(1)
+        exp._build_node_ids([dm])
+        assert exp._port_point(dm, 0, is_output=True) == "(demux0.east)"
+
+    def test_a_multi_port_block_is_tall_enough_to_tell_them_apart(self):
+        dm = make_block("Demux", sid=0, category="Routing", in_ports=1, out_ports=4)
+        snippet = TikZExporter([dm], []).export_snippet()
+        assert "minimum height=28mm" in snippet
+
+    def test_a_sum_keeps_its_angle_anchors(self):
+        """Ports on a circle sit at angles; its corners are not on the outline."""
+        s = make_block("Sum", sid=0, category="Math", params={"sign": "+-"}, in_ports=2)
+        exp = TikZExporter([s], [])
+        exp._build_node_ids([s])
+        assert exp._port_point(s, 0, is_output=False) == "(sum0.180)"
+        assert exp._port_point(s, 1, is_output=False) == "(sum0.270)"
+
+
+class TestShapeFollowsTheCanvas:
+    """The exported outline is the one ``resolve_block_shape`` paints."""
+
+    def test_matrix_gain_is_a_triangle(self):
+        b = make_block("MatrixGain", sid=0, category="Math", username="K")
+        assert TikZExporter([b], [])._get_block_style(b) == "gain"
+
+    def test_product_is_a_circle(self):
+        b = make_block("Product", sid=0, category="Math", in_ports=2)
+        exp = TikZExporter([b], [])
+        assert exp._get_block_style(b) == "sum"
+        assert exp._get_block_content(b, {}) == r"$\times$"
+
+    def test_goto_and_from_are_tags(self):
+        for fn in ("Goto", "From"):
+            b = make_block(fn, sid=0, category="Routing", params={"tag": "A"})
+            exp = TikZExporter([b], [])
+            assert exp._get_block_style(b) == "tag"
+            assert exp._get_block_content(b, {}) == "A"
+
+    def test_tag_style_names_the_shape_explicitly(self):
+        """`signal' is also this picture's wire style; the bare key picks that."""
+        b = make_block("Goto", sid=0, category="Routing", params={"tag": "A"})
+        snippet = TikZExporter([b], []).export_snippet()
+        assert "tag/.style={draw, shape=signal" in snippet
+
+    def test_a_plain_block_is_still_a_rectangle(self):
+        b = make_block("Abs", sid=0, category="Math")
+        assert TikZExporter([b], [])._get_block_style(b) == "block"
 
 
 # ---------------------------------------------------------------------------
@@ -851,7 +967,7 @@ class TestSumLabelSuppression:
         exporter._build_node_ids([s])
         exporter._build_symbol_maps({})
         exporter._compute_block_type_counts()
-        exporter._compute_textbook_layout([s], {"page_width_cm": 14.0})
+        exporter._compute_textbook_layout([s], [], {"page_width_cm": 14.0})
         node = exporter._block_to_node(s, {"show_usernames": True})
         # Sum signs use \footnotesize inside the circle — that's expected.
         # But there should NOT be a separate "below" label node for the username.

@@ -341,6 +341,40 @@ clipboard.
 live preview, a standalone-document / snippet toggle, configurable options and
 copy-to-clipboard - for dropping diagrams straight into a paper or slide deck.
 
+**The figure is redrawn, not traced.** The exporter does not copy your canvas
+coordinates: it follows the signal from its sources, puts the blocks on one
+left-to-right row in that order, and routes everything that cannot run along
+that row through a lane - feedback below, a forward wire that skips a block
+above. Blocks you never wired up are parked at the end so they cannot split the
+signal path. Consequences worth knowing:
+
+- Blocks are chained with TikZ's `positioning` library, so the gap is measured
+  *border to border*. A block with a long caption or a tall fraction pushes its
+  neighbour along instead of overlapping it.
+- Each block gets the outline the canvas paints it with: Gain/MatrixGain a
+  triangle, Sum/Product a circle, Goto/From a tag, everything else a box.
+- A **flipped** block only stays flipped where that means something - in the
+  return path of a loop, which is where you flip a gain. The layout drops such a
+  block into the loop lane pointing back at the summing junction. On the main
+  row, where everything reads left to right, the flag is ignored.
+- Where one output feeds several wires you get a junction dot, one per port.
+- A scope hanging off a signal that already continues to another block is left
+  out: the wire is drawn once, and a second arrowhead on it says nothing.
+
+**Hand-tuning.** The generated file lists its knobs at the top. The useful ones
+are `node distance` (the block gap, set once in the picture options) and the
+picture's `x=`/`y=` units. Prefer those, or a shorter caption, over wrapping the
+figure in `\resizebox`: scaling shrinks the type with the picture, and journals
+set a minimum figure font size. `\resizebox` is available as an option but is
+off by default.
+
+**Pasting a snippet.** A snippet carries the `\usetikzlibrary` line it needs.
+Keep that line outside any TeX group - if you paste a snippet inside
+`\resizebox{..}{..}{..}` or a `minipage`, TeX records the libraries as loaded
+globally but defines them only inside that group, and the *next* snippet then
+fails with `You need to say \usetikzlibrary{calc}`. Moving the line to your
+preamble once is the safe way to paste several figures.
+
 ### Export as Python Script...
 **File → Export → Export as Python Script...** writes the diagram as a
 self-contained `.py` file that depends only on **numpy** and **scipy**

@@ -10,7 +10,8 @@ import re
 
 import pytest
 
-from lib.export.tikz_exporter import TikZExporter, _escape_latex, _math_body_is_safe
+from lib.export.tex_safety import math_body_is_safe
+from lib.export.tikz_exporter import TikZExporter, _escape_latex
 
 # The exporter's mock factories already model every attribute it reads; a second
 # set here would drift the next time the exporter grows one.
@@ -74,7 +75,7 @@ class TestMathLabelValidation:
         "body", [r"\dfrac{1}{s+1}", r"\dot{x} = Ax + Bu", r"\alpha_1", "y", r"\frac{K}{s}"]
     )
     def test_real_math_is_still_passed_through(self, body):
-        assert _math_body_is_safe(body) is True
+        assert math_body_is_safe(body) is True
 
     @pytest.mark.parametrize(
         "body",
@@ -87,7 +88,7 @@ class TestMathLabelValidation:
         ],
     )
     def test_io_and_redefinition_commands_are_rejected(self, body):
-        assert _math_body_is_safe(body) is False
+        assert math_body_is_safe(body) is False
 
     def test_injected_label_is_escaped_not_executed(self):
         evil = r"$y$ \immediate\write18{echo pwned} $z$"
@@ -158,7 +159,9 @@ class TestMathGateIsStructural:
     """Delimiters alone do not make a body safe.
 
     A body can close the group and keep going, after which a command blocklist
-    is decoration -- the attacker just picks a command that is not on it.
+    is decoration -- the attacker just picks a command that is not on it. The
+    gate is therefore structural first and an *allowlist* second; see
+    ``tests/regression/test_tikz_math_allowlist.py`` for the bypass cases.
     """
 
     @pytest.mark.parametrize(
@@ -173,13 +176,13 @@ class TestMathGateIsStructural:
         ],
     )
     def test_structural_escapes_are_rejected(self, body):
-        assert _math_body_is_safe(body) is False
+        assert math_body_is_safe(body) is False
 
     @pytest.mark.parametrize(
         "body", [r"\dfrac{1}{s+1}", r"\dot{x} = Ax + Bu", r"K_{p} + \frac{K_i}{s}"]
     )
     def test_balanced_self_contained_math_still_passes(self, body):
-        assert _math_body_is_safe(body) is True
+        assert math_body_is_safe(body) is True
 
 
 class TestEscapingWorksInBothModes:
@@ -202,3 +205,90 @@ class TestEscapingWorksInBothModes:
         evil = r"$\immediate\write18{echo pwned}$"
         assert r"\immediate" not in BloxExporter._latex_label(evil)
         assert BloxExporter._latex_label(r"$\dfrac{1}{s+1}$") == r"$\dfrac{1}{s+1}$"
+
+
+class TestBranchIdsAreReserved:
+    """``bpt`` is now a *prefix*, so the whole family has to be reserved.
+
+    Reserving the bare ``bpt`` alone let a block called ``bpt1`` take the id of
+    the first junction dot: every wire that branched there silently moved onto
+    the block's outline, which still compiles.
+    """
+
+    @pytest.mark.parametrize("reserved", ["output", "bpt", "bpt1", "bpt7", "BPT2"])
+    def test_a_block_cannot_claim_a_branch_id(self, reserved):
+        blocks = [_Block("g", block_fn="Gain", username=reserved), _Block("p")]
+        out = _export(blocks, [_Line("g", "p")])
+        assert not re.search(r"\\node\[[^]]*\]\s*\(" + reserved + r"\)", out)
+
+
+class TestForwardWiresNeverCrossABlock:
+    """A straight wire between non-neighbours runs through whatever is between.
+
+    The exporter lays every block out on one row, so ``--`` from column *i* to
+    column *j > i+1* is drawn over the top of columns *i+1 ... j-1*.  Such a
+    wire has to climb into a lane above the spine instead.
+    """
+
+    @staticmethod
+    def _skip_diagram():
+        chain = [make_block("Gain", sid=i, params={"gain": i + 1}, left=i * 100) for i in range(3)]
+        sink = make_block("Sum", sid=3, params={"sign": "++"}, in_ports=2, left=300)
+        lines = [
+            make_line(chain[0].name, chain[1].name),
+            make_line(chain[1].name, chain[2].name),
+            make_line(chain[2].name, sink.name, dstport=0),
+            make_line(chain[0].name, sink.name, dstport=1),  # skips two columns
+        ]
+        return chain + [sink], lines
+
+    def test_the_skipping_wire_is_routed_through_a_lane(self):
+        blocks, lines = self._skip_diagram()
+        exporter = TikZExporter(blocks, lines)
+        picture = exporter.export_snippet()
+        assert len(exporter._detour_lane) == 1, "the skipping wire must get a lane"
+        # It leaves the junction dot on gain0's output and lands on the Sum's
+        # second input; what matters is that it is not a straight `--'.
+        skip = [ln for ln in picture.splitlines() if "sum3.210" in ln and "draw" in ln]
+        assert skip and all("|-" in ln for ln in skip), skip
+
+    def test_the_lane_is_above_the_spine(self):
+        """Feedback owns the space below; detours must not fight it for a row."""
+        blocks, lines = self._skip_diagram()
+        exporter = TikZExporter(blocks, lines)
+        exporter.export_snippet()
+        assert all(lane > 0 for lane in exporter._detour_lane.values())
+
+    def test_one_source_feeding_two_later_columns_gets_two_lanes(self):
+        a = make_block("Gain", sid=0, params={"gain": 1.0}, left=0)
+        b = make_block("Gain", sid=1, params={"gain": 2.0}, left=100)
+        c = make_block("Sum", sid=2, params={"sign": "++"}, in_ports=2, left=200)
+        d = make_block("Sum", sid=3, params={"sign": "++"}, in_ports=2, left=300)
+        blocks = [a, b, c, d]
+        lines = [
+            make_line(a.name, b.name),
+            make_line(b.name, c.name, dstport=0),
+            make_line(c.name, d.name, dstport=0),
+            make_line(a.name, c.name, dstport=1),
+            make_line(a.name, d.name, dstport=1),
+        ]
+        exporter = TikZExporter(blocks, lines)
+        exporter.export_snippet()
+        lanes = sorted(exporter._detour_lane.values())
+        assert len(lanes) == 2 and lanes[0] != lanes[1], lanes
+
+
+class TestSnippetWarnsAboutGroups:
+    r"""``\usetikzlibrary`` inside a group is a trap worth naming.
+
+    TeX records a library as loaded *globally* but defines it *locally*, so a
+    snippet pasted inside ``\resizebox{..}{..}{..}`` loads its libraries into
+    that box; the next snippet's copy is then skipped as "already loaded" and
+    the picture fails with "You need to say \usetikzlibrary{calc}".
+    """
+
+    def test_the_header_says_to_hoist_the_library_line(self):
+        snippet = TikZExporter([_Block("a")], []).export_snippet()
+        header = snippet.split(r"\usetikzlibrary")[0]
+        assert "outside any TeX group" in header
+        assert "preamble" in header

@@ -28,58 +28,17 @@ from modern_ui.themes.theme_manager import (
     TYPE,
 )
 from lib.engine.block_params import runtime_params
+from lib.models.block_shape import resolve_block_shape
 
 logger = logging.getLogger(__name__)
 
-# Outline shapes the renderer knows how to draw (see BaseBlock.shape).
-BLOCK_SHAPES = ("rect", "triangle", "circle", "tag")
-
-# Shape used when a block carries no block_instance (legacy / stub blocks in
-# tests), keyed by block_fn. Everything else falls back to a rounded rect.
-_SHAPE_FALLBACK_BY_FN = {
-    "Gain": "triangle",
-    "MatrixGain": "triangle",
-    "Sum": "circle",
-    "Product": "circle",
-    "Goto": "tag",
-    "From": "tag",
-}
-
-# A circle only reads well with a handful of ports on its curved edge; past
-# this the block is drawn as a rounded rectangle instead.
-_CIRCLE_MAX_INPUTS = 3
+# The outline vocabulary (BLOCK_SHAPES) and the rule that picks one live in
+# lib/models/block_shape.py, which imports no Qt, so the TikZ/Blox exporters
+# under lib/ resolve exactly the shape this module paints. `resolve_block_shape'
+# is re-exported here because this module is the painter's public surface.
 
 # Corner radius of the rounded-rectangle outline.
 _RECT_RADIUS = 12
-
-
-def resolve_block_shape(block) -> str:
-    """Return the outline shape token to draw for ``block``.
-
-    Reads ``block.block_instance.shape`` (BaseBlock hook) and applies the
-    port-count fallback for circles, so every drawing routine (body, shadow,
-    hover, export) agrees on the same outline.
-    """
-    instance = getattr(block, "block_instance", None)
-    shape = None
-    if instance is not None:
-        try:
-            shape = getattr(instance, "shape", None)
-        except Exception:  # a broken property must never break painting
-            shape = None
-    if not shape:
-        shape = _SHAPE_FALLBACK_BY_FN.get(getattr(block, "block_fn", ""), "rect")
-    # A masked subsystem may pick one of the outlines for its block; it wins
-    # over the class hook so shadow, body, hover and export all agree.
-    mask = _block_mask(block)
-    if mask is not None and mask.get("shape"):
-        shape = mask.get("shape")
-    if shape not in BLOCK_SHAPES:
-        shape = "rect"
-    if shape == "circle":
-        if getattr(block, "in_ports", 0) > _CIRCLE_MAX_INPUTS or getattr(block, "out_ports", 0) > 1:
-            shape = "rect"
-    return shape
 
 
 def block_outline_path(block, shape: str, offset: int = 0, expand: int = 0) -> QPainterPath:
