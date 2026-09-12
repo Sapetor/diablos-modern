@@ -12,10 +12,10 @@ Returns None from export() when the diagram is too complex.
 import logging
 from typing import Dict, Optional
 
+from lib.export.tex_safety import math_body_is_safe
 from lib.export.tikz_exporter import (
     _poly_to_latex,
     _escape_latex,
-    _math_body_is_safe,
     _sanitize_node_id,
 )
 
@@ -259,7 +259,7 @@ class BloxExporter:
         """Convert a raw line label into a LaTeX-safe math snippet.
 
         Mirrors ``TikZExporter._format_explicit_label``: a label that is already
-        math-delimited *and* passes ``_math_body_is_safe`` is handed through
+        math-delimited *and* passes ``tex_safety.math_body_is_safe`` is handed through
         untouched, anything else is escaped and wrapped in math mode so
         characters like ``_ & # % { }`` -- or a command that does I/O -- cannot
         break or inject LaTeX. Both exporters are reachable from the same
@@ -272,7 +272,7 @@ class BloxExporter:
             len(label) >= 2
             and label.startswith("$")
             and label.endswith("$")
-            and _math_body_is_safe(label[1:-1])
+            and math_body_is_safe(label[1:-1])
         ):
             return label
         return f"${_escape_latex(label)}$"
