@@ -100,6 +100,7 @@ class WindowSetupManager:
         window.toolbar.pause_simulation.connect(window.pause_simulation)
         window.toolbar.stop_simulation.connect(window.stop_simulation)
         window.toolbar.step_simulation.connect(window.step_simulation)
+        window.toolbar.simulation_settings_requested.connect(window.open_simulation_settings)
         window.toolbar.plot_results.connect(window.show_plots)
         window.toolbar.capture_screen.connect(window.capture_screen)
         window.toolbar.zoom_changed.connect(window.set_zoom)

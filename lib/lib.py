@@ -9,6 +9,8 @@ from tqdm import tqdm
 from PyQt6.QtWidgets import QDialog
 from lib.workspace import WorkspaceManager
 from lib.dialogs import SimulationDialog
+from lib.i18n import tr
+from lib.sim_prefs import ask_before_run as _stored_ask_before_run, set_ask_before_run
 import logging
 
 
@@ -88,6 +90,10 @@ class DSim:
         self.execution_pause = self.engine.execution_pause
         self.real_time = self.engine.real_time
         self.dynamic_plot = False
+        # Application preference (QSettings, not diagram data): when True,
+        # Play re-opens the Simulation-settings dialog before every run. Read
+        # once here; the settings dialog keeps the two in step.
+        self.ask_before_run = _stored_ask_before_run()
         # Set while execution_batch runs off the GUI thread: suppresses every
         # Qt call made from the interpreter loop (see execution_batch).
         self._defer_gui_plots = False
@@ -493,40 +499,95 @@ class DSim:
 
     ##### DIAGRAM EXECUTION #####
 
-    def execution_init_time(self):
-        """
-        :purpose: Creates a pop-up window to ask for graph simulation setup values.
-        :description: The first step in order to be able to perform a network simulation, is to have the execution data. These are mainly simulation time and sampling period, but we also ask for variables needed for the graphs.
+    # Settings the SimulationDialog edits that are also written to the .diablos
+    # file (FileService stores plot_trange under the "sim_trange" key). Changing
+    # one of these dirties the diagram; ``real_time``/``dynamic_plot`` are
+    # session-only run modes and do not.
+    PERSISTED_SIM_SETTINGS = (
+        "sim_time",
+        "sim_dt",
+        "plot_trange",
+        "solver_method",
+        "rtol",
+        "atol",
+        "zero_crossing",
+    )
+
+    # Every setting the dialog round-trips onto this DSim. The dialog's result
+    # keys are deliberately the attribute names, so applying it is a loop.
+    _SIM_SETTINGS = PERSISTED_SIM_SETTINGS + ("real_time", "dynamic_plot")
+
+    def open_simulation_dialog(self, parent=None, accept_label=None):
+        """Show the Simulation-settings dialog pre-filled with the live values.
+
+        Returns the dialog's value dict, or ``None`` if the user cancelled.
+        Applying the result is the caller's job (``apply_sim_settings``), so
+        the same dialog serves both the Simulation > Simulation Settings...
+        action and the opt-in "ask before every run" path.
         """
         dialog = SimulationDialog(
             self.sim_time,
             self.sim_dt,
             self.plot_trange,
+            parent=parent,
             solver_method=self.solver_method,
             rtol=self.rtol,
             atol=self.atol,
             zero_crossing=self.zero_crossing,
             real_time=self.real_time,
             dynamic_plot=self.dynamic_plot,
+            ask_before_run=self.ask_before_run,
+            accept_label=accept_label,
         )
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                values = dialog.get_values()
-                self.sim_time = values["sim_time"]
-                self.sim_dt = values["sim_dt"]
-                self.plot_trange = values["plot_trange"]
-                self.dynamic_plot = values["dynamic_plot"]
-                self.real_time = values["real_time"]
-                self.solver_method = values.get("solver_method", self.solver_method)
-                self.rtol = values.get("rtol", self.rtol)
-                self.atol = values.get("atol", self.atol)
-                self.zero_crossing = values.get("zero_crossing", self.zero_crossing)
-                return self.sim_time
-            except ValueError:
-                logger.warning("Invalid input. Using default values.")
-                return self.sim_time
-        else:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+        try:
+            return dialog.get_values()
+        except (ValueError, TypeError):
+            # The dialog validates its numeric fields before accepting, so this
+            # is belt-and-braces: keep the current settings rather than raise.
+            logger.warning("Invalid simulation settings. Keeping the current values.")
+            return None
+
+    def apply_sim_settings(self, values) -> bool:
+        """Apply a ``SimulationDialog`` result dict onto this DSim.
+
+        Returns True when a setting that is stored in the ``.diablos`` file
+        changed, i.e. when the caller should mark the diagram dirty. The
+        "ask before every run" flag is an application preference, so it is
+        written straight to QSettings and never dirties the diagram.
+        """
+        if not values:
+            return False
+
+        diagram_changed = False
+        for key in self._SIM_SETTINGS:
+            if key not in values:
+                continue
+            new = values[key]
+            if getattr(self, key) != new:
+                setattr(self, key, new)
+                if key in self.PERSISTED_SIM_SETTINGS:
+                    diagram_changed = True
+
+        if "ask_before_run" in values:
+            ask = bool(values["ask_before_run"])
+            if ask != self.ask_before_run:
+                self.ask_before_run = ask
+                set_ask_before_run(ask)
+
+        return diagram_changed
+
+    def execution_init_time(self):
+        """
+        :purpose: Creates a pop-up window to ask for graph simulation setup values.
+        :description: Opens the Simulation-settings dialog and applies what the user accepted, returning the simulation duration (or -1 if they cancelled). This is the *ask* path: since 2026-09 Play runs straight away with the stored settings, and this is reached only from Simulation > Simulation Settings... or when the "Ask before every run" preference is on.
+        """
+        values = self.open_simulation_dialog(accept_label=tr("Simulate"))
+        if values is None:
             return -1
+        self.apply_sim_settings(values)
+        return self.sim_time
 
     def _resolve_block_params(self, blocks, workspace_manager, sim_dt, mask_scope=None) -> bool:
         """
@@ -597,10 +658,17 @@ class DSim:
                     return False
         return True
 
-    def execution_init(self) -> bool:
+    def execution_init(self, ask: Optional[bool] = None) -> bool:
         """
         :purpose: Initializes the graph execution.
         :description: This is the first stage of the graph simulation, where variables and vectors are initialized, as well as testing to verify that everything is working properly. A previous autosave is done, as well as a block connection check and possible algebraic loops. If everything goes well, we continue with the loop stage.
+
+        ``ask`` decides whether the Simulation-settings dialog is shown first.
+        ``None`` (the default) resolves it from ``self.ask_before_run``, which
+        mirrors the ``simulation/ask_before_run`` QSettings preference and is
+        off by default -- so Play runs immediately with the settings stored in
+        the diagram. Pass True/False to force either path (the headless and
+        analysis runners never want the dialog).
         """
         try:
             logger.debug("Starting execution initialization...")
@@ -616,8 +684,12 @@ class DSim:
             ]  # Accumulate as list, convert to np.array when done
             self.timeline = np.array([self.time_step])  # Also keep np version for compatibility
 
-            # Some parameters are initialized including the maximum simulation time.
-            self.execution_time = self.execution_init_time()
+            # Some parameters are initialized including the maximum simulation
+            # time. Only the opt-in "ask before every run" path pops the dialog;
+            # otherwise the stored duration is used as-is.
+            if ask is None:
+                ask = bool(getattr(self, "ask_before_run", False))
+            self.execution_time = self.execution_init_time() if ask else self.sim_time
 
             # To cancel the simulation before running it (having pressed X in the pop up)
             if self.execution_time == -1 or len(self.blocks_list) == 0:

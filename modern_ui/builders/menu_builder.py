@@ -166,6 +166,16 @@ class MenuBuilder:
         sim_menu.addAction(tr("&Stop") + "\tF7", self.window.stop_simulation)
         sim_menu.addSeparator()
 
+        # Run no longer pops the settings dialog; this is the way in.
+        if hasattr(self.window, "open_simulation_settings"):
+            action = sim_menu.addAction(
+                tr("Simulation Settin&gs...") + "\tCtrl+E", self.window.open_simulation_settings
+            )
+            action.setShortcut("Ctrl+E")
+            self.window.simulation_settings_action = action
+
+        sim_menu.addSeparator()
+
         # Fast Solver Toggle
         fast_solver = sim_menu.addAction(tr("Enable Fast Solver (Experimental)"))
         fast_solver.setCheckable(True)

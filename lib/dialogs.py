@@ -69,6 +69,8 @@ class SimulationDialog(QDialog):
         zero_crossing=True,
         real_time=False,
         dynamic_plot=False,
+        ask_before_run=False,
+        accept_label=None,
     ):
         super().__init__(parent)
         from PyQt6.QtWidgets import (
@@ -187,6 +189,21 @@ class SimulationDialog(QDialog):
         viz_group.setLayout(viz_layout)
         self.layout.addWidget(viz_group)
 
+        # --- Workflow ---------------------------------------------------
+        # Pressing Play runs straight away with the settings above; this box
+        # brings back the old behaviour of asking first. It is an application
+        # preference (QSettings), not diagram data -- see lib/sim_prefs.py.
+        self.ask_before_run_checkbox = QCheckBox(tr("Ask before every run"))
+        self.ask_before_run_checkbox.setChecked(bool(ask_before_run))
+        self.ask_before_run_checkbox.setToolTip(
+            tr(
+                "Re-open this dialog every time you press Play. Leave it off to run "
+                "immediately with the settings above; they are saved with the diagram "
+                "and can always be changed from Simulation > Simulation Settings..."
+            )
+        )
+        self.layout.addWidget(self.ask_before_run_checkbox)
+
         # Buttons
         button_layout = QHBoxLayout()
         button_layout.addStretch()
@@ -195,7 +212,7 @@ class SimulationDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
 
-        accept_btn = QPushButton(tr("Simulate"))
+        accept_btn = QPushButton(accept_label if accept_label else tr("Simulate"))
         accept_btn.clicked.connect(self.accept)
         accept_btn.setDefault(True)
         button_layout.addWidget(accept_btn)
@@ -246,4 +263,5 @@ class SimulationDialog(QDialog):
             "rtol": float(self.rtol_input.text()),
             "atol": float(self.atol_input.text()),
             "zero_crossing": self.zero_crossing_checkbox.isChecked(),
+            "ask_before_run": self.ask_before_run_checkbox.isChecked(),
         }

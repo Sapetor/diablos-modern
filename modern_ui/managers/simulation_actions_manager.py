@@ -98,6 +98,35 @@ class SimulationActionsManager:
             if sim_time and sim_dt:
                 window.tuning_controller.store_sim_params(sim_time, sim_dt)
 
+    def open_settings(self) -> bool:
+        """Open Simulation > Simulation Settings... and apply what is accepted.
+
+        Play no longer pops this dialog (it runs with the stored settings), so
+        this action is the way in. The dialog is pre-filled from the live DSim
+        values; accepting it marks the diagram dirty whenever one of the
+        settings that the ``.diablos`` file stores actually changed.
+
+        Returns True if the dialog was accepted.
+        """
+        window = self.window
+        dsim = window.dsim
+
+        values = dsim.open_simulation_dialog(parent=window)
+        if values is None:
+            return False
+
+        if dsim.apply_sim_settings(values):
+            dsim.dirty = True
+            window.status_message.setText(tr("Simulation settings updated"))
+        else:
+            window.status_message.setText(tr("Simulation settings unchanged"))
+
+        # The transport's t-readout shows the new horizon straight away (but
+        # not mid-run, where it would rewind the live readout to t=0).
+        if hasattr(window, "toolbar") and not window.canvas.is_simulation_running():
+            window.toolbar.set_simulation_time(0.0, dsim.sim_time)
+        return True
+
     def stop(self):
         """Stop simulation (the controller emits the idle state and message)."""
         window = self.window

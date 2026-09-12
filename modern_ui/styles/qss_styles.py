@@ -6,7 +6,8 @@ Same public class (ModernStyles) and entry point (apply_modern_theme), but:
   * GroupBox top-margin reduced
   * QLineEdit/QSpinBox padding tightened
   * New selectors for the new toolbar widgets:
-      QToolButton#TransportPlay / TransportPause / TransportStop / TransportStep
+      QToolButton#TransportPlay / TransportPause / TransportStop / TransportStep /
+      TransportSettings
       QLabel#TransportTimeLabel
       QLabel#StatusPill  with dynamic property `state` in {idle, running, paused, error}
       QToolButton#ZoomRockerBtn
@@ -105,11 +106,12 @@ class ModernStyles:
             border-color: transparent;
         }
 
-        /* Transport cluster — Play/Pause/Stop/Step */
+        /* Transport cluster — Play/Pause/Stop/Step/Settings */
         QToolButton#TransportPlay,
         QToolButton#TransportPause,
         QToolButton#TransportStop,
-        QToolButton#TransportStep {
+        QToolButton#TransportStep,
+        QToolButton#TransportSettings {
             background-color: @surface_variant;
             border: 1px solid @border_primary;
             border-radius: @radius_md;
@@ -121,7 +123,8 @@ class ModernStyles:
         QToolButton#TransportPlay:hover,
         QToolButton#TransportPause:hover,
         QToolButton#TransportStop:hover,
-        QToolButton#TransportStep:hover {
+        QToolButton#TransportStep:hover,
+        QToolButton#TransportSettings:hover {
             background-color: @background_tertiary;
             border-color: @border_hover;
         }
@@ -130,14 +133,16 @@ class ModernStyles:
         QToolButton#TransportPlay:focus,
         QToolButton#TransportPause:focus,
         QToolButton#TransportStop:focus,
-        QToolButton#TransportStep:focus {
+        QToolButton#TransportStep:focus,
+        QToolButton#TransportSettings:focus {
             border: 2px solid @border_focus;
             border-radius: @radius_md;
         }
         QToolButton#TransportPlay:disabled,
         QToolButton#TransportPause:disabled,
         QToolButton#TransportStop:disabled,
-        QToolButton#TransportStep:disabled {
+        QToolButton#TransportStep:disabled,
+        QToolButton#TransportSettings:disabled {
             background-color: @surface_variant;
             color: @text_disabled;
             border-color: @border_primary;
@@ -146,6 +151,7 @@ class ModernStyles:
         QToolButton#TransportPause:enabled { color: @warning; }
         QToolButton#TransportStop:enabled  { color: @error; }
         QToolButton#TransportStep:enabled  { color: @text_secondary; }
+        QToolButton#TransportSettings:enabled { color: @text_secondary; }
 
         QLabel#TransportTimeLabel {
             color: @text_secondary;

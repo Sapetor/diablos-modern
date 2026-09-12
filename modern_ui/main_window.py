@@ -1298,6 +1298,10 @@ class ModernDiaBloSWindow(QMainWindow):
         """Stop simulation."""
         self.simulation_actions_manager.stop()
 
+    def open_simulation_settings(self):
+        """Open the Simulation-settings dialog (Simulation > Simulation Settings...)."""
+        return self.simulation_actions_manager.open_settings()
+
     def toggle_fast_solver(self, checked):
         """Toggle fast solver mode."""
         self.simulation_actions_manager.toggle_fast_solver(checked)

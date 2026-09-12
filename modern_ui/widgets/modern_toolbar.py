@@ -67,7 +67,7 @@ from modern_ui.themes.theme_manager import (
 
 def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
     """Build a QIcon from a small geometric path. ``kind`` is one of:
-    new, open, save, play, pause, stop, step, plot, capture, route,
+    new, open, save, play, pause, stop, step, settings, plot, capture, route,
     sun, moon, search, plus, minus.
     """
     if color is None:
@@ -166,6 +166,19 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         p.setPen(Qt.PenStyle.NoPen)
         p.drawPolygon(tri)
         p.drawRoundedRect(QRectF(s - pad - 1.6, pad, 1.6, s - 2 * pad), 0.5, 0.5)
+
+    elif kind == "settings":
+        # Gear: a ring plus eight radial teeth.
+        p.drawEllipse(QPointF(s / 2, s / 2), 2.0, 2.0)
+        for i in range(8):
+            a = i * math.pi / 4
+            r1, r2 = 3.2, 4.8
+            line(
+                s / 2 + math.cos(a) * r1,
+                s / 2 + math.sin(a) * r1,
+                s / 2 + math.cos(a) * r2,
+                s / 2 + math.sin(a) * r2,
+            )
 
     elif kind == "plot":
         # Axes + curve
@@ -500,6 +513,7 @@ class _TransportGroup(QWidget):
     pause = pyqtSignal()
     stop = pyqtSignal()
     step = pyqtSignal()
+    settings = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -511,6 +525,10 @@ class _TransportGroup(QWidget):
         self.pause_btn = self._mk_btn("pause", "TransportPause", tr("Pause") + " (F6)")
         self.stop_btn = self._mk_btn("stop", "TransportStop", tr("Stop") + " (F7)")
         self.step_btn = self._mk_btn("step", "TransportStep", tr("Step") + " (F8)")
+        # Play runs with the stored settings; this is where they are edited.
+        self.settings_btn = self._mk_btn(
+            "settings", "TransportSettings", tr("Simulation settings") + " (Ctrl+E)"
+        )
         # Last values handed to set_time(), so retranslate_ui() can rebuild the
         # readout in the new language without waiting for the next sim tick.
         self._last_time = (0.0, 10.0)
@@ -519,6 +537,7 @@ class _TransportGroup(QWidget):
         self.pause_btn.clicked.connect(self.pause)
         self.stop_btn.clicked.connect(self.stop)
         self.step_btn.clicked.connect(self.step)
+        self.settings_btn.clicked.connect(self.settings)
 
         self.time_label = QLabel(tr("t = 0.000 / 10.000 s"))
         self.time_label.setObjectName("TransportTimeLabel")
@@ -526,7 +545,7 @@ class _TransportGroup(QWidget):
         self.time_label.setMinimumWidth(140)
         self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        for w in (self.play_btn, self.pause_btn, self.stop_btn, self.step_btn):
+        for w in (self.play_btn, self.pause_btn, self.stop_btn, self.step_btn, self.settings_btn):
             lay.addWidget(w)
         sep = QFrame()
         sep.setObjectName("TransportSep")
@@ -552,6 +571,7 @@ class _TransportGroup(QWidget):
         self.pause_btn.setIcon(_make_icon("pause", 16))
         self.stop_btn.setIcon(_make_icon("stop", 16))
         self.step_btn.setIcon(_make_icon("step", 16))
+        self.settings_btn.setIcon(_make_icon("settings", 16))
 
     def set_state(self, running: bool, paused: bool):
         self.play_btn.setEnabled(not running or paused)
@@ -570,6 +590,7 @@ class _TransportGroup(QWidget):
         self.pause_btn.setToolTip(tr("Pause") + " (F6)")
         self.stop_btn.setToolTip(tr("Stop") + " (F7)")
         self.step_btn.setToolTip(tr("Step") + " (F8)")
+        self.settings_btn.setToolTip(tr("Simulation settings") + " (Ctrl+E)")
         t, t_end = self._last_time
         self.set_time(t, t_end)
 
@@ -590,6 +611,7 @@ class ModernToolBar(QToolBar):
     pause_simulation = pyqtSignal()
     stop_simulation = pyqtSignal()
     step_simulation = pyqtSignal()
+    simulation_settings_requested = pyqtSignal()
     plot_results = pyqtSignal()
     capture_screen = pyqtSignal()
     auto_route_wires = pyqtSignal()
@@ -687,6 +709,7 @@ class ModernToolBar(QToolBar):
         self.transport.pause.connect(self.pause_simulation)
         self.transport.stop.connect(self.stop_simulation)
         self.transport.step.connect(self.step_simulation)
+        self.transport.settings.connect(self.simulation_settings_requested)
         self.addWidget(self.transport)
 
         right_stretch = QWidget()

@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-09-08
+> Last updated: 2026-09-12
 
 ---
 
@@ -292,6 +292,7 @@ are parked here:
 
 | Date | Change |
 |------|--------|
+| 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `lib/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
 | 2026-09-08 | **Scope signal names consistent across solver paths**: `harvest_scope_signals` (`lib/analysis/resim.py`) keyed a single-channel Scope by its *label* only for the compiled replay's 2-D buffer and by the *block name* for the interpreter's flat buffer, so ensemble/sweep results renamed signals (and dropped the user's `labels` entry) depending on which solver ran. Both layouts are now normalised to `(n, vec_dim)` and every channel is keyed by `vec_labels[j]`, block name only as a fallback. Tests: `tests/unit/test_resim_harvest.py` (layout stubs), `tests/regression/test_harvest_scope_signals.py` (one diagram, both paths, identical keys). |
 | 2026-09-03 | **1.0.0 release campaign**: release infra (`[project]` table in `pyproject.toml` as the single version source, read back by `modern_ui/__init__.py` and parsed by `diablos.spec`/`tools/build.sh`; `.github/workflows/release.yml` builds a versioned macOS arm64 DMG + Windows x64 zip on `v*` tags); `draw_icon()` for 25 icon-less blocks (`tests/unit/test_block_icons.py`); PDE Phase 1 (periodic BCs, dynamic Robin `h` ports, 2D Robin, new IC presets); standalone Python script export (`lib/export/python_codegen.py`, File > Export > Export as Python Script..., `export-python` CLI subcommand); docs reconciliation (USER_MANUAL, mkdocs nav, README, CHANGELOG 1.0.0); hygiene (`QFont.setFamilies` hasattr guard for Qt < 5.13, dead `tools/integrate_variable_editor.py` removed). |
 | 2026-07-12 | Added **Scope "Previous run" overlay + publication figure export** (implemented via multi-agent workflow, then hand-verified). Overlay: `ScopePlotter` stashes each run's timeline+vectors (`_stash_run`, rotation keyed on timeline object identity; held runs dropped by `reset_held_runs()` from both `DSim.clear_all()` and `deserialize()`); `SignalPlot` gains a "Previous run" checkbox (disabled until a second run exists) drawing dimmed/dashed alpha-66 curves behind the live ones. Figure export: "Export Figure..." button renders a matplotlib (Agg, no pyplot) publication figure via new `lib/plotting/publication_figure.py` (serif fonts, Time (s) axis, legend, grid, `step(where='post')` for step traces) to PDF/PNG(300dpi)/SVG; CSV+figure export share `_collect_figure_traces`. Hand-verification caught a workflow bug: success feedback used PyQt5-unavailable `QTimer.singleShot(msec, obj, callback)` overload → every successful export raised and popped a false "Export Failed" dialog (masked in tests by conftest's QMessageBox neutralization); fixed with a button-parented QTimer. Tests: `test_signal_plot.py` (23), `test_scope_plotter_prev_run.py`, `test_publication_figure.py` (10), `tests/integration/test_prev_run_overlay.py` (interpreter+compiled). |
@@ -413,8 +414,8 @@ complexity 25, all listed here.
   `buttons_list` stubs) and the dead `canvas_*_limit`, `l_width`, `ls_width`,
   `line_creation`, `only_one`, `enable_line_selection`, `holding_CTRL` attributes.
   Verified: full suite + trace-diff on both solver paths bit-identical.
-  Not done (deliberate): `lib/dialogs.py` stays — `SimulationDialog` is the live
-  Run dialog (`execution_init` → `execution_init_time`) and `PortDialog` is used
+  Not done (deliberate): `lib/dialogs.py` stays — `SimulationDialog` is the
+  Simulation-settings dialog (`DSim.open_simulation_dialog`) and `PortDialog` is used
   by `DBlock.change_port_numbers`; moving them under `modern_ui/` would make
   `lib/` import the GUI package. `lib/simulation/menu_block.py` has ~40 users
   across model/services/GUI; a rename/move is its own round.

@@ -339,7 +339,11 @@ class OptimizationEngine:
                 try:
                     # Reinitialize and run simulation
                     self.dsim.engine.execution_initialized = False
-                    success = self.dsim.execution_init()
+                    # ask=False: this is the optimizer's inner loop, run once
+                    # per cost evaluation. It must never open the
+                    # Simulation-settings dialog, whatever the user's
+                    # "ask before every run" preference says.
+                    success = self.dsim.execution_init(ask=False)
 
                     if not success:
                         logger.warning("Simulation initialization failed")

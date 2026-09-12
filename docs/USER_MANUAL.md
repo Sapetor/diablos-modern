@@ -40,8 +40,10 @@ M = [[1, 0], [0, 1]]
 ```
 
 ### 5. Run Simulation
-- **F5** or **Simulation → Run**
-- The **Simulation Configuration** dialog opens; set solver, step size and duration
+- **F5**, the toolbar's ▶, or **Simulation → Run** — the run starts immediately,
+  using the solver, step size and duration stored in the diagram
+- To change those first: **Ctrl+E**, the toolbar's gear, or
+  **Simulation → Simulation Settings...**
 - View results in Scope blocks
 
 ---
@@ -69,6 +71,7 @@ M = [[1, 0], [0, 1]]
 | F6 | Pause simulation |
 | F7 | Stop simulation |
 | F8 | Single step (advance one timestep) |
+| Ctrl+E | Simulation settings (solver, step size, duration) |
 
 ### Alignment (when 2+ blocks selected)
 | Key | Action |
@@ -111,8 +114,10 @@ to search and run without hunting through menus. The palette indexes:
 
 ## Simulation Settings and Solvers
 
-Pressing **F5** (**Simulation → Run**) first opens the **Simulation
-Configuration** dialog. It has two groups:
+Pressing **F5** (**Simulation → Run**) runs the diagram straight away with the
+settings it already carries. To edit them, open the **Simulation Configuration**
+dialog: **Ctrl+E**, the gear next to the transport buttons, or
+**Simulation → Simulation Settings...**. It has two groups:
 
 **Solver Configuration**
 - **Solver Method**: `RK45` (default), `RK23`, `DOP853` (adaptive);
@@ -135,8 +140,14 @@ Configuration** dialog. It has two groups:
 - **Plot Window Range [samples]** and **Enable Dynamic Plotting** for live
   plotting during a run.
 
+Below the two groups, **Ask before every run** (off by default) restores the old
+behaviour of re-opening this dialog every time you press Play. Unlike the
+settings above it is an application preference, not diagram data: it is stored
+in your Qt settings and follows you across diagrams.
+
 Solver method, `rtol`, `atol` and the zero-crossing setting are saved inside the
-`.diablos` file and shown read-only in the property editor.
+`.diablos` file and shown read-only in the property editor. Accepting the dialog
+after changing any of them marks the diagram as having unsaved changes.
 
 ### Zero-crossing detection
 
