@@ -4049,6 +4049,38 @@ clipboard.</p>
 <p><strong>File → Export → Export as TikZ...</strong> opens the <strong>Export as TikZ</strong> dialog with a
 live preview, a standalone-document / snippet toggle, configurable options and
 copy-to-clipboard - for dropping diagrams straight into a paper or slide deck.</p>
+<p><strong>The figure is redrawn, not traced.</strong> The exporter does not copy your canvas
+coordinates: it follows the signal from its sources, puts the blocks on one
+left-to-right row in that order, and routes everything that cannot run along
+that row through a lane - feedback below, a forward wire that skips a block
+above. Blocks you never wired up are parked at the end so they cannot split the
+signal path. Consequences worth knowing:</p>
+<ul>
+<li>Blocks are chained with TikZ's <code>positioning</code> library, so the gap is measured
+  <em>border to border</em>. A block with a long caption or a tall fraction pushes its
+  neighbour along instead of overlapping it.</li>
+<li>Each block gets the outline the canvas paints it with: Gain/MatrixGain a
+  triangle, Sum/Product a circle, Goto/From a tag, everything else a box.</li>
+<li>A <strong>flipped</strong> block only stays flipped where that means something - in the
+  return path of a loop, which is where you flip a gain. The layout drops such a
+  block into the loop lane pointing back at the summing junction. On the main
+  row, where everything reads left to right, the flag is ignored.</li>
+<li>Where one output feeds several wires you get a junction dot, one per port.</li>
+<li>A scope hanging off a signal that already continues to another block is left
+  out: the wire is drawn once, and a second arrowhead on it says nothing.</li>
+</ul>
+<p><strong>Hand-tuning.</strong> The generated file lists its knobs at the top. The useful ones
+are <code>node distance</code> (the block gap, set once in the picture options) and the
+picture's <code>x=</code>/<code>y=</code> units. Prefer those, or a shorter caption, over wrapping the
+figure in <code>\resizebox</code>: scaling shrinks the type with the picture, and journals
+set a minimum figure font size. <code>\resizebox</code> is available as an option but is
+off by default.</p>
+<p><strong>Pasting a snippet.</strong> A snippet carries the <code>\usetikzlibrary</code> line it needs.
+Keep that line outside any TeX group - if you paste a snippet inside
+<code>\resizebox{..}{..}{..}</code> or a <code>minipage</code>, TeX records the libraries as loaded
+globally but defines them only inside that group, and the <em>next</em> snippet then
+fails with <code>You need to say \usetikzlibrary{calc}</code>. Moving the line to your
+preamble once is the safe way to paste several figures.</p>
 <h3 id="export-as-python-script">Export as Python Script...<a class="headerlink" href="#export-as-python-script" title="Permanent link">&para;</a></h3>
 <p><strong>File → Export → Export as Python Script...</strong> writes the diagram as a
 self-contained <code>.py</code> file that depends only on <strong>numpy</strong> and <strong>scipy</strong>
