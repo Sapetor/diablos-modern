@@ -164,5 +164,9 @@ Honest limitations, in the same spirit:
 - [Architecture](ARCHITECTURE.md) and [Developer Guide](DEVELOPER_GUIDE.md) — how it is built
 - [Releasing](RELEASING.md) — how a version gets cut
 
-DiaBloS Modern is MIT licensed. Source, issues and releases are on
-[GitHub](https://github.com/Sapetor/diablos-modern).
+DiaBloS Modern's source is MIT licensed. The prebuilt bundles additionally
+embed Qt 6 (LGPL v3) and the PyQt6 bindings (GPL-3.0-only), so a bundle may
+only be redistributed under GPL v3 — see
+[THIRD_PARTY_LICENSES.md](https://github.com/Sapetor/diablos-modern/blob/main/THIRD_PARTY_LICENSES.md)
+for the notices and the corresponding source. Source, issues and releases are
+on [GitHub](https://github.com/Sapetor/diablos-modern).

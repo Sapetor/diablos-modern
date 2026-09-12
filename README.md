@@ -5,6 +5,7 @@
 [![CI](https://github.com/Sapetor/diablos-modern/actions/workflows/ci.yml/badge.svg)](https://github.com/Sapetor/diablos-modern/actions/workflows/ci.yml)
 [![Docs](https://github.com/Sapetor/diablos-modern/actions/workflows/docs.yml/badge.svg)](https://sapetor.github.io/diablos-modern/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Bundled binaries: GPL-3.0](https://img.shields.io/badge/bundled%20binaries-GPL--3.0-orange.svg)](THIRD_PARTY_LICENSES.md)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%20%7C%203.12-blue.svg)](https://www.python.org/)
 
 Draw a block diagram, press `F5`, get a plot. Then linearize it, sweep a
@@ -152,4 +153,20 @@ and Theory* 138 (2025) 103030,
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+DiaBloS Modern's own source code is **MIT** — see [LICENSE](LICENSE). Copy it,
+vendor a block, build a course around it, ship a closed-source tool on top of
+it. That is not changing.
+
+The prebuilt bundles on the [releases
+page](https://github.com/Sapetor/diablos-modern/releases) are a different
+artifact from the source. They embed the Qt 6 libraries (LGPL v3) and the
+PyQt6 bindings, and PyQt6 is **GPL-3.0-only** — so a bundle may only be
+*redistributed* under GPL v3. That falls on whoever redistributes one, not on
+anyone who merely uses one, and not on the MIT source: installing from source
+with `pip` makes the combination on your own machine, which is not
+distribution.
+
+The notices, the offer of corresponding source and the full third-party
+licence texts are in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and `licenses/`, both
+shipped inside every bundle.

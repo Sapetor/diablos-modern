@@ -117,6 +117,15 @@ datas = [
     ('modern_ui/icons', 'modern_ui/icons'),
     (VERSION_FILE, '.'),
     ('locales', 'locales'),
+    # Licence notices must travel with the binary: MIT requires the copyright
+    # notice to accompany every copy, GPL v3 s4-6 requires the licence text and
+    # the corresponding-source offer to accompany the combined work (PyQt6 is
+    # GPL-3.0-only), and LGPL v3 s4(b) requires a copy of both the GPL and the
+    # LGPL for the bundled Qt. Without these the published bundles are out of
+    # compliance with all three.
+    ('LICENSE', '.'),
+    ('THIRD_PARTY_LICENSES.md', '.'),
+    ('licenses', 'licenses'),
 ]
 
 # --- Analysis ---

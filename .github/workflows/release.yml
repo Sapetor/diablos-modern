@@ -234,3 +234,10 @@ jobs:
             `./DiaBloS/DiaBloS` from the extracted folder.
 
             See CHANGELOG.md for what changed.
+
+            **Licensing.** DiaBloS Modern's source is MIT. These bundles embed
+            Qt 6 (LGPL v3) and the PyQt6 bindings (GPL-3.0-only), so a bundle
+            may only be *redistributed* under GPL v3 -- using one imposes
+            nothing on you. The notices, the offer of corresponding source and
+            the full licence texts ship inside every bundle, and are in
+            THIRD_PARTY_LICENSES.md in the repository.

@@ -1,9 +1,4 @@
 {
-  "_meta": {
-    "code": "es",
-    "name": "Español",
-    "english_name": "Spanish"
-  },
   " @ {v} rad/s": " @ {v} rad/s",
   "# Define variables here\nK = 10\namplitude = 5\n\n# You can use math/numpy expressions (no import needed)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])": "# Definir las variables aquí\nK = 10\namplitude = 5\n\n# Se pueden usar expresiones de math/numpy (sin necesidad de import)\nomega = 2 * math.pi * 50\nA = np.array([1, 2, 3])",
   "% Error generating preview:\n% {error}": "% Error al generar la vista previa:\n% {error}",
@@ -53,6 +48,7 @@
   "A parameter sweep is already running.": "Ya hay un barrido de parámetros en curso.",
   "A short label or emoji, e.g. 1/(ms+b)": "Una etiqueta corta o un emoji, p. ej. 1/(ms+b)",
   "ACTION": "ACCIÓN",
+  "About DiaBloS Modern": "Acerca de DiaBloS Modern",
   "About Modern DiaBloS": "Acerca de Modern DiaBloS",
   "Abs. tol": "Tol. abs.",
   "Absolute Value.\n\nComputes the absolute value of the input signal.\ny = |u|\n\nUsage:\nUsed in magnitude calculations, rectifiers, or error metrics.": "Valor absoluto.\n\nCalcula el valor absoluto de la señal de entrada.\ny = |u|\n\nUso:\nSe usa en cálculos de magnitud, rectificadores o métricas de error.",
@@ -223,6 +219,7 @@
   "Detect zero crossings (fast solver)": "Detectar cruces por cero (solucionador rápido)",
   "DiaBloS Files": "Archivos de DiaBloS",
   "DiaBloS Library Blocks": "Bloques de biblioteca de DiaBloS",
+  "DiaBloS Modern {version}\nA block-diagram simulation environment for dynamics and control.\n\nThis program's own source code is free software under the MIT licence.\nIt bundles Qt 6 under the LGPL v3 and the PyQt6 bindings under the GPL v3;\nsee THIRD_PARTY_LICENSES.md and licenses/ next to the application for the\nnotices and the corresponding source.": "DiaBloS Modern {version}\nUn entorno de simulación de diagramas de bloques para dinámica y control.\n\nEl código fuente de este programa es software libre bajo la licencia MIT.\nIncluye Qt 6 bajo la LGPL v3 y los enlaces PyQt6 bajo la GPL v3;\nconsulte THIRD_PARTY_LICENSES.md y licenses/ junto a la aplicación para ver los\navisos y el código fuente correspondiente.",
   "DiaBloS Modern {version} - Block Diagram Simulator": "DiaBloS Modern {version} - Simulador de diagramas de bloques",
   "Diagram Style": "Estilo de diagrama",
   "Diagram copied to clipboard": "Diagrama copiado al portapapeles",
@@ -1034,6 +1031,11 @@
   "Zoom in": "Acercar",
   "Zoom out": "Alejar",
   "Zoom: {percent}%": "Zoom: {percent}%",
+  "_meta": {
+    "code": "es",
+    "name": "Español",
+    "english_name": "Spanish"
+  },
   "add here": "añadir aquí",
   "auto ({resolved})": "auto ({resolved})",
   "blocks {blocks} · wires {wires} · scopes {scopes}": "bloques {blocks} · conexiones {wires} · osciloscopios {scopes}",

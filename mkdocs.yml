@@ -7,7 +7,7 @@ repo_name: Sapetor/diablos-modern
 repo_url: https://github.com/Sapetor/diablos-modern
 edit_uri: edit/main/docs/
 
-copyright: MIT licensed. Built with MkDocs and Material for MkDocs.
+copyright: Source MIT; prebuilt bundles GPL-3.0 (they embed PyQt6). Built with MkDocs and Material for MkDocs.
 
 theme:
   name: material

@@ -440,12 +440,25 @@ class MenuBuilder:
     def _show_about(self):
         from PyQt6.QtWidgets import QMessageBox
 
+        from modern_ui import __version__
+
         QMessageBox.about(
             self.window,
-            tr("About Modern DiaBloS"),
+            tr("About DiaBloS Modern"),
+            # The licence lines are not decoration: MIT requires the copyright
+            # notice to accompany every copy, and LGPL v3 s4(c) requires the Qt
+            # notice to appear among the notices the program displays at run
+            # time. THIRD_PARTY_LICENSES.md and licenses/ ship in the bundle.
             tr(
-                "Modern DiaBloS - Diagram Block System\n\n"
-                "Phase 2 Refactoring\n"
-                "A modern control system simulation environment."
+                "DiaBloS Modern {version}\n"
+                "A block-diagram simulation environment for dynamics and control.\n\n"
+                "This program's own source code is free software under the MIT "
+                "licence.\n"
+                "It bundles Qt 6 under the LGPL v3 and the PyQt6 bindings under "
+                "the GPL v3;\n"
+                "see THIRD_PARTY_LICENSES.md and licenses/ next to the "
+                "application for the\n"
+                "notices and the corresponding source.",
+                version=__version__,
             ),
         )
