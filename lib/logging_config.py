@@ -86,26 +86,42 @@ def setup_logging(config_path: Optional[str] = None) -> None:
 
 
 def _get_log_file_path(filename: str) -> str:
-    """Resolve log file path, using a writable location in frozen mode."""
-    if getattr(sys, "frozen", False) and not os.path.isabs(filename):
-        if sys.platform == "darwin":
-            log_dir = os.path.expanduser("~/Library/Logs/DiaBloS")
-        else:
-            log_dir = os.path.dirname(sys.executable)
-        os.makedirs(log_dir, exist_ok=True)
-        return os.path.join(log_dir, filename)
-    return filename
+    """Resolve log file path, using a writable location in frozen mode.
+
+    Windows and Linux frozen builds used to log next to ``sys.executable``,
+    which is read-only for an installed app (Program Files, an AppImage mount,
+    a read-only DMG copy); ``user_logs_path`` puts them under the per-user data
+    directory instead. macOS keeps ``~/Library/Logs/DiaBloS``.
+    """
+    if os.path.isabs(filename):
+        return filename
+
+    from lib.app_paths import is_writable_dir, user_logs_path
+
+    if not getattr(sys, "frozen", False) and is_writable_dir(os.getcwd()):
+        # Dev: keep logs next to the checkout the developer launched from.
+        return filename
+    return user_logs_path(filename)
 
 
 def _setup_default_logging() -> None:
-    """Setup default logging configuration if config file is unavailable."""
+    """Setup default logging configuration if config file is unavailable.
+
+    The file handler is best-effort: this is the *last* fallback, so an
+    unwritable log destination must degrade to console-only logging rather than
+    raise out of ``setup_logging`` and abort startup (which is how an
+    ``[Errno 30] Read-only file system`` surfaced as "Critical error in main").
+    """
+    handlers = [logging.StreamHandler(sys.stdout)]
+    try:
+        handlers.insert(0, logging.FileHandler(_get_log_file_path("diablos_modern.log")))
+    except OSError as e:
+        print(f"Warning: file logging disabled ({e}); logging to the console only.")
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(_get_log_file_path("diablos_modern.log")),
-            logging.StreamHandler(sys.stdout),
-        ],
+        handlers=handlers,
     )
 
     # Reduce verbosity for the per-step / per-frame loggers (see QUIET_LOGGERS).

@@ -3,7 +3,6 @@
 import numpy as np
 import os
 import time
-import sys
 from typing import Dict, Any, Optional
 from tqdm import tqdm
 from PyQt6.QtWidgets import QDialog
@@ -696,9 +695,16 @@ class DSim:
                 self.execution_initialized = False
                 return False
 
-            # Force save before executing (so as not to lose the diagram)
+            # Crash-recovery snapshot before executing (so as not to lose the
+            # diagram). This used to `return False` when the write failed,
+            # which silently refused to run the simulation at all whenever the
+            # autosave target was unwritable. A snapshot is best-effort: log it
+            # (the GUI surfaces file_service.last_write_error) and run anyway.
             if self.save(True) == 1:
-                return False
+                logger.warning(
+                    "Pre-run autosave failed; running without a crash snapshot. "
+                    "See the preceding error for the path that could not be written."
+                )
 
             logger.debug("*****INIT NEW EXECUTION*****")
             _t0 = time.time()
@@ -1498,14 +1504,12 @@ class DSim:
 
         # Derive basename without assuming a fixed-length extension
         basename = os.path.splitext(self.filename)[0]
-        export_path = os.path.join("saves", basename)
-        # In frozen mode, redirect saves/ to a writable location (mirrors FileService)
-        if getattr(sys, "frozen", False) and not os.path.isabs(export_path):
-            from lib.app_paths import get_user_data_dir
+        # Always the *writable* saves/ folder (project root in dev, the per-user
+        # data dir when frozen). A relative "saves/…" here died with
+        # [Errno 30] Read-only file system whenever the CWD was not writable.
+        from lib.app_paths import user_saves_path
 
-            export_path = os.path.join(get_user_data_dir(), export_path)
-        # Ensure the target directory exists before writing
-        os.makedirs(os.path.dirname(export_path) or ".", exist_ok=True)
+        export_path = user_saves_path(basename)
 
         timeline = np.asarray(self.timeline)
 

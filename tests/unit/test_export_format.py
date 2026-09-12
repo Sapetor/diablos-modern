@@ -86,8 +86,7 @@ class TestExportBlockFormatParam:
 class TestExportDataFormats:
     """DSim.export_data writes a readable file per selected format."""
 
-    def _run_export(self, tmp_path, monkeypatch, values, fmt):
-        monkeypatch.chdir(tmp_path)
+    def _run_export(self, saves_dir, values, fmt):
         params = _populated_export_block(values, str_name="x,y", fmt=fmt)
         timeline = np.arange(len(values)) * 0.1
         dsim = _StubDSim(
@@ -98,11 +97,11 @@ class TestExportDataFormats:
         dsim.export_data()
         return params, timeline
 
-    def test_npz_roundtrip(self, tmp_path, monkeypatch):
+    def test_npz_roundtrip(self, saves_dir):
         values = [np.array([1.0, 10.0]), np.array([2.0, 20.0]), np.array([3.0, 30.0])]
-        params, timeline = self._run_export(tmp_path, monkeypatch, values, "npz")
+        params, timeline = self._run_export(saves_dir, values, "npz")
 
-        out = os.path.join(str(tmp_path), "saves", "mydiagram.npz")
+        out = os.path.join(str(saves_dir), "mydiagram.npz")
         assert os.path.exists(out), "npz file should be written"
         loaded = np.load(out)
         assert np.allclose(loaded["t"], timeline)
@@ -110,11 +109,11 @@ class TestExportDataFormats:
         assert np.allclose(loaded["y"], [10.0, 20.0, 30.0])
         loaded.close()
 
-    def test_csv_roundtrip(self, tmp_path, monkeypatch):
+    def test_csv_roundtrip(self, saves_dir):
         values = [np.array([1.0, 10.0]), np.array([2.0, 20.0]), np.array([3.0, 30.0])]
-        params, timeline = self._run_export(tmp_path, monkeypatch, values, "csv")
+        params, timeline = self._run_export(saves_dir, values, "csv")
 
-        out = os.path.join(str(tmp_path), "saves", "mydiagram.csv")
+        out = os.path.join(str(saves_dir), "mydiagram.csv")
         assert os.path.exists(out), "csv file should be written"
 
         # Header must mirror the columns: t + the vec labels.
@@ -127,11 +126,11 @@ class TestExportDataFormats:
         assert np.allclose(data[:, 1], [1.0, 2.0, 3.0])
         assert np.allclose(data[:, 2], [10.0, 20.0, 30.0])
 
-    def test_mat_roundtrip(self, tmp_path, monkeypatch):
+    def test_mat_roundtrip(self, saves_dir):
         values = [np.array([1.0, 10.0]), np.array([2.0, 20.0]), np.array([3.0, 30.0])]
-        params, timeline = self._run_export(tmp_path, monkeypatch, values, "mat")
+        params, timeline = self._run_export(saves_dir, values, "mat")
 
-        out = os.path.join(str(tmp_path), "saves", "mydiagram.mat")
+        out = os.path.join(str(saves_dir), "mydiagram.mat")
         assert os.path.exists(out), "mat file should be written"
 
         from scipy.io import loadmat
@@ -141,16 +140,15 @@ class TestExportDataFormats:
         assert np.allclose(np.ravel(loaded["x"]), [1.0, 2.0, 3.0])
         assert np.allclose(np.ravel(loaded["y"]), [10.0, 20.0, 30.0])
 
-    def test_scalar_signal_csv(self, tmp_path, monkeypatch):
+    def test_scalar_signal_csv(self, saves_dir):
         # vec_dim == 1 path: single labelled column.
         values = [1.0, 2.0, 3.0, 4.0]
-        monkeypatch.chdir(tmp_path)
         params = _populated_export_block(values, str_name="sig", fmt="csv")
         timeline = np.arange(len(values)) * 0.1
         dsim = _StubDSim([_StubBlock(params)], timeline, "scalar.dat")
         dsim.export_data()
 
-        out = os.path.join(str(tmp_path), "saves", "scalar.csv")
+        out = os.path.join(str(saves_dir), "scalar.csv")
         with open(out, "r") as fh:
             header = fh.readline().strip()
         assert header == "t,sig", f"Unexpected header: {header!r}"
@@ -158,12 +156,11 @@ class TestExportDataFormats:
         assert np.allclose(data[:, 0], timeline)
         assert np.allclose(data[:, 1], [1.0, 2.0, 3.0, 4.0])
 
-    def test_unknown_format_falls_back_to_npz(self, tmp_path, monkeypatch):
+    def test_unknown_format_falls_back_to_npz(self, saves_dir):
         values = [1.0, 2.0]
-        monkeypatch.chdir(tmp_path)
         params = _populated_export_block(values, str_name="sig", fmt="bogus")
         timeline = np.arange(len(values)) * 0.1
         dsim = _StubDSim([_StubBlock(params)], timeline, "fallback.dat")
         dsim.export_data()
 
-        assert os.path.exists(os.path.join(str(tmp_path), "saves", "fallback.npz"))
+        assert os.path.exists(os.path.join(str(saves_dir), "fallback.npz"))

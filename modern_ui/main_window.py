@@ -457,6 +457,8 @@ class ModernDiaBloSWindow(QMainWindow):
         import json
         from lib.app_paths import user_data_path
 
+        # The *user* copy of the config, never the bundled one: config/ inside a
+        # PyInstaller bundle is read-only.
         config_path = user_data_path("config/default_config.json")
         try:
             with open(config_path, "r") as f:
@@ -468,8 +470,14 @@ class ModernDiaBloSWindow(QMainWindow):
             config["display"] = {}
         config["display"]["scaling_factor"] = factor
 
-        with open(config_path, "w") as f:
-            json.dump(config, f, indent=2)
+        try:
+            with open(config_path, "w") as f:
+                json.dump(config, f, indent=2)
+        except OSError as exc:
+            # Don't claim a restart will apply something that was never stored.
+            logger.error("Could not write %s: %s", config_path, exc)
+            self.status_message.setText(tr("Could not save the UI scaling setting"))
+            return
 
         QMessageBox.information(
             self,
@@ -588,6 +596,18 @@ class ModernDiaBloSWindow(QMainWindow):
 
         TikZExportDialog(self.dsim.blocks_list, self.dsim.line_list, parent=self).exec()
 
+    def _default_export_dir(self) -> str:
+        """Directory an export/screenshot Save dialog should start in.
+
+        The CWD is the natural choice in dev, but a packaged app launched from
+        Finder starts at ``/``: suggesting ``/diagram.png`` sends the user
+        straight into ``[Errno 30] Read-only file system``. Fall back to the
+        writable ``saves/`` folder whenever the CWD cannot be written.
+        """
+        from lib.app_paths import writable_dir_or_saves
+
+        return writable_dir_or_saves(os.getcwd())
+
     def export_python_script(self):
         """Export the diagram as a self-contained numpy/scipy simulation script."""
         from PyQt6.QtWidgets import QMessageBox
@@ -600,7 +620,9 @@ class ModernDiaBloSWindow(QMainWindow):
             return
 
         diagram_name = os.path.basename(getattr(self.dsim, "filename", "") or "model.diablos")
-        default_path = os.path.join(os.getcwd(), os.path.splitext(diagram_name)[0] + ".py")
+        default_path = os.path.join(
+            self._default_export_dir(), os.path.splitext(diagram_name)[0] + ".py"
+        )
         path = ask_save_path(
             self,
             tr("Export as Python Script"),
@@ -665,7 +687,7 @@ class ModernDiaBloSWindow(QMainWindow):
         path = ask_save_path(
             self,
             tr("Export as Image"),
-            os.path.join(os.getcwd(), "diagram.png"),
+            os.path.join(self._default_export_dir(), "diagram.png"),
             [(tr("PNG Image") + " (*.png)", ".png"), (tr("SVG Image") + " (*.svg)", ".svg")],
         )
         if not path:
@@ -754,7 +776,7 @@ class ModernDiaBloSWindow(QMainWindow):
         """
         from PyQt6.QtWidgets import QApplication
 
-        default_path = os.path.join(os.getcwd(), "screenshot.png")
+        default_path = os.path.join(self._default_export_dir(), "screenshot.png")
         path, _ = QFileDialog.getSaveFileName(
             self, tr("Save Screenshot"), default_path, tr("PNG Image") + " (*.png)"
         )
@@ -1351,7 +1373,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
             # Save using file_service for proper JSON format
             if hasattr(self.dsim, "file_service"):
-                self.dsim.file_service.save(
+                rc = self.dsim.file_service.save(
                     autosave=True,
                     modern_ui_data={
                         "theme": theme_manager.current_theme.value,
@@ -1363,13 +1385,31 @@ class ModernDiaBloSWindow(QMainWindow):
                 )
             else:
                 # Fallback: use dsim.save
-                self.dsim.save(autosave=True, filepath=self.autosave_path)
+                rc = self.dsim.save(autosave=True, filepath=self.autosave_path)
 
             self.dsim.dirty = was_dirty
+            if rc != 0:
+                # A failed autosave used to be a log line only, so a packaged
+                # build writing to a read-only location looked healthy while
+                # crash recovery was quietly dead. Say so in the status bar --
+                # non-modal, because an autosave must never interrupt editing.
+                self._report_autosave_failure()
+                return
             logger.debug("Auto-save completed")
 
         except Exception as e:
             logger.error(f"Error during auto-save: {str(e)}")
+            self._report_autosave_failure()
+
+    def _report_autosave_failure(self):
+        """Put a failed autosave in the status bar (never a modal dialog)."""
+        detail = getattr(getattr(self.dsim, "file_service", None), "last_write_error", None)
+        if detail:
+            logger.error("Auto-save could not write %s: %s", detail[0], detail[1])
+        try:
+            self.status_message.setText(tr("Auto-save failed — could not write the recovery file"))
+        except (AttributeError, RuntimeError):
+            logger.debug("No status bar available to report the autosave failure", exc_info=True)
 
     def _check_autosave_recovery(self):
         self.project_manager.check_autosave_recovery()

@@ -10,13 +10,15 @@ Example usage:
     ref = builder.add_block("Step", x=50, y=300, name="ref", params={"h_final": 10.0})
     err = builder.add_block("Sum", x=160, y=100, name="err", params={"sign": "+-"})
     builder.connect(ref, 0, err, 0)
-    builder.save("saves/my_diagram.dat")
+    builder.save(user_saves_path("my_diagram.dat"))
 """
 
 import json
 import logging
 import os
 from typing import Dict, Any, Optional, List
+
+from lib.app_paths import user_saves_path
 
 logger = logging.getLogger(__name__)
 
@@ -385,19 +387,23 @@ class DiagramBuilder:
         return self.blocks[idx] if idx is not None else None
 
 
-def create_platoon_diagram(
-    n_vehicles: int = 5, save_path: str = "saves/platoon.dat"
-) -> DiagramBuilder:
+def create_platoon_diagram(n_vehicles: int = 5, save_path: Optional[str] = None) -> DiagramBuilder:
     """
     Create a cyclic platoon diagram with N vehicles.
 
     Args:
         n_vehicles: Number of vehicles in the platoon
-        save_path: Where to save the diagram
+        save_path: Where to save the diagram. ``None`` means the writable
+            ``saves/`` folder (:func:`lib.app_paths.user_saves_path`); it used
+            to default to the relative literal ``"saves/platoon.dat"``, which
+            is unwritable whenever the CWD is.
 
     Returns:
         DiagramBuilder instance
     """
+    if save_path is None:
+        save_path = user_saves_path("platoon.dat")
+
     builder = DiagramBuilder(sim_time=5.0, sim_dt=0.01)
 
     # Add reference step input
@@ -491,8 +497,8 @@ if __name__ == "__main__":
     builder.connect(step, 0, gain, 0)
     builder.connect(gain, 0, scope, 0)
 
-    builder.save("saves/test_builder.dat")
+    builder.save(user_saves_path("test_builder.dat"))
 
     # Create platoon
     print("\nCreating platoon diagram...")
-    create_platoon_diagram(5, "saves/platoon_builder.dat")
+    create_platoon_diagram(5, user_saves_path("platoon_builder.dat"))

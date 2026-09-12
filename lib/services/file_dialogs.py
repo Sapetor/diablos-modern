@@ -42,8 +42,17 @@ OPEN_FILTER = "DiaBloS Files (*.diablos *.dat *.json);;All Files (*)"
 
 
 def default_directory() -> str:
-    """The ``saves/`` directory the dialogs open in by default."""
-    return os.path.join(os.path.dirname(__file__), "..", "..", "saves")
+    """The ``saves/`` directory the dialogs open in by default.
+
+    Resolved through :func:`lib.app_paths.user_saves_dir`, so it is the project
+    root's ``saves/`` in dev and the per-user data directory when frozen. It
+    used to be ``<this file>/../../saves``, which in a PyInstaller build points
+    inside the read-only bundle (``sys._MEIPASS/saves``): the Save dialog then
+    opened on a directory that did not exist and could not be written.
+    """
+    from lib.app_paths import user_saves_dir
+
+    return user_saves_dir(create=True)
 
 
 def prompt_save_path(suggested_name: str, directory: str = None) -> str:

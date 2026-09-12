@@ -12,11 +12,36 @@ class RunHistoryService:
     Extracted from DSim.
     """
 
-    def __init__(self, limit=5, persist_path="saves/run_history.json"):
+    #: File name inside the writable ``saves/`` folder used when no explicit
+    #: ``persist_path`` is given.
+    DEFAULT_FILENAME = "run_history.json"
+
+    def __init__(self, limit=5, persist_path=None):
         self.history = []
         self.limit = limit
         self.persist_enabled = False
-        self.persist_path = Path(persist_path)
+        # ``None`` means "resolve lazily via lib.app_paths.user_saves_path", so
+        # merely constructing a DSim does not create directories. The old
+        # default was the relative literal "saves/run_history.json", so enabling
+        # persistence in a packaged build (CWD read-only, often "/") raised
+        # [Errno 30] Read-only file system: 'saves'.
+        self._persist_path = Path(persist_path) if persist_path is not None else None
+
+    @property
+    def persist_path(self) -> Path:
+        """The JSON file backing the history, always in a writable location."""
+        if self._persist_path is not None:
+            return self._persist_path
+        from lib.app_paths import user_saves_dir
+
+        # create=False: merely reading the path must not make directories;
+        # save_history() mkdirs the parent right before it writes. Resolved on
+        # every access so the location follows the user data dir.
+        return Path(user_saves_dir(create=False)) / self.DEFAULT_FILENAME
+
+    @persist_path.setter
+    def persist_path(self, value):
+        self._persist_path = Path(value) if value is not None else None
 
     def load_history(self):
         """Load persisted run history if enabled."""

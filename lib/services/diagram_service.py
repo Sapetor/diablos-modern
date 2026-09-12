@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-import sys
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 logger = logging.getLogger(__name__)
@@ -174,23 +173,31 @@ class DiagramService:
         self.main_window = main_window
         self.dsim = main_window.dsim
 
-        # Set default directory to 'examples' relative to current working directory
-        # In frozen mode, use bundled examples or ~/Documents/DiaBloS
-        if getattr(sys, "frozen", False):
-            from lib.app_paths import resource_path
+        # Browsing starts in 'examples' (bundled when frozen, project-local in
+        # dev). Note this directory is *read-only* in a packaged build, which is
+        # fine for Open and wrong for Save -- save_directory() below downgrades
+        # to the writable saves/ folder rather than handing the user a path
+        # under the app bundle. The fallback also no longer mkdirs a path built
+        # from os.getcwd(): a .app launched from Finder has cwd "/", so that
+        # tried to create "/saves" and raised [Errno 30] Read-only file system.
+        from lib.app_paths import resource_path, user_saves_dir
 
-            self.last_directory = resource_path("examples")
-            if not os.path.exists(self.last_directory):
-                self.last_directory = os.path.expanduser("~/Documents/DiaBloS")
-                os.makedirs(self.last_directory, exist_ok=True)
-        else:
-            project_root = os.getcwd()
-            self.last_directory = os.path.join(project_root, "examples")
-            if not os.path.exists(self.last_directory):
-                self.last_directory = os.path.join(project_root, "saves")
-                os.makedirs(self.last_directory, exist_ok=True)
+        self.last_directory = resource_path("examples")
+        if not os.path.isdir(self.last_directory):
+            self.last_directory = user_saves_dir(create=True)
 
         self.current_file = None
+
+    def save_directory(self) -> str:
+        """Directory a *Save* dialog should start in: always writable.
+
+        ``last_directory`` follows wherever the user last browsed, which may be
+        the read-only bundled ``examples/`` folder; starting a Save there
+        produces a suggested path the user cannot write.
+        """
+        from lib.app_paths import writable_dir_or_saves
+
+        return writable_dir_or_saves(self.last_directory)
 
     def _report_error(self, title, message):
         """Surface an error to the user without hard-coupling to the GUI.
@@ -224,7 +231,7 @@ class DiagramService:
             dialog = _create_styled_file_dialog(
                 self.main_window,
                 "Save Diagram",
-                self.last_directory,
+                self.save_directory(),
                 "DiaBloS Files (*.diablos);;All Files (*)",
                 save=True,
             )

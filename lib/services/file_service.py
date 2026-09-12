@@ -5,7 +5,6 @@ Handles saving and loading diagram files.
 
 import json
 import os
-import sys
 import logging
 from typing import Dict, Optional, Any
 from PyQt6.QtCore import QRect
@@ -58,6 +57,10 @@ class FileService:
         self.filename: str = "data.diablos"
         self.SCREEN_WIDTH: int = 1280
         self.SCREEN_HEIGHT: int = 770
+        #: Last write failure, as ``(path, exception)``, or ``None`` after a
+        #: successful write. The GUI reads this to put a failed autosave in the
+        #: status bar instead of leaving it in the log only.
+        self.last_write_error: Optional[Any] = None
 
     def serialize(
         self,
@@ -204,9 +207,11 @@ class FileService:
 
             self.filename = os.path.basename(filename)
             self.model.dirty = False
+            self.last_write_error = None
             logger.info(f"SAVED AS {filename}")
             return True
         except Exception as e:
+            self.last_write_error = (filename, e)
             logger.error(f"Error saving file {filename}: {e}")
             return False
 
@@ -234,7 +239,14 @@ class FileService:
             if not file.lower().endswith((".diablos", ".dat")):
                 file += ".diablos"
         else:
-            # Autosave to saves/ directory
+            # Autosave into the *writable* saves/ folder. This used to be the
+            # relative literal "saves/…" with a frozen-only redirect bolted on;
+            # any launch with a read-only CWD (a macOS .app starts at cwd "/")
+            # died with [Errno 30] Read-only file system: 'saves'. user_saves_path
+            # resolves to <project root>/saves in dev and the per-user data dir
+            # when frozen, and creates it, so the write always has somewhere to go.
+            from lib.app_paths import user_saves_path
+
             if filepath:
                 file = filepath
             elif "_AUTOSAVE" not in self.filename:
@@ -245,14 +257,9 @@ class FileService:
                 stem, ext = os.path.splitext(self.filename)
                 if ext.lower() not in (".diablos", ".dat"):
                     ext = ".diablos"
-                file = f"saves/{stem}_AUTOSAVE{ext}"
+                file = user_saves_path(f"{stem}_AUTOSAVE{ext}")
             else:
-                file = f"saves/{self.filename}"
-            # In frozen mode, redirect saves/ to a writable location
-            if getattr(sys, "frozen", False) and not os.path.isabs(file):
-                from lib.app_paths import get_user_data_dir
-
-                file = os.path.join(get_user_data_dir(), file)
+                file = user_saves_path(self.filename)
 
         # Use new methods
         data = self.serialize(modern_ui_data, sim_params)

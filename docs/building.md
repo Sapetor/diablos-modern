@@ -81,7 +81,7 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 ## How It Works
 
 - **Block discovery**: In dev mode, `block_loader.py` scans `blocks/` dynamically. In frozen mode, it uses `_BLOCK_MODULES`. The sync script (`tools/sync_block_registry.py`) keeps this list up to date -- run automatically by `tools/build.sh`, and enforced in CI with `python tools/sync_block_registry.py --check`. The scan skips helper modules that define no block: anything listed in `EXCLUDED_MODULES`, plus any module whose name starts with `_` or ends with `_base`.
-- **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` which resolves to `~/Library/Application Support/DiaBloS/` on macOS.
+- **Resource paths**: Read-only assets (icons, default configs, examples) use `resource_path()` which resolves to `sys._MEIPASS` when frozen. Writable data (logs, autosave, user configs) use `user_data_path()` / `user_saves_path()` / `user_logs_path()`, which resolve to a per-user directory when frozen (see [Frozen-Mode Path Handling](#frozen-mode-path-handling)).
 - **Excluded packages**: `diablos.spec` excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt6, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included. `PyQt5`, `PySide2` and `PySide6` are excluded explicitly: a dev machine often has more than one Qt binding installed, and pyqtgraph/matplotlib probe for all of them at import time, which would otherwise drag a second Qt runtime (~100 MB) into the bundle and let the two fight over the platform plugin at startup.
 - **Optional SymPy**: the symbolic features (LaTeX/MathML export via `lib/export/latex_exporter.py`, `lib/engine/symbolic_engine.py`, and each block's `symbolic_execute()`) import SymPy lazily and degrade to a warning when it is missing. SymPy is *not* in `requirements.txt`, so a default build environment produces a bundle where those features are unavailable. `diablos.spec` no longer hard-excludes it: install it in the build env (`pip install sympy`, or `pip install .[symbolic]`) and the spec picks it up automatically via `collect_submodules('sympy')`. Expect roughly +35-40 MB unpacked. The published releases are currently built **without** SymPy -- symbolic export is a niche feature and the release job installs only `requirements.txt`; add `sympy` there if you want it shipped.
 - **macOS activation**: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).
@@ -89,14 +89,35 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.
 
 ## Frozen-Mode Path Handling
 
-In frozen mode, the working directory is `/` (read-only). All file I/O must use writable paths:
+In frozen mode both the bundle (`sys._MEIPASS`) and the working directory are
+read-only -- a macOS `.app` launched from Finder starts with `cwd == "/"`. Every
+runtime write must therefore resolve through `lib/app_paths.py`; a relative
+literal such as `open("saves/data_AUTOSAVE.dat", "w")` fails with
+`[Errno 30] Read-only file system`.
 
-| Data | Dev Mode Path | Frozen Mode Path |
-|------|--------------|-----------------|
-| Configs | `config/` | `~/Library/Application Support/DiaBloS/config/` |
-| Autosave | `saves/` | `~/Library/Application Support/DiaBloS/saves/` |
-| Logs | `diablos_modern.log` | `~/Library/Logs/DiaBloS/diablos_modern.log` |
-| Examples | `examples/` | `(bundled in app)/examples/` |
+The user data directory (`user_data_path()`) is:
+
+| Platform | User data directory |
+|----------|--------------------|
+| macOS | `~/Library/Application Support/DiaBloS/` |
+| Windows | `%APPDATA%\DiaBloS\` |
+| Linux | `$XDG_DATA_HOME/DiaBloS/` (default `~/.local/share/DiaBloS/`) |
+
+| Data | Helper | Dev Mode Path | Frozen Mode Path |
+|------|--------|--------------|-----------------|
+| Modified configs | `user_data_path("config/…")` | `config/` | `<user data dir>/config/` |
+| Recent files | `user_data_path("config/recent_files.json")` | `config/` | `<user data dir>/config/` |
+| Autosave (2-min timer) | `user_data_path("config/.autosave.diablos")` | `config/` | `<user data dir>/config/` |
+| Autosave (pre-run snapshot) | `user_saves_path()` | `saves/` | `<user data dir>/saves/` |
+| Export block output, run history | `user_saves_path()` | `saves/` | `<user data dir>/saves/` |
+| User blocks / libraries | `get_user_data_dir()` | `blocks/`, `library/` | `<user data dir>/blocks/`, `library/` |
+| UI preferences | `user_data_path("user_preferences.json")` | project root | `<user data dir>/` |
+| Logs | `user_logs_path()` | `diablos_modern.log` | `~/Library/Logs/DiaBloS/` (macOS), `<user data dir>/logs/` (Windows, Linux) |
+| Examples (read-only) | `resource_path("examples")` | `examples/` | `(bundled in app)/examples/` |
+
+`tests/unit/test_frozen_writes.py` enforces this: it re-runs the real writers
+with `sys.frozen` faked and a read-only CWD, and statically rejects any relative
+path literal passed to `open()` / `os.makedirs()` / `np.save*()` in shipped code.
 
 ## macOS Distribution Notes
 

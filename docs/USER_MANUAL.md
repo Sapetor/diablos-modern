@@ -811,9 +811,21 @@ palette's category headings and each parameter's help text *are* translated.
 
 ## Autosave and Recovery
 
-- The diagram is autosaved every **2 minutes**, and again immediately before
-  every simulation run, to `.autosave.diablos` in the application's user data
-  directory.
+- The diagram is autosaved every **2 minutes** to `.autosave.diablos`, and again
+  immediately before every simulation run as `<name>_AUTOSAVE.diablos`. Both
+  live in the application's user data directory:
+
+  | Platform | Location |
+  |----------|----------|
+  | macOS | `~/Library/Application Support/DiaBloS/` |
+  | Windows | `%APPDATA%\DiaBloS\` |
+  | Linux | `~/.local/share/DiaBloS/` (or `$XDG_DATA_HOME/DiaBloS/`) |
+
+  The 2-minute autosave is in `config/` there; the pre-run snapshot and the
+  **Export** block's data files are in `saves/`. Running from a source checkout
+  instead uses the project's own `config/` and `saves/` folders.
+- If an autosave cannot be written, the status bar says so -- it never
+  interrupts you with a dialog, so check there if recovery matters to you.
 - If the application exits abnormally, the next start asks
   **"Recover Auto-save?"**. Answer **Yes** to reload that session; answering
   **No** deletes the autosave file.

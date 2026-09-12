@@ -484,3 +484,36 @@ Note the earlier entry listed `app.setStyle("Fusion")` under "tried and failed";
 **Problem**: Two independent branches each added tests that built many `DSim`/`SimulationModel` instances; each was green in isolation but made `tests/unit/test_linearization_result_window.py` abort the interpreter about half the time in the full run (a pyqtgraph `InfiniteLine` repainting after its ViewBox was gone).
 
 **Fix**: Module-scope the heavy model fixture, or add an autouse `gc.collect()` per test in the new module, so Qt items are freed deterministically rather than under an unrelated widget mid-construction. The underlying teardown in the linearization result window is still unfixed.
+
+---
+
+## Packaging / Filesystem
+
+### Every runtime write must resolve through `lib/app_paths.py` (September 2026)
+
+**Problem**: Packaged builds failed with `[Errno 30] Read-only file system` --
+`Error saving file saves/data_AUTOSAVE.dat`, `Critical error in main: … '/saves'`.
+A macOS `.app` launched from Finder starts with `cwd == "/"`, and `sys._MEIPASS`
+is read-only too, so *any* relative write dies. The relative paths were easy to
+miss because they were spelled as ordinary-looking literals
+(`f"saves/{stem}_AUTOSAVE{ext}"`, `os.path.join("saves", basename)`,
+`persist_path="saves/run_history.json"`) and two of them carried an ad-hoc
+`if getattr(sys, "frozen", False): redirect` patch that the others never got.
+
+**Second-order damage**: the failures were invisible. `FileService.save_to_file`
+logged and returned False; `_auto_save` ignored the return value; and
+`execution_init` turned a failed snapshot into `return False`, so pressing Run
+silently did nothing.
+
+**Fix**: `user_saves_path()` / `user_logs_path()` / `writable_dir_or_saves()`
+joined `resource_path()` / `user_data_path()` in `lib/app_paths.py`; every writer
+calls one of them unconditionally, with no `sys.frozen` branch at the call site.
+
+**Lesson**: a per-call-site `if frozen:` redirect is not a fix, it is a list of
+the call sites someone remembered. Put the branch in the path resolver and make
+the call sites unconditional. Guard it with a test that *simulates* the hostile
+environment (`sys.frozen` + read-only `sys._MEIPASS` + read-only CWD, see
+`tests/unit/test_frozen_writes.py`) rather than one that trusts the happy path,
+and add a static AST check so the literal cannot reappear in an untested branch.
+Also: a save-dialog's starting directory is a write path. A frozen build pointed
+its Save dialog at the bundled read-only `examples/`.

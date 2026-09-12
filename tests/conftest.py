@@ -205,3 +205,29 @@ def sample_line(qapp):
 def temp_diagram_file(tmp_path):
     """Provide a temporary file path for diagram testing."""
     return tmp_path / "test_diagram.dat"
+
+
+@pytest.fixture
+def user_data_dir(tmp_path, monkeypatch):
+    """Redirect ``lib.app_paths.get_user_data_dir`` at a throwaway directory.
+
+    Every runtime write in the app resolves through ``lib.app_paths``
+    (``user_data_path`` / ``user_saves_path`` / ``user_logs_path``), so patching
+    the one accessor relocates autosaves, config, exports and run history into
+    ``tmp_path`` without touching the developer's real data directory or the
+    checkout's ``saves/``. Returns the ``Path`` that now backs it.
+    """
+    import lib.app_paths as app_paths
+
+    target = tmp_path / "userdata"
+    target.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(app_paths, "get_user_data_dir", lambda: str(target))
+    return target
+
+
+@pytest.fixture
+def saves_dir(user_data_dir):
+    """The writable ``saves/`` folder inside the redirected user data dir."""
+    from lib.app_paths import user_saves_dir
+
+    return Path(user_saves_dir(create=True))
