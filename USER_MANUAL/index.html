@@ -3659,8 +3659,10 @@ See <a href="#wires">Wires</a> for routing, bending and auto-routing.</p>
 </code></pre></div></p>
 <h3 id="5-run-simulation">5. Run Simulation<a class="headerlink" href="#5-run-simulation" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>F5</strong> or <strong>Simulation → Run</strong></li>
-<li>The <strong>Simulation Configuration</strong> dialog opens; set solver, step size and duration</li>
+<li><strong>F5</strong>, the toolbar's ▶, or <strong>Simulation → Run</strong> — the run starts immediately,
+  using the solver, step size and duration stored in the diagram</li>
+<li>To change those first: <strong>Ctrl+E</strong>, the toolbar's gear, or
+  <strong>Simulation → Simulation Settings...</strong></li>
 <li>View results in Scope blocks</li>
 </ul>
 <hr />
@@ -3740,6 +3742,10 @@ See <a href="#wires">Wires</a> for routing, bending and auto-routing.</p>
 <tr>
 <td>F8</td>
 <td>Single step (advance one timestep)</td>
+</tr>
+<tr>
+<td>Ctrl+E</td>
+<td>Simulation settings (solver, step size, duration)</td>
 </tr>
 </tbody>
 </table>
@@ -3836,8 +3842,10 @@ to search and run without hunting through menus. The palette indexes:</p>
 </ul>
 <hr />
 <h2 id="simulation-settings-and-solvers">Simulation Settings and Solvers<a class="headerlink" href="#simulation-settings-and-solvers" title="Permanent link">&para;</a></h2>
-<p>Pressing <strong>F5</strong> (<strong>Simulation → Run</strong>) first opens the <strong>Simulation
-Configuration</strong> dialog. It has two groups:</p>
+<p>Pressing <strong>F5</strong> (<strong>Simulation → Run</strong>) runs the diagram straight away with the
+settings it already carries. To edit them, open the <strong>Simulation Configuration</strong>
+dialog: <strong>Ctrl+E</strong>, the gear next to the transport buttons, or
+<strong>Simulation → Simulation Settings...</strong>. It has two groups:</p>
 <p><strong>Solver Configuration</strong>
 - <strong>Solver Method</strong>: <code>RK45</code> (default), <code>RK23</code>, <code>DOP853</code> (adaptive);
   <code>Radau</code>, <code>BDF</code>, <code>LSODA</code> (stiff); <code>RK4</code>, <code>Euler</code> (fixed-step, using the base
@@ -3857,8 +3865,13 @@ Configuration</strong> dialog. It has two groups:</p>
 <p><strong>Visualization</strong>
 - <strong>Plot Window Range [samples]</strong> and <strong>Enable Dynamic Plotting</strong> for live
   plotting during a run.</p>
+<p>Below the two groups, <strong>Ask before every run</strong> (off by default) restores the old
+behaviour of re-opening this dialog every time you press Play. Unlike the
+settings above it is an application preference, not diagram data: it is stored
+in your Qt settings and follows you across diagrams.</p>
 <p>Solver method, <code>rtol</code>, <code>atol</code> and the zero-crossing setting are saved inside the
-<code>.diablos</code> file and shown read-only in the property editor.</p>
+<code>.diablos</code> file and shown read-only in the property editor. Accepting the dialog
+after changing any of them marks the diagram as having unsaved changes.</p>
 <h3 id="zero-crossing-detection">Zero-crossing detection<a class="headerlink" href="#zero-crossing-detection" title="Permanent link">&para;</a></h3>
 <p>A discontinuous block -- <code>Switch</code>, <code>Saturation</code>, <code>Deadband</code>, <code>Hysteresis</code>,
 <code>Abs</code>, <code>MathFunction</code> set to <code>sign</code>/<code>abs</code>, a <code>Step</code> or <code>Ramp</code> edge, a square or
@@ -4512,18 +4525,45 @@ palette's category headings and each parameter's help text <em>are</em> translat
 <hr />
 <h2 id="autosave-and-recovery">Autosave and Recovery<a class="headerlink" href="#autosave-and-recovery" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The diagram is autosaved every <strong>2 minutes</strong>, and again immediately before
-  every simulation run, to <code>.autosave.diablos</code> in the application's user data
-  directory.</li>
-<li>If the application exits abnormally, the next start asks
-  <strong>"Recover Auto-save?"</strong>. Answer <strong>Yes</strong> to reload that session; answering
-  <strong>No</strong> deletes the autosave file.</li>
-<li>Closing the window with unsaved changes asks <strong>Save / Discard / Cancel</strong>.
-  Cancel keeps the window open; the autosave file is removed only once the
-  diagram has been saved or the changes explicitly discarded.</li>
-<li>A clean exit removes the autosave file, so the prompt only appears when there
-  is genuinely something to recover.</li>
+<li>The diagram is autosaved every <strong>2 minutes</strong> to <code>.autosave.diablos</code>, and again
+  immediately before every simulation run as <code>&lt;name&gt;_AUTOSAVE.diablos</code>. Both
+  live in the application's user data directory:</li>
 </ul>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td><code>~/Library/Application Support/DiaBloS/</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td><code>%APPDATA%\DiaBloS\</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td><code>~/.local/share/DiaBloS/</code> (or <code>$XDG_DATA_HOME/DiaBloS/</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The 2-minute autosave is in <code>config/</code> there; the pre-run snapshot and the
+  <strong>Export</strong> block's data files are in <code>saves/</code>. Running from a source checkout
+  instead uses the project's own <code>config/</code> and <code>saves/</code> folders.
+- If an autosave cannot be written, the status bar says so -- it never
+  interrupts you with a dialog, so check there if recovery matters to you.
+- If the application exits abnormally, the next start asks
+  <strong>"Recover Auto-save?"</strong>. Answer <strong>Yes</strong> to reload that session; answering
+  <strong>No</strong> deletes the autosave file.
+- Closing the window with unsaved changes asks <strong>Save / Discard / Cancel</strong>.
+  Cancel keeps the window open; the autosave file is removed only once the
+  diagram has been saved or the changes explicitly discarded.
+- A clean exit removes the autosave file, so the prompt only appears when there
+  is genuinely something to recover.</p>
 <p>Autosave is a safety net, not a substitute for <strong>Ctrl+S</strong>.</p>
 <hr />
 <h2 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h2>

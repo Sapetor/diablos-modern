@@ -2305,45 +2305,110 @@ active, so an arm64 interpreter always yields an arm64 app regardless of flags.<
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Block discovery</strong>: In dev mode, <code>block_loader.py</code> scans <code>blocks/</code> dynamically. In frozen mode, it uses <code>_BLOCK_MODULES</code>. The sync script (<code>tools/sync_block_registry.py</code>) keeps this list up to date -- run automatically by <code>tools/build.sh</code>, and enforced in CI with <code>python tools/sync_block_registry.py --check</code>. The scan skips helper modules that define no block: anything listed in <code>EXCLUDED_MODULES</code>, plus any module whose name starts with <code>_</code> or ends with <code>_base</code>.</li>
-<li><strong>Resource paths</strong>: Read-only assets (icons, default configs, examples) use <code>resource_path()</code> which resolves to <code>sys._MEIPASS</code> when frozen. Writable data (logs, autosave, user configs) use <code>user_data_path()</code> which resolves to <code>~/Library/Application Support/DiaBloS/</code> on macOS.</li>
+<li><strong>Resource paths</strong>: Read-only assets (icons, default configs, examples) use <code>resource_path()</code> which resolves to <code>sys._MEIPASS</code> when frozen. Writable data (logs, autosave, user configs) use <code>user_data_path()</code> / <code>user_saves_path()</code> / <code>user_logs_path()</code>, which resolve to a per-user directory when frozen (see <a href="#frozen-mode-path-handling">Frozen-Mode Path Handling</a>).</li>
 <li><strong>Excluded packages</strong>: <code>diablos.spec</code> excludes ~40 unused packages (torch, pandas, bokeh, selenium, etc.) to keep the bundle small. Only PyQt6, numpy, scipy, matplotlib, pyqtgraph, Pillow, and tqdm are included. <code>PyQt5</code>, <code>PySide2</code> and <code>PySide6</code> are excluded explicitly: a dev machine often has more than one Qt binding installed, and pyqtgraph/matplotlib probe for all of them at import time, which would otherwise drag a second Qt runtime (~100 MB) into the bundle and let the two fight over the platform plugin at startup.</li>
 <li><strong>Optional SymPy</strong>: the symbolic features (LaTeX/MathML export via <code>lib/export/latex_exporter.py</code>, <code>lib/engine/symbolic_engine.py</code>, and each block's <code>symbolic_execute()</code>) import SymPy lazily and degrade to a warning when it is missing. SymPy is <em>not</em> in <code>requirements.txt</code>, so a default build environment produces a bundle where those features are unavailable. <code>diablos.spec</code> no longer hard-excludes it: install it in the build env (<code>pip install sympy</code>, or <code>pip install .[symbolic]</code>) and the spec picks it up automatically via <code>collect_submodules('sympy')</code>. Expect roughly +35-40 MB unpacked. The published releases are currently built <strong>without</strong> SymPy -- symbolic export is a niche feature and the release job installs only <code>requirements.txt</code>; add <code>sympy</code> there if you want it shipped.</li>
 <li><strong>macOS activation</strong>: Frozen builds use ObjC runtime calls via ctypes to register as a foreground app (required for Finder/Dock launches).</li>
 <li><strong>Multiprocessing</strong>: <code>multiprocessing.freeze_support()</code> is called at entry point to prevent duplicate process spawning.</li>
 </ul>
 <h2 id="frozen-mode-path-handling">Frozen-Mode Path Handling<a class="headerlink" href="#frozen-mode-path-handling" title="Permanent link">&para;</a></h2>
-<p>In frozen mode, the working directory is <code>/</code> (read-only). All file I/O must use writable paths:</p>
+<p>In frozen mode both the bundle (<code>sys._MEIPASS</code>) and the working directory are
+read-only -- a macOS <code>.app</code> launched from Finder starts with <code>cwd == "/"</code>. Every
+runtime write must therefore resolve through <code>lib/app_paths.py</code>; a relative
+literal such as <code>open("saves/data_AUTOSAVE.dat", "w")</code> fails with
+<code>[Errno 30] Read-only file system</code>.</p>
+<p>The user data directory (<code>user_data_path()</code>) is:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>User data directory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td><code>~/Library/Application Support/DiaBloS/</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td><code>%APPDATA%\DiaBloS\</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td><code>$XDG_DATA_HOME/DiaBloS/</code> (default <code>~/.local/share/DiaBloS/</code>)</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
 <th>Data</th>
+<th>Helper</th>
 <th>Dev Mode Path</th>
 <th>Frozen Mode Path</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Configs</td>
+<td>Modified configs</td>
+<td><code>user_data_path("config/…")</code></td>
 <td><code>config/</code></td>
-<td><code>~/Library/Application Support/DiaBloS/config/</code></td>
+<td><code>&lt;user data dir&gt;/config/</code></td>
 </tr>
 <tr>
-<td>Autosave</td>
+<td>Recent files</td>
+<td><code>user_data_path("config/recent_files.json")</code></td>
+<td><code>config/</code></td>
+<td><code>&lt;user data dir&gt;/config/</code></td>
+</tr>
+<tr>
+<td>Autosave (2-min timer)</td>
+<td><code>user_data_path("config/.autosave.diablos")</code></td>
+<td><code>config/</code></td>
+<td><code>&lt;user data dir&gt;/config/</code></td>
+</tr>
+<tr>
+<td>Autosave (pre-run snapshot)</td>
+<td><code>user_saves_path()</code></td>
 <td><code>saves/</code></td>
-<td><code>~/Library/Application Support/DiaBloS/saves/</code></td>
+<td><code>&lt;user data dir&gt;/saves/</code></td>
+</tr>
+<tr>
+<td>Export block output, run history</td>
+<td><code>user_saves_path()</code></td>
+<td><code>saves/</code></td>
+<td><code>&lt;user data dir&gt;/saves/</code></td>
+</tr>
+<tr>
+<td>User blocks / libraries</td>
+<td><code>get_user_data_dir()</code></td>
+<td><code>blocks/</code>, <code>library/</code></td>
+<td><code>&lt;user data dir&gt;/blocks/</code>, <code>library/</code></td>
+</tr>
+<tr>
+<td>UI preferences</td>
+<td><code>user_data_path("user_preferences.json")</code></td>
+<td>project root</td>
+<td><code>&lt;user data dir&gt;/</code></td>
 </tr>
 <tr>
 <td>Logs</td>
+<td><code>user_logs_path()</code></td>
 <td><code>diablos_modern.log</code></td>
-<td><code>~/Library/Logs/DiaBloS/diablos_modern.log</code></td>
+<td><code>~/Library/Logs/DiaBloS/</code> (macOS), <code>&lt;user data dir&gt;/logs/</code> (Windows, Linux)</td>
 </tr>
 <tr>
-<td>Examples</td>
+<td>Examples (read-only)</td>
+<td><code>resource_path("examples")</code></td>
 <td><code>examples/</code></td>
 <td><code>(bundled in app)/examples/</code></td>
 </tr>
 </tbody>
 </table>
+<p><code>tests/unit/test_frozen_writes.py</code> enforces this: it re-runs the real writers
+with <code>sys.frozen</code> faked and a read-only CWD, and statically rejects any relative
+path literal passed to <code>open()</code> / <code>os.makedirs()</code> / <code>np.save*()</code> in shipped code.</p>
 <h2 id="macos-distribution-notes">macOS Distribution Notes<a class="headerlink" href="#macos-distribution-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Unsigned apps</strong>: Blocked by Gatekeeper. Users must run <code>xattr -rd com.apple.quarantine /Applications/DiaBloS-x86_64.app</code> after copying from DMG.</li>
