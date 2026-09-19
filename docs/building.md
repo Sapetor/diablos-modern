@@ -36,12 +36,16 @@ Two separate venvs are used because PyInstaller bundles the Python interpreter f
 
 | Env | Python | PyQt6 | Arch | Status |
 |------|--------|-------|------|--------|
-| conda env `diablos_x86` (`~/opt/anaconda3/envs/diablos_x86`) | 3.9 (Anaconda) | 6.10.x (`<6.11`; 6.11 needs 3.10+) | x86_64 | x86_64 release (build via `arch -x86_64`) |
+| conda env `diablos_x86` (`~/opt/anaconda3/envs/diablos_x86`) | 3.9 (Anaconda) -- **needs recreating on 3.10+** | 6.10.x | x86_64 | x86_64 release (build via `arch -x86_64`) |
 | `~/.venvs/diablos-arm64/` | 3.12 (Homebrew) | 6.11.x | arm64 | **Recommended release** (Fusion cursor fix) |
 
+The x86_64 env predates the 3.10 baseline: it still holds Python 3.9, which
+`requires-python = ">=3.10"` now refuses, so recreate it on 3.10+ before the next
+x86_64 release (`conda create -n diablos_x86 python=3.12`, then reinstall). The
+arm64 env is already on 3.12 and needs nothing.
+
 Both envs need: `PyQt6 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller`
--- install them with `pip install -r requirements.txt pyinstaller` so the
-Python-version marker on the PyQt6 pin is honoured. The PyQt6 macOS wheels are
+-- install them with `pip install -r requirements.txt pyinstaller`. The PyQt6 macOS wheels are
 `universal2`, so the same wheel serves both arches; the interpreter's
 architecture is what decides the build.
 
@@ -131,7 +135,7 @@ path literal passed to `open()` / `os.makedirs()` / `np.save*()` in shipped code
 PyInstaller can only build for the platform it runs on. To build the Windows installer:
 
 ```powershell
-# 1. Install Python 3.9+ from python.org (check "Add to PATH")
+# 1. Install Python 3.10+ from python.org (check "Add to PATH")
 # 2. Clone the repo
 git clone git@github.com:Sapetor/diablos-modern.git
 cd diablos-modern
@@ -201,7 +205,7 @@ Releases are cut from a tag; `.github/workflows/release.yml` does the building.
 
 4. **The workflow builds the artifacts.** Pushing a `v*` tag runs
    `Release`, which first runs the whole CI workflow (`jobs.tests` reuses
-   `.github/workflows/ci.yml` through `workflow_call`, so lint + the 3.9/3.12
+   `.github/workflows/ci.yml` through `workflow_call`, so lint + the 3.10/3.12
    test matrix must be green), and only then builds on `macos-latest` (arm64,
    via `tools/build.sh`), `windows-latest` (PyInstaller + a zipped
    `dist/DiaBloS` folder) and `ubuntu-latest` (PyInstaller + a `dist/DiaBloS`

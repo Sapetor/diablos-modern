@@ -12,7 +12,7 @@ build:
   os: "ubuntu-24.04"
   tools:
     # 3.12 is the newer leg of the CI matrix (.github/workflows/ci.yml);
-    # the code also supports 3.9.
+    # the supported baseline is 3.10.
     python: "3.12"
   # mkdocstrings imports modern_ui/, which imports PyQt6 -- loading the Qt6
   # shared libraries needs these. Same list .github/workflows/docs.yml installs

@@ -41,7 +41,7 @@ jobs:
         run: pip install ruff==0.16.8
 
       - name: Lint
-        # Config (rule selection, ignores, py39 target) lives in pyproject.toml.
+        # Config (rule selection, ignores, py310 target) lives in pyproject.toml.
         run: ruff check .
 
       - name: Format check
@@ -62,8 +62,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.9 matches the local/readthedocs environment; 3.12 is forward-looking.
-        python-version: ["3.9", "3.12"]
+        # 3.10 is the supported baseline (pyproject requires-python); 3.12
+        # matches readthedocs and is the forward-looking leg.
+        python-version: ["3.10", "3.12"]
 
     env:
       # PyQt6 widgets are constructed in tests (see tests/conftest.py).

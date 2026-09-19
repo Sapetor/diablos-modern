@@ -6,7 +6,7 @@
 [![Docs](https://github.com/Sapetor/diablos-modern/actions/workflows/docs.yml/badge.svg)](https://sapetor.github.io/diablos-modern/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Bundled binaries: GPL-3.0](https://img.shields.io/badge/bundled%20binaries-GPL--3.0-orange.svg)](THIRD_PARTY_LICENSES.md)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%20%7C%203.12-blue.svg)](https://www.python.org/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.12-blue.svg)](https://www.python.org/)
 
 Draw a block diagram, press `F5`, get a plot. Then linearize it, sweep a
 parameter, run a seeded Monte Carlo ensemble, or export the whole model as a
@@ -39,7 +39,7 @@ standalone numpy + scipy script.
   reproduces the compiled solver.
 - **Bilingual** — English and Spanish, switchable live from View ▸ Language;
   adding a language is one JSON file.
-- **Tested** — 2,700+ tests on a Python 3.9 + 3.12 CI matrix, with `ruff` lint
+- **Tested** — 2,700+ tests on a Python 3.10 + 3.12 CI matrix, with `ruff` lint
   and format gates.
 
 ## Install
@@ -51,7 +51,7 @@ needed. The builds are unsigned — macOS needs
 `xattr -rd com.apple.quarantine /Applications/DiaBloS-arm64.app` once, and
 Windows SmartScreen needs *More info ▸ Run anyway*.
 
-**From source** (Python 3.9+):
+**From source** (Python 3.10+):
 
 ```bash
 git clone https://github.com/Sapetor/diablos-modern.git
@@ -110,7 +110,7 @@ python model.py --out run.csv --no-plot
 | | DiaBloS Modern | PathSim | bdsim | pysimCoder | Xcos |
 |---|---|---|---|---|---|
 | Primary interface | Desktop GUI | Python API (+ PathView) | Python API (+ bdedit) | GUI editor | GUI editor |
-| Host language | Python 3.9+ | Python | Python | Python | Scilab |
+| Host language | Python 3.10+ | Python | Python | Python | Scilab |
 | Main target | Teaching, exploration | Programmatic simulation | Control/robotics in code | Real-time C codegen | General modelling |
 | Prebuilt binaries | DMG / zip / tarball | pip | pip | source | Scilab installer |
 | Non-English UI | English + Spanish | — | — | — | several |

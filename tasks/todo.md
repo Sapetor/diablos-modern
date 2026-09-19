@@ -172,10 +172,21 @@ are parked here:
 - [x] **PyQt6 migration** — done 2026-09-10: the GUI, the test suite, the
   PyInstaller spec and every dependency list moved to PyQt6 6.7+ (see the
   `[Unreleased] → Changed` entry in CHANGELOG.md).
-- [ ] **Bump the Python baseline to 3.10 and drop the `PyQt6<6.11` marker** once
-  the 3.9 CI leg is retired — collapse the two marked `PyQt6` lines in
-  `requirements.txt`, `docs/requirements.txt` and `pyproject.toml` into a single
-  `PyQt6>=6.7`, and raise `requires-python` / ruff `target-version`.
+- [x] **Bump the Python baseline to 3.10 and drop the `PyQt6<6.11` marker** — done
+  2026-09-19. Python 3.9 reached EOL in October 2025, and the stated reason for the
+  pin was already stale: the comments in `requirements.txt` and `pyproject.toml`
+  claimed 3.9 was needed for "CI matrix + readthedocs", but `readthedocs.yaml` has
+  been building on 3.12 all along, so the CI matrix leg was the only real consumer.
+  Collapsed both marked `PyQt6` lines to a single `PyQt6>=6.7` (`requirements.txt`,
+  `pyproject.toml`; `docs/requirements.txt` only ever had `-r ../requirements.txt`),
+  raised `requires-python` to `>=3.10`, ruff `target-version` to `py310`, the CI
+  matrix to `["3.10", "3.12"]`, and the 3.9 mentions in `README.md`,
+  `readthedocs.yaml` and `docs/building.md`.
+  - [ ] **Follow-up: recreate the x86_64 build env.** `~/opt/anaconda3/envs/diablos_x86`
+    (`docs/building.md`) is Python 3.9 (Anaconda), which `requires-python = ">=3.10"`
+    now refuses, so the next **x86_64** macOS release will not build until that env is
+    recreated on 3.10+. The arm64 release env (`~/.venvs/diablos-arm64/`, 3.12) and
+    the CI Windows/Linux builds are unaffected.
 - [ ] **PathSim benchmark** — the competitive analysis asked for a head-to-head
   timing vs PathSim on the examples gallery; skipped because `pathsim` was not
   installed in the `diablos` env.

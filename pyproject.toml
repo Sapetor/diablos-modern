@@ -25,7 +25,7 @@ version = "1.1.0"
 description = "Simulink-style block diagram simulation tool built with Python and PyQt6"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "DiaBloS Development Team" }]
 keywords = ["simulation", "block-diagram", "control-systems", "pyqt6", "simulink"]
 classifiers = [
@@ -35,20 +35,18 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
 
-# Mirrors requirements.txt, which explains the bounds (including why PyQt6 is
-# one requirement split by a Python-version marker).
+# Mirrors requirements.txt, which explains the bounds.
 dependencies = [
     "numpy>=1.20.0,<3.0",
     "matplotlib>=3.5.0",
     "tqdm>=4.60.0",
     "pyqtgraph>=0.13.0",
-    "PyQt6>=6.7,<6.11; python_version < '3.10'",
-    "PyQt6>=6.7; python_version >= '3.10'",
+    "PyQt6>=6.7",
     "scipy>=1.6.0,<2.0",
     "Pillow>=8.0.0",
 ]
@@ -94,9 +92,9 @@ packages = []
 py-modules = []
 
 [tool.ruff]
-# 3.9 is the supported baseline (CI matrix + readthedocs); do not let Ruff
-# suggest 3.10+-only rewrites.
-target-version = "py39"
+# 3.10 is the supported baseline (requires-python, CI matrix); do not let Ruff
+# suggest 3.11+-only rewrites.
+target-version = "py310"
 line-length = 100
 # `*.md` keeps the formatter on Python files only. Ruff 0.16 started formatting
 # Python code blocks embedded in Markdown; here that only rewrites documentation
