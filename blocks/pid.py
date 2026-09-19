@@ -135,12 +135,19 @@ class PIDBlock(BaseBlock):
         # output_only=True while input_queue still holds the previous step's
         # inputs. Testing only for missing inputs let that pass integrate a
         # second time, doubling Ki's contribution on every timestep.
-        if kwargs.get("output_only", False) or 0 not in inputs or 1 not in inputs:
+        # Port 1 (measurement) may legitimately be unconnected: that is the
+        # error-input wiring, Sum(setpoint - measurement) -> PID, where port 0
+        # already carries the error and the measurement is implicitly 0. The
+        # compiled kernel has always supported it (build_pid leaves meas_src
+        # None), so bailing here on a missing port 1 froze such a loop at zero
+        # on the interpreted path only. Port 0 missing is still a genuine
+        # un-fed call.
+        if kwargs.get("output_only", False) or 0 not in inputs:
             return {0: np.atleast_1d(params.get("_last_output_", 0.0))}
 
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
         sp = get_scalar(inputs, 0, 0.0)
-        meas = get_scalar(inputs, 1, 0.0)
+        meas = get_scalar(inputs, 1, 0.0) if 1 in inputs else 0.0
         e = sp - meas
 
         first_call = bool(params.get("_init_start_", True))

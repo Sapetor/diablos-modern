@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-09-12
+> Last updated: 2026-09-19
 
 ---
 
@@ -210,15 +210,28 @@ are parked here:
   `lib/engine/pde_helpers.py` carry `options` (Dirichlet/Neumann/Robin/Periodic),
   the property editor renders any param with `choices`/`options` as a QComboBox,
   and `tests/regression/test_choice_param_dispatch.py` covers HeatEquation1D/2D.
-- [ ] **Re-verify the reported compiled-path PID ordering bug.** The codegen agent
-  (2026-09-03) claimed that on the compiled path a 1-port PID was ordered *before*
-  the Sum feeding it, freezing the loop at zero. The only reproduction was the
-  legacy `examples/pid_control_loop.json`, which was retired in 5559515, and both
-  engines gave zeros on that stale file, so the claim is unconfirmed. Check with
-  `examples/pid_second_order.diablos` (compiled vs interpreted must agree; the
-  equivalence tests in `tests/regression/test_equiv_pid.py` are the template). If
-  it reproduces, a feedthrough PID belongs in the algebraic middle group *after*
-  its upstream Sum (`lib/engine/system_compiler.py`, `_is_d0_state_block`).
+- [x] **Re-verify the reported compiled-path PID ordering bug.** CONFIRMED and fixed
+  2026-09-19. `examples/pid_second_order.diablos` does *not* exercise it (its PID is
+  2-port and its Sum is downstream), so the repro was built directly: the error-input
+  wiring `Step -> Sum(+,-) -> PID(port 0 only) -> TranFn 1/(s+1) -> Sum`. Both engines
+  froze it at exactly zero, for two independent reasons:
+  - *Compiled path (the reported bug).* The engine's hierarchy sort is memory-block
+    aware and emits `[step, pid, tranfn, sum]` so the interpreter's Loop 1 can break
+    the cycle with the previous step's inputs. The compiled middle group inherited
+    that order verbatim (`_execution_groups` documented itself as "the original
+    topological order"), so `exec_pid` read `signals['sum1']` before the Sum wrote it
+    -- 0.0 on every RHS evaluation, permanently zero error, dead loop. Note the fix is
+    *not* in `_is_d0_state_block`, which already classifies PID correctly as
+    feedthrough; the middle group simply was not in dataflow order. Fixed by the new
+    `_dataflow_order` (`lib/engine/system_compiler.py`), a stable Kahn sort over
+    middle-to-middle `input_map` edges; a genuine algebraic loop keeps the engine's
+    order for whatever is left un-emitted.
+  - *Interpreted path (a second, separate bug found on the way).* `blocks/pid.py`
+    returned `_last_output_` whenever port 1 was unconnected, so the error-input
+    wiring never computed at all. An unconnected measurement port now reads as 0.0,
+    matching what the compiled kernel always did (`build_pid` leaves `meas_src` None).
+  Both paths now settle to the setpoint (0.999991 interpreted vs 0.999992 compiled).
+  Covered by `TestErrorInputPIDOrdering` in `tests/regression/test_equiv_pid.py`.
 - [x] **`lib/ui/button.py` is vestigial.** Deleted 2026-09-10 with the DSim
   facade cleanup: the single `.active` write in `execution_init` had no reader.
 

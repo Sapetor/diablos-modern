@@ -262,9 +262,59 @@ def _is_d0_state_block(block, fn: str, block_matrices) -> bool:
     return True  # Integrator, RateLimiter, PDE blocks: D=0
 
 
-def _execution_groups(sorted_order, block_matrices):
-    """Split ``sorted_order`` into (sources, middle, d0_state_blocks), each in
-    the original topological order."""
+def _dataflow_order(middle, input_map):
+    """Order the middle group so every block runs after the middle-group blocks
+    feeding it.
+
+    The incoming ``sorted_order`` comes from the engine's hierarchy resolution,
+    which is *memory-block aware*: a memory block (PID, TranFn, Integrator) is
+    deliberately placed early so the interpreter's Loop 1 can break a feedback
+    cycle by serving it the previous step's inputs. The compiled RHS has no such
+    stale-input notion -- it reads ``signals`` written earlier in the same
+    evaluation -- so a feedthrough memory block scheduled ahead of its upstream
+    algebraic feeder reads 0.0 forever. A unity-feedback loop
+    ``Step -> Sum -> PID -> TranFn -> Sum`` sorts as ``[Step, PID, TranFn, Sum]``
+    and freezes the whole loop at zero.
+
+    So the middle group is re-sorted here by true dataflow (Kahn, stable). Only
+    middle-to-middle edges constrain: sources and D=0 state blocks are already
+    evaluated or pre-populated by the time the middle group runs. A genuine
+    algebraic loop leaves some blocks un-emitted; those keep their original
+    relative order (the engine reports algebraic loops separately).
+    """
+    middle_names = {b.name for b in middle}
+    preds = {
+        b.name: {
+            src
+            for src, _port in input_map.get(b.name, {}).values()
+            if src in middle_names and src != b.name
+        }
+        for b in middle
+    }
+    remaining = dict(preds)
+    ordered = []
+    while True:
+        ready = [b for b in middle if b.name in remaining and not remaining[b.name]]
+        if not ready:
+            break
+        for b in ready:
+            ordered.append(b)
+            del remaining[b.name]
+        emitted = {b.name for b in ready}
+        for deps in remaining.values():
+            deps -= emitted
+    # Algebraic loop (or self-loop): keep the engine's order for what is left.
+    ordered.extend(b for b in middle if b.name in remaining)
+    return ordered
+
+
+def _execution_groups(sorted_order, block_matrices, input_map=None):
+    """Split ``sorted_order`` into (sources, middle, d0_state_blocks).
+
+    Sources and D=0 state blocks keep the original topological order; the middle
+    group is re-sorted by dataflow (see ``_dataflow_order``) when ``input_map``
+    is supplied.
+    """
     source_names = set()
     d0_names = set()
     for b in sorted_order:
@@ -276,6 +326,8 @@ def _execution_groups(sorted_order, block_matrices):
     sources = [b for b in sorted_order if b.name in source_names]
     middle = [b for b in sorted_order if b.name not in source_names and b.name not in d0_names]
     d0_state_blocks = [b for b in sorted_order if b.name in d0_names]
+    if input_map is not None:
+        middle = _dataflow_order(middle, input_map)
     return sources, middle, d0_state_blocks
 
 
@@ -673,7 +725,9 @@ class SystemCompiler:
 
         # Ordering waits until the states are allocated because the D matrices
         # decide which state blocks are feedthrough (middle) vs D=0 (last).
-        sources, middle, d0_state_blocks = _execution_groups(sorted_order, block_matrices)
+        sources, middle, d0_state_blocks = _execution_groups(
+            sorted_order, block_matrices, input_map
+        )
         sorted_order = sources + middle + d0_state_blocks
 
         execution_sequence = self._build_executors(

@@ -266,3 +266,165 @@ class TestPIDCompiledVsInterpreted:
         assert np.isclose(final_interp, final_compiled, atol=2e-3), (
             "steady states disagree: interp=%.6f compiled=%.6f" % (final_interp, final_compiled)
         )
+
+
+def _build_error_input_pid_loop(dsim, kp, ki, kd):
+    """Populate ``dsim`` with the *error-input* PID wiring:
+
+        Step(1) --> Sum(+,-) --> PID(port 0 only) --> TranFn 1/(s+1) --> Scope
+                      ^------------- feedback -------------|
+
+    This is the topology the September 2026 codegen agent reported as broken on
+    the compiled path (see tasks/todo.md). It differs from ``_build_pid_loop``
+    in that the subtraction happens in an explicit Sum block rather than inside
+    the PID, so the PID has a single connected input and a *feedthrough* block
+    (the Sum) sits between the sources and the controller.
+    """
+    from PyQt6.QtCore import QRect, QPoint
+    from blocks.step import StepBlock
+    from blocks.sum import SumBlock
+    from blocks.pid import PIDBlock
+    from blocks.transfer_function import TransferFunctionBlock
+    from blocks.scope import ScopeBlock
+    from lib.simulation.block import DBlock
+    from lib.simulation.connection import DLine
+
+    def _mk(fn, block_obj, cls, n_in, n_out, x, **overrides):
+        blk = DBlock(
+            fn,
+            1,
+            coords=QRect(x, 0, 50, 50),
+            color="blue",
+            in_ports=n_in,
+            out_ports=n_out,
+            b_type=getattr(block_obj, "b_type", 2),
+            params=_defaults(block_obj),
+            block_class=cls,
+            category=block_obj.category,
+        )
+        blk.params.update(overrides)
+        return blk
+
+    step = _mk("Step", StepBlock(), StepBlock, 0, 1, 0, value=1.0, delay=0.0)
+    summ = _mk("Sum", SumBlock(), SumBlock, 2, 1, 100, sign="+-")
+    pid = _mk("PID", PIDBlock(), PIDBlock, 1, 1, 200, Kp=kp, Ki=ki, Kd=kd)
+    plant = _mk(
+        "TranFn",
+        TransferFunctionBlock(),
+        TransferFunctionBlock,
+        1,
+        1,
+        300,
+        numerator=[1.0],
+        denominator=[1.0, 1.0],
+    )
+    scope = _mk("Scope", ScopeBlock(), ScopeBlock, 1, 0, 400, labels="y")
+
+    def _line(sid, src, src_port, dst, dst_port):
+        return DLine(
+            sid=sid,
+            srcblock=src.name,
+            srcport=src_port,
+            dstblock=dst.name,
+            dstport=dst_port,
+            points=[QPoint(0, 0), QPoint(1, 1)],
+        )
+
+    lines = [
+        _line(0, step, 0, summ, 0),
+        _line(1, plant, 0, summ, 1),
+        _line(2, summ, 0, pid, 0),
+        _line(3, pid, 0, plant, 0),
+        _line(4, plant, 0, scope, 0),
+    ]
+
+    dsim.model.blocks_list[:] = [step, summ, pid, plant, scope]
+    dsim.model.line_list[:] = lines
+    dsim.blocks_list = dsim.model.blocks_list
+    dsim.line_list = dsim.model.line_list
+    dsim.connections_list = dsim.line_list
+
+
+def _run_error_input(kp, ki, kd, fast, dt, t_end):
+    from lib.lib import DSim
+    from lib.workspace import WorkspaceManager
+
+    WorkspaceManager._instance = None
+    dsim = DSim()
+    _build_error_input_pid_loop(dsim, kp, ki, kd)
+    dsim.use_fast_solver = fast
+    ok, err = dsim.run_tuning_simulation(t_end, dt)
+    assert ok, "run_tuning_simulation(fast=%s) failed: %r" % (fast, err)
+    return _scope_trace(dsim)
+
+
+@pytest.mark.regression
+class TestErrorInputPIDOrdering:
+    """The Sum feeding a 1-port PID must execute *before* it on both paths.
+
+    Both engines used to freeze this loop at exactly zero, for two independent
+    reasons:
+
+    * **Compiled path (the reported ordering bug).** The engine's hierarchy sort
+      is memory-block aware and emits ``[Step, PID, TranFn, Sum]`` so the
+      interpreter's Loop 1 can break the cycle with the previous step's inputs.
+      The compiled middle group inherited that order verbatim, so ``exec_pid``
+      read ``signals['Sum']`` before the Sum had written it -- 0.0 on every RHS
+      evaluation, a permanently zero error, and a dead loop. Fixed by
+      ``_dataflow_order`` in ``lib/engine/system_compiler.py``, which re-sorts
+      the middle group by true dataflow.
+    * **Interpreted path.** ``blocks/pid.py`` returned ``_last_output_`` whenever
+      port 1 was unconnected, so the error-input wiring never computed at all.
+      An unconnected measurement port now reads as 0.0, matching the compiled
+      kernel (``build_pid`` leaves ``meas_src`` None).
+    """
+
+    def test_middle_group_runs_the_sum_before_the_pid(self, qapp):
+        """The compiled middle group is in dataflow order, not hierarchy order."""
+        from lib.engine.system_compiler import _dataflow_order
+
+        class _B:
+            def __init__(self, name):
+                self.name = name
+
+        pid, summ, scope = _B("pid1"), _B("sum1"), _B("scope1")
+        # The middle group as the engine's memory-block-aware sort hands it over,
+        # with the PID ahead of the Sum that feeds it.
+        middle = [pid, summ, scope]
+        input_map = {
+            "sum1": {0: ("step1", 0), 1: ("tranfn1", 0)},
+            "pid1": {0: ("sum1", 0)},
+            "tranfn1": {0: ("pid1", 0)},
+            "scope1": {0: ("tranfn1", 0)},
+        }
+        ordered = [b.name for b in _dataflow_order(middle, input_map)]
+        assert ordered.index("sum1") < ordered.index("pid1"), (
+            "Sum must execute before the PID it feeds, got %r" % ordered
+        )
+        assert sorted(ordered) == sorted(["pid1", "sum1", "scope1"]), (
+            "dataflow ordering must be a permutation of the middle group, got %r" % ordered
+        )
+
+    def test_error_input_pid_loop_does_not_freeze_at_zero(self, qapp):
+        """Neither engine leaves the error-input PID loop dead at zero."""
+        for fast in (False, True):
+            y = _run_error_input(KP, KI, KD, fast=fast, dt=DT, t_end=25.0)
+            assert y is not None, "missing scope trace (fast=%s)" % fast
+            assert float(np.max(np.abs(y[:, 0]))) > 1e-6, (
+                "error-input PID loop frozen at zero (fast=%s)" % fast
+            )
+
+    def test_error_input_pid_loop_reaches_the_setpoint(self, qapp):
+        """Integral action drives both paths to the setpoint of 1.0."""
+        y_i = _run_error_input(KP, KI, KD, fast=False, dt=DT, t_end=25.0)
+        y_c = _run_error_input(KP, KI, KD, fast=True, dt=DT, t_end=25.0)
+        assert y_i is not None and y_c is not None, "missing scope trace"
+
+        final_interp = float(y_i[-1, 0])
+        final_compiled = float(y_c[-1, 0])
+        assert np.isclose(final_interp, 1.0, atol=2e-3), (
+            "interpreted error-input PID loop settled at %.6f, expected 1.0" % final_interp
+        )
+        assert np.isclose(final_compiled, 1.0, atol=2e-3), (
+            "compiled error-input PID loop settled at %.6f, expected 1.0" % final_compiled
+        )
