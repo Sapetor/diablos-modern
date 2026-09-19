@@ -60,7 +60,7 @@ dev = [
     "pytest-qt>=4.2.0",
     "pytest-cov>=4.0.0",
     "pytest-timeout>=2.1.0",
-    "ruff==0.15.18",  # pinned: matches .github/workflows/ci.yml (formatter output shifts between releases)
+    "ruff==0.16.8",  # pinned: matches .github/workflows/ci.yml (formatter output shifts between releases)
     "mypy>=1.0.0",
     # No Qt stubs entry: PyQt6 ships its own .pyi files (PyQt5-stubs was a
     # third-party stopgap for PyQt5 and has no PyQt6 successor).
@@ -98,7 +98,12 @@ py-modules = []
 # suggest 3.10+-only rewrites.
 target-version = "py39"
 line-length = 100
-extend-exclude = ["build", "dist", "archive", ".venv", ".venv-win"]
+# `*.md` keeps the formatter on Python files only. Ruff 0.16 started formatting
+# Python code blocks embedded in Markdown; here that only rewrites documentation
+# samples (collapsing the aligned trailing comments in CLAUDE.md / AGENTS.md that
+# are deliberate) without touching a line of shipped code. Drop this entry if the
+# docs samples should ever be formatter-governed too.
+extend-exclude = ["build", "dist", "archive", ".venv", ".venv-win", "*.md"]
 
 [tool.ruff.lint]
 # Keep Ruff's default, high-signal rule set (E4 imports, E7 statements,

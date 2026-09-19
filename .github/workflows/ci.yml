@@ -28,17 +28,17 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Install ruff
         # Pinned: `ruff format --check` output can shift between formatter
         # style releases; bump the pin together with a repo-wide reformat.
-        run: pip install ruff==0.15.18
+        run: pip install ruff==0.16.8
 
       - name: Lint
         # Config (rule selection, ignores, py39 target) lives in pyproject.toml.
@@ -73,10 +73,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -107,7 +107,7 @@ jobs:
       - name: Upload JUnit test report
         # Uploaded even when the suite fails — that is when it is most useful.
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: junit-py${{ matrix.python-version }}
           path: junit/test-results-${{ matrix.python-version }}.xml

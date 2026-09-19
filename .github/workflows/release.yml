@@ -36,10 +36,10 @@ jobs:
         shell: bash
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -62,7 +62,7 @@ jobs:
         run: ls -lh dist
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-macos-dmg
           path: dist/*.dmg
@@ -79,10 +79,10 @@ jobs:
         shell: bash
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -118,7 +118,7 @@ jobs:
           ls -lh
 
       - name: Upload zip artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-windows-zip
           path: dist/*.zip
@@ -134,10 +134,10 @@ jobs:
         shell: bash
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -179,7 +179,7 @@ jobs:
           ls -lh
 
       - name: Upload tarball artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-linux-tarball
           path: dist/*.tar.gz
@@ -195,7 +195,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           # Only the platform builds — the reusable CI workflow also uploads
           # JUnit reports, which have no business in the release assets.

@@ -12,7 +12,7 @@ pytest-timeout>=2.1.0  # CI backstop: fail a hung test instead of blocking the j
 # Pinned to the exact version .github/workflows/ci.yml installs: `ruff format` output shifts
 # between releases, so an unpinned local ruff can reformat the repo into a state that fails
 # the CI `ruff format --check` gate. Bump here, in pyproject.toml [dev] and in ci.yml together.
-ruff==0.15.18
+ruff==0.16.8
 mypy>=1.0.0
 
 # Type stubs: PyQt6 ships its own .pyi files, so there is no PyQt6-stubs
