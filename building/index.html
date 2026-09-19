@@ -2201,8 +2201,8 @@
 <tbody>
 <tr>
 <td>conda env <code>diablos_x86</code> (<code>~/opt/anaconda3/envs/diablos_x86</code>)</td>
-<td>3.9 (Anaconda)</td>
-<td>6.10.x (<code>&lt;6.11</code>; 6.11 needs 3.10+)</td>
+<td>3.9 (Anaconda) -- <strong>needs recreating on 3.10+</strong></td>
+<td>6.10.x</td>
 <td>x86_64</td>
 <td>x86_64 release (build via <code>arch -x86_64</code>)</td>
 </tr>
@@ -2215,9 +2215,12 @@
 </tr>
 </tbody>
 </table>
+<p>The x86_64 env predates the 3.10 baseline: it still holds Python 3.9, which
+<code>requires-python = "&gt;=3.10"</code> now refuses, so recreate it on 3.10+ before the next
+x86_64 release (<code>conda create -n diablos_x86 python=3.12</code>, then reinstall). The
+arm64 env is already on 3.12 and needs nothing.</p>
 <p>Both envs need: <code>PyQt6 numpy scipy matplotlib pyqtgraph Pillow tqdm pyinstaller</code>
--- install them with <code>pip install -r requirements.txt pyinstaller</code> so the
-Python-version marker on the PyQt6 pin is honoured. The PyQt6 macOS wheels are
+-- install them with <code>pip install -r requirements.txt pyinstaller</code>. The PyQt6 macOS wheels are
 <code>universal2</code>, so the same wheel serves both arches; the interpreter's
 architecture is what decides the build.</p>
 <div class="admonition note">
@@ -2418,7 +2421,7 @@ path literal passed to <code>open()</code> / <code>os.makedirs()</code> / <code>
 </ul>
 <h2 id="windows-build-windows-1011">Windows Build (Windows 10/11)<a class="headerlink" href="#windows-build-windows-1011" title="Permanent link">&para;</a></h2>
 <p>PyInstaller can only build for the platform it runs on. To build the Windows installer:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c"># 1. Install Python 3.9+ from python.org (check "Add to PATH")</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c"># 1. Install Python 3.10+ from python.org (check "Add to PATH")</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c"># 2. Clone the repo</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">git</span> <span class="n">clone</span> <span class="n">git</span><span class="nv">@github</span><span class="p">.</span><span class="n">com</span><span class="p">:</span><span class="n">Sapetor</span><span class="p">/</span><span class="n">diablos-modern</span><span class="p">.</span><span class="n">git</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nb">cd </span><span class="n">diablos-modern</span>
@@ -2482,7 +2485,7 @@ path literal passed to <code>open()</code> / <code>os.makedirs()</code> / <code>
 <ol>
 <li><strong>The workflow builds the artifacts.</strong> Pushing a <code>v*</code> tag runs
    <code>Release</code>, which first runs the whole CI workflow (<code>jobs.tests</code> reuses
-   <code>.github/workflows/ci.yml</code> through <code>workflow_call</code>, so lint + the 3.9/3.12
+   <code>.github/workflows/ci.yml</code> through <code>workflow_call</code>, so lint + the 3.10/3.12
    test matrix must be green), and only then builds on <code>macos-latest</code> (arm64,
    via <code>tools/build.sh</code>), <code>windows-latest</code> (PyInstaller + a zipped
    <code>dist/DiaBloS</code> folder) and <code>ubuntu-latest</code> (PyInstaller + a <code>dist/DiaBloS</code>
