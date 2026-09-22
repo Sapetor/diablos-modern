@@ -654,19 +654,28 @@ def _category_chip_colors(cat: str):
     light and dark panel backgrounds without needing different palettes.
     """
     c = (cat or "").lower()
-    accent_key = "text_secondary"
+    # Mirrors SimulationModel._get_category_color so a chip matches the block it
+    # drops onto the canvas. The fallback is block_other_accent (the canvas's
+    # `else`), not text_secondary: that grey left Analysis, Logic, Optimization,
+    # Optimization Primitives and PDE as colourless chips indistinguishable from
+    # one another, although the theme defines accents for most of them.
+    accent_key = "block_other_accent"
     if "source" in c:
         accent_key = "block_source_accent"
     elif "math" in c:
         accent_key = "block_process_accent"
     elif "control" in c or "continuous" in c:
         accent_key = "block_control_accent"
-    elif "filter" in c:
-        accent_key = "block_other_accent"
     elif "sink" in c:
         accent_key = "block_sink_accent"
-    elif "rout" in c or "discrete" in c:
-        accent_key = "block_other_accent"
+    elif "rout" in c:
+        accent_key = "block_routing_accent"
+    elif "analysis" in c:
+        accent_key = "block_analysis_accent"
+    elif "pde" in c:
+        accent_key = "block_pde_accent"
+    elif "optim" in c:
+        accent_key = "block_optimization_accent"
 
     accent = theme_manager.get_color(accent_key)
     bg = QColor(accent)
