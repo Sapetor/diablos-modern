@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-09-19
+> Last updated: 2026-09-22
 
 ---
 
@@ -516,12 +516,19 @@ complexity 25, all listed here.
     connect both succeed, and on failure `_rollback_paste` deletes exactly the
     appended blocks/lines in place and restores the selection, then re-raises into
     the existing "Paste failed" path. Tests: `tests/unit/test_clipboard_paste_rollback.py` (6).
-  - [ ] (b) pasted Subsystems get `username="Subsystem{sid}"` vs
-    `name="subsystem{sid}"`, so `apply_mask_appearance` (`lib/masks.py:383`) never
-    adopts the mask name — needs a decision on which spelling is canonical.
-  - [ ] (d) `_instantiate_pasted_blocks` sets `flipped` after construction without
-    re-running `update_Block()`, so a copied flipped block pastes with mirrored
-    port coordinates until it is next moved.
+  - [x] (b) Fixed 2026-09-22, and wider than noted: masking a subsystem created
+    *from a selection* was broken too (`name="Subsystem3"`, `username="Subsystem"`),
+    as was renaming a mask (the old mask name stuck). Decision: `name` stays as-is --
+    it is the identifier connections and saved diagrams refer to, so unifying the
+    spellings would rewrite identifiers in existing files. Instead
+    `lib/masks.py::_has_default_username` recognises every generated label (`name`,
+    `block_fn`, `block_fn+sid`, case-insensitive), and `set_mask` forces the new
+    mask name onto a label still showing the previous one. Typed labels are kept.
+    Tests: `tests/unit/test_mask_default_label.py` (13).
+  - [x] (d) Fixed 2026-09-22, and wider than noted: `FileService._construct_block`
+    had the same defect, so *every saved diagram with a flipped block reopened with
+    its ports swapped*, not just pasted ones. Both paths now call `update_Block()`
+    when the block is flipped. Tests: `tests/unit/test_flipped_block_ports.py` (5).
 - [x] **`solve_with_events`** (`lib/engine/zero_crossing.py`, was 232 lines,
   C901 = 25) — done 2026-09-10 (agent-driven, worktree). Now an ~80-line loop body
   (C901 = 9) over a `_SegmentLoop` state dataclass and phase helpers `_step_cap`,
@@ -533,7 +540,12 @@ complexity 25, all listed here.
   relay, saturation, simultaneous events, grid-point time event, chatter →
   fixed-step fallback, event cap with/without fallback, raising hooks, injected
   failing segment). Tests: `tests/unit/test_zero_crossing_phases.py` (28).
-  - [ ] Found while verifying (pre-existing, kept): `_restart_point`'s
+  - [x] Fixed 2026-09-22: `nextafter` now steps toward `np.inf` (time only runs
+    forward; one ulp past `tf` is consumed by `_fill_gap_samples`). Tests in
+    `test_zero_crossing_phases.py::TestRestartPoint`. The `fallback_integrator=None`
+    chatterer below is left as documented: the only production caller
+    (`compiled_runner.py`) always passes `integrate_fixed_step`, so it is unreachable
+    from the app. Original note: `_restart_point`'s
     `np.nextafter(t_event, tf + 1.0)` is a no-op when `tf + 1.0` rounds to
     `t_event` (|t| ~ 1e17, span under one ulp) so the restart lands on the root
     again; degenerate input only. Also documented but sharp: with
@@ -566,7 +578,12 @@ complexity 25, all listed here.
     painters deleted, slightly more code and a less uniform palette. Not worth it
     at the current tile size; revisit only if the tile grows (e.g. 32 px) or the
     initial-letter blocks (Optimization, PDE, Logic) get hand-drawn glyphs.
-  - [ ] Found by the spike (pre-existing): `_category_chip_colors` falls back to
+  - [x] Fixed 2026-09-22: chips now mirror `SimulationModel._get_category_color`
+    (Analysis, PDE, Optimization(-Primitives) get their accents; Routing moves from
+    `block_other_accent` to the teal `block_routing_accent` the canvas uses; the
+    fallback is `block_other_accent`). Logic/Other stay grey because the canvas has
+    no colour for them either. Tests: `tests/modern_ui/test_palette_chip_colors.py`
+    (26). Original note: `_category_chip_colors` falls back to
     `text_secondary` for Analysis, Logic, Optimization(-Primitives) and PDE, so
     those palette chips are nearly blank in the light theme whatever the glyph.
 - [x] **Test-suite ordering fragility** — found 2026-09-10 while committing the
