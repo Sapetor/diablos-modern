@@ -79,7 +79,7 @@ class DBlock:
         logger.debug(f"Initializing DBlock {block_fn}{sid}")
         self.name: str = block_fn.lower() + str(sid)
         self.category: str = category  # Store category for theme-aware rendering
-        self.flipped: bool = False
+        self._flipped: bool = False  # set directly: no geometry exists yet
         self.block_fn: str = block_fn
         self.sid: int = sid
         self.username: str = self.name if username == "" else username
@@ -382,6 +382,21 @@ class DBlock:
     def toggle_selection(self) -> None:
         """Toggle the selection state of this block."""
         self.selected = not self.selected
+
+    @property
+    def flipped(self) -> bool:
+        """Whether the block is mirrored horizontally (inputs on the right)."""
+        return self._flipped
+
+    @flipped.setter
+    def flipped(self, value: bool) -> None:
+        # Port coordinates depend on the flip, so a change re-lays them out here
+        # rather than relying on every writer (load, paste, the Flip action) to
+        # call update_Block() afterwards -- load and paste used to forget.
+        value = bool(value)
+        if value != self._flipped:
+            self._flipped = value
+            self.update_Block()
 
     def update_Block(self) -> None:
         """Update block geometry and port positions based on current state."""

@@ -1,22 +1,22 @@
 """
-Palette chips take the same category colour family as the block on the canvas.
+Palette chips and category dots take the same colour family as the block on the canvas.
 
-``_category_chip_colors`` used to fall back to ``text_secondary`` for every
-category it did not name, so Analysis, Logic, Optimization, Optimization
-Primitives and PDE all drew as identical grey chips, and Routing was mapped to
-``block_other_accent`` although the canvas paints Routing blocks with
-``block_routing``. The chip now mirrors ``SimulationModel._get_category_color``:
-category ``X`` on the canvas uses ``block_X``, its chip uses ``block_X_accent``.
+The palette used to carry its own category->colour chains. The chip fell back to
+``text_secondary``, so Analysis, Logic, Optimization, Optimization Primitives and
+PDE drew as identical grey chips, and Routing disagreed with the canvas; the dot
+beside it had drifted further still. All three now resolve through
+``lib.theming.categories.category_theme_key``: the canvas fills with the key, the
+chip and dot use ``key + "_accent"``.
 """
 
 import pytest
 
+from lib.theming.categories import category_theme_key
 from lib.theming.theme_manager import ThemeType, theme_manager
-from modern_ui.widgets.modern_palette import _category_chip_colors
+from modern_ui.widgets.modern_palette import _category_accent, _category_chip_colors
 
-# Every category the shipped blocks declare, with the canvas colour key that
-# SimulationModel._get_category_color resolves it to.
-CANVAS_KEY = {
+# Every category the shipped blocks declare, plus one they don't.
+EXPECTED_KEY = {
     "Sources": "block_source",
     "Math": "block_process",
     "Control": "block_control",
@@ -28,7 +28,13 @@ CANVAS_KEY = {
     "Optimization Primitives": "block_optimization",
     "Logic": "block_other",
     "Other": "block_other",
+    "Something New": "block_other",
 }
+
+
+@pytest.mark.parametrize("category", sorted(EXPECTED_KEY))
+def test_category_theme_key(category):
+    assert category_theme_key(category) == EXPECTED_KEY[category]
 
 
 @pytest.fixture(params=[ThemeType.LIGHT, ThemeType.DARK], ids=["light", "dark"])
@@ -39,28 +45,8 @@ def theme(request, qapp):
     theme_manager.set_theme(previous)
 
 
-@pytest.mark.parametrize("category", sorted(CANVAS_KEY))
-def test_chip_accent_matches_the_canvas_colour_family(theme, category):
-    _bg, accent, _fg = _category_chip_colors(category)
-    expected = theme_manager.get_color(CANVAS_KEY[category] + "_accent")
-    assert accent.name() == expected.name(), "%s chip uses %s, canvas family %s_accent is %s" % (
-        category,
-        accent.name(),
-        CANVAS_KEY[category],
-        expected.name(),
-    )
-
-
-def test_categories_with_their_own_canvas_colour_get_distinct_chips(theme):
-    """The regression: five categories used to collapse onto one grey."""
-    own_colour = [c for c, key in CANVAS_KEY.items() if key != "block_other"]
-    accents = {c: _category_chip_colors(c)[1].name() for c in own_colour}
-    grey = theme_manager.get_color("block_other_accent").name()
-    assert grey not in accents.values(), "a coloured category fell back to grey: %r" % accents
-    # The two Optimization families share one canvas colour; everything else differs.
-    assert len(set(accents.values())) == len(set(CANVAS_KEY[c] for c in own_colour))
-
-
-def test_unknown_category_falls_back_like_the_canvas(theme):
-    _bg, accent, _fg = _category_chip_colors("Something New")
-    assert accent.name() == theme_manager.get_color("block_other_accent").name()
+@pytest.mark.parametrize("category", sorted(EXPECTED_KEY))
+def test_chip_and_dot_use_the_category_accent(theme, category):
+    expected = theme_manager.get_color(EXPECTED_KEY[category] + "_accent").name()
+    assert _category_chip_colors(category)[1].name() == expected
+    assert _category_accent(category).name() == expected

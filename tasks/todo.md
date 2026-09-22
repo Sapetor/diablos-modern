@@ -527,8 +527,9 @@ complexity 25, all listed here.
     Tests: `tests/unit/test_mask_default_label.py` (13).
   - [x] (d) Fixed 2026-09-22, and wider than noted: `FileService._construct_block`
     had the same defect, so *every saved diagram with a flipped block reopened with
-    its ports swapped*, not just pasted ones. Both paths now call `update_Block()`
-    when the block is flipped. Tests: `tests/unit/test_flipped_block_ports.py` (5).
+    its ports swapped*, not just pasted ones. `DBlock.flipped` is now a property
+    whose setter re-lays the ports, so no writer can forget (the canvas Flip action's
+    manual call went too). Tests: `tests/unit/test_flipped_block_ports.py` (5).
 - [x] **`solve_with_events`** (`lib/engine/zero_crossing.py`, was 232 lines,
   C901 = 25) — done 2026-09-10 (agent-driven, worktree). Now an ~80-line loop body
   (C901 = 9) over a `_SegmentLoop` state dataclass and phase helpers `_step_cap`,
@@ -578,12 +579,14 @@ complexity 25, all listed here.
     painters deleted, slightly more code and a less uniform palette. Not worth it
     at the current tile size; revisit only if the tile grows (e.g. 32 px) or the
     initial-letter blocks (Optimization, PDE, Logic) get hand-drawn glyphs.
-  - [x] Fixed 2026-09-22: chips now mirror `SimulationModel._get_category_color`
-    (Analysis, PDE, Optimization(-Primitives) get their accents; Routing moves from
+  - [x] Fixed 2026-09-22: canvas fill, palette chip and category dot now share one
+    table, `lib/theming/categories.py::category_theme_key` (the dot beside the chip
+    was a third, further-drifted copy). Analysis, PDE, Optimization(-Primitives) get
+    their accents; Routing moves from
     `block_other_accent` to the teal `block_routing_accent` the canvas uses; the
     fallback is `block_other_accent`). Logic/Other stay grey because the canvas has
     no colour for them either. Tests: `tests/modern_ui/test_palette_chip_colors.py`
-    (26). Original note: `_category_chip_colors` falls back to
+    (36). Original note: `_category_chip_colors` falls back to
     `text_secondary` for Analysis, Logic, Optimization(-Primitives) and PDE, so
     those palette chips are nearly blank in the light theme whatever the glyph.
 - [x] **Test-suite ordering fragility** — found 2026-09-10 while committing the

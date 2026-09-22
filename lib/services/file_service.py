@@ -493,14 +493,9 @@ class FileService:
             if block.params is not None:
                 block.params["_name_"] = saved_name
 
-        block.flipped = block_data.get("flipped", False)
+        # height_base first: the flipped setter re-lays the ports and reads it.
         block.height_base = block_data.get("coords_height_base", block.height)
-        # The constructor laid the ports out unflipped; a flipped block must
-        # recompute them or it reopens with its inputs and outputs swapped
-        # (the wires then attach to the wrong side). The canvas flip action
-        # does the same after toggling the flag.
-        if block.flipped:
-            block.update_Block()
+        block.flipped = block_data.get("flipped", False)
 
         # b_color is re-derived from the current palette via category, not
         # restored from the file — old files have stale palette hex baked in.

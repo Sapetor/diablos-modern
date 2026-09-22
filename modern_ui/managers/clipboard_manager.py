@@ -306,11 +306,6 @@ class ClipboardManager:
         for block_data in self.clipboard_blocks:
             new_block = self._instantiate_block(block_data, block_data["coords"].translated(offset))
             new_block.flipped = block_data["flipped"]
-            if new_block.flipped:
-                # The constructor laid the ports out unflipped; recompute them,
-                # as the canvas flip action does, or the pasted block keeps
-                # mirrored port coordinates until it is next moved.
-                new_block.update_Block()
             new_block.selected = True  # Select the pasted blocks
             self._keep_mask_appearance(new_block)
             self.dsim.blocks_list.append(new_block)

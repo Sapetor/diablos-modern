@@ -412,7 +412,7 @@ def solve_with_events(
         _apply_discrete_updates(fired, t_event, y_event, cache)
         _record_event(result, mode_states, t_event, fired)
         _update_chatter_guard(result, loop, t_event, fired, min_separation, max_events)
-        loop.t_start, loop.y_start = _restart_point(model_func, t_event, y_event, nudge, tf)
+        loop.t_start, loop.y_start = _restart_point(model_func, t_event, y_event, nudge)
         cache.invalidate()
 
         if result.guard_tripped and loop.events_active:
@@ -591,15 +591,10 @@ def _update_chatter_guard(
         result.guard_reason = "event cap of {} reached at t={:.6g}s".format(max_events, t_event)
 
 
-def _restart_point(model_func, t_event: float, y_event, nudge: float, tf: float):
+def _restart_point(model_func, t_event: float, y_event, nudge: float):
     """``(t_start, y_start)`` for the segment after a root: a nudge past it in both coordinates."""
     t_start = t_event + nudge
-    if not (t_start > t_event):  # nudge lost to rounding at huge |t|
-        # Step one ulp toward +inf, not toward ``tf + 1.0``: at |t| ~ 1e17 that
-        # target rounds back to ``tf``, and when the root sits within an ulp of
-        # ``tf`` nextafter(t_event, t_event) returns t_event itself, restarting
-        # on the root. Time only runs forward here, and a t_start one ulp past
-        # tf is harmless -- _fill_gap_samples consumes the rest of the grid.
+    if not (t_start > t_event):  # nudge lost to rounding at huge |t|: one ulp forward
         t_start = float(np.nextafter(t_event, np.inf))
     y_start = _state_at_restart(model_func, t_event, y_event, t_start - t_event)
     return t_start, y_start

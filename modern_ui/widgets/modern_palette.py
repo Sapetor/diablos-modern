@@ -39,6 +39,7 @@ from PyQt6.QtGui import QDrag, QPainter, QPixmap, QFont, QColor, QPen, QPainterP
 from lib.app_paths import SETTINGS_ORG as _SETTINGS_ORG, SETTINGS_APP as _SETTINGS_APP
 from lib.app_paths import ui_settings
 from lib.i18n import tr, tr_noop
+from lib.theming.categories import category_theme_key
 from lib.user_blocks import is_user_block, user_block_source
 
 # Chevron glyphs for the collapsible category header (expanded / collapsed).
@@ -125,24 +126,9 @@ from modern_ui.themes.theme_manager import theme_manager
 logger = logging.getLogger(__name__)
 
 
-# Category color dots — driven by theme tokens that already exist.
-def _category_dot_color(category: str) -> QColor:
-    c = (category or "").lower()
-    if "source" in c:
-        return theme_manager.get_color("block_source_accent")
-    if "math" in c:
-        return theme_manager.get_color("block_process_accent")
-    if "control" in c or "continuous" in c:
-        return theme_manager.get_color("block_control_accent")
-    if "sink" in c:
-        return theme_manager.get_color("block_sink_accent")
-    if "rout" in c:
-        return theme_manager.get_color("text_secondary")
-    if "filter" in c:
-        return theme_manager.get_color("accent_primary")
-    if "discrete" in c:
-        return theme_manager.get_color("block_other_accent")
-    return theme_manager.get_color("text_secondary")
+def _category_accent(category: str) -> QColor:
+    """The category's accent colour, the family its blocks are painted in on the canvas."""
+    return theme_manager.get_color(category_theme_key(category) + "_accent")
 
 
 # -----------------------------------------------------------------------------
@@ -486,7 +472,7 @@ class _CategoryDot(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(_category_dot_color(self._cat))
+        p.setBrush(_category_accent(self._cat))
         p.drawEllipse(0, 0, self.SIZE, self.SIZE)
 
 
@@ -653,31 +639,7 @@ def _category_chip_colors(cat: str):
     Chip background is a low-alpha tint of the accent so it reads on both
     light and dark panel backgrounds without needing different palettes.
     """
-    c = (cat or "").lower()
-    # Mirrors SimulationModel._get_category_color so a chip matches the block it
-    # drops onto the canvas. The fallback is block_other_accent (the canvas's
-    # `else`), not text_secondary: that grey left Analysis, Logic, Optimization,
-    # Optimization Primitives and PDE as colourless chips indistinguishable from
-    # one another, although the theme defines accents for most of them.
-    accent_key = "block_other_accent"
-    if "source" in c:
-        accent_key = "block_source_accent"
-    elif "math" in c:
-        accent_key = "block_process_accent"
-    elif "control" in c or "continuous" in c:
-        accent_key = "block_control_accent"
-    elif "sink" in c:
-        accent_key = "block_sink_accent"
-    elif "rout" in c:
-        accent_key = "block_routing_accent"
-    elif "analysis" in c:
-        accent_key = "block_analysis_accent"
-    elif "pde" in c:
-        accent_key = "block_pde_accent"
-    elif "optim" in c:
-        accent_key = "block_optimization_accent"
-
-    accent = theme_manager.get_color(accent_key)
+    accent = _category_accent(cat)
     bg = QColor(accent)
     bg.setAlpha(48)
     # Glyph color: on dark theme use a lightened accent for max readability;

@@ -76,37 +76,11 @@ class SimulationModel:
         self.load_library_blocks()
 
     def _get_category_color(self, category: str) -> QColor:
-        """
-        Get theme-aware color for a block category.
-
-        Args:
-            category: Block category (Sources, Math, Control, Sinks, Other)
-
-        Returns:
-            QColor from theme manager for the category
-        """
+        """Theme-aware fill colour for a block category."""
+        from lib.theming.categories import category_theme_key
         from lib.theming.theme_manager import theme_manager
 
-        category_lower = category.lower() if isinstance(category, str) else str(category).lower()
-
-        if "source" in category_lower:
-            return theme_manager.get_color("block_source")
-        elif "math" in category_lower:
-            return theme_manager.get_color("block_process")
-        elif "control" in category_lower:
-            return theme_manager.get_color("block_control")
-        elif "sink" in category_lower:
-            return theme_manager.get_color("block_sink")
-        elif "routing" in category_lower:
-            return theme_manager.get_color("block_routing")
-        elif "analysis" in category_lower:
-            return theme_manager.get_color("block_analysis")
-        elif "pde" in category_lower:
-            return theme_manager.get_color("block_pde")
-        elif "optim" in category_lower:
-            return theme_manager.get_color("block_optimization")
-        else:
-            return theme_manager.get_color("block_other")
+        return theme_manager.get_color(category_theme_key(category))
 
     def load_all_blocks(
         self, diagram_path: Optional[str] = None, reload_user: bool = False

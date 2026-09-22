@@ -970,8 +970,7 @@ class ModernCanvas(QWidget):
         try:
             for block in self.dsim.blocks_list:
                 if block.selected:
-                    block.flipped = not block.flipped
-                    block.update_Block()  # Recalculate port positions
+                    block.flipped = not block.flipped  # the setter re-lays the ports
             self._update_line_positions()
             self.update()  # Redraw canvas
             logger.info("Flipped selected blocks")
