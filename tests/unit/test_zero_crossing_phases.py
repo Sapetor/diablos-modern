@@ -336,9 +336,24 @@ class TestRestartPoint:
         t_event = 1e17  # ulp is 16, so a 1e-11 nudge is lost to rounding
         tf = t_event + 64.0
         t_start, y_start = _restart_point(model, t_event, np.array([0.0]), 1e-11, tf)
-        assert t_start == np.nextafter(t_event, tf + 1.0)
+        assert t_start == np.nextafter(t_event, np.inf)
         assert t_start > t_event
         assert np.array_equal(y_start, [t_start - t_event])
+
+    @pytest.mark.parametrize("tf_offset", [0.0, 8.0], ids=["root_at_tf", "tf_within_one_ulp"])
+    def test_root_at_the_end_of_a_huge_span_still_moves_forward(self, tf_offset):
+        """``nextafter(t_event, tf + 1.0)`` used to be a no-op here.
+
+        At |t| ~ 1e17 the ulp is 16, so ``tf + 1.0`` rounds back to ``tf``;
+        with the root at (or within an ulp of) ``tf`` the target equalled
+        ``t_event`` and nextafter returned it unchanged, restarting the next
+        segment on the root it had just located.
+        """
+        model = _Model(lambda t, y: np.array([1.0]))
+        t_event = 1e17
+        tf = t_event + tf_offset  # +8.0 rounds to t_event itself
+        t_start, _ = _restart_point(model, t_event, np.array([0.0]), 1e-11, tf)
+        assert t_start > t_event
 
     def test_unusable_rhs_keeps_the_state(self):
         model = _Model(lambda t, y: np.array([np.nan]))
