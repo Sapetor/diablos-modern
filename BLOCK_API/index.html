@@ -2680,15 +2680,28 @@ stepping across it:</p>
 <a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    <span class="p">]</span>
 </code></pre></div>
 <h3 id="what-happens-if-your-block-has-no-kernel">What happens if your block has no kernel<a class="headerlink" href="#what-happens-if-your-block-has-no-kernel" title="Permanent link">&para;</a></h3>
-<p>Nothing breaks. <code>SystemCompiler.check_compilability</code> gates the whole diagram on
-an allowlist (<code>COMPILABLE_BLOCKS</code>); a diagram containing a block that is not on
-it runs on the interpreted path, which is slower but produces the same answer.</p>
-<p><strong>Today that allowlist is a hard-coded set inside
-<code>lib/engine/system_compiler.py</code> and a user module cannot extend it</strong>, so a
-diagram containing a user block always uses the interpreted solver, whether or
-not you register a kernel. Registering one is still meaningful if you intend to
-contribute the block upstream (or you maintain your own build): add the name to
-<code>COMPILABLE_BLOCKS</code> there and the kernel takes effect.</p>
+<p>Nothing breaks. <code>SystemCompiler.check_compilability</code> gates the whole diagram:
+a diagram containing a block without a kernel runs on the interpreted path,
+which is slower but produces the same answer.</p>
+<p>For built-in blocks the gate is the allowlist <code>COMPILABLE_BLOCKS</code> in
+<code>lib/engine/system_compiler.py</code>. Some built-ins have a kernel but stay off
+that list on purpose (Impulse, Noise), because the adaptive solver cannot run
+them correctly.</p>
+<p>A <strong>user block</strong> joins the compiled path as soon as its module registers a
+kernel under its canonical name — no allowlist edit needed. Three rules:</p>
+<ul>
+<li><strong>The kernel must be algebraic.</strong> The compiler allocates no ODE states for a
+  user block, so the closure computes its output from <code>signals</code> and <code>t</code> only
+  and never touches <code>y</code> or <code>dy_vec</code>. A block that integrates or keeps memory
+  must stay on the interpreted path: give it no kernel.</li>
+<li><strong><code>execute()</code> stays the source of truth.</strong> The post-solve replay that fills
+  Scope histories calls <code>execute()</code> for user blocks, so the kernel and
+  <code>execute()</code> must compute the same function.</li>
+<li><strong>Built-in names are reserved.</strong> A user module that registers <code>@kernel</code> or
+  <code>@events</code> under a built-in's name (say <code>"Gain"</code>) is ignored with a warning;
+  it cannot replace the engine's own kernel.</li>
+</ul>
+<p><code>docs/examples/custom_kernel_template.py</code> is a complete, working example.</p>
 <hr />
 <h2 id="8-localization">8. Localization<a class="headerlink" href="#8-localization" title="Permanent link">&para;</a></h2>
 <p>The UI is translated through <code>lib/i18n.py</code>; blocks participate in two narrow

@@ -9,13 +9,12 @@ Two execution paths exist (see ``docs/FAST_SOLVER.md``):
   registering a *kernel builder* -- a function that bakes the block's
   parameters into a small closure ``f(t, y, dy_vec, signals)``.
 
-Registering a kernel is what this file shows.  Read the caveat in
-``docs/BLOCK_API.md`` first: the compiler additionally gates a diagram on
-``SystemCompiler.COMPILABLE_BLOCKS``, an allowlist that a user module cannot
-extend, so today a diagram containing a user block always runs on the
-interpreted path.  ``execute()`` therefore stays the source of truth, and the
-kernel below is what a block contributed to the engine (or a vendored build)
-would look like.
+Registering a kernel is what this file shows.  Dropped into a user blocks
+folder, the module makes SoftClip compilable: a diagram that uses it runs on
+the fast solver instead of falling back to the interpreter.  The kernel must
+be algebraic (the compiler gives a user block no ODE states) and must compute
+the same function as ``execute()``, which the post-solve replay still calls.
+See section 7 of ``docs/BLOCK_API.md``.
 
 Nothing here is required for a normal custom block -- start from
 ``custom_block_template.py`` instead.
