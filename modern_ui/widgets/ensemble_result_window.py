@@ -41,7 +41,7 @@ from PyQt6.QtCore import Qt
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 from lib.i18n import tr
 
-from lib.analysis.monte_carlo import OUTCOME_METRICS
+from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
 
 
 # How many individual member traces to draw as faint background lines. Capped so
@@ -126,10 +126,11 @@ class EnsembleResultWindow(QWidget):
         controls.addStretch(1)
         self.metric_label = QLabel(tr("Metric:"))
         self.metric_combo = QComboBox()
-        # NOTE: metric_combo items are OUTCOME_METRICS keys and are used verbatim
-        # as dict lookup keys (currentText() -> OUTCOME_METRICS[...] / sig["metrics"][...]),
-        # so they are intentionally left untranslated here.
-        self.metric_combo.addItems(list(OUTCOME_METRICS.keys()))
+        # Displayed text is the translated label; the OUTCOME_METRICS key
+        # (an identifier, never translated) rides along as item data so
+        # lookups into OUTCOME_METRICS / sig["metrics"] stay keyed in English.
+        for key in OUTCOME_METRICS:
+            self.metric_combo.addItem(tr(OUTCOME_METRIC_LABELS.get(key, key)), key)
         controls.addWidget(self.metric_label)
         controls.addWidget(self.metric_combo)
         layout.addLayout(controls)
@@ -144,7 +145,7 @@ class EnsembleResultWindow(QWidget):
         layout.addWidget(self.stack, 1)
 
         self.view_combo.currentIndexChanged.connect(self._on_view_changed)
-        self.metric_combo.currentTextChanged.connect(self._on_metric_changed)
+        self.metric_combo.currentIndexChanged.connect(self._on_metric_changed)
 
         # Initial render of both views; start on the time-series view.
         self._plot_signal(self._signal_names[0])
@@ -245,19 +246,20 @@ class EnsembleResultWindow(QWidget):
         self.hist_plot.clear()
 
         name = self.combo.currentText()
-        metric = self.metric_combo.currentText()
+        metric = self.metric_combo.currentData()
+        metric_label = tr(OUTCOME_METRIC_LABELS.get(metric, metric))
         sig = (self.result.get("signals") or {}).get(name)
         if not sig:
             return
 
         vals = self._metric_values(sig, metric)
         vals = vals[np.isfinite(vals)] if vals.size else vals
-        # `name` and `metric` are data identifiers (signal name / OUTCOME_METRICS
-        # key); only the surrounding words are translated.
+        # `name` is a data identifier (signal name); `metric_label` is the
+        # already-translated display label for the OUTCOME_METRICS key.
         self.hist_plot.setTitle(
-            tr("{name} - {metric} ({n} runs)", name=name, metric=metric, n=vals.size)
+            tr("{name} - {metric} ({n} runs)", name=name, metric=metric_label, n=vals.size)
         )
-        self.hist_plot.setLabel("bottom", str(metric))
+        self.hist_plot.setLabel("bottom", metric_label)
         if vals.size == 0:
             return
 

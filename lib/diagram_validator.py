@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Set, Tuple
 from enum import Enum
 
 from lib.engine.memory_blocks import OUTPUT_ONLY_SAFE_BLOCK_FNS, is_memory_block
+from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +180,16 @@ class DiagramValidator:
                 if (block.name, i) not in input_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.ERROR,
-                        message=f"Block '{block.username or block.name}' has disconnected input port {i + 1}",
+                        message=tr(
+                            "Block '{name}' has disconnected input port {port}",
+                            name=block.username or block.name,
+                            port=i + 1,
+                        ),
                         blocks=[block],
-                        suggestion=f"Connect an output to input port {i + 1} or remove the block",
+                        suggestion=tr(
+                            "Connect an output to input port {port} or remove the block",
+                            port=i + 1,
+                        ),
                     )
                     self.errors.append(error)
 
@@ -215,9 +223,16 @@ class DiagramValidator:
                 if (block.name, i) not in output_connections:
                     error = ValidationError(
                         severity=ErrorSeverity.WARNING,
-                        message=f"Block '{block.username or block.name}' has disconnected output port {i + 1}",
+                        message=tr(
+                            "Block '{name}' has disconnected output port {port}",
+                            name=block.username or block.name,
+                            port=i + 1,
+                        ),
                         blocks=[block],
-                        suggestion=f"Connect output port {i + 1} to another block or add a sink",
+                        suggestion=tr(
+                            "Connect output port {port} to another block or add a sink",
+                            port=i + 1,
+                        ),
                     )
                     self.errors.append(error)
 
@@ -242,9 +257,12 @@ class DiagramValidator:
             if block.name not in connected_blocks:
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Block '{block.username or block.name}' is not connected to anything",
+                    message=tr(
+                        "Block '{name}' is not connected to anything",
+                        name=block.username or block.name,
+                    ),
                     blocks=[block],
-                    suggestion="Connect this block to the diagram or remove it",
+                    suggestion=tr("Connect this block to the diagram or remove it"),
                 )
                 self.errors.append(error)
 
@@ -267,9 +285,12 @@ class DiagramValidator:
                 self.errors.append(
                     ValidationError(
                         severity=ErrorSeverity.WARNING,
-                        message=f"Multiple Goto blocks share tag '{tag or '(empty)'}'",
+                        message=tr(
+                            "Multiple Goto blocks share tag '{tag}'",
+                            tag=tag or tr("(empty)"),
+                        ),
                         blocks=gotos,
-                        suggestion="Use unique tags or remove duplicates to avoid ambiguity",
+                        suggestion=tr("Use unique tags or remove duplicates to avoid ambiguity"),
                     )
                 )
 
@@ -279,9 +300,12 @@ class DiagramValidator:
                 self.errors.append(
                     ValidationError(
                         severity=ErrorSeverity.ERROR,
-                        message=f"From tag '{tag or '(empty)'}' has no matching Goto",
+                        message=tr(
+                            "From tag '{tag}' has no matching Goto",
+                            tag=tag or tr("(empty)"),
+                        ),
                         blocks=frs,
-                        suggestion="Add a Goto with the same tag or update the tag",
+                        suggestion=tr("Add a Goto with the same tag or update the tag"),
                     )
                 )
 
@@ -291,9 +315,12 @@ class DiagramValidator:
                 self.errors.append(
                     ValidationError(
                         severity=ErrorSeverity.WARNING,
-                        message=f"Goto tag '{tag or '(empty)'}' is unused (no From)",
+                        message=tr(
+                            "Goto tag '{tag}' is unused (no From)",
+                            tag=tag or tr("(empty)"),
+                        ),
                         blocks=gotos,
-                        suggestion="Add a From with the same tag or remove the Goto",
+                        suggestion=tr("Add a From with the same tag or remove the Goto"),
                     )
                 )
 
@@ -307,18 +334,26 @@ class DiagramValidator:
             if line.srcblock not in valid_block_names:
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Connection '{line.name}' references non-existent source block '{line.srcblock}'",
+                    message=tr(
+                        "Connection '{name}' references non-existent source block '{block}'",
+                        name=line.name,
+                        block=line.srcblock,
+                    ),
                     connections=[line],
-                    suggestion="Delete this invalid connection",
+                    suggestion=tr("Delete this invalid connection"),
                 )
                 self.errors.append(error)
 
             if line.dstblock not in valid_block_names:
                 error = ValidationError(
                     severity=ErrorSeverity.ERROR,
-                    message=f"Connection '{line.name}' references non-existent destination block '{line.dstblock}'",
+                    message=tr(
+                        "Connection '{name}' references non-existent destination block '{block}'",
+                        name=line.name,
+                        block=line.dstblock,
+                    ),
                     connections=[line],
-                    suggestion="Delete this invalid connection",
+                    suggestion=tr("Delete this invalid connection"),
                 )
                 self.errors.append(error)
 
@@ -338,10 +373,17 @@ class DiagramValidator:
 
             error = ValidationError(
                 severity=ErrorSeverity.ERROR,
-                message=f"Block '{(block.username or block.name) if block else block_name}' input port {port_idx + 1} has {len(connections)} connections",
+                message=tr(
+                    "Block '{name}' input port {port} has {count} connections",
+                    name=(block.username or block.name) if block else block_name,
+                    port=port_idx + 1,
+                    count=len(connections),
+                ),
                 blocks=[block] if block else [],
                 connections=connections,
-                suggestion=f"Remove all but one connection to input port {port_idx + 1}",
+                suggestion=tr(
+                    "Remove all but one connection to input port {port}", port=port_idx + 1
+                ),
             )
             self.errors.append(error)
 
@@ -436,12 +478,18 @@ class DiagramValidator:
                 self.errors.append(
                     ValidationError(
                         severity=ErrorSeverity.INFO,
-                        message=f"Discrete signal from '{src_block.username or src_block.name}' "
-                        f"(Ts={src_rate}s) connects to continuous block "
-                        f"'{dst_block.username or dst_block.name}'",
+                        message=tr(
+                            "Discrete signal from '{src}' (Ts={src_rate}s) connects to "
+                            "continuous block '{dst}'",
+                            src=src_block.username or src_block.name,
+                            src_rate=src_rate,
+                            dst=dst_block.username or dst_block.name,
+                        ),
                         blocks=[src_block, dst_block],
                         connections=[line],
-                        suggestion="Consider adding a RateTransition block for proper signal conversion",
+                        suggestion=tr(
+                            "Consider adding a RateTransition block for proper signal conversion"
+                        ),
                     )
                 )
 
@@ -450,22 +498,31 @@ class DiagramValidator:
                 # Calculate rate ratio
                 if src_rate > dst_rate:
                     ratio = src_rate / dst_rate  # Downsampling
-                    direction = "slower→faster"
+                    direction = tr("slower→faster")
                 else:
                     ratio = dst_rate / src_rate  # Upsampling
-                    direction = "faster→slower"
+                    direction = tr("faster→slower")
 
                 # Check if ratio is non-integer (potential aliasing)
                 if abs(ratio - round(ratio)) > 0.01:
                     self.errors.append(
                         ValidationError(
                             severity=ErrorSeverity.WARNING,
-                            message=f"Non-integer sample rate ratio ({ratio:.2f}x, {direction}) "
-                            f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
-                            f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            message=tr(
+                                "Non-integer sample rate ratio ({ratio}x, {direction}) "
+                                "between '{src}' (Ts={src_rate}s) and '{dst}' (Ts={dst_rate}s)",
+                                ratio=f"{ratio:.2f}",
+                                direction=direction,
+                                src=src_block.username or src_block.name,
+                                src_rate=src_rate,
+                                dst=dst_block.username or dst_block.name,
+                                dst_rate=dst_rate,
+                            ),
                             blocks=[src_block, dst_block],
                             connections=[line],
-                            suggestion="Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block",
+                            suggestion=tr(
+                                "Use integer rate ratios (e.g., 2x, 4x) or add a RateTransition block"
+                            ),
                         )
                     )
 
@@ -474,12 +531,21 @@ class DiagramValidator:
                     self.errors.append(
                         ValidationError(
                             severity=ErrorSeverity.INFO,
-                            message=f"Sample rate change ({ratio:.0f}x, {direction}) "
-                            f"between '{src_block.username or src_block.name}' (Ts={src_rate}s) "
-                            f"and '{dst_block.username or dst_block.name}' (Ts={dst_rate}s)",
+                            message=tr(
+                                "Sample rate change ({ratio}x, {direction}) "
+                                "between '{src}' (Ts={src_rate}s) and '{dst}' (Ts={dst_rate}s)",
+                                ratio=f"{ratio:.0f}",
+                                direction=direction,
+                                src=src_block.username or src_block.name,
+                                src_rate=src_rate,
+                                dst=dst_block.username or dst_block.name,
+                                dst_rate=dst_rate,
+                            ),
                             blocks=[src_block, dst_block],
                             connections=[line],
-                            suggestion="Consider adding a RateTransition block for proper rate conversion",
+                            suggestion=tr(
+                                "Consider adding a RateTransition block for proper rate conversion"
+                            ),
                         )
                     )
 
@@ -517,7 +583,7 @@ def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]
         if hasattr(block, "name") and block.name not in connected_blocks:
             if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
                 if block.in_ports > 0 or block.out_ports > 0:
-                    warnings.append(f"Block '{block.name}' has no connections")
+                    warnings.append(tr("Block '{name}' has no connections", name=block.name))
 
     # One message per extra line into a duplicated port, in line order.
     duplicates = find_duplicate_input_connections(line_list)
@@ -525,7 +591,11 @@ def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]
         key = (getattr(line, "dstblock", None), getattr(line, "dstport", None))
         if key in duplicates and line is not duplicates[key][0]:
             errors.append(
-                f"Multiple connections to same input port: block {line.dstblock}, port {line.dstport}"
+                tr(
+                    "Multiple connections to same input port: block {block}, port {port}",
+                    block=line.dstblock,
+                    port=line.dstport,
+                )
             )
 
     no_loops, loop_errors = detect_algebraic_loops(blocks_list, line_list)
@@ -600,7 +670,7 @@ def detect_algebraic_loops(blocks_list, line_list) -> Tuple[bool, List[str]]:
 
     if count < len(blocks_list):
         cycle_nodes = [name for name, degree in in_degree.items() if degree > 0]
-        return False, [f"Algebraic loop detected involving blocks: {cycle_nodes}"]
+        return False, [tr("Algebraic loop detected involving blocks: {nodes}", nodes=cycle_nodes)]
     return True, []
 
 
@@ -609,16 +679,16 @@ def check_block_integrity(block: Any) -> Tuple[bool, List[str]]:
     errors: List[str] = []
     for attr in ("name", "sid", "in_ports", "out_ports", "b_type", "fn_name"):
         if not hasattr(block, attr):
-            errors.append(f"Block missing required attribute: {attr}")
+            errors.append(tr("Block missing required attribute: {attr}", attr=attr))
 
     if hasattr(block, "in_ports") and hasattr(block, "out_ports"):
         if block.in_ports < 0:
-            errors.append("Block has negative input ports")
+            errors.append(tr("Block has negative input ports"))
         if block.out_ports < 0:
-            errors.append("Block has negative output ports")
+            errors.append(tr("Block has negative output ports"))
 
     if hasattr(block, "b_type") and block.b_type not in (0, 1, 2, 3):
-        errors.append(f"Invalid block type: {block.b_type}")
+        errors.append(tr("Invalid block type: {type}", type=block.b_type))
 
     return len(errors) == 0, errors
 
@@ -630,20 +700,22 @@ def check_simulation_state(dsim_instance: Any) -> Tuple[bool, List[str]]:
 
     for attr in ("blocks_list", "line_list", "execution_initialized"):
         if not hasattr(dsim_instance, attr):
-            errors.append(f"DSim missing required attribute: {attr}")
+            errors.append(tr("DSim missing required attribute: {attr}", attr=attr))
 
     if hasattr(dsim_instance, "blocks_list"):
         if not dsim_instance.blocks_list:
-            errors.append("No blocks in simulation")
+            errors.append(tr("No blocks in simulation"))
         else:
             for i, block in enumerate(dsim_instance.blocks_list):
                 is_valid, block_errors = check_block_integrity(block)
                 if not is_valid:
-                    errors.extend(f"Block {i}: {error}" for error in block_errors)
+                    errors.extend(
+                        tr("Block {index}: {error}", index=i, error=error) for error in block_errors
+                    )
 
     if hasattr(dsim_instance, "sim_time") and dsim_instance.sim_time <= 0:
-        errors.append("Invalid simulation time")
+        errors.append(tr("Invalid simulation time"))
     if hasattr(dsim_instance, "sim_dt") and dsim_instance.sim_dt <= 0:
-        errors.append("Invalid simulation time step")
+        errors.append(tr("Invalid simulation time step"))
 
     return len(errors) == 0, errors

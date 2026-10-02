@@ -18,12 +18,17 @@ heatmaps speak about *the same* metric definitions.
 import numpy as np
 
 from lib.engine.block_params import runtime_params
+from lib.i18n import tr_noop
 
 
 # Per-run outcome metrics. Each maps an ensemble matrix ``M`` of shape
 # (n_runs, L) -- one row per run -- to a length-``n_runs`` vector holding one
 # scalar summary per run. Insertion order is the order they appear in metric
 # pickers across the UI.
+#
+# The dict keys are identifiers: they are used verbatim as lookup keys into
+# ``sig["metrics"]`` dicts and persisted nowhere, but widgets read them back
+# (e.g. via ``QComboBox`` item data), so they must never be translated.
 OUTCOME_METRICS = {
     "final": lambda M: np.asarray(M)[:, -1],
     "mean": lambda M: np.asarray(M).mean(axis=1),
@@ -31,6 +36,20 @@ OUTCOME_METRICS = {
     "min": lambda M: np.asarray(M).min(axis=1),
     "peak-to-peak": lambda M: np.ptp(np.asarray(M), axis=1),
     "rms": lambda M: np.sqrt((np.asarray(M) ** 2).mean(axis=1)),
+}
+
+# Human-readable label for each :data:`OUTCOME_METRICS` key, shown in combo
+# boxes and plot titles/axes. Declared here (next to the keys they describe)
+# but translated at *display time* by the widget via ``tr(label)`` -- this
+# module stays Qt-free, so it only marks the literals for extraction with
+# ``tr_noop`` (see ``lib.i18n.tr_noop``) rather than translating them itself.
+OUTCOME_METRIC_LABELS = {
+    "final": tr_noop("Final value"),
+    "mean": tr_noop("Mean"),
+    "max": tr_noop("Maximum"),
+    "min": tr_noop("Minimum"),
+    "peak-to-peak": tr_noop("Peak-to-peak"),
+    "rms": tr_noop("RMS"),
 }
 
 

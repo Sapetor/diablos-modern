@@ -60,6 +60,13 @@ def _empty(mode="1d"):
     return base
 
 
+def _select_metric(combo, key):
+    """Select the item whose item data (the OUTCOME_METRICS key) is ``key``."""
+    index = combo.findData(key)
+    assert index >= 0, f"no combo item for metric key {key!r}"
+    combo.setCurrentIndex(index)
+
+
 @pytest.fixture
 def make_window(qapp):
     """Build result windows that are torn down *deterministically*.
@@ -108,10 +115,13 @@ class TestSweepResultWindow:
         assert win.metric_combo.isEnabled()
 
     def test_1d_metric_change_rerenders(self, qapp, make_window):
+        from lib.analysis.resim import OUTCOME_METRIC_LABELS
+
         win = make_window(_sweep_1d())
         win.view_combo.setCurrentIndex(1)
-        win.metric_combo.setCurrentText("max")  # must not raise
-        assert "gain" in win.metric_plot.getPlotItem().titleLabel.text
+        _select_metric(win.metric_combo, "max")  # must not raise
+        title = win.metric_plot.getPlotItem().titleLabel.text
+        assert "gain" in title and OUTCOME_METRIC_LABELS["max"] in title
 
     def test_1d_view_combo_labels(self, qapp, make_window):
         win = make_window(_sweep_1d())
@@ -127,9 +137,11 @@ class TestSweepResultWindow:
         assert win.view_combo is None  # no view toggle in 2-D
 
     def test_2d_metric_change_rerenders(self, qapp, make_window):
+        from lib.analysis.resim import OUTCOME_METRIC_LABELS
+
         win = make_window(_sweep_2d())
-        win.metric_combo.setCurrentText("rms")  # must not raise
-        assert "rms" in win.plot.getPlotItem().titleLabel.text
+        _select_metric(win.metric_combo, "rms")  # must not raise
+        assert OUTCOME_METRIC_LABELS["rms"] in win.plot.getPlotItem().titleLabel.text
 
     def test_2d_two_signals_switch(self, qapp, make_window):
         win = make_window(_sweep_2d(nsig=2))

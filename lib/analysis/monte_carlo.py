@@ -20,11 +20,11 @@ import numpy as np
 
 # Re-exported from the shared re-sim module so existing
 # ``from lib.analysis.monte_carlo import OUTCOME_METRICS`` imports keep working.
-from lib.analysis.resim import OUTCOME_METRICS, harvest_scope_signals
+from lib.analysis.resim import OUTCOME_METRIC_LABELS, OUTCOME_METRICS, harvest_scope_signals
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["MonteCarloRunner", "derive_seed", "OUTCOME_METRICS"]
+__all__ = ["MonteCarloRunner", "derive_seed", "OUTCOME_METRICS", "OUTCOME_METRIC_LABELS"]
 
 
 def derive_seed(master_seed, run_index, tag):

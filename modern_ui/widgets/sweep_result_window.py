@@ -31,7 +31,7 @@ from PyQt6.QtCore import Qt, QRectF
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 from lib.i18n import tr
 
-from lib.analysis.resim import OUTCOME_METRICS
+from lib.analysis.resim import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
 
 logger = logging.getLogger(__name__)
 
@@ -127,14 +127,15 @@ class SweepResultWindow(QWidget):
             controls.addStretch(1)
         self.metric_label = QLabel(tr("Metric:"))
         self.metric_combo = QComboBox()
-        # NOTE: metric_combo items are OUTCOME_METRICS keys used verbatim as dict
-        # lookup keys (currentText() -> OUTCOME_METRICS[...] / sig["metrics"][...]),
-        # so they are intentionally left untranslated here.
-        self.metric_combo.addItems(list(OUTCOME_METRICS.keys()))
+        # Displayed text is the translated label; the OUTCOME_METRICS key
+        # (an identifier, never translated) rides along as item data so
+        # lookups into OUTCOME_METRICS / sig["metrics"] stay keyed in English.
+        for key in OUTCOME_METRICS:
+            self.metric_combo.addItem(tr(OUTCOME_METRIC_LABELS.get(key, key)), key)
         controls.addWidget(self.metric_label)
         controls.addWidget(self.metric_combo)
         layout.addLayout(controls)
-        self.metric_combo.currentTextChanged.connect(self._on_metric_changed)
+        self.metric_combo.currentIndexChanged.connect(self._on_metric_changed)
 
     # ------------------------------------------------------------------- 1-D
     def _build_1d(self, layout):
@@ -205,7 +206,8 @@ class SweepResultWindow(QWidget):
             return
         self.metric_plot.clear()
         name = self.combo.currentText()
-        metric = self.metric_combo.currentText()
+        metric = self.metric_combo.currentData()
+        metric_label = tr(OUTCOME_METRIC_LABELS.get(metric, metric))
         sig = (self.result.get("signals") or {}).get(name)
         if not sig:
             return
@@ -214,9 +216,9 @@ class SweepResultWindow(QWidget):
         pname = axis.get("param", "parameter")
         y = self._as_1d((sig.get("metrics") or {}).get(metric))
         self.metric_plot.setLabel("bottom", str(pname))
-        self.metric_plot.setLabel("left", str(metric))
+        self.metric_plot.setLabel("left", metric_label)
         self.metric_plot.setTitle(
-            tr("{name}: {metric} vs {param}", name=name, metric=metric, param=pname)
+            tr("{name}: {metric} vs {param}", name=name, metric=metric_label, param=pname)
         )
         n = min(vals.size, y.size)
         if n == 0:
@@ -259,7 +261,8 @@ class SweepResultWindow(QWidget):
         if self.img is None:
             return
         name = self.combo.currentText()
-        metric = self.metric_combo.currentText()
+        metric = self.metric_combo.currentData()
+        metric_label = tr(OUTCOME_METRIC_LABELS.get(metric, metric))
         sig = (self.result.get("signals") or {}).get(name)
         if not sig:
             return
@@ -289,7 +292,7 @@ class SweepResultWindow(QWidget):
                     # heatmap itself is already correctly levelled, so this is
                     # non-fatal -- but it must not vanish without a trace.
                     logger.debug("Could not set colorbar levels: %s", e)
-        self.plot.setTitle(f"{name}: {metric}")
+        self.plot.setTitle(f"{name}: {metric_label}")
 
     # ----------------------------------------------------------- callbacks
     def _on_signal_changed(self, _name):

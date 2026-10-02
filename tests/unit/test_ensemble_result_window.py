@@ -138,14 +138,19 @@ class TestEnsembleResultWindow:
 
     # --------------------------------------------------------- histogram view
     def test_view_and_metric_combos_present(self, qapp, make_window):
-        from lib.analysis.monte_carlo import OUTCOME_METRICS
+        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
 
         win = make_window(_sample_result(n_signals=2))
         assert win.view_combo is not None and win.metric_combo is not None
         views = [win.view_combo.itemText(i) for i in range(win.view_combo.count())]
         assert views == ["Time Series", "Histogram"]
-        metrics = [win.metric_combo.itemText(i) for i in range(win.metric_combo.count())]
-        assert metrics == list(OUTCOME_METRICS.keys())
+        # Displayed text is the translated (English, in this test environment)
+        # label; the untranslated OUTCOME_METRICS key rides along as item data
+        # so lookups into OUTCOME_METRICS / sig["metrics"] stay in English.
+        keys = [win.metric_combo.itemData(i) for i in range(win.metric_combo.count())]
+        assert keys == list(OUTCOME_METRICS.keys())
+        labels = [win.metric_combo.itemText(i) for i in range(win.metric_combo.count())]
+        assert labels == [OUTCOME_METRIC_LABELS[k] for k in OUTCOME_METRICS]
 
     def test_metric_combo_enabled_only_in_histogram_view(self, qapp, make_window):
         win = make_window(_sample_result(n_signals=1))
@@ -156,15 +161,26 @@ class TestEnsembleResultWindow:
         assert win.stack.currentIndex() == 1
         assert win.metric_combo.isEnabled()
 
+    @staticmethod
+    def _select_metric(combo, key):
+        """Select the item whose item data (the OUTCOME_METRICS key) is ``key``."""
+        index = combo.findData(key)
+        assert index >= 0, f"no combo item for metric key {key!r}"
+        combo.setCurrentIndex(index)
+
     def test_histogram_derives_from_runs_without_metrics_key(self, qapp, make_window):
         """_sample_result carries no 'metrics'; the window derives from 'runs'."""
+        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS
+
         win = make_window(_sample_result(n_signals=1))
         win.view_combo.setCurrentIndex(1)
-        win.metric_combo.setCurrentText("max")
+        self._select_metric(win.metric_combo, "max")
         title = win.hist_plot.getPlotItem().titleLabel.text
-        assert "Scope_A" in title and "max" in title
+        assert "Scope_A" in title and OUTCOME_METRIC_LABELS["max"] in title
 
     def test_histogram_uses_supplied_metrics_when_present(self, qapp, make_window):
+        from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS
+
         result = _sample_result(n_signals=1)
         name = next(iter(result["signals"]))
         n_ok = result["n_ok"]
@@ -173,7 +189,7 @@ class TestEnsembleResultWindow:
         }
         win = make_window(result)
         win.view_combo.setCurrentIndex(1)
-        win.metric_combo.setCurrentText("final")
+        self._select_metric(win.metric_combo, "final")
         # Builds without error and reflects the selected metric/signal.
         title = win.hist_plot.getPlotItem().titleLabel.text
-        assert name in title and "final" in title
+        assert name in title and OUTCOME_METRIC_LABELS["final"] in title
