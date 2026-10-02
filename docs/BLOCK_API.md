@@ -291,16 +291,30 @@ def events_soft_clip(ctx):
 
 ### What happens if your block has no kernel
 
-Nothing breaks. `SystemCompiler.check_compilability` gates the whole diagram on
-an allowlist (`COMPILABLE_BLOCKS`); a diagram containing a block that is not on
-it runs on the interpreted path, which is slower but produces the same answer.
+Nothing breaks. `SystemCompiler.check_compilability` gates the whole diagram:
+a diagram containing a block without a kernel runs on the interpreted path,
+which is slower but produces the same answer.
 
-**Today that allowlist is a hard-coded set inside
-`lib/engine/system_compiler.py` and a user module cannot extend it**, so a
-diagram containing a user block always uses the interpreted solver, whether or
-not you register a kernel. Registering one is still meaningful if you intend to
-contribute the block upstream (or you maintain your own build): add the name to
-`COMPILABLE_BLOCKS` there and the kernel takes effect.
+For built-in blocks the gate is the allowlist `COMPILABLE_BLOCKS` in
+`lib/engine/system_compiler.py`. Some built-ins have a kernel but stay off
+that list on purpose (Impulse, Noise), because the adaptive solver cannot run
+them correctly.
+
+A **user block** joins the compiled path as soon as its module registers a
+kernel under its canonical name — no allowlist edit needed. Three rules:
+
+- **The kernel must be algebraic.** The compiler allocates no ODE states for a
+  user block, so the closure computes its output from `signals` and `t` only
+  and never touches `y` or `dy_vec`. A block that integrates or keeps memory
+  must stay on the interpreted path: give it no kernel.
+- **`execute()` stays the source of truth.** The post-solve replay that fills
+  Scope histories calls `execute()` for user blocks, so the kernel and
+  `execute()` must compute the same function.
+- **Built-in names are reserved.** A user module that registers `@kernel` or
+  `@events` under a built-in's name (say `"Gain"`) is ignored with a warning;
+  it cannot replace the engine's own kernel.
+
+`docs/examples/custom_kernel_template.py` is a complete, working example.
 
 ---
 

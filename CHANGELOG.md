@@ -4,6 +4,9 @@ All notable changes to DiaBloS will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **User blocks can run on the fast solver.** A user block whose module registers an algebraic `@kernel` under its canonical name is now compiled instead of sending the whole diagram to the interpreter. A user module can no longer replace a built-in kernel or event builder by registering under its name.
+
 ## [1.1.0] - 2026-09-10
 
 ### Added

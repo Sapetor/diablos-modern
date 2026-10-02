@@ -14,10 +14,13 @@ compiled-path golden harness (``tests/regression/test_compiled_golden.py``).
 Blocks not yet migrated fall through to the legacy if/elif in the compiler.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 from lib.engine.zero_crossing import EventSpec, signal_scalar  # noqa: F401 (re-export)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,10 +82,36 @@ def kernel(*names):
 
     def deco(builder):
         for name in names:
-            KERNEL_BUILDERS[name] = builder
+            _register(KERNEL_BUILDERS, name, builder, "kernel")
         return builder
 
     return deco
+
+
+def _is_builtin(builder) -> bool:
+    """True for a builder defined in one of this package's family modules."""
+    module = getattr(builder, "__module__", "") or ""
+    return module == __name__ or module.startswith(__name__ + ".")
+
+
+def _register(registry, name, builder, kind):
+    """Add ``builder`` under ``name`` unless that would shadow a built-in.
+
+    User block modules register through the same decorators, so a user file
+    declaring ``@kernel("Gain")`` must not silently replace the engine's own
+    Gain kernel for every diagram. Re-registering a user builder (a palette
+    reload re-imports the module) is allowed.
+    """
+    existing = registry.get(name)
+    if existing is not None and _is_builtin(existing) and not _is_builtin(builder):
+        logger.warning(
+            "Ignoring %s %r from %s: it would replace the built-in one.",
+            kind,
+            name,
+            getattr(builder, "__module__", "?"),
+        )
+        return
+    registry[name] = builder
 
 
 def get_kernel_builder(fn):
@@ -111,7 +140,7 @@ def events(*names):
 
     def deco(builder):
         for name in names:
-            EVENT_BUILDERS[name] = builder
+            _register(EVENT_BUILDERS, name, builder, "event builder")
         return builder
 
     return deco

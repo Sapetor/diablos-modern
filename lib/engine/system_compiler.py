@@ -11,6 +11,7 @@ from lib.engine.pde_helpers import (
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
 from lib.engine.block_params import runtime_params
+from lib.user_blocks import is_user_block
 
 logger = logging.getLogger(__name__)
 
@@ -513,6 +514,21 @@ class SystemCompiler:
             names |= self.ZERO_CROSSING_ONLY_BLOCKS
         return {canonical_fn(name) for name in names}
 
+    @staticmethod
+    def _has_user_kernel(block) -> bool:
+        """True for a user block (``lib.user_blocks``) that registered a kernel.
+
+        COMPILABLE_BLOCKS stays the gate for built-ins, several of which have a
+        kernel but are deliberately interpreted (Impulse, Noise). A user block
+        opts in by registering ``@kernel(canonical_fn(block_name))`` in its own
+        module; the compiler allocates no ODE states for it, so the kernel must
+        be algebraic (see docs/BLOCK_API.md, section 7).
+        """
+        instance = getattr(block, "block_instance", None)
+        if instance is None or not is_user_block(type(instance)):
+            return False
+        return get_kernel_builder(canonical_fn(block.block_fn)) is not None
+
     def check_compilability(self, blocks: List[DBlock], _recursive: bool = False) -> bool:
         """
         Check if the entire diagram is supported by the compiler.
@@ -566,6 +582,8 @@ class SystemCompiler:
                 return self._not_compilable(block, "it has a discrete sample time")
 
             if canonical_fn(b_type) not in allowed:
+                if self._has_user_kernel(block):
+                    continue
                 if canonical_fn(b_type) in {
                     canonical_fn(n) for n in self.ZERO_CROSSING_ONLY_BLOCKS
                 }:

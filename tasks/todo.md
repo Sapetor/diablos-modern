@@ -51,11 +51,11 @@ checkable (2026-10-02 pass noted per item).
 - [ ] **Video tutorials** — demo videos for key features.
 
 ### Open gaps left by the September 2026 campaigns
-- [ ] **Library / user blocks are not compilable** — diagrams containing them
-  fall back to the interpreted engine. Confirmed still true 2026-10-02:
-  `SystemCompiler.COMPILABLE_BLOCKS` (`lib/engine/system_compiler.py`) has no
-  `Subsystem`/library entry. Compile a library block by flattening its
-  subsystem the way `Flattener` already does for inline ones.
+- [ ] **Stateful user-block kernels** — a user block with a registered
+  `@kernel` now compiles, but only algebraically: the compiler allocates ODE
+  states per built-in fn (`_allocate_states` in `lib/engine/system_compiler.py`),
+  so a user block cannot declare states. A `state_size`/initial-state hook on
+  `BaseBlock` would let integrating user blocks compile too.
 - [ ] **Stiffness diagnostic caps at 64 states** — `STIFFNESS_MAX_STATES` in
   `lib/engine/solver_diagnostics.py` (confirmed still `= 64`, 2026-10-02) skips
   the Jacobian eigen-analysis on larger systems (PDE diagrams), so they get no
@@ -201,6 +201,18 @@ guidance, examples gallery test, block API / user blocks, docs site.
   matrix to `["3.10", "3.12"]`, and the 3.9 mentions in `README.md`,
   `readthedocs.yaml`, `docs/building.md`. (x86_64 build-env follow-up is still
   open — see Open Items.)
+
+### October 2026 — library and user blocks on the fast solver (2026-10-02)
+- [x] **Library / user blocks are not compilable** — half stale. *Library*
+  blocks already compiled: an instance is a copied masked Subsystem, which
+  `check_compilability` walks recursively and `Flattener` resolves with the mask
+  scope (`tests/integration/test_masked_library_example.py` runs both engines).
+  *User* blocks never compiled, even with a registered `@kernel`, because
+  `COMPILABLE_BLOCKS` was the only gate. `SystemCompiler._has_user_kernel` now
+  admits a user block whose kernel is registered, and `compiler_kernels._register`
+  refuses to let a user module shadow a built-in kernel or event builder.
+  Covered by `tests/regression/test_user_block_kernel.py`; docs in
+  `docs/BLOCK_API.md` section 7.
 
 ### October 2026 — remaining UI strings translated (2026-10-02)
 - [x] **Outcome-metric labels and validator messages translated** — new
