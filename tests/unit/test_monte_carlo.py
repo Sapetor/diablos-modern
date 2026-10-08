@@ -69,6 +69,26 @@ def test_derive_seed_reproducible_and_distinct():
     assert derive_seed(7, 0, "a") != 0
 
 
+def test_derive_seed_stable_across_processes():
+    """The seed must not depend on the per-process PYTHONHASHSEED salt."""
+    import os
+    import subprocess
+    import sys
+
+    code = "from lib.analysis.monte_carlo import derive_seed; print(derive_seed(7, 3, 'noise1'))"
+    root = os.path.join(os.path.dirname(__file__), "..", "..")
+    outs = set()
+    for hash_seed in ("1", "2", "12345"):
+        env = dict(os.environ, PYTHONHASHSEED=hash_seed)
+        res = subprocess.run(
+            [sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True
+        )
+        assert res.returncode == 0, res.stderr
+        outs.add(res.stdout.strip())
+    assert len(outs) == 1
+    assert outs == {str(derive_seed(7, 3, "noise1"))}
+
+
 @pytest.mark.unit
 class TestMonteCarlo:
     def test_noise_runs_differ_but_reproducible(self, qapp, tmp_path):

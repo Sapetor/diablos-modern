@@ -16,6 +16,8 @@ restored afterwards so the runner never mutates the user's diagram.
 """
 
 import logging
+import zlib
+
 import numpy as np
 
 # Re-exported from the shared re-sim module so existing
@@ -37,7 +39,9 @@ def derive_seed(master_seed, run_index, tag):
         [
             int(master_seed) & 0x7FFFFFFF,
             int(run_index) & 0x7FFFFFFF,
-            hash(str(tag)) & 0x7FFFFFFF,
+            # crc32, not hash(): str hashes are salted per process
+            # (PYTHONHASHSEED), which would break cross-process reproducibility.
+            zlib.crc32(str(tag).encode("utf-8")) & 0x7FFFFFFF,
         ]
     )
     s = int(ss.generate_state(1, dtype=np.uint32)[0])
