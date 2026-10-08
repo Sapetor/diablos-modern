@@ -190,6 +190,9 @@ Parameters:
 - Derivative (D): Kd * derivative(error)
 - Filter Coeff (N): Derivative filter bandwidth (Low-pass).
   D term = Kd * N * s / (s + N)
+- Anti-windup: clamping (stop integrating while saturated and the
+  error pushes further out), back_calculation (dI/dt = Ki*e +
+  Kb*(u_sat - u)), or none.
 
 Usage:
 Feedback control. Tuning parameters Kp, Ki, Kd.
@@ -203,6 +206,8 @@ Feedback control. Tuning parameters Kp, Ki, Kd.
 | `N` | float | `20.0` | Derivative filter coefficient (higher = less smoothing). |
 | `u_min` | float | `-inf` | Output lower limit. |
 | `u_max` | float | `inf` | Output upper limit. |
+| `anti_windup` | choice | `clamping` | Anti-windup method used when the output saturates. |
+| `kb` | float | `1.0` | Back-calculation tracking gain (anti-windup = back_calculation only). |
 
 **Ports**: 2 In, 1 Out
 

@@ -134,6 +134,10 @@ def build_pid(ctx):
     N = float(params.get("N", 20.0))
     u_min = float(params.get("u_min", -np.inf))
     u_max = float(params.get("u_max", np.inf))
+    # Anti-windup: "clamping" (default, also for diagrams saved before the
+    # param existed), "back_calculation" or "none".
+    method = params.get("anti_windup", "clamping")
+    kb = float(params.get("kb", 1.0))
 
     def exec_pid(t, y, dy_vec, signals):
         # PID state is scalar (two slots, dy_vec[start]/[start+1]), so
@@ -160,8 +164,13 @@ def build_pid(ctx):
         u_out = np.clip(u_unsat, u_min, u_max)
         signals[b_name] = u_out
 
-        # Anti-windup
-        if (u_unsat > u_max and e > 0) or (u_unsat < u_min and e < 0):
+        # Anti-windup (x_i integrates e, so dI/dt = Ki*dx_i)
+        if method == "none":
+            pass
+        elif method == "back_calculation":
+            if Ki != 0:
+                dx_i = e + kb * (u_out - u_unsat) / Ki
+        elif (u_unsat > u_max and e > 0) or (u_unsat < u_min and e < 0):
             dx_i = 0.0
 
         dy_vec[start] = dx_i

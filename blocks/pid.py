@@ -5,7 +5,8 @@ from blocks.input_helpers import get_scalar
 
 class PIDBlock(BaseBlock):
     """
-    PID controller with filtered derivative and anti-windup via integral clamping.
+    PID controller with filtered derivative and selectable anti-windup
+    (clamping, back-calculation or none).
     Inputs: 0 = setpoint, 1 = measurement.
     Output: control signal.
     """
@@ -33,6 +34,9 @@ class PIDBlock(BaseBlock):
             "\n- Derivative (D): Kd * derivative(error)"
             "\n- Filter Coeff (N): Derivative filter bandwidth (Low-pass)."
             "\n  D term = Kd * N * s / (s + N)"
+            "\n- Anti-windup: clamping (stop integrating while saturated and the"
+            "\n  error pushes further out), back_calculation (dI/dt = Ki*e +"
+            "\n  Kb*(u_sat - u)), or none."
             "\n\nUsage:"
             "\nFeedback control. Tuning parameters Kp, Ki, Kd."
         )
@@ -50,6 +54,17 @@ class PIDBlock(BaseBlock):
             },
             "u_min": {"type": "float", "default": -np.inf, "doc": "Output lower limit."},
             "u_max": {"type": "float", "default": np.inf, "doc": "Output upper limit."},
+            "anti_windup": {
+                "type": "choice",
+                "default": "clamping",
+                "options": ["clamping", "back_calculation", "none"],
+                "doc": "Anti-windup method used when the output saturates.",
+            },
+            "kb": {
+                "type": "float",
+                "default": 1.0,
+                "doc": "Back-calculation tracking gain (anti-windup = back_calculation only).",
+            },
             "_init_start_": {"type": "bool", "default": True, "doc": "Internal init flag."},
             "sampling_time": {
                 "type": "float",
@@ -172,8 +187,7 @@ class PIDBlock(BaseBlock):
         # unit error read 3.01 over a 3 s run).  This was masked for as long as
         # the simulation loop delivered the PID's output one step late, which
         # cancelled it exactly; see tests/regression/test_feedthrough_memory.py.
-        if not first_call:
-            params["_int"] += e * dt
+        d_int = e * dt if not first_call else 0.0
 
         # Derivative with a first-order filter, stated exactly as the documented
         # C(s) = Kp + Ki/s + Kd*N*s/(s+N) and as the compiled kernel realises it
@@ -194,19 +208,26 @@ class PIDBlock(BaseBlock):
         params["_d_state"] = x_d
         d_term = Kd * N * (e - x_d)
 
-        u = Kp * e + Ki * params["_int"] + d_term
-
-        # Saturation and integral anti-windup (clamp integral within output bounds / Ki)
         u_min = params.get("u_min", -np.inf)
         u_max = params.get("u_max", np.inf)
-        if u < u_min:
-            u = u_min
+        method = params.get("anti_windup", "clamping")
+        kb = float(params.get("kb", 1.0))
+
+        # Saturation and anti-windup.  All three methods are the discretisation
+        # of the same continuous laws the compiled kernel integrates (see
+        # compiler_kernels/state.py::build_pid), so they agree as dt -> 0.
+        u_unsat = Kp * e + Ki * (params["_int"] + d_int) + d_term
+        u = min(max(u_unsat, u_min), u_max)
+        if method == "none":
+            pass
+        elif method == "back_calculation":
             if Ki != 0:
-                params["_int"] = (u_min - Kp * e - d_term) / Ki
-        elif u > u_max:
-            u = u_max
-            if Ki != 0:
-                params["_int"] = (u_max - Kp * e - d_term) / Ki
+                d_int += kb * (u - u_unsat) / Ki * dt
+        elif (u_unsat > u_max and e > 0) or (u_unsat < u_min and e < 0):
+            # clamping: freeze the integrator while the error pushes further
+            # into saturation.
+            d_int = 0.0
+        params["_int"] += d_int
 
         params["_last_output_"] = (
             float(np.asarray(u).flatten()[0]) if hasattr(u, "flatten") else float(u)

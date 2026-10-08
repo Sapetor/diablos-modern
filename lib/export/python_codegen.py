@@ -964,6 +964,12 @@ class PythonCodeGenerator:
         n_filt = self._num_const(blk, "n", params.get("N", 20.0), "derivative filter pole")
         u_min = self._num_const(blk, "umin", params.get("u_min", -np.inf))
         u_max = self._num_const(blk, "umax", params.get("u_max", np.inf))
+        method = params.get("anti_windup", "clamping")
+        kb = (
+            self._num_const(blk, "kb", params.get("kb", 1.0), "anti-windup tracking gain")
+            if method == "back_calculation" and float(params.get("Ki", 0.0)) != 0
+            else None
+        )
 
         self._helpers.add("_scalar")
         sp = self._input_expr(blk, 0)
@@ -983,11 +989,26 @@ class PythonCodeGenerator:
                 v=v, kp=kp, ki=ki, kd=kd
             ),
             "    {} = np.clip(_{}_u, {}, {})".format(v, v, u_min, u_max),
-            "    # anti-windup: freeze the integrator while the output is saturated",
-            "    if (_{v}_u > {hi} and _{v}_e > 0) or (_{v}_u < {lo} and _{v}_e < 0):".format(
-                v=v, hi=u_max, lo=u_min
-            ),
-            "        _{}_dxi = 0.0".format(v),
+        ]
+        if method == "none":
+            lines.append("    # anti-windup: none")
+        elif method == "back_calculation":
+            if float(params.get("Ki", 0.0)) != 0:
+                lines += [
+                    "    # anti-windup: back-calculation, dI/dt = Ki*e + Kb*(u_sat - u)",
+                    "    _{v}_dxi = _{v}_e + {kb} * ({v} - _{v}_u) / {ki}".format(
+                        v=v, kb=kb, ki=ki
+                    ),
+                ]
+        else:
+            lines += [
+                "    # anti-windup: freeze the integrator while the output is saturated",
+                "    if (_{v}_u > {hi} and _{v}_e > 0) or (_{v}_u < {lo} and _{v}_e < 0):".format(
+                    v=v, hi=u_max, lo=u_min
+                ),
+                "        _{}_dxi = 0.0".format(v),
+            ]
+        lines += [
             "    dx[{}] = _{}_dxi".format(start, v),
             "    dx[{}] = _{}_dxd".format(start + 1, v),
         ]

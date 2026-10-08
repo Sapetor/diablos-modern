@@ -74,6 +74,12 @@ def _relational():
     return RelationalOperatorBlock()
 
 
+def _pid():
+    from blocks.pid import PIDBlock
+
+    return PIDBlock()
+
+
 def _compare():
     from blocks.compare_to_constant import CompareToConstantBlock
 
@@ -257,6 +263,12 @@ SPECS = {
     "MathFunction": _spec(_math_function, inputs={0: np.array([0.5])}),
     "LogicalOperator": _spec(_logical, inputs={0: np.array([1.0]), 1: np.array([0.0])}),
     "RelationalOperator": _spec(_relational, inputs={0: np.array([1.0]), 1: np.array([2.0])}),
+    # Saturating setpoint so every anti-windup branch is reached.
+    "PID": _spec(
+        _pid,
+        inputs={0: np.array([5.0]), 1: np.array([0.0])},
+        params={"Kp": 1.0, "Ki": 1.0, "u_min": -1.0, "u_max": 1.0},
+    ),
     "CompareToConstant": _spec(_compare, inputs={0: np.array([1.0])}),
     # Chirp: f0 MUST be > 0 or the 'logarithmic' sweep raises in scipy.
     "Chirp": _spec(_chirp, params={"f0": 1.0, "f1": 10.0, "t1": 10.0}),
