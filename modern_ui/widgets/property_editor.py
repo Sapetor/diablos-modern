@@ -371,6 +371,12 @@ class PropertyEditor(QFrame):
 
     # ── Diagram inspector (V1 empty-state) ────────────────────────
 
+    def refresh_diagram_inspector(self):
+        """Re-render the empty-selection diagram view (after load/new/edit)."""
+        if self.block is None and self._dsim is not None:
+            self._clear_form()
+            self._show_diagram_inspector()
+
     def _show_diagram_inspector(self):
         """Render the V1 'diagram defaults' view when no block is selected.
 
@@ -399,9 +405,8 @@ class PropertyEditor(QFrame):
         self._apply_label_color(eyebrow, text_disabled)
         h_lay.addWidget(eyebrow)
 
-        filepath = getattr(self._dsim, "current_filepath", None) or getattr(
-            self._dsim, "filepath", None
-        )
+        path_getter = getattr(self._main_window, "_current_diagram_path", None)
+        filepath = path_getter() if callable(path_getter) else None
         name = os.path.splitext(os.path.basename(filepath))[0] if filepath else tr("untitled")
         title = QLabel(name)
         tf = title.font()

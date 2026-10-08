@@ -28,6 +28,12 @@ from lib.i18n import tr
 logger = logging.getLogger(__name__)
 
 
+def _diagram_path(window):
+    """Path of the open diagram (the diagram service owns it), or None."""
+    getter = getattr(window, "_current_diagram_path", None)
+    return getter() if callable(getter) else None
+
+
 class StatusBarManager:
     """Owns construction and periodic refresh of the window status bar."""
 
@@ -326,6 +332,14 @@ class StatusBarManager:
                     scopes=scopes,
                 )
             )
+            # The Properties panel's empty-selection view shows the same
+            # counts and file name; rebuild it only when they change.
+            signature = (_diagram_path(window), len(blocks), len(wires))
+            if signature != getattr(self, "_inspector_signature", None):
+                self._inspector_signature = signature
+                editor = getattr(window, "property_editor", None)
+                if editor is not None and hasattr(editor, "refresh_diagram_inspector"):
+                    editor.refresh_diagram_inspector()
         except Exception:
             logger.debug("Failed to refresh counts pill from dsim state", exc_info=True)
 
@@ -333,9 +347,7 @@ class StatusBarManager:
         """Update filename + unsaved indicator in the status bar."""
         window = self.window
         try:
-            path = getattr(window.dsim, "current_filepath", None) or getattr(
-                window.dsim, "filepath", None
-            )
+            path = _diagram_path(window)
             name = os.path.basename(path) if path else tr("untitled")
             window.file_status.setText(name)
             window.file_unsaved_status.setText(

@@ -127,3 +127,30 @@ class TestStatusBar:
         window.status_message.setText("Ready")
         QApplication.processEvents()
         assert pill.sizeHint().width() <= pill.maximumWidth()
+
+
+@pytest.mark.qt
+class TestDiagramNameAndInspector:
+    """The open file's name and counts reach the status bar and the
+    Properties panel (both used to read a dsim attribute nothing set)."""
+
+    def test_file_pill_names_the_open_diagram(self, window):
+        window.open_example(EXAMPLE)
+        QApplication.processEvents()
+        QApplication.processEvents()
+        window.status_bar_manager.refresh_file_status()
+        assert window.file_status.text() == os.path.basename(EXAMPLE)
+
+    def test_inspector_shows_loaded_diagram(self, window):
+        from PyQt6.QtWidgets import QLabel
+
+        window.property_editor.set_block(None)
+        window.open_example(EXAMPLE)
+        QApplication.processEvents()
+        QApplication.processEvents()
+        window.status_bar_manager.refresh_counts()
+        texts = [lbl.text() for lbl in window.property_editor.findChildren(QLabel)]
+        n_blocks = len(window.dsim.blocks_list)
+        n_wires = len(window.dsim.line_list)
+        assert "pid_second_order" in texts
+        assert any(t.startswith(f"{n_blocks} blocks") and f"{n_wires} wires" in t for t in texts)
