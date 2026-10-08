@@ -8,6 +8,7 @@ checks a class against it.  See ``docs/BLOCK_API.md`` for the full reference.
 """
 
 import inspect
+import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Union
 import numpy as np
@@ -46,6 +47,15 @@ VALID_IO_EDITABLE = (None, "input", "output", "both")
 REQUIRED_BLOCK_MEMBERS = ("block_name", "params", "inputs", "outputs", "execute")
 
 
+_CAMEL_BREAKS = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=\d)")
+
+
+def prettify_block_name(name: str) -> str:
+    """Split a CamelCase / snake_case identifier into spaced words."""
+    text = str(name or "").replace("_", " ")
+    return " ".join(_CAMEL_BREAKS.sub(" ", text).split())
+
+
 class BaseBlock(ABC):
     """
     Abstract base class for all simulation blocks.
@@ -67,6 +77,16 @@ class BaseBlock(ABC):
     def block_name(self) -> str:
         """The user-facing name of the block."""
         pass
+
+    @property
+    def display_name(self) -> str:
+        """OPTIONAL palette label (English; translated at display time).
+
+        Defaults to ``block_name`` split into words ("MatrixGain" ->
+        "Matrix Gain"). Override only where that default reads badly. Purely
+        presentational: ``block_name`` stays the registry key saved in diagrams.
+        """
+        return prettify_block_name(self.block_name)
 
     @property
     @abstractmethod

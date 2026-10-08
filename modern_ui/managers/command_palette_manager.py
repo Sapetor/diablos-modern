@@ -19,7 +19,7 @@ import os
 import logging
 from collections import OrderedDict
 
-from modern_ui.widgets.modern_palette import visible_menu_blocks
+from modern_ui.widgets.modern_palette import block_label, visible_menu_blocks
 
 from lib.app_paths import resource_path
 from lib.i18n import tr, tr_noop
@@ -109,12 +109,18 @@ class CommandPaletteManager:
             for menu_block in visible_menu_blocks(window.canvas.dsim.menu_blocks):
                 fn_name = getattr(menu_block, "fn_name", "") or ""
                 block_fn = getattr(menu_block, "block_fn", "") or fn_name
+                label = block_label(menu_block)
                 commands.append(
                     {
-                        "name": tr("Add {block_fn} block", block_fn=block_fn),
+                        "name": tr("Add {block_fn} block", block_fn=label),
                         "type": "block",
                         "description": f"{block_fn} ({fn_name})",
-                        "aliases": [fn_name, block_fn, fn_name.lower()],
+                        "aliases": [
+                            fn_name,
+                            block_fn,
+                            fn_name.lower(),
+                            getattr(menu_block, "display_name", ""),
+                        ],
                         "callback": lambda mb=menu_block: self.add_block_from_palette_menu(mb),
                         "data": {"block_type": fn_name},
                     }
@@ -232,7 +238,7 @@ class CommandPaletteManager:
 
         # Add the block using the canvas method
         canvas.add_block_from_palette(menu_block, canvas_pos)
-        window.toast.show_message("✅ " + tr("Added {name} block", name=menu_block.block_fn))
+        window.toast.show_message("✅ " + tr("Added {name} block", name=block_label(menu_block)))
 
     def on_command_executed(self, command_type: str, data: dict):
         """Handle command palette command execution."""

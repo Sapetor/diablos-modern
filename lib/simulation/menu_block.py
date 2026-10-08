@@ -64,3 +64,37 @@ class MenuBlocks:
         painter.drawText(
             text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, self.fn_name
         )
+
+    # -- Display name (presentation only; fn_name/block_fn stay the keys) ----
+
+    @property
+    def display_name(self) -> str:
+        """English human-readable label for palette/command-palette entries.
+
+        Built-in/user blocks use their class's ``display_name`` hook; library
+        blocks (no class) keep their user-chosen name. Callers translate with
+        ``tr()`` at display time.
+        """
+        cached = getattr(self, "_display_name", None)
+        if cached is None:
+            cached = self._compute_display_name()
+            self._display_name = cached
+        return cached
+
+    def _compute_display_name(self) -> str:
+        fallback = self.fn_name if self.block_class is None else self.block_fn
+        if self.block_class is not None:
+            try:
+                return str(self.block_class().display_name) or str(fallback)
+            except Exception:
+                pass
+            from blocks.base_block import prettify_block_name
+
+            return prettify_block_name(fallback)
+        return str(fallback)
+
+    def search_text(self, translated_name: str = "") -> str:
+        """Lower-cased haystack for filters: display name, translation and ids."""
+        parts = [self.display_name, translated_name, self.fn_name, self.block_fn]
+        parts = [str(p).lower() for p in parts if p]
+        return " ".join(parts + [p.replace(" ", "") for p in parts[:2]])

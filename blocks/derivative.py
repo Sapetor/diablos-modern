@@ -15,6 +15,10 @@ class DerivativeBlock(BaseBlock):
         return "Deriv"
 
     @property
+    def display_name(self):
+        return "Derivative"
+
+    @property
     def category(self):
         return "Math"
 

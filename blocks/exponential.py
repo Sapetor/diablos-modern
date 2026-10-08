@@ -11,6 +11,10 @@ class ExponentialBlock(BaseBlock):
         return "Exp"
 
     @property
+    def display_name(self):
+        return "Exponential"
+
+    @property
     def category(self):
         return "Math"
 

@@ -12,6 +12,10 @@ class SigProductBlock(BaseBlock):
         return "SgProd"
 
     @property
+    def display_name(self):
+        return "Signal Product"
+
+    @property
     def category(self):
         return "Math"
 

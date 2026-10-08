@@ -10,7 +10,8 @@ What counts as a translatable string
    collected; a ``tr(variable)`` call cannot be, so mark the literal with
    ``tr_noop`` where it is declared instead.
 2. Block *display* metadata, which is translated at display time rather than at
-   the source site: a block's ``category`` name, its ``doc`` blurb, and every
+   the source site: a block's ``category`` name, its ``doc`` blurb, its palette ``display_name`` (or the prettified
+   ``block_name`` default), and every
    ``"doc"``/``"group"`` value inside its ``params`` spec.  ``block_name``,
    parameter keys and category identifiers are **never** rewritten -- they are
    persisted in ``.diablos`` files and used as registry keys -- so only the
@@ -199,6 +200,32 @@ def extract_block_metadata(path: str) -> Tuple[Set[str], Set[str]]:
     return categories, docs
 
 
+def extract_block_display_names(path: str) -> Set[str]:
+    """Collect each block's palette label (explicit ``display_name`` or the
+    prettified ``block_name`` default, mirroring ``BaseBlock.display_name``)."""
+    tree = _parse(path)
+    if tree is None:
+        return set()
+    if REPO_ROOT not in sys.path:
+        sys.path.insert(0, REPO_ROOT)
+    from blocks.base_block import prettify_block_name
+
+    names: Set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        explicit = [_literal_str(v) for v in _property_return_strings(node, "display_name")]
+        explicit = [t for t in explicit if t]
+        if explicit:
+            names.update(explicit)
+            continue
+        for value in _property_return_strings(node, "block_name"):
+            text = _literal_str(value)
+            if text:
+                names.add(prettify_block_name(text))
+    return names
+
+
 def extract_all() -> Dict[str, Set[str]]:
     """Return the full extraction grouped by origin."""
     tr_strings: Set[str] = set()
@@ -207,18 +234,20 @@ def extract_all() -> Dict[str, Set[str]]:
 
     categories: Set[str] = set()
     docs: Set[str] = set()
+    names: Set[str] = set()
     for path in iter_python_files((BLOCKS_ROOT,)):
         cat, doc = extract_block_metadata(path)
         categories |= cat
         docs |= doc
+        names |= extract_block_display_names(path)
 
-    return {"tr": tr_strings, "categories": categories, "docs": docs}
+    return {"tr": tr_strings, "categories": categories, "docs": docs, "names": names}
 
 
 def extracted_keys() -> Set[str]:
     """Every string that must exist in a complete catalog."""
     groups = extract_all()
-    return groups["tr"] | groups["categories"] | groups["docs"]
+    return groups["tr"] | groups["categories"] | groups["docs"] | groups["names"]
 
 
 # --- catalogs ---------------------------------------------------------------
@@ -280,10 +309,15 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     groups = extract_all()
-    keys = groups["tr"] | groups["categories"] | groups["docs"]
+    keys = groups["tr"] | groups["categories"] | groups["docs"] | groups["names"]
     print(
-        "Extracted {} strings: {} tr() calls, {} block categories, {} param docs".format(
-            len(keys), len(groups["tr"]), len(groups["categories"]), len(groups["docs"])
+        "Extracted {} strings: {} tr() calls, {} block categories, {} param docs, "
+        "{} block display names".format(
+            len(keys),
+            len(groups["tr"]),
+            len(groups["categories"]),
+            len(groups["docs"]),
+            len(groups["names"]),
         )
     )
     if args.list:

@@ -11,6 +11,10 @@ class TerminatorBlock(BaseBlock):
         return "Term"
 
     @property
+    def display_name(self):
+        return "Terminator"
+
+    @property
     def category(self):
         return "Sinks"
 

@@ -220,6 +220,7 @@ All of these have working defaults in `BaseBlock`; override only what you need.
 | Hook | Default | What it does |
 |---|---|---|
 | `category` | `"Other"` | Palette section, and the default for the port requirements below. Existing sections: `Sources`, `Math`, `Control`, `Filters`, `Sinks`, `Routing`, `Analysis`, `PDE`, `Optimization`, `Other`. A new name simply creates a new section. Translated at display time. |
+| `display_name` | `block_name` split into words (`MatrixGain` -> `Matrix Gain`) | Palette / command-palette label. Override only when the default reads badly (e.g. `TranFn` -> `Transfer Function`). Presentation only: `block_name` stays the saved registry key. Written in English, translated at display time; the filter still matches the old identifier. |
 | `doc` | — | Long description for the palette tooltip and property panel. |
 | `requires_inputs` | `category != "Sources"` | Whether every input must be wired for the diagram to run. |
 | `requires_outputs` | `category not in ("Sinks", "Other")` | Same for outputs. |
@@ -323,8 +324,8 @@ kernel under its canonical name — no allowlist edit needed. Three rules:
 The UI is translated through `lib/i18n.py`; blocks participate in two narrow
 ways:
 
-- a block's `category` name and every param `doc` string are translated **at
-  display time** (`tr(category)`, `tr(doc)`), because the stored values are
+- a block's `category` name, its `display_name` and every param `doc` string are translated **at
+  display time** (`tr(category)`, `tr(display_name)`, `tr(doc)`), because the stored values are
   registry keys. Write them in English and they are picked up automatically by
   `python scripts/extract_strings.py --update` for blocks inside the repo.
 - **never** translate identifiers: `block_name`, parameter keys, port names,

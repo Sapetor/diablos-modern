@@ -50,12 +50,40 @@ _CHEVRON_COLLAPSED = "▸"
 _FAVORITES_KEY = "palette/favorites"
 _RECENT_KEY = "palette/recent"
 # How many recently-added blocks the Recent section keeps.
-_RECENT_CAP = 6
+_RECENT_CAP = 3
 
 
 def _collapsed_settings_key(category_name: str) -> str:
     """QSettings key under which a category's collapsed flag is persisted."""
     return f"palette/collapsed/{category_name}"
+
+
+def block_label(menu_block) -> str:
+    """Human-readable, translated palette label for ``menu_block``.
+
+    Display-time only: ``fn_name``/``block_fn`` remain the registry keys.
+    Library blocks (no class) carry a user-chosen name and are not translated.
+    """
+    name = (
+        getattr(menu_block, "display_name", None)
+        or getattr(menu_block, "block_fn", "")
+        or getattr(menu_block, "fn_name", "")
+        or "—"
+    )
+    if getattr(menu_block, "block_class", None) is None:
+        return str(name)
+    return tr(str(name))
+
+
+def block_matches_filter(menu_block, text: str) -> bool:
+    """Whether ``text`` (already lower-cased) matches the label or any old id."""
+    if not text:
+        return True
+    try:
+        hay = menu_block.search_text(block_label(menu_block))
+    except Exception:
+        hay = (getattr(menu_block, "fn_name", "") or "").lower()
+    return text in hay or text.replace(" ", "") in hay.replace(" ", "")
 
 
 def update_recents(recents, fn_name, cap=_RECENT_CAP):
@@ -172,7 +200,7 @@ class CompactBlockRow(QFrame):
         self.glyph = _BlockGlyphLabel(menu_block, colors)
         lay.addWidget(self.glyph, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        self.name_label = QLabel(getattr(menu_block, "fn_name", "—"))
+        self.name_label = QLabel(block_label(menu_block))
         font = QFont()
         font.setPointSize(9)
         font.setStyleHint(QFont.StyleHint.SansSerif)
@@ -1178,6 +1206,11 @@ class _CategorySection(QWidget):
         self._refresh_header_text()
         self._apply_row_visibility()
 
+    def set_collapsed(self, collapsed: bool):
+        """Set (and persist) the collapsed state; no-op when unchanged."""
+        if bool(collapsed) != self._collapsed:
+            self.toggle_collapsed()
+
     def is_collapsed(self) -> bool:
         return self._collapsed
 
@@ -1196,8 +1229,7 @@ class _CategorySection(QWidget):
         text = self._filter_text
         any_match = False
         for r in self.rows:
-            name = getattr(r.menu_block, "fn_name", "").lower()
-            matches = (not text) or (text in name)
+            matches = block_matches_filter(r.menu_block, text)
             r.setVisible(matches and not self._collapsed)
             any_match = any_match or matches
         return any_match
@@ -1323,6 +1355,15 @@ class ModernBlockPalette(QWidget):
         self.count_label.setFont(cf)
         hl.addWidget(self.count_label)
 
+        # Collapse / expand every category at once.
+        self.collapse_button = QToolButton()
+        self.collapse_button.setText("\u229f")
+        self.collapse_button.setAutoRaise(True)
+        self.collapse_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.collapse_button.setToolTip(tr("Collapse all categories"))
+        self.collapse_button.clicked.connect(self.toggle_all_collapsed)
+        hl.addWidget(self.collapse_button)
+
         # Re-scan the user library folders (see lib/library.py) and rebuild.
         self.refresh_button = QToolButton()
         self.refresh_button.setText("\u21bb")
@@ -1342,6 +1383,8 @@ class ModernBlockPalette(QWidget):
         self.search_bar.setPlaceholderText(tr("Filter blocks…"))
         self.search_bar.setClearButtonEnabled(True)
         self.search_bar.textChanged.connect(self._filter_blocks)
+        # Enter adds the first visible match to the canvas, then clears the filter.
+        self.search_bar.returnPressed.connect(self._add_first_match)
         # Down/Up from the search box step into the visible rows (keyboard nav).
         self.search_bar.installEventFilter(self)
         sw.addWidget(self.search_bar)
@@ -1424,7 +1467,7 @@ class ModernBlockPalette(QWidget):
             self.blocks_layout.addWidget(fav)
             self._sections.append(fav)
 
-        recent_blocks = [index[n] for n in _load_recents() if n in index]
+        recent_blocks = [index[n] for n in _load_recents() if n in index][:_RECENT_CAP]
         if recent_blocks:
             recent = _PinnedSection("Recent", recent_blocks, self.dsim.colors)
             self.blocks_layout.addWidget(recent)
@@ -1561,6 +1604,32 @@ class ModernBlockPalette(QWidget):
         text = (text or "").strip().lower()
         for s in self._sections:
             s.filter(text)
+
+    def _add_first_match(self):
+        """Insert the first visible match via the row's normal add path."""
+        rows = self.visible_rows()
+        if not rows:
+            return
+        rows[0].activate()  # rebuilds the palette (Recent); do not touch rows after
+        self.search_bar.clear()
+
+    # -- Collapse / expand all ----------------------------------------------
+
+    def toggle_all_collapsed(self):
+        """Collapse every section, or expand them all if all are already collapsed."""
+        sections = [s for s in self._sections if isinstance(s, _CategorySection)]
+        collapse = not all(s.is_collapsed() for s in sections)
+        for s in sections:
+            s.set_collapsed(collapse)
+        self._update_collapse_button()
+
+    def _update_collapse_button(self):
+        sections = [s for s in self._sections if isinstance(s, _CategorySection)]
+        all_collapsed = bool(sections) and all(s.is_collapsed() for s in sections)
+        self.collapse_button.setText("\u229e" if all_collapsed else "\u229f")
+        self.collapse_button.setToolTip(
+            tr("Expand all categories") if all_collapsed else tr("Collapse all categories")
+        )
 
     # -- Keyboard navigation ------------------------------------------------
 
@@ -1724,6 +1793,7 @@ class ModernBlockPalette(QWidget):
                     self.blocks_layout.removeItem(item)
             self._sections.clear()
             self._load_blocks()
+            self._update_collapse_button()
         except Exception as e:
             logger.error(f"Error refreshing palette: {e}")
 
@@ -1737,6 +1807,7 @@ class ModernBlockPalette(QWidget):
         self.title.setText(tr("Library"))
         self.search_bar.setPlaceholderText(tr("Filter blocks…"))
         self.refresh_blocks()
+        self._update_collapse_button()
 
     def get_available_blocks(self):
         return getattr(self.dsim, "menu_blocks", [])

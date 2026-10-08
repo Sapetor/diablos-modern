@@ -17,6 +17,10 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
         return "TranFn"
 
     @property
+    def display_name(self):
+        return "Transfer Function"
+
+    @property
     def category(self):
         return "Control"
 

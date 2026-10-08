@@ -17,7 +17,7 @@ from PyQt6.QtGui import QCursor, QFont, QAction, QActionGroup
 from PyQt6.QtWidgets import QMenu, QWidgetAction, QWidget, QHBoxLayout, QLabel, QLineEdit
 
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font
-from modern_ui.widgets.modern_palette import visible_menu_blocks
+from modern_ui.widgets.modern_palette import block_label, block_matches_filter, visible_menu_blocks
 
 from lib.i18n import tr
 
@@ -204,9 +204,7 @@ class _CanvasSearchWidget(QWidget):
             self._top_match = None
             return
         for mb in self._all_blocks:
-            fn = (getattr(mb, "fn_name", "") or "").lower()
-            bf = (getattr(mb, "block_fn", "") or "").lower()
-            if text in fn or text in bf:
+            if block_matches_filter(mb, text):
                 self._top_match = mb
                 return
         self._top_match = None
@@ -538,7 +536,7 @@ class MenuManager:
             added_any = True
             _build_kbd_row(
                 menu,
-                getattr(mb, "block_fn", name).lower(),
+                block_label(mb),
                 tr("add here"),
                 on_trigger=lambda b=mb, p=pos: self._quick_add(b, p),
             )
