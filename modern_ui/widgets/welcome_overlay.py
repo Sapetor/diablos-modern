@@ -11,6 +11,7 @@ import logging
 import os
 
 from PyQt6.QtCore import QEvent, Qt, QTimer
+from PyQt6.QtGui import QFont, QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -160,6 +161,13 @@ class WelcomeOverlay(QWidget):
     def _apply_styling(self, *_):
         c = theme_manager.get_color
         pt = TYPE
+        # The app-wide QPushButton rule (min-height 28px, min-width 64px,
+        # padding) outranks setMinimumSize() on a styled widget, which squashed
+        # the cards. Size them here, from the card title's font metrics so they
+        # still follow the UI scale.
+        title_font = QFont(self.font())
+        title_font.setPointSizeF(pt["body_strong"])
+        card_h = QFontMetrics(title_font).lineSpacing() * 5 + SPACE["lg"] * 2
         self.setStyleSheet(f"""
             #welcomePanel {{
                 background-color: {c("surface_elevated").name()};
@@ -181,6 +189,12 @@ class WelcomeOverlay(QWidget):
                 border: 1px solid {c("border_primary").name()};
                 border-radius: {RADIUS["lg"]}px;
                 text-align: left;
+            }}
+            #welcomeCard {{
+                min-height: {card_h}px;
+                min-width: 170px;
+                max-width: 210px;
+                padding: 0px;
             }}
             #welcomeAction {{
                 color: {c("text_primary").name()};

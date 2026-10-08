@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QFrame,
     QMenu,
+    QSizePolicy,
     QToolButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QRect, QRectF, QPointF, QSize, QSettings
@@ -1340,13 +1341,16 @@ class ModernBlockPalette(QWidget):
         head.setObjectName("PaletteHead")
         hl = QHBoxLayout(head)
         hl.setContentsMargins(12, 10, 12, 6)
-        hl.setSpacing(8)
+        hl.setSpacing(4)
         self.title = QLabel(tr("Library"))
         tf = QFont()
         tf.setPointSize(9)
         tf.setBold(True)
         tf.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 105)
         self.title.setFont(tf)
+        # Never squeeze the heading: the count and the two header buttons share
+        # a narrow panel, and a shrunk QLabel just clips ("Librai").
+        self.title.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         hl.addWidget(self.title)
         hl.addStretch(1)
         self.count_label = QLabel("")

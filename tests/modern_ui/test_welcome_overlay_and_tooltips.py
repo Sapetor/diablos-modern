@@ -116,3 +116,25 @@ def test_tooltip_on_body_and_empty_space(window, qapp):
     body = canvas.world_to_screen(blk.rect.center())
     assert blk.username in canvas.tooltip_text_at(body)
     assert canvas.tooltip_text_at(QPoint(5, 5)) == ""
+
+
+def test_layout_survives_the_app_stylesheet(qapp, window):
+    """The app QSS (QPushButton min-height/min-width) used to squash the example
+    cards, and the palette header clipped "Library"; check under the real QSS."""
+    from PyQt6.QtGui import QFontMetrics
+
+    from modern_ui.styles.qss_styles import ModernStyles
+
+    window.setStyleSheet(ModernStyles.get_complete_stylesheet())
+    _settle(qapp, window)
+
+    overlay = window.canvas.welcome_overlay
+    cards = overlay.findChildren(type(overlay.open_button), "welcomeCard")
+    assert len(cards) == 3
+    for card in cards:
+        line = card.fontMetrics().lineSpacing()
+        assert card.height() >= 4 * line
+        assert card.width() >= 170
+
+    title = window.block_palette.title
+    assert title.width() >= QFontMetrics(title.font()).horizontalAdvance(title.text())
