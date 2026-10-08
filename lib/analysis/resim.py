@@ -53,6 +53,18 @@ OUTCOME_METRIC_LABELS = {
 }
 
 
+def root_blocks_of(dsim):
+    """Top-level block list of ``dsim``, whatever subsystem the user is inside.
+
+    ``dsim.blocks_list`` is the *current navigation scope*; experiments must
+    always address the whole diagram.
+    """
+    root = getattr(dsim, "root_blocks_list", None)
+    if root is None:
+        root = getattr(dsim, "blocks_list", [])
+    return root
+
+
 def iter_blocks_qualified(blocks, prefix=""):
     """Yield ``(qualified_name, block)`` for ``blocks`` and everything nested in them.
 

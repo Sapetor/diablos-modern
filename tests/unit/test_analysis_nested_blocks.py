@@ -118,3 +118,73 @@ class TestSweepInsideSubsystem:
         assert inner.params["gain"] == 2.0
         if getattr(inner, "exec_params", None):
             assert inner.exec_params.get("gain") == 2.0
+
+
+@pytest.mark.unit
+class TestRootScopeIndependence:
+    """Experiments address the whole diagram, whatever scope the user is in."""
+
+    def test_monte_carlo_same_inside_and_outside_subsystem(self, qapp, tmp_path):
+        b = DiagramBuilder()
+        n = b.add_block("Noise", 50, 100, params=_params("Noise"))
+        s = b.add_block("Scope", 250, 100, params=_params("Scope"))
+        b.connect(n, 0, s, 0)
+        dsim = _load(b, tmp_path, "mc_scope.diablos")
+        sub, _inner = _wrap(dsim, "Noise")
+
+        kw = dict(master_seed=5, sim_time=0.5, sim_dt=0.05)
+        top = MonteCarloRunner(dsim.clone_for_analysis()).run(3, **kw)
+        dsim.enter_subsystem(sub)
+        try:
+            assert dsim.root_blocks_list is not dsim.blocks_list
+            inside = MonteCarloRunner(dsim).run(3, **kw)
+            cloned_inside = MonteCarloRunner(dsim.clone_for_analysis()).run(3, **kw)
+        finally:
+            dsim.exit_subsystem()
+
+        assert top["n_ok"] == inside["n_ok"] == cloned_inside["n_ok"] == 3
+        assert sorted(top["signals"]) == sorted(inside["signals"])
+        for nm in top["signals"]:
+            assert np.allclose(top["signals"][nm]["runs"], inside["signals"][nm]["runs"])
+            assert np.allclose(top["signals"][nm]["runs"], cloned_inside["signals"][nm]["runs"])
+
+    def test_sweep_same_inside_and_outside_subsystem(self, qapp, tmp_path):
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=1.0))
+        g = b.add_block("Gain", 200, 100, params=_params("Gain", gain=2.0))
+        s = b.add_block("Scope", 350, 100, params=_params("Scope"))
+        b.connect(c, 0, g, 0)
+        b.connect(g, 0, s, 0)
+        dsim = _load(b, tmp_path, "sweep_scope.diablos")
+        sub, inner = _wrap(dsim, "Gain")
+        axes = [{"block": f"{sub.name}/{inner.name}", "param": "gain", "values": [1.0, 3.0]}]
+        kw = dict(axes=axes, sim_time=0.3, sim_dt=0.05)
+
+        top = ParameterSweepRunner(dsim).run(**kw)
+        dsim.enter_subsystem(sub)
+        try:
+            inside = ParameterSweepRunner(dsim).run(**kw)
+            cloned = ParameterSweepRunner(dsim.clone_for_analysis()).run(**kw)
+        finally:
+            dsim.exit_subsystem()
+
+        for res in (top, inside, cloned):
+            assert res["n_ok"] == 2
+            assert np.allclose(_only_signal(res)["metrics"]["final"], [1.0, 3.0])
+
+    def test_clone_inside_subsystem_copies_whole_diagram(self, qapp, tmp_path):
+        b = DiagramBuilder()
+        c = b.add_block("Constant", 50, 100, params=_params("Constant", value=1.0))
+        g = b.add_block("Gain", 200, 100, params=_params("Gain", gain=2.0))
+        b.connect(c, 0, g, 0)
+        dsim = _load(b, tmp_path, "clone_scope.diablos")
+        sub, _inner = _wrap(dsim, "Gain")
+        names = [x.name for x in dsim.blocks_list]
+        dsim.enter_subsystem(sub)
+        try:
+            live_before = dsim.blocks_list
+            clone = dsim.clone_for_analysis()
+            assert dsim.blocks_list is live_before  # live scope untouched
+        finally:
+            dsim.exit_subsystem()
+        assert [x.name for x in clone.blocks_list] == names

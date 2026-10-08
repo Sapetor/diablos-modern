@@ -27,6 +27,7 @@ from lib.analysis.resim import (
     OUTCOME_METRICS,
     harvest_scope_signals,
     iter_blocks_qualified,
+    root_blocks_of,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,7 +95,7 @@ class MonteCarloRunner:
 
         # Every block, including those nested in Subsystems, keyed by its
         # qualified (flattened) name.
-        blocks_by_name = dict(iter_blocks_qualified(dsim.blocks_list))
+        blocks_by_name = dict(iter_blocks_qualified(root_blocks_of(dsim)))
         seed_blocks = [
             (qn, b)
             for qn, b in blocks_by_name.items()

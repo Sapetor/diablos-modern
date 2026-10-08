@@ -171,6 +171,11 @@ class DSim:
         """
         return self.subsystem_manager.get_current_path()
 
+    @property
+    def root_blocks_list(self):
+        """Top-level blocks of the diagram, regardless of the navigation scope."""
+        return self.get_root_context()[0]
+
     def get_root_context(self):
         """
         Get the root context (blocks_list, line_list) of the simulation model.
@@ -422,7 +427,17 @@ class DSim:
         parameters) and simulation settings are preserved.
         """
         clone = DSim()
-        clone.deserialize(self.serialize())
+        # serialize() reads the model's *current* lists, which are a subsystem's
+        # internals while the user is navigated inside one.  Always clone the
+        # whole diagram.
+        root_blocks, root_lines = self.get_root_context()
+        live = (self.model.blocks_list, self.model.line_list)
+        self.model.blocks_list, self.model.line_list = root_blocks, root_lines
+        try:
+            data = self.serialize()
+        finally:
+            self.model.blocks_list, self.model.line_list = live
+        clone.deserialize(data)
         clone.use_fast_solver = getattr(self, "use_fast_solver", True)
         # Never let a cloned run touch the GUI: no dynamic plotting, no scope
         # windows -- the caller harvests block data directly.
@@ -827,7 +842,8 @@ class DSim:
         use_fast = getattr(self, "use_fast_solver", True)
 
         _tb1 = time.time()
-        compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
+        root_blocks, root_lines = self.get_root_context()
+        compilable = self.engine.check_compilability(root_blocks) if use_fast else False
         logger.debug(f"[TIMING] check_compilability: {time.time() - _tb1:.3f}s")
 
         if use_fast and compilable:
@@ -836,7 +852,7 @@ class DSim:
             t_span = (0.0, self.execution_time)
             _tb2 = time.time()
             success = self.engine.run_compiled_simulation(
-                self.blocks_list, self.line_list, t_span, self.sim_dt
+                root_blocks, root_lines, t_span, self.sim_dt
             )
             logger.debug(f"[TIMING] run_compiled_simulation: {time.time() - _tb2:.3f}s")
             if success:
@@ -961,9 +977,12 @@ class DSim:
             self.diagram_changed_since_run = False
             self.rk_counter += 1
 
+            # The Goto/From refresh above may have re-pointed the lists.
+            root_blocks, root_lines = self.get_root_context()
+
             # Run batch (compiled or interpreter)
             use_fast = getattr(self, "use_fast_solver", True)
-            compilable = self.engine.check_compilability(self.blocks_list) if use_fast else False
+            compilable = self.engine.check_compilability(root_blocks) if use_fast else False
 
             if cancel_cb is not None and cancel_cb():
                 self.execution_initialized = False
@@ -973,7 +992,7 @@ class DSim:
             if use_fast and compilable:
                 t_span = (0.0, sim_time)
                 success = self.engine.run_compiled_simulation(
-                    self.blocks_list, self.line_list, t_span, sim_dt
+                    root_blocks, root_lines, t_span, sim_dt
                 )
                 if success:
                     self.timeline = self.engine.timeline

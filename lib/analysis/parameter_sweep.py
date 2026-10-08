@@ -40,7 +40,12 @@ run succeeded.
 import logging
 import numpy as np
 
-from lib.analysis.resim import OUTCOME_METRICS, harvest_scope_signals, iter_blocks_qualified
+from lib.analysis.resim import (
+    OUTCOME_METRICS,
+    harvest_scope_signals,
+    iter_blocks_qualified,
+    root_blocks_of,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +79,7 @@ class ParameterSweepRunner:
         sim_time = float(sim_time if sim_time is not None else getattr(dsim, "sim_time", 1.0))
         sim_dt = float(sim_dt if sim_dt is not None else getattr(dsim, "sim_dt", 0.01))
         # Includes blocks nested in Subsystems, keyed by qualified "Sub/block" name.
-        blocks_by_name = dict(iter_blocks_qualified(dsim.blocks_list))
+        blocks_by_name = dict(iter_blocks_qualified(root_blocks_of(dsim)))
 
         # Resolve + validate each axis; snapshot originals so we restore exactly.
         resolved = []

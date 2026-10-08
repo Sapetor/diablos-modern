@@ -126,3 +126,39 @@ class TestParameterSweepDialog:
         assert np.allclose(axx["values"], [0.0, 1.0, 2.0])
         assert axy["block"] == const and axy["param"] == "value"
         assert np.allclose(axy["values"], [0.0, 1.0])
+
+
+@pytest.mark.unit
+class TestParameterSweepDialogNested:
+    def _nested(self, tmp_path):
+        dsim = _const_gain_scope(tmp_path, "psd_nested.diablos")
+        gain_blk = next(b for b in dsim.blocks_list if b.block_fn == "Gain")
+        sub = dsim.create_subsystem_from_selection([gain_blk])
+        inner = next(b for b in sub.sub_blocks if b.block_fn == "Gain")
+        return dsim, sub, inner
+
+    def test_picker_lists_nested_block_with_qualified_value(self, qapp, tmp_path):
+        dsim, sub, inner = self._nested(tmp_path)
+        qn = f"{sub.name}/{inner.name}"
+        dialog = ParameterSweepDialog(dsim)
+        combo = dialog._x["block"]
+        idx = combo.findData(qn)
+        assert idx >= 0, "nested block missing from the picker"
+        assert f"{sub.name} / {inner.name}" in combo.itemText(idx)
+
+        combo.setCurrentIndex(idx)
+        dialog._x["param"].setCurrentText("gain")
+        assert dialog.get_selection()["axes"][0]["block"] == qn
+
+    def test_picker_is_rooted_when_navigated_inside_subsystem(self, qapp, tmp_path):
+        dsim, sub, inner = self._nested(tmp_path)
+        dsim.enter_subsystem(sub)
+        try:
+            dialog = ParameterSweepDialog(dsim)
+            combo = dialog._x["block"]
+            data = [combo.itemData(i) for i in range(combo.count())]
+        finally:
+            dsim.exit_subsystem()
+        assert f"{sub.name}/{inner.name}" in data
+        # Top-level blocks stay reachable from inside the subsystem.
+        assert _name_of(dsim, "Constant") in data

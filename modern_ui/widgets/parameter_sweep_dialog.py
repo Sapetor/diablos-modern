@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
 )
 
+from lib.analysis.resim import iter_blocks_qualified, root_blocks_of
 from modern_ui.themes.theme_manager import theme_manager
 from lib.i18n import tr
 
@@ -53,9 +54,30 @@ def numeric_scalar_params(block):
     return sorted(out)
 
 
+def sweepable_entries(dsim):
+    """``[(qualified_name, block)]`` of sweepable blocks in the whole diagram.
+
+    Always rooted at the top-level diagram (never the subsystem the user is
+    currently inside) and includes blocks nested in Subsystems, addressed by
+    their qualified ``"Subsystem/block"`` name -- the name the runner expects.
+    """
+    return [
+        (qn, b) for qn, b in iter_blocks_qualified(root_blocks_of(dsim)) if numeric_scalar_params(b)
+    ]
+
+
 def sweepable_blocks(dsim):
-    """Blocks of ``dsim`` that expose at least one numeric scalar parameter."""
-    return [b for b in getattr(dsim, "blocks_list", []) if numeric_scalar_params(b)]
+    """Blocks of ``dsim`` (nested ones included) with a numeric scalar parameter."""
+    return [b for _qn, b in sweepable_entries(dsim)]
+
+
+def block_display_label(qualified_name, block):
+    """Readable picker label: ``"Sub / gain0"``, plus the block's username if distinct."""
+    label = " / ".join(qualified_name.split("/"))
+    username = getattr(block, "username", None)
+    if isinstance(username, str) and username and username != block.name:
+        label = f"{label} ({username})"
+    return label
 
 
 class ParameterSweepDialog(QDialog):
@@ -70,7 +92,9 @@ class ParameterSweepDialog(QDialog):
         """
         super().__init__(parent)
         self.dsim = dsim
-        self._blocks = {b.name: b for b in sweepable_blocks(dsim)}
+        # qualified name -> block; the combo shows a readable label and stores the
+        # qualified name as item data (that is what the runner is given).
+        self._blocks = dict(sweepable_entries(dsim))
 
         self.setWindowTitle(tr("Parameter Sweep"))
         self.setMinimumWidth(460)
@@ -140,7 +164,8 @@ class ParameterSweepDialog(QDialog):
         form = QFormLayout(group)
 
         block_combo = QComboBox()
-        block_combo.addItems(list(self._blocks.keys()))
+        for qn, blk in self._blocks.items():
+            block_combo.addItem(block_display_label(qn, blk), qn)
         param_combo = QComboBox()
 
         min_spin = QDoubleSpinBox()
@@ -167,7 +192,7 @@ class ParameterSweepDialog(QDialog):
             "max": max_spin,
             "points": points_spin,
         }
-        block_combo.currentTextChanged.connect(lambda _t, a=ax: self._on_block_changed(a))
+        block_combo.currentIndexChanged.connect(lambda _i, a=ax: self._on_block_changed(a))
         param_combo.currentTextChanged.connect(lambda _t, a=ax: self._on_param_changed(a))
         if self._blocks:
             self._on_block_changed(ax)
@@ -180,7 +205,7 @@ class ParameterSweepDialog(QDialog):
 
     def _on_block_changed(self, ax):
         """Repopulate the param combo for the axis's selected block."""
-        block = self._blocks.get(ax["block"].currentText())
+        block = self._blocks.get(ax["block"].currentData())
         ax["param"].blockSignals(True)
         ax["param"].clear()
         if block is not None:
@@ -190,7 +215,7 @@ class ParameterSweepDialog(QDialog):
 
     def _on_param_changed(self, ax):
         """Seed min/max from the parameter's current value (value +/- |value|)."""
-        block = self._blocks.get(ax["block"].currentText())
+        block = self._blocks.get(ax["block"].currentData())
         pname = ax["param"].currentText()
         if block is None or not pname:
             return
@@ -205,7 +230,7 @@ class ParameterSweepDialog(QDialog):
     # ---------------------------------------------------------------- query ---
     def _axis_selection(self, ax):
         return {
-            "block": ax["block"].currentText(),
+            "block": ax["block"].currentData() or "",
             "param": ax["param"].currentText(),
             "values": np.linspace(
                 float(ax["min"].value()),

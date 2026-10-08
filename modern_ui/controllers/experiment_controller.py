@@ -151,7 +151,7 @@ class ExperimentController:
         from PyQt6.QtCore import Qt
 
         window = self.window
-        if not window.dsim.blocks_list:
+        if not window.dsim.root_blocks_list:
             QMessageBox.information(window, tr("Monte Carlo"), tr("No blocks to simulate."))
             return
         # Re-entrancy guard: one ensemble at a time (it mutates/restores diagram params).
@@ -246,7 +246,7 @@ class ExperimentController:
         from PyQt6.QtCore import Qt
 
         window = self.window
-        if not window.dsim.blocks_list:
+        if not window.dsim.root_blocks_list:
             QMessageBox.information(window, tr("Parameter Sweep"), tr("No blocks to simulate."))
             return
         # Re-entrancy guard: one sweep at a time (it mutates/restores diagram params).
