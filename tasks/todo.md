@@ -60,12 +60,12 @@ None/empty-input hardening and param docs. Still open:
   (code reading, unreproduced).
 - [ ] **No hover tooltip for elided block names** (the canvas has no tooltip
   mechanism yet); port labels on a *selected* PID still overlay its title.
-- [ ] **UX backlog from the audit:** move library/mask items out of Edit into a
-  Library menu, Language/UI scale/routing into a Preferences dialog; bind
-  shortcuts with `QAction.setShortcut` instead of label text; rename "Enable
-  Fast Solver (Experimental)" (default-on); palette shows raw ids
-  (`randomsource`); errors as modal boxes with no click-to-block; welcome /
-  "start from example" empty state.
+- [ ] **Follow-ups from the UX round (2026-10-08):**
+  - The double-click quick-insert on the canvas and the palette have separate
+    search code. The palette's `block_matches_filter` could be shared.
+  - Align Top has no shortcut, because Ctrl+Shift+T is taken by the tuning panel.
+  - The toolbar zoom −/+ glyphs render very small.
+  - Welcome cards and the overlay are not checked at UI scale 125%/150%.
 
 ### Open items from the Windows session (2026-10-09)
 Fixed the same day: grow-only vertical resize (`calculate_min_size` echoed

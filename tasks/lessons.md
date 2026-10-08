@@ -487,6 +487,29 @@ Note the earlier entry listed `app.setStyle("Fusion")` under "tried and failed";
 
 ---
 
+### Agent screenshots and GUI tests run without the app stylesheet (October 2026)
+
+**Problem**: four UX agents each checked their work with offscreen screenshots
+and widget tests, and all of it looked right. Merged and rendered with the real
+theme, the welcome example cards had collapsed to 40px with overlapping text,
+and the palette header read "Librai". Separately, a dark-theme "bug" reported
+from the same screenshots (light toolbar and panels) did not exist.
+
+**Cause**: `apply_modern_theme(app)` (`modern_ui/styles/qss_styles.py`) is
+called only by `diablos_modern.py`. A script or test that just builds
+`ModernDiaBloSWindow()` gets no QSS and no themed QPalette. The global
+`QPushButton` rule (`min-height: 28px`, `min-width: 64px`, padding) outranks
+`setMinimumSize()` on a styled widget, so layouts that hold without QSS can
+break with it.
+
+**Lesson**: render screenshots through `apply_modern_theme(app)`. Put any
+size-critical styling in the widget's own stylesheet, under an ID selector, not
+in `setMinimumSize()`. A layout test should apply
+`ModernStyles.get_complete_stylesheet()` to the window it checks; see
+`test_layout_survives_the_app_stylesheet`. Offscreen windows also paint only
+during `grab()`, so a pill refreshed from a paint hook is stale in the first
+grab. Grab twice before judging it.
+
 ## Packaging / Filesystem
 
 ### Every runtime write must resolve through `lib/app_paths.py` (September 2026)
