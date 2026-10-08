@@ -50,6 +50,27 @@ checkable (2026-10-02 pass noted per item).
 ### Documentation
 - [ ] **Video tutorials** — demo videos for key features.
 
+### Open items from the October 2026 audit (2026-10-08)
+- [ ] **PID anti-windup differs between paths.** The interpreter (`blocks/pid.py`)
+  back-calculates the integrator including `d_term`; the compiled kernel
+  (`lib/engine/compiler_kernels/state.py` ~160) uses conditional integration.
+  On `pid_second_order.diablos` (u_max=10) the outputs diverge (0.93 vs -0.52
+  at t=1.6). Decide which semantics is canonical, then align the other path.
+- [ ] **Monte Carlo / sweep GUI pickers list only top-level blocks.** The runners
+  now accept qualified nested names (`Subsystem/block`), but the dialogs in
+  `modern_ui/` do not offer them. The runners also root at `dsim.blocks_list`,
+  which is the current scope when the user is inside a subsystem.
+- [ ] **`SimulationModel.remove_block` rebinds `line_list`** instead of mutating
+  it in place; inside a subsystem `sub_lines` may then point at a stale list
+  (code reading, unreproduced).
+- [ ] **Undo back to the saved state still marks the diagram dirty** (no
+  saved-revision tracking in `history_manager`).
+- [ ] **Block names clip to block width** (`block_renderer.py` ~521, the text
+  rect is `block.width` wide); port labels overlap the PID title.
+- [ ] **~30 blocks raise on None/empty inputs** instead of returning an error
+  dict (PDE, optimization, state-space families); several common blocks have
+  params without a `doc` (TF, StateSpace, WaveGenerator, RateTransition, Sum).
+
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
   `@kernel` now compiles, but only algebraically: the compiler allocates ODE
