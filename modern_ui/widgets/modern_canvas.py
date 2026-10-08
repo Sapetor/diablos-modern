@@ -907,12 +907,10 @@ class ModernCanvas(QWidget):
     def keyPressEvent(self, event):
         """Handle keyboard events."""
         try:
-            # Check for Control/Command modifier (works on both Mac and Windows/Linux)
-            ctrl_pressed = event.modifiers() & (
-                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier
-            )
-            shift_pressed = event.modifiers() & Qt.KeyboardModifier.ShiftModifier
-
+            # Only Esc and Delete/Backspace are handled here. Every Ctrl-chord
+            # (undo/redo/copy/paste/select-all/flip/align/subsystem) and F5 is a
+            # QAction shortcut owned by MenuBuilder: handling the same key in
+            # both places would fire it twice.
             if event.key() == Qt.Key.Key_Escape:
                 # Cancel any ongoing operations
                 if self.connection_manager.connection_state.creation_state:
@@ -936,47 +934,6 @@ class ModernCanvas(QWidget):
             elif event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
                 # Delete or Backspace - works on both Mac (Delete key) and Windows/Linux (Del key)
                 self.remove_selected_items()
-            elif event.key() == Qt.Key.Key_G and ctrl_pressed:
-                # Ctrl+G: Create subsystem from selection
-                self._create_subsystem_trigger()
-            elif event.key() == Qt.Key.Key_Z and ctrl_pressed and shift_pressed:
-                # Ctrl+Shift+Z: Redo (alternative to Ctrl+Y)
-                self.redo()
-            elif event.key() == Qt.Key.Key_Z and ctrl_pressed:
-                # Ctrl+Z: Undo
-                self.undo()
-            elif event.key() == Qt.Key.Key_Y and ctrl_pressed:
-                # Ctrl+Y: Redo
-                self.redo()
-            elif event.key() == Qt.Key.Key_F and ctrl_pressed:
-                self.flip_selected_blocks()
-            elif event.key() == Qt.Key.Key_C and ctrl_pressed:
-                self.copy_selected_blocks()
-            elif event.key() == Qt.Key.Key_V and ctrl_pressed:
-                self.paste_blocks()
-            elif event.key() == Qt.Key.Key_A and ctrl_pressed:
-                # Ctrl+A: Select all blocks
-                self._select_all_blocks()
-            elif event.key() == Qt.Key.Key_F5:
-                if shift_pressed:
-                    # Shift+F5: Stop simulation
-                    self.stop_simulation()
-                    logger.info("F5: Stopped simulation")
-                else:
-                    # F5: Start/run simulation
-                    self.start_simulation()
-                    logger.info("F5: Started simulation")
-            # Alignment shortcuts (Ctrl+Shift+key)
-            elif event.key() == Qt.Key.Key_L and ctrl_pressed and shift_pressed:
-                self.align_left()
-            elif event.key() == Qt.Key.Key_R and ctrl_pressed and shift_pressed:
-                self.align_right()
-            elif event.key() == Qt.Key.Key_H and ctrl_pressed and shift_pressed:
-                self.align_center_horizontal()
-            elif event.key() == Qt.Key.Key_T and ctrl_pressed and shift_pressed:
-                self.align_top()
-            elif event.key() == Qt.Key.Key_B and ctrl_pressed and shift_pressed:
-                self.align_bottom()
         except Exception as e:
             logger.error(f"Error in keyPressEvent: {str(e)}")
 

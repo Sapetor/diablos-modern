@@ -337,11 +337,11 @@ class TestSaveAndReloadLibraryBlock:
 
 @pytest.mark.qt
 class TestMaskMenuEntries:
-    def test_edit_menu_exposes_the_mask_and_library_actions(self, qapp, window):
+    def test_library_menu_exposes_the_mask_and_library_actions(self, qapp, window):
         labels = set()
         for action in window.menuBar().actions():
             sub = action.menu()
-            if sub is None:
+            if sub is None or action.text().replace("&", "") != "Library":
                 continue
             for entry in sub.actions():
                 labels.add(entry.text())

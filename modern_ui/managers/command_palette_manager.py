@@ -38,7 +38,11 @@ _SIM_COMMANDS: list[tuple[str, str]] = [
     (tr_noop("Pause simulation"), "F6"),
     (tr_noop("Stop simulation"), "F7"),
     (tr_noop("Step simulation"), "F8"),
-    (tr_noop("Toggle fast solver"), ""),
+    (tr_noop("Toggle compiled solver"), ""),
+    (tr_noop("Linearize & analyze…"), "Ctrl+Alt+L"),
+    (tr_noop("Find operating point (trim)…"), "Ctrl+Alt+T"),
+    (tr_noop("Parameter sweep…"), "Ctrl+Alt+S"),
+    (tr_noop("Monte Carlo…"), "Ctrl+Alt+M"),
 ]
 
 _VIEW_COMMANDS: list[tuple[str, str]] = [
@@ -58,11 +62,19 @@ _FILE_COMMANDS: list[tuple[str, str]] = [
     (tr_noop("Open diagram"), "Ctrl+O"),
     (tr_noop("Save diagram"), "Ctrl+S"),
     (tr_noop("Load workspace…"), ""),
-    (tr_noop("Show plots"), ""),
+    (tr_noop("Show plots"), "Ctrl+Shift+P"),
     (tr_noop("Export as image…"), ""),
     (tr_noop("Export as TikZ…"), ""),
     (tr_noop("Export as Python script…"), ""),
     (tr_noop("Copy diagram as image"), ""),
+    (tr_noop("Preferences…"), "Ctrl+,"),
+    (tr_noop("Edit mask…"), ""),
+    (tr_noop("Look under mask"), ""),
+    (tr_noop("Save as library block…"), ""),
+    (tr_noop("Reload from library"), ""),
+    (tr_noop("Refresh block library"), ""),
+    (tr_noop("Reload user blocks"), ""),
+    (tr_noop("Open user blocks folder…"), ""),
 ]
 
 
@@ -136,6 +148,10 @@ class CommandPaletteManager:
             window.stop_simulation,
             window.step_simulation,
             lambda: window.toggle_fast_solver(not getattr(window, "use_fast_solver", True)),
+            window.linearize_and_analyze,
+            window.find_operating_point,
+            window.run_parameter_sweep,
+            window.run_monte_carlo,
         ]
         view_callbacks = [
             window.zoom_in,
@@ -158,6 +174,14 @@ class CommandPaletteManager:
             window.export_tikz,
             window.export_python_script,
             window.copy_diagram_image,
+            window.show_preferences,
+            lambda: window.edit_block_mask(),
+            lambda: window.look_under_mask(),
+            lambda: window.save_as_library_block(),
+            lambda: window.reload_from_library(),
+            lambda: window.refresh_block_library(),
+            lambda: window.reload_user_blocks(),
+            window.open_user_blocks_folder,
         ]
         for badge, table, callbacks in [
             ("sim", _SIM_COMMANDS, sim_callbacks),

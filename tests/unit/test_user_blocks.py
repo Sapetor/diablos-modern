@@ -568,9 +568,9 @@ class TestSavedDiagramRoundTrip:
 
 @pytest.mark.qt
 class TestMenuActions:
-    """The Edit menu must offer the reload and open-folder actions."""
+    """The Library menu must offer the reload and open-folder actions."""
 
-    def test_edit_menu_lists_the_user_block_actions(self, qapp):
+    def test_library_menu_lists_the_user_block_actions(self, qapp):
         from PyQt6.QtWidgets import QMenuBar
 
         from modern_ui.builders.menu_builder import MenuBuilder
@@ -584,7 +584,7 @@ class TestMenuActions:
         builder = MenuBuilder(window)
         menubar = QMenuBar()
         try:
-            builder._create_edit_menu(menubar)
+            builder._create_library_menu(menubar)
             edit_menu = menubar.actions()[0].menu()
             texts = [a.text() for a in edit_menu.actions()]
             assert any("User Blocks" in t for t in texts)

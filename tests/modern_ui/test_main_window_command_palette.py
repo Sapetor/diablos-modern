@@ -64,7 +64,7 @@ class TestSetupCommandPalette:
             "Pause simulation",
             "Stop simulation",
             "Step simulation",
-            "Toggle fast solver",
+            "Toggle compiled solver",
         ):
             c = _by_name(cmds, label)
             assert c is not None, f"missing sim command: {label}"

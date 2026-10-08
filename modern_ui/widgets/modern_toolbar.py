@@ -651,8 +651,9 @@ class ModernToolBar(QToolBar):
 
         def mk(kind: str, label: str, shortcut: str | None, tip: str, sig):
             a = QAction(_make_icon(kind, 18), tr(label), self)
-            if shortcut:
-                a.setShortcut(shortcut)
+            # The shortcut is advertised in the tooltip only. The key itself is
+            # bound by the matching File-menu action (MenuBuilder); binding it
+            # here too would make Qt report "Ambiguous shortcut overload".
             full_tip = tr(tip) + (f"  ({shortcut})" if shortcut else "")
             a.setToolTip(full_tip)
             # Mirror the tooltip into the status bar on hover/focus.

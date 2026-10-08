@@ -1,50 +1,137 @@
 import os
 import logging
 
-from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QKeySequence
 
 from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
 
+SK = QKeySequence.StandardKey
+
+
+def _sequences(*keys):
+    """Flatten StandardKey / "Ctrl+X" / QKeySequence specs into unique QKeySequences.
+
+    A ``StandardKey`` expands to every platform binding (``Redo`` is Ctrl+Shift+Z
+    on macOS/Linux and Ctrl+Y on Windows), so Qt renders and handles the native
+    one while the extras keep the app's historical keys alive.
+    """
+    out = []
+    for key in keys:
+        if isinstance(key, SK):
+            candidates = QKeySequence.keyBindings(key)
+        elif isinstance(key, QKeySequence):
+            candidates = [key]
+        else:
+            candidates = [QKeySequence(key)]
+        for seq in candidates:
+            if not seq.isEmpty() and seq not in out:
+                out.append(seq)
+    return out
+
 
 class MenuBuilder:
-    """Builder for MainWindow menus."""
+    """Builder for MainWindow menus.
+
+    Shortcuts are bound as real ``QAction`` shortcuts (never ``"\\tCtrl+X"``
+    label suffixes) so Qt renders them natively and every key has exactly one
+    owner. Ownership rules:
+
+    * window-wide actions (undo/redo, zoom, simulation, panels, ...) use the
+      default ``WindowShortcut`` context;
+    * canvas editing actions (cut/copy/paste/select-all/flip/align) are also added
+      to the canvas and use ``WidgetWithChildrenShortcut`` so they never steal
+      keys from other widgets (a table's own copy / select-all, say);
+    * ``Delete``/``Backspace``/``Esc`` stay in ``ModernCanvas.keyPressEvent``
+      (context dependent, and Backspace must keep working in text fields).
+    """
 
     def __init__(self, main_window):
         self.window = main_window
 
+    # -- helpers ------------------------------------------------------------
+
+    def _action(
+        self,
+        menu,
+        text,
+        slot=None,
+        keys=None,
+        *,
+        canvas_scope=False,
+        app_scope=False,
+        checkable=False,
+        tooltip=None,
+    ):
+        """Create a QAction owned by the window, add it to ``menu``, bind keys."""
+        action = QAction(text, self.window)
+        if checkable:
+            action.setCheckable(True)
+        if slot is not None:
+            action.triggered.connect(slot)
+        if keys:
+            keys = keys if isinstance(keys, (list, tuple)) else [keys]
+            action.setShortcuts(_sequences(*keys))
+            if canvas_scope and hasattr(self.window, "canvas"):
+                action.setShortcutContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+                self.window.canvas.addAction(action)
+                self.window._canvas_scoped_actions.append(action)
+            elif app_scope:
+                action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+        if tooltip:
+            action.setToolTip(tooltip)
+            action.setStatusTip(tooltip)
+        menu.addAction(action)
+        return action
+
+    def _scoped(self, menu, text, slot, keys, **kw):
+        """Canvas-scoped action (see the class docstring)."""
+        return self._action(menu, text, slot, keys, canvas_scope=True, **kw)
+
+    @staticmethod
+    def _dispose_menu(menu):
+        """Unbind every shortcut under ``menu`` so a rebuild can't be ambiguous."""
+        for action in menu.actions():
+            if action.menu() is not None:
+                MenuBuilder._dispose_menu(action.menu())
+            action.setShortcuts([])
+        menu.setParent(None)
+        menu.deleteLater()
+
     def setup_menubar(self):
         """Setup the entire menu bar."""
         menubar = self.window.menuBar()
+        # Rebuilt on every language switch: drop the old menus (and their key
+        # bindings) first, or the old and new actions would collide.
+        for old in menubar.actions():
+            if old.menu() is not None:
+                self._dispose_menu(old.menu())
         menubar.clear()
+        for stale in getattr(self.window, "_canvas_scoped_actions", []):
+            stale.setShortcuts([])
+            if hasattr(self.window, "canvas"):
+                self.window.canvas.removeAction(stale)
+        self.window._canvas_scoped_actions = []
 
         self._create_file_menu(menubar)
         self._create_edit_menu(menubar)
+        self._create_library_menu(menubar)
         self._create_simulation_menu(menubar)
         self._create_analysis_menu(menubar)
         self._create_view_menu(menubar)
         self._create_help_menu(menubar)
 
-    def _create_analysis_menu(self, menubar):
-        """Create Analysis menu (linearization-based system analysis)."""
-        analysis_menu = menubar.addMenu(tr("&Analysis"))
-        # "&&" renders a literal "&": label shows "Linearize & Analyze...".
-        analysis_menu.addAction(tr("&Linearize && Analyze..."), self.window.linearize_and_analyze)
-        analysis_menu.addAction(
-            tr("&Find Operating Point (Trim)..."), self.window.find_operating_point
-        )
-        analysis_menu.addAction(tr("&Parameter Sweep..."), self.window.run_parameter_sweep)
-        analysis_menu.addAction(tr("&Monte Carlo..."), self.window.run_monte_carlo)
+    # -- File ---------------------------------------------------------------
 
     def _create_file_menu(self, menubar):
         """Create File menu."""
         file_menu = menubar.addMenu(tr("&File"))
 
-        # Standard actions
-        file_menu.addAction(tr("&New") + "\tCtrl+N", self.window.new_diagram)
-        file_menu.addAction(tr("&Open") + "\tCtrl+O", self.window.open_diagram)
-        file_menu.addAction(tr("&Save") + "\tCtrl+S", self.window.save_diagram)
+        self._action(file_menu, tr("&New"), self.window.new_diagram, SK.New)
+        self._action(file_menu, tr("&Open"), self.window.open_diagram, SK.Open)
+        self._action(file_menu, tr("&Save"), self.window.save_diagram, SK.Save)
         file_menu.addSeparator()
 
         # Export submenu
@@ -65,7 +152,23 @@ class MenuBuilder:
         self._populate_examples_menu(examples_menu)
 
         file_menu.addSeparator()
-        exit_action = file_menu.addAction(tr("E&xit") + "\tAlt+F4", self.window.close)
+        if hasattr(self.window, "show_preferences"):
+            prefs = self._action(
+                file_menu,
+                tr("&Preferences..."),
+                self.window.show_preferences,
+                [SK.Preferences, "Ctrl+,"],
+            )
+            # macOS moves this into the application menu on its own.
+            prefs.setMenuRole(QAction.MenuRole.PreferencesRole)
+            self.window.preferences_action = prefs
+            file_menu.addSeparator()
+
+        # Quit is Ctrl+Q on macOS/Linux; Windows has no standard key, so keep the
+        # Alt+F4 chord the label used to advertise.
+        exit_keys = QKeySequence.keyBindings(SK.Quit) or [QKeySequence("Alt+F4")]
+        exit_action = self._action(file_menu, tr("E&xit"), self.window.close, exit_keys)
+        exit_action.setMenuRole(QAction.MenuRole.QuitRole)
         # Danger-color via dynamic property; QSS picks it up via [role="danger"]
         exit_action.setProperty("role", "danger")
 
@@ -97,295 +200,258 @@ class MenuBuilder:
         else:
             menu.addAction(tr("Examples directory not found")).setEnabled(False)
 
+    # -- Edit ---------------------------------------------------------------
+
     def _create_edit_menu(self, menubar):
-        """Create Edit menu."""
+        """Create Edit menu: undo/redo, clipboard, selection and layout editing."""
+        win = self.window
         edit_menu = menubar.addMenu(tr("&Edit"))
-        if hasattr(self.window, "undo_action"):
-            edit_menu.addAction(tr("&Undo") + "\tCtrl+Z", self.window.undo_action)
-        if hasattr(self.window, "redo_action"):
-            edit_menu.addAction(tr("&Redo") + "\tCtrl+Y", self.window.redo_action)
+        win.edit_menu = edit_menu
+
+        # Undo/redo: window-wide. Text widgets accept the ShortcutOverride for
+        # these keys themselves, so a focused line edit keeps its own undo.
+        if hasattr(win, "undo_action"):
+            self._action(edit_menu, tr("&Undo"), win.undo_action, SK.Undo)
+        if hasattr(win, "redo_action"):
+            self._action(
+                edit_menu, tr("&Redo"), win.redo_action, [SK.Redo, "Ctrl+Shift+Z", "Ctrl+Y"]
+            )
 
         edit_menu.addSeparator()
 
-        # Check if select_all is implemented, otherwise define it or skip
-        if hasattr(self.window, "select_all"):
-            edit_menu.addAction(tr("Select &All") + "\tCtrl+A", self.window.select_all)
-        elif hasattr(self.window, "canvas") and hasattr(self.window.canvas, "_select_all_blocks"):
-            # Fallback if method missing in window
-            edit_menu.addAction(
-                tr("Select &All") + "\tCtrl+A", self.window.canvas._select_all_blocks
-            )
+        canvas = getattr(win, "canvas", None)
+        if canvas is not None and hasattr(canvas, "copy_selected_blocks"):
+            self._scoped(edit_menu, tr("Cu&t"), canvas._cut_selected_blocks, SK.Cut)
+            self._scoped(edit_menu, tr("&Copy"), canvas.copy_selected_blocks, SK.Copy)
+            self._scoped(edit_menu, tr("&Paste"), canvas.paste_blocks, SK.Paste)
 
-        edit_menu.addAction(tr("Copy Diagram as &Image"), self.window.copy_diagram_image)
+        if hasattr(win, "select_all"):
+            self._scoped(edit_menu, tr("Select &All"), win.select_all, SK.SelectAll)
+        elif canvas is not None and hasattr(canvas, "_select_all_blocks"):
+            self._scoped(edit_menu, tr("Select &All"), canvas._select_all_blocks, SK.SelectAll)
+
+        edit_menu.addAction(tr("Copy Diagram as &Image"), win.copy_diagram_image)
 
         edit_menu.addSeparator()
 
-        # Create Subsystem
-        if hasattr(self.window, "create_subsystem"):
-            action = edit_menu.addAction(
-                tr("Create &Subsystem") + "\tCtrl+G", self.window.create_subsystem
+        # Create Subsystem (window-wide, as it always was)
+        if hasattr(win, "create_subsystem"):
+            self._action(edit_menu, tr("Create &Subsystem"), win.create_subsystem, "Ctrl+G")
+        elif canvas is not None and hasattr(canvas, "_create_subsystem_trigger"):
+            self._action(
+                edit_menu, tr("Create &Subsystem"), canvas._create_subsystem_trigger, "Ctrl+G"
             )
-            action.setShortcut("Ctrl+G")
-        elif hasattr(self.window, "canvas") and hasattr(
-            self.window.canvas, "_create_subsystem_trigger"
-        ):
-            action = edit_menu.addAction(
-                tr("Create &Subsystem") + "\tCtrl+G", self.window.canvas._create_subsystem_trigger
-            )
-            action.setShortcut("Ctrl+G")
 
-        # Masks & user library (see modern_ui/managers/mask_library_manager.py)
-        if hasattr(self.window, "edit_block_mask"):
-            edit_menu.addAction(tr("Edit &Mask..."), self.window.edit_block_mask)
-            edit_menu.addAction(tr("&Look Under Mask"), self.window.look_under_mask)
-            edit_menu.addAction(tr("Save as &Library Block..."), self.window.save_as_library_block)
-            edit_menu.addAction(tr("Reload from Li&brary"), self.window.reload_from_library)
-            edit_menu.addAction(tr("Refresh Block Librar&y"), self.window.refresh_block_library)
+        if canvas is not None and hasattr(canvas, "flip_selected_blocks"):
+            self._scoped(edit_menu, tr("&Flip Block"), canvas.flip_selected_blocks, "Ctrl+F")
+
+            align_menu = edit_menu.addMenu(tr("A&lign"))
+            # Align Top has no key: Ctrl+Shift+T belongs to the tuning panel.
+            for label, method, key in (
+                (tr("Align &Left"), "align_left", "Ctrl+Shift+L"),
+                (tr("Align &Right"), "align_right", "Ctrl+Shift+R"),
+                (tr("Align &Center Horizontally"), "align_center_horizontal", "Ctrl+Shift+H"),
+                (tr("Align &Top"), "align_top", None),
+                (tr("Align &Bottom"), "align_bottom", "Ctrl+Shift+B"),
+                (tr("Align Center &Vertically"), "align_center_vertical", None),
+            ):
+                if hasattr(canvas, method):
+                    self._scoped(align_menu, label, getattr(canvas, method), key)
+
+        edit_menu.addSeparator()
+
+        if hasattr(win, "show_command_palette"):
+            palette = self._action(
+                edit_menu,
+                tr("Command &Palette"),
+                win.show_command_palette,
+                "Ctrl+K",
+                app_scope=True,
+            )
+            win.command_palette_action = palette
+
+    # -- Library ------------------------------------------------------------
+
+    def _create_library_menu(self, menubar):
+        """Create Library menu: masks, the user block library and custom blocks."""
+        win = self.window
+        lib_menu = menubar.addMenu(tr("&Library"))
+        win.library_menu = lib_menu
+
+        # Masks & user library (see modern_ui/managers/mask_library_manager.py).
+        # Lambdas, not the bound methods: QAction.triggered(bool) would otherwise
+        # bind the checked flag to their optional `block` argument.
+        if hasattr(win, "edit_block_mask"):
+            lib_menu.addAction(tr("Edit &Mask..."), lambda: win.edit_block_mask())
+            lib_menu.addAction(tr("&Look Under Mask"), lambda: win.look_under_mask())
+            lib_menu.addAction(tr("Save as &Library Block..."), lambda: win.save_as_library_block())
+            lib_menu.addAction(tr("Reload from Li&brary"), lambda: win.reload_from_library())
+            lib_menu.addAction(tr("Refresh Block Librar&y"), lambda: win.refresh_block_library())
 
         # Custom block modules (see lib/user_blocks.py, docs/BLOCK_API.md)
-        if hasattr(self.window, "reload_user_blocks"):
+        if hasattr(win, "reload_user_blocks"):
+            lib_menu.addSeparator()
             # Lambda, not the bound method: QAction.triggered(bool) would bind
             # the checked flag to reload_user_blocks' `quiet` argument.
-            edit_menu.addAction(tr("Reload &User Blocks"), lambda: self.window.reload_user_blocks())
-            edit_menu.addAction(
-                tr("Open User Blocks &Folder..."), self.window.open_user_blocks_folder
-            )
+            lib_menu.addAction(tr("Reload &User Blocks"), lambda: win.reload_user_blocks())
+            lib_menu.addAction(tr("Open User Blocks &Folder..."), win.open_user_blocks_folder)
 
-        edit_menu.addSeparator()
-
-        if hasattr(self.window, "show_command_palette"):
-            edit_menu.addAction(
-                tr("Command &Palette") + "\tCtrl+K", self.window.show_command_palette
-            )
+    # -- Simulation ---------------------------------------------------------
 
     def _create_simulation_menu(self, menubar):
         """Create Simulation menu."""
+        win = self.window
         sim_menu = menubar.addMenu(tr("&Simulation"))
-        sim_menu.addAction(tr("&Run") + "\tF5", self.window.start_simulation)
-        sim_menu.addAction(tr("&Pause") + "\tF6", self.window.pause_simulation)
-        sim_menu.addAction(tr("&Stop") + "\tF7", self.window.stop_simulation)
+        sim_menu.setToolTipsVisible(True)
+        self._action(sim_menu, tr("&Run"), win.start_simulation, "F5")
+        self._action(sim_menu, tr("&Pause"), win.pause_simulation, "F6")
+        # Shift+F5 (stop) is the historical canvas chord; kept as an alias.
+        self._action(sim_menu, tr("&Stop"), win.stop_simulation, ["F7", "Shift+F5"])
+        if hasattr(win, "step_simulation"):
+            self._action(sim_menu, tr("S&tep"), win.step_simulation, "F8")
         sim_menu.addSeparator()
 
         # Run no longer pops the settings dialog; this is the way in.
-        if hasattr(self.window, "open_simulation_settings"):
-            action = sim_menu.addAction(
-                tr("Simulation Settin&gs...") + "\tCtrl+E", self.window.open_simulation_settings
+        if hasattr(win, "open_simulation_settings"):
+            action = self._action(
+                sim_menu, tr("Simulation Settin&gs..."), win.open_simulation_settings, "Ctrl+E"
             )
-            action.setShortcut("Ctrl+E")
-            self.window.simulation_settings_action = action
+            win.simulation_settings_action = action
 
         sim_menu.addSeparator()
 
-        # Fast Solver Toggle
-        fast_solver = sim_menu.addAction(tr("Enable Fast Solver (Experimental)"))
-        fast_solver.setCheckable(True)
-        # Default to True, but check DSim state if possible (MainWindow usually holds this state)
-        # We'll assume MainWindow has 'use_fast_solver' attribute initialized to True
-        is_fast = getattr(self.window, "use_fast_solver", True)
-        fast_solver.setChecked(is_fast)
-        fast_solver.triggered.connect(self.window.toggle_fast_solver)
-        self.window.fast_solver_action = fast_solver
+        # Compiled-solver toggle (the stored setting is still ``use_fast_solver``).
+        fast_solver = self._action(
+            sim_menu,
+            tr("Use Compiled Solver"),
+            win.toggle_fast_solver,
+            checkable=True,
+            tooltip=tr(
+                "Run diagrams through the fast compiled ODE solver. "
+                "Diagrams with blocks it cannot compile fall back to the interpreter."
+            ),
+        )
+        # MainWindow holds this state and initialises it to True.
+        fast_solver.setChecked(getattr(win, "use_fast_solver", True))
+        win.fast_solver_action = fast_solver
 
         sim_menu.addSeparator()
-        sim_menu.addAction(tr("Show &Plots"), self.window.show_plots)
+        self._action(sim_menu, tr("Show &Plots"), win.show_plots, "Ctrl+Shift+P")
+
+    # -- Analysis -----------------------------------------------------------
+
+    def _create_analysis_menu(self, menubar):
+        """Create Analysis menu (linearization-based system analysis)."""
+        win = self.window
+        analysis_menu = menubar.addMenu(tr("&Analysis"))
+        # "&&" renders a literal "&": label shows "Linearize & Analyze...".
+        self._action(
+            analysis_menu, tr("&Linearize && Analyze..."), win.linearize_and_analyze, "Ctrl+Alt+L"
+        )
+        self._action(
+            analysis_menu,
+            tr("&Find Operating Point (Trim)..."),
+            win.find_operating_point,
+            "Ctrl+Alt+T",
+        )
+        self._action(
+            analysis_menu, tr("&Parameter Sweep..."), win.run_parameter_sweep, "Ctrl+Alt+S"
+        )
+        self._action(analysis_menu, tr("&Monte Carlo..."), win.run_monte_carlo, "Ctrl+Alt+M")
+
+    # -- View ---------------------------------------------------------------
 
     def _create_view_menu(self, menubar):
-        """Create View menu."""
+        """Create View menu: quick view toggles only (persistent settings live in
+        File > Preferences)."""
+        win = self.window
         view_menu = menubar.addMenu(tr("&View"))
 
-        # Zoom controls
-        # Delegate to window methods if they exist, or lambdas
-        if hasattr(self.window, "zoom_in"):
-            view_menu.addAction(tr("&Zoom In") + "\tCtrl++", self.window.zoom_in)
+        if hasattr(win, "zoom_in"):
+            zoom_in = win.zoom_in
         else:
-            view_menu.addAction(
-                tr("&Zoom In") + "\tCtrl++",
-                lambda: self.window.set_zoom(self.window.zoom_level * 1.2),
-            )
 
-        if hasattr(self.window, "zoom_out"):
-            view_menu.addAction(tr("Zoom &Out") + "\tCtrl+-", self.window.zoom_out)
+            def zoom_in():
+                win.set_zoom(win.zoom_level * 1.2)
+
+        if hasattr(win, "zoom_out"):
+            zoom_out = win.zoom_out
         else:
-            view_menu.addAction(
-                tr("Zoom &Out") + "\tCtrl+-",
-                lambda: self.window.set_zoom(self.window.zoom_level / 1.2),
-            )
 
-        if hasattr(self.window, "fit_to_window"):
-            view_menu.addAction(tr("&Fit to Window") + "\tCtrl+0", self.window.fit_to_window)
+            def zoom_out():
+                win.set_zoom(win.zoom_level / 1.2)
+
+        # Ctrl+= is the unshifted spelling of Ctrl++ on most keyboards.
+        self._action(view_menu, tr("&Zoom In"), zoom_in, [SK.ZoomIn, "Ctrl+="])
+        self._action(view_menu, tr("Zoom &Out"), zoom_out, SK.ZoomOut)
+        if hasattr(win, "fit_to_window"):
+            self._action(view_menu, tr("&Fit to Window"), win.fit_to_window, "Ctrl+0")
 
         view_menu.addSeparator()
 
         # Grid toggle
-        if hasattr(self.window, "toggle_grid"):
-            action = view_menu.addAction(
-                tr("Show &Grid") + "\tCtrl+Shift+G", self.window.toggle_grid
+        if hasattr(win, "toggle_grid"):
+            action = self._action(
+                view_menu, tr("Show &Grid"), win.toggle_grid, "Ctrl+Shift+G", checkable=True
             )
-            action.setCheckable(True)
-            action.setChecked(getattr(self.window, "show_grid", True))  # default True
-            action.setShortcut("Ctrl+Shift+G")
-            self.window.grid_toggle_action = action
+            action.setChecked(getattr(win, "show_grid", True))  # default True
+            win.grid_toggle_action = action
 
         view_menu.addSeparator()
 
         # Live overlay submenu (Section 4 of UX phase 2)
         live_menu = view_menu.addMenu(tr("Live overlay"))
         # V1 — port-value chips (default ON)
-        chips_action = QAction(tr("Output value chips"), self.window, checkable=True)
+        chips_action = QAction(tr("Output value chips"), win, checkable=True)
         chips_action.setChecked(True)
 
         def _toggle_chips(checked):
-            if hasattr(self.window, "canvas"):
-                self.window.canvas.show_live_chips = bool(checked)
-                self.window.canvas.update()
+            if hasattr(win, "canvas"):
+                win.canvas.show_live_chips = bool(checked)
+                win.canvas.update()
 
         chips_action.triggered.connect(_toggle_chips)
         live_menu.addAction(chips_action)
-        self.window.live_chips_action = chips_action
+        win.live_chips_action = chips_action
 
         view_menu.addSeparator()
-        view_menu.addAction(tr("Toggle &Theme") + "\tCtrl+T", self.window.toggle_theme)
-
-        # Block palette submenu
-        from modern_ui.themes.theme_manager import PALETTE_DISPLAY_NAMES, theme_manager
-
-        palette_menu = view_menu.addMenu(tr("Block &Palette"))
-        palette_group = QActionGroup(self.window)
-        palette_group.setExclusive(True)
-        for key, display in PALETTE_DISPLAY_NAMES.items():
-            action = QAction(display, self.window, checkable=True)
-            action.triggered.connect(lambda checked, k=key: self.window._set_palette(k))
-            palette_group.addAction(action)
-            palette_menu.addAction(action)
-            if key == theme_manager.current_palette:
-                action.setChecked(True)
-        self.window.palette_actions = palette_group
-
-        # Solid block fills toggle
-        solid_fills_action = QAction(tr("Solid Block Fills"), self.window, checkable=True)
-        solid_fills_action.setChecked(theme_manager.solid_fills)
-        solid_fills_action.triggered.connect(self.window._toggle_solid_fills)
-        view_menu.addAction(solid_fills_action)
-        self.window.solid_fills_action = solid_fills_action
+        self._action(view_menu, tr("Toggle &Theme"), win.toggle_theme, "Ctrl+T")
 
         view_menu.addSeparator()
 
-        # Variable Editor toggle
-        if hasattr(self.window, "toggle_variable_editor"):
-            action = view_menu.addAction(
-                tr("Show/Hide Variable &Editor") + "\tCtrl+Shift+V",
-                self.window.toggle_variable_editor,
-            )
-            action.setCheckable(True)
-            action.setChecked(False)
-            action.setShortcut("Ctrl+Shift+V")
-            self.window.variable_editor_action = action
-
-        # Workspace Editor toggle
-        if hasattr(self.window, "toggle_workspace_editor"):
-            action = view_menu.addAction(
-                tr("Workspace &Variables") + "\tCtrl+Shift+W",
-                self.window.toggle_workspace_editor,
-            )
-            action.setCheckable(True)
-            action.setChecked(False)
-            action.setShortcut("Ctrl+Shift+W")
-            self.window.workspace_editor_action = action
-
-        # Minimap toggle
-        if hasattr(self.window, "toggle_minimap"):
-            action = view_menu.addAction(
-                tr("&Minimap") + "\tCtrl+Shift+M", self.window.toggle_minimap
-            )
-            action.setCheckable(True)
-            action.setChecked(False)
-            action.setShortcut("Ctrl+Shift+M")
-            self.window.minimap_action = action
-
-        # Parameter Tuning Panel toggle
-        if hasattr(self.window, "toggle_tuning_panel"):
-            action = view_menu.addAction(
-                tr("Parameter &Tuning Panel") + "\tCtrl+Shift+T",
-                self.window.toggle_tuning_panel,
-            )
-            action.setCheckable(True)
-            action.setChecked(False)
-            action.setShortcut("Ctrl+Shift+T")
-            self.window.tuning_panel_action = action
-
-        view_menu.addSeparator()
-
-        # UI Scale
-        scaling_menu = view_menu.addMenu(tr("UI Scale"))
-        scaling_menu.addAction("100%").triggered.connect(lambda: self.window._set_scaling(1.0))
-        scaling_menu.addAction("125%").triggered.connect(lambda: self.window._set_scaling(1.25))
-        scaling_menu.addAction("150%").triggered.connect(lambda: self.window._set_scaling(1.5))
-
-        view_menu.addSeparator()
-
-        # Routing Menu
-        routing_menu = view_menu.addMenu(tr("Default Connection Routing"))
-
-        bezier = routing_menu.addAction(tr("Bezier (Curved)"))
-        bezier.setCheckable(True)
-        bezier.setChecked(True)  # Assuming default
-        bezier.triggered.connect(lambda: self.window._set_default_routing_mode("bezier"))
-
-        ortho = routing_menu.addAction(tr("Orthogonal (Manhattan)"))
-        ortho.setCheckable(True)
-        ortho.triggered.connect(lambda: self.window._set_default_routing_mode("orthogonal"))
-
-        # Store actions in window for exclusive checking logic if needed
-        self.window.bezier_routing_action = bezier
-        self.window.orthogonal_routing_action = ortho
-
-        view_menu.addSeparator()
-        self._create_language_menu(view_menu)
-
-    def _create_language_menu(self, view_menu):
-        """Build View ▸ Language from the catalogs in ``locales/``.
-
-        Entries are discovered at runtime, so dropping a new ``locales/xx.json``
-        in (with a ``_meta.name``) is all it takes to offer another language --
-        no code change. "System" follows the host locale.
-        """
-        from lib.i18n import (
-            SYSTEM_LANGUAGE,
-            available_languages,
-            stored_language_setting,
-        )
-
-        language_menu = view_menu.addMenu(tr("&Language"))
-        group = QActionGroup(self.window)
-        group.setExclusive(True)
-        current = stored_language_setting()
-
-        system_action = QAction(tr("System default"), self.window, checkable=True)
-        system_action.setChecked(current == SYSTEM_LANGUAGE)
-        system_action.triggered.connect(lambda _checked: self.window.set_language(SYSTEM_LANGUAGE))
-        group.addAction(system_action)
-        language_menu.addAction(system_action)
-        language_menu.addSeparator()
-
-        for entry in available_languages():
-            code = entry["code"]
-            # The native name is deliberately NOT translated: a language is
-            # listed in its own language so a user who cannot read the current
-            # UI language can still find theirs.
-            action = QAction(entry["name"], self.window, checkable=True)
-            action.setChecked(current == code)
-            action.triggered.connect(lambda _checked, c=code: self.window.set_language(c))
-            group.addAction(action)
-            language_menu.addAction(action)
-
-        self.window.language_menu = language_menu
-        self.window.language_actions = group
+        # Dock / panel toggles
+        for attr, label, slot, key in (
+            (
+                "variable_editor_action",
+                tr("Show/Hide Variable &Editor"),
+                "toggle_variable_editor",
+                "Ctrl+Shift+V",
+            ),
+            (
+                "workspace_editor_action",
+                tr("Workspace &Variables"),
+                "toggle_workspace_editor",
+                "Ctrl+Shift+W",
+            ),
+            ("minimap_action", tr("&Minimap"), "toggle_minimap", "Ctrl+Shift+M"),
+            (
+                "tuning_panel_action",
+                tr("Parameter &Tuning Panel"),
+                "toggle_tuning_panel",
+                "Ctrl+Shift+T",
+            ),
+        ):
+            if hasattr(win, slot):
+                action = self._action(view_menu, label, getattr(win, slot), key, checkable=True)
+                action.setChecked(False)
+                setattr(win, attr, action)
 
     def _create_help_menu(self, menubar):
         """Create Help menu."""
         help_menu = menubar.addMenu(tr("&Help"))
 
-        help_menu.addAction(tr("&Keyboard Shortcuts") + "\tF1", self._show_shortcuts)
+        # F1 opens the shortcuts dialog from anywhere in the window.
+        self._action(help_menu, tr("&Keyboard Shortcuts"), self._show_shortcuts, "F1")
 
         # Reuse the existing Command Palette action when the window exposes it.
         if hasattr(self.window, "show_command_palette"):
@@ -395,14 +461,6 @@ class MenuBuilder:
         help_menu.addAction(tr("User &Manual"), self._open_user_manual)
         help_menu.addSeparator()
         help_menu.addAction(tr("&About"), self._show_about)
-
-        # F1 opens the shortcuts dialog from anywhere in the window. Held on the
-        # window so the QShortcut isn't garbage-collected with this builder.
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QKeySequence, QShortcut
-
-        self.window._shortcuts_help_shortcut = QShortcut(QKeySequence(Qt.Key.Key_F1), self.window)
-        self.window._shortcuts_help_shortcut.activated.connect(self._show_shortcuts)
 
     def _show_shortcuts(self):
         """Open the read-only keyboard-shortcuts reference dialog."""

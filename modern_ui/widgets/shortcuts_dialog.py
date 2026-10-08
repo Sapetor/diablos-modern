@@ -2,13 +2,13 @@
 Keyboard Shortcuts reference dialog.
 
 A read-only, themed listing of the application's keyboard shortcuts grouped by
-category (File, Edit, Simulation, View, Help). The Simulation/View groups and
-the bulk of the File group are sourced live from
-``command_palette_manager.palette_command_groups`` so the reference can never
-drift from the actual palette bindings. The remaining rows — menu-only
-accelerators (Exit), the Edit group, and Help — are not palette commands, so
-they are listed here as an explicit supplement and kept in sync with
-``MenuBuilder``. The dialog performs no actions; it only displays the bindings.
+category. When opened from the main window the groups are generated from the
+live menu bar's ``QAction`` shortcuts (``build_live_shortcut_groups``), so the
+reference is the real binding table and cannot drift. Without a window (unit
+tests, tools) it falls back to the static catalogue: the Simulation/View groups
+and the bulk of File come from
+``command_palette_manager.palette_command_groups``, the rest is an explicit
+supplement kept in sync with ``MenuBuilder``. The dialog performs no actions.
 
 Styling follows the project convention: every color comes from
 ``theme_manager.get_color(...)`` and the typographic scale from
@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence
 
 from lib.i18n import tr, tr_noop
 from modern_ui.managers.command_palette_manager import palette_command_groups
@@ -45,14 +46,23 @@ from modern_ui.themes.theme_manager import (
 # live File group; Edit and Help are standalone groups. Keep in sync with
 # MenuBuilder.
 _FILE_SUPPLEMENT: list[tuple[str, str]] = [
-    (tr_noop("Exit"), "Alt+F4"),
+    (tr_noop("Exit"), "Ctrl+Q"),
 ]
 _EDIT_GROUP: list[tuple[str, str]] = [
     (tr_noop("Undo"), "Ctrl+Z"),
-    (tr_noop("Redo"), "Ctrl+Y"),
+    (tr_noop("Redo"), "Ctrl+Shift+Z"),
+    (tr_noop("Cut"), "Ctrl+X"),
+    (tr_noop("Copy"), "Ctrl+C"),
+    (tr_noop("Paste"), "Ctrl+V"),
     (tr_noop("Select all"), "Ctrl+A"),
     (tr_noop("Create subsystem"), "Ctrl+G"),
+    (tr_noop("Flip block"), "Ctrl+F"),
     (tr_noop("Command palette"), "Ctrl+K"),
+]
+# Canvas keys that are handled by key events, not actions (see MenuBuilder).
+_CANVAS_GROUP: list[tuple[str, str]] = [
+    (tr_noop("Delete selection"), "Delete"),
+    (tr_noop("Cancel / clear selection"), "Esc"),
 ]
 _HELP_GROUP: list[tuple[str, str]] = [
     (tr_noop("Keyboard shortcuts"), "F1"),
@@ -74,7 +84,44 @@ def build_shortcut_groups() -> list[tuple[str, list[tuple[str, str]]]]:
         (tr_noop("Simulation"), registry["Simulation"]),
         (tr_noop("View"), registry["View"]),
         (tr_noop("Help"), list(_HELP_GROUP)),
+        (tr_noop("Canvas"), list(_CANVAS_GROUP)),
     ]
+
+
+def _strip_mnemonic(text: str) -> str:
+    """Menu label -> plain label: ``&Open`` -> ``Open``, ``&&`` -> ``&``."""
+    return text.replace("&&", "\0").replace("&", "").replace("\0", "&").strip()
+
+
+def build_live_shortcut_groups(window) -> list[tuple[str, list[tuple[str, str]]]]:
+    """Generate the catalogue from ``window``'s menu bar actions (the real bindings).
+
+    One group per top-level menu that has bound actions, plus the key-event-only
+    canvas keys. Labels are already translated; ``tr`` on them later is a no-op.
+    """
+    groups: list[tuple[str, list[tuple[str, str]]]] = []
+
+    def collect(menu, out, seen):
+        for action in menu.actions():
+            if action.menu() is not None:
+                collect(action.menu(), out, seen)
+                continue
+            keys = [k.toString(QKeySequence.SequenceFormat.NativeText) for k in action.shortcuts()]
+            if not keys or id(action) in seen:
+                continue
+            seen.add(id(action))
+            out.append((_strip_mnemonic(action.text()), " / ".join(keys)))
+
+    for top in window.menuBar().actions():
+        menu = top.menu()
+        if menu is None:
+            continue
+        entries: list[tuple[str, str]] = []
+        collect(menu, entries, set())
+        if entries:
+            groups.append((_strip_mnemonic(top.text()), entries))
+    groups.append((tr("Canvas"), [(tr(label), key) for label, key in _CANVAS_GROUP]))
+    return groups
 
 
 # Display catalogue grouped by category. Built once at import time from the
@@ -87,6 +134,12 @@ class KeyboardShortcutsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._groups = SHORTCUT_GROUPS
+        if parent is not None and hasattr(parent, "menuBar"):
+            try:
+                self._groups = build_live_shortcut_groups(parent)
+            except Exception:  # fall back to the static catalogue
+                self._groups = SHORTCUT_GROUPS
 
         self.setWindowTitle(tr("Keyboard Shortcuts"))
         self.setMinimumWidth(420)
@@ -115,7 +168,7 @@ class KeyboardShortcutsDialog(QDialog):
         body_layout.setSpacing(SPACE["xl"])
         body_layout.setContentsMargins(0, 0, 0, 0)
 
-        for title, entries in SHORTCUT_GROUPS:
+        for title, entries in self._groups:
             body_layout.addWidget(self._make_group(title, entries))
         body_layout.addStretch(1)
 

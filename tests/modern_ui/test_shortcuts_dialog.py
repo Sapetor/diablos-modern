@@ -35,7 +35,7 @@ class TestKeyboardShortcutsDialog:
         from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS
 
         titles = [title for title, _ in SHORTCUT_GROUPS]
-        assert titles == ["File", "Edit", "Simulation", "View", "Help"]
+        assert titles == ["File", "Edit", "Simulation", "View", "Help", "Canvas"]
 
     def test_catalogue_entries_are_label_key_pairs(self):
         from modern_ui.widgets.shortcuts_dialog import SHORTCUT_GROUPS

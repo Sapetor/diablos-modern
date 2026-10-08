@@ -87,6 +87,9 @@ class ModernDiaBloSWindow(QMainWindow):
         self._setup_toolbar()
         self._on_simulation_state_changed("idle")
         self._setup_layout()
+        # Rebuild now that the canvas exists: canvas-scoped shortcuts (copy,
+        # paste, flip, align, ...) attach to it.
+        self._setup_menubar()
         self._setup_statusbar()
 
         # Connect property editor signals
@@ -157,12 +160,8 @@ class ModernDiaBloSWindow(QMainWindow):
         self.command_palette.command_selected.connect(self._on_command_executed)
         self._setup_command_palette()
 
-        # Global ⌘K / Ctrl+K shortcut so the palette is reachable everywhere.
-        from PyQt6.QtGui import QKeySequence, QShortcut
-
-        self._cmdk_shortcut = QShortcut(QKeySequence("Ctrl+K"), self)
-        self._cmdk_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
-        self._cmdk_shortcut.activated.connect(self.show_command_palette)
+        # Ctrl+K / Cmd+K is bound by the Edit > Command Palette action
+        # (application-wide), so it is reachable everywhere.
 
         # Initialize DSim components
 
@@ -494,14 +493,18 @@ class ModernDiaBloSWindow(QMainWindow):
             ),
         )
 
+    def show_preferences(self):
+        """Open File > Preferences (appearance, language, editing, simulation)."""
+        from modern_ui.widgets.preferences_dialog import PreferencesDialog
+
+        dialog = PreferencesDialog(self)
+        self._preferences_dialog = dialog
+        dialog.exec()
+
     def _set_default_routing_mode(self, mode):
         """Set the default routing mode for new connections."""
         if mode in ["bezier", "orthogonal"]:
             self.default_routing_mode = mode
-
-            # Update menu checkmarks
-            self.bezier_routing_action.setChecked(mode == "bezier")
-            self.orthogonal_routing_action.setChecked(mode == "orthogonal")
 
             # Pass the setting to the canvas
             if hasattr(self, "canvas"):

@@ -22,16 +22,26 @@ def _menu_titles(win):
 
 
 @pytest.mark.qt
-class TestLanguageMenu:
-    def test_language_menu_is_built_from_catalogs(self, window):
-        assert hasattr(window, "language_menu")
-        labels = [a.text() for a in window.language_menu.actions() if a.text()]
+class TestLanguagePreference:
+    """Language is chosen in File > Preferences (it used to be View > Language)."""
+
+    def _labels(self, window):
+        from modern_ui.widgets.preferences_dialog import PreferencesDialog
+
+        dialog = PreferencesDialog(window)
+        combo = dialog.language_combo
+        labels = [combo.itemText(i) for i in range(combo.count())]
+        dialog.close()
+        return labels
+
+    def test_language_list_is_built_from_catalogs(self, window):
+        labels = self._labels(window)
         # English plus every locales/*.json, listed by its native _meta.name.
         assert "English" in labels
         assert "Español" in labels
 
-    def test_language_menu_has_a_system_entry(self, window):
-        labels = [a.text() for a in window.language_menu.actions() if a.text()]
+    def test_language_list_has_a_system_entry(self, window):
+        labels = self._labels(window)
         assert any(label.lower().startswith(("system", "sistema")) for label in labels)
 
 
