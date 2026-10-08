@@ -3218,7 +3218,10 @@ Fundamental block for building dynamic system models.</p>
 - Integral (I): Ki * integral(error)
 - Derivative (D): Kd * derivative(error)
 - Filter Coeff (N): Derivative filter bandwidth (Low-pass).
-  D term = Kd * N * s / (s + N)</p>
+  D term = Kd * N * s / (s + N)
+- Anti-windup: clamping (stop integrating while saturated and the
+  error pushes further out), back_calculation (dI/dt = Ki<em>e +
+  Kb</em>(u_sat - u)), or none.</p>
 <p>Usage:
 Feedback control. Tuning parameters Kp, Ki, Kd.</p>
 <h4 id="parameters_6">Parameters<a class="headerlink" href="#parameters_6" title="Permanent link">&para;</a></h4>
@@ -3267,6 +3270,18 @@ Feedback control. Tuning parameters Kp, Ki, Kd.</p>
 <td>float</td>
 <td><code>inf</code></td>
 <td>Output upper limit.</td>
+</tr>
+<tr>
+<td><code>anti_windup</code></td>
+<td>choice</td>
+<td><code>clamping</code></td>
+<td>Anti-windup method used when the output saturates.</td>
+</tr>
+<tr>
+<td><code>kb</code></td>
+<td>float</td>
+<td><code>1.0</code></td>
+<td>Back-calculation tracking gain (anti-windup = back_calculation only).</td>
 </tr>
 </tbody>
 </table>
