@@ -84,22 +84,21 @@ class HysteresisBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        # Ensure the held state is always defined so output-only probes that
-        # occur before the first input step return a sensible baseline.
-        if "_state" not in params:
+        # A new run re-arms ``_init_start_``.  Reset the latch to the low state
+        # *before* any early return, so an output-only probe (no input yet)
+        # cannot return the previous run's final latch.  In the ambiguous band
+        # the comparison below promotes it to high/low as usual.
+        if params.get("_init_start_", True):
+            params["_state"] = float(params.get("low", 0.0))
+            params["_init_start_"] = False
+        elif "_state" not in params:
             params["_state"] = float(params.get("low", 0.0))
 
-        # Output-only path: input absent → return current state without checking thresholds.
+        # Output-only path: input absent -> return current state without checking thresholds.
         if 0 not in inputs:
             return {0: np.atleast_1d(params["_state"])}
 
         u = get_scalar(inputs, 0, 0.0)
-
-        if params.get("_init_start_", True):
-            # On the first input step, default to the low state in the
-            # ambiguous band; the comparison below promotes to high/low.
-            params["_state"] = float(params["low"])
-            params["_init_start_"] = False
 
         if u >= params["upper"]:
             params["_state"] = float(params["high"])

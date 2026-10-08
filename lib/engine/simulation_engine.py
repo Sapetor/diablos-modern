@@ -190,6 +190,13 @@ class SimulationEngine:
                 for x in self.active_blocks_list
             ]
             self.reset_execution_data()
+            # reset_execution_data deliberately keeps memory blocks' input_queue
+            # between *time steps* (feedback from the previous step).  A new run
+            # must not inherit the previous run's final inputs, so drop every
+            # queue here -- the one initialisation point the GUI run, headless
+            # CLI, Monte-Carlo, sweeps and tuning re-sim all go through.
+            for block in self.active_blocks_list:
+                block.input_queue = {}
             self.execution_time_start = time_module.time()
 
             # Check for algebraic loops (part 1)

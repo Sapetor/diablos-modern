@@ -98,6 +98,9 @@ class AdamBlock(BaseBlock):
         try:
             # Output-only path: no gradient input → return last update without mutating moments.
             if 0 not in inputs:
+                if params.get("_init_start_", True):
+                    # New run: the held update belongs to the previous run.
+                    params.pop("_last_update_", None)
                 held = params.get("_last_update_", np.array([0.0]))
                 return {0: np.atleast_1d(held), "E": False}
 

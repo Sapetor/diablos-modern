@@ -143,6 +143,9 @@ class PIDBlock(BaseBlock):
         # on the interpreted path only. Port 0 missing is still a genuine
         # un-fed call.
         if kwargs.get("output_only", False) or 0 not in inputs:
+            if params.get("_init_start_", True):
+                # New run: the held output belongs to the previous run.
+                params.pop("_last_output_", None)
             return {0: np.atleast_1d(params.get("_last_output_", 0.0))}
 
         dt = max(float(params.get("dtime", 0.01)), 1e-12)
