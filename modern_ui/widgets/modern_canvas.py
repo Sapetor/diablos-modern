@@ -2,9 +2,10 @@
 Handles block rendering, mouse interactions, and drag-and-drop functionality.
 """
 
+import html
 import logging
 import math
-from PyQt6.QtWidgets import QWidget, QApplication
+from PyQt6.QtWidgets import QWidget, QApplication, QToolTip
 from PyQt6.QtCore import Qt, QRect, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen
 
@@ -379,7 +380,10 @@ class ModernCanvas(QWidget):
             # and the user isn't mid-simulation, draw dim guidance on how to get
             # started. Purely additive — drawn over the grid, under everything
             # else, so it never collides with real diagram content.
-            if not getattr(self.dsim, "blocks_list", []) and not self.is_simulation_running():
+            overlay = getattr(self, "welcome_overlay", None)
+            if overlay is not None:
+                overlay.schedule_refresh()
+            elif not getattr(self.dsim, "blocks_list", []) and not self.is_simulation_running():
                 self._draw_empty_hint(painter)
 
             # Draw DSim elements in proper order: blocks -> lines -> ports
@@ -1204,7 +1208,58 @@ class ModernCanvas(QWidget):
             if self.zoom_pan_manager.handle_native_gesture(event):
                 event.accept()
                 return True
+        if event.type() == QEvent.Type.ToolTip:
+            text = self.tooltip_text_at(event.pos())
+            if text:
+                QToolTip.showText(event.globalPos(), text, self)
+            else:
+                QToolTip.hideText()
+                event.ignore()
+            return True
         return super().event(event)
+
+    def tooltip_text_at(self, pos):
+        """Tooltip text for the widget-space point ``pos`` (or ``""``).
+
+        Ports win over block bodies; a block is hit on its body or on its name
+        label, whose text may be elided on the canvas, so the full name is
+        always available here.
+        """
+        try:
+            from modern_ui.renderers.block_renderer import block_label_layout
+
+            world = self.screen_to_world(pos)
+            hit = self.connection_manager.port_at(world)
+            if hit is not None:
+                block, ptype, idx = hit
+                ins, outs = block.get_port_names()
+                names = ins if ptype == "i" else outs
+                if idx < len(names):
+                    kind = tr("Input") if ptype == "i" else tr("Output")
+                    return f"{kind}: {names[idx]}"
+            for block in reversed(list(getattr(self.dsim, "blocks_list", []) or [])):
+                label_rect, _ = block_label_layout(block)
+                if block.rect.contains(world) or label_rect.contains(world):
+                    return self._block_tooltip(block)
+        except Exception as e:
+            logger.debug(f"Tooltip lookup failed: {e}")
+        return ""
+
+    @staticmethod
+    def _block_tooltip(block):
+        lines = [f"<b>{html.escape(block.username or block.name)}</b>"]
+        kind = block.block_fn
+        category = getattr(block, "category", "")
+        if category:
+            kind = f"{kind} ({tr(category)})"
+        lines.append(html.escape(kind))
+        doc = (getattr(block, "doc", "") or "").strip().splitlines()
+        if doc:
+            first = doc[0].strip()
+            if len(first) > 100:
+                first = first[:99] + "…"
+            lines.append(f"<i>{html.escape(first)}</i>")
+        return "<br>".join(lines)
 
     # Drag and Drop Events
     def dragEnterEvent(self, event):

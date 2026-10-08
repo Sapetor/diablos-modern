@@ -146,6 +146,12 @@ class ModernDiaBloSWindow(QMainWindow):
         # Create toast notification (after canvas is created)
         self.toast = ToastNotification(self.canvas)
 
+        # Welcome / empty-state overlay (shown only while the diagram is empty)
+        from modern_ui.widgets.welcome_overlay import WelcomeOverlay
+
+        self.welcome_overlay = WelcomeOverlay(self.canvas, self)
+        self.canvas.welcome_overlay = self.welcome_overlay
+
         # Create command palette
         self.command_palette = CommandPalette(self)
         self.command_palette.command_selected.connect(self._on_command_executed)
