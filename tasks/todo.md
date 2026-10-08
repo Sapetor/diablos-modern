@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-10-02
+> Last updated: 2026-10-08
 
 ---
 
@@ -51,25 +51,23 @@ checkable (2026-10-02 pass noted per item).
 - [ ] **Video tutorials** — demo videos for key features.
 
 ### Open items from the October 2026 audit (2026-10-08)
-- [ ] **PID anti-windup differs between paths.** The interpreter (`blocks/pid.py`)
-  back-calculates the integrator including `d_term`; the compiled kernel
-  (`lib/engine/compiler_kernels/state.py` ~160) uses conditional integration.
-  On `pid_second_order.diablos` (u_max=10) the outputs diverge (0.93 vs -0.52
-  at t=1.6). Decide which semantics is canonical, then align the other path.
-- [ ] **Monte Carlo / sweep GUI pickers list only top-level blocks.** The runners
-  now accept qualified nested names (`Subsystem/block`), but the dialogs in
-  `modern_ui/` do not offer them. The runners also root at `dsim.blocks_list`,
-  which is the current scope when the user is inside a subsystem.
+Fixed the same day: undo/redo, between-run state, MC seeds, nested MC/sweep
+(pickers + top-level root), selectable PID anti-windup (clamping default),
+label clipping / port-label overlap / stale status + Properties counts, block
+None/empty-input hardening and param docs. Still open:
 - [ ] **`SimulationModel.remove_block` rebinds `line_list`** instead of mutating
   it in place; inside a subsystem `sub_lines` may then point at a stale list
   (code reading, unreproduced).
 - [ ] **Undo back to the saved state still marks the diagram dirty** (no
   saved-revision tracking in `history_manager`).
-- [ ] **Block names clip to block width** (`block_renderer.py` ~521, the text
-  rect is `block.width` wide); port labels overlap the PID title.
-- [ ] **~30 blocks raise on None/empty inputs** instead of returning an error
-  dict (PDE, optimization, state-space families); several common blocks have
-  params without a `doc` (TF, StateSpace, WaveGenerator, RateTransition, Sum).
+- [ ] **No hover tooltip for elided block names** (the canvas has no tooltip
+  mechanism yet); port labels on a *selected* PID still overlay its title.
+- [ ] **UX backlog from the audit:** move library/mask items out of Edit into a
+  Library menu, Language/UI scale/routing into a Preferences dialog; bind
+  shortcuts with `QAction.setShortcut` instead of label text; rename "Enable
+  Fast Solver (Experimental)" (default-on); palette shows raw ids
+  (`randomsource`); errors as modal boxes with no click-to-block; welcome /
+  "start from example" empty state.
 
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
