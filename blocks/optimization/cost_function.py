@@ -15,6 +15,7 @@ Supported cost function types:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import first_scalar, input_error
 
 logger = logging.getLogger(__name__)
 
@@ -157,16 +158,18 @@ class CostFunctionBlock(BaseBlock):
         target = float(params.get("target", 0.0))
 
         # Get signal
-        signal = inputs.get(0, 0.0)
-        if isinstance(signal, np.ndarray):
-            signal = float(signal.flatten()[0])
+        signal = first_scalar(inputs.get(0, 0.0))
+        if signal is None:
+            return input_error("CostFunction", "signal input 0 is None or empty")
 
         # Get reference (use target if not connected)
         reference = inputs.get(1, None)
         if reference is None:
             reference = target
-        elif isinstance(reference, np.ndarray):
-            reference = float(reference.flatten()[0])
+        else:
+            reference = first_scalar(reference)
+            if reference is None:
+                return input_error("CostFunction", "reference input 1 is empty")
 
         # Compute error
         error = signal - reference

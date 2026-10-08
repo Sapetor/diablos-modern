@@ -1,6 +1,6 @@
 from blocks.base_block import BaseBlock
 from blocks.param_templates import init_conds_param, method_param, init_flag_param
-from blocks.input_helpers import InitStateManager
+from blocks.input_helpers import InitStateManager, input_error
 import numpy as np
 from scipy.integrate import solve_ivp
 import logging
@@ -224,8 +224,11 @@ class IntegratorBlock(BaseBlock):
         # return a bare scalar or a 0-d array -- Sine, WaveGenerator, Noise and
         # Chirp all do -- so the promotion belongs here, at the consumer, and
         # has to cover every scalar-ish spelling rather than float/int alone.
-        if 0 in inputs:
-            inputs[0] = np.atleast_1d(inputs[0])
+        if inputs.get(0) is None:
+            return input_error(
+                "Integrator", f"input 0 missing or None in {params.get('_name_', 'Integrator')}"
+            )
+        inputs[0] = np.atleast_1d(inputs[0])
 
         if params["mem"].shape != inputs.get(0, params["mem"]).shape:
             if params["mem"].size == 1:

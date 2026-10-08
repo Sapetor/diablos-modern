@@ -73,6 +73,11 @@ class DemuxBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
+        if inputs.get(0) is None:
+            return {
+                "E": True,
+                "error": f"Demux {params.get('_name_', '')}: input 0 missing or None",
+            }
         try:
             input_array = np.atleast_1d(np.array(inputs[0], dtype=float)).flatten()
             output_shape = int(params["output_shape"])

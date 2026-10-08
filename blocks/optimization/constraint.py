@@ -10,6 +10,7 @@ Used with constrained optimizers like SLSQP.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import first_scalar, input_error
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +145,9 @@ class ConstraintBlock(BaseBlock):
         dtime = float(params.get("dtime", 0.01))
 
         # Get signal
-        signal = inputs.get(0, 0.0)
-        if isinstance(signal, np.ndarray):
-            signal = float(signal.flatten()[0])
+        signal = first_scalar(inputs.get(0, 0.0))
+        if signal is None:
+            return input_error("Constraint", "signal input 0 is None or empty")
 
         # Track statistics
         if signal > params.get("_max_value_", -np.inf):

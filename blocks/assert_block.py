@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import input_error
 
 
 class AssertBlock(BaseBlock):
@@ -81,7 +82,10 @@ class AssertBlock(BaseBlock):
         condition = params.get("condition", ">0")
         message = params.get("message", "Assertion failed")
 
-        input_value = np.atleast_1d(inputs.get(0, 0))
+        raw = inputs.get(0, 0)
+        if raw is None:
+            return input_error("Assert", "input 0 is None")
+        input_value = np.atleast_1d(raw)
 
         # Check condition for all elements
         passed = True

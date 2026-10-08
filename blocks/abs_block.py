@@ -1,5 +1,6 @@
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import input_error
 from blocks.param_templates import zero_crossing_param
 
 
@@ -57,5 +58,8 @@ class AbsBlock(BaseBlock):
         return path
 
     def execute(self, time, inputs, params, **kwargs):
-        input_value = np.atleast_1d(inputs.get(0, 0))
+        raw = inputs.get(0, 0)
+        if raw is None:
+            return input_error("Abs", "input 0 is None")
+        input_value = np.atleast_1d(raw)
         return {0: np.abs(input_value)}

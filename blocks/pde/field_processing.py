@@ -11,9 +11,15 @@ These blocks process array/field outputs from PDE blocks:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.pde._compat import trapezoid
+from blocks.input_helpers import input_error
+from blocks.pde._compat import as_scalar, trapezoid
 
 logger = logging.getLogger(__name__)
+
+
+def _field_or_zero(field):
+    """An unconnected/None field input reads as a single zero, like a missing key."""
+    return np.array([0.0]) if field is None else field
 
 
 class FieldProbeBlock(BaseBlock):
@@ -106,7 +112,7 @@ class FieldProbeBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute the field probe."""
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
@@ -116,6 +122,10 @@ class FieldProbeBlock(BaseBlock):
         position = inputs.get(1, None)
         if position is None:
             position = float(params.get("position", 0.5))
+        else:
+            position = as_scalar(position, float(params.get("position", 0.5)))
+        if not np.isfinite(position):
+            return input_error("FieldProbe", "position is not finite")
 
         mode = params.get("position_mode", "normalized")
         L = float(params.get("L", 1.0))
@@ -216,7 +226,7 @@ class FieldIntegralBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute the field integral."""
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
@@ -318,7 +328,7 @@ class FieldMaxBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Execute the field max/min finder."""
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         if len(field) == 0:
@@ -440,7 +450,7 @@ class FieldScopeBlock(BaseBlock):
             params["_time_history_"] = []
             params["_init_start_"] = False
 
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         # Store snapshot. The history is kept as a growing list and only
@@ -520,7 +530,7 @@ class FieldGradientBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Compute the field gradient."""
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         if len(field) < 2:
@@ -609,7 +619,7 @@ class FieldLaplacianBlock(BaseBlock):
 
     def execute(self, time, inputs, params, **kwargs):
         """Compute the field Laplacian."""
-        field = inputs.get(0, np.array([0.0]))
+        field = _field_or_zero(inputs.get(0, 0.0))
         field = np.atleast_1d(field).flatten()
 
         if len(field) < 3:

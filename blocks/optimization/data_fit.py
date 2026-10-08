@@ -9,6 +9,7 @@ identification and model calibration.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import first_scalar, input_error
 
 logger = logging.getLogger(__name__)
 
@@ -180,9 +181,9 @@ class DataFitBlock(BaseBlock):
                 measured = float(np.interp(time, t_data, y_data))
 
         # Get simulation signal
-        signal = inputs.get(0, 0.0)
-        if isinstance(signal, np.ndarray):
-            signal = float(signal.flatten()[0])
+        signal = first_scalar(inputs.get(0, 0.0))
+        if signal is None:
+            return input_error("DataFit", "signal input 0 is None or empty")
 
         # Compute error
         error = signal - measured

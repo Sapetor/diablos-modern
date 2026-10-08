@@ -382,3 +382,53 @@ def advance_sample_time(
         next_time += step
     params[key] = next_time
     return next_time
+
+
+def input_error(block: str, message: str) -> Dict[str, Any]:
+    """Build the standard engine-facing error result for a block.
+
+    Matches the ``{'E': True, 'error': ...}`` convention used by Sum/Product.
+    Messages are developer-facing and stay English (not wrapped in ``tr``).
+    """
+    return {"E": True, "error": f"{block}: {message}"}
+
+
+def is_unusable(value: Any) -> bool:
+    """True when ``value`` is None or an empty array/sequence (cheap check)."""
+    if value is None:
+        return True
+    if isinstance(value, (int, float)):
+        return False
+    try:
+        return len(value) == 0 if not hasattr(value, "size") else value.size == 0
+    except TypeError:
+        return False
+
+
+def first_scalar(value: Any) -> Optional[float]:
+    """Return the first element of ``value`` as a float, or None if unusable.
+
+    Unusable means ``None`` or an empty array. Plain scalars take a fast path
+    so per-step hot loops pay almost nothing.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    arr = np.asarray(value)
+    if arr.size == 0:
+        return None
+    return float(arr.flat[0])
+
+
+def input_array(inputs: Dict[int, Any], port: int) -> Optional[np.ndarray]:
+    """Return the input at ``port`` as a non-empty 1-D float array, or None.
+
+    None is returned for a missing key, a ``None`` value, or an empty array, so
+    callers can emit one ``input_error`` instead of crashing on ``[0]``.
+    """
+    value = inputs.get(port)
+    if value is None:
+        return None
+    arr = np.atleast_1d(np.asarray(value, dtype=float)).ravel()
+    return arr if arr.size else None

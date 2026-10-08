@@ -93,7 +93,7 @@ class DisplayBlock(BaseBlock):
                 # Single value
                 val = float(np.atleast_1d(input_value)[0])
                 formatted = fmt % val
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError, IndexError) as e:
             logger.warning(
                 f"Display '{params.get('_name_', '?')}': could not format value with "
                 f"'{fmt}' ({e}); showing raw value."

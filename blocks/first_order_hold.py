@@ -9,7 +9,13 @@ between a past and a future sample.
 """
 
 from blocks.base_block import BaseBlock
-from blocks.input_helpers import advance_sample_time, safe_float, sample_due
+from blocks.input_helpers import (
+    input_error,
+    is_unusable,
+    advance_sample_time,
+    safe_float,
+    sample_due,
+)
 import numpy as np
 
 
@@ -100,6 +106,9 @@ class FirstOrderHoldBlock(BaseBlock):
         First-Order Hold: Samples input and linearly interpolates between samples.
         """
         output_only = kwargs.get("output_only", False)
+
+        if is_unusable(inputs.get(0, 0.0)):
+            return input_error("FirstOrderHold", "input 0 is None or empty")
 
         # Initialize on first call
         if params.get("_init_start_", True):

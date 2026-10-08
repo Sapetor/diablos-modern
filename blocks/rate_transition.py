@@ -6,7 +6,7 @@ Handles both upsampling (slow→fast) and downsampling (fast→slow).
 """
 
 from blocks.base_block import BaseBlock
-from blocks.input_helpers import advance_sample_time, sample_due
+from blocks.input_helpers import input_error, is_unusable, advance_sample_time, sample_due
 import numpy as np
 import logging
 
@@ -118,6 +118,9 @@ class RateTransitionBlock(BaseBlock):
         Rate transition: Convert signal between different sample rates.
         """
         output_only = kwargs.get("output_only", False)
+
+        if is_unusable(inputs.get(0, 0.0)):
+            return input_error("RateTransition", "input 0 is None or empty")
         mode = str(params.get("transition_mode", "ZOH"))
 
         # Initialize on first call

@@ -143,6 +143,8 @@ class StateSpaceBaseBlock(BaseBlock):
             return np.zeros((n_inputs, 1)), None
 
         u = inputs.get(0, 0.0)
+        if u is None:
+            return None, {"E": True, "error": "State-space block: input 0 is None"}
         if isinstance(u, (int, float)):
             u = np.array([[u]])
         else:

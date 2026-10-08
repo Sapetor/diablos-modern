@@ -19,7 +19,7 @@ Common applications:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.pde._compat import as_scalar
+from blocks.pde._compat import as_scalar_opt, or_zero
 from blocks.param_templates import diffusivity_param, domain_params_1d, init_flag_param
 from lib.engine.pde_helpers import bc_params_1d
 from lib.engine.pde_ops import diffusion_reaction_rhs_1d, robin_boundary_value
@@ -203,9 +203,9 @@ class DiffusionReaction1DBlock(BaseBlock):
         c = params.get("c", np.zeros(N))
 
         # Get inputs
-        source = inputs.get(0, 0.0)
-        bc_left = as_scalar(inputs.get(1, 0.0))
-        bc_right = as_scalar(inputs.get(2, 0.0))
+        source = or_zero(inputs.get(0, 0.0))
+        bc_left = as_scalar_opt(inputs.get(1, 0.0))
+        bc_right = as_scalar_opt(inputs.get(2, 0.0))
 
         # Ensure source is array
         if isinstance(source, (int, float)):
@@ -274,9 +274,9 @@ class DiffusionReaction1DBlock(BaseBlock):
         L = float(params.get("L", 1.0))
         dx = L / (N - 1)
 
-        source = inputs.get("source", 0.0)
-        bc_left = as_scalar(inputs.get("bc_left", 0.0))
-        bc_right = as_scalar(inputs.get("bc_right", 0.0))
+        source = or_zero(inputs.get("source", 0.0))
+        bc_left = as_scalar_opt(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar_opt(inputs.get("bc_right", 0.0))
 
         if isinstance(source, (int, float)):
             source = np.full(N, float(source))
@@ -309,8 +309,8 @@ class DiffusionReaction1DBlock(BaseBlock):
         D = float(params.get("D", 0.01))
         dx = L / (N - 1)
 
-        bc_left = as_scalar(inputs.get("bc_left", 0.0))
-        bc_right = as_scalar(inputs.get("bc_right", 0.0))
+        bc_left = as_scalar_opt(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar_opt(inputs.get("bc_right", 0.0))
         bc_type_left = params.get("bc_type_left", "Dirichlet")
         bc_type_right = params.get("bc_type_right", "Neumann")
 

@@ -20,7 +20,7 @@ This results in 2N state variables for N spatial nodes.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.pde._compat import as_scalar
+from blocks.pde._compat import as_scalar_opt, or_zero
 from blocks.param_templates import wave_speed_param, domain_params_1d, init_flag_param
 from lib.engine.pde_helpers import bc_params_1d, companion_seed, parse_pde_initial_condition
 from lib.engine.pde_ops import wave_rhs_1d, wave_energy_1d
@@ -206,9 +206,9 @@ class WaveEquation1DBlock(BaseBlock):
         v = params.get("v", np.zeros(N))
 
         # Get inputs
-        force = inputs.get(0, 0.0)
-        bc_left = as_scalar(inputs.get(1, 0.0))
-        bc_right = as_scalar(inputs.get(2, 0.0))
+        force = or_zero(inputs.get(0, 0.0))
+        bc_left = as_scalar_opt(inputs.get(1, 0.0))
+        bc_right = as_scalar_opt(inputs.get(2, 0.0))
 
         # Ensure force is array
         if isinstance(force, (int, float)):
@@ -279,9 +279,9 @@ class WaveEquation1DBlock(BaseBlock):
         v = state[N:]
 
         # Get inputs
-        force = inputs.get("force", 0.0)
-        bc_left = as_scalar(inputs.get("bc_left", 0.0))
-        bc_right = as_scalar(inputs.get("bc_right", 0.0))
+        force = or_zero(inputs.get("force", 0.0))
+        bc_left = as_scalar_opt(inputs.get("bc_left", 0.0))
+        bc_right = as_scalar_opt(inputs.get("bc_right", 0.0))
 
         if isinstance(force, (int, float)):
             force = np.full(N, float(force))

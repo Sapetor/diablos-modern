@@ -10,6 +10,8 @@ These blocks process 2D array/field outputs from 2D PDE blocks:
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
+from blocks.input_helpers import input_error
+from blocks.pde._compat import as_scalar
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,12 @@ class FieldProbe2DBlock(BaseBlock):
         y_pos = inputs.get(2, None)
         if y_pos is None:
             y_pos = float(params.get("y_position", 0.5))
+        x_pos = as_scalar(x_pos, 0.5)
+        y_pos = as_scalar(y_pos, 0.5)
+        if Nx < 1 or Ny < 1:
+            return input_error("FieldProbe2D", "field is empty")
+        if not (np.isfinite(x_pos) and np.isfinite(y_pos)):
+            return input_error("FieldProbe2D", "position is not finite")
 
         position_mode = params.get("position_mode", "normalized")
         Lx = float(params.get("Lx", 1.0))
@@ -396,6 +404,9 @@ class FieldSliceBlock(BaseBlock):
         position = inputs.get(1, None)
         if position is None:
             position = float(params.get("slice_position", 0.5))
+        position = as_scalar(position, 0.5)
+        if not np.isfinite(position):
+            return input_error("FieldSlice", "slice position is not finite")
 
         direction = params.get("slice_direction", "x")
 

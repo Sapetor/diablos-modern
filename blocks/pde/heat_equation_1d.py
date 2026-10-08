@@ -16,7 +16,8 @@ This converts the PDE into N coupled ODEs that the solver handles.
 import logging
 import numpy as np
 from blocks.base_block import BaseBlock
-from blocks.pde._compat import as_scalar
+from blocks.input_helpers import input_error
+from blocks.pde._compat import as_scalar, as_scalar_opt, or_zero
 from blocks.param_templates import (
     diffusivity_param,
     domain_params_1d,
@@ -233,15 +234,17 @@ class HeatEquation1DBlock(BaseBlock):
         T = np.array(params.get("T", np.zeros(N)), dtype=float)
 
         # Get inputs
-        q_src = inputs.get(0, 0.0)
-        bc_left_val = as_scalar(inputs.get(1, 0.0))
-        bc_right_val = as_scalar(inputs.get(2, 0.0))
+        q_src = or_zero(inputs.get(0, 0.0))
+        bc_left_val = as_scalar_opt(inputs.get(1, 0.0))
+        bc_right_val = as_scalar_opt(inputs.get(2, 0.0))
 
         # Ensure q_src is array of correct size
         if isinstance(q_src, (int, float)):
             q_src = np.full(N, float(q_src))
         else:
             q_src = np.atleast_1d(q_src).flatten()
+            if len(q_src) == 0:
+                return input_error("HeatEquation1D", "source input 0 is an empty array")
             if len(q_src) != N:
                 if len(q_src) == 1:
                     q_src = np.full(N, q_src[0])
@@ -336,9 +339,9 @@ class HeatEquation1DBlock(BaseBlock):
         dx = L / (N - 1)
 
         # Get inputs
-        q_src = inputs.get("q_src", 0.0)
-        bc_left_val = as_scalar(inputs.get("bc_left", 0.0))
-        bc_right_val = as_scalar(inputs.get("bc_right", 0.0))
+        q_src = or_zero(inputs.get("q_src", 0.0))
+        bc_left_val = as_scalar_opt(inputs.get("bc_left", 0.0))
+        bc_right_val = as_scalar_opt(inputs.get("bc_right", 0.0))
 
         # Ensure q_src is array
         if isinstance(q_src, (int, float)):

@@ -29,6 +29,15 @@ def as_scalar(value, default=0.0):
     return float(arr[0]) if arr.size else float(default)
 
 
+def or_zero(value):
+    """Map an unconnected (``None``) array-or-scalar input to ``0.0``.
+
+    ``inputs.get(k, 0.0)`` only covers a *missing* key; a connected-but-``None``
+    port arrives as a present ``None`` that would crash ``np.full``/``+``.
+    """
+    return 0.0 if value is None else value
+
+
 def as_scalar_opt(value, default=0.0):
     """``as_scalar`` for an OPTIONAL port: a missing signal yields ``default``.
 
