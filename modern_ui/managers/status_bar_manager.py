@@ -18,7 +18,7 @@ sites, and ``AppearanceManager`` reads ``window.theme_status``).
 import os
 import logging
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QEvent, QObject, QTimer
 from PyQt6.QtWidgets import QLabel, QFrame
 
 from modern_ui.themes.theme_manager import theme_manager, ThemeType
@@ -190,12 +190,91 @@ class StatusBarManager:
         window._counts_refresh_timer.timeout.connect(self.refresh_counts)
         window._counts_refresh_timer.start(500)
 
+        # Keep the counts / file pills current on every diagram change (open,
+        # new, undo, paste, delete, subsystem navigation ...). Each of those
+        # repaints the canvas, so a coalesced refresh hooked on its Paint events
+        # catches them all without touching every call site; the 500ms timer
+        # above remains the backstop.
+        self._install_canvas_refresh_hook()
+
+        # Keep the theme pill in step with the active theme however the toggle
+        # was triggered (Ctrl+T / menu / palette / toolbar / palette switch).
+        self._connect_theme_pill()
+
         # Initial state
         self.refresh_counts()
         self.refresh_file_status()
 
         # Apply theme palette to the statusbar host
         window.appearance_manager.update_statusbar_colors()
+
+    def _install_canvas_refresh_hook(self):
+        window = self.window
+        canvas = getattr(window, "canvas", None)
+        if canvas is None:
+            return
+        manager = self
+        pending = []
+
+        def _run():
+            pending.clear()
+            manager.refresh_counts()
+            manager.refresh_file_status()
+
+        class _PaintHook(QObject):
+            def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
+                if event.type() == QEvent.Type.Paint and not pending:
+                    pending.append(1)
+                    QTimer.singleShot(0, _run)
+                return False
+
+        self._paint_hook = _PaintHook(window)
+        canvas.installEventFilter(self._paint_hook)
+
+    def _connect_theme_pill(self):
+        window = self.window
+
+        def _on_theme(*_args):
+            try:
+                window.on_theme_changed()  # status bar shell, menubar, canvas area
+                self._restyle_pills()
+            except RuntimeError:
+                pass  # window already destroyed (theme_manager is a singleton)
+            except Exception:
+                logger.debug("Failed to refresh the theme pill", exc_info=True)
+
+        theme_manager.theme_changed.connect(_on_theme)
+
+        def _disconnect(*_args):
+            try:
+                theme_manager.theme_changed.disconnect(_on_theme)
+            except (TypeError, RuntimeError):
+                pass
+
+        window.destroyed.connect(_disconnect)
+
+    def _restyle_pills(self):
+        """Re-colour the status-bar labels whose inline styles were baked at setup."""
+        window = self.window
+        for name, key in (
+            ("file_status", "text_primary"),
+            ("counts_status", "text_secondary"),
+            ("cursor_status", "text_secondary"),
+            ("zoom_status", "text_secondary"),
+        ):
+            widget = getattr(window, name, None)
+            if widget is not None:
+                widget.setStyleSheet(f"color: {theme_manager.get_color(key).name()};")
+        unsaved = getattr(window, "file_unsaved_status", None)
+        if unsaved is not None:
+            unsaved.setStyleSheet(
+                f"color: {theme_manager.get_color('text_disabled').name()}; font-size: 9pt;"
+            )
+        border = theme_manager.get_color("border_primary").name()
+        for sep in window.statusBar().findChildren(QFrame, "StatusDivider"):
+            sep.setStyleSheet(
+                f"color: {border}; background: {border}; max-width: 1px; min-width: 1px;"
+            )
 
     def retranslate_ui(self):
         """Re-apply every status-bar string in the active language.

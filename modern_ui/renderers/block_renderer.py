@@ -343,6 +343,35 @@ def _port_label_font() -> QFont:
     return _PORT_LABEL_FONT
 
 
+#: Longest block-name label, as a multiple of the block width (with a floor so
+#: narrow blocks still get a readable label). Longer names are elided with "…".
+NAME_LABEL_MAX_WIDTH_FACTOR = 3
+NAME_LABEL_MIN_MAX_WIDTH = 160
+
+
+#: block_fns whose icon is centred text (a conservative width is reserved for it
+#: when deciding whether the port labels fit on the block face).
+_TEXT_ICON_FNS = frozenset({"PID"})
+
+
+def block_label_layout(block):
+    """Return ``(rect, text)`` for the name label drawn under ``block``.
+
+    The label is centred horizontally on the block and sized to its text (the
+    old rect was exactly one block wide, so Qt clipped any longer name on both
+    sides). Names wider than the cap are elided with an ellipsis. Exposed so
+    repaint / export code can reuse the exact geometry the painter uses.
+    """
+    font = _cached_name_font(block.font)
+    metrics = font_metrics(font)
+    full = block.username or ""
+    max_width = max(NAME_LABEL_MIN_MAX_WIDTH, NAME_LABEL_MAX_WIDTH_FACTOR * block.width)
+    text = metrics.elidedText(full, Qt.TextElideMode.ElideRight, max_width)
+    width = max(block.width, measure_text(metrics, text) + 4)
+    left = block.left + (block.width - width) // 2
+    return QRect(left, block.top + block.height + 2, width, 28), text
+
+
 def _cached_name_font(font: QFont) -> QFont:
     """Memoized normal-weight copy of a block's persistent label font.
 
@@ -519,9 +548,9 @@ class BlockRenderer:
             # block.font is persistent shared state. The normal-weight copy is
             # memoized rather than rebuilt for every block on every frame.
             painter.setFont(_cached_name_font(block.font))
-            text_rect = QRect(block.left, block.top + block.height + 2, block.width, 28)
+            text_rect, label = block_label_layout(block)
             painter.drawText(
-                text_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, block.username
+                text_rect, Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop, label
             )
 
         # Enhanced selection visualization
@@ -734,6 +763,18 @@ class BlockRenderer:
 
         def get_text_width(text):
             return measure_text(metrics, text)
+
+        # Labels are painted over the block face, where the centred icon text
+        # ("PID", B(s)/A(s) ...) lives. Show them only when the widest input
+        # label, the widest output label and the icon text all fit side by
+        # side; otherwise keep the face clean and reveal them on selection.
+        if not getattr(block, "selected", False):
+            clearance = 2 * (block.port_radius + 4) + 4 * 2
+            icon_text_width = 36 if getattr(block, "block_fn", "") in _TEXT_ICON_FNS else 0
+            widest_in = max((get_text_width(n) for n in input_names), default=0)
+            widest_out = max((get_text_width(n) for n in output_names), default=0)
+            if widest_in + widest_out + icon_text_width + clearance > block.width:
+                return
 
         # Label colors
         text_color = theme_manager.get_color("text_primary")

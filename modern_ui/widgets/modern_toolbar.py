@@ -350,6 +350,11 @@ class _StatusPill(QFrame):
             full, Qt.TextElideMode.ElideRight, available
         )
         self._label.setText(elided)
+        # Layouts that cache size hints (QStatusBar, QToolBar) must re-query
+        # them or the pill keeps the width of its previous, shorter text and
+        # clips the new label mid-glyph.
+        self._label.updateGeometry()
+        self.updateGeometry()
         # Borrow the tooltip only while something is actually cut.
         self.setToolTip(full if elided != full else self._base_tooltip)
 
