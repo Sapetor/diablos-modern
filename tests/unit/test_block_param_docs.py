@@ -9,8 +9,8 @@ import pytest
 
 from lib.block_loader import load_builtin_blocks
 
-# Blocks exempt from the check. PIDBlock is owned by a separate change.
-DOC_SKIP = {"PIDBlock"}
+# Blocks exempt from the check (none today; add a class name with a reason).
+DOC_SKIP: set = set()
 
 _CLASSES = sorted(load_builtin_blocks(), key=lambda c: (c.__module__, c.__name__))
 
