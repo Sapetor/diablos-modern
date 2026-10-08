@@ -46,6 +46,7 @@ class ToastNotification(QLabel):
         # Whether the current message is an error (drives red styling). Must be
         # set before the first _apply_styling() call below.
         self._is_error = False
+        self._on_click = None
         self._apply_styling()
 
         # Connect to theme changes
@@ -72,7 +73,20 @@ class ToastNotification(QLabel):
             }}
         """)
 
-    def show_message(self, message: str, duration: int = 2000, is_error: bool = False):
+    def mousePressEvent(self, event):
+        """A toast shown with ``on_click`` runs it when clicked, then dismisses."""
+        callback = self._on_click
+        if callback is not None and event.button() == Qt.MouseButton.LeftButton:
+            self._on_click = None
+            self.hide_timer.stop()
+            self.hide()
+            callback()
+            return
+        super().mousePressEvent(event)
+
+    def show_message(
+        self, message: str, duration: int = 2000, is_error: bool = False, on_click=None
+    ):
         """
         Show a toast notification with a message.
 
@@ -81,7 +95,13 @@ class ToastNotification(QLabel):
             duration: How long to show the message in milliseconds (default 2000ms)
             is_error: When True, style the toast with the theme's error colors
                 (red border + tinted background) instead of the neutral accent.
+            on_click: Optional callable run (and the toast dismissed) when the
+                toast is clicked; the toast then shows a pointing-hand cursor.
         """
+        self._on_click = on_click
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor if on_click else Qt.CursorShape.ArrowCursor
+        )
         # Re-style only when the error state changes, so the common (non-error)
         # path keeps using the already-applied stylesheet.
         if is_error != self._is_error:

@@ -73,6 +73,8 @@ class SimulationEngine:
         self.execution_pause: bool = False
         self.execution_stop: bool = False
         self.error_msg: str = ""
+        # Flattened name of the block behind error_msg ("" when not a block error)
+        self.error_block: str = ""
 
         # Simulation parameters
         self.sim_time: float = 1.0
@@ -340,6 +342,7 @@ class SimulationEngine:
             # Check for errors in output
             if out_value and isinstance(out_value, dict) and "E" in out_value and out_value["E"]:
                 self.error_msg = out_value.get("error", "Unknown error")
+                self.error_block = block.name
                 logger.error(self.error_msg)
                 return False
 
@@ -403,6 +406,7 @@ class SimulationEngine:
                         out_value.get("E") or out_value.get("error")
                     ):
                         self.error_msg = out_value.get("error", "Block returned error")
+                        self.error_block = block.name
                         logger.error(f"Block {block.name} error: {self.error_msg}")
                         return False
 
@@ -918,6 +922,7 @@ class SimulationEngine:
 
         self.execution_stop = False
         self.error_msg = ""
+        self.error_block = ""
         self.time_step = 0
         self.timeline = np.array([self.time_step])
         self.execution_time = execution_time

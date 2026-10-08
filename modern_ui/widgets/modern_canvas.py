@@ -6,7 +6,7 @@ import html
 import logging
 import math
 from PyQt6.QtWidgets import QWidget, QApplication, QToolTip
-from PyQt6.QtCore import Qt, QRect, QTimer, QEvent, pyqtSignal
+from PyQt6.QtCore import Qt, QPoint, QRect, QTimer, QEvent, pyqtSignal
 from PyQt6.QtGui import QPainter, QPen
 
 # Import DSim and helper modules
@@ -62,6 +62,8 @@ class ModernCanvas(QWidget):
     # (state, message) -- see SimulationController.state_changed.
     simulation_state_changed = pyqtSignal(str, str)
     simulation_batch_finished = pyqtSignal(bool)  # ok
+    # (raw message, offending block's flattened name) -- see SimulationController.
+    simulation_errors_reported = pyqtSignal(str, str)
     command_palette_requested = pyqtSignal()  # Emitted when command palette should open
     scope_changed = pyqtSignal(list)  # Emitted when navigation scope changes (path)
     cursor_moved = pyqtSignal(int, int)  # (x, y) in canvas coordinates — drives status bar
@@ -119,6 +121,7 @@ class ModernCanvas(QWidget):
         self._sim_controller.status_changed.connect(self.simulation_status_changed)
         self._sim_controller.state_changed.connect(self.simulation_state_changed)
         self._sim_controller.batch_finished.connect(self.simulation_batch_finished)
+        self._sim_controller.errors_reported.connect(self.simulation_errors_reported)
 
         # Initialize Analysis Tool. The analyzers live in lib/ and must not
         # import QMessageBox themselves, so the GUI injects the error sink.
@@ -449,8 +452,13 @@ class ModernCanvas(QWidget):
             # Draw validation error indicators
             validation = self.rendering_manager.validation_state
             if validation.show_errors:
+                # Marks can name blocks of another scope (runtime errors in a
+                # subsystem): draw only those that live in the visible scope.
+                visible = {id(b) for b in self.dsim.blocks_list}
                 self.canvas_renderer.draw_validation_errors(
-                    painter, validation.blocks_with_errors, validation.blocks_with_warnings
+                    painter,
+                    [b for b in validation.blocks_with_errors if id(b) in visible],
+                    [b for b in validation.blocks_with_warnings if id(b) in visible],
                 )
 
             # Draw routing tag HUD (Goto/From overview)
@@ -1090,6 +1098,52 @@ class ModernCanvas(QWidget):
     def clear_validation(self):
         """Clear validation errors and hide indicators."""
         self.rendering_manager.clear_validation()
+
+    def mark_runtime_errors(self, blocks):
+        """Flag blocks that failed at run time with the validation error badge.
+
+        Reuses the validation highlight; enclosing subsystems are flagged too so
+        the failure is visible from the top level. Cleared by ``clear_validation``.
+        """
+        from lib.error_locator import error_blocks_with_ancestors
+
+        root_blocks = self.dsim.get_root_context()[0]
+        state = self.rendering_manager.validation_state
+        marked = error_blocks_with_ancestors(root_blocks, blocks)
+        state.blocks_with_errors = set(state.blocks_with_errors) | set(marked.values())
+        state.show_errors = True
+        self.update()
+
+    def reveal_block(self, block):
+        """Select ``block`` and centre the view on it.
+
+        Navigates into the subsystem that contains it when it is nested (the
+        same enter/exit path the breadcrumb uses). Returns False when the block
+        is no longer in the diagram.
+        """
+        from lib.error_locator import find_block_chain
+
+        root_blocks = self.dsim.get_root_context()[0]
+        chain = find_block_chain(root_blocks, block)
+        if chain is None:
+            return False
+        if not any(b is block for b in self.dsim.blocks_list):
+            while len(self.dsim.get_current_path()) > 1:
+                self.dsim.exit_subsystem()
+            for sub in chain:
+                self.dsim.enter_subsystem(sub)
+            self.scope_changed.emit(self.dsim.get_current_path())
+        for b in self.dsim.blocks_list:
+            b.selected = b is block
+        state = self.zoom_pan_manager.state
+        zoom = state.zoom_factor
+        state.pan_offset = QPoint(
+            int(self.width() / 2 - (block.left + block.width / 2) * zoom),
+            int(self.height() / 2 - (block.top + block.height / 2) * zoom),
+        )
+        self.block_selected.emit(block)
+        self.update()
+        return True
 
     def _draw_block_error_indicator(self, painter, block, is_error=True):
         """Draw error/warning indicator on a specific block."""

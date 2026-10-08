@@ -19,7 +19,6 @@ Two signals face the UI, and the canvas re-emits both under its own names:
 import logging
 
 from PyQt6.QtCore import QObject, pyqtSignal
-from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from lib.i18n import tr
 from lib.diagram_validator import check_simulation_state, validate_block_connections
@@ -56,6 +55,10 @@ class SimulationController(QObject):
     # Emitted when a threaded batch run ends (completed, cancelled or failed).
     # The window uses it to re-arm the tuning panel and reset the toolbar.
     batch_finished = pyqtSignal(bool)  # ok
+    # A run could not start or stopped on an error: (raw message, flattened name
+    # of the offending block or ""). The window turns it into error-panel
+    # entries, canvas highlights and a toast -- never a modal dialog.
+    errors_reported = pyqtSignal(str, str)
 
     def __init__(self, dsim, parent=None):
         super().__init__(parent)
@@ -67,10 +70,15 @@ class SimulationController(QObject):
             raise ValueError(f"unknown simulation state {state!r}")
         self.state_changed.emit(state, message)
 
-    def _report_error(self, message):
-        """Put the UI in the error state and show ``message``."""
+    def _report_error(self, message, raw=None, block=""):
+        """Put the UI in the error state and show ``message``.
+
+        ``raw`` is the bare error text (without the status-line wrapper) that
+        goes to the error panel; ``block`` is the engine's offending block.
+        """
         self._set_state("error", message)
         self.status_changed.emit(message)
+        self.errors_reported.emit(raw if raw is not None else message, block or "")
 
     def start(self):
         """Start simulation with validation."""
@@ -85,7 +93,7 @@ class SimulationController(QObject):
             if not is_valid:
                 error_msg = "\n".join(errors)
                 logger.error(f"Simulation validation failed: {error_msg}")
-                self._report_error(tr("Validation failed: {error}", error=error_msg))
+                self._report_error(tr("Validation failed: {error}", error=error_msg), raw=error_msg)
                 return False
 
             # Check simulation state safety
@@ -93,7 +101,9 @@ class SimulationController(QObject):
             if not is_safe:
                 error_msg = "\n".join(safety_errors)
                 logger.error(f"Simulation safety check failed: {error_msg}")
-                self._report_error(tr("Safety check failed: {error}", error=error_msg))
+                self._report_error(
+                    tr("Safety check failed: {error}", error=error_msg), raw=error_msg
+                )
                 return False
 
             # Start simulation
@@ -115,18 +125,13 @@ class SimulationController(QObject):
                         else tr("Initialization failed (see logs).")
                     )
                     logger.error(f"Simulation initialization failed. {error_msg}")
-                    self._report_error(tr("Simulation failed to start. {error}", error=error_msg))
-                    # Also pop up a message box, parented to the owning widget so
-                    # it stays attached to / centered on the main window and
-                    # inherits the application theme.
-                    parent_widget = self.parent() if isinstance(self.parent(), QWidget) else None
-                    msgBox = QMessageBox(parent_widget)
-                    msgBox.setIcon(QMessageBox.Icon.Critical)
-                    msgBox.setText(tr("Simulation Failed to Start"))
-                    msgBox.setInformativeText(error_msg)
-                    msgBox.setWindowTitle(tr("Simulation Error"))
-                    msgBox.setStandardButtons(QMessageBox.StandardButton.Ok)
-                    msgBox.exec()
+                    # Non-modal: the error panel + toast carry the message and the
+                    # offending block (see ModernDiaBloSWindow._on_simulation_errors).
+                    self._report_error(
+                        tr("Simulation failed to start. {error}", error=error_msg),
+                        raw=error_msg,
+                        block=getattr(self.dsim, "error_block", ""),
+                    )
                     return False
             else:
                 logger.error("DSim does not have execution_init method")
@@ -221,9 +226,17 @@ class SimulationController(QObject):
 
     def _finish_batch(self, ok, message):
         """Post-run work: status, plots, verification report. GUI thread only."""
+        if ok and getattr(self.dsim, "error_msg", ""):
+            # A block failed mid-run: the engine stops the loop and records the
+            # error, so the worker still ends "normally".
+            ok, message = False, self.dsim.error_msg
         if not ok:
             logger.error(f"Batch simulation failed: {message}")
-            self._report_error(tr("Simulation failed: {error}", error=message))
+            self._report_error(
+                tr("Simulation failed: {error}", error=message),
+                raw=message,
+                block=getattr(self.dsim, "error_block", ""),
+            )
             self.batch_finished.emit(False)
             return
 

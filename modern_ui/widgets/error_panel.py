@@ -290,6 +290,13 @@ class ErrorPanel(QWidget):
         else:
             self.hide()
 
+    def reveal(self):
+        """Make the panel visible and expanded (e.g. from a toast click)."""
+        if self._is_collapsed:
+            self.toggle_collapse()
+        self.show()
+        self.raise_()
+
     def toggle_collapse(self):
         """Toggle panel collapsed/expanded state."""
         self._is_collapsed = not self._is_collapsed

@@ -25,6 +25,59 @@ class SimulationActionsManager:
     def __init__(self, main_window):
         self.window = main_window
 
+    def _toast_errors(self, text: str) -> None:
+        """Show an error toast that opens the error panel when clicked."""
+        window = self.window
+        toast = getattr(window, "toast", None)
+        if toast is not None:
+            toast.show_message(
+                text, duration=6000, is_error=True, on_click=window.error_panel.reveal
+            )
+        else:  # pragma: no cover - the toast is built with the canvas
+            window.error_panel.reveal()
+
+    def on_run_errors(self, message: str, block_name: str = "") -> None:
+        """A run failed: list the errors, mark the blocks, toast -- no modal.
+
+        ``message`` is the engine/validator text (one error per line);
+        ``block_name`` the engine's flattened name of the offending block.
+        """
+        from lib.error_locator import build_run_errors
+
+        window = self.window
+        root_blocks = window.canvas.dsim.get_root_context()[0]
+        errors = build_run_errors(root_blocks, message, block_name)
+        if not errors:
+            return
+        window.error_panel.set_errors(errors)
+        window.canvas.clear_validation()
+        window.canvas.mark_runtime_errors([b for e in errors for b in e.blocks])
+        n = len(errors)
+        self._toast_errors(
+            tr("Simulation failed — {n} error (click to view)", n=n)
+            if n == 1
+            else tr("Simulation failed — {n} errors (click to view)", n=n)
+        )
+
+    def jump_to_error(self, error) -> bool:
+        """Select the error's block and centre the canvas on it (entering its subsystem)."""
+        window = self.window
+        canvas = window.canvas
+        candidates = list(getattr(error, "blocks", None) or [])
+        if not candidates and getattr(error, "block_name", ""):
+            from lib.error_locator import find_block_by_path
+
+            found = find_block_by_path(canvas.dsim.get_root_context()[0], error.block_name)
+            candidates = [found[0]] if found else []
+        for block in candidates:
+            if canvas.reveal_block(block):
+                for other in candidates:  # keep every offender selected
+                    if other is not block and any(b is other for b in canvas.dsim.blocks_list):
+                        other.selected = True
+                window.status_message.setText(tr("Showing error: {message}", message=error.message))
+                return True
+        return False
+
     def start(self) -> None:
         """Start simulation with validation."""
         window = self.window
@@ -53,17 +106,11 @@ class SimulationActionsManager:
                 )
                 logger.warning(f"Simulation blocked by {error_count} validation error(s)")
 
-                # Show a message box for critical errors
-                from PyQt6.QtWidgets import QMessageBox
-
-                QMessageBox.warning(
-                    window,
-                    tr("Validation Errors"),
-                    tr(
-                        "Cannot start simulation due to {count} validation error(s).\n\n"
-                        "Please fix the errors shown in the error panel before running.",
-                        count=error_count,
-                    ),
+                # Non-modal: the panel already lists them; the toast opens it.
+                self._toast_errors(
+                    tr("Cannot start simulation — {n} error (click to view)", n=error_count)
+                    if error_count == 1
+                    else tr("Cannot start simulation — {n} errors (click to view)", n=error_count)
                 )
                 return
             else:

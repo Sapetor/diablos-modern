@@ -241,6 +241,13 @@ class DSim:
     @error_msg.setter
     def error_msg(self, value):
         self.engine.error_msg = value
+        if not value:
+            self.engine.error_block = ""
+
+    @property
+    def error_block(self):
+        """Flattened name of the block that stopped the run (``""`` if unknown)."""
+        return self.engine.error_block
 
     @property
     def last_solver_diagnostics(self):
@@ -1136,12 +1143,16 @@ class DSim:
         self._timeline_list.append(self.time_step)
         return True
 
-    def _block_failed(self, out_value) -> bool:
+    def _block_failed(self, out_value, block=None) -> bool:
         """Stop the run and return True when a block reported an error.
 
         Anything that is not a dict (``None``, or the ``False`` the engine
-        returns when a block cannot be run at all) is a failure too.
+        returns when a block cannot be run at all) is a failure too. ``block``
+        (when given) is recorded as ``engine.error_block`` so the UI can point
+        at the offender even when the message does not name it.
         """
+        if block is not None:
+            self.engine.error_block = getattr(block, "name", "") or ""
         if not isinstance(out_value, dict):
             self.execution_failed(
                 "Block returned None" if out_value is None else f"Block returned {out_value!r}"
@@ -1196,7 +1207,7 @@ class DSim:
                     continue
 
                 out_value = self.engine.execute_block(block, output_only=True)
-                if self._block_failed(out_value):
+                if self._block_failed(out_value, block):
                     return None
 
                 if block.effective_sample_time > 0:
@@ -1291,7 +1302,7 @@ class DSim:
         if is_memory:
             self.engine.sync_integrator_output(block)
 
-        if self._block_failed(out_value):
+        if self._block_failed(out_value, block):
             return False
 
         # Multi-rate: Store outputs and schedule next execution for discrete blocks

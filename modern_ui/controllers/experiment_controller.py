@@ -208,9 +208,8 @@ class ExperimentController:
         def _on_failed(msg):
             progress.close()
             window._mc_worker = None
-            QMessageBox.critical(
-                window, tr("Monte Carlo"), tr("Monte-Carlo run failed:\n{error}", error=msg)
-            )
+            # Diagram errors go to the error panel + toast, not a modal.
+            window.simulation_actions_manager.on_run_errors(msg)
 
         worker.progress.connect(_on_progress)
         worker.finished.connect(_on_finished)
@@ -320,9 +319,7 @@ class ExperimentController:
         def _on_failed(msg):
             progress.close()
             window._sweep_worker = None
-            QMessageBox.critical(
-                window, tr("Parameter Sweep"), tr("Parameter sweep failed:\n{error}", error=msg)
-            )
+            window.simulation_actions_manager.on_run_errors(msg)
 
         worker.progress.connect(_on_progress)
         worker.finished.connect(_on_finished)

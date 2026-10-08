@@ -1134,70 +1134,16 @@ class ModernDiaBloSWindow(QMainWindow):
             self.tuning_panel.show()
 
     def _on_error_clicked(self, error):
-        """Handle error item click - navigate to error location."""
+        """Error-panel click: select the offending block and centre on it."""
         try:
-            from PyQt6.QtCore import QPoint
-
-            # Get affected blocks from the error
-            affected_blocks = error.blocks if hasattr(error, "blocks") else []
-
-            if not affected_blocks:
-                logger.warning("No blocks associated with this error")
-                return
-
-            # First, deselect all blocks
-            for block in self.canvas.dsim.blocks_list:
-                block.selected = False
-
-            # Calculate bounding box of all affected blocks
-            min_x = min_y = float("inf")
-            max_x = max_y = float("-inf")
-
-            for block in affected_blocks:
-                # Get block position using correct attribute names
-                x = block.left
-                y = block.top
-                w = block.width
-                h = block.height
-
-                min_x = min(min_x, x)
-                min_y = min(min_y, y)
-                max_x = max(max_x, x + w)
-                max_y = max(max_y, y + h)
-
-                # Select the affected blocks for visibility
-                block.selected = True
-
-            # Add padding
-            padding = 50
-            min_x -= padding
-            min_y -= padding
-            max_x += padding
-            max_y += padding
-
-            # Calculate center point
-            center_x = (min_x + max_x) / 2
-            center_y = (min_y + max_y) / 2
-
-            # Pan canvas to center on the error location
-            canvas_width = self.canvas.width()
-            canvas_height = self.canvas.height()
-
-            # Calculate new pan offset to center the error (using QPoint)
-            new_offset_x = canvas_width / 2 - center_x * self.canvas.zoom_factor
-            new_offset_y = canvas_height / 2 - center_y * self.canvas.zoom_factor
-            self.canvas.zoom_pan_manager.state.pan_offset = QPoint(
-                int(new_offset_x), int(new_offset_y)
-            )
-
-            # Update canvas to show the changes
-            self.canvas.update()
-
-            logger.info(f"Navigated to error location at ({center_x}, {center_y})")
-            self.status_message.setText(tr("Showing error: {message}", message=error.message))
-
+            if not self.simulation_actions_manager.jump_to_error(error):
+                logger.warning("No block associated with this error")
         except Exception as e:
             logger.error(f"Error navigating to error location: {str(e)}")
+
+    def _on_simulation_errors(self, message, block_name=""):
+        """A run failed: error panel + highlight + toast (see SimulationActionsManager)."""
+        self.simulation_actions_manager.on_run_errors(message, block_name)
 
     def _canvas_wants_repaint(self) -> bool:
         """True when the canvas has live state (hover glow, wire drag, run).
@@ -1292,7 +1238,14 @@ class ModernDiaBloSWindow(QMainWindow):
 
                 is_running = self.canvas.is_simulation_running()
 
-                if was_running and not is_running:
+                if was_running and not is_running and getattr(self.dsim, "error_msg", ""):
+                    # A block stopped the interactive run with an error.
+                    self.canvas._sim_controller._report_error(
+                        tr("Simulation failed: {error}", error=self.dsim.error_msg),
+                        raw=self.dsim.error_msg,
+                        block=getattr(self.dsim, "error_block", ""),
+                    )
+                elif was_running and not is_running:
                     self._on_simulation_state_changed("idle")
                     self.status_message.setText(tr("Simulation finished"))
                     # Arm tuning controller with sim params from completed run
