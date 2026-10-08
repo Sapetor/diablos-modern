@@ -108,6 +108,7 @@ def _canvas():
     canvas.history_manager.undo()
     assert len(canvas.history_manager.undo_stack) == 1
     assert len(canvas.history_manager.redo_stack) == 1
+    dsim.dirty = False  # undo() marks the diagram dirty; the fixture starts clean
     return canvas
 
 
