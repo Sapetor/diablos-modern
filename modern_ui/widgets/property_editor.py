@@ -1327,11 +1327,13 @@ class PropertyEditor(QFrame):
         block_name = getattr(self.block, "name", "Unknown")
         new_name = widget.text().strip()
         if new_name == "--" or new_name == "":
-            self.block.username = block_name
+            new_name = block_name
             widget.setText(block_name)
-        else:
+        # The controller applies the name (so it can record the undo entry
+        # first); keep the block in sync here only when nobody is listening.
+        if not self.receivers(self.property_changed):
             self.block.username = new_name
-        self.property_changed.emit(block_name, "_username_", self.block.username)
+        self.property_changed.emit(block_name, "_username_", new_name)
 
     # ── Reset to default (#6) ──────────────────────────────────
 

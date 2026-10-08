@@ -188,6 +188,9 @@ class ModernCanvas(QWidget):
 
             # Add new block using DSim
             if hasattr(self.dsim, "add_block"):
+                # Pre-add snapshot; pushed only once the add has succeeded so a
+                # failed add leaves both undo stacks alone.
+                pre_state = self.history_manager.capture_snapshot()
                 new_block = self.dsim.add_block(menu_block, position)
                 if new_block:
                     # Apply dynamic sizing based on port count
@@ -206,8 +209,8 @@ class ModernCanvas(QWidget):
                     # consistent with dsim state even if a post-add step
                     # (undo capture, signal emit, repaint) raises.
                     try:
-                        # Capture state for undo
-                        self._push_undo("Add Block")
+                        # Undo entry holds the state from before the add
+                        self.history_manager.push_snapshot(pre_state, "Add Block")
 
                         # Emit signal
                         self.block_selected.emit(new_block)
@@ -968,9 +971,13 @@ class ModernCanvas(QWidget):
     def flip_selected_blocks(self):
         """Flip selected blocks horizontally."""
         try:
+            if not any(b.selected for b in self.dsim.blocks_list):
+                return
+            self._push_undo("Flip Block")
             for block in self.dsim.blocks_list:
                 if block.selected:
                     block.flipped = not block.flipped  # the setter re-lays the ports
+            self.dsim.dirty = True
             self._update_line_positions()
             self.update()  # Redraw canvas
             logger.info("Flipped selected blocks")
@@ -1035,8 +1042,10 @@ class ModernCanvas(QWidget):
     def _create_subsystem_trigger(self):
         """Trigger subsystem creation."""
         logger.info("Create subsystem trigger called")
+        pre_state = self.history_manager.capture_snapshot()
         subsys = self.dsim.create_subsystem_from_selection()
         if subsys:
+            self.history_manager.push_snapshot(pre_state, "Create Subsystem")
             self._update_line_positions()  # Recalculate line paths to connect to new subsystem ports
             self.update()
 
@@ -1085,12 +1094,12 @@ class ModernCanvas(QWidget):
     # Undo/Redo System
 
     def undo(self):
-        """Undo the last action."""
-        self.history_manager.undo()
+        """Undo the last action. Returns True if something was undone."""
+        return self.history_manager.undo()
 
     def redo(self):
-        """Redo the last undone action."""
-        self.history_manager.redo()
+        """Redo the last undone action. Returns True if something was redone."""
+        return self.history_manager.redo()
 
     def _push_undo(self, description="Action"):
         """Push current state to undo stack. (Internal helper wrapper)"""

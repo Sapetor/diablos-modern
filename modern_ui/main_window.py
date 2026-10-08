@@ -849,16 +849,16 @@ class ModernDiaBloSWindow(QMainWindow):
     def undo_action(self):
         """Undo last action."""
         if hasattr(self, "canvas"):
-            self.canvas.undo()
-            self.status_message.setText(tr("Undo"))
-            self.toast.show_message("⟲ " + tr("Undo"))
+            if self.canvas.undo():
+                self.status_message.setText(tr("Undo"))
+                self.toast.show_message("⟲ " + tr("Undo"))
 
     def redo_action(self):
         """Redo last undone action."""
         if hasattr(self, "canvas"):
-            self.canvas.redo()
-            self.status_message.setText(tr("Redo"))
-            self.toast.show_message("⟳ " + tr("Redo"))
+            if self.canvas.redo():
+                self.status_message.setText(tr("Redo"))
+                self.toast.show_message("⟳ " + tr("Redo"))
 
     def select_all(self):
         """Select all blocks in the diagram."""

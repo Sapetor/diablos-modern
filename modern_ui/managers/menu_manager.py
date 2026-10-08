@@ -688,15 +688,19 @@ class MenuManager:
             self.canvas, tr("Rename block"), tr("New name:"), text=current
         )
         if ok and new_name.strip():
-            block.username = new_name.strip()
+            new_name = new_name.strip()
             main_win = self._find_main_window()
             if main_win is not None:
+                # The property controller records the undo entry and sets the name.
                 try:
-                    main_win._on_property_changed(block.name, "_username_", block.username)
+                    main_win._on_property_changed(block.name, "_username_", new_name)
                 except Exception:
                     logger.debug(
                         "Failed to propagate renamed block username to main window", exc_info=True
                     )
+            if block.username != new_name:
+                self.canvas._push_undo("Rename Block")
+                block.username = new_name
             self.canvas.dsim.dirty = True
             self.canvas.update()
 

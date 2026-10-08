@@ -14,12 +14,23 @@ signal). This controller backs the window-side slot
 """
 
 import ast
+import copy
 import logging
 from typing import Any
+
+import numpy as np
 
 from lib.i18n import tr
 
 logger = logging.getLogger(__name__)
+
+
+def _differs(old, new) -> bool:
+    """True when two parameter values differ (array-safe)."""
+    try:
+        return bool(np.any(np.asarray(old, dtype=object) != np.asarray(new, dtype=object)))
+    except Exception:
+        return old is not new
 
 
 class PropertyController:
@@ -75,6 +86,12 @@ class PropertyController:
                 if block.name == block_name:
                     # Handle username change (special case - not in params)
                     if prop_name == "_username_":
+                        new_username = str(new_value)
+                        if block.username != new_username:
+                            history = canvas.history_manager
+                            pre_state = history.capture_snapshot()
+                            block.username = new_username
+                            history.push_snapshot(pre_state, "Rename Block")
                         canvas.dsim.dirty = True
                         canvas.update()
                         return
@@ -107,7 +124,14 @@ class PropertyController:
                     logger.debug(
                         f"Updating {block_name}.{prop_name} to {converted_value} (type: {type(converted_value).__name__})"
                     )
+                    # One undo entry per committed edit (the editor commits on
+                    # editingFinished, not per keystroke); skip no-op commits.
+                    history = canvas.history_manager
+                    pre_state = history.capture_snapshot()
+                    old_value = copy.deepcopy(block.params.get(prop_name))
                     block.update_params({prop_name: converted_value})
+                    if _differs(old_value, block.params.get(prop_name)):
+                        history.push_snapshot(pre_state, "Edit Parameter")
                     canvas.dsim.dirty = True
                     # For Goto/From blocks, refresh labels and virtual links immediately
                     if block.block_fn in ("Goto", "From") and prop_name in ("tag", "signal_name"):
