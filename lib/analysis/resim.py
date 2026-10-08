@@ -53,6 +53,23 @@ OUTCOME_METRIC_LABELS = {
 }
 
 
+def iter_blocks_qualified(blocks, prefix=""):
+    """Yield ``(qualified_name, block)`` for ``blocks`` and everything nested in them.
+
+    Descends into Subsystems via ``sub_blocks``.  A nested block's qualified
+    name is ``"<Subsystem>/<block>"`` -- the same name the Flattener gives its
+    primitive copy -- so it identifies the same block in results and in the
+    ``derive_seed`` tag.  Top-level blocks keep their plain name.  Container
+    blocks are yielded too, before their children.
+    """
+    for b in blocks:
+        full = f"{prefix}{b.name}"
+        yield full, b
+        children = getattr(b, "sub_blocks", None)
+        if isinstance(children, (list, tuple)) and children:
+            yield from iter_blocks_qualified(children, f"{full}/")
+
+
 def harvest_scope_signals(dsim):
     """Read each Scope's trace(s) into ``{'timeline', 'signals'}`` (or ``None``).
 

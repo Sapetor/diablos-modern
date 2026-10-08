@@ -22,7 +22,12 @@ import numpy as np
 
 # Re-exported from the shared re-sim module so existing
 # ``from lib.analysis.monte_carlo import OUTCOME_METRICS`` imports keep working.
-from lib.analysis.resim import OUTCOME_METRIC_LABELS, OUTCOME_METRICS, harvest_scope_signals
+from lib.analysis.resim import (
+    OUTCOME_METRIC_LABELS,
+    OUTCOME_METRICS,
+    harvest_scope_signals,
+    iter_blocks_qualified,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,17 +92,19 @@ class MonteCarloRunner:
         sim_dt = float(sim_dt if sim_dt is not None else getattr(dsim, "sim_dt", 0.01))
         samplers = samplers or {}
 
-        blocks_by_name = {b.name: b for b in dsim.blocks_list}
+        # Every block, including those nested in Subsystems, keyed by its
+        # qualified (flattened) name.
+        blocks_by_name = dict(iter_blocks_qualified(dsim.blocks_list))
         seed_blocks = [
-            b
-            for b in dsim.blocks_list
+            (qn, b)
+            for qn, b in blocks_by_name.items()
             if isinstance(getattr(b, "params", None), dict) and "seed" in b.params
         ]
 
         # Snapshot originals so we restore the diagram exactly (never mutate it).
         original = {}
-        for b in seed_blocks:
-            original[(b.name, "seed")] = b.params.get("seed")
+        for qn, b in seed_blocks:
+            original[(qn, "seed")] = b.params.get("seed")
         for bn, pn in samplers:
             b = blocks_by_name.get(bn)
             if b is not None:
@@ -115,8 +122,8 @@ class MonteCarloRunner:
                     logger.info("Monte-Carlo cancelled after %d/%d runs", i, n_runs)
                     break
                 # Per-run seed injection for every stochastic block.
-                for b in seed_blocks:
-                    _set(b, "seed", derive_seed(master_seed, i, b.name))
+                for qn, b in seed_blocks:
+                    _set(b, "seed", derive_seed(master_seed, i, qn))
                 # Per-run parameter samples (reproducible from the master seed).
                 if samplers:
                     prng = np.random.default_rng(derive_seed(master_seed, i, "__params__"))
