@@ -32,11 +32,12 @@ class WaveGeneratorBlock(BaseBlock):
                 "default": "Sine",
                 "type": "choice",
                 "options": ["Sine", "Square", "Triangle", "Sawtooth"],
+                "doc": "Waveform shape",
             },
-            "amplitude": {"default": 1.0, "type": "float"},
-            "frequency": {"default": 1.0, "type": "float"},
-            "phase": {"default": 0.0, "type": "float"},
-            "bias": {"default": 0.0, "type": "float"},
+            "amplitude": {"default": 1.0, "type": "float", "doc": "Peak amplitude of the waveform"},
+            "frequency": {"default": 1.0, "type": "float", "doc": "Frequency in Hz"},
+            "phase": {"default": 0.0, "type": "float", "doc": "Phase offset in radians"},
+            "bias": {"default": 0.0, "type": "float", "doc": "Constant offset added to the output"},
             **zero_crossing_param(),
         }
 

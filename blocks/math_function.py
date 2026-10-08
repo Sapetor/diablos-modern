@@ -48,6 +48,7 @@ class MathFunctionBlock(BaseBlock):
                     "floor",
                     "reciprocal",
                 ],
+                "doc": "Function applied to the input, or a Python expression in u (input) and t (time)",
             },
             **zero_crossing_param(),
         }

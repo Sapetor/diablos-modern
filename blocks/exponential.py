@@ -21,8 +21,16 @@ class ExponentialBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "a": {"default": 1.0, "type": "float"},
-            "b": {"default": 1.0, "type": "float"},
+            "a": {
+                "default": 1.0,
+                "type": "float",
+                "doc": "Amplitude: scale factor in y = a*exp(b*x)",
+            },
+            "b": {
+                "default": 1.0,
+                "type": "float",
+                "doc": "Rate: exponent multiplier (growth if positive, decay if negative)",
+            },
         }
 
     @property

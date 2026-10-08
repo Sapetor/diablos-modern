@@ -35,7 +35,11 @@ class ScopeBlock(BaseBlock):
         from blocks.param_templates import verification_mode_param
 
         return {
-            "labels": {"default": "default", "type": "string"},
+            "labels": {
+                "default": "default",
+                "type": "string",
+                "doc": "Comma-separated legend labels for the plotted signals",
+            },
             **verification_mode_param(),
             "_init_start_": {"default": True, "type": "bool"},
         }

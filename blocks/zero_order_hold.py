@@ -26,7 +26,11 @@ class ZeroOrderHoldBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "sampling_time": {"default": 0.1, "type": "float"},
+            "sampling_time": {
+                "default": 0.1,
+                "type": "float",
+                "doc": "Sample period in seconds; zero or negative passes the input through unsampled",
+            },
             "_init_start_": {"default": True, "type": "bool"},
         }
 

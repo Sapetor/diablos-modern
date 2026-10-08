@@ -37,7 +37,11 @@ class ProductBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "ops": {"default": "**", "type": "string"},
+            "ops": {
+                "default": "**",
+                "type": "string",
+                "doc": "One character per input port: '*' multiplies by it, '/' divides by it (e.g. '*/')",
+            },
         }
 
     @property

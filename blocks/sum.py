@@ -31,7 +31,11 @@ class SumBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "sign": {"default": "++", "type": "string"},
+            "sign": {
+                "default": "++",
+                "type": "string",
+                "doc": "One character per input port: '+' adds it, '-' subtracts it (e.g. '+-')",
+            },
         }
 
     @property

@@ -55,8 +55,13 @@ class RateTransitionBlock(BaseBlock):
                 "default": "ZOH",
                 "type": "str",
                 "options": ["ZOH", "Linear", "Filter", "Sample", "Average"],
+                "doc": "Rate conversion method: hold, ramp, low-pass filter, latest sample or window average",
             },
-            "filter_cutoff": {"default": 0.4, "type": "float"},  # Normalized cutoff for filter mode
+            "filter_cutoff": {
+                "default": 0.4,
+                "type": "float",
+                "doc": "Low-pass cutoff in Hz for Filter mode (smoothing factor 2*pi*cutoff*output sample time)",
+            },
             "sampling_time": {
                 "default": -1.0,
                 "type": "float",

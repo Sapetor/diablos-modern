@@ -26,8 +26,17 @@ class ExportBlock(BaseBlock):
     @property
     def params(self):
         return {
-            "str_name": {"default": "default", "type": "string"},
-            "format": {"default": "npz", "type": "choice", "options": ["npz", "csv", "mat"]},
+            "str_name": {
+                "default": "default",
+                "type": "string",
+                "doc": "Variable name used for the signal in the exported file",
+            },
+            "format": {
+                "default": "npz",
+                "type": "choice",
+                "options": ["npz", "csv", "mat"],
+                "doc": "Output file format",
+            },
             "_init_start_": {"default": True, "type": "bool"},
         }
 

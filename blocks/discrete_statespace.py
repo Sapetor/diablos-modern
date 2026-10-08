@@ -23,11 +23,31 @@ class DiscreteStateSpaceBlock(StateSpaceBaseBlock):
     @property
     def params(self):
         return {
-            "A": {"default": [[0.0]], "type": "list"},
-            "B": {"default": [[1.0]], "type": "list"},
-            "C": {"default": [[1.0]], "type": "list"},
-            "D": {"default": [[0.0]], "type": "list"},
-            "init_conds": {"default": [0.0], "type": "list"},
+            "A": {
+                "default": [[0.0]],
+                "type": "list",
+                "doc": "State matrix A (n x n) as nested lists, e.g. [[0, 1], [-2, -3]]",
+            },
+            "B": {
+                "default": [[1.0]],
+                "type": "list",
+                "doc": "Input matrix B (n x m) as nested lists",
+            },
+            "C": {
+                "default": [[1.0]],
+                "type": "list",
+                "doc": "Output matrix C (p x n) as nested lists",
+            },
+            "D": {
+                "default": [[0.0]],
+                "type": "list",
+                "doc": "Feedthrough matrix D (p x m) as nested lists",
+            },
+            "init_conds": {
+                "default": [0.0],
+                "type": "list",
+                "doc": "Initial state vector x(0), one entry per state",
+            },
             "sampling_time": {
                 "default": 0.0,
                 "type": "float",

@@ -24,8 +24,16 @@ class DiscreteTransferFunctionBlock(StateSpaceBaseBlock):
     @property
     def params(self):
         return {
-            "numerator": {"default": [1.0, 0.0], "type": "list"},
-            "denominator": {"default": [1.0, -0.5], "type": "list"},
+            "numerator": {
+                "default": [1.0, 0.0],
+                "type": "list",
+                "doc": "Numerator coefficients in descending powers of z",
+            },
+            "denominator": {
+                "default": [1.0, -0.5],
+                "type": "list",
+                "doc": "Denominator coefficients in descending powers of z",
+            },
             "sampling_time": {
                 "default": 0.0,
                 "type": "float",

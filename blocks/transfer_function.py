@@ -34,8 +34,16 @@ class TransferFunctionBlock(StateSpaceBaseBlock):
     @property
     def params(self):
         return {
-            "numerator": {"default": [1.0], "type": "list"},
-            "denominator": {"default": [1.0, 1.0], "type": "list"},
+            "numerator": {
+                "default": [1.0],
+                "type": "list",
+                "doc": "Numerator coefficients in descending powers of s",
+            },
+            "denominator": {
+                "default": [1.0, 1.0],
+                "type": "list",
+                "doc": "Denominator coefficients in descending powers of s",
+            },
             "_init_start_": {"default": True, "type": "bool"},
             "sampling_time": {
                 "default": -1.0,
