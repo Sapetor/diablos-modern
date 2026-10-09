@@ -1340,7 +1340,7 @@ class ModernBlockPalette(QWidget):
         head = QFrame()
         head.setObjectName("PaletteHead")
         hl = QHBoxLayout(head)
-        hl.setContentsMargins(12, 10, 12, 6)
+        hl.setContentsMargins(8, 10, 8, 6)
         hl.setSpacing(4)
         self.title = QLabel(tr("Library"))
         tf = QFont()
@@ -1348,21 +1348,26 @@ class ModernBlockPalette(QWidget):
         tf.setBold(True)
         tf.setLetterSpacing(QFont.SpacingType.PercentageSpacing, 105)
         self.title.setFont(tf)
-        # Never squeeze the heading: the count and the two header buttons share
-        # a narrow panel, and a shrunk QLabel just clips ("Librai").
+        # The header shares a narrow panel whose width is fixed by the left
+        # panel's explicit minimum, not by this row, so wider platform fonts
+        # (Linux) or a longer translation overflow it. The heading never gives
+        # way (a shrunk QLabel just clips: "Librai"); the count fills the gap
+        # between heading and buttons and is the part that yields.
         self.title.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
         hl.addWidget(self.title)
-        hl.addStretch(1)
         self.count_label = QLabel("")
         cf = QFont()
         cf.setPointSize(9)
         self.count_label.setFont(cf)
-        hl.addWidget(self.count_label)
+        self.count_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.count_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        hl.addWidget(self.count_label, 1)
 
         # Collapse / expand every category at once.
         self.collapse_button = QToolButton()
         self.collapse_button.setText("\u229f")
         self.collapse_button.setAutoRaise(True)
+        self.collapse_button.setFixedWidth(20)
         self.collapse_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.collapse_button.setToolTip(tr("Collapse all categories"))
         self.collapse_button.clicked.connect(self.toggle_all_collapsed)
@@ -1372,6 +1377,7 @@ class ModernBlockPalette(QWidget):
         self.refresh_button = QToolButton()
         self.refresh_button.setText("\u21bb")
         self.refresh_button.setAutoRaise(True)
+        self.refresh_button.setFixedWidth(20)
         self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setToolTip(tr("Refresh user library blocks"))
         self.refresh_button.clicked.connect(self.refresh_library)

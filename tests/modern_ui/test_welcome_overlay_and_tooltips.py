@@ -136,5 +136,11 @@ def test_layout_survives_the_app_stylesheet(qapp, window):
         assert card.height() >= 4 * line
         assert card.width() >= 170
 
+    # The heading must never be clipped, even with a longer translation; the
+    # palette's width is fixed by the panel minimum, and platform fonts differ
+    # (CI's Linux fonts overflowed a header that fit exactly on macOS).
     title = window.block_palette.title
-    assert title.width() >= QFontMetrics(title.font()).horizontalAdvance(title.text())
+    for text in ("Library", "Biblioteca"):
+        title.setText(text)
+        _settle(qapp, window)
+        assert title.width() >= QFontMetrics(title.font()).horizontalAdvance(text)
