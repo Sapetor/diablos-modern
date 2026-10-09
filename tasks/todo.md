@@ -73,7 +73,8 @@ None/empty-input hardening and param docs. Still open:
 Fixed the same day: grow-only vertical resize (`calculate_min_size` echoed
 `height_base`), Windows `windows11` style covering spinbox values (Fusion is
 now forced on every platform), and cp1252 "Logging error" tracebacks on emoji
-log records. Still open:
+log records; stale CLAUDE.md notes (PyQt5 venv, Python 3.9 baseline, ruff pin)
+corrected. Still open:
 - [ ] **Windows-only test failures (pre-existing, CI is Linux-only so nothing
   catches them).** On `.venv-win` (Python 3.13, PyQt6 6.11) 11 tests fail with
   or without those fixes: toolbar width
@@ -84,9 +85,6 @@ log records. Still open:
   `test_frozen_writes.py::test_the_cwd_really_is_read_only` (POSIX
   permission semantics); `test_tikz_compilation.py` x4 (no pdflatex -- env
   only). Consider a Windows leg in CI.
-- [ ] **Stale CLAUDE.md notes:** says `.venv-win` is still PyQt5 (it has PyQt6
-  6.11 now) and that CI's baseline is Python 3.9 (CI matrix and
-  `requires-python` are 3.10 / 3.12).
 - [ ] **Properties panel polish:** bold parameter labels render larger than
   the surrounding text, and the per-param reset button (`\u21ba`,
   `property_editor.py` ~l.952) shows as an empty square.
