@@ -259,7 +259,9 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
 #: width so QToolBar moved the trailing tools into its overflow menu. The
 #: toolbar copy has to leave room for those tools; the bottom bar is where a
 #: long message belongs, so it gets more.
-PILL_CAP_TOOLBAR = 360
+# Leave room for the transport and trailing tools at the 1200px minimum
+# window width, including Windows font metrics and Fusion layout margins.
+PILL_CAP_TOOLBAR = 300
 PILL_CAP_STATUSBAR = 520
 
 
