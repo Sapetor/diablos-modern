@@ -560,22 +560,22 @@ def _build_qpalette() -> QPalette:
 
 
 def _maybe_use_fusion_style(app):
-    """Work around QTBUG-109450 on macOS.
+    """Use the Fusion style on every platform; the QSS is written against it.
 
-    On macOS the native ``macintosh`` style fails to draw the blinking text
-    caret in any QLineEdit/QSpinBox that has a stylesheet setting
-    ``background-color`` — which is every input field in this app. The Fusion
-    style is fully stylesheet-aware and draws the caret itself, so switching
-    to it restores cursor visibility everywhere.
+    - macOS (QTBUG-109450): the native ``macintosh`` style fails to draw the
+      blinking text caret in any QLineEdit/QSpinBox whose stylesheet sets
+      ``background-color`` — which is every input field in this app.
+    - Windows: Qt 6.7+ defaults to the ``windows11`` style, which draws
+      QSpinBox +/- as large side-by-side buttons that cover the value in the
+      Properties panel's fixed-width spinboxes, and shrinks the QComboBox
+      arrow to a dot.
+    - Linux already defaults to Fusion.
     """
-    import sys
+    from PyQt6.QtWidgets import QStyleFactory
 
-    if sys.platform == "darwin":
-        from PyQt6.QtWidgets import QStyleFactory
-
-        fusion = QStyleFactory.create("Fusion")
-        if fusion is not None:
-            app.setStyle(fusion)
+    fusion = QStyleFactory.create("Fusion")
+    if fusion is not None:
+        app.setStyle(fusion)
 
 
 def apply_modern_theme(app):
