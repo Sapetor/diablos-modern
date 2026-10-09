@@ -28,6 +28,18 @@ from lib.qt_setup import configure_qt_env  # noqa: E402
 # win on platforms where the shell env does propagate.
 configure_qt_env(headless=not os.environ.get("DIABLOS_SHOW_WINDOWS"))
 
+# Point lib.app_paths.ui_settings() at a throwaway INI file for the session.
+# Otherwise the suite runs against the developer's real QSettings store (the
+# registry on Windows): a stored preference such as "ask before every run"
+# flips test outcomes that pass in CI, and tests overwrite real preferences.
+import atexit  # noqa: E402
+import shutil  # noqa: E402
+import tempfile  # noqa: E402
+
+_settings_dir = tempfile.mkdtemp(prefix="diablos-test-settings-")
+atexit.register(shutil.rmtree, _settings_dir, ignore_errors=True)
+os.environ.setdefault("DIABLOS_SETTINGS_INI", os.path.join(_settings_dir, "settings.ini"))
+
 import pytest
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QPoint, QRect

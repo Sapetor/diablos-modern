@@ -177,7 +177,14 @@ def ui_settings():
     Single accessor for the ``SETTINGS_ORG``/``SETTINGS_APP`` pair so every UI
     call site reads and writes the same store. ``QSettings`` is imported lazily
     to keep this module free of a Qt import at module scope.
+
+    ``DIABLOS_SETTINGS_INI`` (a file path) swaps the native store -- the
+    registry on Windows -- for a private INI file. ``tests/conftest.py`` sets it
+    so the suite neither reads nor overwrites the developer's real preferences.
     """
     from PyQt6.QtCore import QSettings
 
+    ini = os.environ.get("DIABLOS_SETTINGS_INI")
+    if ini:
+        return QSettings(ini, QSettings.Format.IniFormat)
     return QSettings(SETTINGS_ORG, SETTINGS_APP)

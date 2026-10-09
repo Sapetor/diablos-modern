@@ -17,6 +17,8 @@ Run with:
         -o addopts=""
 """
 
+import os
+
 import pytest
 
 from lib.app_paths import SETTINGS_ORG, SETTINGS_APP, ui_settings
@@ -51,17 +53,32 @@ class TestSettingsConstants:
 
 
 class TestUiSettingsAccessor:
+    @pytest.fixture
+    def native_store(self, monkeypatch):
+        """Exercise the production path: conftest redirects ui_settings() to a
+        temp INI via DIABLOS_SETTINGS_INI. Read-only use, so the real store is
+        never written."""
+        monkeypatch.delenv("DIABLOS_SETTINGS_INI", raising=False)
+
+    def test_settings_ini_override(self, monkeypatch, tmp_path):
+        ini = str(tmp_path / "s.ini")
+        monkeypatch.setenv("DIABLOS_SETTINGS_INI", ini)
+        s = ui_settings()
+        s.setValue("probe", 1)
+        s.sync()
+        assert os.path.isfile(ini)
+
     def test_returns_qsettings(self):
         from PyQt6.QtCore import QSettings
 
         assert isinstance(ui_settings(), QSettings)
 
-    def test_resolves_to_shared_org_app(self):
+    def test_resolves_to_shared_org_app(self, native_store):
         s = ui_settings()
         assert s.organizationName() == SETTINGS_ORG
         assert s.applicationName() == SETTINGS_APP
 
-    def test_all_call_sites_agree_on_org_app(self):
+    def test_all_call_sites_agree_on_org_app(self, native_store):
         """``ui_settings()`` and both call sites resolve to one org/app pair."""
         from PyQt6.QtCore import QSettings
 
