@@ -112,6 +112,19 @@ def test_enter_adds_first_match_and_clears_filter(palette):
     win.deleteLater()
 
 
+def test_enter_prefers_prefix_match_over_substring(palette):
+    # Row order follows block discovery (filesystem order, platform-dependent);
+    # "transfer" must still pick Transfer Function, not a block that merely
+    # contains the word, e.g. Discrete Transfer Function.
+    added = []
+    palette.block_drag_started.connect(lambda mb: added.append(mb.fn_name))
+    palette.show()
+    palette.search_bar.setText("transfer")
+    assert any(r.menu_block.fn_name == "discrete_transfer_function" for r in palette.visible_rows())
+    palette.search_bar.returnPressed.emit()
+    assert added == ["transfer_function"]
+
+
 def test_enter_with_no_match_is_noop(palette):
     palette.show()
     before = len(palette.dsim.blocks_list)

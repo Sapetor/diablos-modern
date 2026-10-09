@@ -1616,11 +1616,32 @@ class ModernBlockPalette(QWidget):
             s.filter(text)
 
     def _add_first_match(self):
-        """Insert the first visible match via the row's normal add path."""
+        """Insert the best visible match via the row's normal add path.
+
+        An exact name match beats a prefix match, which beats any other match;
+        ties keep on-screen order. Without the ranking, "transfer function"
+        added whichever of Transfer Function / Discrete Transfer Function the
+        block loader happened to list first (filesystem order, so it differed
+        between Windows and Linux).
+        """
         rows = self.visible_rows()
         if not rows:
             return
-        rows[0].activate()  # rebuilds the palette (Recent); do not touch rows after
+        query = self.search_bar.text().strip().lower()
+
+        def rank(row):
+            names = (
+                row.name_label.text().lower(),
+                str(getattr(row.menu_block, "fn_name", "")).replace("_", " ").lower(),
+            )
+            if query in names:
+                return 0
+            if any(n.startswith(query) for n in names):
+                return 1
+            return 2
+
+        best = min(rows, key=rank)  # min() keeps the first of equal ranks
+        best.activate()  # rebuilds the palette (Recent); do not touch rows after
         self.search_bar.clear()
 
     # -- Collapse / expand all ----------------------------------------------
