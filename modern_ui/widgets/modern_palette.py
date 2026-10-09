@@ -165,6 +165,33 @@ def _category_accent(category: str) -> QColor:
 # -----------------------------------------------------------------------------
 
 
+class _ElidingLabel(QLabel):
+    """QLabel that may shrink below its text width and elides with an ellipsis.
+
+    ``text()`` keeps the full string. Without this, a long name (e.g. a
+    Spanish block or category name) set the palette content's minimum width
+    above the panel's; the horizontal scrollbar is hidden, but the scroll
+    range still existed, so focusing a row scrolled everything sideways.
+    """
+
+    def minimumSizeHint(self):
+        return QSize(0, super().minimumSizeHint().height())
+
+    def paintEvent(self, event):
+        rect = self.contentsRect()
+        text = self.fontMetrics().elidedText(self.text(), Qt.TextElideMode.ElideRight, rect.width())
+        painter = QPainter(self)
+        self.style().drawItemText(
+            painter,
+            rect,
+            int(self.alignment()),
+            self.palette(),
+            self.isEnabled(),
+            text,
+            self.foregroundRole(),
+        )
+
+
 class CompactBlockRow(QFrame):
     """Single-row palette item: dot · glyph · name."""
 
@@ -201,7 +228,7 @@ class CompactBlockRow(QFrame):
         self.glyph = _BlockGlyphLabel(menu_block, colors)
         lay.addWidget(self.glyph, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        self.name_label = QLabel(block_label(menu_block))
+        self.name_label = _ElidingLabel(block_label(menu_block))
         font = QFont()
         font.setPointSize(9)
         font.setStyleHint(QFont.StyleHint.SansSerif)
@@ -226,7 +253,8 @@ class CompactBlockRow(QFrame):
 
     def _build_tooltip(self):
         try:
-            doc_lines = []
+            # Full display name first: the row label elides when it is long.
+            doc_lines = [block_label(self.menu_block)]
             library_def = getattr(self.menu_block, "library_def", None)
             if library_def is not None:
                 # Library blocks have no block class: describe them from the
@@ -1256,7 +1284,7 @@ class _CategorySection(QWidget):
         return any_match
 
 
-class _CategoryHeaderLabel(QLabel):
+class _CategoryHeaderLabel(_ElidingLabel):
     """Category header label that toggles its owning section when clicked."""
 
     def __init__(self, section, parent=None):
@@ -1404,6 +1432,10 @@ class ModernBlockPalette(QWidget):
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # Horizontal scrolling is off by design; pin it so a focus change can
+        # never shift the content sideways (see _ElidingLabel).
+        hbar = self.scroll.horizontalScrollBar()
+        hbar.valueChanged.connect(lambda v: v and hbar.setValue(0))
         self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
 

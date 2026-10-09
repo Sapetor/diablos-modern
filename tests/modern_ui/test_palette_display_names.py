@@ -131,3 +131,29 @@ def test_enter_with_no_match_is_noop(palette):
     palette.search_bar.setText("zzzzzz-no-such-block")
     palette.search_bar.returnPressed.emit()
     assert len(palette.dsim.blocks_list) == before
+
+
+def test_long_names_never_widen_the_palette(palette):
+    # Regression: an unelidable long name (e.g. a Spanish block or category
+    # name) set the content's minimum width above the panel's, so focusing a
+    # row scrolled the whole list sideways behind the hidden scrollbar.
+    from PyQt6.QtTest import QTest
+
+    row = palette.findChildren(CompactBlockRow)[0]
+    row.name_label.setText("An extremely long block name that cannot possibly fit " * 3)
+    palette.resize(180, 600)
+    palette.show()
+    QTest.qWait(50)
+    hbar = palette.scroll.horizontalScrollBar()
+    assert hbar.maximum() == 0
+    assert palette.scroll.widget().width() <= palette.scroll.viewport().width()
+    hbar.setValue(40)
+    assert hbar.value() == 0
+    assert row.name_label.text().startswith("An extremely long")  # full text kept
+    assert block_label_in_tooltip(row)
+
+
+def block_label_in_tooltip(row):
+    from modern_ui.widgets.modern_palette import block_label
+
+    return row.toolTip().splitlines()[0] == block_label(row.menu_block)
