@@ -253,11 +253,21 @@ class TestGlyphPainting:
     def test_letter_kind_paints_something(self, qapp):
         assert _render("letter:AB") != _blank()
 
-    def test_unknown_kind_falls_back_to_three_letter_label(self, qapp):
-        # Same fallback the old switch had: first three characters as a bold
-        # label, so "zzzzzz" and "zzz" render identically and "zzz" != "abc".
+    def test_unknown_kind_falls_back_to_three_letter_label(self, qapp, monkeypatch):
+        # Windows offscreen has no system fonts: different letters can paint
+        # identical missing-glyph boxes. Check the text sent to the painter as
+        # well as the ink, without requiring particular installed fonts.
+        drawn_text = []
+        original = QPainter.drawText
+
+        def record_text(painter, *args):
+            drawn_text.append(args[-1])
+            return original(painter, *args)
+
+        monkeypatch.setattr(QPainter, "drawText", record_text)
         assert _render("zzzzzz") == _render("zzz")
-        assert _render("zzz") != _render("abc")
+        _render("abc")
+        assert drawn_text == ["zzz", "zzz", "abc"]
         assert _render("zzz") != _blank()
 
     def test_empty_letter_kind_renders_question_mark(self, qapp):
