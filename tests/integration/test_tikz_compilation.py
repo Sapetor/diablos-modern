@@ -136,8 +136,11 @@ def compile_tex(tex_content, tmp_path):
     tex_file = tmp_path / "test.tex"
     tex_file.write_text(tex_content, encoding="utf-8")
     result = subprocess.run(
-        [PDFLATEX, "-interaction=nonstopmode", "-halt-on-error", str(tex_file)],
-        cwd=str(tmp_path),
+        # Bare file name, run from its folder: a pdflatex wrapper that forwards
+        # to another environment (e.g. TeX Live inside WSL) can't resolve a
+        # native absolute path such as C:\Users\...\test.tex.
+        [PDFLATEX, "-interaction=nonstopmode", "-halt-on-error", tex_file.name],
+        cwd=str(tex_file.parent),
         capture_output=True,
         timeout=30,
     )

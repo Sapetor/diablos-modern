@@ -103,6 +103,10 @@ def _assert_written_under(path, data_dir):
 class TestFrozenModeWrites:
     """Every writer lands in the per-user data dir, and none of them raise."""
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="chmod(0o555) does not make a directory read-only on Windows",
+    )
     def test_the_cwd_really_is_read_only(self, frozen_app):
         """Guard the guard: if the CWD were writable these tests prove nothing."""
         with pytest.raises(OSError):
