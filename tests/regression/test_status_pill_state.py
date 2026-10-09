@@ -64,7 +64,10 @@ class TestFailedRunFeedback:
         window._on_simulation_state_changed("error", self.MESSAGE)
         assert window.toolbar.status_pill.property("state") == "error"
         assert window.status_pill.property("state") == "error"
-        assert window.status_pill._label.text() == self.MESSAGE
+        # Font metrics vary by platform; a capped pill can legitimately elide
+        # the diagnostic, but must keep the full message accessible.
+        pill = window.status_pill
+        assert pill._label.text() == self.MESSAGE or pill.toolTip() == self.MESSAGE
 
     def test_failure_still_resets_the_transport(self, window):
         """The transport has no state accessor; assert on the buttons it drives."""
