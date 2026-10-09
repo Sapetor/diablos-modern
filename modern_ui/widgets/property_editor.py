@@ -839,7 +839,7 @@ class PropertyEditor(QFrame):
         row.setSpacing(6)
 
         name_label = QLabel(tr("Name:"))
-        name_label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+        name_label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 12px;")
         row.addWidget(name_label)
 
         name_edit = QLineEdit(self.block.username)
@@ -863,7 +863,7 @@ class PropertyEditor(QFrame):
             row = QHBoxLayout()
             row.setSpacing(6)
             label = QLabel(tr("Inputs:"))
-            label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+            label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 12px;")
             row.addWidget(label)
 
             sb = QSpinBox()
@@ -878,7 +878,7 @@ class PropertyEditor(QFrame):
             row = QHBoxLayout()
             row.setSpacing(6)
             label = QLabel(tr("Outputs:"))
-            label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+            label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 12px;")
             row.addWidget(label)
 
             sb = QSpinBox()
@@ -932,7 +932,7 @@ class PropertyEditor(QFrame):
 
         text_color = theme_manager.get_color("text_primary").name()
         label = QLabel(f"{key.replace('_', ' ').title()}:")
-        label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+        label.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 12px;")
 
         # Per-param tooltip (#2). `doc` is a runtime string pulled from the
         # block's params spec (blocks/*.py); tr() on it isn't extractable

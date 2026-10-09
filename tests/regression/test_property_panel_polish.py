@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QStyle, QStyleOptionButton
+from PyQt6.QtWidgets import QLabel, QStyle, QStyleOptionButton
 
 pytestmark = [pytest.mark.regression, pytest.mark.qt]
 
@@ -48,3 +48,29 @@ def test_reset_uses_visible_icon_and_still_restores_default(panel, qtbot):
     assert signal.args[1:] == ["denominator", panel._defaults["denominator"]]
     assert button.isHidden()
     assert editor.text() == str(panel._defaults["denominator"])
+
+
+def test_name_and_parameter_labels_match_section_text_size(panel):
+    labels = {
+        label.text(): label
+        for label in panel.findChildren(QLabel)
+        if label.text() in ("Name:", "Numerator:", "Denominator:")
+    }
+    assert len(labels) == 3
+    for label in labels.values():
+        label.ensurePolished()
+        assert label.font().pixelSize() == 12
+        assert label.font().bold()
+
+
+@pytest.mark.parametrize("block_fn, text", [("Mux", "Inputs:"), ("Demux", "Outputs:")])
+def test_editable_port_labels_match_parameter_text_size(panel, window, block_fn, text):
+    from PyQt6.QtCore import QPoint
+
+    menu = next(m for m in window.dsim.menu_blocks if m.block_fn == block_fn)
+    block = window.canvas.add_block_from_palette(menu, QPoint(600, 400))
+    panel.set_block(block)
+    label = next(label for label in panel.findChildren(QLabel) if label.text() == text)
+    label.ensurePolished()
+    assert label.font().pixelSize() == 12
+    assert label.font().bold()
