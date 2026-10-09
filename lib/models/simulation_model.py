@@ -543,8 +543,11 @@ class SimulationModel:
             block: DBlock instance to remove from the diagram
         """
         self.blocks_list.remove(block)
-        # Remove all lines connected to this block
-        self.line_list = [
+        # Remove all lines connected to this block, in place: inside a
+        # subsystem line_list *is* the subsystem's sub_lines (and the
+        # navigation stack holds the parent lists), so rebinding it left the
+        # deleted block's wires behind in sub_lines.
+        self.line_list[:] = [
             line
             for line in self.line_list
             if not self._is_line_connected_to_block(line, block.name)
