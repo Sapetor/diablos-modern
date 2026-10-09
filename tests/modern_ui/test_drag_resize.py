@@ -192,6 +192,23 @@ class TestResize:
         assert block.height >= expected_min_h
         assert canvas.interaction_manager.resize.at_limit is True
 
+    def test_resize_can_shrink_height_back(self, canvas):
+        # Regression: resize_Block writes height_base on every drag step and
+        # calculate_min_size used to return it, so height could only grow.
+        block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
+        block.selected = True
+
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
+        canvas._perform_resize(QPoint(240, 240))  # grow to 140x140
+        canvas._perform_resize(QPoint(200, 180))  # back to the start, same drag
+        assert (block.width, block.height) == (100, 80)
+        canvas._finish_resize()
+
+        # A fresh drag below the original height must also be allowed.
+        canvas._start_resize(block, "bottom_right", QPoint(200, 180))
+        canvas._perform_resize(QPoint(200, 160))
+        assert block.height == 60
+
     def test_finish_resize_pushes_undo_past_threshold(self, canvas):
         block = _add_block(canvas, _make_block(0, 100, 100, w=100, h=80))
         block.selected = True

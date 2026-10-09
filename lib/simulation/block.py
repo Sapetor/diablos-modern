@@ -361,6 +361,10 @@ class DBlock:
         """
         Calculate the minimum height required for the block based on its ports.
 
+        Only the port layout counts: height_base is the user's chosen height
+        (resize_Block overwrites it on every drag step), so folding it in here
+        would make interactive resizing grow-only in the vertical direction.
+
         Returns:
             int: The calculated minimum height (usually applied only if greater than default).
         """
@@ -368,16 +372,12 @@ class DBlock:
         PORT_SPACING = 20  # Vertical spacing between ports
         PORT_MARGIN = 12  # Top/bottom margin
 
-        # Calculate required height for inputs and outputs
         max_ports = max(self.in_ports, self.out_ports)
 
         if max_ports <= 1:
-            return self.height_base
+            return 0  # no port-imposed minimum; MIN_BLOCK_HEIGHT still applies
 
-        required_height = (max_ports * PORT_SPACING) + (PORT_MARGIN * 2)
-
-        # Ensure we don't shrink below a reasonable minimum or the base height
-        return max(self.height_base, required_height)
+        return (max_ports * PORT_SPACING) + (PORT_MARGIN * 2)
 
     def toggle_selection(self) -> None:
         """Toggle the selection state of this block."""

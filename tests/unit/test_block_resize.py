@@ -110,7 +110,11 @@ class TestMultiPortMinimumHeight:
 
     @pytest.mark.unit
     def test_single_port_no_special_minimum(self, qapp, sample_colors):
-        """Single-port blocks should use base height as minimum."""
+        """Single-port blocks impose no port-based minimum.
+
+        It must not echo height_base either: resize_Block rewrites that on
+        every drag step, which made interactive resizing grow-only.
+        """
         block = DBlock(
             block_fn="SinglePort",
             sid=0,
@@ -126,8 +130,7 @@ class TestMultiPortMinimumHeight:
             colors=sample_colors,
         )
 
-        min_height = block.calculate_min_size()
-        assert min_height == block.height_base
+        assert block.calculate_min_size() == 0
 
     @pytest.mark.unit
     def test_multi_port_has_calculated_minimum(self, multi_port_block):
