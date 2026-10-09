@@ -34,6 +34,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QPushButton,
     QSizePolicy,
+    QStyle,
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QColor, QFont, QPalette
@@ -949,9 +950,12 @@ class PropertyEditor(QFrame):
         default = meta.get("default", value)
         self._defaults[key] = default
 
-        reset_btn = QPushButton("\u21ba")
-        reset_btn.setFixedSize(20, 22)
+        reset_btn = QPushButton()
+        reset_btn.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_BrowserReload))
+        reset_btn.setIconSize(QSize(14, 14))
+        reset_btn.setFixedSize(22, 22)
         reset_btn.setToolTip(tr("Reset to default: {default}", default=default))
+        reset_btn.setAccessibleName(reset_btn.toolTip())
         reset_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         reset_btn.clicked.connect(lambda checked, k=key: self._reset_param(k))
         # setVisible() deferred until after addWidget below \u2014 calling it on a
@@ -1490,6 +1494,7 @@ class PropertyEditor(QFrame):
                     background-color: transparent;
                     color: {txt}; border: 1px solid {border};
                     border-radius: 4px; font-size: 14px;
+                    padding: 0px;
                     min-width: 0px; min-height: 0px;
                 }}
                 QPushButton:hover {{
