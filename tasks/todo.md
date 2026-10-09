@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-10-08
+> Last updated: 2026-10-09
 
 ---
 
@@ -68,6 +68,28 @@ None/empty-input hardening and param docs. Still open:
   Fast Solver (Experimental)" (default-on); palette shows raw ids
   (`randomsource`); errors as modal boxes with no click-to-block; welcome /
   "start from example" empty state.
+
+### Open items from the Windows session (2026-10-09)
+Fixed the same day: grow-only vertical resize (`calculate_min_size` echoed
+`height_base`), Windows `windows11` style covering spinbox values (Fusion is
+now forced on every platform), and cp1252 "Logging error" tracebacks on emoji
+log records. Still open:
+- [ ] **Windows-only test failures (pre-existing, CI is Linux-only so nothing
+  catches them).** On `.venv-win` (Python 3.13, PyQt6 6.11) 11 tests fail with
+  or without those fixes: toolbar width
+  (`tests/regression/test_toolbar_overflow.py`,
+  `test_play_does_not_ask.py::TestSimulationSettingsAction::test_the_toolbar_still_fits`)
+  -- possibly real toolbar crowding on Windows; `test_status_pill_state.py::TestFailedRunFeedback::test_failure_turns_both_pills_red`;
+  `test_palette_glyph_registry.py::TestGlyphPainting::test_unknown_kind_falls_back_to_three_letter_label`;
+  `test_frozen_writes.py::test_the_cwd_really_is_read_only` (POSIX
+  permission semantics); `test_tikz_compilation.py` x4 (no pdflatex -- env
+  only). Consider a Windows leg in CI.
+- [ ] **Stale CLAUDE.md notes:** says `.venv-win` is still PyQt5 (it has PyQt6
+  6.11 now) and that CI's baseline is Python 3.9 (CI matrix and
+  `requires-python` are 3.10 / 3.12).
+- [ ] **Properties panel polish:** bold parameter labels render larger than
+  the surrounding text, and the per-param reset button (`\u21ba`,
+  `property_editor.py` ~l.952) shows as an empty square.
 
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
@@ -521,6 +543,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |
 | 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `lib/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
 | 2026-09-08 | **Scope signal names consistent across solver paths**: `harvest_scope_signals` (`lib/analysis/resim.py`) keyed a single-channel Scope by its *label* only for the compiled replay's 2-D buffer and by the *block name* for the interpreter's flat buffer, so ensemble/sweep results renamed signals (and dropped the user's `labels` entry) depending on which solver ran. Both layouts are now normalised to `(n, vec_dim)` and every channel is keyed by `vec_labels[j]`, block name only as a fallback. Tests: `tests/unit/test_resim_harvest.py` (layout stubs), `tests/regression/test_harvest_scope_signals.py` (one diagram, both paths, identical keys). |
 | 2026-09-03 | **1.0.0 release campaign**: release infra (`[project]` table in `pyproject.toml` as the single version source, read back by `modern_ui/__init__.py` and parsed by `diablos.spec`/`tools/build.sh`; `.github/workflows/release.yml` builds a versioned macOS arm64 DMG + Windows x64 zip on `v*` tags); `draw_icon()` for 25 icon-less blocks (`tests/unit/test_block_icons.py`); PDE Phase 1 (periodic BCs, dynamic Robin `h` ports, 2D Robin, new IC presets); standalone Python script export (`lib/export/python_codegen.py`, File > Export > Export as Python Script..., `export-python` CLI subcommand); docs reconciliation (USER_MANUAL, mkdocs nav, README, CHANGELOG 1.0.0); hygiene (`QFont.setFamilies` hasattr guard for Qt < 5.13, dead `tools/integrate_variable_editor.py` removed). |
