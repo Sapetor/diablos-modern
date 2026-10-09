@@ -8236,7 +8236,10 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 <span class="normal"><a href="#__codelineno-0-631">631</a></span>
 <span class="normal"><a href="#__codelineno-0-632">632</a></span>
 <span class="normal"><a href="#__codelineno-0-633">633</a></span>
-<span class="normal"><a href="#__codelineno-0-634">634</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="k">class</span><span class="w"> </span><span class="nc">SimulationModel</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-634">634</a></span>
+<span class="normal"><a href="#__codelineno-0-635">635</a></span>
+<span class="normal"><a href="#__codelineno-0-636">636</a></span>
+<span class="normal"><a href="#__codelineno-0-637">637</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="k">class</span><span class="w"> </span><span class="nc">SimulationModel</span><span class="p">:</span>
 <a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="w">    </span><span class="sd">"""</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="sd">    Data model for simulation diagrams.</span>
 <a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    Manages blocks, connections, and diagram state without UI dependencies.</span>
@@ -8759,95 +8762,98 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 <a id="__codelineno-0-543" name="__codelineno-0-543"></a><span class="sd">            block: DBlock instance to remove from the diagram</span>
 <a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">        """</span>
 <a id="__codelineno-0-545" name="__codelineno-0-545"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="c1"># Remove all lines connected to this block</span>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>            <span class="n">line</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a>            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_line_connected_to_block</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>        <span class="p">]</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed block </span><span class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> and associated lines"</span><span class="p">)</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">remove_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="w">        </span><span class="sd">"""</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">        Remove a connection line from the diagram.</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">            line: DLine instance to remove</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">        """</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>        <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed line </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="w">        </span><span class="sd">"""Clear all blocks and lines from the diagram, reset dirty flag."""</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Cleared all blocks and lines"</span><span class="p">)</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_block_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DBlock</span><span class="p">]:</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="w">        </span><span class="sd">"""</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">        Find a block by its name.</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">            name: Block name to search for</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="c1"># Remove all lines connected to this block, in place: inside a</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="c1"># subsystem line_list *is* the subsystem's sub_lines (and the</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="c1"># navigation stack holds the parent lists), so rebinding it left the</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>        <span class="c1"># deleted block's wires behind in sub_lines.</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>            <span class="n">line</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a>            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_line_connected_to_block</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="p">]</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed block </span><span class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> and associated lines"</span><span class="p">)</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">remove_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="w">        </span><span class="sd">"""</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">        Remove a connection line from the diagram.</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">            line: DLine instance to remove</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">        """</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed line </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="w">        </span><span class="sd">"""Clear all blocks and lines from the diagram, reset dirty flag."""</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Cleared all blocks and lines"</span><span class="p">)</span>
+<a id="__codelineno-0-576" name="__codelineno-0-576"></a>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_block_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DBlock</span><span class="p">]:</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="w">        </span><span class="sd">"""</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">        Find a block by its name.</span>
 <a id="__codelineno-0-580" name="__codelineno-0-580"></a>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">            DBlock if found, None otherwise</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">        """</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a>        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">:</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a>            <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>                <span class="k">return</span> <span class="n">block</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>        <span class="k">return</span> <span class="kc">None</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_port_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst_line</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">QPoint</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="w">        </span><span class="sd">"""</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">        Check if an input port is already connected.</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">            dst_line: Tuple (block_name, port_num, coordinates) for destination</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">            name: Block name to search for</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">            DBlock if found, None otherwise</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">        """</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">:</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a>            <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a>                <span class="k">return</span> <span class="n">block</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>        <span class="k">return</span> <span class="kc">None</span>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">is_port_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst_line</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">QPoint</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="w">        </span><span class="sd">"""</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        Check if an input port is already connected.</span>
 <a id="__codelineno-0-595" name="__codelineno-0-595"></a>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">            True if port is available (not connected), False if already connected</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">        """</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">dstport</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>                <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a>        <span class="k">return</span> <span class="kc">True</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">update_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="w">        </span><span class="sd">"""Update all line positions based on current block positions."""</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a>            <span class="n">line</span><span class="o">.</span><span class="n">update_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_is_line_connected_to_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">,</span> <span class="n">block_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="w">        </span><span class="sd">"""</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        Check if a line is connected to a specific block.</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">            line: DLine to check</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            block_name: Name of block to check connection to</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            True if line is connected to the block, False otherwise</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">        """</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a>        <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">block_name</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">srcblock</span> <span class="o">==</span> <span class="n">block_name</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_diagram_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="w">        </span><span class="sd">"""</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">        Get statistics about the current diagram.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">            Dictionary with keys: 'blocks', 'lines', 'modified', 'block_types'</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">        """</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a>        <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a>            <span class="s2">"blocks"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">),</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>            <span class="s2">"lines"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">),</span>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a>            <span class="s2">"modified"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span><span class="p">,</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a>            <span class="s2">"block_types"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">block_fn</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)),</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>        <span class="p">}</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">            dst_line: Tuple (block_name, port_num, coordinates) for destination</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">            True if port is available (not connected), False if already connected</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        """</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a>            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">dstport</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>                <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a>        <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">update_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="w">        </span><span class="sd">"""Update all line positions based on current block positions."""</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>            <span class="n">line</span><span class="o">.</span><span class="n">update_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_is_line_connected_to_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">,</span> <span class="n">block_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="w">        </span><span class="sd">"""</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        Check if a line is connected to a specific block.</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            line: DLine to check</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            block_name: Name of block to check connection to</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">            True if line is connected to the block, False otherwise</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        """</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>        <span class="k">return</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">block_name</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">srcblock</span> <span class="o">==</span> <span class="n">block_name</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_diagram_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="w">        </span><span class="sd">"""</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">        Get statistics about the current diagram.</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">            Dictionary with keys: 'blocks', 'lines', 'modified', 'block_types'</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">        """</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>        <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>            <span class="s2">"blocks"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">),</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>            <span class="s2">"lines"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">),</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>            <span class="s2">"modified"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span><span class="p">,</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>            <span class="s2">"block_types"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">block_fn</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)),</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>        <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -9407,17 +9413,17 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-567">567</a></span>
-<span class="normal"><a href="#__codelineno-0-568">568</a></span>
-<span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-570">570</a></span>
 <span class="normal"><a href="#__codelineno-0-571">571</a></span>
-<span class="normal"><a href="#__codelineno-0-572">572</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="w">    </span><span class="sd">"""Clear all blocks and lines from the diagram, reset dirty flag."""</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Cleared all blocks and lines"</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-572">572</a></span>
+<span class="normal"><a href="#__codelineno-0-573">573</a></span>
+<span class="normal"><a href="#__codelineno-0-574">574</a></span>
+<span class="normal"><a href="#__codelineno-0-575">575</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="k">def</span><span class="w"> </span><span class="nf">clear_all</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="w">    </span><span class="sd">"""Clear all blocks and lines from the diagram, reset dirty flag."""</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Cleared all blocks and lines"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9494,10 +9500,7 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-574">574</a></span>
-<span class="normal"><a href="#__codelineno-0-575">575</a></span>
-<span class="normal"><a href="#__codelineno-0-576">576</a></span>
-<span class="normal"><a href="#__codelineno-0-577">577</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-577">577</a></span>
 <span class="normal"><a href="#__codelineno-0-578">578</a></span>
 <span class="normal"><a href="#__codelineno-0-579">579</a></span>
 <span class="normal"><a href="#__codelineno-0-580">580</a></span>
@@ -9507,20 +9510,23 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 <span class="normal"><a href="#__codelineno-0-584">584</a></span>
 <span class="normal"><a href="#__codelineno-0-585">585</a></span>
 <span class="normal"><a href="#__codelineno-0-586">586</a></span>
-<span class="normal"><a href="#__codelineno-0-587">587</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_block_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DBlock</span><span class="p">]:</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="w">    </span><span class="sd">"""</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">    Find a block by its name.</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">        name: Block name to search for</span>
+<span class="normal"><a href="#__codelineno-0-587">587</a></span>
+<span class="normal"><a href="#__codelineno-0-588">588</a></span>
+<span class="normal"><a href="#__codelineno-0-589">589</a></span>
+<span class="normal"><a href="#__codelineno-0-590">590</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_block_by_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DBlock</span><span class="p">]:</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="w">    </span><span class="sd">"""</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">    Find a block by its name.</span>
 <a id="__codelineno-0-580" name="__codelineno-0-580"></a>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        DBlock if found, None otherwise</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">    """</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a>    <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">:</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>            <span class="k">return</span> <span class="n">block</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="k">return</span> <span class="kc">None</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        name: Block name to search for</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">        DBlock if found, None otherwise</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">    """</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">:</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a>        <span class="k">if</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a>            <span class="k">return</span> <span class="n">block</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>    <span class="k">return</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9566,10 +9572,7 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-622">622</a></span>
-<span class="normal"><a href="#__codelineno-0-623">623</a></span>
-<span class="normal"><a href="#__codelineno-0-624">624</a></span>
-<span class="normal"><a href="#__codelineno-0-625">625</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-625">625</a></span>
 <span class="normal"><a href="#__codelineno-0-626">626</a></span>
 <span class="normal"><a href="#__codelineno-0-627">627</a></span>
 <span class="normal"><a href="#__codelineno-0-628">628</a></span>
@@ -9578,19 +9581,22 @@ Manages blocks, connections, and diagram state without UI dependencies.</p>
 <span class="normal"><a href="#__codelineno-0-631">631</a></span>
 <span class="normal"><a href="#__codelineno-0-632">632</a></span>
 <span class="normal"><a href="#__codelineno-0-633">633</a></span>
-<span class="normal"><a href="#__codelineno-0-634">634</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_diagram_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="w">    </span><span class="sd">"""</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    Get statistics about the current diagram.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">        Dictionary with keys: 'blocks', 'lines', 'modified', 'block_types'</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    """</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="k">return</span> <span class="p">{</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="s2">"blocks"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">),</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>        <span class="s2">"lines"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">),</span>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a>        <span class="s2">"modified"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span><span class="p">,</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="s2">"block_types"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">block_fn</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)),</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="p">}</span>
+<span class="normal"><a href="#__codelineno-0-634">634</a></span>
+<span class="normal"><a href="#__codelineno-0-635">635</a></span>
+<span class="normal"><a href="#__codelineno-0-636">636</a></span>
+<span class="normal"><a href="#__codelineno-0-637">637</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_diagram_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="w">    </span><span class="sd">"""</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">    Get statistics about the current diagram.</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        Dictionary with keys: 'blocks', 'lines', 'modified', 'block_types'</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">    """</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="s2">"blocks"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">),</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>        <span class="s2">"lines"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">),</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>        <span class="s2">"modified"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span><span class="p">,</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>        <span class="s2">"block_types"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">block_fn</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)),</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9773,10 +9779,7 @@ library file later cannot break the diagram -- and only remembers a
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-589">589</a></span>
-<span class="normal"><a href="#__codelineno-0-590">590</a></span>
-<span class="normal"><a href="#__codelineno-0-591">591</a></span>
-<span class="normal"><a href="#__codelineno-0-592">592</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-592">592</a></span>
 <span class="normal"><a href="#__codelineno-0-593">593</a></span>
 <span class="normal"><a href="#__codelineno-0-594">594</a></span>
 <span class="normal"><a href="#__codelineno-0-595">595</a></span>
@@ -9786,20 +9789,23 @@ library file later cannot break the diagram -- and only remembers a
 <span class="normal"><a href="#__codelineno-0-599">599</a></span>
 <span class="normal"><a href="#__codelineno-0-600">600</a></span>
 <span class="normal"><a href="#__codelineno-0-601">601</a></span>
-<span class="normal"><a href="#__codelineno-0-602">602</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="k">def</span><span class="w"> </span><span class="nf">is_port_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst_line</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">QPoint</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="w">    </span><span class="sd">"""</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Check if an input port is already connected.</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        dst_line: Tuple (block_name, port_num, coordinates) for destination</span>
+<span class="normal"><a href="#__codelineno-0-602">602</a></span>
+<span class="normal"><a href="#__codelineno-0-603">603</a></span>
+<span class="normal"><a href="#__codelineno-0-604">604</a></span>
+<span class="normal"><a href="#__codelineno-0-605">605</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="k">def</span><span class="w"> </span><span class="nf">is_port_available</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dst_line</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">QPoint</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="w">    </span><span class="sd">"""</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">    Check if an input port is already connected.</span>
 <a id="__codelineno-0-595" name="__codelineno-0-595"></a>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">        True if port is available (not connected), False if already connected</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    """</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a>        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">dstport</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>            <span class="k">return</span> <span class="kc">False</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">return</span> <span class="kc">True</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">        dst_line: Tuple (block_name, port_num, coordinates) for destination</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">        True if port is available (not connected), False if already connected</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">    """</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a>        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">dstblock</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">dstport</span> <span class="o">==</span> <span class="n">dst_line</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a>    <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -10450,7 +10456,10 @@ rebuilt too so a user block that stops loading disappears cleanly.</p>
 <span class="normal"><a href="#__codelineno-0-550">550</a></span>
 <span class="normal"><a href="#__codelineno-0-551">551</a></span>
 <span class="normal"><a href="#__codelineno-0-552">552</a></span>
-<span class="normal"><a href="#__codelineno-0-553">553</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="k">def</span><span class="w"> </span><span class="nf">remove_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="n">DBlock</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-553">553</a></span>
+<span class="normal"><a href="#__codelineno-0-554">554</a></span>
+<span class="normal"><a href="#__codelineno-0-555">555</a></span>
+<span class="normal"><a href="#__codelineno-0-556">556</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="k">def</span><span class="w"> </span><span class="nf">remove_block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="n">DBlock</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="w">    </span><span class="sd">"""</span>
 <a id="__codelineno-0-540" name="__codelineno-0-540"></a><span class="sd">    Remove a block and all associated connections.</span>
 <a id="__codelineno-0-541" name="__codelineno-0-541"></a>
@@ -10458,14 +10467,17 @@ rebuilt too so a user block that stops loading disappears cleanly.</p>
 <a id="__codelineno-0-543" name="__codelineno-0-543"></a><span class="sd">        block: DBlock instance to remove from the diagram</span>
 <a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">    """</span>
 <a id="__codelineno-0-545" name="__codelineno-0-545"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>    <span class="c1"># Remove all lines connected to this block</span>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">line</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_line_connected_to_block</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="p">]</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed block </span><span class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> and associated lines"</span><span class="p">)</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>    <span class="c1"># Remove all lines connected to this block, in place: inside a</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>    <span class="c1"># subsystem line_list *is* the subsystem's sub_lines (and the</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>    <span class="c1"># navigation stack holds the parent lists), so rebinding it left the</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>    <span class="c1"># deleted block's wires behind in sub_lines.</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>        <span class="n">line</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_line_connected_to_block</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="p">]</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed block </span><span class="si">{</span><span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> and associated lines"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -10519,27 +10531,27 @@ rebuilt too so a user block that stops loading disappears cleanly.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-555">555</a></span>
-<span class="normal"><a href="#__codelineno-0-556">556</a></span>
-<span class="normal"><a href="#__codelineno-0-557">557</a></span>
-<span class="normal"><a href="#__codelineno-0-558">558</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-558">558</a></span>
 <span class="normal"><a href="#__codelineno-0-559">559</a></span>
 <span class="normal"><a href="#__codelineno-0-560">560</a></span>
 <span class="normal"><a href="#__codelineno-0-561">561</a></span>
 <span class="normal"><a href="#__codelineno-0-562">562</a></span>
 <span class="normal"><a href="#__codelineno-0-563">563</a></span>
 <span class="normal"><a href="#__codelineno-0-564">564</a></span>
-<span class="normal"><a href="#__codelineno-0-565">565</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="k">def</span><span class="w"> </span><span class="nf">remove_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="w">    </span><span class="sd">"""</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">    Remove a connection line from the diagram.</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">        line: DLine instance to remove</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    """</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed line </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-565">565</a></span>
+<span class="normal"><a href="#__codelineno-0-566">566</a></span>
+<span class="normal"><a href="#__codelineno-0-567">567</a></span>
+<span class="normal"><a href="#__codelineno-0-568">568</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="k">def</span><span class="w"> </span><span class="nf">remove_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="n">DLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="w">    </span><span class="sd">"""</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    Remove a connection line from the diagram.</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">        line: DLine instance to remove</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    """</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>    <span class="k">if</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed line </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -10562,13 +10574,13 @@ rebuilt too so a user block that stops loading disappears cleanly.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>lib/models/simulation_model.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-604">604</a></span>
-<span class="normal"><a href="#__codelineno-0-605">605</a></span>
-<span class="normal"><a href="#__codelineno-0-606">606</a></span>
-<span class="normal"><a href="#__codelineno-0-607">607</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="k">def</span><span class="w"> </span><span class="nf">update_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="w">    </span><span class="sd">"""Update all line positions based on current block positions."""</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a>        <span class="n">line</span><span class="o">.</span><span class="n">update_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-607">607</a></span>
+<span class="normal"><a href="#__codelineno-0-608">608</a></span>
+<span class="normal"><a href="#__codelineno-0-609">609</a></span>
+<span class="normal"><a href="#__codelineno-0-610">610</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="k">def</span><span class="w"> </span><span class="nf">update_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="w">    </span><span class="sd">"""Update all line positions based on current block positions."""</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>        <span class="n">line</span><span class="o">.</span><span class="n">update_line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
