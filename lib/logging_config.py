@@ -114,7 +114,9 @@ def _setup_default_logging() -> None:
     """
     handlers = [logging.StreamHandler(sys.stdout)]
     try:
-        handlers.insert(0, logging.FileHandler(_get_log_file_path("diablos_modern.log")))
+        handlers.insert(
+            0, logging.FileHandler(_get_log_file_path("diablos_modern.log"), encoding="utf-8")
+        )
     except OSError as e:
         print(f"Warning: file logging disabled ({e}); logging to the console only.")
 

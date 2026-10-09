@@ -21,7 +21,8 @@
             "level": "DEBUG",
             "formatter": "standard",
             "filename": "diablos_modern.log",
-            "mode": "a"
+            "mode": "a",
+            "encoding": "utf-8"
         }
     },
     "loggers": {},

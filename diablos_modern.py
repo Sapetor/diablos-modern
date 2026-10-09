@@ -48,6 +48,16 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = _DiscardStream()
 
+# A Windows console defaults to cp1252, which cannot encode the emoji in some
+# log messages (e.g. the post-run verification report): every such record
+# then dumps a "--- Logging error ---" traceback. Escape what the console
+# can't show instead of failing.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, ValueError):
+        pass  # _DiscardStream / non-TextIOWrapper streams have nothing to fix
+
 import os
 import logging
 import json
