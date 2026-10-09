@@ -58,8 +58,6 @@ None/empty-input hardening and param docs. Still open:
 - [ ] **`SimulationModel.remove_block` rebinds `line_list`** instead of mutating
   it in place; inside a subsystem `sub_lines` may then point at a stale list
   (code reading, unreproduced).
-- [ ] **Undo back to the saved state still marks the diagram dirty** (no
-  saved-revision tracking in `history_manager`).
 - [ ] **No hover tooltip for elided block names** (the canvas has no tooltip
   mechanism yet); port labels on a *selected* PID still overlay its title.
 - [ ] **UX backlog from the audit:** move library/mask items out of Edit into a
@@ -75,19 +73,14 @@ Fixed the same day: grow-only vertical resize (`calculate_min_size` echoed
 now forced on every platform), and cp1252 "Logging error" tracebacks on emoji
 log records; stale CLAUDE.md notes (PyQt5 venv, Python 3.9 baseline, ruff pin)
 corrected. Still open:
-- [ ] **Windows-only test failures (pre-existing, CI is Linux-only so nothing
-  catches them).** On `.venv-win` (Python 3.13, PyQt6 6.11) 11 tests fail with
-  or without those fixes: toolbar width
-  (`tests/regression/test_toolbar_overflow.py`,
-  `test_play_does_not_ask.py::TestSimulationSettingsAction::test_the_toolbar_still_fits`)
-  -- possibly real toolbar crowding on Windows; `test_status_pill_state.py::TestFailedRunFeedback::test_failure_turns_both_pills_red`;
-  `test_palette_glyph_registry.py::TestGlyphPainting::test_unknown_kind_falls_back_to_three_letter_label`;
-  `test_frozen_writes.py::test_the_cwd_really_is_read_only` (POSIX
-  permission semantics); `test_tikz_compilation.py` x4 (no pdflatex -- env
-  only). Consider a Windows leg in CI.
-- [ ] **Properties panel polish:** bold parameter labels render larger than
-  the surrounding text, and the per-param reset button (`\u21ba`,
-  `property_editor.py` ~l.952) shows as an empty square.
+- [ ] **Remaining Windows test environment gaps:**
+  `tests/unit/test_frozen_writes.py::TestFrozenModeWrites::test_the_cwd_really_is_read_only`
+  requires POSIX permission semantics, which Windows does not enforce;
+  `tests/integration/test_tikz_compilation.py` has four failures because
+  `pdflatex` is not installed. These tests were deliberately left unchanged.
+  The six toolbar/status/glyph failures are resolved (see Completed).
+- [ ] **Windows CI coverage:** CI still runs Linux only; consider a Windows
+  leg to catch native font metrics, stylesheet layout and test portability.
 
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
@@ -139,6 +132,32 @@ corrected. Still open:
 ---
 
 ## Completed
+
+### October 2026 - Windows follow-up (2026-10-09)
+- [x] **Review of the five commits `cf44b1f..cff6e81`:** no introduced
+  correctness regression found. Checked minimum-size callers, multi-port
+  layout, file-load height restoration, Fusion theme handling, cp1252 stream
+  escaping and missing stdout/stderr in windowed builds. Resize tests and
+  frozen-write checks pass except the known POSIX-permissions test.
+- [x] **Toolbar overflow at the 1200px minimum width:** reduced the toolbar
+  status cap to 300px. Native Windows size hint with a long message dropped
+  from 1212px to 1150px; all four existing width regressions now pass.
+- [x] **Platform-fragile status/glyph regressions:** the Windows offscreen
+  plugin has no system font database. The red-pill test now accepts an
+  elided diagnostic with the full text in its tooltip; the glyph test checks
+  actual painter text and rendered ink instead of requiring different
+  missing-glyph images. No tests skipped or marked xfail.
+- [x] **Undo/redo to the saved state clears dirty:** history tracks the
+  persisted content of the whole diagram, including nested subsystems and
+  simulation settings. GUI/core saves update the marker; load/new clear old
+  history and establish a clean origin. Autosaves and failed/cancelled saves
+  leave it alone. Selection, theme colors and execution scratch data do not
+  count. Regression coverage in `tests/regression/test_saved_history.py`;
+  49 saved-state/history/dirty/new checks pass.
+- [x] **Properties panel polish:** reset buttons use a Qt reload icon and
+  zero padding, avoiding the inherited 24px padding that hid the symbol;
+  Name, parameter and editable-port labels use 12px bold text. Native Windows
+  before/after renders checked; all 40 related editor tests pass.
 
 ### September 2026 — 1.1.0 release
 Everything since the local `v1.0.0` tag (2026-09-03) lived on `feat/maturity`
@@ -541,6 +560,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-09 | **Windows follow-up**: reviewed the prior five fixes; repaired toolbar width, made status/glyph tests independent of installed fonts, implemented saved-document identity for undo/redo with explicit-save and load/new lifecycle handling, and polished Properties reset controls and row-label sizing. Moved resolved items to Completed; retained the four missing-pdflatex failures and the POSIX-permissions failure as environment gaps. |
 | 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |
 | 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `lib/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
 | 2026-09-08 | **Scope signal names consistent across solver paths**: `harvest_scope_signals` (`lib/analysis/resim.py`) keyed a single-channel Scope by its *label* only for the compiled replay's 2-D buffer and by the *block name* for the interpreter's flat buffer, so ensemble/sweep results renamed signals (and dropped the user's `labels` entry) depending on which solver ran. Both layouts are now normalised to `(n, vec_dim)` and every channel is keyed by `vec_labels[j]`, block name only as a fallback. Tests: `tests/unit/test_resim_harvest.py` (layout stubs), `tests/regression/test_harvest_scope_signals.py` (one diagram, both paths, identical keys). |
