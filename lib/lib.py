@@ -58,6 +58,10 @@ class DSim:
         self.model = SimulationModel()
         self.engine = SimulationEngine(self.model)
         self.file_service = FileService(self.model)
+        # Optional observers keep GUI history in sync without importing UI code.
+        self.on_document_saved = None
+        self.on_document_reset = None
+        self.file_service.on_saved = self.mark_saved
         self.diagram_validator = DiagramValidator(self.model)
 
         # Screen/UI parameters
@@ -320,6 +324,16 @@ class DSim:
 
     ##### LOADING AND SAVING #####
 
+    def mark_saved(self):
+        """Record a successful explicit save; autosaves never call this."""
+        self.dirty = False
+        if self.on_document_saved is not None:
+            self.on_document_saved()
+
+    def _reset_document_history(self):
+        if self.on_document_reset is not None:
+            self.on_document_reset()
+
     def save(
         self,
         autosave: bool = False,
@@ -397,6 +411,8 @@ class DSim:
         """
         # A different diagram is replacing the current one: drop the scope
         # data held for the "Previous run" overlay (see clear_all).
+        while self.navigation_stack:
+            self.exit_subsystem()
         self.scope_plotter.reset_held_runs()
         sim_params = self.file_service.apply_loaded_data(data)
 
@@ -410,6 +426,7 @@ class DSim:
         self.zero_crossing = bool(sim_params.get("zero_crossing", True))
         self.ss_count = 0
         self.filename = self.file_service.filename
+        self._reset_document_history()
         return sim_params
 
     def clone_for_analysis(self) -> "DSim":
@@ -467,6 +484,8 @@ class DSim:
 
     def clear_all(self):
         """Clear all blocks and lines from the diagram. Delegates to model."""
+        while self.navigation_stack:
+            self.exit_subsystem()
         self.model.clear_all()
         # Drop the scope data held for the "Previous run" overlay: it belongs
         # to the diagram being discarded, and overlaying it onto the next
@@ -492,6 +511,7 @@ class DSim:
 
         # The compiled RHS cached for the old diagram no longer applies.
         self.engine.clear_compile_cache()
+        self._reset_document_history()
 
     def new_diagram(self):
         """Start a fresh, untitled diagram (the File > New reset).

@@ -272,6 +272,7 @@ class DiagramService:
 
             logger.info(f"Diagram saved to {filename}")
             self.current_file = filename
+            self.dsim.mark_saved()
             return True
 
         except Exception as e:

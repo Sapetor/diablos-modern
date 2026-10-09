@@ -149,15 +149,14 @@ def test_undo_across_scopes_navigates_to_snapshot_scope(window):
     assert len(canvas.dsim.blocks_list) == n_inner + 1
 
 
-def test_undo_redo_mark_dirty(window):
+def test_undo_redo_track_saved_state(window, tmp_path):
     canvas = window.canvas
     _add(canvas, "Gain")
-    canvas.dsim.dirty = False
+    assert window.project_manager.diagram_service.save_diagram(str(tmp_path / "saved.diablos"))
     canvas.undo()
     assert canvas.dsim.dirty is True
-    canvas.dsim.dirty = False
     canvas.redo()
-    assert canvas.dsim.dirty is True
+    assert canvas.dsim.dirty is False
 
 
 def test_failed_restore_leaves_diagram_and_stacks_intact(window):

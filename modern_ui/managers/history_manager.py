@@ -1,5 +1,7 @@
 import collections
 import copy
+import hashlib
+import json
 import logging
 from PyQt6.QtCore import QPoint, QRect
 from PyQt6.QtGui import QColor
@@ -27,6 +29,79 @@ class HistoryManager:
         self.max_undo_steps = 50
         self.undo_stack = collections.deque(maxlen=self.max_undo_steps)
         self.redo_stack = collections.deque(maxlen=self.max_undo_steps)
+        self._saved_state_key = None
+        self.dsim.on_document_saved = self.mark_saved
+        self.dsim.on_document_reset = self.reset
+        if not self.dsim.dirty:
+            self.mark_saved()
+
+    def _document_key(self):
+        """Content identity of the entire persisted diagram, independent of view.
+
+        A stack index is insufficient: branching can reuse it, and persisted
+        simulation settings can change without an undo entry. Use the file
+        serializer to exclude execution memory, including nested subsystems.
+        """
+        try:
+            blocks, lines = self.dsim.get_root_context()
+            service = self.dsim.file_service
+
+            def block_data(block):
+                data = service._serialize_block(block)
+
+                def normalize(data):
+                    for key in ("selected", "dragging", "b_color"):
+                        data.pop(key, None)
+                    # Scope buffers are public runtime keys, not parameters.
+                    if data.get("block_fn") in ("Scope", "Export", "FieldScope"):
+                        for key in ("vector", "vec_dim", "vec_labels"):
+                            data["params"].pop(key, None)
+                    for child in data.get("sub_blocks", []):
+                        normalize(child)
+                    for line in data.get("sub_lines", []):
+                        normalize_line(line)
+
+                normalize(data)
+                return data
+
+            def normalize_line(data):
+                data.pop("selected", None)
+                data.pop("cptr", None)
+                if not data.get("modified"):
+                    # Default routes are recomputed on restore/load.
+                    data.pop("points", None)
+                return data
+
+            data = {
+                "blocks": [block_data(b) for b in blocks],
+                "lines": [
+                    normalize_line(service._serialize_line(line))
+                    for line in lines
+                    if not getattr(line, "hidden", False)
+                ],
+                "settings": {
+                    key: getattr(self.dsim, key) for key in self.dsim.PERSISTED_SIM_SETTINGS
+                },
+            }
+            encoded = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+            return hashlib.sha256(encoded.encode("ascii")).digest()
+        except Exception:
+            logger.warning("Could not identify saved diagram state", exc_info=True)
+            return None
+
+    def mark_saved(self):
+        """Remember the current document as the last explicit save/load/new."""
+        self._saved_state_key = self._document_key()
+
+    def reset(self):
+        """A new or loaded document has its own history and clean origin."""
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+        self.mark_saved()
+
+    def _update_dirty(self):
+        key = self._document_key()
+        self.dsim.dirty = key is None or key != self._saved_state_key
 
     def capture_snapshot(self):
         """Snapshot the current diagram so it can be pushed later.
@@ -43,6 +118,7 @@ class HistoryManager:
             return
         self.undo_stack.append({"state": state, "description": description})
         self.redo_stack.clear()
+        self._update_dirty()
         logger.debug(f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})")
 
     def push_undo(self, description="Action"):
@@ -56,6 +132,7 @@ class HistoryManager:
 
                 # Clear redo stack when new action is performed
                 self.redo_stack.clear()
+                self.dsim.dirty = True
 
                 logger.debug(
                     f"Pushed to undo stack: {description} (stack size: {len(self.undo_stack)})"
@@ -134,7 +211,9 @@ class HistoryManager:
             return False
         if current_state:
             other_stack.append({"state": current_state, "description": other_description})
-        self.dsim.dirty = True
+        # Returning to saved content still invalidates the previous run.
+        self.dsim.diagram_changed_since_run = True
+        self._update_dirty()
         return True
 
     def undo(self):

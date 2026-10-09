@@ -61,6 +61,8 @@ class FileService:
         #: successful write. The GUI reads this to put a failed autosave in the
         #: status bar instead of leaving it in the log only.
         self.last_write_error: Optional[Any] = None
+        # Optional document lifecycle observer supplied by DSim.
+        self.on_saved = None
 
     def serialize(
         self,
@@ -188,7 +190,7 @@ class FileService:
             "auto_routed": getattr(line, "auto_routed", False),
         }
 
-    def save_to_file(self, data: Dict[str, Any], filename: str) -> bool:
+    def save_to_file(self, data: Dict[str, Any], filename: str, mark_saved: bool = True) -> bool:
         """
         Write serialized data to a file.
 
@@ -208,6 +210,8 @@ class FileService:
             self.filename = os.path.basename(filename)
             self.model.dirty = False
             self.last_write_error = None
+            if mark_saved and self.on_saved is not None:
+                self.on_saved()
             logger.info(f"SAVED AS {filename}")
             return True
         except Exception as e:
@@ -263,7 +267,7 @@ class FileService:
 
         # Use new methods
         data = self.serialize(modern_ui_data, sim_params)
-        success = self.save_to_file(data, file)
+        success = self.save_to_file(data, file, mark_saved=not autosave)
 
         return 0 if success else 1
 
