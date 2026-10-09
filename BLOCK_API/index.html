@@ -2567,6 +2567,11 @@ there and set the flag to <code>False</code>:</p>
 <td>Palette section, and the default for the port requirements below. Existing sections: <code>Sources</code>, <code>Math</code>, <code>Control</code>, <code>Filters</code>, <code>Sinks</code>, <code>Routing</code>, <code>Analysis</code>, <code>PDE</code>, <code>Optimization</code>, <code>Other</code>. A new name simply creates a new section. Translated at display time.</td>
 </tr>
 <tr>
+<td><code>display_name</code></td>
+<td><code>block_name</code> split into words (<code>MatrixGain</code> -&gt; <code>Matrix Gain</code>)</td>
+<td>Palette / command-palette label. Override only when the default reads badly (e.g. <code>TranFn</code> -&gt; <code>Transfer Function</code>). Presentation only: <code>block_name</code> stays the saved registry key. Written in English, translated at display time; the filter still matches the old identifier.</td>
+</tr>
+<tr>
 <td><code>doc</code></td>
 <td>—</td>
 <td>Long description for the palette tooltip and property panel.</td>
@@ -2707,8 +2712,8 @@ kernel under its canonical name — no allowlist edit needed. Three rules:</p>
 <p>The UI is translated through <code>lib/i18n.py</code>; blocks participate in two narrow
 ways:</p>
 <ul>
-<li>a block's <code>category</code> name and every param <code>doc</code> string are translated <strong>at
-  display time</strong> (<code>tr(category)</code>, <code>tr(doc)</code>), because the stored values are
+<li>a block's <code>category</code> name, its <code>display_name</code> and every param <code>doc</code> string are translated <strong>at
+  display time</strong> (<code>tr(category)</code>, <code>tr(display_name)</code>, <code>tr(doc)</code>), because the stored values are
   registry keys. Write them in English and they are picked up automatically by
   <code>python scripts/extract_strings.py --update</code> for blocks inside the repo.</li>
 <li><strong>never</strong> translate identifiers: <code>block_name</code>, parameter keys, port names,
