@@ -55,11 +55,8 @@ Fixed the same day: undo/redo, between-run state, MC seeds, nested MC/sweep
 (pickers + top-level root), selectable PID anti-windup (clamping default),
 label clipping / port-label overlap / stale status + Properties counts, block
 None/empty-input hardening and param docs. Still open:
-- [ ] **`SimulationModel.remove_block` rebinds `line_list`** instead of mutating
-  it in place; inside a subsystem `sub_lines` may then point at a stale list
-  (code reading, unreproduced).
-- [ ] **No hover tooltip for elided block names** (the canvas has no tooltip
-  mechanism yet); port labels on a *selected* PID still overlay its title.
+- [ ] **Port labels on a *selected* PID still overlay its title.** (Hover
+  tooltips for blocks/ports shipped in 89b00c4, closing the elided-name half.)
 - [ ] **Follow-ups from the UX round (2026-10-08):**
   - The double-click quick-insert on the canvas and the palette have separate
     search code. The palette's `block_matches_filter` could be shared.
@@ -68,19 +65,11 @@ None/empty-input hardening and param docs. Still open:
   - Welcome cards and the overlay are not checked at UI scale 125%/150%.
 
 ### Open items from the Windows session (2026-10-09)
-Fixed the same day: grow-only vertical resize (`calculate_min_size` echoed
-`height_base`), Windows `windows11` style covering spinbox values (Fusion is
-now forced on every platform), and cp1252 "Logging error" tracebacks on emoji
-log records; stale CLAUDE.md notes (PyQt5 venv, Python 3.9 baseline, ruff pin)
-corrected. Still open:
-- [ ] **Remaining Windows test environment gaps:**
-  `tests/unit/test_frozen_writes.py::TestFrozenModeWrites::test_the_cwd_really_is_read_only`
-  requires POSIX permission semantics, which Windows does not enforce;
-  `tests/integration/test_tikz_compilation.py` has four failures because
-  `pdflatex` is not installed. These tests were deliberately left unchanged.
-  The six toolbar/status/glyph failures are resolved (see Completed).
-- [ ] **Windows CI coverage:** CI still runs Linux only; consider a Windows
-  leg to catch native font metrics, stylesheet layout and test portability.
+All closed the same day (see the 2026-10-09 Change Log rows): resize,
+Windows style, cp1252 logging, toolbar/status/glyph test portability, saved
+undo state, Properties panel polish, palette drop lag, Enter ranking,
+palette sideways shift, test isolation from the real QSettings store,
+`remove_block` in subsystems, and a Windows CI leg. Nothing left open.
 
 ### Open gaps left by the September 2026 campaigns
 - [ ] **Stateful user-block kernels** — a user block with a registered
@@ -560,6 +549,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-09 | **Windows follow-ups (2)**: palette drop lag -- `record_recent` rebuilt the whole palette (~400 widgets) on every drop, now swaps only the Recent section (~90 -> ~20 ms per drop, and the active filter survives); Enter in the palette filter ranks exact > prefix > substring instead of taking filesystem order; long (Spanish) names elide instead of widening the palette, whose hidden horizontal scroll shifted the list sideways on focus; `ui_settings()` honours `DIABLOS_SETTINGS_INI` and `tests/conftest.py` uses a throwaway INI, so the suite no longer reads or overwrites the developer's registry prefs; `SimulationModel.remove_block` filters `line_list` in place, so a block deleted inside a subsystem no longer leaves its wires in `sub_lines`; CI gained a `windows-latest` job (TikZ tests pass a bare file name to pdflatex; the POSIX read-only guard is skipped on Windows). |
 | 2026-10-09 | **Windows follow-up**: reviewed the prior five fixes; repaired toolbar width, made status/glyph tests independent of installed fonts, implemented saved-document identity for undo/redo with explicit-save and load/new lifecycle handling, and polished Properties reset controls and row-label sizing. Moved resolved items to Completed; retained the four missing-pdflatex failures and the POSIX-permissions failure as environment gaps. |
 | 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |
 | 2026-09-12 | **Play no longer pops the Simulation-settings modal**: `DSim.execution_init` called `execution_init_time()` -- which constructs and `exec()`s a `SimulationDialog` -- on *every* run, and every test that reached it stubbed that method out, so nothing caught it. `execution_init(ask=None)` now resolves the new `ask_before_run` preference (QSettings `simulation/ask_before_run`, default off, `lib/sim_prefs.py`) and otherwise runs straight away with the stored `sim_time`. The dialog moved to its own entry point: **Simulation > Simulation Settings...** (Ctrl+E) and a gear in the toolbar transport, wired through `SimulationActionsManager.open_settings`, pre-filled by `DSim.open_simulation_dialog` and applied by `DSim.apply_sim_settings` (which dirties the diagram only when a setting the `.diablos` file stores actually changed). The dialog grew an **Ask before every run** checkbox for anyone who wants the old flow. Tests: `tests/regression/test_play_does_not_ask.py` (27). |
