@@ -139,6 +139,14 @@ def test_layout_survives_the_app_stylesheet(qapp, window):
     # The heading must never be clipped, even with a longer translation; the
     # palette's width is fixed by the panel minimum, and platform fonts differ
     # (CI's Linux fonts overflowed a header that fit exactly on macOS).
+    # Measuring text needs a real font database: Qt's offscreen platform on
+    # Windows has none (QFontDatabase.families() is empty), so every glyph gets
+    # placeholder metrics far wider than Segoe UI. Native Windows was checked
+    # by hand: "Biblioteca" needs and gets 58px in the 164px palette.
+    from PyQt6.QtGui import QFontDatabase
+
+    if not QFontDatabase.families():
+        pytest.skip("no font database on this Qt platform; text widths are meaningless")
     title = window.block_palette.title
     for text in ("Library", "Biblioteca"):
         title.setText(text)
