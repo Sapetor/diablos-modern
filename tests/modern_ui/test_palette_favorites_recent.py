@@ -253,3 +253,48 @@ def test_activate_records_recent(palette):
     sec = _pinned_section(palette, "Recent")
     assert sec is not None
     assert _fn_names_in_section(sec)[0] == target
+
+
+def test_record_recent_only_rebuilds_the_recent_section(palette):
+    # Regression: record_recent ran on every block drop and rebuilt the whole
+    # palette (~400 widgets), a visible stall right after the drop.
+    rows = palette.findChildren(CompactBlockRow)
+    names = []
+    for r in rows:
+        n = getattr(r.menu_block, "fn_name", None)
+        if n and n not in names:
+            names.append(n)
+    assert len(names) >= 3, "need at least three distinct blocks for this test"
+
+    palette.pin_favorite(names[0])
+    others_before = [s for s in palette._sections if s.category_name != "Recent"]
+
+    palette.record_recent(names[1])
+    palette.record_recent(names[2])
+
+    recent = _pinned_section(palette, "Recent")
+    assert _fn_names_in_section(recent) == [names[2], names[1]]
+    # Every non-Recent section is the very same widget: nothing else rebuilt.
+    others_after = [s for s in palette._sections if s.category_name != "Recent"]
+    assert [id(s) for s in others_after] == [id(s) for s in others_before]
+    # Recent sits right after Favorites, both in the layout and in _sections.
+    fav = _pinned_section(palette, "Favorites")
+    layout = palette.blocks_layout
+    assert layout.indexOf(recent) == layout.indexOf(fav) + 1
+    assert palette._sections.index(recent) == palette._sections.index(fav) + 1
+
+
+def test_record_recent_respects_active_filter(palette):
+    rows = palette.findChildren(CompactBlockRow)
+    names = []
+    for r in rows:
+        n = getattr(r.menu_block, "fn_name", None)
+        if n and n not in names:
+            names.append(n)
+    palette.record_recent(names[0])
+    palette.search_bar.setText("zzz-no-such-block")
+    palette.record_recent(names[1])
+
+    recent = _pinned_section(palette, "Recent")
+    assert recent is not None
+    assert not any(r.isVisibleTo(palette) for r in recent.rows)

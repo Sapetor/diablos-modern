@@ -1759,7 +1759,49 @@ class ModernBlockPalette(QWidget):
         if updated == current:
             return
         _save_recents(updated)
-        self.refresh_blocks()
+        self._rebuild_recent_section()
+
+    def _rebuild_recent_section(self):
+        """Swap in a fresh Recent section without rebuilding the whole palette.
+
+        This runs on every block drop; a full ``refresh_blocks()`` tears down
+        and recreates ~400 widgets, which is a visible stall right after the
+        drop. Falls back to the full rebuild if the palette is not in its
+        normal (sectioned) state.
+        """
+        try:
+            menu_blocks = visible_menu_blocks(getattr(self.dsim, "menu_blocks", []))
+            if not menu_blocks or not self._sections:
+                self.refresh_blocks()
+                return
+            index = {
+                getattr(b, "fn_name", None): b for b in menu_blocks if getattr(b, "fn_name", None)
+            }
+            pinned = [s for s in self._sections if isinstance(s, _PinnedSection)]
+            old = next((s for s in pinned if s.category_name == "Recent"), None)
+            if old is not None:
+                layout_pos = self.blocks_layout.indexOf(old)
+                section_pos = self._sections.index(old)
+                self._sections.remove(old)
+                self.blocks_layout.removeWidget(old)
+                old.setParent(None)
+                old.deleteLater()
+            else:
+                # Recent sits right after Favorites (when shown), else first.
+                fav = next((s for s in pinned if s.category_name == "Favorites"), None)
+                layout_pos = self.blocks_layout.indexOf(fav) + 1 if fav is not None else 0
+                section_pos = self._sections.index(fav) + 1 if fav is not None else 0
+
+            recent_blocks = [index[n] for n in _load_recents() if n in index][:_RECENT_CAP]
+            if recent_blocks:
+                recent = _PinnedSection("Recent", recent_blocks, self.dsim.colors)
+                self.blocks_layout.insertWidget(layout_pos, recent)
+                self._sections.insert(section_pos, recent)
+                recent.filter((self.search_bar.text() or "").strip().lower())
+            self._update_collapse_button()
+        except Exception as e:
+            logger.error(f"Error updating Recent section: {e}")
+            self.refresh_blocks()
 
     # -- Public API (preserved) --------------------------------------------
 
