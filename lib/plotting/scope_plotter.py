@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from lib.plotting.field_scope_mixin import _FieldScopeRenderMixin
+from lib.plotting.run_compare import snapshot_params
 from lib.plotting.pyqtgraph_scope_mixin import _PyQtGraphScopeMixin
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,11 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         # plot window is destroyed and rebuilt on every plot.
         self._prev_run = None
         self._current_run = None
+        # A run the user kept as a reference ("Keep as reference" in the
+        # SignalPlot). Unlike _prev_run it does not rotate: it stays until it is
+        # replaced or the diagram is, so runs with changed parameters can all
+        # be compared against it.
+        self._reference_run = None
         # Sync to dsim for backward compatibility
         if hasattr(self.dsim, "plotty"):
             self.dsim.plotty = None
@@ -116,11 +122,24 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
                 "labels": list(labels),
                 "vectors": [np.asarray(v, dtype=float).copy() for v in vectors],
                 "step_modes": list(step_modes),
+                "params": snapshot_params(getattr(self.dsim, "blocks_list", [])),
             }
         return self._prev_run
 
+    def keep_reference(self):
+        """Keep the current run as the reference overlay for later runs.
+
+        Returns the kept run (or None when nothing has been plotted yet).
+        """
+        if self._current_run is not None:
+            self._reference_run = self._current_run
+        return self._reference_run
+
+    def clear_reference(self):
+        self._reference_run = None
+
     def reset_held_runs(self):
-        """Forget the held previous/current run data.
+        """Forget the held previous/current/reference run data.
 
         Called when the diagram is replaced (File > New / File > Open via
         DSim.clear_all): the stash belongs to the old diagram, and overlaying
@@ -129,6 +148,7 @@ class ScopePlotter(_FieldScopeRenderMixin, _PyQtGraphScopeMixin):
         """
         self._prev_run = None
         self._current_run = None
+        self._reference_run = None
 
     def plot_again(self):
         """

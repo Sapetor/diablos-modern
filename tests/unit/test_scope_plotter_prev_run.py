@@ -11,6 +11,8 @@ Run offscreen:
     $env:QT_QPA_PLATFORM="offscreen"
 """
 
+import types
+
 import numpy as np
 import pytest
 
@@ -181,3 +183,39 @@ class TestScopePlotterPrevRun:
 
         assert dsim.scope_plotter._prev_run is None
         assert dsim.scope_plotter._current_run is None
+
+
+@pytest.mark.unit
+class TestScopePlotterReferenceRun:
+    """A kept reference survives later runs (unlike the rotating previous run)
+    and the plot names the parameters that changed since it."""
+
+    def test_reference_persists_and_reports_changes(self, qapp):
+        dsim = _StubDSim()
+        scope = _StubScopeBlock("Scope0", "sig", np.arange(11.0))
+        gain = types.SimpleNamespace(
+            name="g1", username="Gain1", block_fn="Gain", params={"gain": 2.0}, exec_params={}
+        )
+        dsim.blocks_list.extend([scope, gain])
+        plotter = ScopePlotter(dsim)
+
+        plotter.pyqtPlotScope()
+        assert not plotter.plotty.ref_checkbox.isEnabled()
+        plotter.plotty.keep_ref_button.click()
+        kept = plotter._reference_run
+        assert kept is not None
+
+        for factor in (2.0, 3.0):  # two later runs: the reference must not rotate
+            gain.params["gain"] = 2.0 * factor
+            dsim.new_run(np.arange(11.0) * factor)
+            plotter.pyqtPlotScope()
+        plot = plotter.plotty
+        assert plotter._reference_run is kept
+        assert plot.ref_checkbox.isEnabled() and plot.ref_checkbox.isChecked()
+        assert plot.ref_curves[0] is not None and plot.ref_curves[0].isVisible()
+        np.testing.assert_allclose(plot.ref_curves[0].getData()[1], np.arange(11.0))
+        assert "Gain1.gain: 2.0 -> 6.0" in plot.ref_changes_label.text()
+
+        plotter.reset_held_runs()
+        assert plotter._reference_run is None
+        plotter._close_plotty()

@@ -144,6 +144,9 @@ class _PyQtGraphScopeMixin:
                 len(self.dsim.timeline),
                 step_mode=flat_step_modes,
                 previous_run=previous_run,
+                reference_run=getattr(self, "_reference_run", None),
+                current_params=(getattr(self, "_current_run", None) or {}).get("params"),
+                keep_reference=getattr(self, "keep_reference", None),
             )
             # Null out both references when the C++ QWidget is destroyed to avoid
             # RuntimeError on the next simulation run.

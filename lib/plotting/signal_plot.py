@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from lib.plotting.run_compare import param_changes
 from lib.theming.theme_manager import theme_manager, ThemeType
 
 logger = logging.getLogger(__name__)
@@ -47,10 +48,27 @@ class SignalPlot(QWidget):
     :type dt: float
     :type labels: list
     :type xrange: int
+    :param reference_run: Optional run the user kept as a reference (same
+        keys plus "params"). Drawn dotted and shown by default; a line under
+        the plots lists the parameters that changed since it.
+    :param current_params: Parameter snapshot of the run being shown, compared
+        against ``reference_run["params"]``.
+    :param keep_reference: Callback that keeps the shown run as the reference
+        for later runs ("Keep as reference" button); returns the kept run.
     :type previous_run: dict or None
     """
 
-    def __init__(self, dt, labels, xrange, step_mode=False, previous_run=None):
+    def __init__(
+        self,
+        dt,
+        labels,
+        xrange,
+        step_mode=False,
+        previous_run=None,
+        reference_run=None,
+        current_params=None,
+        keep_reference=None,
+    ):
         super().__init__()
         self.dt = dt
         self.step_mode = step_mode
@@ -60,6 +78,10 @@ class SignalPlot(QWidget):
         self.curves = []
         self.previous_run = previous_run
         self.prev_curves = []
+        self.reference_run = reference_run
+        self.ref_curves = []
+        self._current_params = current_params
+        self._keep_reference = keep_reference
 
         # Store data for export
         self.labels = labels
@@ -116,6 +138,7 @@ class SignalPlot(QWidget):
             self.plot_items.append(plot_widget)
             self.curves.append(curve)
             self.prev_curves.append(self._create_prev_curve(plot_widget, idx))
+            self.ref_curves.append(self._create_ref_curve(plot_widget, idx))
 
         self._reflow_grid()
 
@@ -132,6 +155,23 @@ class SignalPlot(QWidget):
         self.prev_run_checkbox.setEnabled(any(c is not None for c in self.prev_curves))
         self.prev_run_checkbox.toggled.connect(self._on_prev_run_toggled)
         bottom_layout.addWidget(self.prev_run_checkbox)
+
+        self.ref_checkbox = QCheckBox("Reference")
+        self.ref_checkbox.setToolTip("Overlay the kept reference run (dotted)")
+        has_ref = any(c is not None for c in self.ref_curves)
+        self.ref_checkbox.setEnabled(has_ref)
+        self.ref_checkbox.setChecked(has_ref)
+        self.ref_checkbox.toggled.connect(self._on_ref_toggled)
+        bottom_layout.addWidget(self.ref_checkbox)
+
+        self.keep_ref_button = QPushButton("Keep as reference")
+        self.keep_ref_button.setToolTip(
+            "Keep this run as the reference: later runs (for example with changed "
+            "parameters) overlay it and list what changed"
+        )
+        self.keep_ref_button.setEnabled(keep_reference is not None)
+        self.keep_ref_button.clicked.connect(self._on_keep_reference)
+        bottom_layout.addWidget(self.keep_ref_button)
         bottom_layout.addStretch()
 
         self.export_button = QPushButton("Export to CSV...")
@@ -144,6 +184,12 @@ class SignalPlot(QWidget):
         self.export_figure_button.clicked.connect(self.export_figure)
         bottom_layout.addWidget(self.export_figure_button)
         main_layout.addLayout(bottom_layout)
+
+        self.ref_changes_label = QLabel()
+        self.ref_changes_label.setWordWrap(True)
+        self.ref_changes_label.setText(self._ref_changes_text())
+        self.ref_changes_label.setVisible(bool(self.ref_changes_label.text()))
+        main_layout.addWidget(self.ref_changes_label)
 
         self._apply_theme()
         theme_manager.theme_changed.connect(self._apply_theme)
@@ -285,17 +331,21 @@ class SignalPlot(QWidget):
         return pg.mkPen(color=self._curve_color(idx) + "66", width=1, style=Qt.PenStyle.DashLine)
 
     def _previous_trace(self, idx):
-        """Return (y, step) of the held-run trace for subplot ``idx``, or None.
+        """Return (y, step) of the previous run's trace for subplot ``idx``."""
+        return self._held_trace(self.previous_run, idx)
 
-        Matches by label first (the previous run may have signals in a
+    def _held_trace(self, run, idx):
+        """Return (y, step) of ``run``'s trace for subplot ``idx``, or None.
+
+        Matches by label first (a held run may have signals in a
         different order), falling back to the same index; held traces with no
         match are ignored.
         """
-        if not self.previous_run:
+        if not run:
             return None
-        prev_labels = self.previous_run.get("labels") or []
-        prev_vectors = self.previous_run.get("vectors") or []
-        prev_steps = self.previous_run.get("step_modes") or []
+        prev_labels = run.get("labels") or []
+        prev_vectors = run.get("vectors") or []
+        prev_steps = run.get("step_modes") or []
 
         label = self.labels[idx] if idx < len(self.labels) else None
         if isinstance(label, str) and label in prev_labels:
@@ -321,24 +371,63 @@ class SignalPlot(QWidget):
         subplot. The overlay is drawn behind the current curve (z = -1) and
         stays hidden until the "Previous run" checkbox is ticked.
         """
-        trace = self._previous_trace(idx)
+        return self._create_held_curve(
+            plot_widget, idx, self.previous_run, self._prev_pen(idx), z=-1, visible=False
+        )
+
+    def _create_ref_curve(self, plot_widget, idx):
+        """Add the reference-run overlay curve (dotted, behind the others)."""
+        pen = pg.mkPen(color=self._curve_color(idx) + "aa", width=1.5, style=Qt.PenStyle.DotLine)
+        return self._create_held_curve(
+            plot_widget, idx, self.reference_run, pen, z=-2, visible=True
+        )
+
+    def _create_held_curve(self, plot_widget, idx, run, pen, z, visible):
+        trace = self._held_trace(run, idx)
         if trace is None:
             return None
         y_data, step = trace
         y_data = np.asarray(y_data, dtype=float)
         if y_data.ndim > 1 and y_data.shape[1] == 1:
             y_data = y_data.flatten()
-        prev_t = self.previous_run.get("t")
+        prev_t = run.get("t")
         if prev_t is None or y_data.size == 0:
             return None
         prev_t = np.asarray(prev_t, dtype=float)
         if prev_t.size == 0:
             return None
-        curve = plot_widget.plot(pen=self._prev_pen(idx), stepMode=step)
-        curve.setZValue(-1)
+        curve = plot_widget.plot(pen=pen, stepMode=step)
+        curve.setZValue(z)
         curve.setData(self._align_time(prev_t, len(y_data), step), y_data)
-        curve.setVisible(False)
+        curve.setVisible(visible)
         return curve
+
+    def _ref_changes_text(self):
+        """One line naming the parameters that differ from the reference."""
+        if not any(c is not None for c in self.ref_curves):
+            return ""  # no reference, or none of its signals are on this plot
+        ref_params = self.reference_run.get("params")
+        if ref_params is None or self._current_params is None:
+            return ""
+        changes = param_changes(ref_params, self._current_params)
+        if not changes:
+            return "Reference: same parameters as this run"
+        shown = changes[:6]
+        more = f" (+{len(changes) - len(shown)} more)" if len(changes) > len(shown) else ""
+        return "Changed since reference: " + "; ".join(shown) + more
+
+    def _on_ref_toggled(self, checked):
+        for curve in self.ref_curves:
+            if curve is not None:
+                curve.setVisible(checked)
+
+    def _on_keep_reference(self):
+        if self._keep_reference is None:
+            return
+        kept = self._keep_reference()
+        if kept is not None:
+            self.keep_ref_button.setText("Kept as reference")
+            self.keep_ref_button.setEnabled(False)
 
     def _on_prev_run_toggled(self, checked):
         for curve in self.prev_curves:
