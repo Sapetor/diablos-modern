@@ -3,9 +3,8 @@
 Linear loop      y = u - k*y          (closed form y = u / (1 + k))
 Nonlinear loop   y = u - tanh(k*y)    (reference: scalar brentq root)
 
-DiaBloS detects and rejects a genuine algebraic loop, so the DiaBloS side
-records the rejection verbatim and then runs the workaround a user would
-reach for: a one-step ``Delay`` in the feedback path, which turns the loop
+DiaBloS solves the loop directly since 95f83ff (it used to reject it). The
+DiaBloS side also runs the workaround users reached for before that: a one-step ``Delay`` in the feedback path, which turns the loop
 into the fixed-point iteration y[n] = u - f(y[n-1]). PathSim solves the loop
 directly with its accelerated fixed-point "boosters".
 """
@@ -98,15 +97,18 @@ def main():
         y_ref = reference(case["f"])
         row = {"y_ref": y_ref}
 
-        # DiaBloS, direct loop: expect rejection.
+        # DiaBloS, direct loop: rejected before 95f83ff, solved iteratively since.
         direct = tmp / f"{name}_direct.diablos"
         build_diablos(case["expr"], with_delay=False, path=direct)
-        _, res = diablos_run(direct, T_END, DT)
+        timing, res = time_call(lambda p=direct: diablos_run(p, T_END, DT))
         row["diablos_direct"] = {
             "ok": res["ok"],
             "error": res["error"],
             "solver_path": res["solver_path"],
         }
+        if res["ok"]:
+            _, y = diablos_signal(res, "y")
+            row["diablos_direct"].update(timing=timing, err_max=float(np.max(np.abs(y - y_ref))))
 
         # DiaBloS workaround: unit delay in the feedback path.
         delayed = tmp / f"{name}_delay.diablos"

@@ -1,7 +1,7 @@
 {
   "scenario": "s2_algebraic_loop",
   "env": {
-    "diablos_commit": "b21f236",
+    "diablos_commit": "95f83ff",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -22,14 +22,20 @@
     "linear_k0.5": {
       "y_ref": 0.6666666666666669,
       "diablos_direct": {
-        "ok": false,
-        "error": "Algebraic loop detected involving blocks: ['sum1', 'function2', 'scope3']",
-        "solver_path": null
+        "ok": true,
+        "error": null,
+        "solver_path": "interpreter",
+        "timing": {
+          "median_s": 0.038641678998828866,
+          "min_s": 0.0314160929992795,
+          "n": 5
+        },
+        "err_max": 1.1102230246251565e-16
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.010881370995775796,
-          "min_s": 0.010786811995785683,
+          "median_s": 0.012560035989736207,
+          "min_s": 0.010873429011553526,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -39,8 +45,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.002108615000906866,
-          "min_s": 0.0020596359972842038,
+          "median_s": 0.002346905996091664,
+          "min_s": 0.0021964879997540265,
           "n": 5
         },
         "y_final": 0.6666666666666666,
@@ -50,14 +56,20 @@
     "linear": {
       "y_ref": 0.25,
       "diablos_direct": {
-        "ok": false,
-        "error": "Algebraic loop detected involving blocks: ['sum1', 'function2', 'scope3']",
-        "solver_path": null
+        "ok": true,
+        "error": null,
+        "solver_path": "interpreter",
+        "timing": {
+          "median_s": 0.03216457199596334,
+          "min_s": 0.026843133993679658,
+          "n": 5
+        },
+        "err_max": 0.0
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.011585205000301357,
-          "min_s": 0.011110478997579776,
+          "median_s": 0.014246892998926342,
+          "min_s": 0.011553809003089555,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -67,8 +79,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.002074295000056736,
-          "min_s": 0.00202352499763947,
+          "median_s": 0.0024039010022534057,
+          "min_s": 0.002326769012142904,
           "n": 5
         },
         "y_final": 0.25,
@@ -78,14 +90,20 @@
     "tanh": {
       "y_ref": 0.2934321690339864,
       "diablos_direct": {
-        "ok": false,
-        "error": "Algebraic loop detected involving blocks: ['sum1', 'function2', 'scope3']",
-        "solver_path": null
+        "ok": true,
+        "error": null,
+        "solver_path": "interpreter",
+        "timing": {
+          "median_s": 0.03144292898650747,
+          "min_s": 0.027793747998657636,
+          "n": 5
+        },
+        "err_max": 0.0
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.012311099999351427,
-          "min_s": 0.011180738998518791,
+          "median_s": 0.013112728993291967,
+          "min_s": 0.011962283999309875,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -95,8 +113,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.002165474994399119,
-          "min_s": 0.00210972400236642,
+          "median_s": 0.002315741003258154,
+          "min_s": 0.0021146170038264245,
           "n": 5
         },
         "y_final": 0.2934321690339864,

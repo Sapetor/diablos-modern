@@ -29,6 +29,16 @@ checkable (2026-10-02 pass noted per item).
   and connection rather than by JSON line. (confirmed absent 2026-10-02)
 - [x] **PathSim benchmark** (2026-10-10) — `docs/BENCHMARK_PATHSIM.md`,
   harness in `scripts/benchmarks/pathsim/` (separate venv, pathsim 0.27.0).
+- [x] **Algebraic loops are solved, not rejected** (2026-10-10, `95f83ff`):
+  SCC-based Newton solve per step, `lib/engine/algebraic_loop.py`; tests in
+  `tests/regression/test_algebraic_loop_solver.py`. Follow-ups: loops through
+  discrete-rate blocks are still rejected, and a diagram with a loop cannot
+  compile, linearize or export (it needs the hybrid compiled path).
+- [ ] **Hybrid compiled path**: adaptive `solve_ivp` between sample instants,
+  with discrete updates as events, so a ZOH/discrete block no longer forces the
+  whole diagram onto the first-order interpreter (PathSim benchmark S1b: 44 s
+  for 2.4e-5 vs 1.2 s for 2e-12). Acceptance:
+  `scripts/benchmarks/pathsim/s1_sampled_data.py`.
 - [x] **Sampled blocks behind a ZOH acted one period late** (2026-10-10,
   `68e8289`), found by the PathSim benchmark (S1). Consumers of feedthrough
   memory blocks now wait for the producer's fresh output each step. Tests:
