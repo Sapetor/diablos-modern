@@ -112,7 +112,10 @@ gain; the Van der Pol case asserts its own Jacobian is stiff.
 | PID closed loop vs analytic CP/(1+CP) | interpreter | fixed step | 0.002 | 7.98e-03 | 2.0e-02 | yes |
 | DiscreteTranFn vs scipy.signal.dlsim (at samples) | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | Discrete output is constant between sample instants | interpreter | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
+| DiscreteTranFn vs scipy.signal.dlsim (at samples) | compiled | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
+| Discrete output is constant between sample instants | compiled | z-domain, Ts=0.1 | 0.01 | 0.00e+00 | 1.0e-12 | yes |
 | ZeroOrderHold of a sine vs analytic staircase | interpreter | ZOH, Ts=0.1 | 0.005 | 5.97e-14 | 1.0e-09 | yes |
+| ZeroOrderHold of a sine vs analytic staircase | compiled | ZOH, Ts=0.1 | 0.005 | 7.77e-16 | 1.0e-09 | yes |
 | Transport delay of a sine, tau on the output grid | interpreter | buffer replay | 0.005 | 2.22e-16 | 1.0e-12 | yes |
 | Transport delay of a sine, tau off the grid | interpreter | buffer + interpolation | 0.005 | 1.20e-05 | 1.0e-04 | yes |
 | Transport delay holds its initial value for t < tau | interpreter | buffer replay | 0.005 | 0.00e+00 | 1.0e-12 | yes |

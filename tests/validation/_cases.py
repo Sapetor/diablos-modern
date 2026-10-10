@@ -670,44 +670,48 @@ def case_discrete_transfer_function():
     builder.connect("u", 0, "G", 0)
     builder.connect("G", 0, "sc", 0)
 
-    # A discrete rate forces the interpreter: the compiled right-hand side has
-    # no notion of sample instants.
-    result = H.run(builder, compiled=False)
-    t, y = result.signal("y")
-
     sample_times = np.arange(0.0, cfg["sim_time"] + 1e-12, cfg["Ts"])
     _, y_ref = signal.dlsim((num, den, cfg["Ts"]), np.ones_like(sample_times))
     y_ref = np.asarray(y_ref).ravel()
-    sample_idx = [int(round(ts / cfg["sim_dt"])) for ts in sample_times]
-    sample_idx = [i for i in sample_idx if i < len(y)]
-    at_samples = H.max_abs_error(y[sample_idx], y_ref[: len(sample_idx)])
 
-    hold_error = 0.0
-    for k in range(len(sample_idx) - 1):
-        segment = y[sample_idx[k] : sample_idx[k + 1]]
-        hold_error = max(hold_error, float(np.max(np.abs(segment - segment[0]))))
-    H.release(result)
+    # Both paths: the compiled one runs sampled blocks on the hybrid backend
+    # (the block's own execute() at each sample instant).
+    rows = []
+    for compiled in (False, True):
+        result = H.run(builder, compiled=compiled)
+        t, y = result.signal("y")
+        sample_idx = [int(round(ts / cfg["sim_dt"])) for ts in sample_times]
+        sample_idx = [i for i in sample_idx if i < len(y)]
+        at_samples = H.max_abs_error(y[sample_idx], y_ref[: len(sample_idx)])
 
-    return [
-        CaseResult(
-            "DiscreteTranFn vs scipy.signal.dlsim (at samples)",
-            "interpreter",
-            "z-domain, Ts=0.1",
-            cfg["sim_dt"],
-            at_samples,
-            1e-12,
-            note="scipy.signal.dlsim",
-        ),
-        CaseResult(
-            "Discrete output is constant between sample instants",
-            "interpreter",
-            "z-domain, Ts=0.1",
-            cfg["sim_dt"],
-            hold_error,
-            1e-12,
-            note="sample-time semantics",
-        ),
-    ]
+        hold_error = 0.0
+        for k in range(len(sample_idx) - 1):
+            segment = y[sample_idx[k] : sample_idx[k + 1]]
+            hold_error = max(hold_error, float(np.max(np.abs(segment - segment[0]))))
+        H.release(result)
+
+        path = "compiled" if compiled else "interpreter"
+        rows += [
+            CaseResult(
+                "DiscreteTranFn vs scipy.signal.dlsim (at samples)",
+                path,
+                "z-domain, Ts=0.1",
+                cfg["sim_dt"],
+                at_samples,
+                1e-12,
+                note="scipy.signal.dlsim",
+            ),
+            CaseResult(
+                "Discrete output is constant between sample instants",
+                path,
+                "z-domain, Ts=0.1",
+                cfg["sim_dt"],
+                hold_error,
+                1e-12,
+                note="sample-time semantics",
+            ),
+        ]
+    return rows
 
 
 ZOH = dict(Ts=0.1, omega=3.0, sim_time=2.0, sim_dt=0.005)
@@ -727,20 +731,24 @@ def case_zero_order_hold():
     builder.connect("u", 0, "Z", 0)
     builder.connect("Z", 0, "sc", 0)
 
-    result = H.run(builder, compiled=False)
-    t, y = result.signal("y")
-    staircase = np.sin(cfg["omega"] * (np.floor(t / cfg["Ts"] + 1e-9) * cfg["Ts"]))
-    row = CaseResult(
-        "ZeroOrderHold of a sine vs analytic staircase",
-        "interpreter",
-        "ZOH, Ts=0.1",
-        cfg["sim_dt"],
-        H.max_abs_error(y, staircase),
-        1e-9,
-        note="closed form",
-    )
-    H.release(result)
-    return [row]
+    rows = []
+    for compiled in (False, True):
+        result = H.run(builder, compiled=compiled)
+        t, y = result.signal("y")
+        staircase = np.sin(cfg["omega"] * (np.floor(t / cfg["Ts"] + 1e-9) * cfg["Ts"]))
+        rows.append(
+            CaseResult(
+                "ZeroOrderHold of a sine vs analytic staircase",
+                "compiled" if compiled else "interpreter",
+                "ZOH, Ts=0.1",
+                cfg["sim_dt"],
+                H.max_abs_error(y, staircase),
+                1e-9,
+                note="closed form",
+            )
+        )
+        H.release(result)
+    return rows
 
 
 # --------------------------------------------------------------------------- #

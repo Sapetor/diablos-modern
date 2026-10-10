@@ -43,6 +43,9 @@ The following blocks are fully supported in Fast Solver mode. If a diagram conta
 *   **Hysteresis**: Relay with upper/lower thresholds. Compiled only with
     zero-crossing detection on (see below); otherwise the diagram falls back to
     the interpreter.
+*   **ZeroOrderHold**, **DiscreteTranFn**, **DiscreteStateSpace**: sampled-data
+    blocks with a resolved rate, on the `scipy+hybrid` backend (see
+    Sampled-Data Blocks below).
 
 ### Sources
 *   **Step**: Delayed step input.

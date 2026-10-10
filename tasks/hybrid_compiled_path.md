@@ -80,6 +80,17 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
 - **Phase 4**: rerun the benchmark, update `docs/BENCHMARK_PATHSIM.md`,
   `docs/SOLVER_SEMANTICS.md`, `docs/FAST_SOLVER.md`.
 
+## Known gaps after phase 1 (2026-10-10, `0e6afa2`)
+
+- **t0 seeding order.** `solve_with_events` runs the event `on_start` hooks
+  before the t0 sample, so a `Hysteresis` fed by a ZOH seeds against the
+  ZOH's empty holder (0.0), not its first sample. The interpreter initializes
+  in hierarchy order. Untested.
+- **Inherited rates inside a Subsystem.** The root-level gate in
+  `DSim.execution_batch` sees the unflattened block, whose
+  `effective_sample_time` is not resolved, so an inherited-rate DiscreteTF in a
+  subsystem falls back as "unresolved". Conservative, undocumented elsewhere.
+
 ## Risks
 
 - Per-segment `solve_ivp` overhead (~0.3-1 ms): Ts = 1 ms over 10 s is
