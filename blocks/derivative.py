@@ -99,14 +99,23 @@ class DerivativeBlock(BaseBlock):
             params["_init_start_"] = False
             return {0: params["_didt_old_"].copy()}
 
-        if not input_present:
-            # output_only path: return held last derivative, don't update state
+        # The output_only flag must be honoured explicitly, as in PID: the
+        # simulation loop's memory pass calls this block with output_only=True
+        # while input_queue still holds the previous step's input. Treating
+        # that as an update differenced the stale input and stamped the current
+        # time, so the real call at the same time returned the stale result:
+        # the derivative lagged its input by one solver step (one sample
+        # period's worth of staleness for a rated block at its instant).
+        if kwargs.get("output_only", False) or not input_present:
             return {0: np.array(params["_didt_old_"])}
 
         # Guard with a tolerance (not just exact equality) so a time value that
         # is extremely close to the previous timestamp does not produce a tiny
-        # denominator and a huge spurious derivative spike.
+        # denominator and a huge spurious derivative spike. A second call at
+        # the same instant refreshes the reference sample: the initialization
+        # pass may have seen no input at all (an empty Loop-1 queue).
         if abs(time - params["_t_old_"]) < 1e-12:
+            params["_i_old_"] = np.array(inputs[0], dtype=float)
             return {0: np.array(params["_didt_old_"])}
 
         dt = time - params["_t_old_"]

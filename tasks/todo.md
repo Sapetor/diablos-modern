@@ -32,6 +32,16 @@ checkable (2026-10-02 pass noted per item).
   (rated TranFn/PID/Integrator/Derivative, FirstOrderHold, RateTransition,
   fixed-step schemes), phase 3 (loops in the compiled RHS). The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
+- [ ] **Interpreter PID reports 0 at t = 0 (found 2026-10-10).** Rated or
+  not, a PID with Kp != 0 shows 0 at t = 0 on the interpreter, while the
+  compiled path shows Kp*e(0); from the first step on the two agree. The
+  t = 0 sample is the memory pass's `output_only` value, taken before the
+  block has run once. Same family as the two fixes below.
+- [x] **Derivative lagged its input by one solver step; script-built PID by
+  one step at its sample instants** (2026-10-10, found while compiling rated
+  blocks). Derivative now honours `output_only` like PID; `DiagramBuilder`
+  gives PID `b_type` 2 like the GUI. Tests:
+  `tests/regression/test_rated_memory_blocks.py`.
 - [x] **Sampled blocks behind a ZOH acted one period late** (2026-10-10,
   `68e8289`), found by the PathSim benchmark (S1). Consumers of feedthrough
   memory blocks now wait for the producer's fresh output each step. Tests:

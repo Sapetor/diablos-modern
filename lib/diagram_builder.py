@@ -119,7 +119,7 @@ BLOCK_DEFAULTS = {
         "in_ports": 1,
         "out_ports": 1,
     },
-    "PID": {"category": "Control", "color": "#DDA0DD", "b_type": 1, "in_ports": 1, "out_ports": 1},
+    "PID": {"category": "Control", "color": "#DDA0DD", "b_type": 2, "in_ports": 1, "out_ports": 1},
     "Delay": {
         "category": "Control",
         "color": "#DDA0DD",
