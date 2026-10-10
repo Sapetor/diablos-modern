@@ -135,6 +135,7 @@ class CommandPaletteManager:
                         ],
                         "callback": lambda mb=menu_block: self.add_block_from_palette_menu(mb),
                         "data": {"block_type": fn_name},
+                        "menu_block": menu_block,
                     }
                 )
 

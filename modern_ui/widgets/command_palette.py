@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 
 from lib.i18n import tr, tr_noop
 from modern_ui.themes.theme_manager import theme_manager, get_mono_font, make_shadow
+from modern_ui.widgets.modern_palette import block_match_rank
 
 logger = logging.getLogger(__name__)
 
@@ -352,8 +353,15 @@ class CommandPalette(QDialog):
     def _score(self, cmd: Dict[str, Any], query: str) -> int:
         """Simple fuzzy-ish score: substring + alias hits, recents bonus."""
         q = (query or "").strip().lower()
+        block_rank = None
+        if q and cmd.get("menu_block") is not None:
+            block_rank = block_match_rank(cmd["menu_block"], q)
         if not q:
             base = 100
+        elif block_rank is not None:
+            # Same tiers as the palette's Enter; 25 apart so the recents bonus
+            # (at most 20) reorders within a tier but never across tiers.
+            base = 100 - 25 * block_rank
         else:
             name = (cmd.get("name", "") or "").lower()
             desc = (cmd.get("description", "") or "").lower()

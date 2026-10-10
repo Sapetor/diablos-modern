@@ -87,6 +87,29 @@ def block_matches_filter(menu_block, text: str) -> bool:
     return text in hay or text.replace(" ", "") in hay.replace(" ", "")
 
 
+def block_match_rank(menu_block, text: str):
+    """How well ``text`` (already lower-cased) names ``menu_block``.
+
+    0 = exact label or id, 1 = prefix, 2 = any other match, None = no match.
+    Shared by the palette's Enter and the command palette (canvas
+    double-click), so both pick the same block for the same query.
+    """
+    if not block_matches_filter(menu_block, text):
+        return None
+    if not text:
+        return 0
+    names = (
+        block_label(menu_block).lower(),
+        str(getattr(menu_block, "fn_name", "")).replace("_", " ").lower(),
+    )
+    squeezed = text.replace(" ", "")
+    if text in names or squeezed in (n.replace(" ", "") for n in names):
+        return 0
+    if any(n.startswith(text) for n in names):
+        return 1
+    return 2
+
+
 def update_recents(recents, fn_name, cap=_RECENT_CAP):
     """Return a new recents list with ``fn_name`` promoted to the front.
 
@@ -1662,15 +1685,8 @@ class ModernBlockPalette(QWidget):
         query = self.search_bar.text().strip().lower()
 
         def rank(row):
-            names = (
-                row.name_label.text().lower(),
-                str(getattr(row.menu_block, "fn_name", "")).replace("_", " ").lower(),
-            )
-            if query in names:
-                return 0
-            if any(n.startswith(query) for n in names):
-                return 1
-            return 2
+            r = block_match_rank(row.menu_block, query)
+            return 3 if r is None else r
 
         best = min(rows, key=rank)  # min() keeps the first of equal ranks
         best.activate()  # rebuilds the palette (Recent); do not touch rows after

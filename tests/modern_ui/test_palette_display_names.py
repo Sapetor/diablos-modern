@@ -157,3 +157,28 @@ def block_label_in_tooltip(row):
     from modern_ui.widgets.modern_palette import block_label
 
     return row.toolTip().splitlines()[0] == block_label(row.menu_block)
+
+
+def test_block_match_rank_tiers():
+    import types
+
+    from modern_ui.widgets.modern_palette import block_match_rank
+
+    def mb(display, fn):
+        return types.SimpleNamespace(
+            display_name=display,
+            fn_name=fn,
+            block_fn=fn,
+            block_class=object,
+            search_text=lambda t, d=display, f=fn: (
+                f"{d.lower()} {f.lower()} {d.lower().replace(' ', '')}"
+            ),
+        )
+
+    tf = mb("Transfer Function", "transfer_function")
+    dtf = mb("Discrete Transfer Function", "discrete_transfer_function")
+    assert block_match_rank(tf, "transfer function") == 0
+    assert block_match_rank(dtf, "transfer function") == 2
+    assert block_match_rank(tf, "trans") == 1
+    assert block_match_rank(tf, "gain") is None
+    assert block_match_rank(tf, "") == 0

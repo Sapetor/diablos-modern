@@ -183,3 +183,40 @@ class TestOnCommandExecuted:
     def test_does_not_raise(self, window):
         # Pure log hook; must accept (type, data) without error.
         window._on_command_executed("sim", {"foo": "bar"})
+
+
+# ---------------------------------------------------------------------------
+# Block search shared with the block palette
+# ---------------------------------------------------------------------------
+
+
+def _first_block_hit(window, query, recents=()):
+    palette = window.command_palette
+    _commands(window)
+    palette._recents = list(recents)
+    palette.search.setText(query)
+    return next(c["name"] for c in palette._filtered if c.get("type") == "block")
+
+
+class TestBlockSearchMatchesPalette:
+    """The double-click quick-insert ranks blocks like the palette's Enter:
+    exact name, then prefix, then any other match (block_match_rank)."""
+
+    def test_exact_name_beats_a_recent_longer_match(self, window):
+        hit = _first_block_hit(
+            window, "transfer function", recents=["Add Discrete Transfer Function block"]
+        )
+        assert hit == "Add Transfer Function block"
+
+    def test_space_free_query_finds_the_exact_block(self, window):
+        assert _first_block_hit(window, "statespace") == "Add State Space block"
+
+    def test_prefix_beats_substring(self, window):
+        assert _first_block_hit(window, "field s") in (
+            "Add Field Scope block",
+            "Add Field Slice block",
+            "Add Field Scope 2D block",
+        )
+
+    def test_add_prefix_still_matches(self, window):
+        assert _first_block_hit(window, "add gain") == "Add Gain block"
