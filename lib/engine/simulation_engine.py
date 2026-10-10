@@ -839,6 +839,7 @@ class SimulationEngine:
                 graph[line.srcblock].append(line.dstblock)
         by_name = {b.name: b for b in candidates}
         solved = False
+        waiting = []
         for comp in cyclic_components([b.name for b in candidates], graph):
             loop = AlgebraicLoop([by_name[n] for n in comp], lines)
             try:
@@ -848,12 +849,19 @@ class SimulationEngine:
                 logger.error(self.error_msg)
                 return None
             if not loop.is_ready():
+                waiting.append(loop.names)
                 continue
             if not self.solve_algebraic_loop(loop, h_value=h_count, h_assign=True):
                 return None
             self.algebraic_loops.append(loop)
             logger.info("Algebraic loop %s will be solved iteratively each step", loop.names)
             solved = True
+        if waiting and not solved:
+            # Nothing else can progress at a stall, so these never get inputs.
+            self.error_msg = f"Algebraic loop {waiting[0]} did not receive all of its inputs"
+            self.error_block = waiting[0][0]
+            logger.error(self.error_msg)
+            return None
         return solved
 
     def solve_algebraic_loop(self, loop, h_value=0, h_assign=False) -> bool:

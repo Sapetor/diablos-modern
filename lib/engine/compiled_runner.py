@@ -388,7 +388,7 @@ def run_compiled_simulation(
         if len(engine.active_blocks_list) == 0:
             # Not yet initialized - do it now
             if not engine.initialize_execution(blocks, lines):
-                logger.error("Failed to initialize execution (algebraic loop or error).")
+                logger.error("Failed to initialize execution: %s", engine.error_msg)
                 engine.last_solver_diagnostics = {
                     "success": False,
                     "failure_stage": "initialize",
@@ -412,7 +412,9 @@ def run_compiled_simulation(
             engine._resolve_block_params(block, dt, workspace_manager)
 
         # Final check on flattened system
-        if not engine.compiler.check_compilability(current_blocks):
+        # engine.check_compilability, not the compiler's: it also refuses a
+        # diagram whose algebraic loops only the interpreter can solve.
+        if not engine.check_compilability(current_blocks):
             logger.error("Flattened system contains uncompilable blocks.")
             engine.last_solver_diagnostics = {
                 "success": False,

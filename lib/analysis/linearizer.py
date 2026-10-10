@@ -105,7 +105,7 @@ class Linearizer:
         if not engine.active_blocks_list:
             if not engine.initialize_execution(blocks, lines):
                 raise ValueError(
-                    "Failed to initialize execution (algebraic loop or error); cannot linearize."
+                    f"Failed to initialize execution ({engine.error_msg}); cannot linearize."
                 )
         current_blocks = engine.active_blocks_list
         current_lines = engine.active_line_list if engine.active_line_list else lines
@@ -117,12 +117,13 @@ class Linearizer:
         for b in current_blocks:
             engine._resolve_block_params(b, dt, wm)
 
-        if not engine.compiler.check_compilability(current_blocks):
+        if not engine.check_compilability(current_blocks):
             raise ValueError(
                 "Diagram is not compilable, so numerical linearization is "
                 "unavailable. Linearization runs on the fast-solver path; remove "
                 "interpreter-only blocks (e.g. Noise, or Hysteresis when "
-                "zero-crossing detection is off) to enable it."
+                "zero-crossing detection is off) or algebraic loops to enable it. "
+                f"Reason: {engine.get_compile_fallback_reason()}"
             )
 
         sorted_blocks = sorted(current_blocks, key=lambda b: b.hierarchy)

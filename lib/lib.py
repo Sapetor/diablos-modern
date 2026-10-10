@@ -1299,18 +1299,27 @@ class DSim:
                     if not progressed:
                         break
             for loop in loops:
-                if loop.is_pending() and loop.is_ready():
+                if loop.is_pending() and loop.is_ready() and not any(map(held, loop.members)):
                     if not self.engine.solve_algebraic_loop(loop):
                         self.execution_failed(self.engine.error_msg)
                         return False
                     outer_progressed = True
             if not outer_progressed:
-                if hold and any(
-                    not b.computed_data and b.name not in in_loop and self._has_enough_inputs(b)
-                    for b in current_blocks
+                if hold and (
+                    any(
+                        not b.computed_data and b.name not in in_loop and self._has_enough_inputs(b)
+                        for b in current_blocks
+                    )
+                    or any(loop.is_pending() and loop.is_ready() for loop in loops)
                 ):
                     hold = False
                     continue
+                stuck = [loop.names for loop in loops if loop.is_pending()]
+                if stuck:
+                    self.execution_failed(
+                        f"Algebraic loop {stuck[0]} did not receive all of its inputs"
+                    )
+                    return False
                 return True
 
     def _feedthrough_memory_producers(self, current_blocks):

@@ -152,3 +152,121 @@ class TestStructuredLoops:
         ok, err, _, _ = _run(b, tmp_path, 0.3, 0.1)
         assert not ok
         assert "discrete block" in err
+
+
+def _zoh_loop(sim_time=1.0):
+    """ramp -> ZOH(0.2) -> Sum(+-) -> y, y -> Gain(0.5) -> Sum. y = r(kT) / 1.5."""
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=sim_time, sim_dt=0.1)
+    r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
+    z = b.add_block(
+        "ZeroOrderHold", 0, 0, name="z", params={"sampling_time": 0.2}, in_ports=1, out_ports=1
+    )
+    s = b.add_block("Sum", 0, 0, name="s", params={"sign": "+-"}, in_ports=2)
+    g = b.add_block("Gain", 0, 0, name="g", params={"gain": 0.5})
+    sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
+    b.connect(r, 0, z, 0)
+    b.connect(z, 0, s, 0)
+    b.connect(s, 0, g, 0)
+    b.connect(g, 0, s, 1)
+    b.connect(s, 0, sc, 0)
+    return b
+
+
+@pytest.mark.regression
+class TestLoopBehindAZoh:
+    """The loop must wait for the ZOH's fresh sample, like any other consumer
+    of a feedthrough memory block (tests/regression/test_sampled_loop_delay.py);
+    solving on the stale held value would lag every edge by one solver step."""
+
+    @pytest.mark.parametrize("sim_dt", [0.1, 0.05])
+    def test_staircase_edges_land_on_sample_instants(self, qapp, tmp_path, sim_dt):
+        """Driven the way the GUI runs: execution_init + the step loop."""
+        from lib.cli import load_diagram
+
+        path = tmp_path / "zoh_loop.diablos"
+        _zoh_loop().save(str(path))
+        dsim, _ = load_diagram(str(path))
+        dsim.sim_time, dsim.sim_dt, dsim.plot_trange = 1.0, sim_dt, 1.0
+        dsim.execution_init_time = lambda: dsim.sim_time
+        dsim.pyqtPlotScope = lambda: None
+        dsim.use_fast_solver = True
+        assert dsim.execution_init() is True
+        assert not dsim.engine.check_compilability(dsim.blocks_list)
+        calls = 0
+        while dsim.execution_initialized and calls < 5000:
+            dsim.execution_loop_headless()
+            calls += 1
+        t = np.ravel(dsim._timeline_list)
+        scope = next(b for b in dsim.engine.active_blocks_list if b.block_fn == "Scope")
+        y = np.ravel(scope.exec_params["vector"])
+        expected = np.floor(t / 0.2 + 1e-9) * 0.2 / 1.5
+        assert np.allclose(y, expected, atol=1e-12)
+
+    def test_loop_fed_by_a_zoh_behind_another_loop(self, qapp, tmp_path):
+        """ramp -> loop A -> ZOH(0.2) -> loop B. The ZOH's input exists only
+        once loop A is solved, so loop B must not solve on the ZOH's stale
+        value in the same sweep. yB = r(kT) / 2.25."""
+        from lib.analysis.resim import harvest_scope_signals
+        from lib.cli import load_diagram
+        from lib.diagram_builder import DiagramBuilder
+
+        b = DiagramBuilder(sim_time=1.0, sim_dt=0.1)
+        r = b.add_block("Ramp", 0, 0, name="r", params={"slope": 1.0, "delay": 0.0})
+        sa = b.add_block("Sum", 0, 0, name="sa", params={"sign": "+-"}, in_ports=2)
+        ga = b.add_block("Gain", 0, 0, name="ga", params={"gain": 0.5})
+        z = b.add_block(
+            "ZeroOrderHold", 0, 0, name="z", params={"sampling_time": 0.2}, in_ports=1, out_ports=1
+        )
+        sb = b.add_block("Sum", 0, 0, name="sb", params={"sign": "+-"}, in_ports=2)
+        gb = b.add_block("Gain", 0, 0, name="gb", params={"gain": 0.5})
+        sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
+        for src, dst, port in [
+            (r, sa, 0), (sa, ga, 0), (ga, sa, 1), (sa, z, 0),
+            (z, sb, 0), (sb, gb, 0), (gb, sb, 1), (sb, sc, 0),
+        ]:  # fmt: skip
+            b.connect(src, 0, dst, port)
+        path = tmp_path / "chain.diablos"
+        b.save(str(path))
+        dsim, _ = load_diagram(str(path))
+        ok, err = dsim.run_tuning_simulation(1.0, 0.1)
+        assert ok, err
+        data = harvest_scope_signals(dsim)
+        t, y = data["timeline"], data["signals"]["y"]
+        expected = np.floor(t / 0.2 + 1e-9) * 0.2 / 2.25
+        assert np.allclose(y, expected, atol=1e-12)
+
+
+@pytest.mark.regression
+class TestLoopsStayOffTheCompiledPath:
+    def test_linearizer_refuses_with_the_reason(self, qapp, tmp_path):
+        from lib.analysis.linearizer import Linearizer
+        from lib.cli import load_diagram
+
+        path = tmp_path / "loop.diablos"
+        _scalar_loop("0.5*u[0]").save(str(path))
+        dsim, _ = load_diagram(str(path))
+        with pytest.raises(ValueError, match="algebraic loop"):
+            Linearizer(dsim)._compile_diagram()
+
+    def test_python_export_refuses(self, qapp, tmp_path):
+        from lib.cli import export_python
+        from lib.export.python_codegen import CodegenError
+
+        from lib.diagram_builder import DiagramBuilder
+
+        # Sum + Gain only: every block is exportable, so the loop is the reason.
+        b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)
+        c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
+        s = b.add_block("Sum", 0, 0, name="s", params={"sign": "+-"}, in_ports=2)
+        g = b.add_block("Gain", 0, 0, name="g", params={"gain": 0.5})
+        sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
+        b.connect(c, 0, s, 0)
+        b.connect(s, 0, g, 0)
+        b.connect(g, 0, s, 1)
+        b.connect(s, 0, sc, 0)
+        path = tmp_path / "loop.diablos"
+        b.save(str(path))
+        with pytest.raises(CodegenError, match="Algebraic loop"):
+            export_python(str(path), out_path=str(tmp_path / "out.py"))

@@ -39,12 +39,11 @@ class AlgebraicLoopError(Exception):
         self.block = block
 
 
-def _required_inputs(block):
-    optional = set()
+def _optional_inputs(block):
     instance = getattr(block, "block_instance", None)
     if instance is not None and hasattr(instance, "optional_inputs"):
-        optional = set(instance.optional_inputs)
-    return block.in_ports - len(optional)
+        return set(instance.optional_inputs)
+    return set()
 
 
 class AlgebraicLoop:
@@ -61,11 +60,15 @@ class AlgebraicLoop:
         ]
         # One unknown per distinct (member, output port) that feeds the loop.
         self.slots = sorted({(src, port) for src, port, _, _ in self.internal})
-        internal_in = {}
-        for _, _, dst, _ in self.internal:
-            internal_in[dst] = internal_in.get(dst, 0) + 1
+        internal_ports = {(dst, port) for _, _, dst, port in self.internal}
+        # Required ports fed from outside the loop: non-optional, no internal wire.
         self._external_required = {
-            b.name: max(0, _required_inputs(b) - internal_in.get(b.name, 0)) for b in self.members
+            b.name: sum(
+                1
+                for p in range(b.in_ports)
+                if p not in _optional_inputs(b) and (b.name, p) not in internal_ports
+            )
+            for b in self.members
         }
         self._shapes = None
         self._z = None  # warm start: the previous step's solution
