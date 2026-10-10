@@ -105,6 +105,26 @@ class ModernStyles:
             background-color: transparent;
             border-color: transparent;
         }
+        /* Fixed-size buttons opt out of the generic padding. The selector must
+           be at least as specific as the generic rule above: a bare
+           QToolButton#Id rule loses, the padding eats the icon area, and Qt
+           shrinks the icon (the zoom -/+ glyphs became dots). QSS min sizes
+           replace the widget's setFixedSize minimum, so restate the sizes
+           (content box, excluding the border). */
+        QToolBar#ModernToolBar QToolButton#ZoomRockerBtn {
+            padding: 0px;
+            min-width: 22px;   /* + 1px border = 24px */
+            min-height: 22px;
+        }
+        QToolBar#ModernToolBar QToolButton#TransportPlay,
+        QToolBar#ModernToolBar QToolButton#TransportPause,
+        QToolBar#ModernToolBar QToolButton#TransportStop,
+        QToolBar#ModernToolBar QToolButton#TransportStep,
+        QToolBar#ModernToolBar QToolButton#TransportSettings {
+            padding: 0px;
+            min-width: 26px;   /* + 1px border = 28x26 */
+            min-height: 24px;
+        }
 
         /* Transport cluster — Play/Pause/Stop/Step/Settings */
         QToolButton#TransportPlay,
@@ -186,8 +206,6 @@ class ModernStyles:
             background-color: transparent;
             border: 1px solid transparent;
             border-radius: @radius_sm;
-            min-width: 22px;
-            min-height: 22px;
         }
         QToolButton#ZoomRockerBtn:hover {
             background-color: @background_tertiary;

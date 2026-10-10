@@ -238,11 +238,11 @@ def _make_icon(kind: str, size: int = 18, color: str | None = None) -> QIcon:
         line(s / 2 + 1.4, s / 2 + 1.4, s - pad, s - pad)
 
     elif kind == "plus":
-        line(s / 2, pad + 1, s / 2, s - pad - 1)
-        line(pad + 1, s / 2, s - pad - 1, s / 2)
+        line(s / 2, pad, s / 2, s - pad)
+        line(pad, s / 2, s - pad, s / 2)
 
     elif kind == "minus":
-        line(pad + 1, s / 2, s - pad - 1, s / 2)
+        line(pad, s / 2, s - pad, s / 2)
 
     p.end()
     return QIcon(px)
@@ -443,6 +443,10 @@ class _StateDot(QWidget):
         p.end()
 
 
+ZOOM_ICON = 16
+ZOOM_BTN = 24
+
+
 class _ZoomRocker(QWidget):
     """Compact   −   100%   +   cluster (replaces the wide slider)."""
 
@@ -458,11 +462,11 @@ class _ZoomRocker(QWidget):
         self.minus_btn = QToolButton()
         self.minus_btn.setObjectName("ZoomRockerBtn")
         self.minus_btn.setIcon(
-            _make_icon("minus", 14, theme_manager.get_color("text_secondary").name())
+            _make_icon("minus", ZOOM_ICON, theme_manager.get_color("text_secondary").name())
         )
-        self.minus_btn.setIconSize(QSize(14, 14))
+        self.minus_btn.setIconSize(QSize(ZOOM_ICON, ZOOM_ICON))
         self.minus_btn.setAutoRaise(True)
-        self.minus_btn.setFixedSize(QSize(22, 22))
+        self.minus_btn.setFixedSize(QSize(ZOOM_BTN, ZOOM_BTN))
         self.minus_btn.setToolTip(tr("Zoom out"))
         self.minus_btn.clicked.connect(self._on_minus)
 
@@ -474,11 +478,11 @@ class _ZoomRocker(QWidget):
         self.plus_btn = QToolButton()
         self.plus_btn.setObjectName("ZoomRockerBtn")
         self.plus_btn.setIcon(
-            _make_icon("plus", 14, theme_manager.get_color("text_secondary").name())
+            _make_icon("plus", ZOOM_ICON, theme_manager.get_color("text_secondary").name())
         )
-        self.plus_btn.setIconSize(QSize(14, 14))
+        self.plus_btn.setIconSize(QSize(ZOOM_ICON, ZOOM_ICON))
         self.plus_btn.setAutoRaise(True)
-        self.plus_btn.setFixedSize(QSize(22, 22))
+        self.plus_btn.setFixedSize(QSize(ZOOM_BTN, ZOOM_BTN))
         self.plus_btn.setToolTip(tr("Zoom in"))
         self.plus_btn.clicked.connect(self._on_plus)
 
@@ -505,8 +509,8 @@ class _ZoomRocker(QWidget):
 
     def refresh_icons(self):
         c = theme_manager.get_color("text_secondary").name()
-        self.minus_btn.setIcon(_make_icon("minus", 14, c))
-        self.plus_btn.setIcon(_make_icon("plus", 14, c))
+        self.minus_btn.setIcon(_make_icon("minus", ZOOM_ICON, c))
+        self.plus_btn.setIcon(_make_icon("plus", ZOOM_ICON, c))
 
     def retranslate_ui(self):
         self.minus_btn.setToolTip(tr("Zoom out"))
