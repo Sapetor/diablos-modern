@@ -560,6 +560,44 @@ measurement.
 - Records may start at an operating point (equilibrium before a step) or at rest
   with the input already applied; both are handled.
 
+### Hardware I/O: UDP and serial blocks
+
+Four blocks connect a running simulation to lab hardware or other programs.
+Tick **Run in real-time** in Simulation Settings so simulated time keeps pace
+with the wall clock.
+
+| Block | Category | Does |
+|-------|----------|------|
+| `UDP Receive` | Sources | Listens on `host`:`port`; outputs the latest message (`data`) and a `fresh` flag (1 on a step where a message arrived) |
+| `UDP Send` | Sinks | Sends its input to `host`:`port` |
+| `Serial Read` | Sources | Reads newline-terminated lines from a serial `port` at `baudrate`; outputs `data` and `fresh` |
+| `Serial Write` | Sinks | Writes its input to a serial port as one line per step |
+
+- **Message format.** `text`: numbers separated by commas or spaces, one message
+  per datagram or per line (`Serial.println(x)` on an Arduino, or
+  `"1.5,2.0\n"`). UDP also offers `float64`: little-endian doubles packed back to
+  back. A malformed message is dropped as a whole.
+- **Never blocking.** Receivers read whatever has arrived each step and hold the
+  last value between messages (`initial` before the first one); `width` sets how
+  many values they output. Senders drop a message rather than stall the run.
+- **Rate.** Senders run every step by default; set `sampling_time` (seconds) to
+  send at a fixed rate instead.
+- **Serial needs pyserial** (`pip install pyserial`). Without it the serial blocks
+  stop the run with that instruction; the UDP blocks need nothing extra.
+- Ports are opened when a run starts and reopened on the next run; they run on
+  the interpreter path.
+
+Quick loopback check from Python while a diagram with `UDP Receive` on port 5005
+runs:
+
+```python
+import socket, time, math
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+for k in range(500):
+    s.sendto(f"{math.sin(k / 20):.4f}".encode(), ("127.0.0.1", 5005))
+    time.sleep(0.01)
+```
+
 ---
 
 ## The Function Block

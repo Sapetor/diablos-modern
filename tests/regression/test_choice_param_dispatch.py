@@ -339,6 +339,10 @@ ALLOWLIST = {
         "Scope",
         "verify_mode",
     ): "GUI sink verification mode (no signal dispatch); covered by tests/unit/test_sink_blocks.py",
+    ("UDPReceive", "format"): "opens a UDP socket; both formats covered by "
+    "tests/unit/test_hardware_io_blocks.py (localhost only)",
+    ("UDPSend", "format"): "opens a UDP socket; both formats covered by "
+    "tests/unit/test_hardware_io_blocks.py (localhost only)",
 }
 
 
