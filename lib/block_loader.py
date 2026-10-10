@@ -81,6 +81,7 @@ _BLOCK_MODULES = [
     "blocks.subsystem",
     "blocks.sum",
     "blocks.switch",
+    "blocks.system_identification",
     "blocks.terminator",
     "blocks.transfer_function",
     "blocks.transport_delay",

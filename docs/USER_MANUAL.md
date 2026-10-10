@@ -518,6 +518,27 @@ to a log.
 `LookupTable1D` / `LookupTable2D` read static tables the same way for
 interpolated static maps.
 
+### Identifying a model: the System Identification block
+
+`System Identification` (category *Sources*) fits a continuous transfer function
+`G(s) = B(s)/A(s)` to a recorded experiment and replays it next to the
+measurement.
+
+- Point `data_file` at a log with time, input and output columns (`time_col`,
+  `input_col`, `output_col`, same naming rules as `FromFile`).
+- Choose `den_order` (poles) and `num_order` (zeros, at most `den_order`).
+- When the run starts the block fits the model (ARX least squares as a starting
+  point, then the coefficients are refined so the simulated response matches
+  the data) and logs it, e.g. `G(s) = (4.002) / (s^2 + 2.001 s + 4.003), fit
+  99.8 %`. The fit percentage is the normalized-RMSE measure of MATLAB's
+  `compare` (100 = perfect).
+- Output `model` is the fitted `G(s)` driven by the recorded input; output
+  `measured` is the recorded output. Wire both into a Scope to judge the fit,
+  and copy the logged numerator/denominator into a Transfer Function block to
+  design with the model.
+- Records may start at an operating point (equilibrium before a step) or at rest
+  with the input already applied; both are handled.
+
 ---
 
 ## The Function Block
