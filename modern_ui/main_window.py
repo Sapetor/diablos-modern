@@ -734,6 +734,10 @@ class ModernDiaBloSWindow(QMainWindow):
         """Run a Monte-Carlo ensemble of the current diagram and show statistics."""
         self.experiment_controller.run_monte_carlo()
 
+    def transfer_function_between_blocks(self):
+        """Show the closed-loop transfer function between two selected blocks."""
+        self.experiment_controller.transfer_function_between_blocks()
+
     def run_parameter_sweep(self):
         """Sweep one/two block parameters across a grid and show the results."""
         self.experiment_controller.run_parameter_sweep()

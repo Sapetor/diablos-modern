@@ -43,6 +43,7 @@ _SIM_COMMANDS: list[tuple[str, str]] = [
     (tr_noop("Find operating point (trim)…"), "Ctrl+Alt+T"),
     (tr_noop("Parameter sweep…"), "Ctrl+Alt+S"),
     (tr_noop("Monte Carlo…"), "Ctrl+Alt+M"),
+    (tr_noop("Transfer function between blocks…"), "Ctrl+Alt+G"),
 ]
 
 _VIEW_COMMANDS: list[tuple[str, str]] = [
@@ -154,6 +155,7 @@ class CommandPaletteManager:
             window.find_operating_point,
             window.run_parameter_sweep,
             window.run_monte_carlo,
+            window.transfer_function_between_blocks,
         ]
         view_callbacks = [
             window.zoom_in,

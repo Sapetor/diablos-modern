@@ -137,6 +137,71 @@ class ExperimentController:
         win = OperatingPointWindow(result)  # top-level window
         self._retain_window(win)
 
+    def transfer_function_between_blocks(self):
+        """Show the closed-loop G(s) between the two selected blocks.
+
+        Direction is whichever block has a signal path to the other. For a
+        sink (Scope, ...) the output is each signal wired into it, one result
+        per input. Uses Mason's gain formula (lib/analysis/block_algebra.py)
+        on the current diagram level; unsupported blocks are named in the error.
+        """
+        from PyQt6.QtWidgets import QMessageBox
+
+        from lib.analysis.block_algebra import AlgebraError, transfer_function
+
+        window = self.window
+        title = tr("Transfer Function")
+        selected = window.canvas.selection_manager.get_selected_blocks()
+        if len(selected) != 2:
+            QMessageBox.information(
+                window,
+                title,
+                tr("Select exactly two blocks: the input (for example a Step) and the output."),
+            )
+            return
+        blocks, lines = window.dsim.blocks_list, window.dsim.line_list
+        names = {b.name: (b.username or b.name) for b in blocks}
+
+        def outputs_of(block):
+            if block.out_ports > 0:
+                return [((block.name, 0), names[block.name])]
+            wired = sorted(
+                (int(ln.dstport), (ln.srcblock, int(ln.srcport)))
+                for ln in lines
+                if ln.dstblock == block.name
+            )
+            # A Scope names its inputs in its "labels" param ("ref,out,u").
+            labels = [x.strip() for x in str(block.params.get("labels", "") or "").split(",")]
+
+            def port_label(port):
+                if port < len(labels) and labels[port]:
+                    return f"{names[block.name]}: {labels[port]}"
+                return f"{names[block.name]} [{tr('input')} {port}]"
+
+            return [(sig, port_label(port)) for port, sig in wired]
+
+        sections, first_error = [], None
+        for src, dst in (selected, selected[::-1]):
+            for signal, label in outputs_of(dst):
+                try:
+                    result = transfer_function(blocks, lines, src.name, signal)
+                except AlgebraError as exc:
+                    first_error = first_error or str(exc)
+                    continue
+                from modern_ui.widgets.transfer_function_window import describe
+
+                heading = tr("From {src} to {dst}", src=names[src.name], dst=label)
+                sections.append((heading, describe(result, names)))
+            if sections:
+                break
+        if not sections:
+            QMessageBox.warning(window, title, first_error or tr("No transfer function found."))
+            return
+
+        from modern_ui.widgets.transfer_function_window import TransferFunctionWindow
+
+        self._retain_window(TransferFunctionWindow(sections))
+
     def run_monte_carlo(self):
         """Run a Monte-Carlo ensemble of the current diagram and show statistics.
 

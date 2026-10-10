@@ -337,6 +337,27 @@ cancelled; a cancelled sweep keeps the runs it completed.
 Ensembles and sweeps share one metric vocabulary: `final`, `mean`, `max`,
 `min`, `peak-to-peak`, `rms`.
 
+### Transfer Function Between Blocks...
+Select two blocks, for example the reference **Step** and a **Scope**, and
+choose **Analysis → Transfer Function Between Blocks...** (**Ctrl+Alt+G**). The
+window shows the closed-loop `G(s)` from the input block to the output: its
+poles, zeros, DC gain and stability, followed by the reduction steps of
+**Mason's gain formula** (each forward path `Pk`, each feedback loop `Li`,
+`Delta` and `Delta_k`), so a hand derivation can be checked line by line.
+
+- Order does not matter: the input is whichever block has a signal path to the
+  other. A sink such as a Scope gets one result per connected input, titled
+  with the Scope's labels.
+- Other sources (disturbances, offsets) are set to zero, as in any transfer
+  function.
+- Supported blocks: Gain (scalar), Sum, Transfer Function, State Space (SISO),
+  Integrator, Derivative and PID (`Kp + Ki/s + Kd N s / (s + N)`; output limits
+  and anti-windup are ignored), all continuous. Any other block on a path or
+  loop between the two (Saturation, sampled blocks, Subsystems, ...) is named
+  in an error; blocks elsewhere in the diagram do not matter.
+- The coefficients are the blocks' numeric parameters, so `G(s)` is a rational
+  function in `s` with numeric coefficients, not in parameter names.
+
 ---
 
 ## Export

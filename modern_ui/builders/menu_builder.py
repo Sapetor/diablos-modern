@@ -360,6 +360,12 @@ class MenuBuilder:
             analysis_menu, tr("&Parameter Sweep..."), win.run_parameter_sweep, "Ctrl+Alt+S"
         )
         self._action(analysis_menu, tr("&Monte Carlo..."), win.run_monte_carlo, "Ctrl+Alt+M")
+        self._action(
+            analysis_menu,
+            tr("Transfer &Function Between Blocks..."),
+            win.transfer_function_between_blocks,
+            "Ctrl+Alt+G",
+        )
 
     # -- View ---------------------------------------------------------------
 
