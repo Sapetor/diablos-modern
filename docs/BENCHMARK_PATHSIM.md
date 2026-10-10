@@ -1,6 +1,7 @@
 # DiaBloS vs PathSim: head-to-head benchmark
 
-Measured 2026-10-10 on DiaBloS `b21f236`, PathSim 0.27.0 (MIT), numpy 2.5.3,
+Measured 2026-10-10 on DiaBloS `b21f236` (S1 re-measured on `120b182`, after
+the sampling-delay fix in `68e8289`), PathSim 0.27.0 (MIT), numpy 2.5.3,
 scipy 1.18.1, Python 3.12.3, AMD Ryzen 7 9800X3D under WSL2. Harness:
 `scripts/benchmarks/pathsim/` (one script per scenario, raw results in
 `out/*.json`). Timings are the median of 5 runs (3 for S3) after one warm-up
@@ -15,8 +16,8 @@ either tool, and the reference is evaluated at each tool's own output times.
 
 | Scenario | DiaBloS | PathSim | Takeaway |
 |---|---|---|---|
-| S1a linear plant + digital PI | exact (2e-14), 0.09 s, interpreter | 6e-12 at 0.1 s (RKDP54) | Fallback costs nothing for linear plants, **but DiaBloS applies the control one sample late** |
-| S1b nonlinear stiff plant + digital PI | **1st order**: 1.6e-3 (3.2 s) ... 3e-5 (40 s) | 1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s | The interpreter fallback is the real accuracy gap |
+| S1a linear plant + digital PI | exact (2e-14), 0.1 s, interpreter | 6e-12 at 0.1 s (RKDP54) | Fallback costs nothing for linear plants. A one-period control delay found here is fixed (`68e8289`) |
+| S1b nonlinear stiff plant + digital PI | **1st order**: 1.3e-3 (3.4 s) ... 2.4e-5 (44 s) | 1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s | The interpreter fallback is the real accuracy gap |
 | S2 algebraic loop | rejected; delay workaround diverges or is wrong unless the loop contracts | solved to 3e-13, 2 ms | Genuine capability gap |
 | S3 delayed platoon, N=50 | 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 109 s | Mixed at N<=10; PathSim faster and more accurate at N>=20 |
 | S4 50-run seeded ensemble | 163 ms/run, bitwise reproducible | 164 ms/run (RK4, same dt), bitwise reproducible | Parity at matched settings |
@@ -32,50 +33,56 @@ sampling grid, so "sample before or after the step" is not a factor.
 
 | Tool | Setting | Wall | Max error |
 |---|---|---|---|
-| DiaBloS | sim_dt = 0.01 / 0.005 / 0.001 | 0.09 / 0.17 / 0.77 s | 2e-14 / 3e-14 / 2e-13 (*) |
+| DiaBloS | sim_dt = 0.01 / 0.005 / 0.001 | 0.11 / 0.20 / 0.98 s | 2e-14 / 2e-14 / 1e-13 |
 | PathSim RKDP54 | rtol 1e-4 / 1e-6 / 1e-8 / 1e-10 | 0.02 / 0.03 / 0.05 / 0.11 s | 8e-8 / 4e-8 / 6e-10 / 6e-12 |
 | PathSim ESDIRK43 | rtol 1e-4 ... 1e-10 | 0.19 ... 1.8 s | 8e-7 ... 4e-9 |
 
-(*) Against the reference **with one controller period of extra delay**.
-Against the standard semantics (u[k] computed from e[k] is applied on
-[kT, (k+1)T), what Simulink and PathSim do) the DiaBloS error is 0.106.
-`TranFn` is discretized exactly (`cont2discrete`) in the interpreter, so for
-a linear plant the fallback costs no accuracy.
+Errors are against the standard semantics: u[k] computed from e[kT] is
+applied on [kT, (k+1)T), as in Simulink and PathSim. `TranFn` is discretized
+exactly (`cont2discrete`) in the interpreter, so for a linear plant the
+fallback costs no accuracy.
 
-**Finding: a closed-loop sampled controller acts one period late in DiaBloS.**
-In the run above `u` changes at t~1.10 instead of 1.00. Open-loop
-ZOH -> DiscreteTranFn shows no delay, so this comes from the closed-loop
-execution order. It is not the documented one-`sim_dt` interpreter delay
-(`docs/SOLVER_SEMANTICS.md` 4.2): it is a full sample period T and adds
-phase lag the user did not model. In S1b it raises the peak from 1.26 to
-1.34. The mechanism has not been traced yet.
+**Found and fixed: sampled blocks behind a ZOH acted one period late**
+(`68e8289`, regression test `tests/regression/test_sampled_loop_delay.py`).
+Before the fix, DiaBloS matched the exact solution only *with one extra
+controller period of delay* (error 0.106 against the standard semantics), and
+`u` changed at t~1.10 instead of 1.00. The interpreter's memory pass counted
+the ZOH's stale held output as delivered. Whenever the ZOH's own input was
+produced later in the step, the discrete block behind it ran first and
+latched the stale sample for a whole period. That happened in closed loop,
+and also in an open-loop ramp -> ZOH -> strictly proper DTF chain. This was
+not the documented one-`sim_dt` interpreter delay (`docs/SOLVER_SEMANTICS.md`
+4.2). It was a full period T of unmodelled phase lag, and in S1b it raised
+the peak from 1.26 to 1.34.
 
 **S1b** (pendulum `x1'' = -sin x1 - 0.5 x1' + a`, actuator `a' = (u-a)/1e-3`,
 built from `Integrator` blocks; discrete PI Kp=1, Ki=0.5, T=0.05 s; 10 s).
 
 | Tool | Setting | Wall | Max error |
 |---|---|---|---|
-| DiaBloS, Integrator SOLVE_IVP (default) | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 3.2 / 5.6 / 11.1 / 25.8 s | 1.6e-3 / 7.9e-4 / 4.0e-4 / 1.6e-4 |
-| DiaBloS, Integrator RK4 | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 4.0 / 7.9 / 15.5 / 39.9 s | 3.1e-4 / 1.6e-4 / 7.8e-5 / 3.1e-5 |
+| DiaBloS, Integrator SOLVE_IVP (default) | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 3.4 / 5.8 / 11.9 / 27.1 s | 1.3e-3 / 6.5e-4 / 3.2e-4 / 1.3e-4 |
+| DiaBloS, Integrator RK4 | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 4.5 / 8.8 / 18.0 / 43.7 s | 2.4e-4 / 1.2e-4 / 6.1e-5 / 2.4e-5 |
 | PathSim RKDP54 | rtol 1e-4 / 1e-6 / 1e-8 | 0.9 / 1.2 / 1.8 s | 1.7e-10 / 1.8e-12 / 1.9e-13 |
 | PathSim ESDIRK43 | rtol 1e-4 / 1e-6 / 1e-8 | 4.6 / 5.0 / 8.2 s | 4.1e-9 / 3.1e-10 / 1.7e-10 |
 
-(DiaBloS errors are again against the one-period-delay reference, so they
-isolate integration error from the semantics finding above.)
+DiaBloS wall times are 4-15 % above the pre-fix run (3.2 / 5.6 / 11.1 /
+25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). The fix adds a per-step dependency
+check, but the post-fix run also shared the machine with another test run,
+so the cause is not separated.
 
 Both interpreter integrator modes converge at **first order**. The
 interpreter holds each block's input constant over a step: the SOLVE_IVP mode
 integrates `x' = u_held` exactly, and the RK4 label does not give fourth
-order in a closed loop. Reaching 3e-5 takes 40 s, while PathSim reaches 2e-12
-in 1.2 s. For an explicit solver the 1 ms actuator is only mildly stiff over
+order in a closed loop. Reaching 2.4e-5 takes 44 s, while PathSim reaches
+2e-12 in 1.2 s. For an explicit solver the 1 ms actuator is only mildly stiff over
 this horizon; the implicit ESDIRK43 does not pay off here.
 
 *Roadmap implication:* this is the strongest result for "adaptive integration
 between scheduled sample instants". A compiled hybrid path -- `solve_ivp`
 from sample hit to sample hit, discrete updates as events -- would bring
-S1b to PathSim-class accuracy. The one-period delay should be fixed first,
-because the hybrid path must reproduce the standard semantics and the current
-interpreter would then disagree with it.
+S1b to PathSim-class accuracy. With the delay fix the interpreter now
+follows the same standard semantics, so S1a/S1b can serve as the hybrid
+path's acceptance tests.
 
 ## S2 - algebraic loops
 
@@ -160,12 +167,12 @@ gives it as a menu action with ensemble plots.
   fallback is exact (S1a), and seeded ensembles are already on par in cost
   and reproducibility (S4). Delayed multi-agent models (S3) trade off at
   small N and favour PathSim at N >= 20, without the decisive gap of S1b.
-- New and more urgent than either: the **one-period closed-loop sampling
-  delay** (S1). It silently changes every digital-control result DiaBloS
-  produces and should be fixed before any engine rework.
-- Suggested order: (1) fix the sampling delay and add a regression test
-  against the S1a exact reference; (2) hybrid compiled path; (3) algebraic
-  loop solver. A PathSim backend adapter would get (2) and (3) at once. The
+- New and more urgent than either: a **one-period sampling delay** behind
+  every ZOH (S1), which silently changed digital-control results. It is
+  fixed in `68e8289`, with a regression test against the S1a exact
+  reference.
+- Suggested order from here: (1) hybrid compiled path; (2) algebraic loop
+  solver. A PathSim backend adapter would get both at once. The
   S1/S2 scripts here are the acceptance tests for any of these routes.
 
 ## Reproducing

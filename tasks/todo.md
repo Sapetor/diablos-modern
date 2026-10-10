@@ -36,16 +36,12 @@ checkable (2026-10-02 pass noted per item).
   and connection rather than by JSON line. (confirmed absent 2026-10-02)
 - [x] **PathSim benchmark** (2026-10-10) — `docs/BENCHMARK_PATHSIM.md`,
   harness in `scripts/benchmarks/pathsim/` (separate venv, pathsim 0.27.0).
-- [ ] **Closed-loop sampled controller acts one period late** (found by the
-  PathSim benchmark, S1). In `examples/discrete_pi_zoh.diablos` with the step
-  moved to t=0.93, `u[k]` changes at t~1.10 instead of 1.00 and the plant
-  output matches the exact solution *with one extra controller period of
-  delay* to 1e-14. Open-loop ZOH -> DiscreteTranFn has no delay, so it comes
-  from closed-loop execution order (ZOH is a feedthrough memory block,
-  `lib/engine/memory_blocks.py`). Mechanism not traced. Acceptance test: S1a
-  of `scripts/benchmarks/pathsim/s1_sampled_data.py` should match the
-  `err_delay0` reference. Expect existing expectations to move:
-  `tests/regression/test_feedthrough_memory.py` pins ZOH feedthrough timing.
+- [x] **Sampled blocks behind a ZOH acted one period late** (2026-10-10,
+  `68e8289`), found by the PathSim benchmark (S1). Consumers of feedthrough
+  memory blocks now wait for the producer's fresh output each step. Tests:
+  `tests/regression/test_sampled_loop_delay.py`. The rate-inheritance
+  staircase in `test_discrete_block_sample_time.py` had pinned the late
+  response.
 
 ### Documentation
 - [ ] **Video tutorials** — demo videos for key features.

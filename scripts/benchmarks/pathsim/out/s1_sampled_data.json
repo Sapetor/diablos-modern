@@ -1,7 +1,7 @@
 {
   "scenario": "s1_sampled_data",
   "env": {
-    "diablos_commit": "b21f236",
+    "diablos_commit": "120b182",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -40,15 +40,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 0.08711642999696778,
-          "min_s": 0.07877252099569887,
+          "median_s": 0.10478950399556197,
+          "min_s": 0.09853453100367915,
           "n": 5
         },
-        "max_err": 1.9317880628477724e-14,
+        "max_err": 1.509903313490213e-14,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.1063138342705876,
-          "err_delay1": 1.9317880628477724e-14
+          "matched": 0,
+          "err_delay0": 1.509903313490213e-14,
+          "err_delay1": 0.10631383427059471
         },
         "n_out": 1501
       },
@@ -58,15 +58,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 0.1646451740016346,
-          "min_s": 0.15747134000412188,
+          "median_s": 0.19819466100307181,
+          "min_s": 0.19114469200576423,
           "n": 5
         },
-        "max_err": 3.1530333899354446e-14,
+        "max_err": 2.1760371282653068e-14,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.10631682055032332,
-          "err_delay1": 3.1530333899354446e-14
+          "matched": 0,
+          "err_delay0": 2.1760371282653068e-14,
+          "err_delay1": 0.10631682055035352
         },
         "n_out": 3001
       },
@@ -76,15 +76,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 0.7695319620033843,
-          "min_s": 0.7597352410011808,
+          "median_s": 0.9750315550045343,
+          "min_s": 0.945180121998419,
           "n": 5
         },
-        "max_err": 1.6542323066914832e-13,
+        "max_err": 1.3433698597964394e-13,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.10631682055032043,
-          "err_delay1": 1.6542323066914832e-13
+          "matched": 0,
+          "err_delay0": 1.3433698597964394e-13,
+          "err_delay1": 0.10631682055034886
         },
         "n_out": 15001
       },
@@ -92,8 +92,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.019582339999033138,
-          "min_s": 0.01929449699673569,
+          "median_s": 0.026484998998057563,
+          "min_s": 0.025457689000177197,
           "n": 5
         },
         "max_err": 8.015138064365601e-08,
@@ -108,8 +108,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 0.025465535996772815,
-          "min_s": 0.025268035002227407,
+          "median_s": 0.03416518100129906,
+          "min_s": 0.034011800002190284,
           "n": 5
         },
         "max_err": 4.004713494154544e-08,
@@ -124,8 +124,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 0.05178398599673528,
-          "min_s": 0.050722404004773125,
+          "median_s": 0.07133286599855637,
+          "min_s": 0.0693478929970297,
           "n": 5
         },
         "max_err": 5.544600334417282e-10,
@@ -140,8 +140,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-10",
         "timing": {
-          "median_s": 0.10528636300296057,
-          "min_s": 0.10384896599862259,
+          "median_s": 0.1449512419931125,
+          "min_s": 0.1310872229951201,
           "n": 5
         },
         "max_err": 6.0285110237146e-12,
@@ -156,8 +156,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 0.1896278540007188,
-          "min_s": 0.18481287600297946,
+          "median_s": 0.20068781200097874,
+          "min_s": 0.19261965600162512,
           "n": 5
         },
         "max_err": 8.350000004764269e-07,
@@ -172,8 +172,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 0.32181895000394434,
-          "min_s": 0.31493646900344174,
+          "median_s": 0.3342867870014743,
+          "min_s": 0.3150947600006475,
           "n": 5
         },
         "max_err": 2.605812627898274e-07,
@@ -188,8 +188,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 0.744257242004096,
-          "min_s": 0.7361872969995602,
+          "median_s": 0.766009977000067,
+          "min_s": 0.7454903580000973,
           "n": 5
         },
         "max_err": 3.3113460862210786e-09,
@@ -204,8 +204,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-10",
         "timing": {
-          "median_s": 1.8493515730006038,
-          "min_s": 1.8224590030004038,
+          "median_s": 1.8704272590039182,
+          "min_s": 1.8296428000030573,
           "n": 5
         },
         "max_err": 3.987252528148133e-09,
@@ -239,15 +239,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 3.2456333239970263,
-          "min_s": 3.137283609001315,
+          "median_s": 3.3925487009983044,
+          "min_s": 3.3794376269943314,
           "n": 5
         },
-        "max_err": 0.0015829915936429462,
+        "max_err": 0.0012978180448017795,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08402131954542846,
-          "err_delay1": 0.0015829915936429462
+          "matched": 0,
+          "err_delay0": 0.0012978180448017795,
+          "err_delay1": 0.08184010899909278
         },
         "n_out": 10001
       },
@@ -257,15 +257,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 5.565453938994324,
-          "min_s": 5.49269750899839,
+          "median_s": 5.834369181997317,
+          "min_s": 5.7309033349956735,
           "n": 5
         },
-        "max_err": 0.0007906001622162151,
+        "max_err": 0.0006481853429245454,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.0833747554560329,
-          "err_delay1": 0.0007906001622162151
+          "matched": 0,
+          "err_delay0": 0.0006481853429245454,
+          "err_delay1": 0.08228534558211864
         },
         "n_out": 20001
       },
@@ -275,15 +275,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 11.069402012995852,
-          "min_s": 11.029032815000392,
+          "median_s": 11.86989023299975,
+          "min_s": 11.605173376003222,
           "n": 5
         },
-        "max_err": 0.00039507647507885935,
+        "max_err": 0.0003239119815769964,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08305302330726927,
-          "err_delay1": 0.00039507647507885935
+          "matched": 0,
+          "err_delay0": 0.0003239119815769964,
+          "err_delay1": 0.0825086236841377
         },
         "n_out": 40001
       },
@@ -293,15 +293,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 25.815497868999955,
-          "min_s": 25.658871302999614,
+          "median_s": 27.0911421790006,
+          "min_s": 26.881191027001478,
           "n": 5
         },
-        "max_err": 0.00015797696294650443,
+        "max_err": 0.00012952145649625102,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08286048046190198,
-          "err_delay1": 0.00015797696294650443
+          "matched": 0,
+          "err_delay0": 0.00012952145649625102,
+          "err_delay1": 0.08264279495120319
         },
         "n_out": 100001
       },
@@ -311,15 +311,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 3.955347470997367,
-          "min_s": 3.914675645995885,
+          "median_s": 4.545176378000178,
+          "min_s": 4.388318591001735,
           "n": 5
         },
-        "max_err": 0.00031269310024062413,
+        "max_err": 0.0002428751243668259,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08242113457081479,
-          "err_delay1": 0.00031269310024062413
+          "matched": 0,
+          "err_delay0": 0.0002428751243668259,
+          "err_delay1": 0.0829739344090541
         },
         "n_out": 10001
       },
@@ -329,15 +329,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 7.879305082002247,
-          "min_s": 7.783073519996833,
+          "median_s": 8.838847872997576,
+          "min_s": 8.650769555999432,
           "n": 5
         },
-        "max_err": 0.00015637964269932247,
+        "max_err": 0.0001214626315211298,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08257669638238752,
-          "err_delay1": 0.00015637964269932247
+          "matched": 0,
+          "err_delay0": 0.0001214626315211298,
+          "err_delay1": 0.08285315358643408
         },
         "n_out": 20001
       },
@@ -347,15 +347,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 15.461288703001628,
-          "min_s": 15.410428549002972,
+          "median_s": 18.042127626002184,
+          "min_s": 17.714267850999022,
           "n": 5
         },
-        "max_err": 7.819809464049143e-05,
+        "max_err": 6.0737582717296235e-05,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.0826545045576359,
-          "err_delay1": 7.819809464049143e-05
+          "matched": 0,
+          "err_delay0": 6.0737582717296235e-05,
+          "err_delay1": 0.08279274786545354
         },
         "n_out": 40001
       },
@@ -365,15 +365,15 @@
         "path": "interpreter",
         "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
         "timing": {
-          "median_s": 39.879172009998,
-          "min_s": 39.547408844999154,
+          "median_s": 43.7198973859995,
+          "min_s": 43.380629924999084,
           "n": 5
         },
-        "max_err": 3.1281226296142606e-05,
+        "max_err": 2.4296538921442234e-05,
         "hold_delay": {
-          "matched": 1,
-          "err_delay0": 0.08270119604779191,
-          "err_delay1": 3.1281226296142606e-05
+          "matched": 0,
+          "err_delay0": 2.4296538921442234e-05,
+          "err_delay1": 0.08275649684286912
         },
         "n_out": 100001
       },
@@ -381,8 +381,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.8954970089980634,
-          "min_s": 0.8918832159979502,
+          "median_s": 0.8729588109999895,
+          "min_s": 0.865528597998491,
           "n": 5
         },
         "max_err": 1.7183054978886503e-10,
@@ -397,8 +397,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 1.1552732549971552,
-          "min_s": 1.144331861003593,
+          "median_s": 1.1234257719988818,
+          "min_s": 1.1087882049978361,
           "n": 5
         },
         "max_err": 1.8173240690089187e-12,
@@ -413,8 +413,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 1.8320298879989423,
-          "min_s": 1.8071053199964808,
+          "median_s": 1.7912681630041334,
+          "min_s": 1.7603268400052912,
           "n": 5
         },
         "max_err": 1.8807178037150152e-13,
@@ -429,8 +429,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 4.597451720997924,
-          "min_s": 4.562210398995376,
+          "median_s": 4.568788238000707,
+          "min_s": 4.493441830003576,
           "n": 5
         },
         "max_err": 4.065909053885264e-09,
@@ -445,8 +445,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 4.98829054399539,
-          "min_s": 4.972546823999437,
+          "median_s": 4.860271034995094,
+          "min_s": 4.827777228994819,
           "n": 5
         },
         "max_err": 3.0968805297959534e-10,
@@ -461,8 +461,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 8.190133616000821,
-          "min_s": 8.167257355999027,
+          "median_s": 8.029457980999723,
+          "min_s": 8.011719684000127,
           "n": 5
         },
         "max_err": 1.674216321134736e-10,
