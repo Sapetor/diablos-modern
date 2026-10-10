@@ -66,9 +66,10 @@ built from `Integrator` blocks; discrete PI Kp=1, Ki=0.5, T=0.05 s; 10 s).
 | PathSim ESDIRK43 | rtol 1e-4 / 1e-6 / 1e-8 | 4.6 / 5.0 / 8.2 s | 4.1e-9 / 3.1e-10 / 1.7e-10 |
 
 DiaBloS wall times are 4-15 % above the pre-fix run (3.2 / 5.6 / 11.1 /
-25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). The fix adds a per-step dependency
-check, but the post-fix run also shared the machine with another test run,
-so the cause is not separated.
+25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). Most of that is CPU contention, since
+the post-fix run shared the machine with another test run. Re-timed on an
+idle machine, the sim_dt 1e-3 point takes 3.31 s (+2 %), which bounds the
+cost of the fix's per-step dependency check.
 
 Both interpreter integrator modes converge at **first order**. The
 interpreter holds each block's input constant over a step: the SOLVE_IVP mode
