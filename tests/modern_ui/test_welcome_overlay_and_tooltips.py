@@ -152,3 +152,57 @@ def test_layout_survives_the_app_stylesheet(qapp, window):
         title.setText(text)
         _settle(qapp, window)
         assert title.width() >= QFontMetrics(title.font()).horizontalAdvance(text)
+
+
+@pytest.mark.parametrize("factor", [1.25, 1.5])
+def test_overlay_follows_the_ui_scale(qapp, window, factor):
+    """UI scale sets the app font (10pt * factor, see setup_application). The
+    overlay's text and cards used fixed TYPE point sizes, so they stayed at
+    100% whatever the scale."""
+    from PyQt6.QtGui import QFont
+
+    overlay = window.canvas.welcome_overlay
+    cards = overlay.findChildren(type(overlay.open_button), "welcomeCard")
+
+    def measure():
+        overlay._apply_styling()
+        _settle(qapp, window)
+        return overlay.title_label.font().pointSizeF(), cards[0].maximumWidth()
+
+    base_title, base_width = measure()
+    original = QFont(qapp.font())
+    try:
+        scaled = QFont(original)
+        scaled.setPointSizeF(10 * factor)
+        qapp.setFont(scaled)
+        title, width = measure()
+    finally:
+        qapp.setFont(original)
+        overlay._apply_styling()
+    assert title == pytest.approx(base_title * factor, abs=0.6)
+    assert width == pytest.approx(base_width * factor, abs=2)
+
+
+def test_scaled_cards_fit_a_narrow_canvas(qapp, window):
+    """At 150% the scaled card width overflowed a narrow canvas: the cards
+    overlapped each other and the Open/Browse buttons."""
+    from PyQt6.QtGui import QFont
+
+    overlay = window.canvas.welcome_overlay
+    cards = overlay.findChildren(type(overlay.open_button), "welcomeCard")
+    original = QFont(qapp.font())
+    try:
+        scaled = QFont(original)
+        scaled.setPointSizeF(15)
+        qapp.setFont(scaled)
+        overlay._apply_styling()
+        window.resize(1000, 700)
+        _settle(qapp, window)
+        geo = sorted((c.geometry() for c in cards), key=lambda g: g.left())
+        for a, b in zip(geo, geo[1:]):
+            assert a.right() < b.left(), "example cards overlap"
+        panel = overlay.panel.contentsRect()
+        assert geo[-1].right() <= panel.right()
+    finally:
+        qapp.setFont(original)
+        overlay._apply_styling()

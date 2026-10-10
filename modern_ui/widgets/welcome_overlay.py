@@ -13,6 +13,7 @@ import os
 from PyQt6.QtCore import QEvent, Qt, QTimer
 from PyQt6.QtGui import QFont, QFontMetrics
 from PyQt6.QtWidgets import (
+    QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -137,8 +138,6 @@ class WelcomeOverlay(QWidget):
         btn = QPushButton()
         btn.setObjectName("welcomeCard")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setMinimumWidth(170)
-        btn.setMaximumWidth(210)
         lay = QVBoxLayout(btn)
         lay.setContentsMargins(SPACE["lg"], SPACE["lg"], SPACE["lg"], SPACE["lg"])
         lay.setSpacing(SPACE["xs"])
@@ -160,7 +159,15 @@ class WelcomeOverlay(QWidget):
 
     def _apply_styling(self, *_):
         c = theme_manager.get_color
-        pt = TYPE
+        # UI scale only sets the app font (10pt * factor in setup_application);
+        # the TYPE tokens are fixed points, so scale them by the same ratio.
+        # Clamped at 1 so a smaller platform default never shrinks the overlay.
+        scale = max(1.0, QApplication.font().pointSizeF() / TYPE["body_strong"])
+        pt = {k: round(v * scale, 1) for k, v in TYPE.items()}
+        self._scale = scale
+        card_min_w = self._card_min_width(scale)
+        card_max_w = max(card_min_w, round(210 * scale))
+        self._card_min_w = card_min_w
         # The app-wide QPushButton rule (min-height 28px, min-width 64px,
         # padding) outranks setMinimumSize() on a styled widget, which squashed
         # the cards. Size them here, from the card title's font metrics so they
@@ -177,7 +184,7 @@ class WelcomeOverlay(QWidget):
             QLabel {{ background: transparent; }}
             #welcomeTitle {{
                 color: {c("text_primary").name()};
-                font-size: {pt["heading"] + 4}pt; font-weight: 600;
+                font-size: {pt["heading"] + round(4 * scale, 1)}pt; font-weight: 600;
             }}
             #welcomeHint {{ color: {c("text_secondary").name()}; font-size: {pt["subtitle"]}pt; }}
             #welcomeSection {{
@@ -192,8 +199,8 @@ class WelcomeOverlay(QWidget):
             }}
             #welcomeCard {{
                 min-height: {card_h}px;
-                min-width: 170px;
-                max-width: 210px;
+                min-width: {card_min_w}px;
+                max-width: {card_max_w}px;
                 padding: 0px;
             }}
             #welcomeAction {{
@@ -210,6 +217,13 @@ class WelcomeOverlay(QWidget):
             }}
             #cardDesc {{ color: {c("text_secondary").name()}; font-size: {pt["body"]}pt; }}
         """)
+
+    def _card_min_width(self, scale):
+        """170px scaled with the UI, but never wider than three cards fit on
+        the canvas (else they overflow the panel); never below 170px."""
+        chrome = 2 * SPACE["2xl"] + 2 * SPACE["lg"] + 2 * SPACE["2xl"]
+        fit = (self.canvas.width() - chrome) // 3
+        return max(170, min(round(170 * scale), fit))
 
     # -- state ----------------------------------------------------------------
 
@@ -253,6 +267,8 @@ class WelcomeOverlay(QWidget):
     def eventFilter(self, obj, event):
         if obj is self.canvas and event.type() == QEvent.Type.Resize:
             self.setGeometry(self.canvas.rect())
+            if self._card_min_width(self._scale) != self._card_min_w:
+                self._apply_styling()
         return False
 
     # -- actions --------------------------------------------------------------
