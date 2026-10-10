@@ -109,8 +109,17 @@ class TestRateInheritance:
         ts_b, y_b = _run(upstream_ts=0.2, block_ts=None, sim_dt=0.05)
         assert ts_a == ts_b == pytest.approx(0.2)
         assert _distinct(y_a) == _distinct(y_b)
-        # Sampled ramp through y[k] = 0.5 y[k-1] + u[k-1].
-        assert _distinct(y_a) == [0.0, 0.2, 0.5, 0.85]
+        # Sampled ramp through y[k] = 0.5 y[k-1] + u[k-1], k = 0..5 at t = 0.2 k.
+        # Until 2026-10-10 the DTF latched the ZOH's stale sample, so the
+        # staircase ran one period late and y[5] = 1.225 never appeared (see
+        # tests/regression/test_sampled_loop_delay.py).
+        assert _distinct(y_a) == [0.0, 0.2, 0.5, 0.85, 1.225]
+
+    def test_inherited_response_lands_on_its_sample_instants(self, qapp):
+        _, y = _run(upstream_ts=0.2, block_ts=None, sim_dt=0.1)
+        # Samples at t = 0, 0.1, ..., 1.0; y[k] holds over [0.2 k, 0.2 (k+1)).
+        expected = [0.0, 0.0, 0.0, 0.0, 0.2, 0.2, 0.5, 0.5, 0.85, 0.85, 1.225]
+        assert np.allclose(y, expected, atol=1e-12)
 
     def test_explicit_period_overrides_inheritance(self, qapp):
         ts, _ = _run(upstream_ts=0.2, block_ts=0.1, sim_dt=0.05)

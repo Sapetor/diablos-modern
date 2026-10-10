@@ -1256,8 +1256,25 @@ class DSim:
            `while not check_global_list` pattern keeps the loop bounded (each
            block fires at most once per timestep).
 
+        A consumer of a feedthrough memory block (``b_type == 2``: ZOH,
+        RateLimiter, PID) is held back until that producer has executed this
+        step. The first pass already counted the producer's *stale* output as
+        delivered, so without the hold a consumer could run on it before the
+        producer refreshed it. In a closed sampled loop (ZOH fed by a Sum at a
+        higher hierarchy level) the DiscreteTranFn behind the ZOH did exactly
+        that, latched the stale sample, and the controller acted one full
+        period late. When holding back stalls every block, the loop is
+        algebraic through the producer and the hold is dropped for the rest of
+        the step, so the stale value breaks the loop as it did before.
+
         Returns False when a block failed and the run has been stopped.
         """
+        waits_on = self._feedthrough_memory_producers(current_blocks)
+        hold = bool(waits_on)
+
+        def held(block):
+            return hold and any(not p.computed_data for p in waits_on.get(block.name, ()))
+
         while True:
             outer_progressed = False
             for hier in range(self.max_hier + 1):
@@ -1268,6 +1285,7 @@ class DSim:
                             block.hierarchy != hier
                             or block.computed_data
                             or not self._has_enough_inputs(block)
+                            or held(block)
                         ):
                             continue
                         progressed = True
@@ -1277,7 +1295,22 @@ class DSim:
                     if not progressed:
                         break
             if not outer_progressed:
+                if hold and any(
+                    not b.computed_data and self._has_enough_inputs(b) for b in current_blocks
+                ):
+                    hold = False
+                    continue
                 return True
+
+    def _feedthrough_memory_producers(self, current_blocks):
+        """Map consumer name -> feedthrough memory blocks (b_type 2) feeding it."""
+        waits_on = {}
+        for block in current_blocks:
+            if block.b_type != 2 or block.name not in self.memory_blocks:
+                continue
+            for consumer, _, _ in self.engine._propagation_targets(block.name):
+                waits_on.setdefault(consumer.name, []).append(block)
+        return waits_on
 
     def _execute_ready_block(self, block, pre_update_outputs) -> bool:
         """Run one block whose inputs are complete and propagate its outputs.
