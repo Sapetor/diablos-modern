@@ -1,0 +1,202 @@
+{
+  "scenario": "s3_platoon",
+  "env": {
+    "diablos_commit": "b21f236",
+    "pathsim": "0.27.0",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "python": "3.12.3",
+    "machine": "x86_64",
+    "system": "Linux 6.6.87.2-microsoft-standard-WSL2",
+    "processor": "x86_64",
+    "wsl": true,
+    "repeats": 3
+  },
+  "params": {
+    "kp": 1.0,
+    "kd": 2.0,
+    "tau": 0.1,
+    "t_end": 20.0,
+    "dt": 0.01
+  },
+  "points": [
+    {
+      "tool": "diablos",
+      "n": 5,
+      "knob": "sim_dt=0.01",
+      "n_blocks": 48,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 1.4601357100036694,
+        "min_s": 1.45691978999821,
+        "n": 3
+      },
+      "max_err_last_pos": 0.018333333669665164
+    },
+    {
+      "tool": "diablos",
+      "n": 5,
+      "knob": "sim_dt=0.001",
+      "n_blocks": 48,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 14.888051477006229,
+        "min_s": 14.755538186000194,
+        "n": 3
+      },
+      "max_err_last_pos": 0.000988959206404405
+    },
+    {
+      "tool": "pathsim",
+      "n": 5,
+      "knob": "RKDP54 rtol=1e-06",
+      "timing": {
+        "median_s": 0.8317679170068004,
+        "min_s": 0.8259589779991074,
+        "n": 3
+      },
+      "max_err_last_pos": 0.07519383800657486
+    },
+    {
+      "tool": "pathsim",
+      "n": 5,
+      "knob": "RKDP54 rtol=1e-09",
+      "timing": {
+        "median_s": 3.2191187089993036,
+        "min_s": 3.216897903002973,
+        "n": 3
+      },
+      "max_err_last_pos": 2.56837597598647e-05
+    },
+    {
+      "tool": "diablos",
+      "n": 10,
+      "knob": "sim_dt=0.01",
+      "n_blocks": 93,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 2.8327692300008493,
+        "min_s": 2.8325161739994655,
+        "n": 3
+      },
+      "max_err_last_pos": 0.037947578812685734
+    },
+    {
+      "tool": "pathsim",
+      "n": 10,
+      "knob": "RKDP54 rtol=1e-06",
+      "timing": {
+        "median_s": 1.709447775996523,
+        "min_s": 1.6985021210057312,
+        "n": 3
+      },
+      "max_err_last_pos": 0.08974726358808027
+    },
+    {
+      "tool": "pathsim",
+      "n": 10,
+      "knob": "RKDP54 rtol=1e-09",
+      "timing": {
+        "median_s": 10.354252723001991,
+        "min_s": 10.327781849999155,
+        "n": 3
+      },
+      "max_err_last_pos": 0.00012173314888386244
+    },
+    {
+      "tool": "diablos",
+      "n": 20,
+      "knob": "sim_dt=0.01",
+      "n_blocks": 183,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 5.636369765998097,
+        "min_s": 5.617891993999365,
+        "n": 3
+      },
+      "max_err_last_pos": 0.24380871445899643
+    },
+    {
+      "tool": "diablos",
+      "n": 20,
+      "knob": "sim_dt=0.001",
+      "n_blocks": 183,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 56.522008100000676,
+        "min_s": 56.31590056200366,
+        "n": 3
+      },
+      "max_err_last_pos": 0.021166156611926112
+    },
+    {
+      "tool": "pathsim",
+      "n": 20,
+      "knob": "RKDP54 rtol=1e-06",
+      "timing": {
+        "median_s": 3.6602978679948137,
+        "min_s": 3.653092448003008,
+        "n": 3
+      },
+      "max_err_last_pos": 0.014428469408606759
+    },
+    {
+      "tool": "pathsim",
+      "n": 20,
+      "knob": "RKDP54 rtol=1e-09",
+      "timing": {
+        "median_s": 34.97357574600028,
+        "min_s": 34.92016516399599,
+        "n": 3
+      },
+      "max_err_last_pos": 0.0004264946791927571
+    },
+    {
+      "tool": "diablos",
+      "n": 50,
+      "knob": "sim_dt=0.01",
+      "n_blocks": 453,
+      "path": "interpreter",
+      "fallback_reason": "transportdelay2 (TransportDelay): it has no compiled kernel",
+      "error": null,
+      "timing": {
+        "median_s": 16.280742025002837,
+        "min_s": 16.26698152699828,
+        "n": 3
+      },
+      "max_err_last_pos": 0.01832798179690713
+    },
+    {
+      "tool": "pathsim",
+      "n": 50,
+      "knob": "RKDP54 rtol=1e-06",
+      "timing": {
+        "median_s": 10.689154160005273,
+        "min_s": 10.647815659001935,
+        "n": 3
+      },
+      "max_err_last_pos": 0.001988318322813931
+    },
+    {
+      "tool": "pathsim",
+      "n": 50,
+      "knob": "RKDP54 rtol=1e-09",
+      "timing": {
+        "median_s": 108.60484483699838,
+        "min_s": 108.41639312999905,
+        "n": 3
+      },
+      "max_err_last_pos": 2.4129311623696803e-05
+    }
+  ]
+}

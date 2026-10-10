@@ -43,9 +43,17 @@ checkable (2026-10-02 pass noted per item).
   Settings (`lib/dialogs.py`) — so only the hardware-I/O blocks remain here.
 - [ ] **Semantic diff for `.diablos` files** — CLI subcommand diffing by block
   and connection rather than by JSON line. (confirmed absent 2026-10-02)
-- [ ] **PathSim benchmark** — the competitive analysis asked for a head-to-head
-  timing vs PathSim on the examples gallery; skipped because `pathsim` was not
-  installed in the `diablos` env.
+- [x] **PathSim benchmark** (2026-10-10) — `docs/BENCHMARK_PATHSIM.md`,
+  harness in `scripts/benchmarks/pathsim/` (separate venv, pathsim 0.27.0).
+- [ ] **Closed-loop sampled controller acts one period late** (found by the
+  PathSim benchmark, S1). In `examples/discrete_pi_zoh.diablos` with the step
+  moved to t=0.93, `u[k]` changes at t~1.10 instead of 1.00 and the plant
+  output matches the exact solution *with one extra controller period of
+  delay* to 1e-14. Open-loop ZOH -> DiscreteTranFn has no delay, so it comes
+  from closed-loop execution order (ZOH is a feedthrough memory block,
+  `lib/engine/memory_blocks.py`). Mechanism not traced. Acceptance test: S1a
+  of `scripts/benchmarks/pathsim/s1_sampled_data.py` should match the
+  `err_delay0` reference.
 
 ### Documentation
 - [ ] **Video tutorials** — demo videos for key features.

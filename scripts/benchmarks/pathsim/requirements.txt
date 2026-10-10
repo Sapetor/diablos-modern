@@ -1,0 +1,5 @@
+# Benchmark-only dependencies (NOT app requirements). Install into a separate
+# venv on top of the app's requirements.txt, e.g. on WSL:
+#   python3 -m venv ~/.venvs/diablos-bench
+#   ~/.venvs/diablos-bench/bin/pip install -r requirements.txt -r scripts/benchmarks/pathsim/requirements.txt
+pathsim==0.27.0

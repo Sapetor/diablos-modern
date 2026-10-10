@@ -1,0 +1,56 @@
+{
+  "scenario": "s4_ensemble",
+  "env": {
+    "diablos_commit": "b21f236",
+    "pathsim": "0.27.0",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "python": "3.12.3",
+    "machine": "x86_64",
+    "system": "Linux 6.6.87.2-microsoft-standard-WSL2",
+    "processor": "x86_64",
+    "wsl": true,
+    "repeats": 5
+  },
+  "params": {
+    "n_runs": 50,
+    "t_end": 20.0,
+    "dt": 0.01,
+    "loss_p": 0.2,
+    "t_link": 0.05,
+    "sigma": 0.02
+  },
+  "diablos": {
+    "wall_s": [
+      8.143845685000997,
+      8.291993177997938
+    ],
+    "per_run_ms": 162.87691370001994,
+    "same_seed_bitwise_identical": true,
+    "different_seed_differs": true,
+    "final_mean": 1.0022361688591206,
+    "final_std": 0.019879493524660518
+  },
+  "pathsim_rk4_fixed": {
+    "wall_s": [
+      8.242575362004573,
+      8.207431036993512
+    ],
+    "per_run_ms": 164.14862073987024,
+    "same_seed_bitwise_identical": true,
+    "different_seed_differs": true,
+    "final_mean": 0.9986580932358532,
+    "final_std": 0.020529631892945818
+  },
+  "agreement": {
+    "max_abs_mean_diff_t_ge_5": 0.011170668048969046,
+    "max_diff_in_standard_errors": 2.955888710152502,
+    "frac_within_3se": 1.0
+  },
+  "pathsim_per_run_ms_by_solver": {
+    "RK4 fixed dt=0.01": 162.17830566650568,
+    "SSPRK22 fixed dt=0.01": 91.66118100013894,
+    "RKDP54 rtol=1e-06": 1139.6254613331014,
+    "RKDP54 rtol=1e-09": 3675.519587333838
+  }
+}
