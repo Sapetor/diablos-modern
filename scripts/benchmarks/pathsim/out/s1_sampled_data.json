@@ -1,7 +1,7 @@
 {
   "scenario": "s1_sampled_data",
   "env": {
-    "diablos_commit": "c97e9fc",
+    "diablos_commit": "9829bc6",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -40,8 +40,8 @@
         "path": "compiled",
         "fallback_reason": null,
         "timing": {
-          "median_s": 0.09802259400021285,
-          "min_s": 0.09610677600721829,
+          "median_s": 0.09351513799629174,
+          "min_s": 0.08971213799668476,
           "n": 5
         },
         "max_err": 1.6354406717766778e-10,
@@ -58,8 +58,8 @@
         "path": "compiled",
         "fallback_reason": null,
         "timing": {
-          "median_s": 0.1121215890016174,
-          "min_s": 0.11086848701233976,
+          "median_s": 0.11181977999513038,
+          "min_s": 0.1072089480003342,
           "n": 5
         },
         "max_err": 1.7838819310611598e-10,
@@ -76,8 +76,8 @@
         "path": "compiled",
         "fallback_reason": null,
         "timing": {
-          "median_s": 0.23455099400598556,
-          "min_s": 0.2212616659962805,
+          "median_s": 0.22339505099807866,
+          "min_s": 0.21640858000318985,
           "n": 5
         },
         "max_err": 1.7838819310611598e-10,
@@ -92,8 +92,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.019736946996999905,
-          "min_s": 0.01950319499883335,
+          "median_s": 0.02044165099505335,
+          "min_s": 0.02032095099275466,
           "n": 5
         },
         "max_err": 8.015138064365601e-08,
@@ -108,8 +108,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 0.026301940000848845,
-          "min_s": 0.024870041001122445,
+          "median_s": 0.026750128003186546,
+          "min_s": 0.026473758000065573,
           "n": 5
         },
         "max_err": 4.004713494154544e-08,
@@ -124,8 +124,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 0.05170260900922585,
-          "min_s": 0.05123202300455887,
+          "median_s": 0.049994536995654926,
+          "min_s": 0.04998642699501943,
           "n": 5
         },
         "max_err": 5.544600334417282e-10,
@@ -140,8 +140,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-10",
         "timing": {
-          "median_s": 0.10465714300516993,
-          "min_s": 0.10281984100583941,
+          "median_s": 0.10416149299999233,
+          "min_s": 0.10172076600429136,
           "n": 5
         },
         "max_err": 6.0285110237146e-12,
@@ -156,8 +156,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 0.1850381759868469,
-          "min_s": 0.1834257529990282,
+          "median_s": 0.18883540999377146,
+          "min_s": 0.1845557659980841,
           "n": 5
         },
         "max_err": 8.350000004764269e-07,
@@ -172,8 +172,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 0.3186701540107606,
-          "min_s": 0.3117496229970129,
+          "median_s": 0.31917269800032955,
+          "min_s": 0.31813886800955515,
           "n": 5
         },
         "max_err": 2.605812627898274e-07,
@@ -188,8 +188,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 0.7492650490021333,
-          "min_s": 0.7295394289976684,
+          "median_s": 0.7733801319991471,
+          "min_s": 0.7372865189972799,
           "n": 5
         },
         "max_err": 3.3113460862210786e-09,
@@ -204,8 +204,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-10",
         "timing": {
-          "median_s": 1.8184362589963712,
-          "min_s": 1.78958167800738,
+          "median_s": 1.7963532750000013,
+          "min_s": 1.7888537149992771,
           "n": 5
         },
         "max_err": 3.987252528148133e-09,
@@ -236,144 +236,144 @@
       {
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.001",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 3.2782223309914116,
-          "min_s": 3.214097396004945,
+          "median_s": 1.3855821049946826,
+          "min_s": 1.3662722890003351,
           "n": 5
         },
-        "max_err": 0.0012978180448017795,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.0012978180448017795,
-          "err_delay1": 0.08184010899909278
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232026305499
         },
         "n_out": 10001
       },
       {
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.0005",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 5.752417533003609,
-          "min_s": 5.557899893989088,
+          "median_s": 1.5160120589862345,
+          "min_s": 1.5130879009957425,
           "n": 5
         },
-        "max_err": 0.0006481853429245454,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.0006481853429245454,
-          "err_delay1": 0.08228534558211864
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232533976782
         },
         "n_out": 20001
       },
       {
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.00025",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 11.223991522012511,
-          "min_s": 11.182821006004815,
+          "median_s": 1.8880842880025739,
+          "min_s": 1.85643352700572,
           "n": 5
         },
-        "max_err": 0.0003239119815769964,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.0003239119815769964,
-          "err_delay1": 0.0825086236841377
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232651769735
         },
         "n_out": 40001
       },
       {
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.0001",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 27.34823875199072,
-          "min_s": 26.61173409600451,
+          "median_s": 2.8511576230084756,
+          "min_s": 2.7815706379915355,
           "n": 5
         },
-        "max_err": 0.00012952145649625102,
+        "max_err": 2.1804780203638074e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.00012952145649625102,
-          "err_delay1": 0.08264279495120319
+          "err_delay0": 2.1804780203638074e-13,
+          "err_delay1": 0.08273232687669396
         },
         "n_out": 100001
       },
       {
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.001",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 4.332443997001974,
-          "min_s": 4.296888224998838,
+          "median_s": 1.4099147369997809,
+          "min_s": 1.3650201210111845,
           "n": 5
         },
-        "max_err": 0.0002428751243668259,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.0002428751243668259,
-          "err_delay1": 0.0829739344090541
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232026305499
         },
         "n_out": 10001
       },
       {
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.0005",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 8.66802826798812,
-          "min_s": 8.425780737990863,
+          "median_s": 1.5579677329951664,
+          "min_s": 1.5312510100047803,
           "n": 5
         },
-        "max_err": 0.0001214626315211298,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 0.0001214626315211298,
-          "err_delay1": 0.08285315358643408
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232533976782
         },
         "n_out": 20001
       },
       {
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.00025",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 17.5582601329952,
-          "min_s": 17.41149356799724,
+          "median_s": 1.9320950469991658,
+          "min_s": 1.9095819600042887,
           "n": 5
         },
-        "max_err": 6.0737582717296235e-05,
+        "max_err": 2.184918912462308e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 6.0737582717296235e-05,
-          "err_delay1": 0.08279274786545354
+          "err_delay0": 2.184918912462308e-13,
+          "err_delay1": 0.08273232651769735
         },
         "n_out": 40001
       },
       {
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.0001",
-        "path": "interpreter",
-        "fallback_reason": "function7 (Function): it has no compiled kernel",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 43.81261294099386,
-          "min_s": 43.35245623900846,
+          "median_s": 2.819858221002505,
+          "min_s": 2.7920151180005632,
           "n": 5
         },
-        "max_err": 2.4296538921442234e-05,
+        "max_err": 2.1804780203638074e-13,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 2.4296538921442234e-05,
-          "err_delay1": 0.08275649684286912
+          "err_delay0": 2.1804780203638074e-13,
+          "err_delay1": 0.08273232687669396
         },
         "n_out": 100001
       },
@@ -381,8 +381,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.8682361380051589,
-          "min_s": 0.859033315005945,
+          "median_s": 0.8882559150079032,
+          "min_s": 0.8540882899978897,
           "n": 5
         },
         "max_err": 1.7183054978886503e-10,
@@ -397,8 +397,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 1.1077389999991283,
-          "min_s": 1.0995052460057195,
+          "median_s": 1.107201285994961,
+          "min_s": 1.1043772109987913,
           "n": 5
         },
         "max_err": 1.8173240690089187e-12,
@@ -413,8 +413,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 1.7657423070049845,
-          "min_s": 1.7552070319943596,
+          "median_s": 1.7660532100126147,
+          "min_s": 1.7531911690020934,
           "n": 5
         },
         "max_err": 1.8807178037150152e-13,
@@ -429,8 +429,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 4.466700156990555,
-          "min_s": 4.4323720860120375,
+          "median_s": 4.50268275399867,
+          "min_s": 4.445015874996898,
           "n": 5
         },
         "max_err": 4.065909053885264e-09,
@@ -445,8 +445,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 4.885163332000957,
-          "min_s": 4.871539275991381,
+          "median_s": 4.881855169005576,
+          "min_s": 4.8206214729871135,
           "n": 5
         },
         "max_err": 3.0968805297959534e-10,
@@ -461,8 +461,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 8.01389521099918,
-          "min_s": 7.980310188999283,
+          "median_s": 8.02198130400211,
+          "min_s": 7.975764791000984,
           "n": 5
         },
         "max_err": 1.674216321134736e-10,
