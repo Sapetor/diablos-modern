@@ -64,11 +64,6 @@ palette sideways shift, test isolation from the real QSettings store,
   states per built-in fn (`_allocate_states` in `lib/engine/system_compiler.py`),
   so a user block cannot declare states. A `state_size`/initial-state hook on
   `BaseBlock` would let integrating user blocks compile too.
-- [ ] **Stiffness diagnostic caps at 64 states** — `STIFFNESS_MAX_STATES` in
-  `lib/engine/solver_diagnostics.py` (confirmed still `= 64`, 2026-10-02) skips
-  the Jacobian eigen-analysis on larger systems (PDE diagrams), so they get no
-  solver suggestion. Use a sparse/power-iteration estimate or sample the
-  spectrum instead of skipping.
 - [ ] **Event-triggered state reset** — zero-crossing detection locates
   switching instants but a block cannot yet reset an integrator state at the
   event (needed for bouncing-ball / impact examples).
@@ -536,6 +531,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-10 | **Stiffness diagnostic covers large systems**: above `STIFFNESS_MAX_STATES = 64` the heuristic no longer skips the eigen-analysis; `_fastest_decay_matrix_free` (`lib/engine/solver_diagnostics.py`) runs ARPACK (`eigs`, largest magnitude) on finite-difference Jacobian-vector products, about `STIFFNESS_SPARSE_MAX_EVALS = 400` RHS evaluations at most per sample point, stopping at the first point that flags. A 500-state heat equation reads within 0.1% of the exact fastest eigenvalue in ~260 evaluations (~7 ms); fast oscillations read 0. Limits: no `eig_ratio` on that path, and stiffness hidden behind faster oscillations is underestimated. docs/SOLVER_SEMANTICS.md updated. Tests: `tests/unit/test_solver_semantics.py` (large heat equation flagged, large oscillator not). |
 | 2026-10-10 | **SymPy symbolic path tested and repaired**: SymPy is now in `requirements-dev.txt` and the `dev` extra (still optional at runtime), so CI runs `lib/engine/symbolic_engine.py` and the blocks' `symbolic_execute()` hooks. Fixes: feedback loops are solved (every wire gets an unknown, chains are substituted forward, loops solved as one system) instead of left as dangling `*_fb` symbols; `get_all_equations` returned a `{port: expr}` dict for blocks first reached as dependencies, now always the port-0 expression (a sink shows its input signal); `extract_transfer_function` zeroes the other sources (superposition, like block algebra) and reads a sink's input port; a raising hook falls back instead of aborting; `Deriv` fallback name; SymPy is imported lazily (`import lib.engine` ~0.2 s faster). Unsolvable (nonlinear) loops keep their unknowns with a warning. Known limits: initial conditions are taken as zero and Saturation as linear. Cross-checked against `lib/analysis/block_algebra.py` (PID example, nested loops) and scipy `ss2tf`. Tests: `tests/unit/test_symbolic_engine.py`. |
 | 2026-10-10 | **Port labels no longer forced on by selection**: `BlockRenderer.draw_port_labels` drew every port label on a selected block even when they did not fit, stacking "setpoint"/"measurement" over the PID's own text and sp/pv marks. Labels now show only when they fit, selected or not; hovering a port names it (tooltips from 89b00c4). Test: `test_canvas_labels_and_status_bar.py::test_pid_port_labels_never_cover_the_face`. |
 | 2026-10-10 | **Zoom -/+ glyphs no longer dots**: `QToolBar#ModernToolBar QToolButton { padding: 4px 6px }` outranked the `QToolButton#ZoomRockerBtn` / `#Transport*` rules, so the 22px zoom buttons left ~8px for a 14px icon (drawn as 2-3px dots) and Play was clipped. Added equally specific overrides (padding 0, sizes restated since QSS min sizes replace setFixedSize); zoom buttons 24px with 16px icons and full-width glyphs. Test: `tests/modern_ui/test_toolbar_icon_size.py`. |

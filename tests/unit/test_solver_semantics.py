@@ -31,6 +31,8 @@ from lib.engine.compiled_runner import (
 from lib.engine.simulation_engine import SimulationEngine
 from lib.engine.solver_diagnostics import (
     STIFFNESS_INDEX,
+    STIFFNESS_SAMPLE_POINTS,
+    STIFFNESS_SPARSE_MAX_EVALS,
     STIFFNESS_WORK_RATIO,
     estimate_stiffness,
     format_stiffness_for_log,
@@ -177,24 +179,49 @@ class TestEstimateStiffnessGates:
         assert result["stiffness_index"] is None
         assert result["suspected"] is False
 
-    def test_large_state_vector_skips_the_jacobian(self):
-        """A 2-D PDE has thousands of states; n+1 RHS calls is not 'cheap'."""
+    def test_large_state_vector_uses_the_matrix_free_probe(self):
+        """A PDE has hundreds to thousands of states: no dense n+1-call Jacobian,
+        but ARPACK on Jacobian-vector products still finds the fast mode."""
+        n = 200
+        dx = 1.0 / (n + 1)
         calls = {"n": 0}
 
-        def counting_rhs(t, y):
+        def heat(t, y):  # 1-D diffusion, Dirichlet ends: max|lambda| ~ 4/dx^2
             calls["n"] += 1
-            return -np.asarray(y, dtype=float)
+            return (np.r_[0.0, y[:-1]] - 2.0 * y + np.r_[y[1:], 0.0]) / dx**2
 
         result = estimate_stiffness(
-            sol=_sol(60000, 11, n_states=500, y=np.ones((500, 11))),
+            sol=_sol(60000, 11, n_states=n, y=np.ones((n, 11))),
             method="RK45",
             dt=0.01,
-            n_states=500,
-            model_func=counting_rhs,
+            n_states=n,
+            model_func=heat,
         )
-        assert result["stiffness_index"] is None
+        fastest = 4.0 / dx**2 * np.sin(n * np.pi / (2 * (n + 1))) ** 2
+        assert result["stiffness_index"] == pytest.approx(fastest * 0.01, rel=1e-2)
+        assert result["suspected"] is True
+        assert result["eig_ratio"] is None
+        # Flagged at the first sample point, so the rest are skipped; the dense
+        # probe would have cost STIFFNESS_SAMPLE_POINTS * (n + 1) calls.
+        assert 0 < calls["n"] <= STIFFNESS_SPARSE_MAX_EVALS + 1
+        assert calls["n"] < STIFFNESS_SAMPLE_POINTS * (n + 1)
+
+    def test_large_oscillatory_system_is_not_flagged(self):
+        """Fast undamped oscillations are not stiffness, at any size."""
+
+        def rotations(t, y):
+            pairs = np.asarray(y, dtype=float).reshape(-1, 2)
+            return (500.0 * np.c_[-pairs[:, 1], pairs[:, 0]]).ravel()
+
+        result = estimate_stiffness(
+            sol=_sol(60000, 11, n_states=300, y=np.ones((300, 11))),
+            method="RK45",
+            dt=0.01,
+            n_states=300,
+            model_func=rotations,
+        )
+        assert result["stiffness_index"] == pytest.approx(0.0, abs=1e-3)
         assert result["suspected"] is False
-        assert calls["n"] == 0
 
     def test_a_raising_rhs_degrades_to_work_only(self):
         def broken(t, y):

@@ -545,9 +545,14 @@ information, but it is not a gate: the textbook scalar stiff problem
 `dy/dt = -10⁴(y - u(t))` has exactly one eigenvalue and a ratio of 1.
 
 Costs are kept negligible. The Jacobian is only probed once `work_ratio` has
-already cleared its gate, and never for more than
-`STIFFNESS_MAX_STATES = 64` states (a 2-D PDE has thousands, and the probe is
-`n + 1` right-hand-side evaluations per sample point). Anything that raises
+already cleared its gate. Up to `STIFFNESS_MAX_STATES = 64` states it is formed
+densely (`n + 1` right-hand-side evaluations per sample point); above that (a
+PDE has hundreds to thousands of states) it is never formed: ARPACK finds the
+largest-magnitude eigenvalues from finite-difference Jacobian-vector products,
+about `STIFFNESS_SPARSE_MAX_EVALS = 400` evaluations at most per sample point
+(a 500-state heat equation takes ~260), stopping at the first point that
+flags. That path reports no `eig_ratio`, and if the largest modes are
+oscillations it underestimates, so it errs toward not flagging. Anything that raises
 degrades to the work-ratio-only result rather than failing the run. Implicit and
 fixed-step methods are not probed at all — there is nothing to suggest to
 someone already using one — so `stiffness` is `None` there.
@@ -636,9 +641,9 @@ the built-in defaults.)
   feedback-delay difference of section 4.2). Steady states agree; do not assert
   tight trajectory equality across the two.
 * **The stiffness heuristic is a heuristic.** It cannot see stiffness that has
-  not cost anything yet, it says nothing on implicit or fixed-step runs, and it
-  is skipped above 64 states — a large PDE is never flagged even when it is
-  stiff.
+  not cost anything yet, and it says nothing on implicit or fixed-step runs.
+  Above 64 states it only sees the largest-magnitude modes, so stiffness
+  hidden behind faster oscillations goes unflagged.
 * **Algebraic loops run on the interpreter only.** Continuous blocks around a
   solved loop therefore integrate with the interpreter's fixed step (first
   order for held inputs), and the diagram cannot be linearized or exported.

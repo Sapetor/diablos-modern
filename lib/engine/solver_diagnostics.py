@@ -37,9 +37,16 @@ STIFFNESS_WORK_RATIO = 4.0
 #: stability region rather than by accuracy.
 STIFFNESS_INDEX = 20.0
 
-#: Skip the Jacobian probe above this state count: it costs ``n+1`` RHS
-#: evaluations per sample point, which stops being "cheap" for a 2-D PDE.
+#: Largest state count probed with a dense Jacobian (``n+1`` RHS evaluations
+#: and a full eigendecomposition per sample point). Larger systems (PDEs) get the
+#: matrix-free probe instead, see :func:`_fastest_decay_matrix_free`.
 STIFFNESS_MAX_STATES = 64
+
+#: Matrix-free probe: eigenvalues of largest magnitude ARPACK is asked for, and
+#: the RHS-evaluation budget per sample point (one evaluation per
+#: Jacobian-vector product). The estimate only needs an order of magnitude.
+STIFFNESS_SPARSE_EIGS = 6
+STIFFNESS_SPARSE_MAX_EVALS = 400
 
 #: Trajectory points at which the Jacobian is sampled (evenly spaced).
 STIFFNESS_SAMPLE_POINTS = 5
@@ -96,6 +103,55 @@ def _spectrum_at(model_func: Callable, t: float, y: np.ndarray):
     significant = real_parts[real_parts > max(fastest * 1e-12, 1e-300)]
     ratio = float(fastest / significant.min()) if significant.size else None
     return fastest, ratio
+
+
+def _fastest_decay_matrix_free(model_func: Callable, t: float, y: np.ndarray):
+    """``max|Re lambda|`` of the Jacobian at ``(t, y)`` without forming it.
+
+    ARPACK finds the eigenvalues of largest magnitude from finite-difference
+    Jacobian-vector products ``J v ~ (f(y + h v) - f(y)) / h``, one RHS
+    evaluation each and about :data:`STIFFNESS_SPARSE_MAX_EVALS` at most.
+    In a stiff system (a diffusion PDE) the largest-magnitude modes are the fast
+    decaying ones. If they are oscillations instead, their small real parts make
+    this an underestimate, so the probe errs toward not flagging. ``None`` when
+    nothing converged.
+    """
+    from scipy.sparse.linalg import ArpackNoConvergence, LinearOperator, eigs
+
+    y = np.asarray(y, dtype=float).ravel()
+    f0 = np.asarray(model_func(t, y), dtype=float).ravel()
+    n = y.size
+    if f0.size != n or not np.all(np.isfinite(f0)):
+        return None
+    scale = 1.4901161193847656e-08 * max(1.0, float(np.linalg.norm(y)))
+
+    def matvec(v):
+        v = np.asarray(v, dtype=float).ravel()
+        norm = float(np.linalg.norm(v))
+        if norm == 0.0:
+            return np.zeros(n)
+        h = scale / norm
+        return (np.asarray(model_func(t, y + h * v), dtype=float).ravel() - f0) / h
+
+    k = min(STIFFNESS_SPARSE_EIGS, n - 2)
+    ncv = min(n, max(2 * k + 1, 20))
+    try:
+        values = eigs(
+            LinearOperator((n, n), matvec=matvec, dtype=float),
+            k=k,
+            which="LM",
+            ncv=ncv,
+            v0=np.random.default_rng(0).standard_normal(n),  # deterministic
+            tol=1e-3,
+            maxiter=max(1, STIFFNESS_SPARSE_MAX_EVALS // ncv),
+            return_eigenvectors=False,
+        )
+    except ArpackNoConvergence as exc:  # keep whatever did converge
+        values = exc.eigenvalues
+    real_parts = np.abs(np.asarray(values).real)
+    if real_parts.size == 0 or not np.all(np.isfinite(real_parts)):
+        return None
+    return float(real_parts.max())
 
 
 def estimate_stiffness(
@@ -171,25 +227,34 @@ def estimate_stiffness(
     # half has already said the solver worked harder than the grid needed.
     if work_ratio < STIFFNESS_WORK_RATIO:
         return result
-    if model_func is None or int(n_states) > STIFFNESS_MAX_STATES:
+    if model_func is None:
         return result
 
     states = np.asarray(solver_attr(sol, "y", None), dtype=float)
     if states.ndim != 2 or states.shape[1] == 0:
         return result
 
+    dense = int(n_states) <= STIFFNESS_MAX_STATES
     sample_idx = np.unique(np.linspace(0, states.shape[1] - 1, STIFFNESS_SAMPLE_POINTS).astype(int))
     fastest = 0.0
     eig_ratio = None
     try:
         for i in sample_idx:
-            rate, ratio = _spectrum_at(model_func, float(times[i]), states[:, i])
+            if dense:
+                rate, ratio = _spectrum_at(model_func, float(times[i]), states[:, i])
+            else:  # no eig_ratio: the slowest mode would need shift-invert solves
+                rate, ratio = (
+                    _fastest_decay_matrix_free(model_func, float(times[i]), states[:, i]),
+                    None,
+                )
             if rate is None:
                 continue
             if rate > fastest:
                 fastest = rate
             if ratio is not None and (eig_ratio is None or ratio > eig_ratio):
                 eig_ratio = ratio
+            if not dense and fastest * float(dt) >= STIFFNESS_INDEX:
+                break  # already flagged; spare the remaining large probes
     except Exception:  # noqa: BLE001 - a diagnostic must never break a finished run
         logger.debug("Stiffness Jacobian probe failed", exc_info=True)
         return result
