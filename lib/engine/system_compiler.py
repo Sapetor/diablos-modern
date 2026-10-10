@@ -487,6 +487,7 @@ class SystemCompiler:
             "Switch",
             "Terminator",
             "Display",
+            "Function",
             "Deadband",
             "Exponential",
             "Exp",
