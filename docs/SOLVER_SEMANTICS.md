@@ -214,6 +214,17 @@ Each `_interpreter_step` call:
    `count=False`, overwriting the stale `output_only` value in its consumers'
    queues without re-counting the delivery. Strictly proper memory blocks
    (`b_type == 1`) are left alone — their earlier value was the correct one.
+   A consumer of such a feedthrough memory block is **held back** until the
+   producer has executed this step. Without the hold, a consumer could run on
+   the stale value before the refresh: a `DiscreteTranFn` behind a ZOH whose
+   input is produced later in the step latched the old sample and acted one
+   full period late (fixed 2026-10-10,
+   `tests/regression/test_sampled_loop_delay.py`). When holding stalls every
+   block, the loop is algebraic through the producer, and the hold is dropped
+   for the rest of the step.
+5. **Algebraic loops** (section 4.4) run as units: their members are skipped
+   by the per-block passes, and each loop is solved once all its members have
+   their inputs from outside the loop.
 
 The consequence is the interpreter's characteristic **one-sample feedback delay
 through strictly-proper memory blocks**, which the compiled path does not have.
@@ -246,19 +257,40 @@ inputs (`compiled_runner.replay_compiled_signals` / `replay_has_feedthrough`).
 
 ### 4.4 Algebraic loops
 
-A cycle of blocks with no state in it has no execution order. Loop 2 detects the
-stall and calls `graph_analysis.detect_algebraic_loops` (Kahn's algorithm with
-edges into memory blocks removed). Two outcomes:
+A cycle of feedthrough blocks with no memory block in it (`y = u - k*y`) has
+no execution order. It is **solved**, not rejected (since 2026-10-10,
+`lib/engine/algebraic_loop.py`):
 
-* a genuine cycle → `"Algebraic loop detected involving blocks: [...]"`, and
-  initialization fails;
-* no cycle but blocks still uncomputed → only memory blocks may legitimately
-  remain (they run in Loop 3); any other uncomputed block is a hard
-  `"Hierarchy resolution stalled with uncomputed non-memory blocks"` error
-  rather than a block that silently never runs.
+* When Loop 2 stalls, the uncomputed non-memory blocks are split into
+  strongly connected components (`topo.cyclic_components`, Tarjan). Each
+  component with a cycle is one `AlgebraicLoop`. Blocks downstream of a loop,
+  such as its Scope, are not members.
+* The unknowns `z` are the member output ports that feed other members. Each
+  step solves `z = F(z)` with `scipy.optimize.root` (`hybr`, warm-started
+  from the previous step), where `F` runs every member once with its loop
+  inputs taken from `z`. Then the members run once more with the solution,
+  which is the step's real execution, and propagate as usual.
+* Trial evaluations start from a snapshot of the members' `params` /
+  `exec_params`. All block state lives there (the block contract), so a
+  stateful feedthrough block, such as a proper `TranFn` with `D != 0`, is
+  iterated without advancing its state.
+* Errors name the block: a loop through a block with a discrete sample time
+  is rejected (its schedule lives on the `DBlock`, not in params), and a
+  loop with no solution reports `"did not converge (residual ...)"`.
+* A diagram with a solved loop does not compile. The fallback reason is
+  `"<members>: algebraic loop, solved iteratively by the interpreter"`, so
+  linearization and Python export, which need the compiled path, are not
+  available for it.
 
-The fix is the usual one: put an `Integrator`, or a strictly proper `TranFn`, in
-the loop.
+Two stall outcomes remain errors: a loop that is unsupported (above), and no
+cycle but blocks still uncomputed. In that case only memory blocks may
+legitimately remain (they run in Loop 3), and any other uncomputed block is a
+hard `"Hierarchy resolution stalled with uncomputed non-memory blocks"`
+error rather than a block that silently never runs.
+
+The preflight in `lib/diagram_validator.py` still reports
+`"Algebraic loop detected ..."`, but as a warning: it no longer blocks
+drawing the wire or starting the run.
 
 ---
 
@@ -607,6 +639,10 @@ the built-in defaults.)
   not cost anything yet, it says nothing on implicit or fixed-step runs, and it
   is skipped above 64 states — a large PDE is never flagged even when it is
   stiff.
+* **Algebraic loops run on the interpreter only.** Continuous blocks around a
+  solved loop therefore integrate with the interpreter's fixed step (first
+  order for held inputs), and the diagram cannot be linearized or exported.
+  Loops through discrete-rate blocks are rejected.
 * **`blocks/external.py` is a stub** and returns an error dict on both paths.
 
 ---

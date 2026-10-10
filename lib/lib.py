@@ -1271,6 +1271,9 @@ class DSim:
         """
         waits_on = self._feedthrough_memory_producers(current_blocks)
         hold = bool(waits_on)
+        # Algebraic loops run as units (lib/engine/algebraic_loop.py), never per block.
+        loops = self.engine.algebraic_loops
+        in_loop = {name for loop in loops for name in loop.names}
 
         def held(block):
             return hold and any(not p.computed_data for p in waits_on.get(block.name, ()))
@@ -1284,6 +1287,7 @@ class DSim:
                         if (
                             block.hierarchy != hier
                             or block.computed_data
+                            or block.name in in_loop
                             or not self._has_enough_inputs(block)
                             or held(block)
                         ):
@@ -1294,9 +1298,16 @@ class DSim:
                             return False
                     if not progressed:
                         break
+            for loop in loops:
+                if loop.is_pending() and loop.is_ready():
+                    if not self.engine.solve_algebraic_loop(loop):
+                        self.execution_failed(self.engine.error_msg)
+                        return False
+                    outer_progressed = True
             if not outer_progressed:
                 if hold and any(
-                    not b.computed_data and self._has_enough_inputs(b) for b in current_blocks
+                    not b.computed_data and b.name not in in_loop and self._has_enough_inputs(b)
+                    for b in current_blocks
                 ):
                     hold = False
                     continue

@@ -563,7 +563,7 @@ class DiagramValidator:
 
 
 def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]:
-    """Reject duplicate input-port connections and algebraic loops.
+    """Reject duplicate input-port connections; flag algebraic loops.
 
     Returns ``(ok, messages)``. ``messages`` holds the errors followed by the
     warnings (blocks that have ports but no connections), so a diagram can be
@@ -598,9 +598,12 @@ def validate_block_connections(blocks_list, line_list) -> Tuple[bool, List[str]]
                 )
             )
 
-    no_loops, loop_errors = detect_algebraic_loops(blocks_list, line_list)
+    # An algebraic loop is no longer fatal: the engine solves it iteratively
+    # every step (lib/engine/algebraic_loop.py) and reports the loops it
+    # cannot solve (e.g. through a discrete block) when the run starts.
+    no_loops, loop_messages = detect_algebraic_loops(blocks_list, line_list)
     if not no_loops:
-        errors.extend(loop_errors)
+        warnings[:0] = loop_messages
 
     return len(errors) == 0, errors + warnings
 

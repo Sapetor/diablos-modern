@@ -17,6 +17,8 @@ from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS
 from lib.engine.compile_cache import source_params_fingerprint, compiled_system_fingerprint
 from lib.engine.block_params import push_down_internal_params
 from lib.engine import graph_analysis
+from lib.engine.algebraic_loop import AlgebraicLoop, AlgebraicLoopError
+from lib.engine.topo import cyclic_components
 
 # The compiled fast-solver run (ODE solve + post-solve replay) lives in
 # lib/engine/compiled_runner.py.  Its module-level names are re-exported here
@@ -131,6 +133,9 @@ class SimulationEngine:
         # Active execution lists (may differ from model if flattened)
         self.active_blocks_list = []
         self.active_line_list = []
+
+        # Algebraic loops found (and solvable) at init; solved as units each step.
+        self.algebraic_loops: List[AlgebraicLoop] = []
 
     def initialize_execution(
         self, blocks_list: List[DBlock], lines_list: Optional[List[DLine]] = None
@@ -248,6 +253,7 @@ class SimulationEngine:
 
             # Loop 2: Hierarchy Resolution Matrix
             _te3 = _time.time()
+            self.algebraic_loops = []
             if not self._init_resolve_hierarchy(blocks_to_exec, check_loop):
                 return False
             logger.debug(f"[ENGINE TIMING] Loop 2 (hierarchy): {_time.time() - _te3:.3f}s")
@@ -437,6 +443,15 @@ class SimulationEngine:
                 uncomputed_blocks = [b for b in blocks_to_exec if not b.computed_data]
                 if not uncomputed_blocks:
                     break
+
+                # Solve any ready algebraic loop as a unit, then keep resolving.
+                solved = self._init_solve_algebraic_loops(uncomputed_blocks, h_count)
+                if solved is None:
+                    return False
+                if solved:
+                    check_loop = self.count_computed_global_list()
+                    h_count += 1
+                    continue
 
                 is_algebraic, cycle_nodes = self.detect_algebraic_loops(uncomputed_blocks)
                 if is_algebraic:
@@ -807,6 +822,58 @@ class SimulationEngine:
                 for stale_key in ("_prev", "mem", "output"):
                     if stale_key in block.exec_params:
                         del block.exec_params[stale_key]
+
+    def _init_solve_algebraic_loops(self, uncomputed_blocks, h_count):
+        """Solve the ready algebraic loops among ``uncomputed_blocks`` at init.
+
+        Returns True when at least one loop was solved (its members are then
+        computed at hierarchy ``h_count``), False when none was ready, and None
+        on an error (``error_msg``/``error_block`` set).
+        """
+        lines = self._active_line_source()
+        candidates = [b for b in uncomputed_blocks if b.name not in self.memory_blocks]
+        names = {b.name for b in candidates}
+        graph = {n: [] for n in names}
+        for line in lines:
+            if line.srcblock in names:
+                graph[line.srcblock].append(line.dstblock)
+        by_name = {b.name: b for b in candidates}
+        solved = False
+        for comp in cyclic_components([b.name for b in candidates], graph):
+            loop = AlgebraicLoop([by_name[n] for n in comp], lines)
+            try:
+                loop.check_supported()
+            except AlgebraicLoopError as e:
+                self.error_msg, self.error_block = str(e), e.block
+                logger.error(self.error_msg)
+                return None
+            if not loop.is_ready():
+                continue
+            if not self.solve_algebraic_loop(loop, h_value=h_count, h_assign=True):
+                return None
+            self.algebraic_loops.append(loop)
+            logger.info("Algebraic loop %s will be solved iteratively each step", loop.names)
+            solved = True
+        return solved
+
+    def solve_algebraic_loop(self, loop, h_value=0, h_assign=False) -> bool:
+        """Solve ``loop`` for the current step, mark it computed, propagate it.
+
+        Returns False with ``error_msg``/``error_block`` set when it fails.
+        """
+        try:
+            outs = loop.solve(self.execute_block)
+        except AlgebraicLoopError as e:
+            self.error_msg, self.error_block = str(e), e.block
+            logger.error(self.error_msg)
+            return False
+        for member in loop.members:
+            self.update_global_list(member.name, h_value=h_value, h_assign=h_assign)
+            member.computed_data = True
+        for member in loop.members:
+            if member.b_type != 3:
+                self.propagate_outputs(member, outs[member.name])
+        return True
 
     def detect_algebraic_loops(self, uncomputed_blocks):
         """Detect algebraic loops among uncomputed blocks (Kahn's algorithm).
@@ -1263,6 +1330,14 @@ class SimulationEngine:
 
     def check_compilability(self, blocks: List[DBlock]) -> bool:
         """Check if the system can be compiled."""
+        if self.algebraic_loops:
+            # The compiler orders blocks topologically and would emit a loop's
+            # members in arbitrary order; only the interpreter solves loops.
+            names = ", ".join(self.algebraic_loops[0].names)
+            self.compiler.last_incompatibility = (
+                f"{names}: algebraic loop, solved iteratively by the interpreter"
+            )
+            return False
         return self.compiler.check_compilability(blocks)
 
     def get_compile_fallback_reason(self) -> Optional[str]:

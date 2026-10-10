@@ -52,3 +52,60 @@ def kahn_topological_order(nodes, adjacency, key=None):
 
     remaining = [n for n in nodes if in_deg[n] > 0]
     return order, remaining
+
+
+def cyclic_components(nodes, adjacency):
+    """Strongly connected components that contain a cycle (Tarjan, iterative).
+
+    Returns a list of node lists: every SCC with more than one node, plus any
+    single node with a self-edge. Unlike Kahn's ``remaining``, which also holds
+    every node *downstream* of a cycle, these are exactly the nodes on one.
+    Components and their members follow the original ``nodes`` order.
+    """
+    nodes = list(nodes)
+    present = set(nodes)
+    order = {n: i for i, n in enumerate(nodes)}
+    index, low, on_stack, stack, comps = {}, {}, set(), [], []
+    counter = 0
+    for root in nodes:
+        if root in index:
+            continue
+        work = [(root, iter(adjacency.get(root, ())))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, successors = work[-1]
+            advanced = False
+            for succ in successors:
+                if succ not in present:
+                    continue
+                if succ not in index:
+                    index[succ] = low[succ] = counter
+                    counter += 1
+                    stack.append(succ)
+                    on_stack.add(succ)
+                    work.append((succ, iter(adjacency.get(succ, ()))))
+                    advanced = True
+                    break
+                if succ in on_stack:
+                    low[node] = min(low[node], index[succ])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[node])
+            if low[node] == index[node]:
+                comp = []
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    comp.append(member)
+                    if member == node:
+                        break
+                if len(comp) > 1 or node in adjacency.get(node, ()):
+                    comps.append(sorted(comp, key=order.__getitem__))
+    comps.sort(key=lambda c: order[c[0]])
+    return comps

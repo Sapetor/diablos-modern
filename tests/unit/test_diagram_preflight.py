@@ -61,10 +61,12 @@ class TestValidateBlockConnections:
         assert ok is False
         assert messages == ["Multiple connections to same input port: block gain, port 0"]
 
-    def test_algebraic_loop_is_an_error_listed_before_warnings(self):
+    def test_algebraic_loop_is_a_warning_listed_first(self):
+        """The engine solves algebraic loops (lib/engine/algebraic_loop.py), so
+        the preflight flags one but no longer blocks the run or the wire."""
         blocks = [_blk("g1"), _blk("g2"), _blk("lonely")]
         ok, messages = validate_block_connections(blocks, [_line("g1", "g2"), _line("g2", "g1")])
-        assert ok is False
+        assert ok is True
         assert messages[0].startswith("Algebraic loop detected")
         assert messages[1] == "Block 'lonely' has no connections"
 
