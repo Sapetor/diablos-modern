@@ -1,7 +1,10 @@
 """Sampled-data kernels for the compiled (hybrid) path.
 
-A discrete block (ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace) holds its
-output between sample instants, so inside the ODE right-hand side it is a pure
+A discrete block (ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace), or a
+continuous one given a rate (TranFn, StateSpace, PID, Integrator, Derivative
+with ``sampling_time > 0``, which the interpreter runs only at its instants,
+discretized over ``dtime = Ts``), holds its output between sample instants, so
+inside the ODE right-hand side it is a pure
 read of a per-compile *holder*: a source, as far as the RHS is concerned.  The
 holder changes only at sample instants, where the runner calls
 :func:`sample_update` (see ``lib.engine.zero_crossing.solve_with_events``,
@@ -24,10 +27,36 @@ import copy
 
 import numpy as np
 
+from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import kernel
 
-#: Canonical fn-names of the blocks this module compiles.
+#: Canonical fn-names of the blocks that are always sampled.
 DISCRETE_FNS = frozenset({"Zeroorderhold", "Discretetranfn", "Discretestatespace"})
+
+#: Continuous blocks that become sampled when given a rate (``sampling_time >
+#: 0``, or inheriting one). FirstOrderHold and RateTransition stay out: they run
+#: every solver step on their own internal schedule, and FOH ramps between
+#: samples instead of holding.
+RATED_FNS = frozenset({"TransferFcn", "StateSpace", "PID", "Pid", "Integrator", "Deriv"})
+
+
+def sample_rate(block) -> float:
+    """The block's resolved rate (> 0) or its declared one; <= 0 means none."""
+    rate = getattr(block, "effective_sample_time", -1.0)
+    if isinstance(rate, (int, float)) and rate > 0:
+        return float(rate)
+    try:
+        return float(block.resolve_sample_time())
+    except (AttributeError, TypeError, ValueError):
+        return -1.0
+
+
+def is_sampled_block(block) -> bool:
+    """True for a block the hybrid path runs as a sampled holder."""
+    fn = canonical_fn(getattr(block, "block_fn", ""))
+    if fn in DISCRETE_FNS:
+        return True
+    return fn in RATED_FNS and sample_rate(block) > 0
 
 
 def _signal_key(b_name, port):
@@ -38,9 +67,7 @@ def _signal_key(b_name, port):
 def build_sampled(ctx):
     b_name = ctx.b_name
     block = ctx.block
-    rate = getattr(block, "effective_sample_time", -1.0)
-    if not (isinstance(rate, (int, float)) and rate > 0):
-        rate = block.resolve_sample_time()
+    rate = sample_rate(block)
     if not rate > 0:
         raise ValueError(f"{b_name}: sampled block without a resolved sample time")
     template = copy.deepcopy(dict(ctx.params))
@@ -96,12 +123,39 @@ def sample_update(holder, t, signals):
     # The runner owns the schedule: every call here is a sample instant.
     if not params.get("_init_start_", True) and "_next_sample_time_" in params:
         params["_next_sample_time_"] = min(float(params["_next_sample_time_"]), float(t))
-    out = block.block_instance.execute(time=t, inputs=inputs, params=params)
+    instance = block.block_instance
+    held = None
+    if getattr(instance, "output_is_post_update", False):
+        # An Integrator returns its advanced state; the interpreter holds the
+        # output_only value taken before the advance (stamp_held_outputs).
+        held = _checked(
+            block,
+            t,
+            instance.execute(
+                time=t,
+                inputs=inputs,
+                params=params,
+                output_only=True,
+                next_add_in_memory=False,
+                dtime=holder["ts"],
+            ),
+        )
+    out = _checked(block, t, instance.execute(time=t, inputs=inputs, params=params))
+    if "mem" in params and canonical_fn(block.block_fn) == "Integrator":
+        # SimulationEngine.sync_integrator_output: the next output_only call
+        # reports a copy of the advanced state.
+        params["output"] = np.array(params["mem"], copy=True)
+    holder["mode"] = {
+        port: np.array(value, dtype=float, copy=True)
+        for port, value in (held or out).items()
+        if isinstance(port, int)
+    }
+
+
+def _checked(block, t, out):
+    """``out`` if the block reported no error, else RuntimeError, so the run
+    stops instead of silently holding a stale value."""
     if not isinstance(out, dict) or out.get("E"):
         msg = out.get("error", "block error") if isinstance(out, dict) else repr(out)
         raise RuntimeError(f"{block.name} failed at its sample t={t:.6g}: {msg}")
-    holder["mode"] = {
-        port: np.array(value, dtype=float, copy=True)
-        for port, value in out.items()
-        if isinstance(port, int)
-    }
+    return out

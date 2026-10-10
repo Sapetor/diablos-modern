@@ -518,15 +518,26 @@ class TestCompileFallbackReason:
         assert engine.check_compilability(blocks) is True
         assert engine.get_compile_fallback_reason() is None
 
-    def test_a_discrete_rate_names_the_block_and_the_reason(self, qapp):
-        # A rated continuous block has no sampled kernel (hybrid path phase 2).
+    def test_a_rated_continuous_block_compiles_except_for_the_linearizer(self, qapp):
+        # A rated TranFn/StateSpace/PID/Integrator/Derivative runs as a sampled
+        # holder on the hybrid path (phase 2).
         from blocks.integrator import IntegratorBlock
 
         integ = _block(IntegratorBlock, "Integrator", 1, 1, 1, sampling_time=0.1)
         engine = self._engine([integ])
-        assert engine.check_compilability([integ]) is False
+        assert engine.check_compilability([integ]) is True
+        assert engine.check_compilability([integ], allow_discrete=False) is False
         reason = engine.get_compile_fallback_reason()
         assert integ.name in reason and "discrete sample time" in reason
+
+    def test_a_rate_without_a_sampled_form_names_the_block_and_the_reason(self, qapp):
+        from blocks.first_order_hold import FirstOrderHoldBlock
+
+        foh = _block(FirstOrderHoldBlock, "FirstOrderHold", 1, 1, 1, sampling_time=0.1)
+        engine = self._engine([foh])
+        assert engine.check_compilability([foh]) is False
+        reason = engine.get_compile_fallback_reason()
+        assert foh.name in reason and "no sampled kernel" in reason
 
     def test_a_sampled_block_compiles_except_for_the_linearizer(self, qapp):
         from blocks.zero_order_hold import ZeroOrderHoldBlock

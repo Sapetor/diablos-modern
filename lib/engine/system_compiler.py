@@ -10,7 +10,7 @@ from lib.engine.pde_helpers import (
 )
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
-from lib.engine.compiler_kernels.discrete import DISCRETE_FNS
+from lib.engine.compiler_kernels.discrete import build_sampled, is_sampled_block
 from lib.engine.block_params import runtime_params
 from lib.user_blocks import is_user_block
 
@@ -203,7 +203,9 @@ def _allocate_states(blocks) -> Tuple[Dict[str, Tuple[int, int]], Dict[str, tupl
     for block in blocks:
         fn = canonical_fn(block.block_fn)
         allocator = STATE_ALLOCATORS.get(fn)
-        if allocator is None:
+        # A rated TranFn/PID/Integrator holds its state in its sampled holder,
+        # advanced by its own execute() at each instant, not in the ODE.
+        if allocator is None or is_sampled_block(block):
             continue
         try:
             size, y0_slice, matrices = allocator(block, runtime_params(block))
@@ -323,7 +325,7 @@ def _execution_groups(sorted_order, block_matrices, input_map=None):
         fn = canonical_fn(b.block_fn)
         # A sampled block reads only its held output inside the RHS, so it is
         # a source there; its inputs matter only at sample instants.
-        if fn in SOURCE_FNS or fn in DISCRETE_FNS:
+        if fn in SOURCE_FNS or is_sampled_block(b):
             source_names.add(b.name)
         elif _is_d0_state_block(b, fn, block_matrices):
             d0_names.add(b.name)
@@ -640,17 +642,16 @@ class SystemCompiler:
 
             # A block gated to a discrete rate (sampling_time > 0) is a
             # sampled-data element: it must hold its output between sample
-            # instants and advance its state once per Ts.  The compiled ODE
-            # RHS has no notion of sample instants and would silently run the
-            # block as a purely continuous one, so the whole diagram falls
-            # back to the interpreter, which honours the rate.
+            # instants and advance its state once per Ts.
             fn = canonical_fn(b_type)
-            if fn in DISCRETE_FNS:
-                # Sampled blocks compile into the hybrid path: adaptive
-                # integration between sample instants, the block's own update
-                # at each instant (lib.engine.compiler_kernels.discrete). The
-                # rate must be resolved by now -- engine init has propagated
-                # inherited rates onto effective_sample_time.
+            if is_sampled_block(block):
+                # Sampled blocks -- discrete ones, and TranFn/StateSpace/PID/
+                # Integrator/Derivative given a rate -- compile into the hybrid
+                # path: adaptive integration between sample instants, the
+                # block's own update at each instant
+                # (lib.engine.compiler_kernels.discrete). The rate must be
+                # resolved by now -- engine init has propagated inherited
+                # rates onto effective_sample_time.
                 rate = getattr(block, "effective_sample_time", -1.0)
                 if not (isinstance(rate, (int, float)) and rate > 0):
                     rate = _declared_sample_time(block)
@@ -663,7 +664,11 @@ class SystemCompiler:
                 self.last_has_discrete = True
                 continue
             if _declared_sample_time(block) > 0:
-                return self._not_compilable(block, "it has a discrete sample time")
+                # A rated block with no sampled form (FirstOrderHold,
+                # RateTransition and anything else outside RATED_FNS).
+                return self._not_compilable(
+                    block, "it has a discrete sample time and no sampled kernel"
+                )
 
             if fn not in allowed:
                 if self._has_user_kernel(block):
@@ -751,6 +756,8 @@ class SystemCompiler:
         # Every compilable block family is registered in lib.engine.compiler_kernels;
         # dispatch to its builder. Unknown fn-names fall through to the no-op below.
         ctx = self._build_context(block, input_map, state_map, block_matrices)
+        if is_sampled_block(block):  # before the fn registry: a rated TranFn is not a state block
+            return build_sampled(ctx)
         builder = get_kernel_builder(ctx.fn)
         if builder is not None:
             return builder(ctx)
@@ -780,6 +787,8 @@ class SystemCompiler:
         """
         specs = []
         for block in blocks:
+            if is_sampled_block(block):
+                continue  # its output only changes at sample instants (breakpoints)
             ctx = self._build_context(block, input_map, state_map, block_matrices)
             if str(ctx.params.get("zero_crossing", "auto")).lower() == "off":
                 logger.debug("Zero-crossing disabled on block %s by its own param", ctx.b_name)
@@ -850,7 +859,7 @@ class SystemCompiler:
             sorted_order, input_map, state_map, block_matrices
         )
         model_func.mode_states = list(self._mode_registry.values())
-        sampled = [b for b in sources if canonical_fn(b.block_fn) in DISCRETE_FNS]
+        sampled = [b for b in sources if is_sampled_block(b)]
         model_func.sampled = [
             self._mode_registry[b.name]
             for b in _sample_update_order(sampled, sorted_order, input_map, block_matrices)

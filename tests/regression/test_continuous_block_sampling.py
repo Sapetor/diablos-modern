@@ -18,7 +18,9 @@ with the global ``sim_dt``.  A block therefore advanced by ``dt`` once every
 
 Worse, the compiled fast solver (the default) ignored ``sampling_time``
 entirely, so the same diagram produced a *continuous* answer on the fast path
-and the wrong sampled answer on the interpreter path.
+and the wrong sampled answer on the interpreter path. (Since 2026-10-10 the
+fast path runs such a block as a sampled holder; see
+TestSampledBlocksCompileAsSampled.)
 
 A third, related defect surfaced while pinning the PID numbers: ``PID`` is a
 memory block, so the simulation loop's first pass calls it with
@@ -32,9 +34,10 @@ THE FIX
   ``sim_dt`` otherwise; it is stamped into ``exec_params['dtime']`` (in
   ``_resolve_block_params`` and re-stamped at the end of
   ``propagate_sample_times`` once inherited rates are resolved).
-- ``SystemCompiler.check_compilability`` rejects any block with a declared
-  sample time > 0, so sampled diagrams fall back to the interpreter, which
-  honours the rate.
+- ``SystemCompiler.check_compilability`` rejected any block with a declared
+  sample time > 0, so sampled diagrams fell back to the interpreter, which
+  honours the rate. Since 2026-10-10 TranFn/StateSpace/PID/Integrator/
+  Derivative with a rate compile as sampled holders instead.
 - ``PIDBlock.execute`` honours ``output_only``.
 """
 
@@ -209,10 +212,11 @@ class TestSampledStaircaseAlignment:
 
 
 @pytest.mark.regression
-class TestSampledBlocksAreNotCompiled:
-    """The compiled path has no notion of sample instants, so a diagram with a
-    discrete rate must fall back to the interpreter instead of silently
-    simulating it as continuous."""
+class TestSampledBlocksCompileAsSampled:
+    """A rated continuous block used to send the diagram to the interpreter,
+    because the compiled path had no notion of sample instants. It now compiles
+    as a sampled holder on the hybrid path (lib/engine/compiler_kernels/
+    discrete.py) and gives the interpreter's answer."""
 
     def _tf_diagram(self, sampling_time):
         return _build_chain(
@@ -224,22 +228,20 @@ class TestSampledBlocksAreNotCompiled:
         dsim, _, _ = self._tf_diagram(-1.0)
         assert dsim.engine.check_compilability(dsim.blocks_list) is True
 
-    def test_sampled_diagram_is_not_compilable(self, qapp):
+    def test_sampled_diagram_compiles(self, qapp):
         dsim, _, _ = self._tf_diagram(0.5)
-        assert dsim.engine.check_compilability(dsim.blocks_list) is False
+        assert dsim.engine.check_compilability(dsim.blocks_list) is True
+        # ... but never for the linearizer, which would see the loop open.
+        assert dsim.engine.check_compilability(dsim.blocks_list, allow_discrete=False) is False
 
-    def test_batch_run_falls_back_to_interpreter(self, qapp):
-        """With the fast solver enabled, a sampled diagram must still be run by
-        the interpreter — and give the correct answer."""
+    def test_batch_run_stays_compiled_with_the_sampled_answer(self, qapp):
         dsim, _, scope = self._tf_diagram(0.5)
         dsim.use_fast_solver = True
-        # execution_batch's interpreter fallback runs the *interactive* loop,
-        # which would pop a SignalPlot window; suppress it so the test stays
-        # headless.
-        dsim.pyqtPlotScope = lambda: None
+        dsim.pyqtPlotScope = lambda: None  # stay headless if it ever falls back
         assert dsim.execution_init() is True
         dsim.execution_batch()
-        assert dsim.last_solver_type == "Standard (Interpreter)"
+        assert dsim.last_solver_type == "Fast (Compiled)"
+        assert dsim.engine.last_solver_diagnostics["backend"] == "scipy+hybrid"
         vec = np.asarray(scope.exec_params["vector"]).flatten()
         assert vec[-1] == pytest.approx(1.0 - np.exp(-3.0), abs=1e-3)
 

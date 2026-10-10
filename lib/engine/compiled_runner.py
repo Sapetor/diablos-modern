@@ -25,7 +25,7 @@ import numpy as np
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
-from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, sample_update
+from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, is_sampled_block, sample_update
 from lib.engine.solver_diagnostics import (
     estimate_stiffness,
     format_diagnostics_for_log,
@@ -190,7 +190,7 @@ def replay_has_feedthrough(block, block_matrices) -> bool:
     """
     fn = canonical_fn(getattr(block, "block_fn", ""))
 
-    if fn == "Integrator" or fn in DISCRETE_FNS:
+    if fn == "Integrator" or is_sampled_block(block):
         # A sampled block's output between instants is its held value.
         return False
     if fn not in ("TransferFcn", "StateSpace"):
@@ -317,7 +317,10 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
             fn = fn_by_name[b_name]
             inputs = _collect_inputs(inputs_by_dst.get(b_name, ()), step.signals)
 
-            executor = block_executors.get(b_name) if fn in _KERNEL_REPLAY_FNS else None
+            # A rated TranFn/PID/... replays from its sampled holder, like the
+            # discrete blocks, not through its continuous handler.
+            kernel_replay = fn in _KERNEL_REPLAY_FNS or is_sampled_block(block)
+            executor = block_executors.get(b_name) if kernel_replay else None
             if executor is not None:
                 # The kernel reads its inputs from step.signals (same keys the
                 # replay uses) and writes its primary output there itself.
@@ -448,6 +451,9 @@ def run_compiled_simulation(
         block.name
         for block in scan_blocks
         if getattr(block, "block_fn", "") == "Integrator"
+        # A rated Integrator runs its own execute() at each instant, which
+        # honours the per-block method.
+        and not is_sampled_block(block)
         and str((getattr(block, "params", None) or {}).get("method", "SOLVE_IVP"))
         not in ("SOLVE_IVP", "")
     )
