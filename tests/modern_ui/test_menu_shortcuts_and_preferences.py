@@ -140,6 +140,10 @@ class TestShortcutOwnership:
                 Qt.Key.Key_U,
                 Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
             ),
+            (
+                Qt.Key.Key_A,
+                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
+            ),
         ],
     )
     def test_each_key_fires_its_action_exactly_once(self, window, qapp, key, mods):

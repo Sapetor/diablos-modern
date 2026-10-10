@@ -81,6 +81,7 @@ M = [[1, 0], [0, 1]]
 | Ctrl+Shift+H | Align center (horizontal) |
 | Ctrl+Shift+U | Align top |
 | Ctrl+Shift+B | Align bottom |
+| Ctrl+Shift+A | Auto layout (whole diagram level) |
 
 ### View
 | Key | Action |
@@ -733,6 +734,13 @@ Keep your diagrams tidy with alignment and distribution tools.
 With 3+ blocks selected:
 - **Distribute Horizontally**: Equal horizontal spacing
 - **Distribute Vertically**: Equal vertical spacing
+
+### Auto Layout
+**Edit > Auto Layout** (**Ctrl+Shift+A**) rearranges every block at the current
+level left to right in signal-flow order: sources on the left, sinks on the
+right, feedback paths drawn back underneath. The diagram keeps its top-left
+corner, blocks snap to the grid, and every wire is re-routed for its routing
+mode (manual bends are dropped). **Ctrl+Z** undoes it in one step.
 
 ---
 

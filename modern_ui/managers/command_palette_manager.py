@@ -55,6 +55,7 @@ _VIEW_COMMANDS: list[tuple[str, str]] = [
     (tr_noop("Toggle variable editor"), "Ctrl+Shift+V"),
     (tr_noop("Toggle workspace variables"), "Ctrl+Shift+W"),
     (tr_noop("Toggle tuning panel"), "Ctrl+Shift+T"),
+    (tr_noop("Auto layout"), "Ctrl+Shift+A"),
 ]
 
 _FILE_COMMANDS: list[tuple[str, str]] = [
@@ -164,6 +165,7 @@ class CommandPaletteManager:
             window.toggle_variable_editor,
             window.toggle_workspace_editor,
             window.toggle_tuning_panel,
+            lambda: window.canvas.auto_layout(),
         ]
         file_callbacks = [
             window.new_diagram,

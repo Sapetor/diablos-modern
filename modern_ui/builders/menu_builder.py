@@ -257,6 +257,8 @@ class MenuBuilder:
             ):
                 if hasattr(canvas, method):
                     self._scoped(align_menu, label, getattr(canvas, method), key)
+            if hasattr(canvas, "auto_layout"):
+                self._scoped(edit_menu, tr("Auto La&yout"), canvas.auto_layout, "Ctrl+Shift+A")
 
         edit_menu.addSeparator()
 

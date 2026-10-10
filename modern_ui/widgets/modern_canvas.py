@@ -1486,6 +1486,39 @@ class ModernCanvas(QWidget):
         self._update_line_positions()
         self.update()
 
+    def auto_layout(self):
+        """Lay out the current diagram level left to right (layered layout).
+
+        Keeps the diagram's top-left corner, snaps to the grid and re-routes
+        every wire for its routing mode (manual bends are dropped). One undo
+        step restores the previous positions and wires.
+        """
+        from modern_ui.tools.auto_layout import layered_layout
+
+        blocks = list(self.dsim.blocks_list)
+        if len(blocks) < 2:
+            logger.info("Need at least 2 blocks to lay out")
+            return
+        lines = [ln for ln in self.dsim.line_list if not getattr(ln, "hidden", False)]
+        positions = layered_layout(
+            [(b.name, b.width, b.height) for b in blocks],
+            [(ln.srcblock, ln.dstblock, ln.dstport) for ln in lines],
+            origin=(min(b.left for b in blocks), min(b.top for b in blocks)),
+            grid=self.grid_size,
+        )
+        self._push_undo("Auto Layout")
+        for block in blocks:
+            x, y = positions[block.name]
+            if (x, y) != (block.left, block.top):
+                block.relocate_Block(QPoint(x, y))
+        self._update_line_positions()
+        for line in self.dsim.line_list:
+            self.connection_manager.route_line_for_mode(
+                line, getattr(line, "routing_mode", "bezier")
+            )
+        self.dsim.dirty = True
+        self.update()
+
     def distribute_horizontal(self):
         """Distribute selected blocks evenly horizontally."""
         from modern_ui.tools.alignment_tools import AlignmentTools
