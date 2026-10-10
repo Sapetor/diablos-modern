@@ -1328,6 +1328,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#auto-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2384,6 +2395,34 @@
     
   
     Numerical Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BENCHMARK_PATHSIM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PathSim Benchmark
   
 
     
@@ -3474,6 +3513,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#auto-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto Layout
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3771,12 +3821,16 @@ See <a href="#wires">Wires</a> for routing, bending and auto-routing.</p>
 <td>Align center (horizontal)</td>
 </tr>
 <tr>
-<td>Ctrl+Shift+T</td>
+<td>Ctrl+Shift+U</td>
 <td>Align top</td>
 </tr>
 <tr>
 <td>Ctrl+Shift+B</td>
 <td>Align bottom</td>
+</tr>
+<tr>
+<td>Ctrl+Shift+A</td>
+<td>Auto layout (whole diagram level)</td>
 </tr>
 </tbody>
 </table>
@@ -4458,6 +4512,12 @@ move edits are undoable with <strong>Ctrl+Z</strong>.</p>
 <p>With 3+ blocks selected:
 - <strong>Distribute Horizontally</strong>: Equal horizontal spacing
 - <strong>Distribute Vertically</strong>: Equal vertical spacing</p>
+<h3 id="auto-layout">Auto Layout<a class="headerlink" href="#auto-layout" title="Permanent link">&para;</a></h3>
+<p><strong>Edit &gt; Auto Layout</strong> (<strong>Ctrl+Shift+A</strong>) rearranges every block at the current
+level left to right in signal-flow order: sources on the left, sinks on the
+right, feedback paths drawn back underneath. The diagram keeps its top-left
+corner, blocks snap to the grid, and every wire is re-routed for its routing
+mode (manual bends are dropped). <strong>Ctrl+Z</strong> undoes it in one step.</p>
 <hr />
 <h2 id="single-step-simulation">Single-Step Simulation<a class="headerlink" href="#single-step-simulation" title="Permanent link">&para;</a></h2>
 <p>Debug your simulations one timestep at a time.</p>

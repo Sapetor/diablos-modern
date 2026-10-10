@@ -1490,6 +1490,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../BENCHMARK_PATHSIM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PathSim Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../SYMBOL_DRAWING_GUIDE/" class="md-nav__link">
         
   
@@ -10771,7 +10799,40 @@ deliver that.</p>
 <span class="normal"><a href="#__codelineno-0-1558">1558</a></span>
 <span class="normal"><a href="#__codelineno-0-1559">1559</a></span>
 <span class="normal"><a href="#__codelineno-0-1560">1560</a></span>
-<span class="normal"><a href="#__codelineno-0-1561">1561</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="k">class</span><span class="w"> </span><span class="nc">ModernCanvas</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-1561">1561</a></span>
+<span class="normal"><a href="#__codelineno-0-1562">1562</a></span>
+<span class="normal"><a href="#__codelineno-0-1563">1563</a></span>
+<span class="normal"><a href="#__codelineno-0-1564">1564</a></span>
+<span class="normal"><a href="#__codelineno-0-1565">1565</a></span>
+<span class="normal"><a href="#__codelineno-0-1566">1566</a></span>
+<span class="normal"><a href="#__codelineno-0-1567">1567</a></span>
+<span class="normal"><a href="#__codelineno-0-1568">1568</a></span>
+<span class="normal"><a href="#__codelineno-0-1569">1569</a></span>
+<span class="normal"><a href="#__codelineno-0-1570">1570</a></span>
+<span class="normal"><a href="#__codelineno-0-1571">1571</a></span>
+<span class="normal"><a href="#__codelineno-0-1572">1572</a></span>
+<span class="normal"><a href="#__codelineno-0-1573">1573</a></span>
+<span class="normal"><a href="#__codelineno-0-1574">1574</a></span>
+<span class="normal"><a href="#__codelineno-0-1575">1575</a></span>
+<span class="normal"><a href="#__codelineno-0-1576">1576</a></span>
+<span class="normal"><a href="#__codelineno-0-1577">1577</a></span>
+<span class="normal"><a href="#__codelineno-0-1578">1578</a></span>
+<span class="normal"><a href="#__codelineno-0-1579">1579</a></span>
+<span class="normal"><a href="#__codelineno-0-1580">1580</a></span>
+<span class="normal"><a href="#__codelineno-0-1581">1581</a></span>
+<span class="normal"><a href="#__codelineno-0-1582">1582</a></span>
+<span class="normal"><a href="#__codelineno-0-1583">1583</a></span>
+<span class="normal"><a href="#__codelineno-0-1584">1584</a></span>
+<span class="normal"><a href="#__codelineno-0-1585">1585</a></span>
+<span class="normal"><a href="#__codelineno-0-1586">1586</a></span>
+<span class="normal"><a href="#__codelineno-0-1587">1587</a></span>
+<span class="normal"><a href="#__codelineno-0-1588">1588</a></span>
+<span class="normal"><a href="#__codelineno-0-1589">1589</a></span>
+<span class="normal"><a href="#__codelineno-0-1590">1590</a></span>
+<span class="normal"><a href="#__codelineno-0-1591">1591</a></span>
+<span class="normal"><a href="#__codelineno-0-1592">1592</a></span>
+<span class="normal"><a href="#__codelineno-0-1593">1593</a></span>
+<span class="normal"><a href="#__codelineno-0-1594">1594</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="k">class</span><span class="w"> </span><span class="nc">ModernCanvas</span><span class="p">(</span><span class="n">QWidget</span><span class="p">):</span>
 <a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="w">    </span><span class="sd">"""Modern canvas widget for DiaBloS block diagram editing."""</span>
 <a id="__codelineno-0-52" name="__codelineno-0-52"></a>
 <a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="c1"># Idle-OFF animation tuning. Cadence is shared with the toolbar status dot</span>
@@ -12210,79 +12271,112 @@ deliver that.</p>
 <a id="__codelineno-0-1486" name="__codelineno-0-1486"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
 <a id="__codelineno-0-1487" name="__codelineno-0-1487"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
 <a id="__codelineno-0-1488" name="__codelineno-0-1488"></a>
-<a id="__codelineno-0-1489" name="__codelineno-0-1489"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">distribute_horizontal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1490" name="__codelineno-0-1490"></a><span class="w">        </span><span class="sd">"""Distribute selected blocks evenly horizontally."""</span>
-<a id="__codelineno-0-1491" name="__codelineno-0-1491"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.tools.alignment_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlignmentTools</span>
-<a id="__codelineno-0-1492" name="__codelineno-0-1492"></a>
-<a id="__codelineno-0-1493" name="__codelineno-0-1493"></a>        <span class="n">blocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_manager</span><span class="o">.</span><span class="n">get_selected_blocks</span><span class="p">()</span>
-<a id="__codelineno-0-1494" name="__codelineno-0-1494"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
-<a id="__codelineno-0-1495" name="__codelineno-0-1495"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Need at least 3 blocks selected to distribute"</span><span class="p">)</span>
-<a id="__codelineno-0-1496" name="__codelineno-0-1496"></a>            <span class="k">return</span>
-<a id="__codelineno-0-1497" name="__codelineno-0-1497"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_push_undo</span><span class="p">(</span><span class="s2">"Distribute Horizontal"</span><span class="p">)</span>
-<a id="__codelineno-0-1498" name="__codelineno-0-1498"></a>        <span class="n">AlignmentTools</span><span class="o">.</span><span class="n">distribute_horizontal</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span>
-<a id="__codelineno-0-1499" name="__codelineno-0-1499"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
-<a id="__codelineno-0-1500" name="__codelineno-0-1500"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-<a id="__codelineno-0-1501" name="__codelineno-0-1501"></a>
-<a id="__codelineno-0-1502" name="__codelineno-0-1502"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">distribute_vertical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1503" name="__codelineno-0-1503"></a><span class="w">        </span><span class="sd">"""Distribute selected blocks evenly vertically."""</span>
-<a id="__codelineno-0-1504" name="__codelineno-0-1504"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.tools.alignment_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlignmentTools</span>
-<a id="__codelineno-0-1505" name="__codelineno-0-1505"></a>
-<a id="__codelineno-0-1506" name="__codelineno-0-1506"></a>        <span class="n">blocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_manager</span><span class="o">.</span><span class="n">get_selected_blocks</span><span class="p">()</span>
-<a id="__codelineno-0-1507" name="__codelineno-0-1507"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
-<a id="__codelineno-0-1508" name="__codelineno-0-1508"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Need at least 3 blocks selected to distribute"</span><span class="p">)</span>
-<a id="__codelineno-0-1509" name="__codelineno-0-1509"></a>            <span class="k">return</span>
-<a id="__codelineno-0-1510" name="__codelineno-0-1510"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_push_undo</span><span class="p">(</span><span class="s2">"Distribute Vertical"</span><span class="p">)</span>
-<a id="__codelineno-0-1511" name="__codelineno-0-1511"></a>        <span class="n">AlignmentTools</span><span class="o">.</span><span class="n">distribute_vertical</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span>
-<a id="__codelineno-0-1512" name="__codelineno-0-1512"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
-<a id="__codelineno-0-1513" name="__codelineno-0-1513"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-<a id="__codelineno-0-1514" name="__codelineno-0-1514"></a>
-<a id="__codelineno-0-1515" name="__codelineno-0-1515"></a>    <span class="c1"># =========================================================================</span>
-<a id="__codelineno-0-1516" name="__codelineno-0-1516"></a>    <span class="c1"># Canvas-owned conveniences</span>
-<a id="__codelineno-0-1517" name="__codelineno-0-1517"></a>    <span class="c1"># -------------------------------------------------------------------------</span>
-<a id="__codelineno-0-1518" name="__codelineno-0-1518"></a>    <span class="c1"># State lives with its owning manager: zoom/pan on ZoomPanManager, the</span>
-<a id="__codelineno-0-1519" name="__codelineno-0-1519"></a>    <span class="c1"># gesture slices (selection/hover/drag/resize) on InteractionManager,</span>
-<a id="__codelineno-0-1520" name="__codelineno-0-1520"></a>    <span class="c1"># connection-creation state on ConnectionManager, and validation state on</span>
-<a id="__codelineno-0-1521" name="__codelineno-0-1521"></a>    <span class="c1"># RenderingManager. Managers and external code read/write those managers</span>
-<a id="__codelineno-0-1522" name="__codelineno-0-1522"></a>    <span class="c1"># directly. The canvas keeps only the grid slice (``self.grid``) plus a</span>
-<a id="__codelineno-0-1523" name="__codelineno-0-1523"></a>    <span class="c1"># couple of read-only view getters below, for consumers where reaching</span>
-<a id="__codelineno-0-1524" name="__codelineno-0-1524"></a>    <span class="c1"># through the manager would be awkward (save-state persistence, the minimap,</span>
-<a id="__codelineno-0-1525" name="__codelineno-0-1525"></a>    <span class="c1"># and view-fit math).</span>
-<a id="__codelineno-0-1526" name="__codelineno-0-1526"></a>    <span class="c1"># =========================================================================</span>
-<a id="__codelineno-0-1527" name="__codelineno-0-1527"></a>
-<a id="__codelineno-0-1528" name="__codelineno-0-1528"></a>    <span class="c1"># Read-only zoom/pan view getters — state owned by ZoomPanManager; writes go</span>
-<a id="__codelineno-0-1529" name="__codelineno-0-1529"></a>    <span class="c1"># through ``self.zoom_pan_manager.state``.</span>
-<a id="__codelineno-0-1530" name="__codelineno-0-1530"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-1531" name="__codelineno-0-1531"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">zoom_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1532" name="__codelineno-0-1532"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zoom_pan_manager</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">zoom_factor</span>
-<a id="__codelineno-0-1533" name="__codelineno-0-1533"></a>
-<a id="__codelineno-0-1534" name="__codelineno-0-1534"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-1535" name="__codelineno-0-1535"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">pan_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1536" name="__codelineno-0-1536"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zoom_pan_manager</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">pan_offset</span>
-<a id="__codelineno-0-1537" name="__codelineno-0-1537"></a>
-<a id="__codelineno-0-1538" name="__codelineno-0-1538"></a>    <span class="c1"># Grid display/snap — the one canvas-owned state slice (read + write).</span>
-<a id="__codelineno-0-1539" name="__codelineno-0-1539"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-1540" name="__codelineno-0-1540"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_visible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1541" name="__codelineno-0-1541"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">visible</span>
-<a id="__codelineno-0-1542" name="__codelineno-0-1542"></a>
-<a id="__codelineno-0-1543" name="__codelineno-0-1543"></a>    <span class="nd">@grid_visible</span><span class="o">.</span><span class="n">setter</span>
-<a id="__codelineno-0-1544" name="__codelineno-0-1544"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_visible</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-1546" name="__codelineno-0-1546"></a>
-<a id="__codelineno-0-1547" name="__codelineno-0-1547"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-1548" name="__codelineno-0-1548"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1549" name="__codelineno-0-1549"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">size</span>
-<a id="__codelineno-0-1550" name="__codelineno-0-1550"></a>
-<a id="__codelineno-0-1551" name="__codelineno-0-1551"></a>    <span class="nd">@grid_size</span><span class="o">.</span><span class="n">setter</span>
-<a id="__codelineno-0-1552" name="__codelineno-0-1552"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-1553" name="__codelineno-0-1553"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-1554" name="__codelineno-0-1554"></a>
-<a id="__codelineno-0-1555" name="__codelineno-0-1555"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-1556" name="__codelineno-0-1556"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snap_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<a id="__codelineno-0-1557" name="__codelineno-0-1557"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">snap_enabled</span>
-<a id="__codelineno-0-1558" name="__codelineno-0-1558"></a>
-<a id="__codelineno-0-1559" name="__codelineno-0-1559"></a>    <span class="nd">@snap_enabled</span><span class="o">.</span><span class="n">setter</span>
-<a id="__codelineno-0-1560" name="__codelineno-0-1560"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snap_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-1561" name="__codelineno-0-1561"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">snap_enabled</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-1489" name="__codelineno-0-1489"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">auto_layout</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1490" name="__codelineno-0-1490"></a><span class="w">        </span><span class="sd">"""Lay out the current diagram level left to right (layered layout).</span>
+<a id="__codelineno-0-1491" name="__codelineno-0-1491"></a>
+<a id="__codelineno-0-1492" name="__codelineno-0-1492"></a><span class="sd">        Keeps the diagram's top-left corner, snaps to the grid and re-routes</span>
+<a id="__codelineno-0-1493" name="__codelineno-0-1493"></a><span class="sd">        every wire for its routing mode (manual bends are dropped). One undo</span>
+<a id="__codelineno-0-1494" name="__codelineno-0-1494"></a><span class="sd">        step restores the previous positions and wires.</span>
+<a id="__codelineno-0-1495" name="__codelineno-0-1495"></a><span class="sd">        """</span>
+<a id="__codelineno-0-1496" name="__codelineno-0-1496"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.tools.auto_layout</span><span class="w"> </span><span class="kn">import</span> <span class="n">layered_layout</span>
+<a id="__codelineno-0-1497" name="__codelineno-0-1497"></a>
+<a id="__codelineno-0-1498" name="__codelineno-0-1498"></a>        <span class="n">blocks</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dsim</span><span class="o">.</span><span class="n">blocks_list</span><span class="p">)</span>
+<a id="__codelineno-0-1499" name="__codelineno-0-1499"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-0-1500" name="__codelineno-0-1500"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Need at least 2 blocks to lay out"</span><span class="p">)</span>
+<a id="__codelineno-0-1501" name="__codelineno-0-1501"></a>            <span class="k">return</span>
+<a id="__codelineno-0-1502" name="__codelineno-0-1502"></a>        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">ln</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dsim</span><span class="o">.</span><span class="n">line_list</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ln</span><span class="p">,</span> <span class="s2">"hidden"</span><span class="p">,</span> <span class="kc">False</span><span class="p">)]</span>
+<a id="__codelineno-0-1503" name="__codelineno-0-1503"></a>        <span class="n">positions</span> <span class="o">=</span> <span class="n">layered_layout</span><span class="p">(</span>
+<a id="__codelineno-0-1504" name="__codelineno-0-1504"></a>            <span class="p">[(</span><span class="n">b</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">height</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">],</span>
+<a id="__codelineno-0-1505" name="__codelineno-0-1505"></a>            <span class="p">[(</span><span class="n">ln</span><span class="o">.</span><span class="n">srcblock</span><span class="p">,</span> <span class="n">ln</span><span class="o">.</span><span class="n">dstblock</span><span class="p">,</span> <span class="n">ln</span><span class="o">.</span><span class="n">dstport</span><span class="p">)</span> <span class="k">for</span> <span class="n">ln</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">],</span>
+<a id="__codelineno-0-1506" name="__codelineno-0-1506"></a>            <span class="n">origin</span><span class="o">=</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">left</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">top</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">)),</span>
+<a id="__codelineno-0-1507" name="__codelineno-0-1507"></a>            <span class="n">grid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_size</span><span class="p">,</span>
+<a id="__codelineno-0-1508" name="__codelineno-0-1508"></a>        <span class="p">)</span>
+<a id="__codelineno-0-1509" name="__codelineno-0-1509"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_push_undo</span><span class="p">(</span><span class="s2">"Auto Layout"</span><span class="p">)</span>
+<a id="__codelineno-0-1510" name="__codelineno-0-1510"></a>        <span class="k">for</span> <span class="n">block</span> <span class="ow">in</span> <span class="n">blocks</span><span class="p">:</span>
+<a id="__codelineno-0-1511" name="__codelineno-0-1511"></a>            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="n">block</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+<a id="__codelineno-0-1512" name="__codelineno-0-1512"></a>            <span class="k">if</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">block</span><span class="o">.</span><span class="n">left</span><span class="p">,</span> <span class="n">block</span><span class="o">.</span><span class="n">top</span><span class="p">):</span>
+<a id="__codelineno-0-1513" name="__codelineno-0-1513"></a>                <span class="n">block</span><span class="o">.</span><span class="n">relocate_Block</span><span class="p">(</span><span class="n">QPoint</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+<a id="__codelineno-0-1514" name="__codelineno-0-1514"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
+<a id="__codelineno-0-1515" name="__codelineno-0-1515"></a>        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dsim</span><span class="o">.</span><span class="n">line_list</span><span class="p">:</span>
+<a id="__codelineno-0-1516" name="__codelineno-0-1516"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">connection_manager</span><span class="o">.</span><span class="n">route_line_for_mode</span><span class="p">(</span>
+<a id="__codelineno-0-1517" name="__codelineno-0-1517"></a>                <span class="n">line</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="s2">"routing_mode"</span><span class="p">,</span> <span class="s2">"bezier"</span><span class="p">)</span>
+<a id="__codelineno-0-1518" name="__codelineno-0-1518"></a>            <span class="p">)</span>
+<a id="__codelineno-0-1519" name="__codelineno-0-1519"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">dsim</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-1520" name="__codelineno-0-1520"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+<a id="__codelineno-0-1521" name="__codelineno-0-1521"></a>
+<a id="__codelineno-0-1522" name="__codelineno-0-1522"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">distribute_horizontal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1523" name="__codelineno-0-1523"></a><span class="w">        </span><span class="sd">"""Distribute selected blocks evenly horizontally."""</span>
+<a id="__codelineno-0-1524" name="__codelineno-0-1524"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.tools.alignment_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlignmentTools</span>
+<a id="__codelineno-0-1525" name="__codelineno-0-1525"></a>
+<a id="__codelineno-0-1526" name="__codelineno-0-1526"></a>        <span class="n">blocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_manager</span><span class="o">.</span><span class="n">get_selected_blocks</span><span class="p">()</span>
+<a id="__codelineno-0-1527" name="__codelineno-0-1527"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+<a id="__codelineno-0-1528" name="__codelineno-0-1528"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Need at least 3 blocks selected to distribute"</span><span class="p">)</span>
+<a id="__codelineno-0-1529" name="__codelineno-0-1529"></a>            <span class="k">return</span>
+<a id="__codelineno-0-1530" name="__codelineno-0-1530"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_push_undo</span><span class="p">(</span><span class="s2">"Distribute Horizontal"</span><span class="p">)</span>
+<a id="__codelineno-0-1531" name="__codelineno-0-1531"></a>        <span class="n">AlignmentTools</span><span class="o">.</span><span class="n">distribute_horizontal</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span>
+<a id="__codelineno-0-1532" name="__codelineno-0-1532"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
+<a id="__codelineno-0-1533" name="__codelineno-0-1533"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+<a id="__codelineno-0-1534" name="__codelineno-0-1534"></a>
+<a id="__codelineno-0-1535" name="__codelineno-0-1535"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">distribute_vertical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1536" name="__codelineno-0-1536"></a><span class="w">        </span><span class="sd">"""Distribute selected blocks evenly vertically."""</span>
+<a id="__codelineno-0-1537" name="__codelineno-0-1537"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">modern_ui.tools.alignment_tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlignmentTools</span>
+<a id="__codelineno-0-1538" name="__codelineno-0-1538"></a>
+<a id="__codelineno-0-1539" name="__codelineno-0-1539"></a>        <span class="n">blocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_manager</span><span class="o">.</span><span class="n">get_selected_blocks</span><span class="p">()</span>
+<a id="__codelineno-0-1540" name="__codelineno-0-1540"></a>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+<a id="__codelineno-0-1541" name="__codelineno-0-1541"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Need at least 3 blocks selected to distribute"</span><span class="p">)</span>
+<a id="__codelineno-0-1542" name="__codelineno-0-1542"></a>            <span class="k">return</span>
+<a id="__codelineno-0-1543" name="__codelineno-0-1543"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_push_undo</span><span class="p">(</span><span class="s2">"Distribute Vertical"</span><span class="p">)</span>
+<a id="__codelineno-0-1544" name="__codelineno-0-1544"></a>        <span class="n">AlignmentTools</span><span class="o">.</span><span class="n">distribute_vertical</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span>
+<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_update_line_positions</span><span class="p">()</span>
+<a id="__codelineno-0-1546" name="__codelineno-0-1546"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+<a id="__codelineno-0-1547" name="__codelineno-0-1547"></a>
+<a id="__codelineno-0-1548" name="__codelineno-0-1548"></a>    <span class="c1"># =========================================================================</span>
+<a id="__codelineno-0-1549" name="__codelineno-0-1549"></a>    <span class="c1"># Canvas-owned conveniences</span>
+<a id="__codelineno-0-1550" name="__codelineno-0-1550"></a>    <span class="c1"># -------------------------------------------------------------------------</span>
+<a id="__codelineno-0-1551" name="__codelineno-0-1551"></a>    <span class="c1"># State lives with its owning manager: zoom/pan on ZoomPanManager, the</span>
+<a id="__codelineno-0-1552" name="__codelineno-0-1552"></a>    <span class="c1"># gesture slices (selection/hover/drag/resize) on InteractionManager,</span>
+<a id="__codelineno-0-1553" name="__codelineno-0-1553"></a>    <span class="c1"># connection-creation state on ConnectionManager, and validation state on</span>
+<a id="__codelineno-0-1554" name="__codelineno-0-1554"></a>    <span class="c1"># RenderingManager. Managers and external code read/write those managers</span>
+<a id="__codelineno-0-1555" name="__codelineno-0-1555"></a>    <span class="c1"># directly. The canvas keeps only the grid slice (``self.grid``) plus a</span>
+<a id="__codelineno-0-1556" name="__codelineno-0-1556"></a>    <span class="c1"># couple of read-only view getters below, for consumers where reaching</span>
+<a id="__codelineno-0-1557" name="__codelineno-0-1557"></a>    <span class="c1"># through the manager would be awkward (save-state persistence, the minimap,</span>
+<a id="__codelineno-0-1558" name="__codelineno-0-1558"></a>    <span class="c1"># and view-fit math).</span>
+<a id="__codelineno-0-1559" name="__codelineno-0-1559"></a>    <span class="c1"># =========================================================================</span>
+<a id="__codelineno-0-1560" name="__codelineno-0-1560"></a>
+<a id="__codelineno-0-1561" name="__codelineno-0-1561"></a>    <span class="c1"># Read-only zoom/pan view getters — state owned by ZoomPanManager; writes go</span>
+<a id="__codelineno-0-1562" name="__codelineno-0-1562"></a>    <span class="c1"># through ``self.zoom_pan_manager.state``.</span>
+<a id="__codelineno-0-1563" name="__codelineno-0-1563"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-1564" name="__codelineno-0-1564"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">zoom_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1565" name="__codelineno-0-1565"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zoom_pan_manager</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">zoom_factor</span>
+<a id="__codelineno-0-1566" name="__codelineno-0-1566"></a>
+<a id="__codelineno-0-1567" name="__codelineno-0-1567"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-1568" name="__codelineno-0-1568"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">pan_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1569" name="__codelineno-0-1569"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">zoom_pan_manager</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">pan_offset</span>
+<a id="__codelineno-0-1570" name="__codelineno-0-1570"></a>
+<a id="__codelineno-0-1571" name="__codelineno-0-1571"></a>    <span class="c1"># Grid display/snap — the one canvas-owned state slice (read + write).</span>
+<a id="__codelineno-0-1572" name="__codelineno-0-1572"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-1573" name="__codelineno-0-1573"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_visible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1574" name="__codelineno-0-1574"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">visible</span>
+<a id="__codelineno-0-1575" name="__codelineno-0-1575"></a>
+<a id="__codelineno-0-1576" name="__codelineno-0-1576"></a>    <span class="nd">@grid_visible</span><span class="o">.</span><span class="n">setter</span>
+<a id="__codelineno-0-1577" name="__codelineno-0-1577"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_visible</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-1578" name="__codelineno-0-1578"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">visible</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-1579" name="__codelineno-0-1579"></a>
+<a id="__codelineno-0-1580" name="__codelineno-0-1580"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-1581" name="__codelineno-0-1581"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1582" name="__codelineno-0-1582"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">size</span>
+<a id="__codelineno-0-1583" name="__codelineno-0-1583"></a>
+<a id="__codelineno-0-1584" name="__codelineno-0-1584"></a>    <span class="nd">@grid_size</span><span class="o">.</span><span class="n">setter</span>
+<a id="__codelineno-0-1585" name="__codelineno-0-1585"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">grid_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-1586" name="__codelineno-0-1586"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">size</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-1587" name="__codelineno-0-1587"></a>
+<a id="__codelineno-0-1588" name="__codelineno-0-1588"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-1589" name="__codelineno-0-1589"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snap_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<a id="__codelineno-0-1590" name="__codelineno-0-1590"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">snap_enabled</span>
+<a id="__codelineno-0-1591" name="__codelineno-0-1591"></a>
+<a id="__codelineno-0-1592" name="__codelineno-0-1592"></a>    <span class="nd">@snap_enabled</span><span class="o">.</span><span class="n">setter</span>
+<a id="__codelineno-0-1593" name="__codelineno-0-1593"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">snap_enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-1594" name="__codelineno-0-1594"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">snap_enabled</span> <span class="o">=</span> <span class="n">value</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

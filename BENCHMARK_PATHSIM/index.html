@@ -12,13 +12,13 @@
         <meta name="author" content="DiaBloS Project">
       
       
-        <link rel="canonical" href="https://sapetor.github.io/diablos-modern/RELEASING/">
+        <link rel="canonical" href="https://sapetor.github.io/diablos-modern/BENCHMARK_PATHSIM/">
       
       
-        <link rel="prev" href="../building/">
+        <link rel="prev" href="../VALIDATION/">
       
       
-        <link rel="next" href="../PDE_ROADMAP/">
+        <link rel="next" href="../SYMBOL_DRAWING_GUIDE/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Releasing - DiaBloS Modern</title>
+        <title>PathSim Benchmark - DiaBloS Modern</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#releasing" class="md-skip">
+        <a href="#diablos-vs-pathsim-head-to-head-benchmark" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Releasing
+              PathSim Benchmark
             
           </span>
         </div>
@@ -1494,10 +1494,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../BENCHMARK_PATHSIM/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PathSim Benchmark
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1513,6 +1540,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s1-digital-controller-on-a-continuous-plant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S1 - digital controller on a continuous plant
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s2-algebraic-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S2 - algebraic loops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-delayed-platoon-scaling-in-n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3 - delayed platoon, scaling in N
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s4-seeded-monte-carlo-ensemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4 - seeded Monte Carlo ensemble
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-means-for-the-build-vs-adopt-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this means for the build-vs-adopt question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducing
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1578,37 +1702,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Releasing
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../RELEASING/" class="md-nav__link">
         
   
   
@@ -1624,159 +1721,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-version-is-single-sourced" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The version is single-sourced
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#release-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Release checklist
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Release checklist">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-make-sure-main-is-green" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Make sure main is green
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-bump-the-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Bump the version
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-update-the-changelog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Update the CHANGELOG
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-check-the-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Check the documentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-commit-tag-push" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Commit, tag, push
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-workflow-produces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the workflow produces
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What the workflow produces">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-release-notes-say" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the release notes say
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verifying-the-artifacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verifying the artifacts
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-the-documentation-deploys" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How the documentation deploys
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2043,10 +1987,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-version-is-single-sourced" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The version is single-sourced
+        Summary
       
     </span>
   </a>
@@ -2054,110 +1998,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#release-checklist" class="md-nav__link">
+  <a href="#s1-digital-controller-on-a-continuous-plant" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Release checklist
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Release checklist">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-make-sure-main-is-green" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Make sure main is green
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-bump-the-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Bump the version
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-update-the-changelog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Update the CHANGELOG
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-check-the-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Check the documentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-commit-tag-push" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Commit, tag, push
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-the-workflow-produces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the workflow produces
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What the workflow produces">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-release-notes-say" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the release notes say
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verifying-the-artifacts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verifying the artifacts
+        S1 - digital controller on a continuous plant
       
     </span>
   </a>
@@ -2165,10 +2009,54 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-the-documentation-deploys" class="md-nav__link">
+  <a href="#s2-algebraic-loops" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the documentation deploys
+        S2 - algebraic loops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-delayed-platoon-scaling-in-n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3 - delayed platoon, scaling in N
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s4-seeded-monte-carlo-ensemble" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4 - seeded Monte Carlo ensemble
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-means-for-the-build-vs-adopt-question" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this means for the build-vs-adopt question
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducing
       
     </span>
   </a>
@@ -2192,7 +2080,7 @@
 
 
   
-    <a href="https://github.com/Sapetor/diablos-modern/edit/main/docs/RELEASING.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/Sapetor/diablos-modern/edit/main/docs/BENCHMARK_PATHSIM.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2200,176 +2088,339 @@
   
 
 
-<h1 id="releasing">Releasing<a class="headerlink" href="#releasing" title="Permanent link">&para;</a></h1>
-<p>Cutting a release is two commands. Everything else is automated by
-<code>.github/workflows/release.yml</code>, which builds three platform artifacts and
-publishes them to GitHub Releases.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>tag<span class="w"> </span>v1.2.0
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>git<span class="w"> </span>push<span class="w"> </span>--tags
-</code></pre></div>
-<p>That is the whole trigger — but do the checklist below first, because the tag is
-what gets built and there is no way to amend a published release cleanly.</p>
-<hr />
-<h2 id="the-version-is-single-sourced">The version is single-sourced<a class="headerlink" href="#the-version-is-single-sourced" title="Permanent link">&para;</a></h2>
-<p><code>[project] version</code> in <strong><code>pyproject.toml</code></strong> is the only place a version number
-is written. Everything else reads it back:</p>
+<h1 id="diablos-vs-pathsim-head-to-head-benchmark">DiaBloS vs PathSim: head-to-head benchmark<a class="headerlink" href="#diablos-vs-pathsim-head-to-head-benchmark" title="Permanent link">&para;</a></h1>
+<p>Measured 2026-10-10 on DiaBloS <code>b21f236</code> (S1 re-measured on <code>120b182</code>, after
+the sampling-delay fix in <code>68e8289</code>), PathSim 0.27.0 (MIT), numpy 2.5.3,
+scipy 1.18.1, Python 3.12.3, AMD Ryzen 7 9800X3D under WSL2. Harness:
+<code>scripts/benchmarks/pathsim/</code> (one script per scenario, raw results in
+<code>out/*.json</code>). Timings are the median of 5 runs (3 for S3) after one warm-up
+and cover only the simulate call -- not diagram loading, Qt start-up or model
+construction.</p>
+<p>Accuracy is always measured against an independent reference (closed form,
+exact <code>expm</code> discretization, or tight-tolerance <code>solve_ivp</code>), never against
+either tool, and the reference is evaluated at each tool's own output times.</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Consumer</th>
-<th>How it reads the version</th>
+<th>Scenario</th>
+<th>DiaBloS</th>
+<th>PathSim</th>
+<th>Takeaway</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>modern_ui/__init__.py</code></td>
-<td>Parses <code>pyproject.toml</code> in a checkout; reads the bundled <code>_version.txt</code> in a frozen build</td>
+<td>S1a linear plant + digital PI</td>
+<td>exact (2e-14), 0.1 s, interpreter</td>
+<td>6e-12 at 0.1 s (RKDP54)</td>
+<td>Fallback costs nothing for linear plants. A one-period control delay found here is fixed (<code>68e8289</code>)</td>
 </tr>
 <tr>
-<td><code>diablos.spec</code></td>
-<td>Parses it for <code>CFBundleShortVersionString</code></td>
+<td>S1b nonlinear stiff plant + digital PI</td>
+<td><strong>1st order</strong>: 1.3e-3 (3.4 s) ... 2.4e-5 (44 s)</td>
+<td>1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s</td>
+<td>The interpreter fallback is the real accuracy gap</td>
 </tr>
 <tr>
-<td><code>tools/build.sh</code></td>
-<td>Parses it for the DMG filename</td>
+<td>S2 algebraic loop</td>
+<td>rejected; delay workaround diverges or is wrong unless the loop contracts</td>
+<td>solved to 3e-13, 2 ms</td>
+<td>Genuine capability gap</td>
 </tr>
 <tr>
-<td><code>.github/workflows/release.yml</code></td>
-<td>Parses it for the Windows zip and Linux tarball filenames</td>
+<td>S3 delayed platoon, N=50</td>
+<td>1.8e-2 at 16 s</td>
+<td>2.0e-3 at 11 s; 2.4e-5 at 109 s</td>
+<td>Mixed at N&lt;=10; PathSim faster and more accurate at N&gt;=20</td>
+</tr>
+<tr>
+<td>S4 50-run seeded ensemble</td>
+<td>163 ms/run, bitwise reproducible</td>
+<td>164 ms/run (RK4, same dt), bitwise reproducible</td>
+<td>Parity at matched settings</td>
 </tr>
 </tbody>
 </table>
-<p>So bumping one line in <code>pyproject.toml</code> renames the artifacts, changes the macOS
-bundle version, and updates the string in the window title, all at once.</p>
-<p>The <strong>tag</strong> is not derived from that line. Keep them in step by hand: tag
-<code>v1.2.0</code> after setting <code>version = "1.2.0"</code>.</p>
-<hr />
-<h2 id="release-checklist">Release checklist<a class="headerlink" href="#release-checklist" title="Permanent link">&para;</a></h2>
-<h3 id="1-make-sure-main-is-green">1. Make sure main is green<a class="headerlink" href="#1-make-sure-main-is-green" title="Permanent link">&para;</a></h3>
-<p>The release workflow calls <code>.github/workflows/ci.yml</code> through <code>workflow_call</code>
-and every build job depends on it, so a tag can never publish an untested tree.
-Save yourself the round trip and check locally first:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ruff<span class="w"> </span>check<span class="w"> </span>.
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>.
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>python<span class="w"> </span>tools/sync_block_registry.py<span class="w"> </span>--check
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nv">QT_QPA_PLATFORM</span><span class="o">=</span>offscreen<span class="w"> </span>pytest<span class="w"> </span>tests/
-</code></pre></div>
-<p><code>sync_block_registry.py --check</code> matters: a new block file that nobody synced
-works in a checkout and is <em>silently missing from the packaged app</em>. CI gates on
-it, but catching it here is cheaper.</p>
-<h3 id="2-bump-the-version">2. Bump the version<a class="headerlink" href="#2-bump-the-version" title="Permanent link">&para;</a></h3>
-<p>Edit <code>[project] version</code> in <code>pyproject.toml</code>. Use semantic versioning:
-breaking changes to the <code>.diablos</code> file format or the CLI are a major bump.</p>
-<h3 id="3-update-the-changelog">3. Update the CHANGELOG<a class="headerlink" href="#3-update-the-changelog" title="Permanent link">&para;</a></h3>
-<p>Move everything under <code>## [Unreleased]</code> into a new
-<code>## [1.2.0] - YYYY-MM-DD</code> section, and leave a fresh empty <code>[Unreleased]</code>
-heading above it. The release notes on GitHub are auto-generated from commits,
-but <code>CHANGELOG.md</code> is what a human reads, and the release body points at it.</p>
-<h3 id="4-check-the-documentation">4. Check the documentation<a class="headerlink" href="#4-check-the-documentation" title="Permanent link">&para;</a></h3>
-<p>The docs site is built from the same commit. If the release adds a block,
-a menu item or a CLI flag, the pages describing them should already be updated:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>scripts/audit_wiki_docs.py<span class="w">    </span><span class="c1"># blocks vs. docs/wiki/</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict<span class="w">                </span><span class="c1"># links, nav, API reference</span>
-</code></pre></div>
-<h3 id="5-commit-tag-push">5. Commit, tag, push<a class="headerlink" href="#5-commit-tag-push" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>add<span class="w"> </span>pyproject.toml<span class="w"> </span>CHANGELOG.md
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"release: 1.2.0"</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>git<span class="w"> </span>push
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>git<span class="w"> </span>tag<span class="w"> </span>v1.2.0
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>git<span class="w"> </span>push<span class="w"> </span>--tags
-</code></pre></div>
-<p>The workflow triggers on <code>push</code> of a tag matching <code>v*</code>.</p>
-<hr />
-<h2 id="what-the-workflow-produces">What the workflow produces<a class="headerlink" href="#what-the-workflow-produces" title="Permanent link">&para;</a></h2>
-<p><code>release.yml</code> runs four jobs after the CI gate:</p>
+<h2 id="s1-digital-controller-on-a-continuous-plant">S1 - digital controller on a continuous plant<a class="headerlink" href="#s1-digital-controller-on-a-continuous-plant" title="Permanent link">&para;</a></h2>
+<p>Any block with a discrete sample time makes the whole diagram fall back to
+the fixed-step interpreter (recorded reason: <code>ZeroOrderHold: it has a
+discrete sample time</code>). The step reference is placed at t=0.93 s, off every
+sampling grid, so "sample before or after the step" is not a factor.</p>
+<p><strong>S1a</strong> (<code>examples/discrete_pi_zoh.diablos</code>: ZOH 0.1 s -&gt; PI -&gt; 2/((s+1)(s+2))).</p>
 <table>
 <thead>
 <tr>
-<th>Job</th>
-<th>Runner</th>
-<th>Output</th>
+<th>Tool</th>
+<th>Setting</th>
+<th>Wall</th>
+<th>Max error</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>macos</code></td>
-<td><code>macos-latest</code> (arm64)</td>
-<td><code>dist/DiaBloS-&lt;version&gt;-arm64.dmg</code>, via <code>tools/build.sh</code></td>
+<td>DiaBloS</td>
+<td>sim_dt = 0.01 / 0.005 / 0.001</td>
+<td>0.11 / 0.20 / 0.98 s</td>
+<td>2e-14 / 2e-14 / 1e-13</td>
 </tr>
 <tr>
-<td><code>windows</code></td>
-<td><code>windows-latest</code></td>
-<td><code>dist/DiaBloS-&lt;version&gt;-windows-x64.zip</code> — the whole one-folder <code>dist/DiaBloS/</code> layout, zipped</td>
+<td>PathSim RKDP54</td>
+<td>rtol 1e-4 / 1e-6 / 1e-8 / 1e-10</td>
+<td>0.02 / 0.03 / 0.05 / 0.11 s</td>
+<td>8e-8 / 4e-8 / 6e-10 / 6e-12</td>
 </tr>
 <tr>
-<td><code>linux</code></td>
-<td><code>ubuntu-latest</code></td>
-<td><code>dist/DiaBloS-&lt;version&gt;-linux-x86_64.tar.gz</code> — same layout, tarred so the executable bit survives</td>
-</tr>
-<tr>
-<td><code>release</code></td>
-<td><code>ubuntu-latest</code></td>
-<td>The GitHub release, with all three attached</td>
+<td>PathSim ESDIRK43</td>
+<td>rtol 1e-4 ... 1e-10</td>
+<td>0.19 ... 1.8 s</td>
+<td>8e-7 ... 4e-9</td>
 </tr>
 </tbody>
 </table>
-<p>All three builds use Python 3.12 and PyInstaller with <code>diablos.spec</code>. The macOS
-job runs <code>tools/build.sh</code>, which also syncs the block registry and builds the
-DMG with <code>hdiutil</code>; the Windows and Linux jobs run the portable equivalent
-(<code>sync_block_registry.py</code> then <code>pyinstaller --noconfirm diablos.spec</code>) because
-<code>build.sh</code> is macOS-only.</p>
-<p>The <code>release</code> job is guarded by <code>if: startsWith(github.ref, 'refs/tags/v')</code>, so a
-manual <code>workflow_dispatch</code> run builds and uploads artifacts for inspection
-without publishing anything.</p>
-<p><code>fail_on_unmatched_files: true</code> means a missing artifact fails the release
-rather than publishing a partial one.</p>
-<h3 id="what-the-release-notes-say">What the release notes say<a class="headerlink" href="#what-the-release-notes-say" title="Permanent link">&para;</a></h3>
-<p>The body is a fixed template plus GitHub's auto-generated commit list. It tells
-users how to get past the unsigned-binary warnings:</p>
+<p>Errors are against the standard semantics: u[k] computed from e[kT] is
+applied on [kT, (k+1)T), as in Simulink and PathSim. <code>TranFn</code> is discretized
+exactly (<code>cont2discrete</code>) in the interpreter, so for a linear plant the
+fallback costs no accuracy.</p>
+<p><strong>Found and fixed: sampled blocks behind a ZOH acted one period late</strong>
+(<code>68e8289</code>, regression test <code>tests/regression/test_sampled_loop_delay.py</code>).
+Before the fix, DiaBloS matched the exact solution only <em>with one extra
+controller period of delay</em> (error 0.106 against the standard semantics), and
+<code>u</code> changed at t~1.10 instead of 1.00. The interpreter's memory pass counted
+the ZOH's stale held output as delivered. Whenever the ZOH's own input was
+produced later in the step, the discrete block behind it ran first and
+latched the stale sample for a whole period. That happened in closed loop,
+and also in an open-loop ramp -&gt; ZOH -&gt; strictly proper DTF chain. This was
+not the documented one-<code>sim_dt</code> interpreter delay (<code>docs/SOLVER_SEMANTICS.md</code>
+4.2). It was a full period T of unmodelled phase lag, and in S1b it raised
+the peak from 1.26 to 1.34.</p>
+<p><strong>S1b</strong> (pendulum <code>x1'' = -sin x1 - 0.5 x1' + a</code>, actuator <code>a' = (u-a)/1e-3</code>,
+built from <code>Integrator</code> blocks; discrete PI Kp=1, Ki=0.5, T=0.05 s; 10 s).</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Setting</th>
+<th>Wall</th>
+<th>Max error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DiaBloS, Integrator SOLVE_IVP (default)</td>
+<td>sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4</td>
+<td>3.4 / 5.8 / 11.9 / 27.1 s</td>
+<td>1.3e-3 / 6.5e-4 / 3.2e-4 / 1.3e-4</td>
+</tr>
+<tr>
+<td>DiaBloS, Integrator RK4</td>
+<td>sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4</td>
+<td>4.5 / 8.8 / 18.0 / 43.7 s</td>
+<td>2.4e-4 / 1.2e-4 / 6.1e-5 / 2.4e-5</td>
+</tr>
+<tr>
+<td>PathSim RKDP54</td>
+<td>rtol 1e-4 / 1e-6 / 1e-8</td>
+<td>0.9 / 1.2 / 1.8 s</td>
+<td>1.7e-10 / 1.8e-12 / 1.9e-13</td>
+</tr>
+<tr>
+<td>PathSim ESDIRK43</td>
+<td>rtol 1e-4 / 1e-6 / 1e-8</td>
+<td>4.6 / 5.0 / 8.2 s</td>
+<td>4.1e-9 / 3.1e-10 / 1.7e-10</td>
+</tr>
+</tbody>
+</table>
+<p>DiaBloS wall times are 4-15 % above the pre-fix run (3.2 / 5.6 / 11.1 /
+25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). Most of that is CPU contention, since
+the post-fix run shared the machine with another test run. Re-timed on an
+idle machine, the sim_dt 1e-3 point takes 3.31 s (+2 %), which bounds the
+cost of the fix's per-step dependency check.</p>
+<p>Both interpreter integrator modes converge at <strong>first order</strong>. The
+interpreter holds each block's input constant over a step: the SOLVE_IVP mode
+integrates <code>x' = u_held</code> exactly, and the RK4 label does not give fourth
+order in a closed loop. Reaching 2.4e-5 takes 44 s, while PathSim reaches
+2e-12 in 1.2 s. For an explicit solver the 1 ms actuator is only mildly stiff over
+this horizon; the implicit ESDIRK43 does not pay off here.</p>
+<p><em>Roadmap implication:</em> this is the strongest result for "adaptive integration
+between scheduled sample instants". A compiled hybrid path -- <code>solve_ivp</code>
+from sample hit to sample hit, discrete updates as events -- would bring
+S1b to PathSim-class accuracy. With the delay fix the interpreter now
+follows the same standard semantics, so S1a/S1b can serve as the hybrid
+path's acceptance tests.</p>
+<h2 id="s2-algebraic-loops">S2 - algebraic loops<a class="headerlink" href="#s2-algebraic-loops" title="Permanent link">&para;</a></h2>
+<p><code>y = u - f(y)</code>, u = 1, solved directly in PathSim. DiaBloS rejects every case
+(<code>Algebraic loop detected involving blocks: [...]</code>), so its column is the
+workaround a user would try: a one-step <code>Delay</code> in the feedback path.</p>
+<table>
+<thead>
+<tr>
+<th>Loop</th>
+<th>Exact y</th>
+<th>DiaBloS + Delay</th>
+<th>PathSim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>f(y) = 0.5 y</td>
+<td>0.6667</td>
+<td>exact (contraction)</td>
+<td>exact</td>
+</tr>
+<tr>
+<td>f(y) = 3 y</td>
+<td>0.25</td>
+<td>diverges (1e95)</td>
+<td>exact</td>
+</tr>
+<tr>
+<td>f(y) = tanh(3 y)</td>
+<td>0.2934</td>
+<td>wrong: period-2 oscillation between 0.006 and 0.984</td>
+<td>3e-13</td>
+</tr>
+</tbody>
+</table>
+<p>The delay turns the loop into the fixed-point iteration y &lt;- u - f(y), which
+only converges when |f'(y*)| &lt; 1. Run time is negligible on both sides
+(~10 ms vs ~2 ms).</p>
+<p><em>Roadmap implication:</em> a Newton / accelerated fixed-point solve of strongly
+connected algebraic components is a self-contained, high-value addition.
+PathSim's <code>NewtonAnderson</code> booster is a working MIT-licensed example to
+compare against.</p>
+<h2 id="s3-delayed-platoon-scaling-in-n">S3 - delayed platoon, scaling in N<a class="headerlink" href="#s3-delayed-platoon-scaling-in-n" title="Permanent link">&para;</a></h2>
+<p>Predecessor-following double integrators,
+<code>a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)</code>, leader <code>p0 = t</code>,
+20 s. Reference: method of steps with DOP853 at rtol 1e-12. <code>TransportDelay</code>
+also forces the interpreter (<code>it has no compiled kernel</code>).</p>
+<table>
+<thead>
+<tr>
+<th>N (blocks)</th>
+<th>DiaBloS dt=0.01</th>
+<th>DiaBloS dt=0.001</th>
+<th>PathSim rtol 1e-6</th>
+<th>PathSim rtol 1e-9</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5 (48)</td>
+<td>1.5 s, 1.8e-2</td>
+<td>14.9 s, 9.9e-4</td>
+<td>0.8 s, 7.5e-2</td>
+<td>3.2 s, 2.6e-5</td>
+</tr>
+<tr>
+<td>10 (93)</td>
+<td>2.8 s, 3.8e-2</td>
+<td>-</td>
+<td>1.7 s, 9.0e-2</td>
+<td>10.4 s, 1.2e-4</td>
+</tr>
+<tr>
+<td>20 (183)</td>
+<td>5.6 s, 2.4e-1</td>
+<td>56.5 s, 2.1e-2</td>
+<td>3.7 s, 1.4e-2</td>
+<td>35.0 s, 4.3e-4</td>
+</tr>
+<tr>
+<td>50 (453)</td>
+<td>16.3 s, 1.8e-2</td>
+<td>-</td>
+<td>10.7 s, 2.0e-3</td>
+<td>108.6 s, 2.4e-5</td>
+</tr>
+</tbody>
+</table>
+<p>(wall time, max error on the last vehicle's position)</p>
+<p>Both tools scale roughly linearly in N. The leader's velocity step reaches
+each follower as a delayed discontinuity that neither solver is told about,
+so adaptive stepping buys PathSim less here than in S1. For N &lt;= 10 it is a
+trade-off: at rtol 1e-6 PathSim is faster but less accurate than DiaBloS at
+dt=0.01. At N &gt;= 20 PathSim at rtol 1e-6 is both faster (3.7 vs 5.6 s,
+10.7 vs 16.3 s) and 9-17x more accurate. Tight tolerance gets expensive for
+PathSim (109 s at N=50).</p>
+<p>Errors are comparable across tools, not across N. The last vehicle's
+excursion by t=20 depends on how far the transient has propagated. At N=20
+its reference overshoots to 20.6 before settling at 15.0, and the DiaBloS
+peak error falls mid-transient (t~14.5 s). At N=50 the last vehicle has only
+moved 0.09, hence the small errors in that row.</p>
+<h2 id="s4-seeded-monte-carlo-ensemble">S4 - seeded Monte Carlo ensemble<a class="headerlink" href="#s4-seeded-monte-carlo-ensemble" title="Permanent link">&para;</a></h2>
+<p><code>examples/monte_carlo_robustness.diablos</code> (PI on 1/(s+1), noisy measurement
+over a 20 % Bernoulli packet-loss link sampled at 0.05 s, hold on drop), 50
+runs x 20 s. DiaBloS uses <code>MonteCarloRunner</code>. PathSim is a plain Python loop
+with a custom scheduled-event loss block and <code>default_rng([seed, i])</code>. Per-run
+setup is included on both sides.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>DiaBloS</th>
+<th>PathSim (RK4, dt 0.01)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per run</td>
+<td>163 ms</td>
+<td>164 ms</td>
+</tr>
+<tr>
+<td>Same master seed twice</td>
+<td>bitwise identical</td>
+<td>bitwise identical</td>
+</tr>
+<tr>
+<td>Different master seed</td>
+<td>differs</td>
+<td>differs</td>
+</tr>
+<tr>
+<td>Final value mean / std</td>
+<td>1.002 / 0.020</td>
+<td>0.999 / 0.021</td>
+</tr>
+</tbody>
+</table>
+<p>Ensemble means agree within 3 standard errors at every t &gt;= 5 s (the RNG
+streams differ, so only statistics are comparable). PathSim's per-run cost
+depends strongly on the solver: SSPRK22 fixed 92 ms, RK4 fixed 162 ms,
+RKDP54 rtol 1e-6 1.1 s, rtol 1e-9 3.7 s. Tight adaptive tolerances are
+expensive when sample events restart the step every 50 ms. Building the same
+experiment in PathSim took about 40 lines, including a custom block. DiaBloS
+gives it as a menu action with ensemble plots.</p>
+<h2 id="what-this-means-for-the-build-vs-adopt-question">What this means for the build-vs-adopt question<a class="headerlink" href="#what-this-means-for-the-build-vs-adopt-question" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>macOS</strong> — <code>xattr -rd com.apple.quarantine /Applications/DiaBloS-arm64.app</code></li>
-<li><strong>Windows</strong> — SmartScreen ▸ More info ▸ Run anyway</li>
-<li><strong>Linux</strong> — <code>tar -xzf</code>, then <code>./DiaBloS/DiaBloS</code></li>
+<li>The external analysis's two biggest claims hold up under measurement:
+  sampled-data accuracy (S1b) and algebraic loops (S2) are real gaps, not
+  cosmetic ones.</li>
+<li>Two of its implicit worries do not: for linear plants the interpreter
+  fallback is exact (S1a), and seeded ensembles are already on par in cost
+  and reproducibility (S4). Delayed multi-agent models (S3) trade off at
+  small N and favour PathSim at N &gt;= 20, without the decisive gap of S1b.</li>
+<li>New and more urgent than either: a <strong>one-period sampling delay</strong> behind
+  every ZOH (S1), which silently changed digital-control results. It is
+  fixed in <code>68e8289</code>, with a regression test against the S1a exact
+  reference.</li>
+<li>Suggested order from here: (1) hybrid compiled path; (2) algebraic loop
+  solver. A PathSim backend adapter would get both at once. The
+  S1/S2 scripts here are the acceptance tests for any of these routes.</li>
 </ul>
-<hr />
-<h2 id="verifying-the-artifacts">Verifying the artifacts<a class="headerlink" href="#verifying-the-artifacts" title="Permanent link">&para;</a></h2>
-<p>Do this before announcing the release.</p>
-<ol>
-<li><strong>All three assets are attached</strong> and their filenames carry the new version.</li>
-<li><strong>macOS</strong>: download the DMG on an Apple Silicon Mac, drag to Applications,
-   run the <code>xattr</code> command from the release notes, and launch it. The window
-   title reads <code>DiaBloS Modern &lt;version&gt; - Block Diagram Simulator</code>; check that
-   the version is the one you tagged.</li>
-<li><strong>Windows</strong>: extract the <em>whole</em> <code>DiaBloS</code> folder from the zip and run
-   <code>DiaBloS.exe</code>. Running it from inside the zip viewer will fail — that is
-   expected, not a bug.</li>
-<li><strong>Linux</strong>: <code>tar -xzf</code> and run <code>./DiaBloS/DiaBloS</code>.</li>
-<li><strong>Blocks are all there.</strong> Open the palette and confirm nothing is missing —
-   this is what the registry sync protects, and a packaged build is where a
-   missed sync shows up.</li>
-<li><strong>Open an example</strong> from <strong>File ▸ Examples</strong> and run it. A packaged build
-   resolves resource paths differently from a checkout
-   (<code>lib/app_paths.py</code>), so this catches path bugs a source run never sees.</li>
-</ol>
-<p>There is no automated Intel-macOS or ARM-Linux artifact. Build those from source
-if you need them — see <a href="../building/">Building &amp; Packaging</a>.</p>
-<hr />
-<h2 id="how-the-documentation-deploys">How the documentation deploys<a class="headerlink" href="#how-the-documentation-deploys" title="Permanent link">&para;</a></h2>
-<p><code>.github/workflows/docs.yml</code> builds the MkDocs site with <code>--strict</code> on every
-push and pull request, and on a push to <code>main</code> it also runs
-<code>mkdocs gh-deploy --force</code>, which commits the rendered site to the <code>gh-pages</code>
-branch. GitHub Pages serves it from there.</p>
-<p>Two consequences:</p>
-<ul>
-<li><strong>A broken link or a page missing from the nav fails the branch</strong>, before it
-  can reach the site.</li>
-<li><strong>The site follows <code>main</code>, not the tags.</strong> It is documentation of the current
-  code, not of the last release. Merging a documentation fix publishes it
-  without a release.</li>
-</ul>
-<p><code>readthedocs.yaml</code> builds the same <code>mkdocs.yml</code> on Read the Docs if that project
-is configured. Neither depends on the other, so the site survives either one
-being down.</p>
+<h2 id="reproducing">Reproducing<a class="headerlink" href="#reproducing" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/.venvs/diablos-bench
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>~/.venvs/diablos-bench/bin/pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt<span class="w"> </span>-r<span class="w"> </span>scripts/benchmarks/pathsim/requirements.txt
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">cd</span><span class="w"> </span>scripts/benchmarks/pathsim
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>~/.venvs/diablos-bench/bin/python<span class="w"> </span>s1_sampled_data.py<span class="w">   </span><span class="c1"># ~6 min</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>~/.venvs/diablos-bench/bin/python<span class="w"> </span>s2_algebraic_loop.py<span class="w"> </span><span class="c1"># seconds</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nv">DIABLOS_BENCH_REPEATS</span><span class="o">=</span><span class="m">3</span><span class="w"> </span>~/.venvs/diablos-bench/bin/python<span class="w"> </span>s3_platoon.py<span class="w">  </span><span class="c1"># ~25 min</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>~/.venvs/diablos-bench/bin/python<span class="w"> </span>s4_ensemble.py<span class="w">       </span><span class="c1"># ~2 min</span>
+</code></pre></div>
+<p><code>DIABLOS_BENCH_REPEATS</code> sets the timed repeats (default 5), and
+<code>DIABLOS_BENCH_OUT</code> the output directory.</p>
 
 
 
