@@ -308,12 +308,12 @@ def entry(argv=None):
     """Process entry point shared by ``python diablos_modern.py`` and the
     ``diablos`` console script.
 
-    Headless subcommands (``run``, ``export-python``) dispatch to the CLI before
+    Headless subcommands (``run``, ``export-python``, ``diff``) dispatch to the CLI before
     any GUI is built, so agents/CI can simulate or export a diagram without a
     display.
     """
     argv = sys.argv if argv is None else argv
-    if len(argv) > 1 and argv[1] in ("run", "export-python"):
+    if len(argv) > 1 and argv[1] in ("run", "export-python", "diff"):
         from lib.cli import main as cli_main
 
         return cli_main(argv[1:])

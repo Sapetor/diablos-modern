@@ -473,6 +473,29 @@ python diablos_modern.py export-python diagram.diablos -o model.py
 | `--solver` | Solver baked into the script (`RK45`, `LSODA`, `Euler`, `RK4`, ...). Default: the diagram's `solver_method` |
 | `-q`, `--quiet` | Suppress the summary on stdout |
 
+### Compare two diagrams
+```bash
+python diablos_modern.py diff old.diablos new.diablos
+```
+
+Compares by block and connection, not by JSON line: simulation settings,
+blocks added/removed, block type, label and parameter changes, port counts, and
+wires added/removed. Blocks inside subsystems are shown with their path
+(`ctrl/gain2`). Positions, sizes and wire bends are ignored unless `--layout`.
+
+```
+~ block DiscreteTranFn "digital PI" (discretetranfn3)
+    numerator: [1.2, -1.0] -> [2.0, -1.5]
++ wire sampler Ts = 0.1 s:0 -> K:0
+```
+
+| Flag | Meaning |
+|------|---------|
+| `--layout` | Also report block moves/resizes and wire bends |
+| `--json` | Print the differences as JSON |
+
+Exit code 0 when the diagrams match, 1 when they differ, 2 on a read error.
+
 Both are also reachable as a module: `python -m lib.cli run diagram.diablos -o out.csv`.
 
 ---

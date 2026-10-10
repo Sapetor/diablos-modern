@@ -9,6 +9,10 @@ tuning/experiment tools use (``DSim.run_tuning_simulation`` +
 ``export-python`` writes the diagram out as a self-contained Python script
 (numpy + scipy only) via ``lib.export.python_codegen``.
 
+``diff`` compares two diagrams by block and connection (``lib.diagram_diff``):
+parameter, label, type and wiring changes, ignoring layout unless
+``--layout``. Exit code 0 when they match, 1 when they differ (like ``diff``).
+
 Usage::
 
     python diablos_modern.py run diagram.diablos -o out.csv
@@ -16,6 +20,7 @@ Usage::
     python diablos_modern.py run diagram.diablos --solver interpreter -o out.npz
     python diablos_modern.py run diagram.diablos --method Radau --rtol 1e-6 -o out.csv
     python diablos_modern.py export-python diagram.diablos -o model.py
+    python diablos_modern.py diff old.diablos new.diablos [--layout] [--json]
 
 Or as a module: ``python -m lib.cli run diagram.diablos -o out.csv``.
 
@@ -314,7 +319,36 @@ def build_parser():
     export.add_argument(
         "-q", "--quiet", action="store_true", help="Suppress the summary on stdout."
     )
+
+    diff = sub.add_parser(
+        "diff",
+        help="Compare two .diablos diagrams by block and connection (not by JSON line).",
+    )
+    diff.add_argument("old", help="Original .diablos diagram.")
+    diff.add_argument("new", help="Changed .diablos diagram.")
+    diff.add_argument(
+        "--layout",
+        action="store_true",
+        help="Also report block moves/resizes and wire bends (ignored by default).",
+    )
+    diff.add_argument("--json", action="store_true", help="Print the differences as JSON.")
     return parser
+
+
+def _main_diff(args):
+    """``diff`` subcommand. Exit code 0 = no differences, 1 = differences, 2 = error."""
+    from lib.diagram_diff import diff_diagrams, format_diff, is_empty, load
+
+    try:
+        result = diff_diagrams(load(args.old), load(args.new), layout=args.layout)
+    except FileNotFoundError as e:
+        print(f"error: diagram not found: {e}", file=sys.stderr)
+        return 2
+    except (OSError, ValueError) as e:
+        print(f"error: could not read diagram: {e}", file=sys.stderr)
+        return 2
+    print(json.dumps(result, indent=2) if args.json else format_diff(result))
+    return 0 if is_empty(result) else 1
 
 
 def _main_export_python(args):
@@ -350,6 +384,8 @@ def main(argv=None):
 
     if args.command == "export-python":
         return _main_export_python(args)
+    if args.command == "diff":
+        return _main_diff(args)
     if args.command != "run":  # argparse enforces this, but be explicit.
         return 2
 

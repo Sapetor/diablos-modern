@@ -78,7 +78,7 @@ Full instructions, including conda and Linux system libraries:
 
 ## Command line
 
-Two subcommands never build a GUI, so they work over SSH and in CI:
+These subcommands never build a GUI, so they work over SSH and in CI:
 
 ```bash
 # Simulate headlessly, write every Scope trace to CSV (or .npz)
@@ -87,6 +87,9 @@ python diablos_modern.py run model.diablos -o out.csv --time 30 --dt 0.005
 # Export a standalone numpy + scipy script that reproduces the compiled solver
 python diablos_modern.py export-python model.diablos -o model.py
 python model.py --out run.csv --no-plot
+
+# Compare two diagrams by block, parameter and wire (not by JSON line)
+python diablos_modern.py diff old.diablos new.diablos
 ```
 
 `run` also takes `--solver {compiled,interpreter}`, `--no-zero-crossing` and `--verify` (print the verification report, exit 3 on a failed check).
