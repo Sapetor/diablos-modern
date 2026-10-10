@@ -6,6 +6,9 @@ pytest>=7.0.0
 pytest-qt>=4.2.0
 pytest-cov>=4.0.0
 pytest-timeout>=2.1.0  # CI backstop: fail a hung test instead of blocking the job
+# Optional at runtime (the `symbolic` extra) but required here, so the symbolic
+# engine and the blocks' symbolic_execute() hooks are tested in CI.
+sympy>=1.9
 
 # Code quality
 # ruff = linter + formatter (replaces flake8/pylint/isort/black); config in pyproject.toml.

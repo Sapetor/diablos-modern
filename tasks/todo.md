@@ -11,13 +11,6 @@ Everything below is still open, verified against the code where cheaply
 checkable (2026-10-02 pass noted per item).
 
 ### Parked feature ideas (idea review, September 2026)
-- [ ] **SymPy is installed nowhere (found 2026-10-10).** It is only the
-  optional `symbolic` extra in `pyproject.toml`: not in `requirements*.txt`,
-  CI or `.venv-win`, so `lib/engine/symbolic_engine.py` and every block's
-  `symbolic_execute()` never run in CI (the app logs "SymPy not installed").
-  `SymbolicEngine` also leaves feedback as unresolved `*_fb` symbols. Decide:
-  add SymPy to the dev requirements and test it, or retire the path. Block-
-  diagram algebra deliberately does not depend on it (numeric rationals).
 - [ ] **Interactive source blocks** — Slider/Knob source and Manual Switch
   adjustable on the canvas during a run. (confirmed absent 2026-10-02; only a
   static `blocks/switch.py` exists)
@@ -543,6 +536,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-10 | **SymPy symbolic path tested and repaired**: SymPy is now in `requirements-dev.txt` and the `dev` extra (still optional at runtime), so CI runs `lib/engine/symbolic_engine.py` and the blocks' `symbolic_execute()` hooks. Fixes: feedback loops are solved (every wire gets an unknown, chains are substituted forward, loops solved as one system) instead of left as dangling `*_fb` symbols; `get_all_equations` returned a `{port: expr}` dict for blocks first reached as dependencies, now always the port-0 expression (a sink shows its input signal); `extract_transfer_function` zeroes the other sources (superposition, like block algebra) and reads a sink's input port; a raising hook falls back instead of aborting; `Deriv` fallback name; SymPy is imported lazily (`import lib.engine` ~0.2 s faster). Unsolvable (nonlinear) loops keep their unknowns with a warning. Known limits: initial conditions are taken as zero and Saturation as linear. Cross-checked against `lib/analysis/block_algebra.py` (PID example, nested loops) and scipy `ss2tf`. Tests: `tests/unit/test_symbolic_engine.py`. |
 | 2026-10-10 | **Port labels no longer forced on by selection**: `BlockRenderer.draw_port_labels` drew every port label on a selected block even when they did not fit, stacking "setpoint"/"measurement" over the PID's own text and sp/pv marks. Labels now show only when they fit, selected or not; hovering a port names it (tooltips from 89b00c4). Test: `test_canvas_labels_and_status_bar.py::test_pid_port_labels_never_cover_the_face`. |
 | 2026-10-10 | **Zoom -/+ glyphs no longer dots**: `QToolBar#ModernToolBar QToolButton { padding: 4px 6px }` outranked the `QToolButton#ZoomRockerBtn` / `#Transport*` rules, so the 22px zoom buttons left ~8px for a 14px icon (drawn as 2-3px dots) and Play was clipped. Added equally specific overrides (padding 0, sizes restated since QSS min sizes replace setFixedSize); zoom buttons 24px with 16px icons and full-width glyphs. Test: `tests/modern_ui/test_toolbar_icon_size.py`. |
 | 2026-10-10 | **Align Top shortcut**: Edit > Align > Align Top is now Ctrl+Shift+U ("up"; Ctrl+Shift+T stays with the tuning panel). USER_MANUAL.md listed Ctrl+Shift+T for it; corrected. Tests: `test_menu_shortcuts_and_preferences.py::test_ctrl_shift_u_aligns_tops` and a Ctrl+Shift+U case in `test_each_key_fires_its_action_exactly_once`. |

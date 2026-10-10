@@ -12,8 +12,9 @@ Uses SymPy for symbolic mathematics.
 
 from __future__ import annotations
 
+import importlib.util
 import logging
-from typing import Dict, List, Any, Tuple, Optional, Set, TYPE_CHECKING
+from typing import Dict, List, Any, Tuple, Optional, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
@@ -21,17 +22,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Import SymPy (optional dependency)
-try:
-    import sympy
-    from sympy import Symbol, simplify
-    from sympy import Matrix, eye
-    from sympy import latex
-    from sympy import diff
-
-    SYMPY_AVAILABLE = True
-except ImportError:
-    SYMPY_AVAILABLE = False
+# SymPy is optional and slow to import (~0.2 s), so it is only checked for here
+# and imported when a SymbolicEngine is actually built.
+SYMPY_AVAILABLE = importlib.util.find_spec("sympy") is not None
+if not SYMPY_AVAILABLE:
     logger.warning("SymPy not installed. Symbolic features disabled.")
 
 
@@ -54,6 +48,7 @@ class SymbolicEngine:
             raise ImportError(
                 "SymPy is required for symbolic features. Install with: pip install sympy"
             )
+        import sympy
 
         self.dsim = dsim
         self.blocks = []
@@ -65,7 +60,7 @@ class SymbolicEngine:
         # Symbolic state
         self.symbolic_outputs = {}  # block_name -> {port: sympy_expr}
         self.state_variables = {}  # block_name -> [sympy_symbols]
-        self.s = Symbol("s")  # Laplace variable
+        self.s = sympy.Symbol("s")  # Laplace variable
 
     def build_graph(self, blocks: List = None, lines: List = None):
         """
@@ -116,6 +111,8 @@ class SymbolicEngine:
         Returns:
             Dict mapping block names to input symbols
         """
+        import sympy
+
         input_symbols = {}
 
         if input_blocks is None:
@@ -129,51 +126,120 @@ class SymbolicEngine:
         for name in input_blocks:
             # Create symbol with nice name
             sym_name = name.replace(" ", "_")
-            input_symbols[name] = Symbol(sym_name)
+            input_symbols[name] = sympy.Symbol(sym_name)
 
         return input_symbols
 
-    def _get_block_output(
-        self, block_name: str, port: int, input_symbols: Dict[str, Symbol], visited: Set[str]
-    ) -> Any:
-        """Get symbolic output expression for a block's port."""
+    def _resolve_outputs(
+        self, input_symbols: Dict[str, Symbol], zero_sources: bool = False
+    ) -> Dict[str, Dict[int, Any]]:
+        """Output expressions of every block, with feedback loops solved.
 
-        # Check if already computed
-        if block_name in self.symbolic_outputs:
-            outputs = self.symbolic_outputs[block_name]
-            if port in outputs:
-                return outputs[port]
+        Every wire gets an unknown ``<block>_<port>`` and each block is evaluated
+        on the unknowns of its input wires. Chains are then substituted forward
+        and whatever still refers to itself (a loop) is solved as one system, so
+        a loop yields its closed-loop expression instead of a dangling symbol.
+        Blocks in ``input_symbols`` output their symbol. With ``zero_sources``,
+        every other block without input wires outputs 0 (superposition, as a
+        transfer function needs). A loop SymPy cannot solve (nonlinear blocks)
+        keeps its unknowns, with a warning.
 
-        # Check if input
-        if block_name in input_symbols:
-            return input_symbols[block_name]
+        Returns {block_name: {port: expr}}. Unsupported blocks are left out, so
+        their outputs stay as unknowns downstream.
+        """
+        import sympy
 
-        # Compute the block's outputs
-        block = self.block_map.get(block_name)
-        if block is None:
-            return Symbol(f"{block_name}_{port}")
+        unknowns = {}  # (block, port) -> Symbol
 
-        # Get this block's inputs
-        deps = self.input_map.get(block_name, {})
+        def is_zeroed(name):
+            return zero_sources and name not in input_symbols and not self.input_map.get(name)
 
-        input_exprs = {}
-        for in_port, (src_block, src_port) in deps.items():
-            if src_block in visited:
-                # Loop detected
-                input_exprs[in_port] = Symbol(f"{src_block}_{src_port}_fb")
+        def signal(src, port):
+            if src in input_symbols:
+                return input_symbols[src]
+            if is_zeroed(src):
+                return sympy.Integer(0)
+            if (src, port) not in unknowns:
+                unknowns[(src, port)] = sympy.Symbol(f"{src}_{port}".replace(" ", "_"))
+            return unknowns[(src, port)]
+
+        raw = {}
+        for block in self.blocks:
+            name = block.name
+            if name in input_symbols:
+                raw[name] = {0: input_symbols[name]}
+            elif is_zeroed(name):
+                raw[name] = {p: sympy.Integer(0) for p in self.output_map.get(name) or [0]}
             else:
-                input_exprs[in_port] = self._get_block_output(
-                    src_block, src_port, input_symbols, visited | {block_name}
+                inputs = {
+                    port: signal(src, src_port)
+                    for port, (src, src_port) in self.input_map.get(name, {}).items()
+                }
+                outputs = self._compute_block_symbolic(block, inputs)
+                if outputs:
+                    raw[name] = outputs
+
+        pending = {sym: raw[b][p] for (b, p), sym in unknowns.items() if b in raw and p in raw[b]}
+        resolved = {}
+        progress = True
+        while progress and pending:
+            progress = False
+            for sym, expr in list(pending.items()):
+                expr = expr.xreplace(resolved)
+                pending[sym] = expr
+                if not expr.free_symbols & pending.keys():
+                    resolved[sym] = expr
+                    del pending[sym]
+                    progress = True
+        if pending:  # loops, plus anything downstream of them
+            try:
+                found = sympy.solve(
+                    [sympy.Eq(sym, expr) for sym, expr in pending.items()],
+                    list(pending),
+                    dict=True,
+                )
+            except Exception as exc:  # noqa: BLE001 -- e.g. matrix gains in a loop
+                logger.debug("Solving the loop equations failed: %s", exc)
+                found = []
+            if len(found) == 1:
+                resolved.update(found[0])
+            else:
+                logger.warning(
+                    "Could not solve the feedback loop(s) through %s symbolically "
+                    "(%d solutions); those signals stay as symbols.",
+                    ", ".join(sorted(str(sym) for sym in pending)),
+                    len(found),
                 )
 
-        # Compute symbolic output
-        outputs = self._compute_block_symbolic(block, input_exprs)
+        def tidy(expr):
+            expr = expr.xreplace(resolved)
+            if isinstance(expr, sympy.Expr) and expr.has(self.s):
+                expr = sympy.cancel(expr)
+            return expr
 
-        if outputs is not None:
-            self.symbolic_outputs[block_name] = outputs
-            return outputs.get(port, Symbol(f"{block_name}_{port}"))
+        self.symbolic_outputs = {
+            name: {port: tidy(expr) for port, expr in outputs.items()}
+            for name, outputs in raw.items()
+        }
+        return self.symbolic_outputs
 
-        return Symbol(f"{block_name}_{port}")
+    def _signal_expr(self, src: str, port: int) -> Any:
+        """Resolved expression on the wire leaving ``src`` at ``port``."""
+        import sympy
+
+        value = self.symbolic_outputs.get(src, {}).get(port)
+        if value is None:
+            return sympy.Symbol(f"{src}_{port}".replace(" ", "_"))
+        return value
+
+    def _block_expr(self, name: str, port: int = 0) -> Any:
+        """Output ``port`` of a block, or for a sink (no outputs) the signal on
+        its input ``port``."""
+        if port in self.symbolic_outputs.get(name, {}):
+            return self.symbolic_outputs[name][port]
+        if not self.output_map.get(name) and port in self.input_map.get(name, {}):
+            return self._signal_expr(*self.input_map[name][port])
+        return self._signal_expr(name, port)
 
     def _compute_block_symbolic(self, block, input_exprs: Dict) -> Optional[Dict]:
         """
@@ -186,12 +252,20 @@ class SymbolicEngine:
         Returns:
             Dict of output port -> symbolic expression
         """
+        import sympy
+
         block_type = getattr(block, "block_fn", "")
         params = block.params
 
         # Check if block has symbolic_execute
-        if hasattr(block, "block_instance") and block.block_instance:
-            result = block.block_instance.symbolic_execute(input_exprs, params)
+        if getattr(block, "block_instance", None) is not None:
+            try:
+                result = block.block_instance.symbolic_execute(input_exprs, params)
+            except Exception as exc:  # noqa: BLE001 -- a bad param must not abort the trace
+                logger.warning(
+                    "symbolic_execute of '%s' failed: %s", getattr(block, "name", "?"), exc
+                )
+                result = None
             if result is not None:
                 return result
 
@@ -200,7 +274,7 @@ class SymbolicEngine:
             K = params.get("gain", 1.0)
             if isinstance(K, (int, float)):
                 K = sympy.Float(K)
-            u = input_exprs.get(0, Symbol("u"))
+            u = input_exprs.get(0, sympy.Symbol("u"))
             return {0: K * u}
 
         elif block_type == "Sum":
@@ -236,12 +310,12 @@ class SymbolicEngine:
 
         elif block_type == "Integrator":
             # In Laplace domain: Y(s) = U(s) / s
-            u = input_exprs.get(0, Symbol("u"))
+            u = input_exprs.get(0, sympy.Symbol("u"))
             return {0: u / self.s}
 
-        elif block_type == "Derivative":
+        elif block_type in ("Deriv", "Derivative"):
             # In Laplace domain: Y(s) = s * U(s)
-            u = input_exprs.get(0, Symbol("u"))
+            u = input_exprs.get(0, sympy.Symbol("u"))
             return {0: self.s * u}
 
         elif block_type in ("TransferFcn", "TranFn"):
@@ -252,7 +326,7 @@ class SymbolicEngine:
             num_poly = sum(coef * self.s**i for i, coef in enumerate(reversed(num)))
             den_poly = sum(coef * self.s**i for i, coef in enumerate(reversed(den)))
 
-            u = input_exprs.get(0, Symbol("u"))
+            u = input_exprs.get(0, sympy.Symbol("u"))
             return {0: (num_poly / den_poly) * u}
 
         elif block_type == "StateSpace":
@@ -265,13 +339,13 @@ class SymbolicEngine:
             n = A.shape[0]
 
             # Convert to SymPy matrices
-            A_sym = Matrix(A.tolist())
-            B_sym = Matrix(B.tolist())
-            C_sym = Matrix(C.tolist())
-            D_sym = Matrix(D.tolist())
+            A_sym = sympy.Matrix(A.tolist())
+            B_sym = sympy.Matrix(B.tolist())
+            C_sym = sympy.Matrix(C.tolist())
+            D_sym = sympy.Matrix(D.tolist())
 
             # (sI - A)^(-1)
-            sI = self.s * eye(n)
+            sI = self.s * sympy.eye(n)
             resolvent = (sI - A_sym).inv()
 
             # Transfer function matrix: C * (sI-A)^(-1) * B + D
@@ -281,7 +355,9 @@ class SymbolicEngine:
             # from the connected input ports so MIMO systems are handled
             # correctly; a single scalar would be dimensionally wrong here.
             n_inputs = G.shape[1]
-            u_vec = Matrix([input_exprs.get(i, Symbol(f"u{i}")) for i in range(n_inputs)])
+            u_vec = sympy.Matrix(
+                [input_exprs.get(i, sympy.Symbol(f"u{i}")) for i in range(n_inputs)]
+            )
             Y = G * u_vec  # shape (n_outputs, 1)
 
             if Y.shape == (1, 1):
@@ -297,8 +373,8 @@ class SymbolicEngine:
             Kd = sympy.Float(float(params.get("Kd", 0.0)))
             N = sympy.Float(float(params.get("N", 20.0)))
 
-            sp = input_exprs.get(0, Symbol("sp"))
-            meas = input_exprs.get(1, Symbol("meas"))
+            sp = input_exprs.get(0, sympy.Symbol("sp"))
+            meas = input_exprs.get(1, sympy.Symbol("meas"))
             e = sp - meas
 
             # P + I/s + filtered-derivative term D*N*s/(s+N).
@@ -316,7 +392,7 @@ class SymbolicEngine:
                     C_pid = C_pid + Kd * self.s
                 else:
                     C_pid = C_pid + Kd * N * self.s / (self.s + N)
-            return {0: simplify(C_pid * e)}
+            return {0: sympy.simplify(C_pid * e)}
 
         elif block_type in ("Constant", "Step"):
             value = params.get("value", 1.0)
@@ -324,7 +400,7 @@ class SymbolicEngine:
 
         elif block_type == "Saturation":
             # Saturation is nonlinear - return input for small-signal
-            u = input_exprs.get(0, Symbol("u"))
+            u = input_exprs.get(0, sympy.Symbol("u"))
             return {0: u}  # Linear approximation
 
         # Unknown block - return as symbol
@@ -336,30 +412,32 @@ class SymbolicEngine:
         """
         Extract transfer function between two signals.
 
+        The output of ``from_block`` is replaced by the input U(s) and every
+        other source is zeroed, so loops through the path are closed and the
+        result is the closed-loop G(s) = Y(s)/U(s).
+
         Args:
             from_block: Input block name
-            to_block: Output block name
+            to_block: Output block name; for a sink (e.g. a Scope) the signal
+                on its input ``to_port`` is the output
             from_port: Input port (default 0)
             to_port: Output port (default 0)
 
         Returns:
             SymPy transfer function expression G(s)
         """
-        self.symbolic_outputs = {}  # Reset
+        import sympy
 
-        # Create input symbol
-        U = Symbol("U")
-        input_symbols = {from_block: U}
-
-        # Trace to output
-        Y = self._get_block_output(to_block, to_port, input_symbols, set())
+        U = sympy.Symbol("U")
+        self._resolve_outputs({from_block: U}, zero_sources=True)
+        Y = self._block_expr(to_block, to_port)
 
         # A transfer function only exists if Y depends *linearly* on U, i.e.
         # dY/dU is independent of U. Other independent sources (Constant/Step
         # return numeric values) or nonlinear blocks (Saturation) break this,
         # making the naive Y/U a U-dependent, incorrect "transfer function".
         try:
-            dYdU = simplify(diff(Y, U))
+            dYdU = sympy.simplify(sympy.diff(Y, U))
             if dYdU.has(U):
                 logger.warning(
                     "Transfer function from '%s' to '%s' is not well defined: "
@@ -378,7 +456,7 @@ class SymbolicEngine:
             else:
                 # Affine offset (independent of U) from other sources also
                 # invalidates the plain Y/U ratio.
-                offset = simplify(Y - dYdU * U)
+                offset = sympy.simplify(Y - dYdU * U)
                 if offset != 0:
                     logger.warning(
                         "Transfer function from '%s' to '%s' has an "
@@ -391,9 +469,7 @@ class SymbolicEngine:
             logger.debug("Linearity check for transfer function failed: %s", exc)
 
         # G(s) = Y(s) / U(s)
-        G = simplify(Y / U)
-
-        return G
+        return sympy.cancel(Y / U)
 
     def get_all_equations(self, input_symbols: Dict[str, Symbol] = None) -> Dict[str, Any]:
         """
@@ -403,25 +479,14 @@ class SymbolicEngine:
             input_symbols: Map of input block names to symbols
 
         Returns:
-            Dict of block_name -> symbolic output expression
+            Dict of block_name -> expression of its output 0 (for a sink, of
+            the signal on its input 0), in terms of the input symbols
         """
         if input_symbols is None:
             input_symbols = self.create_input_symbols()
 
-        self.symbolic_outputs = {}
-
-        equations = {}
-        for block in self.blocks:
-            # Skip if already computed
-            if block.name in self.symbolic_outputs:
-                equations[block.name] = self.symbolic_outputs[block.name]
-                continue
-
-            # Compute output
-            output = self._get_block_output(block.name, 0, input_symbols, set())
-            equations[block.name] = output
-
-        return equations
+        self._resolve_outputs(input_symbols)
+        return {block.name: self._block_expr(block.name) for block in self.blocks}
 
     def linearize_at_point(
         self, operating_point: Dict[str, float], input_block: str, output_block: str
@@ -440,6 +505,8 @@ class SymbolicEngine:
             it is non-rational, has symbolic/non-numeric coefficients, or
             scipy's tf2ss raises). Callers must check for None before unpacking.
         """
+        import sympy
+
         # Get transfer function
         G = self.extract_transfer_function(input_block, output_block)
 
@@ -482,9 +549,11 @@ class SymbolicEngine:
         Returns:
             LaTeX string
         """
+        import sympy
+
         if simplified:
-            expr = simplify(expr)
-        return latex(expr)
+            expr = sympy.simplify(expr)
+        return sympy.latex(expr)
 
     def export_equations_latex(self, equations: Dict = None, filename: str = None) -> str:
         """

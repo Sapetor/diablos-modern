@@ -58,6 +58,7 @@ dev = [
     "pytest-qt>=4.2.0",
     "pytest-cov>=4.0.0",
     "pytest-timeout>=2.1.0",
+    "sympy>=1.9",  # tests exercise the optional symbolic engine
     "ruff==0.16.8",  # pinned: matches .github/workflows/ci.yml (formatter output shifts between releases)
     "mypy>=1.0.0",
     # No Qt stubs entry: PyQt6 ships its own .pyi files (PyQt5-stubs was a
