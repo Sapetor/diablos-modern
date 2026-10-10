@@ -53,7 +53,8 @@ checkable (2026-10-02 pass noted per item).
   from closed-loop execution order (ZOH is a feedthrough memory block,
   `lib/engine/memory_blocks.py`). Mechanism not traced. Acceptance test: S1a
   of `scripts/benchmarks/pathsim/s1_sampled_data.py` should match the
-  `err_delay0` reference.
+  `err_delay0` reference. Expect existing expectations to move:
+  `tests/regression/test_feedthrough_memory.py` pins ZOH feedthrough timing.
 
 ### Documentation
 - [ ] **Video tutorials** — demo videos for key features.

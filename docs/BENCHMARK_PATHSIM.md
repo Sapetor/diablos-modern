@@ -18,7 +18,7 @@ either tool, and the reference is evaluated at each tool's own output times.
 | S1a linear plant + digital PI | exact (2e-14), 0.09 s, interpreter | 6e-12 at 0.1 s (RKDP54) | Fallback costs nothing for linear plants, **but DiaBloS applies the control one sample late** |
 | S1b nonlinear stiff plant + digital PI | **1st order**: 1.6e-3 (3.2 s) ... 3e-5 (40 s) | 1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s | The interpreter fallback is the real accuracy gap |
 | S2 algebraic loop | rejected; delay workaround diverges or is wrong unless the loop contracts | solved to 3e-13, 2 ms | Genuine capability gap |
-| S3 delayed platoon, N=50 | 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 109 s | Comparable; delays blunt adaptive stepping |
+| S3 delayed platoon, N=50 | 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 109 s | Mixed at N<=10; PathSim faster and more accurate at N>=20 |
 | S4 50-run seeded ensemble | 163 ms/run, bitwise reproducible | 164 ms/run (RK4, same dt), bitwise reproducible | Parity at matched settings |
 
 ## S1 - digital controller on a continuous plant
@@ -116,10 +116,17 @@ also forces the interpreter (`it has no compiled kernel`).
 
 Both tools scale roughly linearly in N. The leader's velocity step reaches
 each follower as a delayed discontinuity that neither solver is told about,
-so adaptive stepping buys PathSim much less here than in S1. At loose
-tolerance PathSim can even be less accurate than DiaBloS at dt=0.01 (N=5,
-10). Neither tool is clearly better here. Nothing in this scenario argues
-for an engine swap.
+so adaptive stepping buys PathSim less here than in S1. For N <= 10 it is a
+trade-off: at rtol 1e-6 PathSim is faster but less accurate than DiaBloS at
+dt=0.01. At N >= 20 PathSim at rtol 1e-6 is both faster (3.7 vs 5.6 s,
+10.7 vs 16.3 s) and 9-17x more accurate. Tight tolerance gets expensive for
+PathSim (109 s at N=50).
+
+Errors are comparable across tools, not across N. The last vehicle's
+excursion by t=20 depends on how far the transient has propagated. At N=20
+its reference overshoots to 20.6 before settling at 15.0, and the DiaBloS
+peak error falls mid-transient (t~14.5 s). At N=50 the last vehicle has only
+moved 0.09, hence the small errors in that row.
 
 ## S4 - seeded Monte Carlo ensemble
 
@@ -151,7 +158,8 @@ gives it as a menu action with ensemble plots.
   cosmetic ones.
 - Two of its implicit worries do not: for linear plants the interpreter
   fallback is exact (S1a), and seeded ensembles are already on par in cost
-  and reproducibility (S4). Delayed multi-agent models (S3) are a wash.
+  and reproducibility (S4). Delayed multi-agent models (S3) trade off at
+  small N and favour PathSim at N >= 20, without the decisive gap of S1b.
 - New and more urgent than either: the **one-period closed-loop sampling
   delay** (S1). It silently changes every digital-control result DiaBloS
   produces and should be fixed before any engine rework.
