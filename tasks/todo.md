@@ -1,7 +1,7 @@
 # DiaBloS Modern - Consolidated TODO
 
 > Single source of truth for all pending work items.
-> Last updated: 2026-10-09
+> Last updated: 2026-10-10
 
 ---
 
@@ -55,8 +55,6 @@ Fixed the same day: undo/redo, between-run state, MC seeds, nested MC/sweep
 (pickers + top-level root), selectable PID anti-windup (clamping default),
 label clipping / port-label overlap / stale status + Properties counts, block
 None/empty-input hardening and param docs. Still open:
-- [ ] **Port labels on a *selected* PID still overlay its title.** (Hover
-  tooltips for blocks/ports shipped in 89b00c4, closing the elided-name half.)
 - [ ] **Follow-ups from the UX round (2026-10-08):**
   - The double-click quick-insert on the canvas and the palette have separate
     search code. The palette's `block_matches_filter` could be shared.
@@ -549,6 +547,7 @@ in every case, so each fix corrected the interpreter to match.
 
 | Date | Change |
 |------|--------|
+| 2026-10-10 | **Port labels no longer forced on by selection**: `BlockRenderer.draw_port_labels` drew every port label on a selected block even when they did not fit, stacking "setpoint"/"measurement" over the PID's own text and sp/pv marks. Labels now show only when they fit, selected or not; hovering a port names it (tooltips from 89b00c4). Test: `test_canvas_labels_and_status_bar.py::test_pid_port_labels_never_cover_the_face`. |
 | 2026-10-09 | **Windows follow-ups (2)**: palette drop lag -- `record_recent` rebuilt the whole palette (~400 widgets) on every drop, now swaps only the Recent section (~90 -> ~20 ms per drop, and the active filter survives); Enter in the palette filter ranks exact > prefix > substring instead of taking filesystem order; long (Spanish) names elide instead of widening the palette, whose hidden horizontal scroll shifted the list sideways on focus; `ui_settings()` honours `DIABLOS_SETTINGS_INI` and `tests/conftest.py` uses a throwaway INI, so the suite no longer reads or overwrites the developer's registry prefs; `SimulationModel.remove_block` filters `line_list` in place, so a block deleted inside a subsystem no longer leaves its wires in `sub_lines`; CI gained a `windows-latest` job (TikZ tests pass a bare file name to pdflatex; the POSIX read-only guard is skipped on Windows). |
 | 2026-10-09 | **Windows follow-up**: reviewed the prior five fixes; repaired toolbar width, made status/glyph tests independent of installed fonts, implemented saved-document identity for undo/redo with explicit-save and load/new lifecycle handling, and polished Properties reset controls and row-label sizing. Moved resolved items to Completed; retained the four missing-pdflatex failures and the POSIX-permissions failure as environment gaps. |
 | 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |

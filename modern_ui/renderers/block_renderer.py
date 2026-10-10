@@ -767,14 +767,15 @@ class BlockRenderer:
         # Labels are painted over the block face, where the centred icon text
         # ("PID", B(s)/A(s) ...) lives. Show them only when the widest input
         # label, the widest output label and the icon text all fit side by
-        # side; otherwise keep the face clean and reveal them on selection.
-        if not getattr(block, "selected", False):
-            clearance = 2 * (block.port_radius + 4) + 4 * 2
-            icon_text_width = 36 if getattr(block, "block_fn", "") in _TEXT_ICON_FNS else 0
-            widest_in = max((get_text_width(n) for n in input_names), default=0)
-            widest_out = max((get_text_width(n) for n in output_names), default=0)
-            if widest_in + widest_out + icon_text_width + clearance > block.width:
-                return
+        # side; otherwise keep the face clean. Selection used to force them on,
+        # which stacked "setpoint"/"measurement" over the PID's own icon and
+        # its sp/pv marks; hovering a port names it in a tooltip instead.
+        clearance = 2 * (block.port_radius + 4) + 4 * 2
+        icon_text_width = 36 if getattr(block, "block_fn", "") in _TEXT_ICON_FNS else 0
+        widest_in = max((get_text_width(n) for n in input_names), default=0)
+        widest_out = max((get_text_width(n) for n in output_names), default=0)
+        if widest_in + widest_out + icon_text_width + clearance > block.width:
+            return
 
         # Label colors
         text_color = theme_manager.get_color("text_primary")

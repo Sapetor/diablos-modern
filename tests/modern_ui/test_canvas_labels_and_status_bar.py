@@ -58,7 +58,9 @@ class TestBlockNameLabel:
 
 @pytest.mark.qt
 class TestPortLabelCollision:
-    def test_pid_port_labels_hidden_unless_selected(self, window):
+    def test_pid_port_labels_never_cover_the_face(self, window):
+        # Labels that don't fit stay off the face even when selected (they used
+        # to stack over the PID text); the port tooltip names the port instead.
         window.open_example(EXAMPLE)
         QApplication.processEvents()
         pid = next(b for b in window.dsim.blocks_list if b.block_fn == "PID")
@@ -90,8 +92,12 @@ class TestPortLabelCollision:
         pid.selected = True
         p = _P()
         renderer.draw_port_labels(pid, p)
-        assert "setpoint" in p.texts
+        assert p.texts == []
         pid.selected = False
+
+        canvas = window.canvas
+        port = canvas.world_to_screen(pid.in_coords[0])
+        assert canvas.tooltip_text_at(port).endswith("setpoint")
 
 
 @pytest.mark.qt
