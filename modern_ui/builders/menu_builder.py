@@ -246,12 +246,12 @@ class MenuBuilder:
             self._scoped(edit_menu, tr("&Flip Block"), canvas.flip_selected_blocks, "Ctrl+F")
 
             align_menu = edit_menu.addMenu(tr("A&lign"))
-            # Align Top has no key: Ctrl+Shift+T belongs to the tuning panel.
+            # Align Top uses U ("up"): Ctrl+Shift+T belongs to the tuning panel.
             for label, method, key in (
                 (tr("Align &Left"), "align_left", "Ctrl+Shift+L"),
                 (tr("Align &Right"), "align_right", "Ctrl+Shift+R"),
                 (tr("Align &Center Horizontally"), "align_center_horizontal", "Ctrl+Shift+H"),
-                (tr("Align &Top"), "align_top", None),
+                (tr("Align &Top"), "align_top", "Ctrl+Shift+U"),
                 (tr("Align &Bottom"), "align_bottom", "Ctrl+Shift+B"),
                 (tr("Align Center &Vertically"), "align_center_vertical", None),
             ):

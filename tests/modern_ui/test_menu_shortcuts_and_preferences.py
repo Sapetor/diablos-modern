@@ -136,6 +136,10 @@ class TestShortcutOwnership:
             (Qt.Key.Key_G, Qt.KeyboardModifier.ControlModifier),
             (Qt.Key.Key_F6, Qt.KeyboardModifier.NoModifier),
             (Qt.Key.Key_F8, Qt.KeyboardModifier.NoModifier),
+            (
+                Qt.Key.Key_U,
+                Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
+            ),
         ],
     )
     def test_each_key_fires_its_action_exactly_once(self, window, qapp, key, mods):
@@ -177,6 +181,26 @@ class TestShortcutOwnership:
         src = inspect.getsource(ModernCanvas.keyPressEvent)
         for stale in ("Key_Z", "Key_Y", "Key_C", "Key_V", "Key_A", "Key_G", "Key_F5"):
             assert stale not in src
+
+    def test_ctrl_shift_u_aligns_tops(self, window, qapp):
+        # Ctrl+Shift+T is the tuning panel, so Align Top uses U ("up").
+        from PyQt6.QtCore import QPoint
+
+        canvas = window.canvas
+        menu_block = next(m for m in window.dsim.menu_blocks if m.block_fn == "Gain")
+        a = canvas.add_block_from_palette(menu_block, QPoint(200, 200))
+        b = canvas.add_block_from_palette(menu_block, QPoint(400, 320))
+        for blk in window.dsim.blocks_list:
+            blk.selected = blk in (a, b)
+        canvas.setFocus()
+        qapp.processEvents()
+        QTest.keyClick(
+            canvas,
+            Qt.Key.Key_U,
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
+        )
+        qapp.processEvents()
+        assert a.top == b.top
 
     def test_analysis_actions_have_keys(self, window):
         menu = _menu(window, "Analysis")

@@ -79,7 +79,7 @@ M = [[1, 0], [0, 1]]
 | Ctrl+Shift+L | Align left |
 | Ctrl+Shift+R | Align right |
 | Ctrl+Shift+H | Align center (horizontal) |
-| Ctrl+Shift+T | Align top |
+| Ctrl+Shift+U | Align top |
 | Ctrl+Shift+B | Align bottom |
 
 ### View
