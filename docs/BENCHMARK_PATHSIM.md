@@ -16,7 +16,7 @@ either tool, and the reference is evaluated at each tool's own output times.
 
 | Scenario | DiaBloS | PathSim | Takeaway |
 |---|---|---|---|
-| S1a linear plant + digital PI | exact (2e-14), 0.1 s, interpreter | 6e-12 at 0.1 s (RKDP54) | Fallback costs nothing for linear plants. A one-period control delay found here is fixed (`68e8289`) |
+| S1a linear plant + digital PI | 1.6e-10 at 0.1 s, compiled (hybrid); exact (2e-14) on the interpreter | 6e-12 at 0.1 s (RKDP54) | Parity. A one-period control delay found here is fixed (`68e8289`) |
 | S1b nonlinear stiff plant + digital PI | **1st order**: 1.3e-3 (3.4 s) ... 2.4e-5 (44 s) | 1.7e-10 at 0.9 s; 1.9e-13 at 1.8 s | The interpreter fallback is the real accuracy gap |
 | S2 algebraic loop | solved to 1e-16, ~32 ms (since `95f83ff`; was rejected) | solved to 3e-13, 2 ms | Gap closed; DiaBloS ~14x slower per step |
 | S3 delayed platoon, N=50 | 1.8e-2 at 16 s | 2.0e-3 at 11 s; 2.4e-5 at 109 s | Mixed at N<=10; PathSim faster and more accurate at N>=20 |
@@ -24,23 +24,31 @@ either tool, and the reference is evaluated at each tool's own output times.
 
 ## S1 - digital controller on a continuous plant
 
-Any block with a discrete sample time makes the whole diagram fall back to
-the fixed-step interpreter (recorded reason: `ZeroOrderHold: it has a
-discrete sample time`). The step reference is placed at t=0.93 s, off every
-sampling grid, so "sample before or after the step" is not a factor.
+Until 2026-10-10 any block with a discrete sample time made the whole
+diagram fall back to the fixed-step interpreter. Since phase 1 of the hybrid
+compiled path (`tasks/hybrid_compiled_path.md`), `ZeroOrderHold`,
+`DiscreteTranFn` and `DiscreteStateSpace` compile: adaptive `solve_ivp`
+between sample instants, the blocks' own updates at each instant. S1a now
+runs compiled; S1b still falls back, because its `Function` block has no
+compiled kernel (recorded reason: `Function: it has no compiled kernel`). The
+step reference is placed at t=0.93 s, off every sampling grid, so "sample
+before or after the step" is not a factor.
 
 **S1a** (`examples/discrete_pi_zoh.diablos`: ZOH 0.1 s -> PI -> 2/((s+1)(s+2))).
 
 | Tool | Setting | Wall | Max error |
 |---|---|---|---|
-| DiaBloS | sim_dt = 0.01 / 0.005 / 0.001 | 0.11 / 0.20 / 0.98 s | 2e-14 / 2e-14 / 1e-13 |
+| DiaBloS, compiled (hybrid, RK45 rtol 1e-9) | sim_dt = 0.01 / 0.005 / 0.001 | 0.10 / 0.11 / 0.23 s | 1.6e-10 / 1.8e-10 / 1.8e-10 |
+| DiaBloS, interpreter (before phase 1) | sim_dt = 0.01 / 0.005 / 0.001 | 0.11 / 0.20 / 0.98 s | 2e-14 / 2e-14 / 1e-13 |
 | PathSim RKDP54 | rtol 1e-4 / 1e-6 / 1e-8 / 1e-10 | 0.02 / 0.03 / 0.05 / 0.11 s | 8e-8 / 4e-8 / 6e-10 / 6e-12 |
 | PathSim ESDIRK43 | rtol 1e-4 ... 1e-10 | 0.19 ... 1.8 s | 8e-7 ... 4e-9 |
 
 Errors are against the standard semantics: u[k] computed from e[kT] is
 applied on [kT, (k+1)T), as in Simulink and PathSim. `TranFn` is discretized
 exactly (`cont2discrete`) in the interpreter, so for a linear plant the
-fallback costs no accuracy.
+fallback cost no accuracy. The compiled run's error is the adaptive solver's
+tolerance (the default rtol 1e-9); its wall time grows with sim_dt only
+through the output grid and the replay.
 
 **Found and fixed: sampled blocks behind a ZOH acted one period late**
 (`68e8289`, regression test `tests/regression/test_sampled_loop_delay.py`).
@@ -60,16 +68,14 @@ built from `Integrator` blocks; discrete PI Kp=1, Ki=0.5, T=0.05 s; 10 s).
 
 | Tool | Setting | Wall | Max error |
 |---|---|---|---|
-| DiaBloS, Integrator SOLVE_IVP (default) | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 3.4 / 5.8 / 11.9 / 27.1 s | 1.3e-3 / 6.5e-4 / 3.2e-4 / 1.3e-4 |
-| DiaBloS, Integrator RK4 | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 4.5 / 8.8 / 18.0 / 43.7 s | 2.4e-4 / 1.2e-4 / 6.1e-5 / 2.4e-5 |
-| PathSim RKDP54 | rtol 1e-4 / 1e-6 / 1e-8 | 0.9 / 1.2 / 1.8 s | 1.7e-10 / 1.8e-12 / 1.9e-13 |
-| PathSim ESDIRK43 | rtol 1e-4 / 1e-6 / 1e-8 | 4.6 / 5.0 / 8.2 s | 4.1e-9 / 3.1e-10 / 1.7e-10 |
+| DiaBloS, Integrator SOLVE_IVP (default) | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 3.3 / 5.8 / 11.2 / 27.3 s | 1.3e-3 / 6.5e-4 / 3.2e-4 / 1.3e-4 |
+| DiaBloS, Integrator RK4 | sim_dt 1e-3 / 5e-4 / 2.5e-4 / 1e-4 | 4.3 / 8.7 / 17.6 / 43.8 s | 2.4e-4 / 1.2e-4 / 6.1e-5 / 2.4e-5 |
+| PathSim RKDP54 | rtol 1e-4 / 1e-6 / 1e-8 | 0.9 / 1.1 / 1.8 s | 1.7e-10 / 1.8e-12 / 1.9e-13 |
+| PathSim ESDIRK43 | rtol 1e-4 / 1e-6 / 1e-8 | 4.5 / 4.9 / 8.0 s | 4.1e-9 / 3.1e-10 / 1.7e-10 |
 
-DiaBloS wall times are 4-15 % above the pre-fix run (3.2 / 5.6 / 11.1 /
-25.8 s and 4.0 / 7.9 / 15.5 / 39.9 s). Most of that is CPU contention, since
-the post-fix run shared the machine with another test run. Re-timed on an
-idle machine, the sim_dt 1e-3 point takes 3.31 s (+2 %), which bounds the
-cost of the fix's per-step dependency check.
+Numbers from the 2026-10-10 rerun after phase 1 (interpreter path unchanged
+for S1b). The delay fix costs about 2 % per interpreter step, measured on an
+idle machine at sim_dt 1e-3.
 
 Both interpreter integrator modes converge at **first order**. The
 interpreter holds each block's input constant over a step: the SOLVE_IVP mode
@@ -79,11 +85,10 @@ order in a closed loop. Reaching 2.4e-5 takes 44 s, while PathSim reaches
 this horizon; the implicit ESDIRK43 does not pay off here.
 
 *Roadmap implication:* this is the strongest result for "adaptive integration
-between scheduled sample instants". A compiled hybrid path -- `solve_ivp`
-from sample hit to sample hit, discrete updates as events -- would bring
-S1b to PathSim-class accuracy. With the delay fix the interpreter now
-follows the same standard semantics, so S1a/S1b can serve as the hybrid
-path's acceptance tests.
+between scheduled sample instants". The compiled hybrid path -- `solve_ivp`
+from sample instant to sample instant, the discrete updates at each instant --
+landed for ZOH and discrete TF/SS on 2026-10-10 (S1a above). S1b additionally
+needs a compiled kernel for its `Function` block (phase 3 of the plan).
 
 ## S2 - algebraic loops
 
@@ -174,10 +179,10 @@ gives it as a menu action with ensemble plots.
   every ZOH (S1), which silently changed digital-control results. It is
   fixed in `68e8289`, with a regression test against the S1a exact
   reference.
-- Remaining engine gap: the hybrid compiled path (S1b), which would also let
-  diagrams with algebraic loops compile and linearize. A PathSim backend
-  adapter is the alternative route. The S1 script is the acceptance test
-  for either.
+- Remaining engine gap: the rest of the hybrid compiled path. Phase 1 (ZOH,
+  discrete TF/SS) is in and S1a runs compiled; S1b waits on a `Function`
+  kernel, and diagrams with algebraic loops still cannot compile or
+  linearize. The S1 script stays the acceptance test.
 
 ## Reproducing
 

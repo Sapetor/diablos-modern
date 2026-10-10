@@ -192,6 +192,7 @@ class EventSolveResult:
         "guard_reason",
         "mode_history",
         "events_off_at",
+        "n_sample_hits",
     )
 
     def __init__(self):
@@ -214,6 +215,8 @@ class EventSolveResult:
         self.mode_history: List[Tuple[float, List[Any]]] = []
         # Instant from which latches free-ran again (chattering guard), or None.
         self.events_off_at: Optional[float] = None
+        # Sample instants processed through ``on_breakpoint`` (t0 included).
+        self.n_sample_hits = 0
 
     def summary(self) -> Dict[str, Any]:
         """Compact dict for the run diagnostics / log line."""
@@ -223,6 +226,7 @@ class EventSolveResult:
             "n_segments": int(self.n_segments),
             "guard_tripped": bool(self.guard_tripped),
             "guard_reason": self.guard_reason,
+            "n_sample_hits": int(self.n_sample_hits),
             # Keep the log bounded: the first few instants are what a user
             # needs to see; the count above says how many there were in total.
             "first_events": [(float(t), list(labels)) for t, labels in self.event_log[:10]],
@@ -260,6 +264,10 @@ def _reset_mode_states(mode_states, frozen: bool) -> None:
     for holder in mode_states or ():
         holder["mode"] = holder.get("init")
         holder["frozen"] = bool(frozen) and bool(holder.get("event_driven", False))
+        reset = holder.get("reset")
+        if reset is not None:
+            # Sampled-data holders also carry run-local block params.
+            reset(holder)
 
 
 @dataclass
@@ -297,6 +305,8 @@ def solve_with_events(
     max_step=None,
     fallback_integrator=None,
     solve_ivp=None,
+    breakpoints=None,
+    on_breakpoint=None,
 ) -> EventSolveResult:
     """Integrate ``model_func`` with terminal zero-crossing events.
 
@@ -326,7 +336,8 @@ def solve_with_events(
         t_span: ``(t0, t_end)``.
         y0: Initial state.
         t_eval: Output grid (must be sorted and inside ``t_span``).
-        specs: Event functions to watch.  Must be non-empty.
+        specs: Event functions to watch.  May be empty when ``breakpoints``
+            are given (a sampled diagram with no discontinuities).
         method: A scipy adaptive method name (RK45, LSODA, ...).
         rtol, atol: Solver tolerances.
         max_events: Hard cap before the chattering guard trips.
@@ -347,6 +358,14 @@ def solve_with_events(
             Omit it and the remainder is attempted with events simply switched
             off.
         solve_ivp: Injectable for tests; defaults to scipy's.
+        breakpoints: Sorted sample instants in ``(t0, t_end]`` (sampled-data
+            blocks).  Unlike an event a breakpoint is known in advance: the
+            segment ends *exactly* there, ``on_breakpoint(t, y)`` applies the
+            discrete updates, and the next segment starts at the same ``t``
+            with the same ``y`` -- no nudge, no root finding.
+        on_breakpoint: ``(t, y) -> None``, also called once at ``t0`` (the
+            k = 0 sample) before the first segment when given.  Exceptions
+            propagate: a failed sample must stop the run.
 
     Returns:
         EventSolveResult
@@ -372,19 +391,35 @@ def solve_with_events(
     step_cap = _step_cap(max_step, specs)
     cache = _SignalCache(model_func.evaluate)
     _seed_modes(specs, cache, t0, y0)
+    bps = np.asarray(breakpoints if breakpoints is not None else [], dtype=float)
+    if on_breakpoint is not None:
+        on_breakpoint(t0, y0.copy())
+        result.n_sample_hits += 1
+        cache.invalidate()
     result.mode_history.append((t0, _snapshot_modes(mode_states)))
     event_callables = [_make_event_callable(spec, cache) for spec in specs]
 
     loop = _SegmentLoop(idx=0, t_start=t0, y_start=y0.copy())
+    bp_i = 0
     while True:
         loop.idx = _fill_gap_samples(result, t_eval, loop.idx, loop.t_start, loop.y_start)
+        if loop.idx >= n_points and (bp_i >= bps.size or bps[bp_i] > tf):
+            break
+
+        # A restart nudge can carry t_start past a sample instant; take the
+        # sample late rather than skip it.
+        while bp_i < bps.size and bps[bp_i] <= loop.t_start:
+            _apply_breakpoint(result, on_breakpoint, mode_states, cache, bps[bp_i], loop.y_start)
+            bp_i += 1
         if loop.idx >= n_points:
             break
+        seg_end = min(tf, float(bps[bp_i])) if bp_i < bps.size else tf
+        at_breakpoint = bp_i < bps.size and seg_end == bps[bp_i]
 
         sol = _run_segment(
             solve_ivp,
             model_func,
-            tf,
+            seg_end,
             t_eval,
             loop,
             result,
@@ -393,11 +428,20 @@ def solve_with_events(
             atol,
             step_cap,
             event_callables,
+            at_breakpoint,
         )
         if not sol.success:
             result.success = False
             break
         if sol.status != 1:
+            if at_breakpoint:
+                # Sample instant: same t, same y, discrete updates in between.
+                y_end = np.asarray(sol.y, dtype=float)[:, -1].copy()
+                _apply_breakpoint(result, on_breakpoint, mode_states, cache, seg_end, y_end)
+                bp_i += 1
+                loop.t_start, loop.y_start = seg_end, y_end
+                if seg_end < tf:
+                    continue
             # Reached t_end with no further event: every remaining grid point
             # was produced by this segment.
             result.status = 0
@@ -426,6 +470,10 @@ def solve_with_events(
                     loop.t_start,
                     loop.y_start,
                     fallback_integrator,
+                    breakpoints=bps[bp_i:],
+                    on_hit=lambda t, y: _apply_breakpoint(
+                        result, on_breakpoint, mode_states, cache, t, y
+                    ),
                 )
                 break
 
@@ -484,7 +532,7 @@ def _fill_gap_samples(result, t_eval, idx: int, t_start: float, y_start) -> int:
 def _run_segment(
     solve_ivp,
     model_func,
-    tf: float,
+    seg_end: float,
     t_eval,
     loop: _SegmentLoop,
     result: EventSolveResult,
@@ -493,20 +541,31 @@ def _run_segment(
     atol: float,
     step_cap: float,
     event_callables,
+    at_breakpoint: bool = False,
 ):
-    """One ``solve_ivp`` call from ``loop.t_start`` towards ``tf``.
+    """One ``solve_ivp`` call from ``loop.t_start`` towards ``seg_end``.
 
-    Writes whatever samples the segment produced into ``result.y`` (advancing
+    ``seg_end`` is ``t_end`` or the next sample instant.  The segment owns the
+    grid points up to and including ``seg_end``.  With ``at_breakpoint``,
+    ``seg_end`` is evaluated even when it is not a grid point, so the caller
+    has the state at the sample instant in ``sol.y[:, -1]``.
+
+    Writes the grid samples the segment produced into ``result.y`` (advancing
     ``loop.idx``), folds the solver counters and the last message/status into
     ``result``, and returns the raw scipy result so the caller can tell a
     finished run from a terminal event.  With events switched off (after a
     guard trip) the call is a plain, uncapped ``solve_ivp``.
     """
+    hi = int(np.searchsorted(t_eval, seg_end, side="right"))
+    seg_eval = t_eval[loop.idx : hi]
+    n_grid = int(seg_eval.size)
+    if at_breakpoint and (n_grid == 0 or seg_eval[-1] < seg_end):
+        seg_eval = np.append(seg_eval, seg_end)
     sol = solve_ivp(
         model_func,
-        (loop.t_start, tf),
+        (loop.t_start, seg_end),
         loop.y_start,
-        t_eval=t_eval[loop.idx :],
+        t_eval=seg_eval,
         method=method,
         rtol=rtol,
         atol=atol,
@@ -524,9 +583,9 @@ def _run_segment(
     # samples at all -- and scipy then leaves `t`/`y` as the empty *lists*
     # it accumulates into, so normalise before touching `.size`.
     seg_t = np.asarray(sol.t, dtype=float)
-    produced = int(seg_t.size)
+    produced = min(int(seg_t.size), n_grid)
     if produced:
-        result.y[:, loop.idx : loop.idx + produced] = np.asarray(sol.y, dtype=float)
+        result.y[:, loop.idx : loop.idx + produced] = np.asarray(sol.y, dtype=float)[:, :produced]
         loop.idx += produced
     return sol
 
@@ -673,28 +732,56 @@ def _state_at_restart(model_func, t_event, y_event, gap: float) -> np.ndarray:
     return y_event + gap * dy
 
 
-def _finish_fixed_step(result, model_func, t_eval, idx, t_start, y_start, integrator) -> int:
+def _finish_fixed_step(
+    result, model_func, t_eval, idx, t_start, y_start, integrator, breakpoints=(), on_hit=None
+) -> int:
     """Fill the rest of the output grid with a fixed-step integration.
 
     Reached only after the chattering guard gives up.  An adaptive solver
     cannot finish a chattering system -- with no event to stop at, its error
     control drives the step toward machine precision and the run effectively
     never terminates -- so the tail is integrated on the output grid itself,
-    which costs exactly one pass and always ends.  Returns the new grid index.
+    which costs exactly one pass and always ends.  Remaining sample instants
+    still split the grid, with ``on_hit(t, y)`` applied at each.  Returns the
+    new grid index.
     """
     n_points = int(t_eval.size)
     y_start = np.asarray(y_start, dtype=float)
-    while idx < n_points and t_eval[idx] < t_start:
-        result.y[:, idx] = y_start
-        idx += 1
-    if idx >= n_points:
-        return idx
-    grid = np.concatenate(([t_start], t_eval[idx:]))
-    history = np.asarray(integrator(model_func, grid, y_start, "rk4"), dtype=float)
-    result.y[:, idx:] = history[:, 1:]
+    tf = float(t_eval[-1]) if n_points else t_start
+    for t_hit in list(np.asarray(breakpoints, dtype=float)) + [None]:
+        while idx < n_points and t_eval[idx] < t_start:
+            result.y[:, idx] = y_start
+            idx += 1
+        if t_hit is None or t_hit > tf:
+            end, hi = tf, n_points
+        else:
+            end = float(t_hit)
+            hi = int(np.searchsorted(t_eval, end, side="right"))
+        grid = np.concatenate(([t_start], t_eval[idx:hi]))
+        if grid[-1] < end:
+            grid = np.append(grid, end)
+        if grid.size > 1:
+            history = np.asarray(integrator(model_func, grid, y_start, "rk4"), dtype=float)
+            result.y[:, idx:hi] = history[:, 1 : 1 + (hi - idx)]
+            y_start = history[:, -1].copy()
+        idx, t_start = hi, end
+        if t_hit is None or t_hit > tf:
+            break
+        if on_hit is not None:
+            on_hit(end, y_start)
     result.message = "Finished with a fixed step after the zero-crossing guard tripped"
     result.status = 0
-    return n_points
+    return idx
+
+
+def _apply_breakpoint(result, on_breakpoint, mode_states, cache, t, y) -> None:
+    """Run the sample-instant updates at ``t`` and record the new outputs."""
+    cache.invalidate()
+    if on_breakpoint is not None:
+        on_breakpoint(float(t), np.asarray(y, dtype=float).copy())
+    cache.invalidate()
+    result.n_sample_hits += 1
+    result.mode_history.append((float(t), _snapshot_modes(mode_states)))
 
 
 def _snapshot_modes(mode_states) -> List[Any]:
@@ -743,7 +830,10 @@ class ModeHistoryReplayer:
         for holder, mode in zip(self._holders, history[self._idx][1]):
             if not holder.get("event_driven", False):
                 continue
-            if free:
+            if holder.get("kind") == "sampled":
+                # Sample instants stay scheduled after a guard trip.
+                holder["mode"] = mode
+            elif free:
                 holder["frozen"] = False
             else:
                 holder["mode"] = mode

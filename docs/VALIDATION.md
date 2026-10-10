@@ -31,10 +31,10 @@ through both wherever both apply:
   is exact — the interpreter's `TranFn` and `StateSpace` use an exact
   zero-order-hold — is held to machine precision instead.
 
-Some cases are single-path by nature: a discrete rate (`DiscreteTranFn`,
-`ZeroOrderHold`) or a `TransportDelay` forces the interpreter, since the
-compiled right-hand side has no notion of sample instants or of a signal's
-history; the stiff case is compiled-only, because a fixed-step explicit method
+Some cases are single-path by nature: a `TransportDelay` forces the
+interpreter, since the compiled right-hand side has no notion of a signal's
+history (sampled blocks such as `DiscreteTranFn` and `ZeroOrderHold` compile
+since 2026-10-10, on the hybrid backend); the stiff case is compiled-only, because a fixed-step explicit method
 at `mu = 1000` is step-limited by stability rather than by accuracy and would be
 a different experiment.
 

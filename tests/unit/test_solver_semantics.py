@@ -519,13 +519,33 @@ class TestCompileFallbackReason:
         assert engine.get_compile_fallback_reason() is None
 
     def test_a_discrete_rate_names_the_block_and_the_reason(self, qapp):
+        # A rated continuous block has no sampled kernel (hybrid path phase 2).
+        from blocks.integrator import IntegratorBlock
+
+        integ = _block(IntegratorBlock, "Integrator", 1, 1, 1, sampling_time=0.1)
+        engine = self._engine([integ])
+        assert engine.check_compilability([integ]) is False
+        reason = engine.get_compile_fallback_reason()
+        assert integ.name in reason and "discrete sample time" in reason
+
+    def test_a_sampled_block_compiles_except_for_the_linearizer(self, qapp):
         from blocks.zero_order_hold import ZeroOrderHoldBlock
 
         zoh = _block(ZeroOrderHoldBlock, "ZeroOrderHold", 0, 1, 1, sampling_time=0.1)
         engine = self._engine([zoh])
-        assert engine.check_compilability([zoh]) is False
+        assert engine.check_compilability([zoh]) is True
+        assert engine.check_compilability([zoh], allow_discrete=False) is False
         reason = engine.get_compile_fallback_reason()
         assert zoh.name in reason and "discrete sample time" in reason
+
+    def test_a_sampled_block_under_a_fixed_step_solver_falls_back(self, qapp):
+        from blocks.zero_order_hold import ZeroOrderHoldBlock
+
+        zoh = _block(ZeroOrderHoldBlock, "ZeroOrderHold", 0, 1, 1, sampling_time=0.1)
+        engine = self._engine([zoh])
+        engine.solver_method = "RK4"
+        assert engine.check_compilability([zoh]) is False
+        assert "fixed-step 'RK4'" in engine.get_compile_fallback_reason()
 
     def test_hysteresis_reason_points_at_zero_crossing(self, qapp):
         from blocks.hysteresis import HysteresisBlock

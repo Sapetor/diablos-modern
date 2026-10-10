@@ -29,7 +29,7 @@ DSim.execution_batch()                                      lib/lib.py
 | Model form | one ODE `dy/dt = f(t, y)` for the whole diagram | per-block `execute()` calls, one pass per step |
 | Integration | `scipy.integrate.solve_ivp`, adaptive, error-controlled | fixed step of `sim_dt` (or the block's own `Ts`) |
 | Block coverage | the `@kernel` registry only (`lib/engine/compiler_kernels/`) | every block |
-| Discrete rates | none — a `sampling_time > 0` anywhere sends the diagram here | honoured per block |
+| Discrete rates | `ZeroOrderHold`, `DiscreteTranFn`, `DiscreteStateSpace` (hybrid backend, section 6.1); any other rated block sends the diagram here | honoured per block |
 | Zero-crossing events | yes (`lib/engine/zero_crossing.py`) | no |
 | Determinism | byte-deterministic for a given diagram + settings | depends on `sim_dt`; convergent as `sim_dt → 0` |
 | Stochastic blocks | never (they are excluded from the allowlist) | yes, and only here are `seed` params honoured |
@@ -158,10 +158,26 @@ During the run (`lib/lib.py::_interpreter_step`):
   by the `output_only` pass, or the staircase would lead the true sampled
   response by a whole period.
 
-**Multirate is interpreter-only.** `SystemCompiler.check_compilability` rejects
-any block with a declared `sampling_time > 0` outright
-(`lib/engine/system_compiler.py`): a compiled ODE right-hand side has no notion
-of a sample instant and would run the block as if it were continuous.
+**Sampled blocks on the compiled path (hybrid backend).** `ZeroOrderHold`,
+`DiscreteTranFn` and `DiscreteStateSpace` compile when their rate is resolved
+(declared, or inherited by `propagate_sample_times`). Inside the ODE
+right-hand side each is a source that reads its held output from a per-compile
+holder (`lib/engine/compiler_kernels/discrete.py`). The sample instants are
+known in advance -- the union of `k * Ts` over all rates, merged and snapped
+onto the output grid (`compiled_runner.sample_schedule`) -- so they are
+*breakpoints* of the segmented solve, not located events:
+`zero_crossing.solve_with_events` ends a segment exactly at each instant, runs
+the updates, and restarts at the same `t` with the same `y`. At an instant the
+due blocks update in dataflow order (`system_compiler._sample_update_order`:
+a block after every sampled block that feeds it through direct-feedthrough
+blocks), with the diagram re-evaluated before each one, so a DiscreteTF behind
+a ZOH latches the fresh sample (the interpreter's rule in section 4.2). The
+update calls the block's own `execute()` on a run-local copy of its params, so
+the samples equal the interpreter's. Every other rated block (`TranFn`, `PID`,
+`Integrator`, `Derivative` with `sampling_time > 0`, `FirstOrderHold`,
+`RateTransition`) still sends the diagram to the interpreter, as does a sampled
+block whose rate stays unresolved, or a fixed-step solver (`Euler`/`RK4`) in
+Simulation settings.
 
 ---
 
@@ -365,6 +381,7 @@ The `backend` field of the diagnostics says which one ran:
 | `fixed_step` | method is `RK4` or `Euler` | in-house, steps on the output grid (`integrate_fixed_step`) |
 | `scipy` | adaptive method, no events | one `solve_ivp` call, no `events=` argument |
 | `scipy+events` | adaptive method and at least one event, detection on | segmented solve (`zero_crossing.solve_with_events`) |
+| `scipy+hybrid` | adaptive method and at least one sampled block | the same segmented solve, split at every sample instant (section 3); events too when detection is on. `zero_crossing.n_sample_hits` counts the instants, t0 included |
 
 ### 6.2 What compiles
 
@@ -382,7 +399,7 @@ Deliberate exclusions, each with a reason in the code:
 | `Impulse`, and `Step` with `type == "impulse"` | modelled as a `dt * 1e-3`-wide rectangle, which an adaptive step can jump clean over — the response would silently vanish. |
 | `StateVariable` | performs a discrete update inside the RHS, keyed on a monotonic-time assumption `solve_ivp` violates (repeated, rejected and out-of-order probe times). |
 | `Hysteresis` **with detection off** | its latch is path-dependent, so it can only be part of an RHS if the mode is frozen inside each segment and flipped at a located instant. |
-| anything with `sampling_time > 0` | section 3. |
+| rated blocks other than `ZeroOrderHold` / `DiscreteTranFn` / `DiscreteStateSpace` | section 3. |
 | anything with no `@kernel` builder | including user blocks. |
 
 ### 6.3 Why a run fell back, and where to see it
@@ -644,6 +661,13 @@ the built-in defaults.)
   not cost anything yet, and it says nothing on implicit or fixed-step runs.
   Above 64 states it only sees the largest-magnitude modes, so stiffness
   hidden behind faster oscillations goes unflagged.
+* **Sampled diagrams cannot be linearized**, even though they compile: the
+  linearizer calls `check_compilability(..., allow_discrete=False)`, because a
+  held output would linearize a sampled loop as open. The Python exporter keeps
+  refusing rated blocks too.
+* **One `solve_ivp` call per sample interval.** A fast rate over a long span
+  (`Ts = 1 ms` for 10 s is 10^4 segments) pays the call overhead each time, and
+  implicit methods rebuild their Jacobian at every instant.
 * **Algebraic loops run on the interpreter only.** Continuous blocks around a
   solved loop therefore integrate with the interpreter's fixed step (first
   order for held inputs), and the diagram cannot be linearized or exported.

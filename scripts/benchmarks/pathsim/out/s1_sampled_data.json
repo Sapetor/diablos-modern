@@ -1,7 +1,7 @@
 {
   "scenario": "s1_sampled_data",
   "env": {
-    "diablos_commit": "120b182",
+    "diablos_commit": "c97e9fc",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -37,54 +37,54 @@
       {
         "tool": "diablos",
         "knob": "sim_dt=0.01",
-        "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 0.10478950399556197,
-          "min_s": 0.09853453100367915,
+          "median_s": 0.09802259400021285,
+          "min_s": 0.09610677600721829,
           "n": 5
         },
-        "max_err": 1.509903313490213e-14,
+        "max_err": 1.6354406717766778e-10,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 1.509903313490213e-14,
-          "err_delay1": 0.10631383427059471
+          "err_delay0": 1.6354406717766778e-10,
+          "err_delay1": 0.1063138343118053
         },
         "n_out": 1501
       },
       {
         "tool": "diablos",
         "knob": "sim_dt=0.005",
-        "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 0.19819466100307181,
-          "min_s": 0.19114469200576423,
+          "median_s": 0.1121215890016174,
+          "min_s": 0.11086848701233976,
           "n": 5
         },
-        "max_err": 2.1760371282653068e-14,
+        "max_err": 1.7838819310611598e-10,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 2.1760371282653068e-14,
-          "err_delay1": 0.10631682055035352
+          "err_delay0": 1.7838819310611598e-10,
+          "err_delay1": 0.10631682059869263
         },
         "n_out": 3001
       },
       {
         "tool": "diablos",
         "knob": "sim_dt=0.001",
-        "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "path": "compiled",
+        "fallback_reason": null,
         "timing": {
-          "median_s": 0.9750315550045343,
-          "min_s": 0.945180121998419,
+          "median_s": 0.23455099400598556,
+          "min_s": 0.2212616659962805,
           "n": 5
         },
-        "max_err": 1.3433698597964394e-13,
+        "max_err": 1.7838819310611598e-10,
         "hold_delay": {
           "matched": 0,
-          "err_delay0": 1.3433698597964394e-13,
-          "err_delay1": 0.10631682055034886
+          "err_delay0": 1.7838819310611598e-10,
+          "err_delay1": 0.10631682059869263
         },
         "n_out": 15001
       },
@@ -92,8 +92,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.026484998998057563,
-          "min_s": 0.025457689000177197,
+          "median_s": 0.019736946996999905,
+          "min_s": 0.01950319499883335,
           "n": 5
         },
         "max_err": 8.015138064365601e-08,
@@ -108,8 +108,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 0.03416518100129906,
-          "min_s": 0.034011800002190284,
+          "median_s": 0.026301940000848845,
+          "min_s": 0.024870041001122445,
           "n": 5
         },
         "max_err": 4.004713494154544e-08,
@@ -124,8 +124,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 0.07133286599855637,
-          "min_s": 0.0693478929970297,
+          "median_s": 0.05170260900922585,
+          "min_s": 0.05123202300455887,
           "n": 5
         },
         "max_err": 5.544600334417282e-10,
@@ -140,8 +140,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-10",
         "timing": {
-          "median_s": 0.1449512419931125,
-          "min_s": 0.1310872229951201,
+          "median_s": 0.10465714300516993,
+          "min_s": 0.10281984100583941,
           "n": 5
         },
         "max_err": 6.0285110237146e-12,
@@ -156,8 +156,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 0.20068781200097874,
-          "min_s": 0.19261965600162512,
+          "median_s": 0.1850381759868469,
+          "min_s": 0.1834257529990282,
           "n": 5
         },
         "max_err": 8.350000004764269e-07,
@@ -172,8 +172,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 0.3342867870014743,
-          "min_s": 0.3150947600006475,
+          "median_s": 0.3186701540107606,
+          "min_s": 0.3117496229970129,
           "n": 5
         },
         "max_err": 2.605812627898274e-07,
@@ -188,8 +188,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 0.766009977000067,
-          "min_s": 0.7454903580000973,
+          "median_s": 0.7492650490021333,
+          "min_s": 0.7295394289976684,
           "n": 5
         },
         "max_err": 3.3113460862210786e-09,
@@ -204,8 +204,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-10",
         "timing": {
-          "median_s": 1.8704272590039182,
-          "min_s": 1.8296428000030573,
+          "median_s": 1.8184362589963712,
+          "min_s": 1.78958167800738,
           "n": 5
         },
         "max_err": 3.987252528148133e-09,
@@ -237,10 +237,10 @@
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.001",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 3.3925487009983044,
-          "min_s": 3.3794376269943314,
+          "median_s": 3.2782223309914116,
+          "min_s": 3.214097396004945,
           "n": 5
         },
         "max_err": 0.0012978180448017795,
@@ -255,10 +255,10 @@
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.0005",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 5.834369181997317,
-          "min_s": 5.7309033349956735,
+          "median_s": 5.752417533003609,
+          "min_s": 5.557899893989088,
           "n": 5
         },
         "max_err": 0.0006481853429245454,
@@ -273,10 +273,10 @@
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.00025",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 11.86989023299975,
-          "min_s": 11.605173376003222,
+          "median_s": 11.223991522012511,
+          "min_s": 11.182821006004815,
           "n": 5
         },
         "max_err": 0.0003239119815769964,
@@ -291,10 +291,10 @@
         "tool": "diablos",
         "knob": "SOLVE_IVP sim_dt=0.0001",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 27.0911421790006,
-          "min_s": 26.881191027001478,
+          "median_s": 27.34823875199072,
+          "min_s": 26.61173409600451,
           "n": 5
         },
         "max_err": 0.00012952145649625102,
@@ -309,10 +309,10 @@
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.001",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 4.545176378000178,
-          "min_s": 4.388318591001735,
+          "median_s": 4.332443997001974,
+          "min_s": 4.296888224998838,
           "n": 5
         },
         "max_err": 0.0002428751243668259,
@@ -327,10 +327,10 @@
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.0005",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 8.838847872997576,
-          "min_s": 8.650769555999432,
+          "median_s": 8.66802826798812,
+          "min_s": 8.425780737990863,
           "n": 5
         },
         "max_err": 0.0001214626315211298,
@@ -345,10 +345,10 @@
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.00025",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 18.042127626002184,
-          "min_s": 17.714267850999022,
+          "median_s": 17.5582601329952,
+          "min_s": 17.41149356799724,
           "n": 5
         },
         "max_err": 6.0737582717296235e-05,
@@ -363,10 +363,10 @@
         "tool": "diablos",
         "knob": "RK4 sim_dt=0.0001",
         "path": "interpreter",
-        "fallback_reason": "zeroorderhold2 (ZeroOrderHold): it has a discrete sample time",
+        "fallback_reason": "function7 (Function): it has no compiled kernel",
         "timing": {
-          "median_s": 43.7198973859995,
-          "min_s": 43.380629924999084,
+          "median_s": 43.81261294099386,
+          "min_s": 43.35245623900846,
           "n": 5
         },
         "max_err": 2.4296538921442234e-05,
@@ -381,8 +381,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=0.0001",
         "timing": {
-          "median_s": 0.8729588109999895,
-          "min_s": 0.865528597998491,
+          "median_s": 0.8682361380051589,
+          "min_s": 0.859033315005945,
           "n": 5
         },
         "max_err": 1.7183054978886503e-10,
@@ -397,8 +397,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-06",
         "timing": {
-          "median_s": 1.1234257719988818,
-          "min_s": 1.1087882049978361,
+          "median_s": 1.1077389999991283,
+          "min_s": 1.0995052460057195,
           "n": 5
         },
         "max_err": 1.8173240690089187e-12,
@@ -413,8 +413,8 @@
         "tool": "pathsim",
         "knob": "RKDP54 rtol=1e-08",
         "timing": {
-          "median_s": 1.7912681630041334,
-          "min_s": 1.7603268400052912,
+          "median_s": 1.7657423070049845,
+          "min_s": 1.7552070319943596,
           "n": 5
         },
         "max_err": 1.8807178037150152e-13,
@@ -429,8 +429,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=0.0001",
         "timing": {
-          "median_s": 4.568788238000707,
-          "min_s": 4.493441830003576,
+          "median_s": 4.466700156990555,
+          "min_s": 4.4323720860120375,
           "n": 5
         },
         "max_err": 4.065909053885264e-09,
@@ -445,8 +445,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-06",
         "timing": {
-          "median_s": 4.860271034995094,
-          "min_s": 4.827777228994819,
+          "median_s": 4.885163332000957,
+          "min_s": 4.871539275991381,
           "n": 5
         },
         "max_err": 3.0968805297959534e-10,
@@ -461,8 +461,8 @@
         "tool": "pathsim",
         "knob": "ESDIRK43 rtol=1e-08",
         "timing": {
-          "median_s": 8.029457980999723,
-          "min_s": 8.011719684000127,
+          "median_s": 8.01389521099918,
+          "min_s": 7.980310188999283,
           "n": 5
         },
         "max_err": 1.674216321134736e-10,

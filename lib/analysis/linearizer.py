@@ -117,7 +117,7 @@ class Linearizer:
         for b in current_blocks:
             engine._resolve_block_params(b, dt, wm)
 
-        if not engine.check_compilability(current_blocks):
+        if not engine.check_compilability(current_blocks, allow_discrete=False):
             raise ValueError(
                 "Diagram is not compilable, so numerical linearization is "
                 "unavailable. Linearization runs on the fast-solver path; remove "

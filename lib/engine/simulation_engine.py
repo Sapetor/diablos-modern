@@ -1336,8 +1336,12 @@ class SimulationEngine:
         self.error_msg = msg
         logger.error("*****EXECUTION STOPPED*****")
 
-    def check_compilability(self, blocks: List[DBlock]) -> bool:
-        """Check if the system can be compiled."""
+    def check_compilability(self, blocks: List[DBlock], allow_discrete: bool = True) -> bool:
+        """Check if the system can be compiled.
+
+        ``allow_discrete=False`` refuses sampled blocks too (the linearizer:
+        it cannot linearize across sample instants).
+        """
         if self.algebraic_loops:
             # The compiler orders blocks topologically and would emit a loop's
             # members in arbitrary order; only the interpreter solves loops.
@@ -1346,7 +1350,17 @@ class SimulationEngine:
                 f"{names}: algebraic loop, solved iteratively by the interpreter"
             )
             return False
-        return self.compiler.check_compilability(blocks)
+        if not self.compiler.check_compilability(blocks, allow_discrete=allow_discrete):
+            return False
+        method = compiled_runner.resolve_solver_method(getattr(self, "solver_method", "RK45"))
+        if self.compiler.last_has_discrete and method in compiled_runner.FIXED_STEP_METHODS:
+            # The hybrid path splits integration at sample instants; the
+            # fixed-step schemes run on the output grid and have no such split.
+            self.compiler.last_incompatibility = (
+                f"sampled blocks with the fixed-step '{method}' solver run on the interpreter"
+            )
+            return False
+        return True
 
     def get_compile_fallback_reason(self) -> Optional[str]:
         """Why the last compilability check sent the run to the interpreter.

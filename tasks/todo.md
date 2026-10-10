@@ -25,7 +25,13 @@ checkable (2026-10-02 pass noted per item).
   with discrete updates as events, so a ZOH/discrete block no longer forces the
   whole diagram onto the first-order interpreter (PathSim benchmark S1b: 44 s
   for 2.4e-5 vs 1.2 s for 2e-12). Acceptance:
-  `scripts/benchmarks/pathsim/s1_sampled_data.py`.
+  `scripts/benchmarks/pathsim/s1_sampled_data.py`. Plan:
+  `tasks/hybrid_compiled_path.md`. Phase 1 done (2026-10-10): ZeroOrderHold,
+  DiscreteTranFn, DiscreteStateSpace compile on the `scipy+hybrid` backend;
+  tests in `tests/regression/test_hybrid_compiled_path.py`. Open: phase 2
+  (rated TranFn/PID/Integrator/Derivative, FirstOrderHold, RateTransition,
+  fixed-step schemes), phase 3 (`Function` kernel for S1b, loops in the
+  compiled RHS).
 - [x] **Sampled blocks behind a ZOH acted one period late** (2026-10-10,
   `68e8289`), found by the PathSim benchmark (S1). Consumers of feedthrough
   memory blocks now wait for the producer's fresh output each step. Tests:

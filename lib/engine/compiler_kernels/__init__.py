@@ -168,3 +168,4 @@ from lib.engine.compiler_kernels import routing  # noqa: E402,F401
 from lib.engine.compiler_kernels import state  # noqa: E402,F401
 from lib.engine.compiler_kernels import pde  # noqa: E402,F401
 from lib.engine.compiler_kernels import field  # noqa: E402,F401
+from lib.engine.compiler_kernels import discrete  # noqa: E402,F401

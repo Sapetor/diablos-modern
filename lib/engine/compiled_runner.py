@@ -25,6 +25,7 @@ import numpy as np
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.block_params import runtime_params
+from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, sample_update
 from lib.engine.solver_diagnostics import (
     estimate_stiffness,
     format_diagnostics_for_log,
@@ -119,6 +120,12 @@ _KERNEL_REPLAY_FNS = frozenset(
         "TransferFcn",
         "PID",
         "RateLimiter",
+        # Function: execute() expects the interpreter's array-shaped inputs and
+        # fails on the compiled scalars (e.g. "u[0][0]"); the kernel does not.
+        "Function",
+        # Sampled blocks: the kernel reads the holder ModeHistoryReplayer
+        # sets to the output that held at each sample time.
+        *DISCRETE_FNS,
     }
 )
 
@@ -183,7 +190,8 @@ def replay_has_feedthrough(block, block_matrices) -> bool:
     """
     fn = canonical_fn(getattr(block, "block_fn", ""))
 
-    if fn == "Integrator":
+    if fn == "Integrator" or fn in DISCRETE_FNS:
+        # A sampled block's output between instants is its held value.
         return False
     if fn not in ("TransferFcn", "StateSpace"):
         return True
@@ -330,6 +338,85 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
     finalize_recorders(current_blocks)
 
 
+def sample_schedule(sampled, t_span, t_eval):
+    """Sample instants in ``(t0, t_end]`` for the sampled holders.
+
+    Instants are ``k * Ts`` (offset 0, as ``DBlock`` schedules them); the
+    union over all rates is merged within ``1e-9`` of the span and snapped onto
+    the output grid, so a grid point and the instant it represents compare
+    equal and the replay shows the post-sample value there, as the
+    interpreter does.
+    """
+    t0, tf = float(t_span[0]), float(t_span[1])
+    tol = 1e-9 * (abs(tf - t0) or 1.0)
+    times = []
+    for holder in sampled:
+        ts = float(holder["ts"])
+        k = np.arange(int(np.floor(t0 / ts + 1e-9)) + 1, int(np.floor(tf / ts + 1e-9)) + 1)
+        times.extend(k * ts)
+    if not times:
+        return np.zeros(0)
+    times = np.sort(np.asarray(times, dtype=float))
+    grid = np.asarray(t_eval, dtype=float)
+    merged = []
+    for t in times:
+        if t <= t0 + tol:
+            continue
+        j = int(np.searchsorted(grid, t))
+        for cand in (j - 1, j):
+            if 0 <= cand < grid.size and abs(grid[cand] - t) <= tol:
+                t = float(grid[cand])
+                break
+        t = min(t, tf)
+        if not merged or t - merged[-1] > tol:
+            merged.append(t)
+    return np.asarray(merged)
+
+
+def make_sample_hook(model_func, sampled, t_span):
+    """``on_breakpoint(t, y)``: update every sampled block due at ``t``.
+
+    Blocks update in ``sampled`` order (feeders first, see
+    ``system_compiler._sample_update_order``) and the diagram is re-evaluated
+    before each one, so a block downstream of a ZOH latches the ZOH's fresh
+    sample, not the one it held over the previous period.
+    """
+    tol = 1e-9 * (abs(float(t_span[1]) - float(t_span[0])) or 1.0)
+
+    def due(holder, t):
+        ts = float(holder["ts"])
+        return abs(t - round(t / ts) * ts) <= tol
+
+    def on_breakpoint(t, y):
+        for holder in sampled:
+            if due(holder, t):
+                _dy, signals = model_func.evaluate(t, y)
+                sample_update(holder, t, signals)
+
+    return on_breakpoint
+
+
+class _StatelessRHS:
+    """One dummy state for a diagram whose only dynamics are sampled blocks.
+
+    The segmented driver needs a state vector to step; the dummy never moves
+    and is dropped from the result.
+    """
+
+    def __init__(self, model_func):
+        self._f = model_func
+        self.event_specs = getattr(model_func, "event_specs", None)
+        self.mode_states = getattr(model_func, "mode_states", None)
+        self.sampled = getattr(model_func, "sampled", None)
+
+    def __call__(self, t, y):
+        return np.zeros(1)
+
+    def evaluate(self, t, y, input_overrides=None):
+        _dy, signals = self._f.evaluate(t, np.zeros(0), input_overrides)
+        return np.zeros(1), signals
+
+
 def run_compiled_simulation(
     engine, blocks: List[DBlock], lines: List[Any], t_span: Tuple[float, float], dt: float
 ) -> bool:
@@ -444,8 +531,9 @@ def run_compiled_simulation(
         class _SolverResult:
             __slots__ = ("t", "y", "success", "message", "status", "nfev", "njev", "nlu")
 
+        sampled = list(getattr(model_func, "sampled", None) or [])
         solve_start = time_module.perf_counter()
-        if len(y0) == 0:
+        if len(y0) == 0 and not sampled:
             # Purely algebraic system
             backend = "algebraic"
             sol = _SolverResult()
@@ -497,7 +585,38 @@ def run_compiled_simulation(
                 # bookkeeping at all.
                 event_specs = list(getattr(model_func, "event_specs", None) or [])
                 use_events = bool(getattr(engine, "zero_crossing", True)) and bool(event_specs)
-                if use_events:
+                if sampled:
+                    # Hybrid: adaptive between sample instants, the sampled
+                    # blocks' own updates at each instant.
+                    backend = "scipy+hybrid"
+                    rhs = model_func if len(y0) else _StatelessRHS(model_func)
+                    breakpoints = sample_schedule(sampled, t_span, t_eval)
+                    logger.info(
+                        f"Solving with {method} (rtol={rtol}, atol={atol}) between "
+                        f"{len(breakpoints)} sample instant(s) of {len(sampled)} sampled block(s)"
+                    )
+                    sol = solve_with_events(
+                        rhs,
+                        t_span,
+                        y0 if len(y0) else np.zeros(1),
+                        t_eval,
+                        event_specs if use_events else [],
+                        method=method,
+                        rtol=rtol,
+                        atol=atol,
+                        max_events=int(getattr(engine, "zero_crossing_max_events", 0) or 0)
+                        or DEFAULT_MAX_EVENTS,
+                        mode_states=getattr(model_func, "mode_states", None),
+                        max_step=dt,
+                        fallback_integrator=integrate_fixed_step,
+                        breakpoints=breakpoints,
+                        on_breakpoint=make_sample_hook(rhs, sampled, t_span),
+                    )
+                    if not len(y0):
+                        sol.y = sol.y[:0]
+                    zero_crossing_info = sol.summary()
+                    zero_crossing_info["enabled"] = use_events
+                elif use_events:
                     backend = "scipy+events"
                     logger.info(
                         f"Solving with {method} (rtol={rtol}, atol={atol}) and "

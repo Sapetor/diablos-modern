@@ -10,6 +10,7 @@ from lib.engine.pde_helpers import (
 )
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
+from lib.engine.compiler_kernels.discrete import DISCRETE_FNS
 from lib.engine.block_params import runtime_params
 from lib.user_blocks import is_user_block
 
@@ -320,7 +321,9 @@ def _execution_groups(sorted_order, block_matrices, input_map=None):
     d0_names = set()
     for b in sorted_order:
         fn = canonical_fn(b.block_fn)
-        if fn in SOURCE_FNS:
+        # A sampled block reads only its held output inside the RHS, so it is
+        # a source there; its inputs matter only at sample instants.
+        if fn in SOURCE_FNS or fn in DISCRETE_FNS:
             source_names.add(b.name)
         elif _is_d0_state_block(b, fn, block_matrices):
             d0_names.add(b.name)
@@ -330,6 +333,58 @@ def _execution_groups(sorted_order, block_matrices, input_map=None):
     if input_map is not None:
         middle = _dataflow_order(middle, input_map)
     return sources, middle, d0_state_blocks
+
+
+def _sample_update_order(sampled_blocks, blocks, input_map, block_matrices):
+    """Order in which sampled blocks update at a shared sample instant.
+
+    A sampled block must update after every sampled block that feeds it
+    through a path of direct-feedthrough blocks (ZOH -> Gain -> DiscreteTF), so
+    it latches its feeder's *fresh* sample. The engine's hierarchy cannot say
+    this: it places memory blocks early on purpose. A path through a strictly
+    proper state block (Integrator, strictly proper TF) or another sampled
+    block carries no instantaneous dependency and is not followed. Kahn,
+    stable in ``sampled_blocks`` order; a cycle keeps that order.
+    """
+    by_name = {b.name: b for b in blocks}
+    sampled_names = {b.name for b in sampled_blocks}
+    consumers = {b.name: set() for b in blocks}
+    for dst, ports in input_map.items():
+        for src, _port in ports.values():
+            if src in consumers:
+                consumers[src].add(dst)
+
+    def passes_through(name):
+        b = by_name.get(name)
+        if b is None or name in sampled_names:
+            return False
+        return not _is_d0_state_block(b, canonical_fn(b.block_fn), block_matrices)
+
+    preds = {name: set() for name in sampled_names}
+    for start in sampled_names:
+        seen, stack = set(), list(consumers[start])
+        while stack:
+            name = stack.pop()
+            if name in seen:
+                continue
+            seen.add(name)
+            if name in sampled_names:
+                if name != start:
+                    preds[name].add(start)
+            elif passes_through(name):
+                stack.extend(consumers.get(name, ()))
+    ordered, remaining = [], dict(preds)
+    while True:
+        ready = [b for b in sampled_blocks if b.name in remaining and not remaining[b.name]]
+        if not ready:
+            break
+        for b in ready:
+            ordered.append(b)
+            del remaining[b.name]
+        for deps in remaining.values():
+            deps -= {b.name for b in ready}
+    ordered.extend(b for b in sampled_blocks if b.name in remaining)
+    return ordered
 
 
 def _state_output_preloads(state_map, block_matrices, d0_names):
@@ -491,6 +546,8 @@ class SystemCompiler:
         # or None when the diagram compiles. The GUI shows it so a silent
         # fall-back to the interpreter is explainable without reading the log.
         self.last_incompatibility = None
+        # Whether the last accepted diagram contains sampled blocks.
+        self.last_has_discrete = False
 
     def _not_compilable(self, block, reason: str) -> bool:
         """Record why ``block`` blocks compilation and return False."""
@@ -529,7 +586,9 @@ class SystemCompiler:
             return False
         return get_kernel_builder(canonical_fn(block.block_fn)) is not None
 
-    def check_compilability(self, blocks: List[DBlock], _recursive: bool = False) -> bool:
+    def check_compilability(
+        self, blocks: List[DBlock], _recursive: bool = False, allow_discrete: bool = True
+    ) -> bool:
         """
         Check if the entire diagram is supported by the compiler.
 
@@ -542,12 +601,16 @@ class SystemCompiler:
         Args:
             blocks: List of all blocks in the diagram.
             _recursive: Internal — do not reset the recorded reason.
+            allow_discrete: Accept sampled blocks (ZOH, discrete TF/SS) for
+                the hybrid path. The linearizer passes False: with their
+                outputs held, a sampled loop would linearize as open.
 
         Returns:
             bool: True if all blocks are supported, False otherwise.
         """
         if not _recursive:
             self.last_incompatibility = None
+            self.last_has_discrete = False
         allowed = self._compilable_names()
         for block in blocks:
             b_type = block.block_fn
@@ -555,7 +618,9 @@ class SystemCompiler:
             # Special handling for Subsystems (Recursive check)
             if b_type == "Subsystem":
                 if hasattr(block, "sub_blocks"):
-                    if not self.check_compilability(block.sub_blocks, _recursive=True):
+                    if not self.check_compilability(
+                        block.sub_blocks, _recursive=True, allow_discrete=allow_discrete
+                    ):
                         return False
                 continue
 
@@ -578,10 +643,28 @@ class SystemCompiler:
             # RHS has no notion of sample instants and would silently run the
             # block as a purely continuous one, so the whole diagram falls
             # back to the interpreter, which honours the rate.
+            fn = canonical_fn(b_type)
+            if fn in DISCRETE_FNS:
+                # Sampled blocks compile into the hybrid path: adaptive
+                # integration between sample instants, the block's own update
+                # at each instant (lib.engine.compiler_kernels.discrete). The
+                # rate must be resolved by now -- engine init has propagated
+                # inherited rates onto effective_sample_time.
+                rate = getattr(block, "effective_sample_time", -1.0)
+                if not (isinstance(rate, (int, float)) and rate > 0):
+                    rate = _declared_sample_time(block)
+                if not rate > 0:
+                    return self._not_compilable(
+                        block, "its sample time is unresolved, so it steps once per solver step"
+                    )
+                if not allow_discrete:
+                    return self._not_compilable(block, "it has a discrete sample time")
+                self.last_has_discrete = True
+                continue
             if _declared_sample_time(block) > 0:
                 return self._not_compilable(block, "it has a discrete sample time")
 
-            if canonical_fn(b_type) not in allowed:
+            if fn not in allowed:
                 if self._has_user_kernel(block):
                     continue
                 if canonical_fn(b_type) in {
@@ -766,6 +849,11 @@ class SystemCompiler:
             sorted_order, input_map, state_map, block_matrices
         )
         model_func.mode_states = list(self._mode_registry.values())
+        sampled = [b for b in sources if canonical_fn(b.block_fn) in DISCRETE_FNS]
+        model_func.sampled = [
+            self._mode_registry[b.name]
+            for b in _sample_update_order(sampled, sorted_order, input_map, block_matrices)
+        ]
         if model_func.event_specs:
             logger.debug(
                 "Compiled %d zero-crossing event(s): %s",

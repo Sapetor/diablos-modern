@@ -192,6 +192,17 @@ while a single located step edge costs one extra restart:
 `c05_mass_spring_state_space` 10.0 -> 11.4 ms and `c01_tank_feedback` 7.7 ->
 9.0 ms.
 
+## Sampled-Data Blocks
+
+`ZeroOrderHold`, `DiscreteTranFn` and `DiscreteStateSpace` compile on the
+`scipy+hybrid` backend: the solver integrates adaptively between sample
+instants and stops exactly at each one, where the due blocks run their own
+`execute()` in dataflow order (a ZOH before the discrete controller it feeds)
+and the next segment restarts at the same time and state. Between instants
+their outputs are held. The samples match the interpreter's; the continuous
+plant in between gets the adaptive solver's accuracy instead of the
+interpreter's fixed step. Details: [SOLVER_SEMANTICS.md, section 3](SOLVER_SEMANTICS.md#3-sample-times-and-multirate).
+
 ## Special Handling
 
 ### Zero-State Systems ("Pure Algebraic")
@@ -202,7 +213,7 @@ Systems without any states (e.g., `Ramp` -> `Gain` -> `Scope`) do not require an
 4.  Executing the **Replay Loop** to compute all algebraic signals at each time step.
 
 ### Mixed Mode / Fallback
-If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. The block that caused it is recorded and shown in the property panel — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#63-why-a-run-fell-back-and-where-to-see-it). This is slower but guarantees compatibility. A block with a discrete sample time (`sampling_time > 0`) also forces the fallback, even if it is otherwise supported: the compiled ODE right-hand side has no notion of sample instants, so only the interpreter runs such a block at its own rate.
+If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonFunction`, or legacy blocks), the Engine automatically falls back to **Interpreter Mode**. The block that caused it is recorded and shown in the property panel — see [SOLVER_SEMANTICS.md](SOLVER_SEMANTICS.md#63-why-a-run-fell-back-and-where-to-see-it). This is slower but guarantees compatibility. `ZeroOrderHold`, `DiscreteTranFn` and `DiscreteStateSpace` compile on the hybrid backend (see Sampled-Data Blocks above); any other block with a discrete sample time (`sampling_time > 0`) still forces the fallback, as do sampled blocks under the fixed-step `Euler`/`RK4` settings.
 
 ## Troubleshooting
 
