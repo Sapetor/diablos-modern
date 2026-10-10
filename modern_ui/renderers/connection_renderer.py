@@ -10,6 +10,7 @@ import numpy as np
 from PyQt6.QtGui import QPainter, QPen, QColor, QPolygonF
 
 from PyQt6.QtCore import Qt, QPoint, QPointF, QRect
+from modern_ui.renderers.sample_time_colors import rate_color
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
@@ -168,13 +169,15 @@ class ConnectionRenderer:
             logger.debug("Failed to format port value for live chip", exc_info=True)
         return ""
 
-    def draw_line(self, line, painter: QPainter):
+    def draw_line(self, line, painter: QPainter, sample_time: float = -1.0):
         """
         Draw the connection line with smooth Bezier curves and modern styling.
 
         Args:
             line: DLine object containing path and properties
             painter: QPainter instance
+            sample_time: rate the wire carries (see sample_time_colors);
+                a discrete wire (> 0) is tinted with the block dot's color.
         """
         if not painter or not painter.isActive():
             return
@@ -196,7 +199,9 @@ class ConnectionRenderer:
             # Determine line color and width based on selection state and signal width
             # Note: selected_segment logic handled below for specific highlighting
             is_selected = line.selected and line.selected_segment == -1
-            pen_color = active_connection_color if is_selected else default_connection_color
+            rate_tint = rate_color(sample_time) if sample_time > 0 else None
+            idle_color = rate_tint or default_connection_color
+            pen_color = active_connection_color if is_selected else idle_color
 
             # Base line width - thicker for vector signals (MIMO indicator)
             base_width = 2.0 if getattr(line, "signal_width", 1) <= 1 else 3.5
@@ -234,7 +239,7 @@ class ConnectionRenderer:
 
             # Determine line style based on signal type
             # Discrete signals use dashed lines
-            is_discrete = getattr(line, "discrete_signal", False)
+            is_discrete = getattr(line, "discrete_signal", False) or sample_time > 0
             line_style = Qt.PenStyle.DashLine if is_discrete else Qt.PenStyle.SolidLine
 
             # Draw main connection line
@@ -296,7 +301,7 @@ class ConnectionRenderer:
             self._draw_arrowhead(
                 line,
                 painter,
-                active_connection_color if line.selected else default_connection_color,
+                active_connection_color if line.selected else idle_color,
             )
 
         finally:

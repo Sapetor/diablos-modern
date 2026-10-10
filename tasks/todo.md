@@ -11,12 +11,6 @@ Everything below is still open, verified against the code where cheaply
 checkable (2026-10-02 pass noted per item).
 
 ### Parked feature ideas (idea review, September 2026)
-- [ ] **Sample-time coloring for wires** — block-level indicators already ship
-  (small colored dot per block: gray = inherited, red→blue log-scale by rate;
-  `modern_ui/renderers/block_renderer.py::_draw_sample_rate_indicator`,
-  confirmed wired into `draw_block` 2026-10-02). Wires themselves still carry
-  no tint, so a multirate mistake on a wire between two continuous-looking
-  blocks is still invisible.
 - [ ] **One-click auto-layout** — layered (Sugiyama-style) layout action in the
   Edit menu, generalizing `scripts/fix_diagram_overlaps.py`. (confirmed absent
   2026-10-02, no `autolayout`/`Sugiyama` hits in `modern_ui/`/`lib/`)
@@ -291,7 +285,7 @@ just evidence that these can come off the "parked ideas" backlog:
 - [x] **Sample-time coloring (blocks)** — see "Parked feature ideas" above;
   the block-side indicator already shipped well before the Sept 2026
   campaigns (predates `ab8b003`, multi-rate support with RateTransition/
-  FirstOrderHold). Only wire tinting remains open.
+  FirstOrderHold). Wire tinting followed on 2026-10-10.
 - [x] **Wall-clock real-time pacing** (half of the "Real-time pacing and
   hardware I/O" idea) — `DSim.real_time` / `SimulationEngine.real_time`, a
   "Run in real-time" checkbox in `lib/dialogs.py`, consumed by
@@ -564,6 +558,7 @@ in every case, so each fix corrected the interpreter to match.
 | 2026-10-10 | **Align Top shortcut**: Edit > Align > Align Top is now Ctrl+Shift+U ("up"; Ctrl+Shift+T stays with the tuning panel). USER_MANUAL.md listed Ctrl+Shift+T for it; corrected. Tests: `test_menu_shortcuts_and_preferences.py::test_ctrl_shift_u_aligns_tops` and a Ctrl+Shift+U case in `test_each_key_fires_its_action_exactly_once`. |
 | 2026-10-10 | **Shared block search**: new `block_match_rank` (modern_palette.py; 0 exact / 1 prefix / 2 other / None) drives both the palette's Enter and the command palette's block scoring (canvas double-click quick-insert, Ctrl+K). Fixes: a recent Discrete Transfer Function outranked an exact "transfer function"; "statespace" tied the two State Space blocks. Tiers are 25 apart so the recents bonus never crosses them. Side effect: exact "step"/"export"/"parameter" now list the block above the action. Tests: `test_main_window_command_palette.py::TestBlockSearchMatchesPalette`, `test_palette_display_names.py::test_block_match_rank_tiers`. |
 | 2026-10-10 | **Welcome overlay at UI scale 125%/150%**: checked with native renders. The overlay used fixed TYPE points, so it never scaled (its comments said it did). `_apply_styling` now scales its fonts, card height and max width by app font / 10pt (clamped at 1, so 100% is unchanged); the card min width is capped by what fits the canvas and re-applied on resize, since a scaled min overlapped cards and buttons on a 1000px window at 150%. Found that UI scale is font-only app-wide (open item). Tests: `test_welcome_overlay_and_tooltips.py::test_overlay_follows_the_ui_scale`, `::test_scaled_cards_fit_a_narrow_canvas`. |
+| 2026-10-10 | **Sample-time coloring for wires**: discrete wires are tinted with the block dot's red (1 ms) to blue (1 s) log scale and dashed, before any run too. New `modern_ui/renderers/sample_time_colors.py` (`rate_color`, shared with the block dot; `block_sample_times` / `wire_sample_times` repeat the engine's rule: declared `resolve_sample_time()`, inherited = fastest discrete input, wire = source rate; a RateTransition's output wire uses `output_sample_time`). Selected wires keep the accent color. Test: `tests/modern_ui/test_wire_sample_time_colors.py`. |
 | 2026-10-09 | **Windows follow-ups (2)**: palette drop lag -- `record_recent` rebuilt the whole palette (~400 widgets) on every drop, now swaps only the Recent section (~90 -> ~20 ms per drop, and the active filter survives); Enter in the palette filter ranks exact > prefix > substring instead of taking filesystem order; long (Spanish) names elide instead of widening the palette, whose hidden horizontal scroll shifted the list sideways on focus; `ui_settings()` honours `DIABLOS_SETTINGS_INI` and `tests/conftest.py` uses a throwaway INI, so the suite no longer reads or overwrites the developer's registry prefs; `SimulationModel.remove_block` filters `line_list` in place, so a block deleted inside a subsystem no longer leaves its wires in `sub_lines`; CI gained a `windows-latest` job (TikZ tests pass a bare file name to pdflatex; the POSIX read-only guard is skipped on Windows). |
 | 2026-10-09 | **Windows follow-up**: reviewed the prior five fixes; repaired toolbar width, made status/glyph tests independent of installed fonts, implemented saved-document identity for undo/redo with explicit-save and load/new lifecycle handling, and polished Properties reset controls and row-label sizing. Moved resolved items to Completed; retained the four missing-pdflatex failures and the POSIX-permissions failure as environment gaps. |
 | 2026-10-09 | **Windows fixes**: resized blocks can shrink back vertically (`DBlock.calculate_min_size` is port-only; regression test in `tests/modern_ui/test_drag_resize.py`); Fusion style forced on Windows too so the Properties spinboxes are readable (`qss_styles._maybe_use_fusion_style`); stdout/stderr use `errors="backslashreplace"` and the log file is UTF-8, so emoji log records no longer raise on a cp1252 console. Remaining Windows-only test failures logged under Open Items. |

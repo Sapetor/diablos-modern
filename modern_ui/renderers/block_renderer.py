@@ -5,7 +5,6 @@ Separates the view/drawing logic from the data model.
 """
 
 import logging
-import math
 from typing import Optional
 from PyQt6.QtGui import (
     QColor,
@@ -19,6 +18,7 @@ from PyQt6.QtGui import (
     QFont,
 )
 from PyQt6.QtCore import Qt, QRect, QRectF, QPoint, QPointF
+from modern_ui.renderers.sample_time_colors import rate_color
 from modern_ui.themes.theme_manager import (
     theme_manager,
     get_ui_font,
@@ -1218,26 +1218,7 @@ class BlockRenderer:
         indicator_x = block.left + block.width - indicator_radius - 3
         indicator_y = block.top + indicator_radius + 3
 
-        # Determine indicator color
-        if sample_time == 0:
-            # Inherited rate - gray
-            indicator_color = QColor(128, 128, 128)
-        else:
-            # Fixed discrete rate - color based on sample time
-            # Use log scale: 0.001s (1kHz) = red, 1s (1Hz) = blue
-            log_min = math.log10(0.001)  # 1ms = fast (red)
-            log_max = math.log10(1.0)  # 1s = slow (blue)
-            log_sample = math.log10(max(0.001, min(1.0, sample_time)))
-
-            # Normalize to 0-1 range
-            t = (log_sample - log_min) / (log_max - log_min)
-            t = max(0.0, min(1.0, t))
-
-            # Interpolate from red (fast) to blue (slow)
-            r = int(255 * (1 - t))
-            g = int(100 * (1 - abs(t - 0.5) * 2))  # Green peak in middle
-            b = int(255 * t)
-            indicator_color = QColor(r, g, b)
+        indicator_color = rate_color(sample_time)
 
         # Draw the indicator dot
         painter.save()

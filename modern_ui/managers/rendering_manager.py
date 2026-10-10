@@ -11,6 +11,7 @@ from PyQt6.QtGui import QPainter, QPen, QColor
 from PyQt6.QtWidgets import QToolTip
 
 from lib.i18n import tr
+from modern_ui.renderers.sample_time_colors import wire_sample_times
 from modern_ui.widgets.canvas_state import ValidationState
 
 if TYPE_CHECKING:
@@ -95,9 +96,12 @@ class RenderingManager:
         """Render all connection lines."""
         if painter is None:
             return
+        rates = wire_sample_times(self.dsim.blocks_list, self.dsim.line_list)
         for line in self.dsim.line_list:
             if not getattr(line, "hidden", False):
-                self.canvas.connection_renderer.draw_line(line, painter)
+                self.canvas.connection_renderer.draw_line(
+                    line, painter, sample_time=rates.get(id(line), -1.0)
+                )
 
     def render_ports(self, painter: QPainter) -> None:
         """Render all ports on top of lines for better visibility."""
