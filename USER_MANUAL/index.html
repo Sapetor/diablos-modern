@@ -973,6 +973,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#transfer-function-between-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transfer Function Between Blocks...
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1073,6 +1084,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#compare-two-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare two diagrams
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1086,6 +1108,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Importing Data: the FromFile Block">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identifying-a-model-the-system-identification-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identifying a model: the System Identification block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-io-udp-and-serial-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware I/O: UDP and serial blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3158,6 +3208,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#transfer-function-between-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transfer Function Between Blocks...
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3258,6 +3319,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#compare-two-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare two diagrams
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3271,6 +3343,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Importing Data: the FromFile Block">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identifying-a-model-the-system-identification-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identifying a model: the System Identification block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-io-udp-and-serial-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware I/O: UDP and serial blocks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -4104,6 +4204,27 @@ cancelled; a cancelled sweep keeps the runs it completed.</p>
 <h3 id="outcome-metrics">Outcome metrics<a class="headerlink" href="#outcome-metrics" title="Permanent link">&para;</a></h3>
 <p>Ensembles and sweeps share one metric vocabulary: <code>final</code>, <code>mean</code>, <code>max</code>,
 <code>min</code>, <code>peak-to-peak</code>, <code>rms</code>.</p>
+<h3 id="transfer-function-between-blocks">Transfer Function Between Blocks...<a class="headerlink" href="#transfer-function-between-blocks" title="Permanent link">&para;</a></h3>
+<p>Select two blocks, for example the reference <strong>Step</strong> and a <strong>Scope</strong>, and
+choose <strong>Analysis → Transfer Function Between Blocks...</strong> (<strong>Ctrl+Alt+G</strong>). The
+window shows the closed-loop <code>G(s)</code> from the input block to the output: its
+poles, zeros, DC gain and stability, followed by the reduction steps of
+<strong>Mason's gain formula</strong> (each forward path <code>Pk</code>, each feedback loop <code>Li</code>,
+<code>Delta</code> and <code>Delta_k</code>), so a hand derivation can be checked line by line.</p>
+<ul>
+<li>Order does not matter: the input is whichever block has a signal path to the
+  other. A sink such as a Scope gets one result per connected input, titled
+  with the Scope's labels.</li>
+<li>Other sources (disturbances, offsets) are set to zero, as in any transfer
+  function.</li>
+<li>Supported blocks: Gain (scalar), Sum, Transfer Function, State Space (SISO),
+  Integrator, Derivative and PID (<code>Kp + Ki/s + Kd N s / (s + N)</code>; output limits
+  and anti-windup are ignored), all continuous. Any other block on a path or
+  loop between the two (Saturation, sampled blocks, Subsystems, ...) is named
+  in an error; blocks elsewhere in the diagram do not matter.</li>
+<li>The coefficients are the blocks' numeric parameters, so <code>G(s)</code> is a rational
+  function in <code>s</code> with numeric coefficients, not in parameter names.</li>
+</ul>
 <hr />
 <h2 id="export">Export<a class="headerlink" href="#export" title="Permanent link">&para;</a></h2>
 <h3 id="export-as-image">Export as Image...<a class="headerlink" href="#export-as-image" title="Permanent link">&para;</a></h3>
@@ -4269,6 +4390,36 @@ scripts and CI.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="compare-two-diagrams">Compare two diagrams<a class="headerlink" href="#compare-two-diagrams" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>diablos_modern.py<span class="w"> </span>diff<span class="w"> </span>old.diablos<span class="w"> </span>new.diablos
+</code></pre></div>
+<p>Compares by block and connection, not by JSON line: simulation settings,
+blocks added/removed, block type, label and parameter changes, port counts, and
+wires added/removed. Blocks inside subsystems are shown with their path
+(<code>ctrl/gain2</code>). Positions, sizes and wire bends are ignored unless <code>--layout</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>~ block DiscreteTranFn "digital PI" (discretetranfn3)
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    numerator: [1.2, -1.0] -&gt; [2.0, -1.5]
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>+ wire sampler Ts = 0.1 s:0 -&gt; K:0
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--layout</code></td>
+<td>Also report block moves/resizes and wire bends</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Print the differences as JSON</td>
+</tr>
+</tbody>
+</table>
+<p>Exit code 0 when the diagrams match, 1 when they differ, 2 on a read error.</p>
 <p>Both are also reachable as a module: <code>python -m lib.cli run diagram.diablos -o out.csv</code>.</p>
 <hr />
 <h2 id="importing-data-the-fromfile-block">Importing Data: the FromFile Block<a class="headerlink" href="#importing-data-the-fromfile-block" title="Permanent link">&para;</a></h2>
@@ -4287,6 +4438,84 @@ to a log.</p>
 </ul>
 <p><code>LookupTable1D</code> / <code>LookupTable2D</code> read static tables the same way for
 interpolated static maps.</p>
+<h3 id="identifying-a-model-the-system-identification-block">Identifying a model: the System Identification block<a class="headerlink" href="#identifying-a-model-the-system-identification-block" title="Permanent link">&para;</a></h3>
+<p><code>System Identification</code> (category <em>Sources</em>) fits a continuous transfer function
+<code>G(s) = B(s)/A(s)</code> to a recorded experiment and replays it next to the
+measurement.</p>
+<ul>
+<li>Point <code>data_file</code> at a log with time, input and output columns (<code>time_col</code>,
+  <code>input_col</code>, <code>output_col</code>, same naming rules as <code>FromFile</code>).</li>
+<li>Choose <code>den_order</code> (poles) and <code>num_order</code> (zeros, at most <code>den_order</code>).</li>
+<li>When the run starts the block fits the model (ARX least squares as a starting
+  point, then the coefficients are refined so the simulated response matches
+  the data) and logs it, e.g. <code>G(s) = (4.002) / (s^2 + 2.001 s + 4.003), fit
+  99.8 %</code>. The fit percentage is the normalized-RMSE measure of MATLAB's
+  <code>compare</code> (100 = perfect).</li>
+<li>Output <code>model</code> is the fitted <code>G(s)</code> driven by the recorded input; output
+  <code>measured</code> is the recorded output. Wire both into a Scope to judge the fit,
+  and copy the logged numerator/denominator into a Transfer Function block to
+  design with the model.</li>
+<li>Records may start at an operating point (equilibrium before a step) or at rest
+  with the input already applied; both are handled.</li>
+</ul>
+<h3 id="hardware-io-udp-and-serial-blocks">Hardware I/O: UDP and serial blocks<a class="headerlink" href="#hardware-io-udp-and-serial-blocks" title="Permanent link">&para;</a></h3>
+<p>Four blocks connect a running simulation to lab hardware or other programs.
+Tick <strong>Run in real-time</strong> in Simulation Settings so simulated time keeps pace
+with the wall clock.</p>
+<table>
+<thead>
+<tr>
+<th>Block</th>
+<th>Category</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UDP Receive</code></td>
+<td>Sources</td>
+<td>Listens on <code>host</code>:<code>port</code>; outputs the latest message (<code>data</code>) and a <code>fresh</code> flag (1 on a step where a message arrived)</td>
+</tr>
+<tr>
+<td><code>UDP Send</code></td>
+<td>Sinks</td>
+<td>Sends its input to <code>host</code>:<code>port</code></td>
+</tr>
+<tr>
+<td><code>Serial Read</code></td>
+<td>Sources</td>
+<td>Reads newline-terminated lines from a serial <code>port</code> at <code>baudrate</code>; outputs <code>data</code> and <code>fresh</code></td>
+</tr>
+<tr>
+<td><code>Serial Write</code></td>
+<td>Sinks</td>
+<td>Writes its input to a serial port as one line per step</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Message format.</strong> <code>text</code>: numbers separated by commas or spaces, one message
+  per datagram or per line (<code>Serial.println(x)</code> on an Arduino, or
+  <code>"1.5,2.0\n"</code>). UDP also offers <code>float64</code>: little-endian doubles packed back to
+  back. A malformed message is dropped as a whole.</li>
+<li><strong>Never blocking.</strong> Receivers read whatever has arrived each step and hold the
+  last value between messages (<code>initial</code> before the first one); <code>width</code> sets how
+  many values they output. Senders drop a message rather than stall the run.</li>
+<li><strong>Rate.</strong> Senders run every step by default; set <code>sampling_time</code> (seconds) to
+  send at a fixed rate instead.</li>
+<li><strong>Serial needs pyserial</strong> (<code>pip install pyserial</code>). Without it the serial blocks
+  stop the run with that instruction; the UDP blocks need nothing extra.</li>
+<li>Ports are opened when a run starts and reopened on the next run; they run on
+  the interpreter path.</li>
+</ul>
+<p>Quick loopback check from Python while a diagram with <code>UDP Receive</code> on port 5005
+runs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">socket</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">math</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">):</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">s</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">k</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="p">(</span><span class="s2">"127.0.0.1"</span><span class="p">,</span> <span class="mi">5005</span><span class="p">))</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+</code></pre></div>
 <hr />
 <h2 id="the-function-block">The Function Block<a class="headerlink" href="#the-function-block" title="Permanent link">&para;</a></h2>
 <p><code>Function</code> (category <em>Math</em>) evaluates a Python expression of its inputs and
@@ -4439,7 +4668,7 @@ parameter values, so two "Vehicle" blocks can have different masses.</p>
 library</strong> to pull in the new contents. Your instance's parameter values are
 kept -- only the internals and the mask definition are refreshed.</p>
 <h3 id="try-it">Try it<a class="headerlink" href="#try-it" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">DIABLOS_LIBRARY_PATH</span><span class="o">=</span>examples/library<span class="w"> </span>python<span class="w"> </span>diablos_modern.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">DIABLOS_LIBRARY_PATH</span><span class="o">=</span>examples/library<span class="w"> </span>python<span class="w"> </span>diablos_modern.py
 </code></pre></div>
 <p>Open <code>examples/library_block_demo.diablos</code>: a proportional controller closes a
 loop around a masked <strong>Vehicle</strong> block, <code>v(s)/F(s) = 1 / (m s + b)</code>, with the

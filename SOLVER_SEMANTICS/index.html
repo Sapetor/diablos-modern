@@ -2782,7 +2782,18 @@ only as an input ordering that it then re-sorts (4.3).</p>
    <code>RateLimiter</code>, <code>PID</code>) re-propagates the value it just computed with
    <code>count=False</code>, overwriting the stale <code>output_only</code> value in its consumers'
    queues without re-counting the delivery. Strictly proper memory blocks
-   (<code>b_type == 1</code>) are left alone — their earlier value was the correct one.</li>
+   (<code>b_type == 1</code>) are left alone — their earlier value was the correct one.
+   A consumer of such a feedthrough memory block is <strong>held back</strong> until the
+   producer has executed this step. Without the hold, a consumer could run on
+   the stale value before the refresh: a <code>DiscreteTranFn</code> behind a ZOH whose
+   input is produced later in the step latched the old sample and acted one
+   full period late (fixed 2026-10-10,
+   <code>tests/regression/test_sampled_loop_delay.py</code>). When holding stalls every
+   block, the loop is algebraic through the producer, and the hold is dropped
+   for the rest of the step.</li>
+<li><strong>Algebraic loops</strong> (section 4.4) run as units: their members are skipped
+   by the per-block passes, and each loop is solved once all its members have
+   their inputs from outside the loop.</li>
 </ol>
 <p>The consequence is the interpreter's characteristic <strong>one-sample feedback delay
 through strictly-proper memory blocks</strong>, which the compiled path does not have.</p>
@@ -2810,19 +2821,39 @@ order again: a topological sort over <em>feedthrough edges only</em>, because a 
 block's replayed output is its known state and does not depend on this step's
 inputs (<code>compiled_runner.replay_compiled_signals</code> / <code>replay_has_feedthrough</code>).</p>
 <h3 id="44-algebraic-loops">4.4 Algebraic loops<a class="headerlink" href="#44-algebraic-loops" title="Permanent link">&para;</a></h3>
-<p>A cycle of blocks with no state in it has no execution order. Loop 2 detects the
-stall and calls <code>graph_analysis.detect_algebraic_loops</code> (Kahn's algorithm with
-edges into memory blocks removed). Two outcomes:</p>
+<p>A cycle of feedthrough blocks with no memory block in it (<code>y = u - k*y</code>) has
+no execution order. It is <strong>solved</strong>, not rejected (since 2026-10-10,
+<code>lib/engine/algebraic_loop.py</code>):</p>
 <ul>
-<li>a genuine cycle → <code>"Algebraic loop detected involving blocks: [...]"</code>, and
-  initialization fails;</li>
-<li>no cycle but blocks still uncomputed → only memory blocks may legitimately
-  remain (they run in Loop 3); any other uncomputed block is a hard
-  <code>"Hierarchy resolution stalled with uncomputed non-memory blocks"</code> error
-  rather than a block that silently never runs.</li>
+<li>When Loop 2 stalls, the uncomputed non-memory blocks are split into
+  strongly connected components (<code>topo.cyclic_components</code>, Tarjan). Each
+  component with a cycle is one <code>AlgebraicLoop</code>. Blocks downstream of a loop,
+  such as its Scope, are not members.</li>
+<li>The unknowns <code>z</code> are the member output ports that feed other members. Each
+  step solves <code>z = F(z)</code> with <code>scipy.optimize.root</code> (<code>hybr</code>, warm-started
+  from the previous step), where <code>F</code> runs every member once with its loop
+  inputs taken from <code>z</code>. Then the members run once more with the solution,
+  which is the step's real execution, and propagate as usual.</li>
+<li>Trial evaluations start from a snapshot of the members' <code>params</code> /
+  <code>exec_params</code>. All block state lives there (the block contract), so a
+  stateful feedthrough block, such as a proper <code>TranFn</code> with <code>D != 0</code>, is
+  iterated without advancing its state.</li>
+<li>Errors name the block: a loop through a block with a discrete sample time
+  is rejected (its schedule lives on the <code>DBlock</code>, not in params), and a
+  loop with no solution reports <code>"did not converge (residual ...)"</code>.</li>
+<li>A diagram with a solved loop does not compile. The fallback reason is
+  <code>"&lt;members&gt;: algebraic loop, solved iteratively by the interpreter"</code>, so
+  linearization and Python export, which need the compiled path, are not
+  available for it.</li>
 </ul>
-<p>The fix is the usual one: put an <code>Integrator</code>, or a strictly proper <code>TranFn</code>, in
-the loop.</p>
+<p>Two stall outcomes remain errors: a loop that is unsupported (above), and no
+cycle but blocks still uncomputed. In that case only memory blocks may
+legitimately remain (they run in Loop 3), and any other uncomputed block is a
+hard <code>"Hierarchy resolution stalled with uncomputed non-memory blocks"</code>
+error rather than a block that silently never runs.</p>
+<p>The preflight in <code>lib/diagram_validator.py</code> still reports
+<code>"Algebraic loop detected ..."</code>, but as a warning: it no longer blocks
+drawing the wire or starting the run.</p>
 <hr />
 <h2 id="5-the-interpreter-path-in-detail">5. The interpreter path in detail<a class="headerlink" href="#5-the-interpreter-path-in-detail" title="Permanent link">&para;</a></h2>
 <h3 id="51-stepping">5.1 Stepping<a class="headerlink" href="#51-stepping" title="Permanent link">&para;</a></h3>
@@ -3278,6 +3309,10 @@ the built-in defaults.)</p>
   not cost anything yet, it says nothing on implicit or fixed-step runs, and it
   is skipped above 64 states — a large PDE is never flagged even when it is
   stiff.</li>
+<li><strong>Algebraic loops run on the interpreter only.</strong> Continuous blocks around a
+  solved loop therefore integrate with the interpreter's fixed step (first
+  order for held inputs), and the diagram cannot be linearized or exported.
+  Loops through discrete-rate blocks are rejected.</li>
 <li><strong><code>blocks/external.py</code> is a stub</strong> and returns an error dict on both paths.</li>
 </ul>
 <hr />

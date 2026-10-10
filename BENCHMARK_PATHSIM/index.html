@@ -2124,9 +2124,9 @@ either tool, and the reference is evaluated at each tool's own output times.</p>
 </tr>
 <tr>
 <td>S2 algebraic loop</td>
-<td>rejected; delay workaround diverges or is wrong unless the loop contracts</td>
+<td>solved to 1e-16, ~32 ms (since <code>95f83ff</code>; was rejected)</td>
 <td>solved to 3e-13, 2 ms</td>
-<td>Genuine capability gap</td>
+<td>Gap closed; DiaBloS ~14x slower per step</td>
 </tr>
 <tr>
 <td>S3 delayed platoon, N=50</td>
@@ -2250,15 +2250,18 @@ S1b to PathSim-class accuracy. With the delay fix the interpreter now
 follows the same standard semantics, so S1a/S1b can serve as the hybrid
 path's acceptance tests.</p>
 <h2 id="s2-algebraic-loops">S2 - algebraic loops<a class="headerlink" href="#s2-algebraic-loops" title="Permanent link">&para;</a></h2>
-<p><code>y = u - f(y)</code>, u = 1, solved directly in PathSim. DiaBloS rejects every case
-(<code>Algebraic loop detected involving blocks: [...]</code>), so its column is the
-workaround a user would try: a one-step <code>Delay</code> in the feedback path.</p>
+<p><code>y = u - f(y)</code>, u = 1, 2 s at dt 0.01. Until <code>95f83ff</code> DiaBloS rejected every
+case (<code>Algebraic loop detected involving blocks: [...]</code>), and the workaround a
+user would try was a one-step <code>Delay</code> in the feedback path. DiaBloS now
+solves the loop directly (<code>lib/engine/algebraic_loop.py</code>,
+<code>docs/SOLVER_SEMANTICS.md</code> 4.4).</p>
 <table>
 <thead>
 <tr>
 <th>Loop</th>
 <th>Exact y</th>
-<th>DiaBloS + Delay</th>
+<th>DiaBloS (solved)</th>
+<th>DiaBloS + Delay (old workaround)</th>
 <th>PathSim</th>
 </tr>
 </thead>
@@ -2266,30 +2269,34 @@ workaround a user would try: a one-step <code>Delay</code> in the feedback path.
 <tr>
 <td>f(y) = 0.5 y</td>
 <td>0.6667</td>
+<td>1e-16, 39 ms</td>
 <td>exact (contraction)</td>
-<td>exact</td>
+<td>2e-16, 2.3 ms</td>
 </tr>
 <tr>
 <td>f(y) = 3 y</td>
 <td>0.25</td>
+<td>exact, 32 ms</td>
 <td>diverges (1e95)</td>
-<td>exact</td>
+<td>exact, 2.4 ms</td>
 </tr>
 <tr>
 <td>f(y) = tanh(3 y)</td>
 <td>0.2934</td>
+<td>exact, 31 ms</td>
 <td>wrong: period-2 oscillation between 0.006 and 0.984</td>
-<td>3e-13</td>
+<td>3e-13, 2.3 ms</td>
 </tr>
 </tbody>
 </table>
 <p>The delay turns the loop into the fixed-point iteration y &lt;- u - f(y), which
-only converges when |f'(y*)| &lt; 1. Run time is negligible on both sides
-(~10 ms vs ~2 ms).</p>
-<p><em>Roadmap implication:</em> a Newton / accelerated fixed-point solve of strongly
-connected algebraic components is a self-contained, high-value addition.
-PathSim's <code>NewtonAnderson</code> booster is a working MIT-licensed example to
-compare against.</p>
+only converges when |f'(y*)| &lt; 1. The DiaBloS solver runs <code>scipy.optimize.root</code>
+every step, warm-started from the previous step, and restores the members'
+params before each trial evaluation. That is the ~14x per-step cost against
+PathSim's booster; it is irrelevant at this size, but it would show on large
+or vector-valued loops. Loops through discrete-rate blocks are still
+rejected, and a diagram with a loop runs on the interpreter, so it cannot be
+linearized or exported.</p>
 <h2 id="s3-delayed-platoon-scaling-in-n">S3 - delayed platoon, scaling in N<a class="headerlink" href="#s3-delayed-platoon-scaling-in-n" title="Permanent link">&para;</a></h2>
 <p>Predecessor-following double integrators,
 <code>a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)</code>, leader <code>p0 = t</code>,
@@ -2395,9 +2402,9 @@ experiment in PathSim took about 40 lines, including a custom block. DiaBloS
 gives it as a menu action with ensemble plots.</p>
 <h2 id="what-this-means-for-the-build-vs-adopt-question">What this means for the build-vs-adopt question<a class="headerlink" href="#what-this-means-for-the-build-vs-adopt-question" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The external analysis's two biggest claims hold up under measurement:
-  sampled-data accuracy (S1b) and algebraic loops (S2) are real gaps, not
-  cosmetic ones.</li>
+<li>The external analysis's two biggest claims held up under measurement:
+  sampled-data accuracy (S1b) and algebraic loops (S2) were real gaps, not
+  cosmetic ones. S2 is now closed (<code>95f83ff</code>).</li>
 <li>Two of its implicit worries do not: for linear plants the interpreter
   fallback is exact (S1a), and seeded ensembles are already on par in cost
   and reproducibility (S4). Delayed multi-agent models (S3) trade off at
@@ -2406,9 +2413,10 @@ gives it as a menu action with ensemble plots.</p>
   every ZOH (S1), which silently changed digital-control results. It is
   fixed in <code>68e8289</code>, with a regression test against the S1a exact
   reference.</li>
-<li>Suggested order from here: (1) hybrid compiled path; (2) algebraic loop
-  solver. A PathSim backend adapter would get both at once. The
-  S1/S2 scripts here are the acceptance tests for any of these routes.</li>
+<li>Remaining engine gap: the hybrid compiled path (S1b), which would also let
+  diagrams with algebraic loops compile and linearize. A PathSim backend
+  adapter is the alternative route. The S1 script is the acceptance test
+  for either.</li>
 </ul>
 <h2 id="reproducing">Reproducing<a class="headerlink" href="#reproducing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/.venvs/diablos-bench
