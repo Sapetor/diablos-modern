@@ -7,6 +7,9 @@ feedback path) only converges when the loop is a contraction:
 scripts/benchmarks/pathsim/s2_algebraic_loop.py measured it diverging for
 y = u - 3y and oscillating for y = u - tanh(3y). Each loop is now a strongly
 connected component solved as a unit every step (lib/engine/algebraic_loop.py).
+Since phase 3 of the hybrid compiled path the compiler solves them too, inside
+the RHS (lib/engine/compiled_loops.py), so a diagram with a loop compiles and
+linearizes; the interpreter's solver remains for interpreter runs.
 """
 
 import numpy as np
@@ -66,11 +69,12 @@ class TestScalarLoops:
         assert ok, err
         assert len(data["signals"]["y"]) == len(data["timeline"]) == 6
 
-    def test_runs_on_the_interpreter_with_a_reason(self, qapp, tmp_path):
-        ok, err, dsim, _ = _run(_scalar_loop("0.5*u[0]"), tmp_path, 0.5, 0.1)
+    def test_runs_on_the_compiled_path(self, qapp, tmp_path):
+        ok, err, dsim, data = _run(_scalar_loop("0.5*u[0]"), tmp_path, 0.5, 0.1)
         assert ok, err
-        reason = dsim.engine.get_compile_fallback_reason()
-        assert "algebraic loop" in reason and "s" in reason
+        assert dsim.engine.get_compile_fallback_reason() is None
+        assert dsim.engine.last_solver_diagnostics.get("backend")
+        assert np.allclose(data["signals"]["y"], 1.0 / 1.5, atol=1e-12)
 
     def test_unsolvable_loop_reports_non_convergence(self, qapp, tmp_path):
         """y = u + (y + 1) has no solution."""
@@ -193,7 +197,6 @@ class TestLoopBehindAZoh:
         dsim.pyqtPlotScope = lambda: None
         dsim.use_fast_solver = True
         assert dsim.execution_init() is True
-        assert not dsim.engine.check_compilability(dsim.blocks_list)
         calls = 0
         while dsim.execution_initialized and calls < 5000:
             dsim.execution_loop_headless()
@@ -239,16 +242,51 @@ class TestLoopBehindAZoh:
 
 
 @pytest.mark.regression
-class TestLoopsStayOffTheCompiledPath:
-    def test_linearizer_refuses_with_the_reason(self, qapp, tmp_path):
+class TestLoopsOnTheCompiledPath:
+    def _proper_tf_loop(self):
+        """r -> Sum(+-) -> (s+2)/(s+1) -> feedback: closed loop (s+2)/(2s+3)."""
+        from lib.diagram_builder import DiagramBuilder
+
+        b = DiagramBuilder(sim_time=3.0, sim_dt=0.01)
+        r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.0, "type": "up"})
+        e = b.add_block("Sum", 0, 0, name="e", params={"sign": "+-"}, in_ports=2)
+        g = b.add_block(
+            "TranFn", 0, 0, name="g", params={"numerator": [1.0, 2.0], "denominator": [1.0, 1.0]}
+        )
+        sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
+        b.connect(r, 0, e, 0)
+        b.connect(e, 0, g, 0)
+        b.connect(g, 0, e, 1)
+        b.connect(g, 0, sc, 0)
+        return b
+
+    def test_loop_through_a_proper_tf_is_exact(self, qapp, tmp_path):
+        """The interpreter's fixed step gives 1.5e-4 here; compiled, the
+        error is the adaptive solver's tolerance."""
+        from scipy import signal
+
+        ok, err, dsim, data = _run(self._proper_tf_loop(), tmp_path, 3.0, 0.01)
+        assert ok, err
+        assert dsim.engine.get_compile_fallback_reason() is None
+        t = np.ravel(data["timeline"])
+        _, y_ref, _ = signal.lsim(([1.0, 2.0], [2.0, 3.0]), np.ones_like(t), t)
+        assert np.max(np.abs(np.ravel(data["signals"]["y"]) - y_ref)) < 1e-8
+
+    def test_linearizer_solves_through_the_loop(self, qapp, tmp_path):
         from lib.analysis.linearizer import Linearizer
         from lib.cli import load_diagram
 
         path = tmp_path / "loop.diablos"
-        _scalar_loop("0.5*u[0]").save(str(path))
+        self._proper_tf_loop().save(str(path))
         dsim, _ = load_diagram(str(path))
-        with pytest.raises(ValueError, match="algebraic loop"):
-            Linearizer(dsim)._compile_diagram()
+        names = {b.block_fn: b.name for b in dsim.blocks_list}
+        res = Linearizer(dsim).linearize_at_point(
+            input_blocks=[names["Step"]], output_blocks=[names["TranFn"]]
+        )
+        # (s+2)/(2s+3) = 0.5 + 0.25/(s+1.5)
+        assert np.allclose(res["A"], [[-1.5]], atol=1e-5)
+        assert np.allclose(res["D"], [[0.5]], atol=1e-6)
+        assert np.allclose(np.ravel(res["B"]) * np.ravel(res["C"]), [0.25], atol=1e-5)
 
     def test_python_export_refuses(self, qapp, tmp_path):
         from lib.cli import export_python

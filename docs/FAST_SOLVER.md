@@ -226,8 +226,8 @@ If a diagram contains unsupported blocks (e.g., custom scripted blocks, `PythonF
 
 ### Algebraic Loops
 *   **Issue**: A feedback loop without a delay/integrator (e.g., `Gain` -> `Sum` -> `Gain` -> ...).
-*   **Behavior**: The compiler generally cannot resolve algebraic loops analytically. The simulation may fail to initialize or fallback to Interpreter Mode (which attempts iterative resolution).
-*   **Fix**: Insert an `Integrator` or `TransferFcn` (with denominator order > numerator) in the feedback path.
+*   **Behavior**: Solved, on both paths. The compiler runs each loop as one unit and solves it with Newton (`hybr`) at every right-hand-side evaluation (`lib/engine/compiled_loops.py`), so the diagram stays compiled and can be linearized. A loop with no solution fails the compiled run, and the interpreter then reports it ("did not converge").
+*   **Cost**: One nonlinear solve per RHS evaluation. If a loop is an artifact of the model rather than physics, an `Integrator` or a strictly proper `TransferFcn` in the feedback path removes it.
 
 ## Performance
 For a benchmark system of 50 coupled oscillators (100 states), Fast Solver runs in **~0.1s** vs **~3.5s** for the Interpreter.

@@ -10,6 +10,7 @@ from lib.engine.pde_helpers import (
 )
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiler_kernels import BuildContext, build_events, get_kernel_builder
+from lib.engine.compiled_loops import make_loop_executor, order_units
 from lib.engine.compiler_kernels.discrete import build_sampled, is_sampled_block
 from lib.engine.block_params import runtime_params
 from lib.user_blocks import is_user_block
@@ -839,17 +840,32 @@ class SystemCompiler:
         sources, middle, d0_state_blocks = _execution_groups(
             sorted_order, block_matrices, input_map
         )
+        # Algebraic loops in the middle group run as one solved unit each, in
+        # the position a single block would take (lib/engine/compiled_loops.py).
+        units = order_units(middle, input_map)
+        middle = [b for unit in units for b in (unit if isinstance(unit, list) else [unit])]
         sorted_order = sources + middle + d0_state_blocks
 
-        execution_sequence = self._build_executors(
-            sorted_order, input_map, state_map, block_matrices
-        )
+        self._build_executors(sorted_order, input_map, state_map, block_matrices)
+        executors = self.block_executors
+        execution_sequence = [executors[b.name] for b in sources]
+        loops = []
+        for unit in units:
+            if isinstance(unit, list):
+                loops.append([b.name for b in unit])
+                execution_sequence.append(
+                    make_loop_executor(unit, [executors[b.name] for b in unit], input_map)
+                )
+            else:
+                execution_sequence.append(executors[unit.name])
+        execution_sequence += [executors[b.name] for b in d0_state_blocks]
         preloads = _state_output_preloads(
             state_map, block_matrices, {b.name for b in d0_state_blocks}
         )
         model_func = _make_model_func(execution_sequence, len(sources), preloads)
         model_func.source_names = [b.name for b in sources]
         model_func.state_map = state_map
+        model_func.loops = loops
 
         # Zero-crossing events are collected here (not in the runner) because
         # they need the same input_map / state_map / latch holders the kernels

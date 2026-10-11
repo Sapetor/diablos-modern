@@ -149,6 +149,9 @@ class AlgebraicLoop:
             return self._ravel(feedback(run(self._unravel(zflat)))) - zflat
 
         z0 = self._z if self._z is not None else np.zeros(self._size())
+        # Subnormal leftovers of a zero solution make MINPACK's difference
+        # step zero-width (see lib/engine/compiled_loops._flush_tiny).
+        z0 = np.where(np.abs(z0) < 1e-100, 0.0, z0)
         r0 = residual(z0)
         if np.all(np.abs(r0) <= ATOL + RTOL * np.abs(z0)):
             z = z0

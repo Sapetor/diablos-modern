@@ -32,7 +32,9 @@ checkable (2026-10-02 pass noted per item).
   (`643f7b0`, `76e9363`): rated TranFn/StateSpace/PID/Integrator/Derivative
   compile as sampled holders, and Euler/RK4 run sampled diagrams on a grid
   with every instant (`fixed_step+hybrid`); FirstOrderHold and RateTransition
-  stay on the interpreter. Open: phase 3 (loops in the compiled RHS). The `Function`
+  stay on the interpreter. Phase 3 done (2026-10-10): algebraic loops are
+  solved inside the compiled RHS (`lib/engine/compiled_loops.py`), so
+  diagrams with loops compile and linearize; Python export still refuses. The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
 - [ ] **Compiled RateLimiter starts at 0 (found 2026-10-10).** RateLimiter
   latches its first input (`y(0) = u(0)`), which the interpreter now reports

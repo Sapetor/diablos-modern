@@ -89,9 +89,13 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
   solver step with `sampling_time = -1` and sample on their own parameter;
   FOH ramps between samples (no held output) and RateTransition's Average
   mode averages over solver steps, so neither fits the holder pattern.
-- **Phase 3**: `Function` expression kernel (S1b acceptance); algebraic
-  loops inside the compiled RHS (which also unblocks linearize/export of
-  diagrams with loops).
+- **Phase 3** (done 2026-10-10): `Function` expression kernel (`19497e1`,
+  S1b acceptance: 2.2e-13 in 1.4 s); algebraic loops inside the compiled RHS
+  (`lib/engine/compiled_loops.py`): each cycle of middle-group blocks is one
+  unit solved with `hybr` per RHS evaluation, the replay reads members from
+  the compiled evaluation, and the linearizer works through loops. Python
+  export still refuses loops (`lib/export/python_codegen.py` would need the
+  same solver in the generated script).
 - **Phase 4**: rerun the benchmark, update `docs/BENCHMARK_PATHSIM.md`,
   `docs/SOLVER_SEMANTICS.md`, `docs/FAST_SOLVER.md`.
 

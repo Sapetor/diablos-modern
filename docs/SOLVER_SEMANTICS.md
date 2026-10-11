@@ -318,10 +318,17 @@ no execution order. It is **solved**, not rejected (since 2026-10-10,
 * Errors name the block: a loop through a block with a discrete sample time
   is rejected (its schedule lives on the `DBlock`, not in params), and a
   loop with no solution reports `"did not converge (residual ...)"`.
-* A diagram with a solved loop does not compile. The fallback reason is
-  `"<members>: algebraic loop, solved iteratively by the interpreter"`, so
-  linearization and Python export, which need the compiled path, are not
-  available for it.
+* **On the compiled path** (since 2026-10-10, `lib/engine/compiled_loops.py`)
+  the compiler finds the cycles itself, among the middle group's
+  feedthrough blocks, and runs each as one unit in the position a single
+  block would take (`order_units`). At every RHS evaluation the unit solves
+  the same fixed point with `hybr` (`xtol 1e-12`, warm-started; a retry
+  from `F(z0)` if that fails) and then runs the members once on the
+  solution, which writes their outputs and `dy_vec`. The replay reads loop
+  members from one compiled evaluation per output sample. A loop that does
+  not converge fails the compiled run, which falls back to the interpreter
+  and its solver. Linearization works through the loop; Python export still
+  refuses it.
 
 Two stall outcomes remain errors: a loop that is unsupported (above), and no
 cycle but blocks still uncomputed. In that case only memory blocks may
@@ -701,10 +708,9 @@ the built-in defaults.)
 * **One `solve_ivp` call per sample interval.** A fast rate over a long span
   (`Ts = 1 ms` for 10 s is 10^4 segments) pays the call overhead each time, and
   implicit methods rebuild their Jacobian at every instant.
-* **Algebraic loops run on the interpreter only.** Continuous blocks around a
-  solved loop therefore integrate with the interpreter's fixed step (first
-  order for held inputs), and the diagram cannot be linearized or exported.
-  Loops through discrete-rate blocks are rejected.
+* **Algebraic loops cost one nonlinear solve per RHS evaluation** on the
+  compiled path, and the Python exporter still refuses them. Loops through
+  discrete-rate blocks are rejected on both paths.
 * **`blocks/external.py` is a stub** and returns an error dict on both paths.
 
 ---

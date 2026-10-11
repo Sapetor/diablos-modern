@@ -219,13 +219,15 @@ def replay_has_feedthrough(block, block_matrices) -> bool:
         return True
 
 
-def _replay_order(current_blocks, current_lines, block_matrices):
+def _replay_order(current_blocks, current_lines, block_matrices, precomputed=()):
     """Blocks in replay order: topological on direct-feedthrough edges only.
 
     A strictly proper state block's output is its (already-known) state, so
     it does not depend on this step's inputs and need not follow its source.
-    Kahn's algorithm, stable on block name for determinism; any cycle
-    leftovers are appended in current-block order so every block still runs.
+    ``precomputed`` blocks (algebraic-loop members, read from the compiled
+    evaluation) depend on nothing either. Kahn's algorithm, stable on block
+    name for determinism; any cycle leftovers are appended in current-block
+    order so every block still runs.
     """
     block_by_name = {b.name: b for b in current_blocks}
     adj = {name: [] for name in block_by_name}
@@ -241,7 +243,7 @@ def _replay_order(current_blocks, current_lines, block_matrices):
             if is_feedthrough is None:
                 is_feedthrough = replay_has_feedthrough(dst_block, block_matrices)
                 feedthrough_by_dst[dst] = is_feedthrough
-        if is_feedthrough and line.srcblock in adj:
+        if is_feedthrough and line.srcblock in adj and dst not in precomputed:
             adj[line.srcblock].append(dst)
 
     order_names, leftover_names = kahn_topological_order(
@@ -287,7 +289,11 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
     own ``execute()``. Mutates each Scope / FieldScope block's exec_params.
     """
     num_steps = len(sol.t)
-    sorted_blocks = _replay_order(current_blocks, current_lines, block_matrices)
+    # Algebraic-loop members cannot be replayed block by block; their outputs
+    # come from one compiled evaluation per step (lib/engine/compiled_loops.py).
+    loop_model = getattr(engine, "_replay_loop_model", None)
+    loop_names = {n for loop in getattr(loop_model, "loops", ()) for n in loop}
+    sorted_blocks = _replay_order(current_blocks, current_lines, block_matrices, loop_names)
     inputs_by_dst = _connections_by_destination(current_lines)
     fn_by_name = {b.name: canonical_fn(b.block_fn) for b in sorted_blocks}
 
@@ -316,11 +322,23 @@ def replay_compiled_signals(engine, sol, current_blocks, current_lines, state_ma
             {name: y_step[start : start + size] for name, (start, size) in state_map.items()},
             {},
         )
+        loop_signals = loop_model.evaluate(t, y_step)[1] if loop_names else None
 
         for block in sorted_blocks:
             b_name = block.name
             fn = fn_by_name[b_name]
             inputs = _collect_inputs(inputs_by_dst.get(b_name, ()), step.signals)
+
+            if b_name in loop_names:
+                prefix = f"{b_name}_out"
+                for key, value in loop_signals.items():
+                    if key.startswith(prefix):
+                        step.signals[key] = value
+                step.signals[b_name] = loop_signals.get(b_name, 0.0)
+                recorder = RECORDERS.get(fn)
+                if recorder is not None:
+                    recorder(run, block, inputs, i, t)
+                continue
 
             # A rated TranFn/PID/... replays from its sampled holder, like the
             # discrete blocks, not through its continuous handler.
@@ -748,6 +766,7 @@ def run_compiled_simulation(
         # Through the engine's method (not the module function directly) so an
         # override / monkeypatch of _replay_compiled_signals still takes effect,
         # exactly as before the split.
+        engine._replay_loop_model = model_func if getattr(model_func, "loops", None) else None
         engine._replay_compiled_signals(
             sol, current_blocks, current_lines, state_map, block_matrices
         )

@@ -1,7 +1,7 @@
 {
   "scenario": "s2_algebraic_loop",
   "env": {
-    "diablos_commit": "95f83ff",
+    "diablos_commit": "1272917",
     "pathsim": "0.27.0",
     "numpy": "2.5.3",
     "scipy": "1.18.1",
@@ -24,18 +24,18 @@
       "diablos_direct": {
         "ok": true,
         "error": null,
-        "solver_path": "interpreter",
+        "solver_path": "compiled",
         "timing": {
-          "median_s": 0.038641678998828866,
-          "min_s": 0.0314160929992795,
+          "median_s": 0.0058124419883824885,
+          "min_s": 0.005306903010932729,
           "n": 5
         },
-        "err_max": 1.1102230246251565e-16
+        "err_max": 2.220446049250313e-16
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.012560035989736207,
-          "min_s": 0.010873429011553526,
+          "median_s": 0.011449090001406148,
+          "min_s": 0.011079942996730097,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -45,8 +45,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.002346905996091664,
-          "min_s": 0.0021964879997540265,
+          "median_s": 0.0021267819975037128,
+          "min_s": 0.001998049992835149,
           "n": 5
         },
         "y_final": 0.6666666666666666,
@@ -58,18 +58,18 @@
       "diablos_direct": {
         "ok": true,
         "error": null,
-        "solver_path": "interpreter",
+        "solver_path": "compiled",
         "timing": {
-          "median_s": 0.03216457199596334,
-          "min_s": 0.026843133993679658,
+          "median_s": 0.005254394010989927,
+          "min_s": 0.005080211005406454,
           "n": 5
         },
         "err_max": 0.0
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.014246892998926342,
-          "min_s": 0.011553809003089555,
+          "median_s": 0.011958920003962703,
+          "min_s": 0.011560455997823738,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -79,8 +79,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.0024039010022534057,
-          "min_s": 0.002326769012142904,
+          "median_s": 0.0021955819975119084,
+          "min_s": 0.0020826910040341318,
           "n": 5
         },
         "y_final": 0.25,
@@ -92,18 +92,18 @@
       "diablos_direct": {
         "ok": true,
         "error": null,
-        "solver_path": "interpreter",
+        "solver_path": "compiled",
         "timing": {
-          "median_s": 0.03144292898650747,
-          "min_s": 0.027793747998657636,
+          "median_s": 0.006000749999657273,
+          "min_s": 0.005852578993653879,
           "n": 5
         },
         "err_max": 0.0
       },
       "diablos_delay_workaround": {
         "timing": {
-          "median_s": 0.013112728993291967,
-          "min_s": 0.011962283999309875,
+          "median_s": 0.012080814994988032,
+          "min_s": 0.01188201000331901,
           "n": 5
         },
         "solver_path": "interpreter",
@@ -113,8 +113,8 @@
       },
       "pathsim": {
         "timing": {
-          "median_s": 0.002315741003258154,
-          "min_s": 0.0021146170038264245,
+          "median_s": 0.0021915620018262416,
+          "min_s": 0.0021630919945891947,
           "n": 5
         },
         "y_final": 0.2934321690339864,

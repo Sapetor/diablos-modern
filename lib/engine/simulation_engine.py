@@ -1404,14 +1404,8 @@ class SimulationEngine:
         ``allow_discrete=False`` refuses sampled blocks too (the linearizer:
         it cannot linearize across sample instants).
         """
-        if self.algebraic_loops:
-            # The compiler orders blocks topologically and would emit a loop's
-            # members in arbitrary order; only the interpreter solves loops.
-            names = ", ".join(self.algebraic_loops[0].names)
-            self.compiler.last_incompatibility = (
-                f"{names}: algebraic loop, solved iteratively by the interpreter"
-            )
-            return False
+        # Algebraic loops compile too: the compiler solves each one as a unit
+        # inside the RHS (lib/engine/compiled_loops.py).
         # Sampled blocks compile under every solver setting: adaptive methods
         # integrate between sample instants, the fixed-step ones (Euler/RK4)
         # on the output grid plus every instant (compiled_runner, hybrid
