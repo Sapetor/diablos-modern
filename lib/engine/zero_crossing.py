@@ -733,7 +733,16 @@ def _state_at_restart(model_func, t_event, y_event, gap: float) -> np.ndarray:
 
 
 def _finish_fixed_step(
-    result, model_func, t_eval, idx, t_start, y_start, integrator, breakpoints=(), on_hit=None
+    result,
+    model_func,
+    t_eval,
+    idx,
+    t_start,
+    y_start,
+    integrator,
+    breakpoints=(),
+    on_hit=None,
+    scheme="rk4",
 ) -> int:
     """Fill the rest of the output grid with a fixed-step integration.
 
@@ -742,9 +751,12 @@ def _finish_fixed_step(
     control drives the step toward machine precision and the run effectively
     never terminates -- so the tail is integrated on the output grid itself,
     which costs exactly one pass and always ends.  Remaining sample instants
-    still split the grid, with ``on_hit(t, y)`` applied at each.  Returns the
-    new grid index.
+    still split the grid, with ``on_hit(t, y)`` applied at each: an instant
+    off the grid ends a shortened step exactly there.  Returns the new grid
+    index.  Also the whole of a fixed-step hybrid run, see
+    :func:`solve_fixed_step_with_breakpoints`.
     """
+    evals_per_step = 4 if scheme == "rk4" else 1
     n_points = int(t_eval.size)
     y_start = np.asarray(y_start, dtype=float)
     tf = float(t_eval[-1]) if n_points else t_start
@@ -761,7 +773,8 @@ def _finish_fixed_step(
         if grid[-1] < end:
             grid = np.append(grid, end)
         if grid.size > 1:
-            history = np.asarray(integrator(model_func, grid, y_start, "rk4"), dtype=float)
+            history = np.asarray(integrator(model_func, grid, y_start, scheme), dtype=float)
+            result.nfev += (grid.size - 1) * evals_per_step
             result.y[:, idx:hi] = history[:, 1 : 1 + (hi - idx)]
             y_start = history[:, -1].copy()
         idx, t_start = hi, end
@@ -772,6 +785,61 @@ def _finish_fixed_step(
     result.message = "Finished with a fixed step after the zero-crossing guard tripped"
     result.status = 0
     return idx
+
+
+def solve_fixed_step_with_breakpoints(
+    model_func,
+    t_span,
+    y0,
+    t_eval,
+    scheme,
+    integrator,
+    breakpoints,
+    on_breakpoint,
+    mode_states=None,
+) -> EventSolveResult:
+    """Fixed-step (Euler / RK4) integration split at sample instants.
+
+    The hybrid path for the fixed-step solver settings: the grid is the output
+    grid plus every sample instant, so an instant off the grid (Ts = 0.15 on
+    dt = 0.1) ends a shortened step exactly there, ``on_breakpoint(t, y)``
+    applies the sampled blocks' updates, and the next step resumes from it.
+    ``on_breakpoint`` also runs once at ``t0``.  There is no event location
+    (as on the plain fixed-step path): latches free-run.  The result has the
+    same shape and ``mode_history`` as :func:`solve_with_events`, so the
+    replay and the diagnostics need nothing else.
+    """
+    t0 = float(t_span[0])
+    t_eval = np.asarray(t_eval, dtype=float)
+    y0 = np.asarray(y0, dtype=float)
+    result = EventSolveResult()
+    result.t = t_eval
+    result.y = np.zeros((y0.size, int(t_eval.size)))
+    _reset_mode_states(mode_states, frozen=False)
+    cache = _SignalCache(model_func.evaluate)
+    on_breakpoint(t0, y0.copy())
+    result.n_sample_hits += 1
+    result.mode_history.append((t0, _snapshot_modes(mode_states)))
+    idx = 0
+    if t_eval.size and t_eval[0] <= t0:
+        result.y[:, 0] = y0
+        idx = 1
+    bps = np.asarray(breakpoints, dtype=float)
+    idx = _finish_fixed_step(
+        result,
+        model_func,
+        t_eval,
+        idx,
+        t0,
+        y0,
+        integrator,
+        breakpoints=bps[bps > t0],
+        on_hit=lambda t, y: _apply_breakpoint(result, on_breakpoint, mode_states, cache, t, y),
+        scheme=scheme,
+    )
+    result.message = f"Fixed-step {scheme} between sample instants"
+    _truncate_to_produced(result, t_eval, idx)
+    return result
 
 
 def _apply_breakpoint(result, on_breakpoint, mode_states, cache, t, y) -> None:

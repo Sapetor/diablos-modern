@@ -50,8 +50,10 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
    linearize a sampled loop as open. They get `allow_discrete=False` and the
    existing reason.
 7. **Fixed-step solver settings (Euler/RK4).** v1: a diagram with discrete
-   blocks under a fixed-step scheme falls back to the interpreter with a
-   reason. (Phase 2: integrate on a grid that contains every hit.)
+   blocks under a fixed-step scheme fell back to the interpreter with a
+   reason. Phase 2: `zero_crossing.solve_fixed_step_with_breakpoints`
+   integrates on the output grid plus every hit (backend
+   `fixed_step+hybrid`); the engine gate is gone.
 8. **Diagnostics.** Backend label `scipy+hybrid`, `n_sample_hits` in the
    summary. `common.diablos_run` keys "compiled" off the summary, so the
    benchmark switches automatically.
@@ -71,9 +73,22 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
     fall back with their reasons;
   - mutation check: dropping the re-evaluation between updates must fail
     the staircase test.
-- **Phase 2**: rated continuous blocks (TranFn/PID/Integrator/Derivative
-  with `sampling_time > 0`), FirstOrderHold, RateTransition; fixed-step
-  schemes on a hit-aligned grid.
+- **Phase 2** (done 2026-10-10): rated continuous blocks -- TranFn,
+  StateSpace, PID, Integrator, Derivative with a resolved rate -- compile as
+  sampled holders (`discrete.RATED_FNS` / `is_sampled_block`, no ODE state,
+  no events; an `output_is_post_update` Integrator holds its pre-advance
+  `output_only` value and its `output` is synced after each advance, as in
+  the interpreter); fixed-step schemes on a hit-aligned grid. Tests:
+  `tests/regression/test_hybrid_rated_blocks.py` (source-fed traces equal
+  the interpreter at 1e-12 for TranFn/StateSpace/Integrator/Derivative, PID
+  too except at t = 0, where the interpreter reports 0 (tasks/todo.md); PID
+  and Derivative also against an exact sampled oracle; loops
+  with a continuous plant at 1e-7; inherited rate with `dtime = Ts`;
+  fixed-step Euler/RK4 incl. off-grid instants), with a mutation check per
+  mechanism. **Skipped:** FirstOrderHold and RateTransition. Both run every
+  solver step with `sampling_time = -1` and sample on their own parameter;
+  FOH ramps between samples (no held output) and RateTransition's Average
+  mode averages over solver steps, so neither fits the holder pattern.
 - **Phase 3**: `Function` expression kernel (S1b acceptance); algebraic
   loops inside the compiled RHS (which also unblocks linearize/export of
   diagrams with loops).

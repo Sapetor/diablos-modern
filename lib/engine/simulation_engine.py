@@ -1350,17 +1350,11 @@ class SimulationEngine:
                 f"{names}: algebraic loop, solved iteratively by the interpreter"
             )
             return False
-        if not self.compiler.check_compilability(blocks, allow_discrete=allow_discrete):
-            return False
-        method = compiled_runner.resolve_solver_method(getattr(self, "solver_method", "RK45"))
-        if self.compiler.last_has_discrete and method in compiled_runner.FIXED_STEP_METHODS:
-            # The hybrid path splits integration at sample instants; the
-            # fixed-step schemes run on the output grid and have no such split.
-            self.compiler.last_incompatibility = (
-                f"sampled blocks with the fixed-step '{method}' solver run on the interpreter"
-            )
-            return False
-        return True
+        # Sampled blocks compile under every solver setting: adaptive methods
+        # integrate between sample instants, the fixed-step ones (Euler/RK4)
+        # on the output grid plus every instant (compiled_runner, hybrid
+        # branches).
+        return self.compiler.check_compilability(blocks, allow_discrete=allow_discrete)
 
     def get_compile_fallback_reason(self) -> Optional[str]:
         """Why the last compilability check sent the run to the interpreter.

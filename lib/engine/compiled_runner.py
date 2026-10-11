@@ -39,7 +39,12 @@ from lib.engine.replay_handlers import (
     finalize_recorders,
     replay_fallback,
 )
-from lib.engine.zero_crossing import DEFAULT_MAX_EVENTS, ModeHistoryReplayer, solve_with_events
+from lib.engine.zero_crossing import (
+    DEFAULT_MAX_EVENTS,
+    ModeHistoryReplayer,
+    solve_fixed_step_with_breakpoints,
+    solve_with_events,
+)
 from lib.simulation.block import DBlock
 from lib.workspace import WorkspaceManager
 from lib.engine.topo import kahn_topological_order
@@ -565,7 +570,33 @@ def run_compiled_simulation(
             # If one is ever made compilable it must force a fixed step:
             # an adaptive solver re-samples the RHS per stage and per
             # rejected step, which destroys its error estimate.
-            if method in FIXED_STEP_METHODS:
+            if method in FIXED_STEP_METHODS and sampled:
+                # Fixed step on the output grid plus every sample instant, the
+                # sampled blocks' own updates at each instant.
+                backend = "fixed_step+hybrid"
+                scheme = "rk4" if method == "RK4" else "euler"
+                rhs = model_func if len(y0) else _StatelessRHS(model_func)
+                breakpoints = sample_schedule(sampled, t_span, t_eval)
+                logger.info(
+                    f"Solving with fixed-step {method} across {len(breakpoints)} sample "
+                    f"instant(s) of {len(sampled)} sampled block(s)"
+                )
+                sol = solve_fixed_step_with_breakpoints(
+                    rhs,
+                    t_span,
+                    y0 if len(y0) else np.zeros(1),
+                    t_eval,
+                    scheme,
+                    integrate_fixed_step,
+                    breakpoints,
+                    make_sample_hook(rhs, sampled, t_span),
+                    mode_states=getattr(model_func, "mode_states", None),
+                )
+                if not len(y0):
+                    sol.y = sol.y[:0]
+                zero_crossing_info = sol.summary()
+                zero_crossing_info["enabled"] = False
+            elif method in FIXED_STEP_METHODS:
                 backend = "fixed_step"
                 scheme = "rk4" if method == "RK4" else "euler"
                 y_history = integrate_fixed_step(model_func, t_eval, y0, scheme)

@@ -169,10 +169,12 @@ class TestHybridMatchesInterpreter:
 
 @pytest.mark.regression
 class TestHybridFallbacks:
-    def test_fixed_step_solver_keeps_the_interpreter(self, qapp, tmp_path):
+    def test_fixed_step_solver_stays_compiled(self, qapp, tmp_path):
+        """Phase 2: fixed steps on the grid plus every sample instant
+        (more in test_hybrid_rated_blocks.py::TestFixedStepHybrid)."""
         dsim, _ = _run(_sampled_loop(), tmp_path, 1.0, 0.01, solver="RK4")
-        assert _backend(dsim) is None
-        assert "fixed-step 'RK4'" in dsim.engine.get_compile_fallback_reason()
+        assert _backend(dsim) == "fixed_step+hybrid"
+        assert dsim.engine.get_compile_fallback_reason() is None
 
     def test_unresolved_rate_keeps_the_interpreter(self, qapp, tmp_path):
         from lib.diagram_builder import DiagramBuilder

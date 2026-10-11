@@ -549,14 +549,14 @@ class TestCompileFallbackReason:
         reason = engine.get_compile_fallback_reason()
         assert zoh.name in reason and "discrete sample time" in reason
 
-    def test_a_sampled_block_under_a_fixed_step_solver_falls_back(self, qapp):
+    def test_a_sampled_block_under_a_fixed_step_solver_compiles(self, qapp):
         from blocks.zero_order_hold import ZeroOrderHoldBlock
 
         zoh = _block(ZeroOrderHoldBlock, "ZeroOrderHold", 0, 1, 1, sampling_time=0.1)
         engine = self._engine([zoh])
         engine.solver_method = "RK4"
-        assert engine.check_compilability([zoh]) is False
-        assert "fixed-step 'RK4'" in engine.get_compile_fallback_reason()
+        assert engine.check_compilability([zoh]) is True
+        assert engine.get_compile_fallback_reason() is None
 
     def test_hysteresis_reason_points_at_zero_crossing(self, qapp):
         from blocks.hysteresis import HysteresisBlock

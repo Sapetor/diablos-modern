@@ -205,3 +205,76 @@ class TestRatedBlocksInLoops:
         assert dsim.engine.compiler.block_executors  # compiled
         model_func = dsim.engine._compiled_system_cache_value[0]
         assert model_func.state_map == {}
+
+
+@pytest.mark.regression
+class TestFixedStepHybrid:
+    """Euler / RK4 solver settings with sampled blocks: fixed steps on the
+    output grid plus every sample instant (``solve_fixed_step_with_breakpoints``)."""
+
+    @pytest.mark.parametrize("solver", ["Euler", "RK4"])
+    @pytest.mark.parametrize("case", ["tf_strict", "integrator", "staircase"])
+    def test_stateless_diagrams_equal_the_interpreter(self, qapp, tmp_path, solver, case):
+        """No continuous state: the scheme is irrelevant and the trace exact."""
+        from tests.regression.test_hybrid_compiled_path import _staircase
+
+        if case == "staircase":
+            b, sim_time, sim_dt = _staircase(sim_dt=0.05), 1.0, 0.05
+        else:
+            b, sim_time, sim_dt = _open_loop(*RATED[case]), 2.0, 0.02
+        dsim, fast = _run(b, tmp_path, sim_time, sim_dt, solver=solver)
+        assert _backend(dsim) == "fixed_step+hybrid", dsim.engine.get_compile_fallback_reason()
+        _, slow = _run(b, tmp_path, sim_time, sim_dt, fast=False, solver=solver)
+        a, c = np.ravel(fast["signals"]["y"]), np.ravel(slow["signals"]["y"])
+        assert a.shape == c.shape
+        np.testing.assert_allclose(a, c, rtol=0, atol=1e-12)
+
+    @pytest.mark.parametrize("solver, floor, tol", [("RK4", 0.0, 1e-6), ("Euler", 1e-4, 3e-2)])
+    def test_loop_with_a_plant_converges_to_the_adaptive_hybrid(
+        self, qapp, tmp_path, solver, floor, tol
+    ):
+        b = _rated_loop("TranFn", {"numerator": [1.2, 1.0], "denominator": [1.0, 0.05]})
+        dsim, fixed = _run(b, tmp_path, 6.0, 0.01, solver=solver)
+        assert _backend(dsim) == "fixed_step+hybrid"
+        assert dsim.engine.last_solver_diagnostics["zero_crossing"]["n_sample_hits"] == 61
+        _, adaptive = _run(b, tmp_path, 6.0, 0.01)
+        for label in ("y", "u"):
+            a, c = np.ravel(fixed["signals"][label]), np.ravel(adaptive["signals"][label])
+            assert a.shape == c.shape
+            err = np.max(np.abs(a - c))
+            # The floor proves the scheme is really first-order Euler, not RK4.
+            assert floor <= err < tol, (label, err)
+
+    def test_instants_off_the_grid_end_a_shortened_step(self, qapp, tmp_path):
+        """Ts = 0.15 on a dt = 0.1 grid: every other instant falls between
+        grid points, and the fixed step must stop there."""
+        from lib.diagram_builder import DiagramBuilder
+
+        b = DiagramBuilder(sim_time=1.2, sim_dt=0.1)
+        s = b.add_block(
+            "Sine", 0, 0, name="s", params={"amplitude": 1.0, "omega": 3.0, "init_angle": 0.0}
+        )
+        z = b.add_block("ZeroOrderHold", 0, 0, name="z", params={"sampling_time": 0.15})
+        g = b.add_block(
+            "TranFn", 0, 0, name="g", params={"numerator": [1.0], "denominator": [1.0, 1.0]}
+        )
+        sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
+        b.connect(s, 0, z, 0)
+        b.connect(z, 0, g, 0)
+        b.connect(g, 0, sc, 0)
+        dsim, fixed = _run(b, tmp_path, 1.2, 0.1, solver="RK4")
+        assert _backend(dsim) == "fixed_step+hybrid"
+        assert dsim.engine.last_solver_diagnostics["zero_crossing"]["n_sample_hits"] == 9
+        # Exact: y' = -y + u with u held over each 0.15 s interval.
+        t = np.ravel(fixed["timeline"])
+        y_exact = []
+        knots = np.arange(0.0, 1.2 + 1e-9, 0.15)
+        for ti in t:
+            y = 0.0
+            for k0 in knots[knots < ti - 1e-12]:
+                u = np.sin(3.0 * k0)
+                y = u + (y - u) * np.exp(-(min(k0 + 0.15, ti) - k0))
+            y_exact.append(y)
+        # RK4 at h <= 0.1 on a held input: ~1e-6. Ignoring the off-grid
+        # instants would latch the ZOH up to 0.05 s late: errors ~1e-2.
+        np.testing.assert_allclose(np.ravel(fixed["signals"]["y"]), y_exact, atol=2e-6)

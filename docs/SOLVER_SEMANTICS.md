@@ -160,7 +160,11 @@ During the run (`lib/lib.py::_interpreter_step`):
 
 **Sampled blocks on the compiled path (hybrid backend).** `ZeroOrderHold`,
 `DiscreteTranFn` and `DiscreteStateSpace` compile when their rate is resolved
-(declared, or inherited by `propagate_sample_times`). Inside the ODE
+(declared, or inherited by `propagate_sample_times`), and so do `TranFn`,
+`StateSpace`, `PID`, `Integrator` and `Derivative` given a rate
+(`discrete.RATED_FNS`, `discrete.is_sampled_block`): those then get no ODE
+state, because the interpreter runs them only at their instants, discretized
+over `dtime = Ts`, and holds their output in between. Inside the ODE
 right-hand side each is a source that reads its held output from a per-compile
 holder (`lib/engine/compiler_kernels/discrete.py`). The sample instants are
 known in advance -- the union of `k * Ts` over all rates, merged and snapped
@@ -173,11 +177,22 @@ a block after every sampled block that feeds it through direct-feedthrough
 blocks), with the diagram re-evaluated before each one, so a DiscreteTF behind
 a ZOH latches the fresh sample (the interpreter's rule in section 4.2). The
 update calls the block's own `execute()` on a run-local copy of its params, so
-the samples equal the interpreter's. Every other rated block (`TranFn`, `PID`,
-`Integrator`, `Derivative` with `sampling_time > 0`, `FirstOrderHold`,
-`RateTransition`) still sends the diagram to the interpreter, as does a sampled
-block whose rate stays unresolved, or a fixed-step solver (`Euler`/`RK4`) in
-Simulation settings.
+the samples equal the interpreter's; the holder's params carry the same
+`dtime = Ts` the interpreter stamps (step 5 above), and an
+`output_is_post_update` block (`Integrator`) holds its `output_only` value
+taken before the advance, as `stamp_held_outputs` does.
+
+Under a fixed-step solver (`Euler`/`RK4` in Simulation settings) the same
+holders run on the output grid plus every sample instant
+(`zero_crossing.solve_fixed_step_with_breakpoints`): an instant between grid
+points ends a shortened step exactly there, and the next step resumes from it.
+
+What still sends the diagram to the interpreter: a sampled block whose rate
+stays unresolved; and `FirstOrderHold` and `RateTransition`, which run every
+solver step with `sampling_time = -1` and sample on their own parameter
+(`input_sample_time`, `output_sample_time`): FOH outputs a ramp extrapolated
+between samples rather than a held value, and RateTransition's `Average` mode
+averages over solver steps, so neither has a held output to compile.
 
 ---
 
@@ -379,6 +394,7 @@ The `backend` field of the diagnostics says which one ran:
 | --- | --- | --- |
 | `algebraic` | `len(y0) == 0` | no ODE at all; the grid is generated and only the replay runs |
 | `fixed_step` | method is `RK4` or `Euler` | in-house, steps on the output grid (`integrate_fixed_step`) |
+| `fixed_step+hybrid` | method is `RK4` or `Euler` and at least one sampled block | the same steps on the output grid plus every sample instant (section 3); no event location. `zero_crossing.n_sample_hits` counts the instants |
 | `scipy` | adaptive method, no events | one `solve_ivp` call, no `events=` argument |
 | `scipy+events` | adaptive method and at least one event, detection on | segmented solve (`zero_crossing.solve_with_events`) |
 | `scipy+hybrid` | adaptive method and at least one sampled block | the same segmented solve, split at every sample instant (section 3); events too when detection is on. `zero_crossing.n_sample_hits` counts the instants, t0 included |
@@ -399,8 +415,15 @@ Deliberate exclusions, each with a reason in the code:
 | `Impulse`, and `Step` with `type == "impulse"` | modelled as a `dt * 1e-3`-wide rectangle, which an adaptive step can jump clean over — the response would silently vanish. |
 | `StateVariable` | performs a discrete update inside the RHS, keyed on a monotonic-time assumption `solve_ivp` violates (repeated, rejected and out-of-order probe times). |
 | `Hysteresis` **with detection off** | its latch is path-dependent, so it can only be part of an RHS if the mode is frozen inside each segment and flipped at a located instant. |
-| rated blocks other than `ZeroOrderHold` / `DiscreteTranFn` / `DiscreteStateSpace` | section 3. |
+| `FirstOrderHold`, `RateTransition`, and any rated block outside `ZeroOrderHold` / `DiscreteTranFn` / `DiscreteStateSpace` / `TranFn` / `StateSpace` / `PID` / `Integrator` / `Derivative` | no held output to compile; section 3. |
 | anything with no `@kernel` builder | including user blocks. |
+
+**Rated `PID` and `Derivative`.** On the compiled path each runs its own
+`execute()` at `t_k` on the inputs at `t_k` (with `dtime = Ts`) and holds the
+result from `t_k`; the interpreter gives the same values, except that it
+currently reports 0 for any PID at `t = 0` (logged in `tasks/todo.md`).
+`tests/regression/test_hybrid_rated_blocks.py` pins both against the
+interpreter and against an exact sampled oracle.
 
 ### 6.3 Why a run fell back, and where to see it
 
