@@ -399,6 +399,41 @@ def sample_schedule(sampled, t_span, t_eval):
     return np.asarray(merged)
 
 
+def seed_initial_states(model_func, executors, t0, y0, sampled=()):
+    """``y0`` with the slots that depend on t0 signals filled in.
+
+    A kernel whose initial state is a function of its inputs at t0 (the
+    RateLimiter latches ``y(0) = u(0)``, as the interpreted block does) exposes
+    ``seed_state(y0, signals)`` on its executor; the allocator could only
+    write a placeholder. One evaluation at ``(t0, y0)`` supplies the signals.
+    Sampled blocks take their t0 sample first, so a seeded block behind a ZOH
+    sees the first sample rather than the empty holder; their holders are then
+    reset (``holder["reset"]``) and given back their mode, so the solve's own
+    t0 sample starts from the same clean state as without seeding.
+
+    Returns ``y0`` itself, without evaluating anything, when no kernel seeds;
+    otherwise a seeded copy, so the cached compile's ``y0`` is never mutated.
+    The linearizer compiles without going through the runner, so there a
+    RateLimiter keeps the allocated 0 as its operating point.
+    """
+    seeders = [f.seed_state for f in (executors or {}).values() if hasattr(f, "seed_state")]
+    if not seeders or not len(y0):
+        return y0
+    modes = [(h, h.get("mode")) for h in sampled]
+    try:
+        if modes:
+            make_sample_hook(model_func, sampled, (t0, t0 + 1.0))(t0, np.asarray(y0, float))
+        _dy, signals = model_func.evaluate(t0, np.asarray(y0, dtype=float))
+    finally:
+        for holder, mode in modes:
+            holder["reset"](holder)
+            holder["mode"] = mode
+    y0 = np.array(y0, dtype=float, copy=True)
+    for seed in seeders:
+        seed(y0, signals)
+    return y0
+
+
 def make_sample_hook(model_func, sampled, t_span):
     """``on_breakpoint(t, y)``: update every sampled block due at ``t``.
 
@@ -549,6 +584,13 @@ def run_compiled_simulation(
             engine._compile_system_cached(current_blocks, sorted_blocks, current_lines, dt)
         )
         compile_time = time_module.perf_counter() - compile_start
+        y0 = seed_initial_states(
+            model_func,
+            getattr(engine.compiler, "block_executors", {}),
+            float(t_span[0]),
+            y0,
+            list(getattr(model_func, "sampled", None) or []),
+        )
 
         logger.info(f"Solving IVP over {t_span} with {len(y0)} states...")
         t_eval = np.arange(t_span[0], t_span[1] + dt, dt)

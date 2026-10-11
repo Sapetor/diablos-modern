@@ -95,8 +95,9 @@ def _alloc_pid(block, p):
 
 
 def _alloc_rate_limiter(block, p):
-    # State is the output y. The block has no initial-output parameter (it
-    # latches its first input at runtime), so the compiled state starts at 0.
+    # State is the output y. The block has no initial-output parameter: it
+    # latches its first input, unknown here, so the state is allocated at 0
+    # and seeded with u(0) at t0 (compiled_runner.seed_initial_states).
     return 1, np.zeros(1), None
 
 

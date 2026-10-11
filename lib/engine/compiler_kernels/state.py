@@ -216,6 +216,14 @@ def build_ratelimiter(ctx):
         dy = np.clip(rate, falling, rising)
         dy_vec[start] = dy
 
+    def seed_state(y0, signals):
+        # The interpreted block latches its first input, y(0) = u(0), which
+        # depends on upstream signals and so is unknown when the state is
+        # allocated; compiled_runner.seed_initial_states calls this at t0.
+        u_raw = signals.get(src, 0.0) if src else 0.0
+        y0[start] = float(np.ravel(u_raw)[0]) if np.ndim(u_raw) else float(u_raw)
+
+    exec_ratelimiter.seed_state = seed_state
     return exec_ratelimiter
 
 

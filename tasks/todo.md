@@ -36,12 +36,14 @@ checkable (2026-10-02 pass noted per item).
   solved inside the compiled RHS (`lib/engine/compiled_loops.py`), so
   diagrams with loops compile and linearize; Python export still refuses. The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
-- [ ] **Compiled RateLimiter starts at 0 (found 2026-10-10).** RateLimiter
-  latches its first input (`y(0) = u(0)`), which the interpreter now reports
-  at t = 0, but `_alloc_rate_limiter` (`lib/engine/system_compiler.py`) starts
-  the compiled state at 0 because the allocator cannot know `u(0)`; with a
-  finite slew the compiled trace then ramps up from 0. Needs a t0 seed (an
-  `on_start`-style hook for state blocks).
+- [x] **Compiled RateLimiter started at 0** (2026-10-10). The block latches
+  its first input, `y(0) = u(0)`, unknown when `_alloc_rate_limiter` allocates
+  the state. The kernel now exposes `seed_state` and
+  `compiled_runner.seed_initial_states` fills it from one evaluation at t0
+  (after the t0 sample on a sampled diagram, holders reset afterwards; a
+  seeded copy, never the cached `y0`; no evaluation when nothing seeds). The
+  linearizer bypasses the runner, so there the operating point stays 0.
+  Tests: `tests/regression/test_t0_initialization.py`.
 - [x] **Interpreter reported a stale t = 0 sample for feedthrough memory
   blocks** (2026-10-10). Generalizes "PID reports 0 at t = 0": every
   `b_type` 2 memory block that needs inputs (PID always; ZOH, Hysteresis,

@@ -130,7 +130,9 @@ def _pid_diagram(dsim):
 
 def _ratelimiter_diagram(dsim):
     blocks = [
-        _mk(dsim, "Step", 0, 0, 1, {"value": 1.0, "delay": 0.0, "type": "up"}),
+        # Delayed so u(0) = 0: the RateLimiter latches its first input (seeded
+        # at t0 since 2026-10-10), so an undelayed unit step would pin a flat 1.
+        _mk(dsim, "Step", 0, 0, 1, {"value": 1.0, "delay": 0.3, "type": "up"}),
         _mk(dsim, "RateLimiter", 0, 1, 1, {"rising_slew": 2.0, "falling_slew": 2.0}),
         _mk(dsim, "Scope", 0, 1, 0, {}),
     ]
@@ -178,14 +180,14 @@ _PID_BASELINE = np.array(
 _RATELIMITER_BASELINE = np.array(
     [
         0.0,
+        0.0,
+        0.0,
+        0.0,
         0.2,
         0.4,
         0.6,
         0.8,
         0.9992642329695153,
-        1.0,
-        1.0,
-        1.0,
         1.0,
         1.0,
         1.0,
@@ -229,7 +231,8 @@ class TestCompiledReplayPID:
 class TestCompiledReplayRateLimiter:
     def test_ratelimiter_compiled_replay_pinned(self, qapp):
         """Pin the RateLimiter compiled-replay trace: output chases the unit step
-        at the configured slew rate (0.2 per 0.1 s) and saturates at 1.0."""
+        (at t = 0.3) at the configured slew rate (0.2 per 0.1 s) and saturates
+        at 1.0."""
         compiled = _run_compiled(_ratelimiter_diagram, SIM_TIME, SIM_DT)
         assert compiled.shape == _RATELIMITER_BASELINE.shape, (
             f"shape {compiled.shape} != pinned {_RATELIMITER_BASELINE.shape}"
