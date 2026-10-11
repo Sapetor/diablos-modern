@@ -28,9 +28,11 @@ checkable (2026-10-02 pass noted per item).
   `scripts/benchmarks/pathsim/s1_sampled_data.py`. Plan:
   `tasks/hybrid_compiled_path.md`. Phase 1 done (2026-10-10): ZeroOrderHold,
   DiscreteTranFn, DiscreteStateSpace compile on the `scipy+hybrid` backend;
-  tests in `tests/regression/test_hybrid_compiled_path.py`. Open: phase 2
-  (rated TranFn/PID/Integrator/Derivative, FirstOrderHold, RateTransition,
-  fixed-step schemes), phase 3 (loops in the compiled RHS). The `Function`
+  tests in `tests/regression/test_hybrid_compiled_path.py`. Phase 2 done
+  (`643f7b0`, `76e9363`): rated TranFn/StateSpace/PID/Integrator/Derivative
+  compile as sampled holders, and Euler/RK4 run sampled diagrams on a grid
+  with every instant (`fixed_step+hybrid`); FirstOrderHold and RateTransition
+  stay on the interpreter. Open: phase 3 (loops in the compiled RHS). The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
 - [ ] **Interpreter PID reports 0 at t = 0 (found 2026-10-10).** Rated or
   not, a PID with Kp != 0 shows 0 at t = 0 on the interpreter, while the
