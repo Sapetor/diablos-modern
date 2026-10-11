@@ -449,8 +449,6 @@ the offending blocks:
 - any block with a discrete `sampling_time > 0` (the generated script has no
   sample-instant scheduling, although the fast solver runs ZOH and discrete
   TF/SS blocks since 2026-10-10)
-- algebraic loops - break one with an Integrator or a strictly-proper transfer
-  function before exporting
 
 ### Export the linearized model
 See [Analysis](#analysis): the linearization result window exports A/B/C/D as

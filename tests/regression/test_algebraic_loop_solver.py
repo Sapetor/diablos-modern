@@ -288,23 +288,45 @@ class TestLoopsOnTheCompiledPath:
         assert np.allclose(res["D"], [[0.5]], atol=1e-6)
         assert np.allclose(np.ravel(res["B"]) * np.ravel(res["C"]), [0.25], atol=1e-5)
 
-    def test_python_export_refuses(self, qapp, tmp_path):
-        from lib.cli import export_python
-        from lib.export.python_codegen import CodegenError
+    @pytest.mark.parametrize("which", ["gain", "proper_tf"])
+    def test_python_export_matches_the_compiled_run(self, qapp, tmp_path, which):
+        import subprocess
+        import sys
 
+        from lib.cli import export_python
         from lib.diagram_builder import DiagramBuilder
 
-        # Sum + Gain only: every block is exportable, so the loop is the reason.
-        b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)
-        c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
-        s = b.add_block("Sum", 0, 0, name="s", params={"sign": "+-"}, in_ports=2)
-        g = b.add_block("Gain", 0, 0, name="g", params={"gain": 0.5})
-        sc = b.add_block("Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0)
-        b.connect(c, 0, s, 0)
-        b.connect(s, 0, g, 0)
-        b.connect(g, 0, s, 1)
-        b.connect(s, 0, sc, 0)
+        if which == "gain":
+            b = DiagramBuilder(sim_time=0.3, sim_dt=0.1)
+            c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
+            s = b.add_block("Sum", 0, 0, name="s", params={"sign": "+-"}, in_ports=2)
+            g = b.add_block("Gain", 0, 0, name="g", params={"gain": 0.5})
+            sc = b.add_block(
+                "Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0
+            )
+            b.connect(c, 0, s, 0)
+            b.connect(s, 0, g, 0)
+            b.connect(g, 0, s, 1)
+            b.connect(s, 0, sc, 0)
+            sim = (0.3, 0.1)
+        else:
+            b = self._proper_tf_loop()
+            sim = (3.0, 0.01)
         path = tmp_path / "loop.diablos"
         b.save(str(path))
-        with pytest.raises(CodegenError, match="Algebraic loop"):
-            export_python(str(path), out_path=str(tmp_path / "out.py"))
+        script = tmp_path / "loop.py"
+        export_python(str(path), out_path=str(script))
+        out = tmp_path / "run.npz"
+        proc = subprocess.run(
+            [sys.executable, str(script), "--no-plot", "--out", str(out)],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+            timeout=300,
+        )
+        assert proc.returncode == 0, proc.stderr
+        exported = np.load(out)
+        ok, err, _, data = _run(b, tmp_path, *sim)
+        assert ok, err
+        y_ref = np.ravel(data["signals"]["y"])
+        assert np.max(np.abs(np.ravel(exported["y"]) - y_ref)) < 1e-8

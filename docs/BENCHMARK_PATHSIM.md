@@ -115,7 +115,7 @@ only converges when |f'(y*)| < 1. Both DiaBloS solvers run
 members' params before each trial evaluation, which is most of its ~14x cost
 against PathSim. The compiled loop costs one solve per RHS evaluation (about
 3x PathSim here). Loops through discrete-rate blocks are still rejected, and
-the Python exporter still refuses loops; linearization works through them.
+linearization and Python export both work through them.
 
 ## S3 - delayed platoon, scaling in N
 

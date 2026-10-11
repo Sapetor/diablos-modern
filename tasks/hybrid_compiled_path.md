@@ -93,9 +93,9 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
   S1b acceptance: 2.2e-13 in 1.4 s); algebraic loops inside the compiled RHS
   (`lib/engine/compiled_loops.py`): each cycle of middle-group blocks is one
   unit solved with `hybr` per RHS evaluation, the replay reads members from
-  the compiled evaluation, and the linearizer works through loops. Python
-  export still refuses loops (`lib/export/python_codegen.py` would need the
-  same solver in the generated script).
+  the compiled evaluation, and the linearizer works through loops. The Python
+  exporter emits each loop as a nested step function solved by a generated
+  `_solve_loop` (same hybr scheme). Sampled blocks are still not exported.
 - **Phase 4**: rerun the benchmark, update `docs/BENCHMARK_PATHSIM.md`,
   `docs/SOLVER_SEMANTICS.md`, `docs/FAST_SOLVER.md`.
 

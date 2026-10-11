@@ -19,6 +19,10 @@ in ``SystemCompiler.compile_system``:
    order over the feedthrough edges;
 4. the strictly-proper state blocks contribute their derivatives last.
 
+An algebraic loop among the step-3 blocks is emitted as one nested step
+function, solved at each evaluation by the generated ``_solve_loop`` (scipy
+``root``, warm-started), as ``lib/engine/compiled_loops.py`` does.
+
 Every emitted expression is a transcription of the corresponding kernel in
 ``lib/engine/compiler_kernels/`` (param keys, defaults and quirks included), so
 a generated script and a compiled run of the same diagram agree to solver
@@ -45,6 +49,7 @@ from scipy import signal as _scipy_signal
 
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiled_runner import resolve_solver_method
+from lib.engine.compiled_loops import order_units
 from lib.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)
@@ -424,6 +429,9 @@ class PythonCodeGenerator:
         self._block_index: Dict[str, int] = {}
         self._matrix_names: Dict[str, Dict[str, str]] = {}
         self._helpers = set()
+        self._n_loops = 0
+        self._loop_sizes = []
+        self._units = []
         self._n_states = 0
         self._x0: List[float] = []
         # Non-fatal problems found while generating (currently: params whose
@@ -633,17 +641,18 @@ class PythonCodeGenerator:
         order_names, cyclic = kahn_topological_order(
             (b.name for b in self._blocks), adjacency, key=lambda n: n
         )
-        if cyclic:
-            raise CodegenError(
-                "Algebraic loop detected through: {}. Break it with an Integrator or a "
-                "strictly-proper transfer function before exporting.".format(", ".join(cyclic))
-            )
 
-        ordered = [self._by_name[n] for n in order_names]
+        # Algebraic loops (cycles among the middle blocks) become one unit each,
+        # solved inside evaluate() as the compiled solver does
+        # (lib/engine/compiled_loops.py); ``cyclic`` also holds the blocks
+        # downstream of a loop, which order_units places after it.
+        ordered = [self._by_name[n] for n in order_names + cyclic]
         sources = [b for b in ordered if b.fn in SOURCE_FNS]
         d0_state = [b for b in ordered if self._is_d0_state(b)]
         d0_names = {b.name for b in d0_state}
         middle = [b for b in ordered if b.fn not in SOURCE_FNS and b.name not in d0_names]
+        self._units = order_units(middle, self._input_map)
+        middle = [b for u in self._units for b in (u if isinstance(u, list) else [u])]
         return sources + middle + d0_state
 
     # -- input lookup ------------------------------------------------------
@@ -704,9 +713,14 @@ class PythonCodeGenerator:
         # 3. Algebraic blocks and feedthrough state blocks, in topological order.
         out.append("")
         out.append("    # --- Algebraic blocks and feedthrough (D != 0) state blocks ---")
-        middle = [b for b in order if b.fn not in SOURCE_FNS and not self._is_d0_state(b)]
         emitted_any = False
-        for blk in middle:
+        for unit in self._units:
+            if isinstance(unit, list):
+                out.extend(self._emit_loop(unit))
+                emitted.extend(b for b in unit if b.fn not in SINK_FNS)
+                emitted_any = True
+                continue
+            blk = unit
             chunk = self._emit_block(blk)
             if chunk:
                 out.extend(chunk)
@@ -734,6 +748,54 @@ class PythonCodeGenerator:
                 out.append('        "{}": {},'.format(var, var))
         out.append("    }")
         out.append("    return dx, signals")
+        return out
+
+    def _emit_loop(self, members: List[_Block]) -> List[str]:
+        """An algebraic loop as a nested step function solved by ``_solve_loop``.
+
+        The step function takes the loop's internal signals (one per member
+        output port feeding another member), runs the members once and returns
+        the new values plus every member output; ``_solve_loop`` finds the fixed
+        point (scipy ``root``, hybr, warm-started) like the compiled solver.
+        """
+        self._helpers.add("_solve_loop")
+        k = self._n_loops
+        self._n_loops += 1
+        names = {b.name for b in members}
+        slots = sorted(
+            {
+                dep
+                for b in members
+                for dep in self._input_map.get(b.name, {}).values()
+                if dep[0] in names
+            }
+        )
+        self._loop_sizes.append(len(slots))
+        slot_vars = [
+            self._by_name[src].port_vars.get(port, self._by_name[src].var) for src, port in slots
+        ]
+        body: List[str] = []
+        for blk in members:
+            body.extend("    " + line for line in self._emit_block(blk))
+        outputs = []
+        for blk in members:
+            if blk.fn in SINK_FNS:
+                continue
+            for port in sorted(blk.port_vars):
+                if blk.port_vars[port] not in outputs:
+                    outputs.append(blk.port_vars[port])
+        fn = "_loop{}".format(k)
+        out = [
+            "    # Algebraic loop: {}".format(", ".join(b.title for b in members)),
+            "    def {}(_parts):".format(fn),
+            "        ({},) = _parts".format(", ".join(slot_vars)),
+        ]
+        out += body
+        out += [
+            "        return [{}], ({},)".format(", ".join(slot_vars), ", ".join(outputs)),
+            "",
+            "    ({},) = _solve_loop({}, _LOOP_STATE[{}])".format(", ".join(outputs), fn, k),
+        ]
         return out
 
     # -- per-block emitters -------------------------------------------------
@@ -1216,6 +1278,62 @@ class PythonCodeGenerator:
                 "        res = np.where(np.isinf(res), np.sign(res) * 1e308, res)",
                 "        res = np.where(np.isnan(res), 0.0, res)",
                 "    return res",
+                "",
+                "",
+            ]
+        if "_solve_loop" in self._helpers:
+            src += [
+                "# Warm starts of the algebraic loops, one per loop (evaluate() order).",
+                "_LOOP_STATE = [{}]".format(
+                    ", ".join(
+                        '{{"n": {}, "z": None, "shapes": None}}'.format(n) for n in self._loop_sizes
+                    )
+                ),
+                "",
+                "",
+                "def _solve_loop(step, state, xtol=1e-12):",
+                '    """Solve one algebraic loop: parts with step(parts)[0] == parts.',
+                "",
+                "    Mirrors lib/engine/compiled_loops.py: scipy root (hybr), warm-started",
+                "    from the previous call, retried from F(z0); returns the member",
+                "    outputs of a final step on the solution.",
+                '    """',
+                "    from scipy.optimize import root",
+                "",
+                '    if state["shapes"] is None:',
+                "        # Discover the signal shapes with one step from zero.",
+                '        first = [np.asarray(p, dtype=float) for p in step([0.0] * state["n"])[0]]',
+                '        state["shapes"] = [p.shape for p in first]',
+                '        state["z"] = np.concatenate([p.ravel() for p in first])',
+                "",
+                "    def unpack(z):",
+                "        parts, i = [], 0",
+                '        for shape in state["shapes"]:',
+                "            n = int(np.prod(shape)) if shape else 1",
+                "            parts.append(z[i : i + n].reshape(shape) if shape else float(z[i]))",
+                "            i += n",
+                "        return parts",
+                "",
+                "    def residual(z):",
+                "        new = step(unpack(z))[0]",
+                "        return np.concatenate([np.ravel(np.asarray(p, dtype=float)) for p in new]) - z",
+                "",
+                '    z0 = np.where(np.abs(state["z"]) < 1e-100, 0.0, state["z"])',
+                "    r0 = residual(z0)",
+                "    z = z0",
+                "    if not np.all(np.abs(r0) <= xtol * (1.0 + np.abs(z0))):",
+                "        for guess in (z0, z0 + r0):",
+                '            sol = root(residual, guess, method="hybr", options={"xtol": xtol})',
+                "            z = sol.x",
+                "            r = residual(z)",
+                "            if np.all(np.isfinite(r)) and np.max(np.abs(r)) <= 1e-9 * (",
+                "                1.0 + np.max(np.abs(z))",
+                "            ):",
+                "                break",
+                "        else:",
+                '            raise RuntimeError("algebraic loop did not converge: " + str(sol.message))',
+                '    state["z"] = z',
+                "    return step(unpack(z))[1]",
                 "",
                 "",
             ]

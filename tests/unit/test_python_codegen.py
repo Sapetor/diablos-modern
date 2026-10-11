@@ -320,15 +320,26 @@ class TestUnsupportedDiagrams:
             generate_python_script(blocks, lines)
         assert "gain2" in str(excinfo.value)
 
-    def test_algebraic_loop_is_rejected(self):
+    def test_algebraic_loop_is_solved_in_evaluate(self):
+        """A loop becomes a nested step function solved by _solve_loop
+        (exported since the compiled path solves loops, 2026-10-10)."""
         blocks = [
+            FakeBlock("const0", "Constant", {"value": 1.0}, 0, 1),
             FakeBlock("sum0", "Sum", {"sign": "+-"}, 2, 1),
             FakeBlock("gain1", "Gain", {"gain": 2.0}, 1, 1),
         ]
-        lines = [FakeLine("sum0", 0, "gain1", 0), FakeLine("gain1", 0, "sum0", 1)]
-        with pytest.raises(CodegenError) as excinfo:
-            generate_python_script(blocks, lines)
-        assert "Algebraic loop" in str(excinfo.value)
+        lines = [
+            FakeLine("const0", 0, "sum0", 0),
+            FakeLine("sum0", 0, "gain1", 0),
+            FakeLine("gain1", 0, "sum0", 1),
+        ]
+        source = generate_python_script(blocks, lines)
+        assert "def _loop0(_parts):" in source and "_solve_loop(_loop0" in source
+        namespace = {"__name__": "exported"}
+        exec(compile(source, "exported.py", "exec"), namespace)
+        _, signals = namespace["evaluate"](0.0, np.zeros(0))
+        # s = 1 - 2 s  ->  s = 1/3
+        assert signals["sum0"] == pytest.approx(1.0 / 3.0, abs=1e-12)
 
 
 # ---------------------------------------------------------------------------

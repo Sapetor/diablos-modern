@@ -327,8 +327,8 @@ no execution order. It is **solved**, not rejected (since 2026-10-10,
   solution, which writes their outputs and `dy_vec`. The replay reads loop
   members from one compiled evaluation per output sample. A loop that does
   not converge fails the compiled run, which falls back to the interpreter
-  and its solver. Linearization works through the loop; Python export still
-  refuses it.
+  and its solver. Linearization works through the loop, and the Python
+  exporter emits it as a nested step function solved the same way.
 
 Two stall outcomes remain errors: a loop that is unsupported (above), and no
 cycle but blocks still uncomputed. In that case only memory blocks may
@@ -709,8 +709,8 @@ the built-in defaults.)
   (`Ts = 1 ms` for 10 s is 10^4 segments) pays the call overhead each time, and
   implicit methods rebuild their Jacobian at every instant.
 * **Algebraic loops cost one nonlinear solve per RHS evaluation** on the
-  compiled path, and the Python exporter still refuses them. Loops through
-  discrete-rate blocks are rejected on both paths.
+  compiled path (and in an exported script). Loops through discrete-rate
+  blocks are rejected on both paths.
 * **`blocks/external.py` is a stub** and returns an error dict on both paths.
 
 ---
