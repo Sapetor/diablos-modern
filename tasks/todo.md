@@ -107,8 +107,11 @@ palette sideways shift, test isolation from the real QSettings store,
   from the main window's `closeEvent`, so none is left to the final garbage
   collection. The test fixture no longer needs its deleteLater/processEvents
   dodge. Not reproduced on this Windows venv before the fix; three full-suite
-  runs green after it. The DSim `gc.collect()` guards in other modules are
-  left in place (they guard DSim-owned plotting state, a separate path).
+  runs green after it. The ensemble, sweep and operating-point windows got
+  the same lifetime fix (shared helper `modern_ui/widgets/plot_teardown.py`;
+  `tests/unit/test_result_window_teardown.py`). The DSim `gc.collect()` guards
+  in other modules are left in place (they guard DSim-owned plotting state, a
+  separate path; see `tasks/lessons.md`).
 - [ ] **Follow-up: recreate the x86_64 build env.** `~/opt/anaconda3/envs/diablos_x86`
   (`docs/building.md`) is still Python 3.9 (Anaconda, confirmed via
   `docs/building.md` 2026-10-02), which `requires-python = ">=3.10"` now

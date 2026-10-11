@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QRectF
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from modern_ui.widgets.plot_teardown import close_plots, delete_on_close
 from lib.i18n import tr
 
 from lib.analysis.resim import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
@@ -42,6 +43,7 @@ class SweepResultWindow(QWidget):
     def __init__(self, result: dict, parent=None):
         super().__init__(parent)
         self.result = result or {}
+        delete_on_close(self)  # see closeEvent
         self.mode = self.result.get("mode", "1d")
 
         self.setWindowTitle(tr("Parameter Sweep"))
@@ -102,6 +104,12 @@ class SweepResultWindow(QWidget):
             self._build_2d(layout)
         else:
             self._build_1d(layout)
+
+    def closeEvent(self, event):
+        """Tear the plots down before Qt destroys the window; see
+        ``modern_ui/widgets/plot_teardown.py``."""
+        close_plots(self)
+        super().closeEvent(event)
 
     # --------------------------------------------------------------- factories
     @staticmethod

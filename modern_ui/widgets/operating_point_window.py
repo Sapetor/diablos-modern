@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from modern_ui.widgets.plot_teardown import delete_on_close
 from lib.i18n import tr
 
 
@@ -40,6 +41,9 @@ class OperatingPointWindow(QWidget):
     def __init__(self, result: dict, parent=None):
         super().__init__(parent)
         self.result = result or {}
+        # No plots, but freed on close like the other result windows instead
+        # of being kept by the controller until exit.
+        delete_on_close(self)
 
         self.setWindowTitle(tr("Operating Point (Trim)"))
         self.resize(480, 460)

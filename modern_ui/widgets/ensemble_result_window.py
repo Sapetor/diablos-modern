@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from modern_ui.themes.theme_manager import theme_manager, TYPE
+from modern_ui.widgets.plot_teardown import close_plots, delete_on_close
 from lib.i18n import tr
 
 from lib.analysis.monte_carlo import OUTCOME_METRIC_LABELS, OUTCOME_METRICS
@@ -67,6 +68,7 @@ class EnsembleResultWindow(QWidget):
     def __init__(self, result: dict, parent=None):
         super().__init__(parent)
         self.result = result or {}
+        delete_on_close(self)  # see closeEvent
 
         self.setWindowTitle(tr("Monte Carlo Ensemble"))
         self.resize(820, 600)
@@ -151,6 +153,12 @@ class EnsembleResultWindow(QWidget):
         self._plot_signal(self._signal_names[0])
         self._plot_histogram()
         self._on_view_changed(0)
+
+    def closeEvent(self, event):
+        """Tear the plots down before Qt destroys the window; see
+        ``modern_ui/widgets/plot_teardown.py``."""
+        close_plots(self)
+        super().closeEvent(event)
 
     # --------------------------------------------------------------- factories
     @staticmethod

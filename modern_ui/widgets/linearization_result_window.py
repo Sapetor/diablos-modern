@@ -49,6 +49,7 @@ from PyQt6.QtGui import QFont
 
 from lib.analysis import linearization_export
 from lib.i18n import tr, tr_noop
+from modern_ui.widgets.plot_teardown import close_plots, delete_on_close
 from modern_ui.themes.theme_manager import theme_manager, TYPE
 
 
@@ -71,9 +72,7 @@ class LinearizationResultWindow(QWidget):
     def __init__(self, result: dict, parent=None):
         super().__init__(parent)
         self.result = result or {}
-        # Freed as soon as it is closed (see closeEvent), not at some later
-        # garbage collection while Qt is busy elsewhere.
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        delete_on_close(self)  # see closeEvent
 
         self.setWindowTitle(tr("Linearized System Analysis"))
         self.resize(820, 620)
@@ -140,18 +139,9 @@ class LinearizationResultWindow(QWidget):
         timer.start(2500)
 
     def closeEvent(self, event):
-        """Tear the plots down before Qt destroys the window.
-
-        A pyqtgraph item (the pole-zero axes are InfiniteLines) keeps Python
-        references to its ViewBox. If Qt deletes the scene with the items
-        still in it -- at a garbage collection, or at exit -- an item can
-        repaint against a ViewBox that is already gone ("Pure virtual function
-        called"). ``PlotWidget.close()`` takes the ViewBox and axes out of the
-        scene first, as pyqtgraph intends.
-        """
-        for plot in self.findChildren(pg.PlotWidget):
-            if plot.plotItem is not None:
-                plot.close()
+        """Tear the plots down before Qt destroys the window (the pole-zero
+        axes are InfiniteLines); see ``modern_ui/widgets/plot_teardown.py``."""
+        close_plots(self)
         super().closeEvent(event)
 
     def _copy_code(self, formatter, language):
