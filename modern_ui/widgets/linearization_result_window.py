@@ -71,6 +71,9 @@ class LinearizationResultWindow(QWidget):
     def __init__(self, result: dict, parent=None):
         super().__init__(parent)
         self.result = result or {}
+        # Freed as soon as it is closed (see closeEvent), not at some later
+        # garbage collection while Qt is busy elsewhere.
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         self.setWindowTitle(tr("Linearized System Analysis"))
         self.resize(820, 620)
@@ -128,7 +131,28 @@ class LinearizationResultWindow(QWidget):
     def _flash(self, message):
         """Show brief confirmation text that clears itself after a moment."""
         self.status_label.setText(message)
-        QTimer.singleShot(2500, lambda: self.status_label.setText(""))
+        # Parented, so it dies with the window instead of firing into a
+        # deleted label when the window is closed within the delay.
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        timer.timeout.connect(self.status_label.clear)
+        timer.timeout.connect(timer.deleteLater)
+        timer.start(2500)
+
+    def closeEvent(self, event):
+        """Tear the plots down before Qt destroys the window.
+
+        A pyqtgraph item (the pole-zero axes are InfiniteLines) keeps Python
+        references to its ViewBox. If Qt deletes the scene with the items
+        still in it -- at a garbage collection, or at exit -- an item can
+        repaint against a ViewBox that is already gone ("Pure virtual function
+        called"). ``PlotWidget.close()`` takes the ViewBox and axes out of the
+        scene first, as pyqtgraph intends.
+        """
+        for plot in self.findChildren(pg.PlotWidget):
+            if plot.plotItem is not None:
+                plot.close()
+        super().closeEvent(event)
 
     def _copy_code(self, formatter, language):
         QApplication.clipboard().setText(formatter(self.result))

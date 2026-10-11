@@ -1033,6 +1033,7 @@ class ModernDiaBloSWindow(QMainWindow):
 
         self.stop_simulation()
         self._cancel_experiment_workers()  # join MC/sweep threads before teardown
+        self.experiment_controller.close_result_windows()  # plots torn down, not GC'd
         self._cleanup_autosave()  # Clean up auto-save file on normal exit
         self.perf_helper.log_stats()
         event.accept()

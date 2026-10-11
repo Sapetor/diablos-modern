@@ -98,12 +98,17 @@ palette sideways shift, test isolation from the real QSettings store,
 - [ ] **Event-triggered state reset** — zero-crossing detection locates
   switching instants but a block cannot yet reset an integrator state at the
   event (needed for bouncing-ball / impact examples).
-- [ ] **pyqtgraph teardown segfault** in
-  `tests/unit/test_linearization_result_window.py` (path corrected 2026-10-02;
-  the file lives under `tests/unit/`, not `tests/modern_ui/` as previously
-  noted here) is only dodged (module-scoped fixture + `gc.collect()`); the
-  result window's own teardown is still unfixed. See `tasks/lessons.md`,
-  "pyqtgraph teardown segfaults appear only in the full suite".
+- [x] **pyqtgraph teardown segfault** in the Linearize & Analyze window
+  (2026-10-10). `LinearizationResultWindow` now deletes itself on close and
+  tears its plots down first in `closeEvent` (`PlotWidget.close()` takes the
+  ViewBox and axes out of the scene before Qt deletes it); its status-flash
+  timer is parented to it; `ExperimentController._retain_window` forgets a
+  window once it is destroyed and `close_result_windows()` closes the rest
+  from the main window's `closeEvent`, so none is left to the final garbage
+  collection. The test fixture no longer needs its deleteLater/processEvents
+  dodge. Not reproduced on this Windows venv before the fix; three full-suite
+  runs green after it. The DSim `gc.collect()` guards in other modules are
+  left in place (they guard DSim-owned plotting state, a separate path).
 - [ ] **Follow-up: recreate the x86_64 build env.** `~/opt/anaconda3/envs/diablos_x86`
   (`docs/building.md`) is still Python 3.9 (Anaconda, confirmed via
   `docs/building.md` 2026-10-02), which `requires-python = ">=3.10"` now

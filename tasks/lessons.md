@@ -483,7 +483,7 @@ Note the earlier entry listed `app.setStyle("Fusion")` under "tried and failed";
 
 **Problem**: Two independent branches each added tests that built many `DSim`/`SimulationModel` instances; each was green in isolation but made `tests/unit/test_linearization_result_window.py` abort the interpreter about half the time in the full run (a pyqtgraph `InfiniteLine` repainting after its ViewBox was gone).
 
-**Fix**: Module-scope the heavy model fixture, or add an autouse `gc.collect()` per test in the new module, so Qt items are freed deterministically rather than under an unrelated widget mid-construction. The underlying teardown in the linearization result window is still unfixed.
+**Fix**: Module-scope the heavy model fixture, or add an autouse `gc.collect()` per test in the new module, so Qt items are freed deterministically rather than under an unrelated widget mid-construction. The linearization result window's own teardown was fixed on 2026-10-10: a pyqtgraph window should delete itself on close and call `PlotWidget.close()` on each plot in `closeEvent`, and whoever retains it should drop it on `destroyed` and close it on shutdown, so nothing pyqtgraph-backed is left for an arbitrary garbage collection.
 
 ---
 

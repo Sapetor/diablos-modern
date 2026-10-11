@@ -23,6 +23,7 @@ the teardown contract exercised by
 """
 
 import logging
+from functools import partial
 
 from lib.i18n import tr
 
@@ -77,9 +78,29 @@ class ExperimentController:
             return None
 
     def _retain_window(self, win):
-        """Keep a parentless top-level result window alive (prevent GC) and show it."""
+        """Keep a parentless top-level result window alive (prevent GC) and show it.
+
+        A window that deletes itself on close is dropped once it is destroyed,
+        so closed windows do not pile up until exit.
+        """
         self._result_windows.append(win)
+        win.destroyed.connect(partial(self._forget_window, win))
         win.show()
+
+    def _forget_window(self, win, *_):
+        if win in self._result_windows:
+            self._result_windows.remove(win)
+
+    def close_result_windows(self):
+        """Close every result window still open, on shutdown: each tears its
+        plots down in its own closeEvent instead of being destroyed by the
+        interpreter's final garbage collection."""
+        for win in list(self._result_windows):
+            try:
+                win.close()
+            except RuntimeError:  # its C++ side is already gone
+                pass
+        self._result_windows.clear()
 
     def linearize_and_analyze(self):
         """Linearize the current diagram at an operating point and show analysis.

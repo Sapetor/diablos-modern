@@ -11,9 +11,14 @@ Run offscreen:
     $env:QT_QPA_PLATFORM="offscreen"
 """
 
+import gc
+
 import numpy as np
+import pyqtgraph as pg
 import pytest
 
+from PyQt6 import sip
+from PyQt6.QtCore import QCoreApplication, QEvent, QTimer
 from PyQt6.QtWidgets import QWidget, QTabWidget, QPushButton, QApplication
 
 from modern_ui.widgets.linearization_result_window import LinearizationResultWindow
@@ -69,15 +74,18 @@ def _sample_ok_result(with_bode=True):
     }
 
 
+def _flush_deletes():
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    QApplication.processEvents()
+
+
 @pytest.fixture
 def make_window(qapp):
-    """Build result windows that are torn down *deterministically*.
+    """Build result windows and close them at the end, as a user would.
 
-    Each window holds several pyqtgraph plots, which queue deferred events on
-    their children. Letting Python garbage-collect the widget whenever a test's
-    local went out of scope destroyed the C++ side while Qt was still
-    dispatching those events -- a "Pure virtual function called" abort that
-    surfaced (flakily) in whichever test happened to process events next.
+    The window tears its plots down in closeEvent and deletes itself on close
+    (it used to rely on this fixture's deleteLater + processEvents to avoid a
+    pyqtgraph teardown abort; see test_closing_tears_the_plots_down).
     """
     windows = []
 
@@ -88,9 +96,9 @@ def make_window(qapp):
 
     yield _make
     for win in windows:
-        win.close()
-        win.deleteLater()
-    qapp.processEvents()
+        if not sip.isdeleted(win):
+            win.close()
+    _flush_deletes()
 
 
 @pytest.mark.unit
@@ -247,3 +255,62 @@ class TestLinearizationExportBar:
 
         loaded = loadmat(str(out))
         assert np.array_equal(loaded["A"], np.array(_sample_ok_result()["A"]))
+
+
+@pytest.mark.unit
+class TestTeardown:
+    def test_closing_tears_the_plots_down(self, qapp):
+        """Every PlotWidget is closed (ViewBox and axes out of the scene)
+        before Qt deletes the window, which it does on close."""
+        win = LinearizationResultWindow(_sample_ok_result())
+        win.show()
+        qapp.processEvents()
+        plots = win.findChildren(pg.PlotWidget)
+        assert len(plots) == 5  # pole-zero, magnitude, phase, step, impulse
+        win.close()
+        assert all(p.plotItem is None for p in plots)
+        _flush_deletes()
+        assert sip.isdeleted(win)
+
+    def test_the_flash_timer_dies_with_the_window(self, qapp):
+        win = LinearizationResultWindow(_sample_ok_result())
+        win._flash("copied")
+        timers = [t for t in win.findChildren(QTimer) if t.isActive()]
+        assert timers and all(t.parent() is win for t in timers)
+        win.close()
+        _flush_deletes()
+        assert all(sip.isdeleted(t) for t in timers)
+
+    def test_windows_closed_while_others_are_built(self, qapp):
+        """The pattern that used to abort the full suite: windows destroyed and
+        collected while new ones are under construction."""
+        for _ in range(8):
+            old = LinearizationResultWindow(_sample_ok_result())
+            old.show()
+            qapp.processEvents()
+            new = LinearizationResultWindow(_sample_ok_result())
+            old.close()
+            del old
+            gc.collect()
+            new.show()
+            qapp.processEvents()
+            new.close()
+            del new
+            _flush_deletes()
+
+    def test_the_controller_forgets_closed_windows_and_closes_the_rest(self, qapp):
+        from types import SimpleNamespace
+
+        from modern_ui.controllers.experiment_controller import ExperimentController
+
+        ctl = ExperimentController(SimpleNamespace())
+        first = LinearizationResultWindow(_sample_ok_result())
+        second = LinearizationResultWindow(_sample_ok_result())
+        ctl._retain_window(first)
+        ctl._retain_window(second)
+        first.close()
+        _flush_deletes()
+        assert ctl._result_windows == [second]
+        ctl.close_result_windows()
+        _flush_deletes()
+        assert ctl._result_windows == [] and sip.isdeleted(second)
