@@ -209,15 +209,25 @@ three loops:
   `optional_inputs`) is zero and `b_type == 0`; it executes and is pinned to
   `hierarchy = 0`. Memory blocks are executed with `output_only=True` so
   `y[0] = h(x[0])` is available to their consumers, and pinned to hierarchy 0
-  as well. Outputs are propagated.
+  as well. Outputs are propagated. A memory block with direct feedthrough
+  (`b_type == 2`: PID, ZeroOrderHold, Hysteresis, FirstOrderHold,
+  RateTransition, RateLimiter, ...) that needs inputs is the exception
+  (`_defers_t0_output`): its `y[0]` depends on `u[0]`, which this pass does not
+  know yet, so it is left for Loop 2.
 * **Loop 2 — hierarchy fixpoint** (`_init_resolve_hierarchy`). Repeatedly
   execute every block whose required inputs have all arrived, assigning
-  ascending `hierarchy` numbers, until every block is computed. If a pass
-  computes nothing new, the remaining blocks are examined (section 4.4).
+  ascending `hierarchy` numbers, until every block is computed. A deferred
+  feedthrough memory block runs here for real once its inputs are ready (and
+  keeps hierarchy 0). If a pass computes nothing new, deferred blocks still
+  waiting are in a loop of feedthrough blocks only: they are released with
+  their Loop 1 `output_only` value, which breaks the loop
+  (`_release_t0_deferred`). Then the remaining blocks are examined
+  (section 4.4).
 * **Loop 3 — advance memory state** (`_init_advance_memory_state`). Memory
   blocks are executed again, this time for real, using the inputs Loop 2
   produced. Without it the first simulation step would re-read `x[0]` and emit a
-  duplicate sample.
+  duplicate sample. A deferred block that Loop 2 already ran is skipped, or it
+  would advance twice at t = 0.
 
 `hierarchy` is what the interpreter steps through; the compiled path uses it
 only as an input ordering that it then re-sorts (4.3).

@@ -97,10 +97,11 @@ for 2e-12. Acceptance: `scripts/benchmarks/pathsim/s1_sampled_data.py`.
 
 ## Known gaps after phase 1 (2026-10-10, `0e6afa2`)
 
-- **t0 seeding order.** `solve_with_events` runs the event `on_start` hooks
-  before the t0 sample, so a `Hysteresis` fed by a ZOH seeds against the
-  ZOH's empty holder (0.0), not its first sample. The interpreter initializes
-  in hierarchy order. Untested.
+- ~~**t0 seeding order.**~~ Closed 2026-10-10: `solve_with_events` seeds the
+  latches, takes the t0 sample, then resets the latch holders and seeds again,
+  so a ZOH behind a Hysteresis samples the seeded mode and a Hysteresis behind
+  a ZOH ends up seeded from the first sample (it had kept the empty holder's
+  mode for the whole run). Tests: `tests/regression/test_t0_initialization.py`.
 - **Inherited rates inside a Subsystem.** The root-level gate in
   `DSim.execution_batch` sees the unflattened block, whose
   `effective_sample_time` is not resolved, so an inherited-rate DiscreteTF in a

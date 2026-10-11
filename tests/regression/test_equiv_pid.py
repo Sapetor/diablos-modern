@@ -11,11 +11,14 @@ This file builds the canonical closed loop that exercises that path:
 and runs it through BOTH the interpreter (block.execute() time-step loop) and the
 compiled solver (SystemCompiler + solve_ivp), reading the Scope trace from each.
 
-Result of building this test: the two paths **genuinely diverge** in the
-transient, so the trajectory-equivalence assertion is marked xfail (see the
-reason string on ``test_pid_loop_trajectory_equivalence`` for the full analysis).
-The equivalence that *does* hold -- both paths reach the same steady state -- is
-pinned by ``test_pid_loop_reaches_shared_steady_state``, which passes.
+Result of building this test: the two paths diverged in the transient, so the
+trajectory-equivalence assertion was marked xfail. Since 2026-10-10 it passes
+(max ~0.0034 abs, RMS ~0.0013): most of the remaining gap was the interpreter's
+stale t = 0 PID output (0 instead of Kp*e(0)), which delayed the whole loop's
+response by one step; the initialization now runs a feedthrough memory block for
+real once its inputs are known (SimulationEngine._defers_t0_output). The history
+below is kept for context. Both paths also reach the same steady state
+(``test_pid_loop_reaches_shared_steady_state``).
 
 Divergence summary (measured while writing this test; compiled path verified
 against two closed-form analytic solutions, so the compiled trajectory is the
@@ -209,22 +212,9 @@ DT = 0.01
 
 @pytest.mark.regression
 class TestPIDCompiledVsInterpreted:
-    @pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Interpreter and compiled paths diverge in the transient of a PID "
-            "feedback loop (max ~0.10 abs, RMS ~0.015 at dt=0.01). The compiled "
-            "path matches the analytic continuous closed-loop response to machine "
-            "precision; the interpreter is the inaccurate one, from the one-sample "
-            "feedback delay of the memory-block loop, which is first order in dt "
-            "and so does not vanish at this test's fixed dt=0.01. (Two other "
-            "causes -- state blocks pinned to dtime=0.01 regardless of sim_dt, and "
-            "a derivative branch that never saw the reference step -- have since "
-            "been fixed.) See module docstring."
-        ),
-    )
     def test_pid_loop_trajectory_equivalence(self, qapp):
-        """The two paths should track the same PID-loop trajectory (they do not)."""
+        """The two paths track the same PID-loop trajectory (max ~0.0034 abs,
+        RMS ~0.0013 at dt=0.01, measured 2026-10-10)."""
         tl_i, y_i = _run(KP, KI, KD, fast=False, dt=DT, t_end=5.0)
         tl_c, y_c = _run(KP, KI, KD, fast=True, dt=DT, t_end=5.0)
         assert y_i is not None and y_c is not None, "missing scope trace"

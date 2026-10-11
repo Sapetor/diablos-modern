@@ -390,12 +390,19 @@ def solve_with_events(
     _reset_mode_states(mode_states, frozen=True)
     step_cap = _step_cap(max_step, specs)
     cache = _SignalCache(model_func.evaluate)
-    _seed_modes(specs, cache, t0, y0)
     bps = np.asarray(breakpoints if breakpoints is not None else [], dtype=float)
+    # Seed, take the t0 sample, then seed again from scratch: a sampled block
+    # behind a latch (ZOH after a Hysteresis) samples the seeded mode, and a
+    # latch behind a sampled block ends up seeded from its first sample rather
+    # than from the empty holder, 0 -- which, frozen, it would otherwise keep
+    # until a real crossing.  The interpreter gets both from its dataflow order.
+    _seed_modes(specs, cache, t0, y0)
     if on_breakpoint is not None:
         on_breakpoint(t0, y0.copy())
         result.n_sample_hits += 1
         cache.invalidate()
+        _reset_latches(mode_states)
+        _seed_modes(specs, cache, t0, y0)
     result.mode_history.append((t0, _snapshot_modes(mode_states)))
     event_callables = [_make_event_callable(spec, cache) for spec in specs]
 
@@ -493,6 +500,13 @@ def _step_cap(max_step, specs: List[EventSpec]) -> float:
         if any(not spec.monotonic for spec in specs):
             step_cap = float(max_step)
     return step_cap
+
+
+def _reset_latches(mode_states) -> None:
+    """Latch holders back to their initial mode; sampled holders keep theirs."""
+    for holder in mode_states or ():
+        if holder.get("kind") != "sampled":
+            holder["mode"] = holder.get("init")
 
 
 def _seed_modes(specs: List[EventSpec], cache: _SignalCache, t0: float, y0: np.ndarray) -> None:

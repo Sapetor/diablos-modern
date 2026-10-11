@@ -34,11 +34,20 @@ checkable (2026-10-02 pass noted per item).
   with every instant (`fixed_step+hybrid`); FirstOrderHold and RateTransition
   stay on the interpreter. Open: phase 3 (loops in the compiled RHS). The `Function`
   kernel landed (`19497e1`), so S1b runs compiled: 2.2e-13 in 1.4 s.
-- [ ] **Interpreter PID reports 0 at t = 0 (found 2026-10-10).** Rated or
-  not, a PID with Kp != 0 shows 0 at t = 0 on the interpreter, while the
-  compiled path shows Kp*e(0); from the first step on the two agree. The
-  t = 0 sample is the memory pass's `output_only` value, taken before the
-  block has run once. Same family as the two fixes below.
+- [ ] **Compiled RateLimiter starts at 0 (found 2026-10-10).** RateLimiter
+  latches its first input (`y(0) = u(0)`), which the interpreter now reports
+  at t = 0, but `_alloc_rate_limiter` (`lib/engine/system_compiler.py`) starts
+  the compiled state at 0 because the allocator cannot know `u(0)`; with a
+  finite slew the compiled trace then ramps up from 0. Needs a t0 seed (an
+  `on_start`-style hook for state blocks).
+- [x] **Interpreter reported a stale t = 0 sample for feedthrough memory
+  blocks** (2026-10-10). Generalizes "PID reports 0 at t = 0": every
+  `b_type` 2 memory block that needs inputs (PID always; ZOH, Hysteresis,
+  FirstOrderHold, RateTransition when fed through a non-source) reported its
+  Loop 1 `output_only` value, taken before its input was known. Loop 2 now
+  runs them once their inputs are ready (`SimulationEngine._defers_t0_output`;
+  a loop of feedthrough blocks falls back to the old value). Tests:
+  `tests/regression/test_t0_initialization.py`.
 - [x] **Derivative lagged its input by one solver step; script-built PID by
   one step at its sample instants** (2026-10-10, found while compiling rated
   blocks). Derivative now honours `output_only` like PID; `DiagramBuilder`

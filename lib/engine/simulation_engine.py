@@ -242,6 +242,10 @@ class SimulationEngine:
             )
             _te2 = _time.time()
 
+            # Feedthrough memory blocks whose t = 0 output waits for Loop 2
+            # (see _defers_t0_output), and the ones Loop 2 then ran for real.
+            self._t0_deferred = {}
+            self._t0_executed = set()
             if not self._init_execute_sources(blocks_to_exec):
                 return False
 
@@ -342,6 +346,18 @@ class SimulationEngine:
                 if out_value is False:
                     return False
 
+                if self._defers_t0_output(block, required_ports):
+                    # Not computed yet: Loop 2 runs it once its inputs are
+                    # known. The output_only value is kept only to break a
+                    # loop through it if Loop 2 stalls.
+                    if isinstance(out_value, dict) and out_value.get("E"):
+                        self.error_msg = out_value.get("error", "Unknown error")
+                        self.error_block = block.name
+                        logger.error(self.error_msg)
+                        return False
+                    self._t0_deferred[block.name] = out_value
+                    continue
+
                 block.computed_data = True
                 self.update_global_list(block.name, h_value=0, h_assign=True)
 
@@ -370,6 +386,38 @@ class SimulationEngine:
                         f"[ENGINE TIMING] propagate_outputs({block.name}): {_prop_time:.3f}s"
                     )
         return True
+
+    def _defers_t0_output(self, block, required_ports) -> bool:
+        """True for a memory block with direct feedthrough (``b_type`` 2:
+        PID, ZeroOrderHold, Hysteresis, FirstOrderHold, RateTransition, ...)
+        that needs inputs.
+
+        Its output at t = 0 depends on its input at t = 0, which an
+        ``output_only`` call in Loop 1 cannot know: PID reported 0 instead of
+        Kp*e(0), and a ZOH behind a Gain held 0 instead of u(0). Loop 2 runs it
+        like any block once its inputs are ready. Strictly proper memory
+        blocks (``b_type`` 1) keep the Loop 1 value, which is their true
+        y(0) = C x(0).
+        """
+        return block.b_type == 2 and required_ports > 0
+
+    def _release_t0_deferred(self, uncomputed_blocks, h_count) -> bool:
+        """Loop 2 stalled with deferred blocks still waiting: they sit in a
+        loop of direct-feedthrough blocks only. Fall back to their Loop 1
+        ``output_only`` value, which breaks the loop as it always has. Returns
+        True if any block was released."""
+        released = False
+        for block in uncomputed_blocks:
+            out_value = self._t0_deferred.pop(block.name, None)
+            if out_value is None:
+                continue
+            block.computed_data = True
+            self.update_global_list(block.name, h_value=0, h_assign=True)
+            if out_value:
+                self.propagate_outputs(block, out_value)
+            logger.debug(f"Released {block.name} with its output_only value (loop at t=0)")
+            released = True
+        return released
 
     def _init_resolve_hierarchy(self, blocks_to_exec, check_loop):
         """Loop 2 of execution init: the hierarchy-resolution fixpoint --
@@ -420,7 +468,14 @@ class SimulationEngine:
                     if block.name in self.memory_blocks:
                         self.sync_integrator_output(block)
 
-                    self.update_global_list(block.name, h_value=h_count, h_assign=True)
+                    # A deferred feedthrough memory block keeps hierarchy 0, as
+                    # if Loop 1 had run it, and has now had its t = 0 execute.
+                    deferred = self._t0_deferred.pop(block.name, None) is not None
+                    if deferred:
+                        self._t0_executed.add(block.name)
+                    self.update_global_list(
+                        block.name, h_value=0 if deferred else h_count, h_assign=True
+                    )
                     block.computed_data = True
 
                     # Sync the DBlock-level sample schedule for discrete
@@ -432,7 +487,7 @@ class SimulationEngine:
                         self.stamp_held_outputs(block, out_value)
                         block.schedule_next_execution(self.time_step)
 
-                    if block.name not in self.memory_blocks and block.b_type != 3:
+                    if (deferred or block.name not in self.memory_blocks) and block.b_type != 3:
                         self.propagate_outputs(block, out_value)
 
                     logger.debug(f"EXECUTED in LOOP {h_count}: {block.name}")
@@ -443,6 +498,11 @@ class SimulationEngine:
                 uncomputed_blocks = [b for b in blocks_to_exec if not b.computed_data]
                 if not uncomputed_blocks:
                     break
+
+                if self._release_t0_deferred(uncomputed_blocks, h_count):
+                    check_loop = self.count_computed_global_list()
+                    h_count += 1
+                    continue
 
                 # Solve any ready algebraic loop as a unit, then keep resolving.
                 solved = self._init_solve_algebraic_loops(uncomputed_blocks, h_count)
@@ -488,7 +548,9 @@ class SimulationEngine:
         set on error.
         """
         for block in blocks_to_exec:
-            if block.name in self.memory_blocks:
+            # A deferred feedthrough block already had its t = 0 execute in
+            # Loop 2; advancing it again would take two steps at t = 0.
+            if block.name in self.memory_blocks and block.name not in self._t0_executed:
                 # Capture the output belonging to t=0 before the state is
                 # advanced: for a discrete-rate block this is the value held
                 # across the first sample interval [0, Ts).
