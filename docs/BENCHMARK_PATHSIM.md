@@ -185,9 +185,10 @@ gives it as a menu action with ensemble plots.
   reference.
 - The sampled-data gap (S1b) is closed: 2.2e-13 in 1.4 s compiled, against
   2.4e-5 in 44 s on the interpreter and 1.9e-13 in 1.8 s for PathSim.
-  Remaining engine gaps: rated continuous blocks (TranFn/PID/Integrator with
-  `sampling_time > 0`) still fall back, and diagrams with algebraic loops
-  still cannot compile or linearize (`tasks/hybrid_compiled_path.md`).
+  Rated continuous blocks (TranFn/PID/Integrator with `sampling_time > 0`)
+  and diagrams with algebraic loops compile too, and loops linearize.
+  Remaining engine gaps: FirstOrderHold, RateTransition and TransportDelay
+  still fall back to the interpreter (`tasks/hybrid_compiled_path.md`).
 
 ## Reproducing
 
