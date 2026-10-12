@@ -208,6 +208,8 @@ python diablos_modern.py run model.diablos --no-zero-crossing
 override the diagram's stored values; `--solver` chooses `compiled` (default) or
 `interpreter`; `-q` silences the summary line.
 
+To do the same from a Python script, see [Python API](python-api.md).
+
 ## Troubleshooting
 
 ### "Algebraic Loop Detected"

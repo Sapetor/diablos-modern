@@ -144,8 +144,9 @@ the interface is available in Spanish. That is the niche.
 
 Honest limitations, in the same spirit:
 
-- It is a **desktop application**, not a library. There is a headless CLI and a
-  Python-script exporter, but no importable simulation API.
+- It is a **desktop application** first. A diagram can be loaded, simulated and
+  analysed from Python ([Python API](user-guide/python-api.md)) or the headless
+  CLI, but the API runs from a source checkout, not a pip-installed package.
 - The **compiled fast path does not cover every block**. Blocks outside it fall
   back to a fixed-step interpreter, which is slower and less accurate. See
   [Fast Solver](FAST_SOLVER.md) for what is covered.

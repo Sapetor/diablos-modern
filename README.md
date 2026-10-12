@@ -94,6 +94,16 @@ python diablos_modern.py diff old.diablos new.diablos
 
 `run` also takes `--solver {compiled,interpreter}`, `--no-zero-crossing` and `--verify` (print the verification report, exit 3 on a failed check).
 
+The same headless path is a Python API ([docs](https://sapetor.github.io/diablos-modern/user-guide/python-api/)):
+
+```python
+from lib.api import load
+
+sim = load("model.diablos")
+sim.set_param("gain1", "gain", 4.0)
+res = sim.run(t=30, dt=0.005)      # res.time, res["scope-0"], res.diagnostics
+```
+
 ## Documentation
 
 <https://sapetor.github.io/diablos-modern/>
@@ -124,8 +134,8 @@ does what DiaBloS does not do at all. Xcos is older and broader than any of the
 Python ones. DiaBloS optimizes for the desktop teaching loop: draw a loop, run
 it, linearize it, sweep it — without leaving the window or writing code.
 
-Known limits: it is an application rather than an importable library; the
-compiled fast path does not cover every block (the rest fall back to a slower
+Known limits: it is an application first (the Python API in `lib/api.py`
+runs from a source checkout, not a pip-installed package); the compiled fast path does not cover every block (the rest fall back to a slower
 fixed-step interpreter); there is no embedded code generation; and the release
 binaries are unsigned.
 

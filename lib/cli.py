@@ -78,6 +78,21 @@ def _file_sim_params(filepath):
         return 10.0, 0.01
 
 
+def new_headless_dsim():
+    """Return an empty ``DSim`` built under an offscreen QApplication.
+
+    Resets the workspace singleton so a headless run never inherits stale
+    variables (it is process-wide: every DSim shares it).
+    """
+    _ensure_headless_qapp()
+
+    from lib.lib import DSim
+    from lib.workspace import WorkspaceManager
+
+    WorkspaceManager._instance = None
+    return DSim()
+
+
 def load_diagram(filepath):
     """Load ``filepath`` headlessly; return ``(dsim, sim_params)``.
 
@@ -89,20 +104,41 @@ def load_diagram(filepath):
     if not os.path.isfile(filepath):
         raise FileNotFoundError(filepath)
 
-    _ensure_headless_qapp()
-
-    from lib.lib import DSim
-    from lib.workspace import WorkspaceManager
-
-    # Reset the workspace singleton so a CLI run never inherits stale variables.
-    WorkspaceManager._instance = None
-
-    dsim = DSim()
+    dsim = new_headless_dsim()
     data = dsim.file_service.load(filepath=filepath)
     if data is None:
         raise RuntimeError(f"Failed to load diagram: {filepath}")
     sim_params = dsim.file_service.apply_loaded_data(data) or {}
     return dsim, sim_params
+
+
+def apply_solver_settings(
+    dsim, sim_params, solver_method=None, rtol=None, atol=None, zero_crossing=None
+):
+    """Push the diagram's solver settings onto ``dsim``; explicit arguments win.
+
+    ``load_diagram`` calls ``apply_loaded_data``, which *returns* the file's
+    solver settings without pushing them onto the DSim facade, so a headless run
+    used to silently integrate with the built-in default (RK45 / 1e-9 / 1e-12)
+    even for a diagram saved with Radau or looser tolerances -- the GUI and the
+    CLI could disagree on the same file. ``run_tuning_simulation`` reads these
+    four attributes off the facade, so applying them here is what makes the
+    file's own settings take effect.
+    """
+    if solver_method is None:
+        solver_method = sim_params.get("solver_method", "RK45") or "RK45"
+    dsim.solver_method = str(solver_method)
+    if rtol is not None:
+        dsim.rtol = float(rtol)
+    elif sim_params.get("rtol") is not None:
+        dsim.rtol = float(sim_params["rtol"])
+    if atol is not None:
+        dsim.atol = float(atol)
+    elif sim_params.get("atol") is not None:
+        dsim.atol = float(sim_params["atol"])
+    if zero_crossing is None:
+        zero_crossing = bool(sim_params.get("zero_crossing", True))
+    dsim.zero_crossing = bool(zero_crossing)
 
 
 def run_diagram(
@@ -131,27 +167,14 @@ def run_diagram(
 
     dsim, sim_params = load_diagram(filepath)
     dsim.use_fast_solver = use_fast_solver
-    # load_diagram calls apply_loaded_data, which *returns* the file's solver
-    # settings without pushing them onto the DSim facade, so a headless run used
-    # to silently integrate with the built-in default (RK45 / 1e-9 / 1e-12)
-    # even for a diagram saved with Radau or looser tolerances -- the GUI and
-    # the CLI could disagree on the same file. run_tuning_simulation reads these
-    # four attributes off the facade, so applying them here is what makes the
-    # file's own settings take effect. CLI arguments still win.
-    if solver_method is None:
-        solver_method = sim_params.get("solver_method", "RK45") or "RK45"
-    dsim.solver_method = str(solver_method)
-    if rtol is not None:
-        dsim.rtol = float(rtol)
-    elif sim_params.get("rtol") is not None:
-        dsim.rtol = float(sim_params["rtol"])
-    if atol is not None:
-        dsim.atol = float(atol)
-    elif sim_params.get("atol") is not None:
-        dsim.atol = float(sim_params["atol"])
-    if zero_crossing is None:
-        zero_crossing = bool(sim_params.get("zero_crossing", True))
-    dsim.zero_crossing = bool(zero_crossing)
+    apply_solver_settings(
+        dsim,
+        sim_params,
+        solver_method=solver_method,
+        rtol=rtol,
+        atol=atol,
+        zero_crossing=zero_crossing,
+    )
 
     ok, err = dsim.run_tuning_simulation(sim_time, sim_dt)
     if not ok:

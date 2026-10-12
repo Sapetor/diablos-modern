@@ -357,7 +357,19 @@ class DiagramBuilder:
         # Ensure directory exists
         os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else ".", exist_ok=True)
 
-        data = {
+        with open(filepath, "w") as f:
+            json.dump(self.to_dict(), f, indent=4)
+
+        logger.info(
+            "Diagram saved to %s (%d blocks, %d connections)",
+            filepath,
+            len(self.blocks),
+            len(self.lines),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the diagram as the dict :meth:`save` writes (and loaders read)."""
+        return {
             "sim_data": {
                 "wind_width": 1280,
                 "wind_height": 770,
@@ -370,16 +382,6 @@ class DiagramBuilder:
             "lines_data": self.lines,
             "version": "2.0",
         }
-
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=4)
-
-        logger.info(
-            "Diagram saved to %s (%d blocks, %d connections)",
-            filepath,
-            len(self.blocks),
-            len(self.lines),
-        )
 
     def get_block(self, name: str) -> Optional[Dict[str, Any]]:
         """Get a block by name."""

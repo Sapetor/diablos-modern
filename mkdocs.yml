@@ -70,6 +70,7 @@ nav:
   - User Guide:
       - Creating Diagrams: user-guide/creating-diagrams.md
       - Running Simulations: user-guide/running-simulations.md
+      - Python API: user-guide/python-api.md
       - Analysis & Experiments: user-guide/analysis.md
       - Language & Translations: user-guide/localization.md
       - Block Reference: user-guide/block-reference.md
