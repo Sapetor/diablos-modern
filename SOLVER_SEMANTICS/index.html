@@ -679,6 +679,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../user-guide/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../user-guide/analysis/" class="md-nav__link">
         
   
@@ -2991,8 +3019,8 @@ on <code>self</code> (see the Block Contract in <code>CLAUDE.md</code>). The lif
 </tr>
 <tr>
 <td><code>scipy+hybrid</code></td>
-<td>adaptive method and at least one sampled block</td>
-<td>the same segmented solve, split at every sample instant (section 3); events too when detection is on. <code>zero_crossing.n_sample_hits</code> counts the instants, t0 included</td>
+<td>adaptive method and at least one sampled block or <code>TransportDelay</code></td>
+<td>the same segmented solve, split at every sample instant (section 3) and every <code>k * tau</code> of each delay (section 6.2); events too when detection is on. <code>zero_crossing.n_sample_hits</code> counts the sample instants only, t0 included</td>
 </tr>
 </tbody>
 </table>
@@ -3032,6 +3060,14 @@ supported blocks by family.</p>
 <td>no held output to compile; section 3.</td>
 </tr>
 <tr>
+<td><code>TransportDelay</code> with <code>delay_time &lt;= 0</code>, or under <code>Euler</code> / <code>RK4</code></td>
+<td>a zero delay would read its own unrecorded input; the fixed-step settings keep the interpreter, whose buffer is already a fixed-step scheme.</td>
+</tr>
+<tr>
+<td><code>VariableTransportDelay</code></td>
+<td>its delay is a signal, so the breakpoints below cannot be known in advance.</td>
+</tr>
+<tr>
 <td>anything with no <code>@kernel</code> builder</td>
 <td>including user blocks.</td>
 </tr>
@@ -3043,6 +3079,22 @@ result from <code>t_k</code>; the interpreter gives the same values, except that
 currently reports 0 for any PID at <code>t = 0</code> (logged in <code>tasks/todo.md</code>).
 <code>tests/regression/test_hybrid_rated_blocks.py</code> pins both against the
 interpreter and against an exact sampled oracle.</p>
+<p><strong><code>TransportDelay</code></strong> compiles by the method of steps
+(<code>lib/engine/compiled_delays.py</code>). The diagram becomes a delay differential
+equation, and the RHS at <code>t</code> reads the delay's input at <code>t - tau</code>, so every
+<code>k * tau</code> is a breakpoint of the segmented solve: no segment is longer than
+the shortest delay, <code>t - tau</code> always falls into a finished segment, and each
+discontinuity a delay carries forward from <code>t0</code> lands on a segment boundary.
+After each segment, before the updates at its end, the diagram is evaluated on
+the solver's dense output (accepted steps only, nodes at most <code>dt / 3</code> apart)
+and the delayed inputs are stored as a cubic spline; the delay block is a
+source that reads it. Before <code>t0 + tau</code> the block reports <code>initial_value</code>, as
+the interpreted block does. On a boundary the read is right-continuous, except
+that a segment exactly <code>tau</code> long reads the left value of its own start at its
+last stage, so its RHS has no jump inside the step. The interpreter's buffer
+interpolates linearly between fixed steps, which is first order: on
+<code>x' = -x(t - 1)</code> it is 6e-3 off at <code>dt = 0.01</code>, the compiled path 1e-9
+(<code>tests/regression/test_compiled_transport_delay.py</code>).</p>
 <h3 id="63-why-a-run-fell-back-and-where-to-see-it">6.3 Why a run fell back, and where to see it<a class="headerlink" href="#63-why-a-run-fell-back-and-where-to-see-it" title="Permanent link">&para;</a></h3>
 <p><code>check_compilability</code> records the first blocking block on
 <code>SystemCompiler.last_incompatibility</code>, formatted
@@ -3379,7 +3431,13 @@ the built-in defaults.)</p>
 <li><strong>Sampled diagrams cannot be linearized</strong>, even though they compile: the
   linearizer calls <code>check_compilability(..., allow_discrete=False)</code>, because a
   held output would linearize a sampled loop as open. The Python exporter keeps
-  refusing rated blocks too.</li>
+  refusing rated blocks too. The same flag refuses <code>TransportDelay</code>, which has
+  no finite-dimensional linearization (a Pade approximation would be the
+  route), and the exporter refuses it as well.</li>
+<li><strong>One segment per <code>tau</code>.</strong> A compiled <code>TransportDelay</code> splits the solve at
+  every <code>k * tau</code>, so a 1 ms delay over 10 s is 10^4 <code>solve_ivp</code> calls, and a
+  zero-crossing guard trip in a diagram with delays ends the compiled run (the
+  fixed-step tail records no delay history) and the interpreter takes over.</li>
 <li><strong>One <code>solve_ivp</code> call per sample interval.</strong> A fast rate over a long span
   (<code>Ts = 1 ms</code> for 10 s is 10^4 segments) pays the call overhead each time, and
   implicit methods rebuild their Jacobian at every instant.</li>
@@ -3417,6 +3475,10 @@ the built-in defaults.)</p>
 <tr>
 <td>Event solve, restart, chattering guard</td>
 <td><code>lib/engine/zero_crossing.py</code></td>
+</tr>
+<tr>
+<td>Compiled transport delays (method of steps)</td>
+<td><code>lib/engine/compiled_delays.py</code></td>
 </tr>
 <tr>
 <td>Diagnostics dict, log line, stiffness heuristic</td>

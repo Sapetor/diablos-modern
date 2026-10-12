@@ -18,7 +18,7 @@
         <link rel="prev" href="../creating-diagrams/">
       
       
-        <link rel="next" href="../analysis/">
+        <link rel="next" href="../python-api/">
       
       
         
@@ -1036,6 +1036,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2882,6 +2910,7 @@ mutates it:</p>
 <code>-o</code> it writes next to the diagram with a <code>.csv</code> extension. <code>--time</code> and <code>--dt</code>
 override the diagram's stored values; <code>--solver</code> chooses <code>compiled</code> (default) or
 <code>interpreter</code>; <code>-q</code> silences the summary line.</p>
+<p>To do the same from a Python script, see <a href="../python-api/">Python API</a>.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="algebraic-loop-detected">"Algebraic Loop Detected"<a class="headerlink" href="#algebraic-loop-detected" title="Permanent link">&para;</a></h3>
 <p>The diagram has a feedback loop with no state in it. Insert an <code>Integrator</code>, a
@@ -2959,17 +2988,24 @@ Python without changing the numerics:</p>
 <td>Integrator, TranFn, StateSpace, PID</td>
 </tr>
 <tr>
+<td>Sampled</td>
+<td>ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace; TranFn, StateSpace, PID, Integrator, Deriv with a sample time</td>
+</tr>
+<tr>
 <td>Sinks</td>
 <td>Scope, Display, Terminator</td>
 </tr>
 </tbody>
 </table>
+<p>Sampled blocks run as on the fast solver: integration stops at each sample
+instant, they update there and hold their output in between. Algebraic loops
+are solved inside the script.</p>
 <p>Anything else — Noise, Hysteresis, MathFunction, RateLimiter, the PDE/Field
 families, the optimization primitives — makes the export stop with a dialog
 listing the offending blocks by name, rather than emitting a script that
-quietly computes something else. The same applies to a <code>Step</code> set to <em>impulse</em>,
-to blocks with a discrete sample time (both run on the interpreter, not the
-compiled path), and to diagrams with an algebraic loop.</p>
+quietly computes something else. The same applies to a <code>Step</code> set to <em>impulse</em>
+(it runs on the interpreter, not the compiled path) and to a sample time on a
+block that cannot be sampled.</p>
 <h2 id="troubleshooting_1">Troubleshooting<a class="headerlink" href="#troubleshooting_1" title="Permanent link">&para;</a></h2>
 <h3 id="algebraic-loop-detected_1">"Algebraic Loop Detected"<a class="headerlink" href="#algebraic-loop-detected_1" title="Permanent link">&para;</a></h3>
 <p>Your diagram has a feedback loop without a delay element. Add an Integrator or TransportDelay block to break the loop.</p>

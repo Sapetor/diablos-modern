@@ -674,6 +674,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../user-guide/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../user-guide/analysis/" class="md-nav__link">
         
   
@@ -2130,9 +2158,9 @@ either tool, and the reference is evaluated at each tool's own output times.</p>
 </tr>
 <tr>
 <td>S3 delayed platoon, N=50</td>
-<td>1.8e-2 at 16 s</td>
-<td>2.0e-3 at 11 s; 2.4e-5 at 109 s</td>
-<td>Mixed at N&lt;=10; PathSim faster and more accurate at N&gt;=20</td>
+<td>2.4e-9 at 7.4 s, compiled (method of steps); interpreter was 1.8e-2 at 16 s</td>
+<td>2.0e-3 at 11 s; 2.4e-5 at 106 s</td>
+<td>DiaBloS ahead at every N since the compiled TransportDelay</td>
 </tr>
 <tr>
 <td>S4 50-run seeded ensemble</td>
@@ -2323,14 +2351,16 @@ linearization and Python export both work through them.</p>
 <h2 id="s3-delayed-platoon-scaling-in-n">S3 - delayed platoon, scaling in N<a class="headerlink" href="#s3-delayed-platoon-scaling-in-n" title="Permanent link">&para;</a></h2>
 <p>Predecessor-following double integrators,
 <code>a_i = 1 (p_{i-1}(t-0.1) - p_i) + 2 (v_{i-1}(t-0.1) - v_i)</code>, leader <code>p0 = t</code>,
-20 s. Reference: method of steps with DOP853 at rtol 1e-12. <code>TransportDelay</code>
-also forces the interpreter (<code>it has no compiled kernel</code>).</p>
+20 s. Reference: method of steps with DOP853 at rtol 1e-12. Since <code>afaeb63</code>
+<code>TransportDelay</code> compiles by the method of steps (<code>lib/engine/compiled_delays.py</code>,
+<code>docs/SOLVER_SEMANTICS.md</code> 6.2); before that it forced the interpreter.</p>
 <table>
 <thead>
 <tr>
 <th>N (blocks)</th>
-<th>DiaBloS dt=0.01</th>
-<th>DiaBloS dt=0.001</th>
+<th>DiaBloS compiled, dt=0.01</th>
+<th>DiaBloS compiled, dt=0.001</th>
+<th>DiaBloS interpreter, dt=0.01 (before)</th>
 <th>PathSim rtol 1e-6</th>
 <th>PathSim rtol 1e-9</th>
 </tr>
@@ -2338,47 +2368,54 @@ also forces the interpreter (<code>it has no compiled kernel</code>).</p>
 <tbody>
 <tr>
 <td>5 (48)</td>
+<td>0.8 s, 1.9e-8</td>
+<td>4.9 s, 1.9e-8</td>
 <td>1.5 s, 1.8e-2</td>
-<td>14.9 s, 9.9e-4</td>
-<td>0.8 s, 7.5e-2</td>
+<td>0.9 s, 7.5e-2</td>
 <td>3.2 s, 2.6e-5</td>
 </tr>
 <tr>
 <td>10 (93)</td>
-<td>2.8 s, 3.8e-2</td>
+<td>1.5 s, 2.7e-8</td>
 <td>-</td>
+<td>2.8 s, 3.8e-2</td>
 <td>1.7 s, 9.0e-2</td>
 <td>10.4 s, 1.2e-4</td>
 </tr>
 <tr>
 <td>20 (183)</td>
+<td>3.1 s, 7.5e-8</td>
+<td>17.8 s, 7.5e-8</td>
 <td>5.6 s, 2.4e-1</td>
-<td>56.5 s, 2.1e-2</td>
-<td>3.7 s, 1.4e-2</td>
-<td>35.0 s, 4.3e-4</td>
+<td>3.6 s, 1.4e-2</td>
+<td>34.3 s, 4.3e-4</td>
 </tr>
 <tr>
 <td>50 (453)</td>
-<td>16.3 s, 1.8e-2</td>
+<td>7.4 s, 2.4e-9</td>
 <td>-</td>
-<td>10.7 s, 2.0e-3</td>
-<td>108.6 s, 2.4e-5</td>
+<td>16.3 s, 1.8e-2</td>
+<td>10.5 s, 2.0e-3</td>
+<td>106.4 s, 2.4e-5</td>
 </tr>
 </tbody>
 </table>
-<p>(wall time, max error on the last vehicle's position)</p>
-<p>Both tools scale roughly linearly in N. The leader's velocity step reaches
-each follower as a delayed discontinuity that neither solver is told about,
-so adaptive stepping buys PathSim less here than in S1. For N &lt;= 10 it is a
-trade-off: at rtol 1e-6 PathSim is faster but less accurate than DiaBloS at
-dt=0.01. At N &gt;= 20 PathSim at rtol 1e-6 is both faster (3.7 vs 5.6 s,
-10.7 vs 16.3 s) and 9-17x more accurate. Tight tolerance gets expensive for
-PathSim (109 s at N=50).</p>
+<p>(median wall time of 3 runs, max error on the last vehicle's position; the
+interpreter column is the earlier run, kept for comparison)</p>
+<p>Both tools scale roughly linearly in N. The leader's velocity step at t=0
+reaches each follower as a discontinuity at <code>k * 0.1</code>. DiaBloS now stops at
+every <code>k * tau</code>, so each of those lands on a segment boundary, and the delayed
+inputs come from the solver's dense output. PathSim is not told about them, so
+its adaptive stepping crosses them, and tightening its tolerance from 1e-6 to
+1e-9 costs it 4-10x the time. At every N the
+compiled DiaBloS run is faster than PathSim at rtol 1e-6 and 3-4 orders more
+accurate than PathSim at rtol 1e-9. The output step <code>dt</code> no longer sets the
+accuracy (dt=0.001 gives the same error at 6x the cost: it only adds spline
+nodes and grid points).</p>
 <p>Errors are comparable across tools, not across N. The last vehicle's
 excursion by t=20 depends on how far the transient has propagated. At N=20
-its reference overshoots to 20.6 before settling at 15.0, and the DiaBloS
-peak error falls mid-transient (t~14.5 s). At N=50 the last vehicle has only
-moved 0.09, hence the small errors in that row.</p>
+its reference overshoots to 20.6 before settling at 15.0. At N=50 the last
+vehicle has only moved 0.09, hence the small errors in that row.</p>
 <h2 id="s4-seeded-monte-carlo-ensemble">S4 - seeded Monte Carlo ensemble<a class="headerlink" href="#s4-seeded-monte-carlo-ensemble" title="Permanent link">&para;</a></h2>
 <p><code>examples/monte_carlo_robustness.diablos</code> (PI on 1/(s+1), noisy measurement
 over a 20 % Bernoulli packet-loss link sampled at 0.05 s, hold on drop), 50
@@ -2430,17 +2467,21 @@ gives it as a menu action with ensemble plots.</p>
   cosmetic ones. S2 is now closed (<code>95f83ff</code>).</li>
 <li>Two of its implicit worries do not: for linear plants the interpreter
   fallback is exact (S1a), and seeded ensembles are already on par in cost
-  and reproducibility (S4). Delayed multi-agent models (S3) trade off at
-  small N and favour PathSim at N &gt;= 20, without the decisive gap of S1b.</li>
+  and reproducibility (S4). Delayed multi-agent models (S3) traded off at
+  small N and favoured PathSim at N &gt;= 20 until <code>TransportDelay</code> compiled
+  (<code>afaeb63</code>); DiaBloS now leads at every N, faster and more accurate.</li>
 <li>New and more urgent than either: a <strong>one-period sampling delay</strong> behind
   every ZOH (S1), which silently changed digital-control results. It is
   fixed in <code>68e8289</code>, with a regression test against the S1a exact
   reference.</li>
 <li>The sampled-data gap (S1b) is closed: 2.2e-13 in 1.4 s compiled, against
   2.4e-5 in 44 s on the interpreter and 1.9e-13 in 1.8 s for PathSim.
-  Remaining engine gaps: rated continuous blocks (TranFn/PID/Integrator with
-  <code>sampling_time &gt; 0</code>) still fall back, and diagrams with algebraic loops
-  still cannot compile or linearize (<code>tasks/hybrid_compiled_path.md</code>).</li>
+  Rated continuous blocks (TranFn/PID/Integrator with <code>sampling_time &gt; 0</code>)
+  and diagrams with algebraic loops compile too, and loops linearize.
+  Remaining engine gaps: FirstOrderHold, RateTransition and
+  VariableTransportDelay still fall back to the interpreter, and
+  TransportDelay does under the fixed-step Euler/RK4 settings
+  (<code>tasks/hybrid_compiled_path.md</code>).</li>
 </ul>
 <h2 id="reproducing">Reproducing<a class="headerlink" href="#reproducing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/.venvs/diablos-bench

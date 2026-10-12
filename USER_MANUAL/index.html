@@ -1647,6 +1647,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../user-guide/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../user-guide/analysis/" class="md-nav__link">
         
   
@@ -4292,6 +4320,11 @@ literally:</p>
 <p>Abs, Constant, Demux, Display, Gain, Integrator, Mux, PID, Product, Ramp,
 Saturation, Scope, SgProd, Sine, StateSpace, Step, Sum, Terminator, TranFn</p>
 </blockquote>
+<p>plus the sampled-data blocks: ZeroOrderHold, DiscreteTranFn,
+DiscreteStateSpace, and TranFn / StateSpace / PID / Integrator / Deriv given a
+<code>sampling_time</code> (or inheriting one). The script runs them as the fast solver
+does: integration stops exactly at every sample instant, the blocks' difference
+equations update there (feeders first), and their outputs hold in between.</p>
 <p>Subsystems are flattened first, so a diagram built from these blocks inside
 subsystems still exports.</p>
 <p><strong>Limitations.</strong> The exporter refuses rather than emitting broken code, listing
@@ -4301,9 +4334,13 @@ the offending blocks:</p>
   and <code>Hysteresis</code> / <code>StateVariable</code> (path- or RNG-dependent), the PDE and
   Field families, <code>MathFunction</code> (arbitrary user expressions), and
   <code>RateLimiter</code></li>
-<li>any block with a discrete <code>sampling_time &gt; 0</code> (the generated script has no
-  sample-instant scheduling, although the fast solver runs ZOH and discrete
-  TF/SS blocks since 2026-10-10)</li>
+<li>a <code>sampling_time</code> on a block that cannot be sampled (a Gain, say), a
+  sampled block with no rate to run at, a sampled Integrator set to <code>RK4</code>, and
+  sampled blocks that feed each other through direct-feedthrough blocks with
+  no continuous state between them</li>
+<li>zero-crossing events: the script does not locate switching instants, so on
+  a diagram with a Saturation or a Step inside a loop it agrees with the fast
+  solver to solver tolerance rather than exactly</li>
 </ul>
 <h3 id="export-the-linearized-model">Export the linearized model<a class="headerlink" href="#export-the-linearized-model" title="Permanent link">&para;</a></h3>
 <p>See <a href="#analysis">Analysis</a>: the linearization result window exports A/B/C/D as

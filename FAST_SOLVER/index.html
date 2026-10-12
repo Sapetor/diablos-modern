@@ -679,6 +679,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../user-guide/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../user-guide/analysis/" class="md-nav__link">
         
   
@@ -1032,6 +1060,17 @@
     <span class="md-ellipsis">
       
         Sampled-Data Blocks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transport-delays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transport Delays
       
     </span>
   </a>
@@ -2375,6 +2414,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#transport-delays" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Transport Delays
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#special-handling" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2539,6 +2589,8 @@ a <code>.diablos</code> file stores — see <a href="../SOLVER_SEMANTICS/">SOLVE
 <li><strong>ZeroOrderHold</strong>, <strong>DiscreteTranFn</strong>, <strong>DiscreteStateSpace</strong>: sampled-data
     blocks with a resolved rate, on the <code>scipy+hybrid</code> backend (see
     Sampled-Data Blocks below).</li>
+<li><strong>TransportDelay</strong>: <code>y(t) = u(t - tau)</code> by the method of steps, on the
+    <code>scipy+hybrid</code> backend (see Transport Delays below).</li>
 </ul>
 <h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2717,6 +2769,17 @@ and the next segment restarts at the same time and state. Between instants
 their outputs are held. The samples match the interpreter's; the continuous
 plant in between gets the adaptive solver's accuracy instead of the
 interpreter's fixed step. Details: <a href="../SOLVER_SEMANTICS/#3-sample-times-and-multirate">SOLVER_SEMANTICS.md, section 3</a>.</p>
+<h2 id="transport-delays">Transport Delays<a class="headerlink" href="#transport-delays" title="Permanent link">&para;</a></h2>
+<p><code>TransportDelay</code> makes the diagram a delay differential equation. The solver
+stops at every <code>k * tau</code>, so inside each segment the delayed input comes from
+a part of the trajectory that is already integrated; after each segment the
+delayed inputs are recorded from the solver's dense output as a cubic spline.
+The result has the adaptive solver's accuracy: on the PathSim platoon
+benchmark (<code>docs/BENCHMARK_PATHSIM.md</code>, S3) the 50-vehicle case went from
+1.8e-2 in 16 s on the interpreter to 2.4e-9 in 7.4 s. A delay of zero,
+<code>VariableTransportDelay</code> and the fixed-step <code>Euler</code>/<code>RK4</code> settings keep the
+interpreter; the linearizer and the Python exporter refuse a delay. Details:
+<a href="../SOLVER_SEMANTICS/#62-what-compiles">SOLVER_SEMANTICS.md, section 6.2</a>.</p>
 <h2 id="special-handling">Special Handling<a class="headerlink" href="#special-handling" title="Permanent link">&para;</a></h2>
 <h3 id="zero-state-systems-pure-algebraic">Zero-State Systems ("Pure Algebraic")<a class="headerlink" href="#zero-state-systems-pure-algebraic" title="Permanent link">&para;</a></h3>
 <p>Systems without any states (e.g., <code>Ramp</code> -&gt; <code>Gain</code> -&gt; <code>Scope</code>) do not require an ODE solver. However, the Fast Solver stack handles them efficiently by:
@@ -2725,7 +2788,7 @@ interpreter's fixed step. Details: <a href="../SOLVER_SEMANTICS/#3-sample-times-
 3.  Generating a time vector manually.
 4.  Executing the <strong>Replay Loop</strong> to compute all algebraic signals at each time step.</p>
 <h3 id="mixed-mode-fallback">Mixed Mode / Fallback<a class="headerlink" href="#mixed-mode-fallback" title="Permanent link">&para;</a></h3>
-<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. The block that caused it is recorded and shown in the property panel — see <a href="../SOLVER_SEMANTICS/#63-why-a-run-fell-back-and-where-to-see-it">SOLVER_SEMANTICS.md</a>. This is slower but guarantees compatibility. <code>ZeroOrderHold</code>, <code>DiscreteTranFn</code> and <code>DiscreteStateSpace</code> compile on the hybrid backend (see Sampled-Data Blocks above); any other block with a discrete sample time (<code>sampling_time &gt; 0</code>) still forces the fallback, as do sampled blocks under the fixed-step <code>Euler</code>/<code>RK4</code> settings.</p>
+<p>If a diagram contains unsupported blocks (e.g., custom scripted blocks, <code>PythonFunction</code>, or legacy blocks), the Engine automatically falls back to <strong>Interpreter Mode</strong>. The block that caused it is recorded and shown in the property panel — see <a href="../SOLVER_SEMANTICS/#63-why-a-run-fell-back-and-where-to-see-it">SOLVER_SEMANTICS.md</a>. This is slower but guarantees compatibility. <code>ZeroOrderHold</code>, <code>DiscreteTranFn</code>, <code>DiscreteStateSpace</code>, rated <code>TranFn</code>/<code>StateSpace</code>/<code>PID</code>/<code>Integrator</code>/<code>Derivative</code> and <code>TransportDelay</code> compile on the hybrid backend (see Sampled-Data Blocks and Transport Delays above); <code>FirstOrderHold</code> and <code>RateTransition</code> still force the fallback, as does <code>TransportDelay</code> under the fixed-step <code>Euler</code>/<code>RK4</code> settings.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="solver-returned-no-states-empty-plot">"Solver returned no states" / Empty Plot<a class="headerlink" href="#solver-returned-no-states-empty-plot" title="Permanent link">&para;</a></h3>
 <ul>

@@ -754,6 +754,34 @@
   
   
     <li class="md-nav__item">
+      <a href="user-guide/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="user-guide/analysis/" class="md-nav__link">
         
   
@@ -2157,8 +2185,9 @@ first-class rather than an add-on, the app installs by dragging an icon, and
 the interface is available in Spanish. That is the niche.</p>
 <p>Honest limitations, in the same spirit:</p>
 <ul>
-<li>It is a <strong>desktop application</strong>, not a library. There is a headless CLI and a
-  Python-script exporter, but no importable simulation API.</li>
+<li>It is a <strong>desktop application</strong> first. A diagram can be loaded, simulated and
+  analysed from Python (<a href="user-guide/python-api/">Python API</a>) or the headless
+  CLI, but the API runs from a source checkout, not a pip-installed package.</li>
 <li>The <strong>compiled fast path does not cover every block</strong>. Blocks outside it fall
   back to a fixed-step interpreter, which is slower and less accurate. See
   <a href="FAST_SOLVER/">Fast Solver</a> for what is covered.</li>
