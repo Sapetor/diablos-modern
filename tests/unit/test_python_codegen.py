@@ -313,12 +313,65 @@ class TestUnsupportedDiagrams:
             generate_python_script(blocks, lines)
         assert "step0" in str(excinfo.value)
 
-    def test_discrete_sample_time_is_rejected(self):
+    def test_sample_time_on_an_unsampled_block_is_rejected(self):
         blocks, lines = _first_order_loop()
         blocks[2].params["sampling_time"] = 0.1
         with pytest.raises(CodegenUnsupportedError) as excinfo:
             generate_python_script(blocks, lines)
         assert "gain2" in str(excinfo.value)
+        assert "cannot sample" in str(excinfo.value)
+
+    @pytest.mark.parametrize(
+        "fn, params, reason",
+        [
+            ("ZeroOrderHold", {"sampling_time": 0.0}, "no sample time"),
+            ("Deriv", {}, "no sample time"),
+            (
+                "Integrator",
+                {"init_conds": 0.0, "method": "RK4", "sampling_time": 0.1},
+                "sampled Integrator",
+            ),
+        ],
+    )
+    def test_unexportable_sampled_blocks_are_named(self, fn, params, reason):
+        blocks = [
+            FakeBlock("const0", "Constant", {"value": 1.0}, 0, 1),
+            FakeBlock("blk1", fn, params, 1, 1),
+            FakeBlock("scope2", "Scope", {}, 1, 0),
+        ]
+        lines = [FakeLine("const0", 0, "blk1", 0), FakeLine("blk1", 0, "scope2", 0)]
+        with pytest.raises(CodegenUnsupportedError) as excinfo:
+            generate_python_script(blocks, lines)
+        assert "blk1" in str(excinfo.value) and reason in str(excinfo.value)
+
+    def test_sampled_blocks_feeding_each_other_are_refused(self):
+        """No order is right for a cycle of sampled blocks through feedthrough
+        blocks; the compiled path keeps an arbitrary one, so do not guess."""
+        blocks = [
+            FakeBlock("const0", "Constant", {"value": 1.0}, 0, 1),
+            FakeBlock("sum1", "Sum", {"sign": "+-"}, 2, 1),
+            FakeBlock("zoh2", "ZeroOrderHold", {"sampling_time": 0.1}, 1, 1),
+            FakeBlock(
+                "tf3",
+                "TranFn",
+                {"numerator": [1.0], "denominator": [1.0, 1.0], "sampling_time": 0.1},
+                1,
+                1,
+            ),
+        ]
+        lines = [
+            FakeLine("const0", 0, "sum1", 0),
+            FakeLine("sum1", 0, "zoh2", 0),
+            FakeLine("zoh2", 0, "tf3", 0),
+            FakeLine("tf3", 0, "sum1", 1),
+        ]
+        with pytest.raises(CodegenUnsupportedError, match="feed each other"):
+            generate_python_script(blocks, lines)
+
+    def test_continuous_diagram_has_no_sampled_machinery(self):
+        blocks, lines = _first_order_loop()
+        source = generate_python_script(blocks, lines)
+        assert "_HELD" not in source and "sample_hook" not in source
 
     def test_algebraic_loop_is_solved_in_evaluate(self):
         """A loop becomes a nested step function solved by _solve_loop
@@ -477,3 +530,178 @@ class TestGeneratedScriptCli:
         rows = open(out_csv).read().strip().splitlines()
         assert rows[0] == "t,ref,y"
         assert len(rows) - 1 == 11  # header + t = 0.0 .. 1.0 step 0.1
+
+
+# ---------------------------------------------------------------------------
+# Sampled-data blocks (the compiled hybrid path)
+# ---------------------------------------------------------------------------
+
+
+def _rated_loop(method="FWD_EULER", anti_windup="clamping"):
+    """Every rated block on one diagram: PID and TranFn at 0.05 s driving a
+    continuous plant, and an Integrator, a Derivative and a StateSpace sampling
+    it at their own rates."""
+    from lib.diagram_builder import DiagramBuilder
+
+    b = DiagramBuilder(sim_time=3.0, sim_dt=0.01)
+    r = b.add_block("Step", 0, 0, name="r", params={"value": 1.0, "delay": 0.33, "type": "up"})
+    e = b.add_block("Sum", 0, 0, name="e", params={"sign": "+-"}, in_ports=2)
+    pid = b.add_block(
+        "PID",
+        0,
+        0,
+        name="pid",
+        params={
+            "Kp": 2.0,
+            "Ki": 1.5,
+            "Kd": 0.1,
+            "N": 20.0,
+            "u_min": -1.5,
+            "u_max": 1.5,
+            "anti_windup": anti_windup,
+            "sampling_time": 0.05,
+        },
+        in_ports=2,
+    )
+    g = b.add_block(
+        "TranFn",
+        0,
+        0,
+        name="g",
+        params={"numerator": [1.0], "denominator": [1.0, 1.0], "sampling_time": 0.05},
+    )
+    plant = b.add_block(
+        "TranFn", 0, 0, name="plant", params={"numerator": [2.0], "denominator": [1.0, 3.0, 2.0]}
+    )
+    i = b.add_block(
+        "Integrator",
+        0,
+        0,
+        name="i",
+        params={"init_conds": 0.5, "method": method, "sampling_time": 0.1},
+    )
+    dv = b.add_block("Deriv", 0, 0, name="dv", params={"sampling_time": 0.1})
+    ss = b.add_block(
+        "StateSpace",
+        0,
+        0,
+        name="ss",
+        params={
+            "A": [[-1.0, 0.5], [0.0, -2.0]],
+            "B": [[1.0], [1.0]],
+            "C": [[1.0, 1.0]],
+            "D": [[0.2]],
+            "sampling_time": 0.02,
+        },
+    )
+    sc = b.add_block(
+        "Scope",
+        0,
+        0,
+        name="sc",
+        params={"labels": "y, u, gi, iv, dv, ss"},
+        in_ports=6,
+        out_ports=0,
+    )
+    b.connect(r, 0, e, 0)
+    b.connect(plant, 0, e, 1)
+    b.connect(r, 0, pid, 0)
+    b.connect(plant, 0, pid, 1)
+    b.connect(pid, 0, g, 0)
+    b.connect(g, 0, plant, 0)
+    b.connect(plant, 0, i, 0)
+    b.connect(plant, 0, dv, 0)
+    b.connect(e, 0, ss, 0)
+    for k, src in enumerate([plant, pid, g, i, dv, ss]):
+        b.connect(src, 0, sc, k)
+    return b
+
+
+def _export_and_reference(builder, tmp_path, solver=None, edit=None):
+    """Export ``builder``'s diagram, run the script, run the compiled path."""
+    from lib import cli
+
+    path = str(tmp_path / "sampled.diablos")
+    builder.save(path)
+    if solver is not None or edit is not None:
+        with open(path) as fp:
+            data = json.load(fp)
+        if solver is not None:
+            data["sim_data"]["solver_method"] = solver
+        if edit is not None:
+            edit(data)
+        with open(path, "w") as fp:
+            json.dump(data, fp)
+    script = str(tmp_path / "sampled.py")
+    cli.export_python(path, out_path=script)
+    generated = _run_generated(script, str(tmp_path / "gen.npz"), ["--no-plot"])
+    return generated, _reference_signals(path)
+
+
+def _max_diff(generated, reference):
+    assert set(reference["signals"]) <= set(generated.files)
+    return max(
+        float(np.max(np.abs(np.ravel(generated[k]) - np.ravel(v))))
+        for k, v in reference["signals"].items()
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.slow
+class TestSampledExport:
+    """The exported script reproduces the compiled hybrid path: integration
+    stops at every sample instant, the sampled blocks update feeders-first, and
+    their outputs hold in between."""
+
+    @pytest.mark.parametrize("discrete", ["tf", "ss"])
+    @pytest.mark.parametrize("sim_dt", [0.1, 0.05])
+    def test_staircase(self, qapp, tmp_path, sim_dt, discrete):
+        from tests.regression.test_hybrid_compiled_path import _DSS, _DTF, _staircase
+
+        builder = _staircase(sim_dt=sim_dt, discrete=_DTF if discrete == "tf" else _DSS)
+        generated, reference = _export_and_reference(builder, tmp_path)
+        t = np.ravel(generated["t"])
+        y = np.ravel(generated["y"])
+        for k, expected in enumerate([0.0, 0.0, 0.2, 0.5, 0.85, 1.225]):
+            i = int(np.argmin(np.abs(t - 0.2 * k)))
+            assert y[i] == pytest.approx(expected, abs=1e-12), (k, t[i])
+        assert _max_diff(generated, reference) <= 1e-12
+
+    def test_s1a_benchmark_diagram(self, qapp, tmp_path):
+        """examples/discrete_pi_zoh.diablos with the step off the sample grid,
+        as scripts/benchmarks/pathsim/s1_sampled_data.py runs it."""
+
+        class _S1a:
+            def save(self, path):
+                with open(os.path.join(EXAMPLES, "discrete_pi_zoh.diablos")) as fp:
+                    data = json.load(fp)
+                for blk in data["blocks_data"]:
+                    if blk.get("block_fn") == "Step":
+                        blk["params"]["delay"] = 0.93
+                with open(path, "w") as fp:
+                    json.dump(data, fp)
+
+        generated, reference = _export_and_reference(_S1a(), tmp_path)
+        assert _max_diff(generated, reference) <= 1e-9
+
+    @pytest.mark.parametrize("solver", ["RK45", "RK4", "Euler"])
+    def test_sampled_loop(self, qapp, tmp_path, solver):
+        from tests.regression.test_hybrid_compiled_path import _sampled_loop
+
+        generated, reference = _export_and_reference(_sampled_loop(), tmp_path, solver=solver)
+        assert _max_diff(generated, reference) <= 1e-9
+
+    @pytest.mark.parametrize(
+        "method, anti_windup",
+        [
+            ("FWD_EULER", "clamping"),
+            ("BWD_EULER", "none"),
+            ("TUSTIN", "back_calculation"),
+            ("SOLVE_IVP", "clamping"),
+        ],
+    )
+    def test_rated_blocks(self, qapp, tmp_path, method, anti_windup):
+        generated, reference = _export_and_reference(_rated_loop(method, anti_windup), tmp_path)
+        assert _max_diff(generated, reference) <= 1e-9
+        # The PID saturates, so the anti-windup branch is exercised.
+        assert np.max(np.abs(np.ravel(generated["u"]))) == pytest.approx(1.5)

@@ -23,6 +23,15 @@ An algebraic loop among the step-3 blocks is emitted as one nested step
 function, solved at each evaluation by the generated ``_solve_loop`` (scipy
 ``root``, warm-started), as ``lib/engine/compiled_loops.py`` does.
 
+Sampled-data blocks (ZeroOrderHold, DiscreteTranFn/StateSpace, and
+TranFn/StateSpace/PID/Integrator/Deriv given a rate) follow the compiled hybrid
+path (``compiler_kernels/discrete.py``): inside ``evaluate`` each is a read of
+its held output; ``simulate`` integrates between the merged sample instants
+(``compiled_runner.sample_schedule``) and at each one runs the blocks'
+difference equations, transcribed from their ``execute()``, feeders first and
+each on a fresh evaluation (``make_sample_hook``); the Scope replay shows the
+value held at every output time.
+
 Every emitted expression is a transcription of the corresponding kernel in
 ``lib/engine/compiler_kernels/`` (param keys, defaults and quirks included), so
 a generated script and a compiled run of the same diagram agree to solver
@@ -50,6 +59,7 @@ from scipy import signal as _scipy_signal
 from lib.engine.block_names import canonical_fn
 from lib.engine.compiled_runner import resolve_solver_method
 from lib.engine.compiled_loops import order_units
+from lib.engine.compiler_kernels.discrete import DISCRETE_FNS, RATED_FNS
 from lib.engine.topo import kahn_topological_order
 
 logger = logging.getLogger(__name__)
@@ -108,6 +118,13 @@ SUPPORTED_FNS = frozenset(
     }
 )
 
+#: Sampled-data blocks, exported as difference equations run at their sample
+#: instants (the compiled hybrid path's holders, see
+#: ``lib/engine/compiler_kernels/discrete.py``). ``Deriv`` is supported only
+#: with a rate; the others in :data:`SUPPORTED_FNS` that take a rate (TranFn,
+#: StateSpace, PID, Integrator) are sampled when they have one.
+SAMPLED_FNS = DISCRETE_FNS | {"Deriv"}
+
 #: Blocks the compiled path runs first, before anything else.
 SOURCE_FNS = frozenset({"Constant", "Step", "Sine", "Ramp"})
 
@@ -122,7 +139,10 @@ SINK_FNS = frozenset({"Scope", "Terminator", "Display"})
 SUPPORTED_BLOCK_NAMES = (
     "Abs",
     "Constant",
+    "Deriv (with a sample time)",
     "Demux",
+    "DiscreteStateSpace",
+    "DiscreteTranFn",
     "Display",
     "Gain",
     "Integrator",
@@ -139,7 +159,12 @@ SUPPORTED_BLOCK_NAMES = (
     "Sum",
     "Terminator",
     "TranFn",
+    "ZeroOrderHold",
 )
+
+#: Integrator methods a sampled Integrator can be exported with: one update
+#: per sample instant. RK4 takes its four stages on four successive calls.
+_SAMPLED_INTEGRATOR_METHODS = ("FWD_EULER", "BWD_EULER", "TUSTIN", "SOLVE_IVP")
 
 _FIXED_STEP_METHODS = ("Euler", "RK4")
 _SCIPY_METHODS = ("RK45", "RK23", "DOP853", "Radau", "BDF", "LSODA")
@@ -222,6 +247,12 @@ _RESERVED_NAMES = set(keyword.kwlist) | {
     "plot_traces",
     "main",
     "SCOPES",
+    "SAMPLED",
+    "HELD_HISTORY",
+    "reset_sampled",
+    "sample_instants",
+    "sample_hook",
+    "round",
     "X0",
     "T_END",
     "DT",
@@ -289,6 +320,8 @@ class _Block:
         "state",
         "matrices",
         "port_vars",
+        "rate",
+        "sampled",
     )
 
     def __init__(self, obj: Any, params: Dict[str, Any]):
@@ -307,6 +340,8 @@ class _Block:
         self.state: Optional[Tuple[int, int]] = None  # (start, size)
         self.matrices: Optional[Tuple[np.ndarray, ...]] = None  # (A, B, C, D)
         self.port_vars: Dict[int, str] = {}  # output port -> variable name
+        self.rate = -1.0  # resolved sample time (> 0 = discrete rate)
+        self.sampled = False  # runs as a sampled holder (see SAMPLED_FNS)
 
     @property
     def title(self) -> str:
@@ -434,6 +469,9 @@ class PythonCodeGenerator:
         self._units = []
         self._n_states = 0
         self._x0: List[float] = []
+        self._sampled: List[_Block] = []
+        self._dstate_init: Dict[str, str] = {}
+        self._sampled_src: List[str] = []
         # Non-fatal problems found while generating (currently: params whose
         # workspace variables could not be resolved). Populated by generate();
         # callers surface these to the user alongside the exported script.
@@ -464,10 +502,14 @@ class PythonCodeGenerator:
         self.warnings = []
         blocks, lines = self._flatten()
         self._prepare(blocks, lines)
+        self._resolve_rates()
         self._check_supported()
         self._allocate_states()
+        self._prepare_sampled()
         order = self._execution_order()
         body = self._emit_evaluate(order)
+        # Before _assemble: the update functions register their constants.
+        self._sampled_src = self._sampled_source() if self._sampled else []
         return self._assemble(body)
 
     # -- preparation -------------------------------------------------------
@@ -528,13 +570,42 @@ class PythonCodeGenerator:
             and getattr(line, "dstblock", None) in self._by_name
         ]
 
+    def _resolve_rates(self):
+        """Each block's sample time, as ``SimulationEngine.propagate_sample_times``.
+
+        The declared rate (``sampling_time``; -1 continuous, 0 inherit, > 0
+        discrete), then inherited rates: a block with 0 takes the fastest
+        discrete rate among its inputs, iterated until nothing changes.
+        """
+        sources: Dict[str, List[str]] = {b.name: [] for b in self._blocks}
+        for line in self._lines:
+            sources[line.dstblock].append(line.srcblock)
+        for blk in self._blocks:
+            blk.rate = _declared_sample_time(blk.obj)
+        for _ in range(len(self._blocks) + 1):
+            changed = False
+            for blk in self._blocks:
+                if blk.rate != 0.0:
+                    continue
+                fastest = -1.0
+                for src in sources[blk.name]:
+                    rate = self._by_name[src].rate
+                    if rate > 0 and (fastest < 0 or rate < fastest):
+                        fastest = rate
+                if fastest != blk.rate:
+                    blk.rate = fastest
+                    changed = True
+            if not changed:
+                break
+
     def _check_supported(self):
         bad: List[Tuple[str, str, str]] = []
         for blk in self._blocks:
-            if blk.fn not in SUPPORTED_FNS:
+            fn = blk.fn
+            if fn not in SUPPORTED_FNS and fn not in SAMPLED_FNS:
                 bad.append((blk.name, blk.raw_fn, "block type is not supported by the exporter"))
                 continue
-            if blk.fn == "Step" and blk.params.get("type") == "impulse":
+            if fn == "Step" and blk.params.get("type") == "impulse":
                 bad.append(
                     (
                         blk.name,
@@ -542,14 +613,37 @@ class PythonCodeGenerator:
                         "impulse steps run on the interpreter, not the compiled path",
                     )
                 )
-            elif _declared_sample_time(blk.obj) > 0:
+            elif fn in SAMPLED_FNS and not blk.rate > 0:
                 bad.append(
                     (
                         blk.name,
                         blk.raw_fn,
-                        "discrete sample time (sampled-data blocks need the interpreter)",
+                        "no sample time (set sampling_time, or feed it from a sampled block)",
                     )
                 )
+            elif blk.rate > 0 and fn not in SAMPLED_FNS and fn not in RATED_FNS:
+                bad.append(
+                    (
+                        blk.name,
+                        blk.raw_fn,
+                        "a sample time on a block the exporter cannot sample",
+                    )
+                )
+            elif (
+                blk.rate > 0
+                and fn == "Integrator"
+                and blk.params.get("method", "SOLVE_IVP") not in _SAMPLED_INTEGRATOR_METHODS
+            ):
+                bad.append(
+                    (
+                        blk.name,
+                        blk.raw_fn,
+                        "a sampled Integrator needs method FWD_EULER, BWD_EULER, TUSTIN "
+                        "or SOLVE_IVP",
+                    )
+                )
+            else:
+                blk.sampled = blk.rate > 0
         if bad:
             raise CodegenUnsupportedError(bad)
 
@@ -559,6 +653,8 @@ class PythonCodeGenerator:
         idx = 0
         for blk in self._blocks:
             params = blk.params
+            if blk.sampled:
+                continue  # holds its state between instants (_prepare_sampled)
             if blk.fn == "Integrator":
                 ic = np.atleast_1d(np.array(params.get("init_conds", 0.0), dtype=float)).flatten()
                 blk.state = (idx, ic.size)
@@ -607,6 +703,118 @@ class PythonCodeGenerator:
                 idx += 2
         self._n_states = idx
 
+    # -- sampled blocks (mirrors compiler_kernels/discrete.py) ----------------
+
+    def _prepare_sampled(self):
+        """Discrete matrices, initial state and update order of the sampled blocks.
+
+        Each sampled block becomes a holder: inside ``evaluate`` its output is
+        a read of ``_HELD``, and at each of its sample instants an update
+        function runs the block's difference equation, transcribed from its
+        ``execute()`` (the compiled path runs ``execute()`` itself).
+        """
+        self._sampled = [b for b in self._blocks if b.sampled]
+        self._dstate_init: Dict[str, str] = {}
+        for blk in self._sampled:
+            fn, params = blk.fn, blk.params
+            if fn in ("Discretetranfn", "Discretestatespace", "TransferFcn", "StateSpace"):
+                blk.matrices = self._discrete_matrices(blk)
+                n = blk.matrices[0].shape[0]
+                x0 = np.array(self._init_conds(params, n)).reshape(-1, 1)
+                self._dstate_init[blk.name] = '{{"x": {}}}'.format(_array_literal(x0))
+            elif fn == "Integrator":
+                mem = np.atleast_1d(np.array(params.get("init_conds", 0.0), dtype=float))
+                self._dstate_init[blk.name] = (
+                    '{{"mem": {m}, "out": {m}, "prev": np.zeros({n})}}'.format(
+                        m=_array_literal(mem.ravel()), n=mem.size
+                    )
+                )
+            elif fn == "PID":
+                self._dstate_init[blk.name] = '{"first": True, "int": 0.0, "xd": 0.0, "last": 0.0}'
+            elif fn == "Deriv":
+                self._dstate_init[blk.name] = (
+                    '{"first": True, "t_old": 0.0, "i_old": None, "didt": None}'
+                )
+        self._sampled = self._sample_update_order(self._sampled)
+
+    def _discrete_matrices(self, blk: _Block) -> Tuple[np.ndarray, ...]:
+        """(Ad, Bd, Cd, Dd) exactly as the block's own initialization builds them."""
+        params = blk.params
+        try:
+            if blk.fn in ("Discretetranfn", "TransferFcn"):
+                num = np.array(params["numerator"], dtype=float)
+                den = np.array(params["denominator"], dtype=float)
+                mats = _scipy_signal.tf2ss(num, den)
+                if blk.fn == "TransferFcn":
+                    mats = _scipy_signal.cont2discrete(mats, blk.rate)[:4]
+            else:
+                A = np.array(params["A"], dtype=float)
+                B = np.array(params["B"], dtype=float)
+                C = np.array(params["C"], dtype=float)
+                D = np.array(params["D"], dtype=float)
+                n = A.shape[0]
+                if A.shape != (n, n):
+                    raise ValueError("A must be square")
+                B = B.reshape(-1, 1) if B.ndim == 1 else B
+                C = C.reshape(1, -1) if C.ndim == 1 else C
+                if D.ndim == 1:
+                    D = D.reshape(1, -1) if D.shape[0] > 1 else D.reshape(1, 1)
+                if B.shape[0] != n or C.shape[1] != n or D.shape != (C.shape[0], B.shape[1]):
+                    raise ValueError("A/B/C/D dimensions do not match")
+                mats = (A, B, C, D)
+                if blk.fn == "StateSpace":
+                    mats = _scipy_signal.cont2discrete(mats, blk.rate, method="zoh")[:4]
+        except Exception as exc:  # noqa: BLE001 - surface as a codegen error
+            raise CodegenError("{} could not be discretized: {}".format(blk.title, exc))
+        return tuple(np.atleast_2d(np.asarray(m, dtype=float)) for m in mats)
+
+    def _sample_update_order(self, sampled: List[_Block]) -> List[_Block]:
+        """Feeders first, as ``system_compiler._sample_update_order``.
+
+        A sampled block updates after every sampled block that feeds it
+        directly or through direct-feedthrough blocks, so it latches the
+        feeder's fresh sample. A path through a strictly-proper state block
+        carries no instantaneous dependency. A cycle is refused: the compiled
+        path keeps an arbitrary order there.
+        """
+        names = {b.name for b in sampled}
+        consumers: Dict[str, set] = {b.name: set() for b in self._blocks}
+        for dst, ports in self._input_map.items():
+            for src, _port in ports.values():
+                consumers[src].add(dst)
+        preds: Dict[str, set] = {name: set() for name in names}
+        for start in names:
+            seen, stack = set(), list(consumers[start])
+            while stack:
+                name = stack.pop()
+                if name in seen:
+                    continue
+                seen.add(name)
+                if name in names:
+                    if name != start:
+                        preds[name].add(start)
+                elif not self._is_d0_state(self._by_name[name]):
+                    stack.extend(consumers[name])
+        ordered: List[_Block] = []
+        while True:
+            ready = [b for b in sampled if b.name in preds and not preds[b.name]]
+            if not ready:
+                break
+            for b in ready:
+                ordered.append(b)
+                del preds[b.name]
+            for deps in preds.values():
+                deps -= {b.name for b in ready}
+        if preds:
+            raise CodegenUnsupportedError(
+                [
+                    (b.name, b.raw_fn, "sampled blocks feed each other without a delay")
+                    for b in sampled
+                    if b.name in preds
+                ]
+            )
+        return ordered
+
     @staticmethod
     def _init_conds(params: Dict[str, Any], n: int) -> List[float]:
         """Initial state padded/truncated to ``n`` (as compile_system does)."""
@@ -621,7 +829,7 @@ class PythonCodeGenerator:
 
     def _is_d0_state(self, blk: _Block) -> bool:
         """True for strictly-proper state blocks (output = C x, no D u)."""
-        if blk.fn not in STATE_FNS:
+        if blk.fn not in STATE_FNS or blk.sampled:
             return False
         if blk.matrices is not None:
             return not np.any(blk.matrices[3] != 0)
@@ -634,8 +842,8 @@ class PythonCodeGenerator:
         adjacency: Dict[str, List[str]] = {b.name: [] for b in self._blocks}
         for line in self._lines:
             dst = self._by_name[line.dstblock]
-            if self._is_d0_state(dst):
-                continue  # not a feedthrough edge: output is known from x
+            if self._is_d0_state(dst) or dst.sampled:
+                continue  # not a feedthrough edge: output is known from x / held
             adjacency[line.srcblock].append(dst.name)
 
         order_names, cyclic = kahn_topological_order(
@@ -647,10 +855,12 @@ class PythonCodeGenerator:
         # (lib/engine/compiled_loops.py); ``cyclic`` also holds the blocks
         # downstream of a loop, which order_units places after it.
         ordered = [self._by_name[n] for n in order_names + cyclic]
-        sources = [b for b in ordered if b.fn in SOURCE_FNS]
+        # A sampled block only reads its held output inside the RHS: a source.
+        sources = [b for b in ordered if b.fn in SOURCE_FNS or b.sampled]
+        source_names = {b.name for b in sources}
         d0_state = [b for b in ordered if self._is_d0_state(b)]
         d0_names = {b.name for b in d0_state}
-        middle = [b for b in ordered if b.fn not in SOURCE_FNS and b.name not in d0_names]
+        middle = [b for b in ordered if b.name not in source_names and b.name not in d0_names]
         self._units = order_units(middle, self._input_map)
         middle = [b for u in self._units for b in (u if isinstance(u, list) else [u])]
         return sources + middle + d0_state
@@ -703,11 +913,15 @@ class PythonCodeGenerator:
         # 2. Sources.
         out.append("")
         out.append("    # --- Sources ---")
-        sources = [b for b in order if b.fn in SOURCE_FNS]
+        sources = [b for b in order if b.fn in SOURCE_FNS or b.sampled]
         if not sources:
             out.append("    # (none)")
         for blk in sources:
-            out.extend(self._emit_block(blk))
+            if blk.sampled:
+                out.append("    # {} (sampled every {} s)".format(blk.title, _num(blk.rate)))
+                out.append('    {} = _HELD["{}"]'.format(blk.var, blk.var))
+            else:
+                out.extend(self._emit_block(blk))
             emitted.append(blk)
 
         # 3. Algebraic blocks and feedthrough state blocks, in topological order.
@@ -1076,6 +1290,222 @@ class PythonCodeGenerator:
         ]
         return lines
 
+    # sampled-block updates ----------------------------------------------------
+
+    def _rate_const(self, blk: _Block) -> str:
+        """The block's ``<VAR>_TS`` sample-time constant (emitted once)."""
+        cache = self._matrix_names.setdefault(blk.name, {})
+        if "ts" not in cache:
+            cache["ts"] = self._num_const(blk, "ts", blk.rate, "sample time [s]")
+        return cache["ts"]
+
+    def _sampled_source(self) -> List[str]:
+        """Holders, update functions, schedule and hook of the sampled blocks."""
+        src = [
+            "# Held output and internal state of each sampled block. A sampled block",
+            "# changes only at its sample instants k*Ts; between them evaluate() reads",
+            "# the value it holds. HELD_HISTORY records the held values after each",
+            "# instant, so scope_traces() shows the value that held at every output time.",
+            "_HELD = {}",
+            "_DSTATE = {}",
+            "HELD_HISTORY = []",
+            "",
+            "",
+            "def reset_sampled():",
+            '    """Back to the start of a run: nothing sampled yet, outputs 0."""',
+            "    _HELD.clear()",
+            "    _DSTATE.clear()",
+            "    del HELD_HISTORY[:]",
+        ]
+        for blk in self._sampled:
+            src.append('    _HELD["{}"] = 0.0'.format(blk.var))
+            if blk.name in self._dstate_init:
+                src.append('    _DSTATE["{}"] = {}'.format(blk.var, self._dstate_init[blk.name]))
+        src += ["", ""]
+        for blk in self._sampled:
+            src += self._emit_sample_update(blk) + ["", ""]
+        src += [
+            "# Updates at a shared instant run feeders first, each on a fresh",
+            "# evaluation, so a block downstream of a ZOH latches its new sample.",
+            "SAMPLED = [",
+        ]
+        for blk in self._sampled:
+            src.append("    ({}, _sample_{}),".format(self._rate_const(blk), blk.var))
+        src += [
+            "]",
+            "",
+            "",
+            "def sample_instants(t_end, t_grid):",
+            '    """Every k*Ts in (0, t_end], merged and snapped onto the output grid."""',
+            "    tol = 1e-9 * (abs(t_end) or 1.0)",
+            "    times = []",
+            "    for ts, _ in SAMPLED:",
+            "        k = np.arange(1, int(np.floor(t_end / ts + 1e-9)) + 1)",
+            "        times.extend(k * ts)",
+            "    merged = []",
+            "    for t in sorted(times):",
+            "        if t <= tol:",
+            "            continue",
+            "        j = int(np.searchsorted(t_grid, t))",
+            "        for cand in (j - 1, j):",
+            "            if 0 <= cand < t_grid.size and abs(t_grid[cand] - t) <= tol:",
+            "                t = float(t_grid[cand])",
+            "                break",
+            "        t = min(t, t_end)",
+            "        if not merged or t - merged[-1] > tol:",
+            "            merged.append(t)",
+            "    return np.asarray(merged)",
+            "",
+            "",
+            "def sample_hook(t, x, tol):",
+            '    """Update every sampled block due at ``t`` and record the held values."""',
+            "    for ts, update in SAMPLED:",
+            "        if abs(t - round(t / ts) * ts) <= tol:",
+            "            update(t, evaluate(t, x)[1])",
+            "    HELD_HISTORY.append((t, dict(_HELD)))",
+        ]
+        return src
+
+    def _signal_ref(self, blk: _Block, port: int) -> Optional[str]:
+        """``signals["<var>"]`` for the signal wired into ``port``, or None."""
+        src = self._input_expr(blk, port)
+        return 'signals["{}"]'.format(src) if src else None
+
+    def _emit_sample_update(self, blk: _Block) -> List[str]:
+        """``_sample_<var>(t, signals)``: one sample of ``blk`` at instant ``t``.
+
+        ``signals`` is the diagram evaluated at ``t`` with every block that
+        updated before this one already holding its new sample.
+        """
+        v = blk.var
+        head = [
+            "def _sample_{}(t, signals):".format(v),
+            '    """{} at a sample instant."""'.format(blk.title),
+        ]
+        fn = blk.fn
+        if fn == "Zeroorderhold":
+            src = self._signal_ref(blk, 0) or "0.0"
+            body = [
+                '    _HELD["{}"] = np.atleast_1d(np.asarray({}, dtype=float)).flatten()'.format(
+                    v, src
+                ),
+            ]
+        elif fn in ("Discretetranfn", "Discretestatespace", "TransferFcn", "StateSpace"):
+            self._helpers.add("_column")
+            A, B, C, D = (self._matrix_const(blk, w) for w in "ABCD")
+            n_in = blk.matrices[1].shape[1]
+            body = [
+                '    s = _DSTATE["{}"]'.format(v),
+                "    u = _column({}, {})".format(self._signal_ref(blk, 0) or "0.0", n_in),
+                '    y = {} @ s["x"] + {} @ u'.format(C, D),
+                '    s["x"] = {} @ s["x"] + {} @ u'.format(A, B),
+                '    _HELD["{}"] = np.array(y.item() if y.size == 1 else y.flatten())'.format(v),
+            ]
+        elif fn == "Integrator":
+            ts = self._rate_const(blk)
+            method = blk.params.get("method", "SOLVE_IVP")
+            src = self._signal_ref(blk, 0)
+            if src is None:
+                raise CodegenError("{} has no input".format(blk.title))
+            step = {
+                "FWD_EULER": "{ts} * u",
+                "SOLVE_IVP": "{ts} * u",
+                "BWD_EULER": '{ts} * s["prev"]',
+                "TUSTIN": '0.5 * {ts} * (u + s["prev"])',
+            }[method].format(ts=ts)
+            body = [
+                '    s = _DSTATE["{}"]'.format(v),
+                "    u = np.atleast_1d(np.asarray({}, dtype=float)).copy()".format(src),
+                '    held = s["out"]  # the output before this sample\'s update',
+                '    if s["mem"].shape != u.shape:',
+                '        if s["mem"].size != 1:',
+                '            raise RuntimeError("{}: input dimension mismatch")'.format(blk.name),
+                '        s["mem"] = np.full(u.shape, s["mem"].item())',
+                '    s["mem"] = s["mem"] + {}  # method {}'.format(step, method),
+                '    s["prev"] = u',
+                '    s["out"] = s["mem"].copy()',
+                '    _HELD["{}"] = np.array(held, dtype=float)'.format(v),
+            ]
+        elif fn == "PID":
+            body = self._emit_sampled_pid(blk)
+        elif fn == "Deriv":
+            src = self._signal_ref(blk, 0)
+            body = ['    s = _DSTATE["{}"]'.format(v), '    if s["first"]:']
+            body += [
+                "        s['i_old'] = np.array({}, dtype=float)".format(src or "np.zeros(1)"),
+                "        s['t_old'] = t",
+                "        s['didt'] = np.zeros_like(s['i_old'])",
+                "        s['first'] = False",
+            ]
+            if src is None:
+                body += ['    _HELD["{}"] = np.array(s["didt"])'.format(v)]
+            else:
+                body += [
+                    "    elif abs(t - s['t_old']) < 1e-12:",
+                    "        s['i_old'] = np.array({}, dtype=float)".format(src),
+                    "    else:",
+                    "        u = np.array({}, dtype=float)".format(src),
+                    "        s['didt'] = (u - s['i_old']) / (t - s['t_old'])",
+                    "        s['t_old'] = t",
+                    "        s['i_old'] = u",
+                    '    _HELD["{}"] = np.array(s["didt"])'.format(v),
+                ]
+        else:  # pragma: no cover - _check_supported admits nothing else
+            raise CodegenError("No sampled emitter for {}".format(blk.raw_fn))
+        return head + body
+
+    def _emit_sampled_pid(self, blk: _Block) -> List[str]:
+        """blocks/pid.py at a sample instant: backward-Euler filter, Ts steps."""
+        v = blk.var
+        params = blk.params
+        sp = self._signal_ref(blk, 0)
+        if sp is None:
+            # Without a setpoint input the block only reports its last output.
+            return ['    _HELD["{}"] = np.atleast_1d(_DSTATE["{}"]["last"])'.format(v, v)]
+        meas = self._signal_ref(blk, 1)
+        self._helpers.add("_first")
+        ts = self._rate_const(blk)
+        kp = self._num_const(blk, "kp", params.get("Kp", 0.0))
+        ki = self._num_const(blk, "ki", params.get("Ki", 0.0))
+        kd = self._num_const(blk, "kd", params.get("Kd", 0.0))
+        n_filt = self._num_const(blk, "n", params.get("N", 20.0), "derivative filter pole")
+        u_min = self._num_const(blk, "umin", params.get("u_min", -np.inf))
+        u_max = self._num_const(blk, "umax", params.get("u_max", np.inf))
+        method = params.get("anti_windup", "clamping")
+        lines = [
+            '    s = _DSTATE["{}"]'.format(v),
+            "    e = _first({}) - {}".format(sp, "_first({})".format(meas) if meas else "0.0"),
+            '    first = s["first"]',
+            "    if first:",
+            '        s["int"] = 0.0',
+            '        s["xd"] = 0.0',
+            '        s["first"] = False',
+            "    d_int = e * {} if not first else 0.0".format(ts),
+            '    xd = (s["xd"] + {n} * {ts} * e) / (1.0 + {n} * {ts})'.format(n=n_filt, ts=ts),
+            '    s["xd"] = xd',
+            '    u_unsat = {kp} * e + {ki} * (s["int"] + d_int) + {kd} * {n} * (e - xd)'.format(
+                kp=kp, ki=ki, kd=kd, n=n_filt
+            ),
+            "    u = min(max(u_unsat, {}), {})".format(u_min, u_max),
+        ]
+        if method == "back_calculation":
+            if float(params.get("Ki", 0.0)) != 0:
+                kb = self._num_const(blk, "kb", params.get("kb", 1.0), "anti-windup tracking gain")
+                lines.append("    d_int += {} * (u - u_unsat) / {} * {}".format(kb, ki, ts))
+        elif method != "none":
+            lines += [
+                "    if (u_unsat > {hi} and e > 0) or (u_unsat < {lo} and e < 0):".format(
+                    hi=u_max, lo=u_min
+                ),
+                "        d_int = 0.0",
+            ]
+        lines += [
+            '    s["int"] += d_int',
+            '    s["last"] = float(u)',
+            '    _HELD["{}"] = np.atleast_1d(np.asarray(u, dtype=float))'.format(v),
+        ]
+        return lines
+
     def _matrix_const(self, blk: _Block, which: str) -> str:
         """Emit (once) the A/B/C/D constant for a state block and return its name."""
         cache = self._matrix_names.setdefault(blk.name, {})
@@ -1138,6 +1568,9 @@ class PythonCodeGenerator:
         add("")
         add("The diagram is compiled to a single ODE and integrated with")
         add("scipy.integrate.solve_ivp, matching DiaBloS' compiled (fast) solver.")
+        if self._sampled:
+            add("Sampled blocks hold their output between sample instants; the solver")
+            add("stops exactly at each instant, where their difference equations run.")
         add("Requires numpy and scipy; matplotlib is only needed for the plots.")
         add("")
         add("Usage:")
@@ -1240,6 +1673,15 @@ class PythonCodeGenerator:
         add("    return evaluate(t, x)[0]")
         add("")
         add("")
+        if self._sampled_src:
+            add("# ==========================================================================")
+            add("# Sampled blocks")
+            add("# ==========================================================================")
+            add("")
+            add("")
+            out.extend(self._sampled_src)
+            add("")
+            add("")
         add("# ==========================================================================")
         add("# Simulation")
         add("# ==========================================================================")
@@ -1264,6 +1706,27 @@ class PythonCodeGenerator:
                 "def _scalar(value):",
                 '    """First element of a possibly-vector signal."""',
                 "    return np.ravel(value)[0] if np.ndim(value) else value",
+                "",
+                "",
+            ]
+        if "_first" in self._helpers:
+            src += [
+                "def _first(value):",
+                '    """First element of a signal as a float (the blocks\' get_scalar)."""',
+                "    return float(np.atleast_1d(np.asarray(value, dtype=float)).flat[0])",
+                "",
+                "",
+            ]
+        if "_column" in self._helpers:
+            src += [
+                "def _column(value, n_inputs):",
+                '    """Input of a discrete state-space block as an (n_inputs, 1) column."""',
+                "    u = np.atleast_2d(np.asarray(value, dtype=float)).reshape(-1, 1)",
+                "    if u.shape[0] != n_inputs:",
+                "        raise RuntimeError(",
+                '            "input dimension mismatch: expected {}, got {}".format(n_inputs, u.shape[0])',
+                "        )",
+                "    return u",
                 "",
                 "",
             ]
@@ -1358,7 +1821,122 @@ class PythonCodeGenerator:
             ]
         return src
 
+    def _hybrid_simulate_source(self) -> List[str]:
+        """simulate() for a diagram with sampled blocks (the compiled hybrid path).
+
+        Adaptive methods: one ``solve_ivp`` per interval between sample
+        instants, as ``zero_crossing.solve_with_events`` does with breakpoints;
+        Euler/RK4: the output grid plus every instant, as
+        ``solve_fixed_step_with_breakpoints``. Either way ``sample_hook`` runs
+        at t = 0 and at each instant, on the state reached there.
+        """
+        src = [
+            "def simulate(t_end=T_END, dt=DT):",
+            '    """Integrate the diagram; returns (t, x_hist) with x_hist shape (n_states, n).',
+            "",
+            "    Integration stops at every sample instant, where the sampled blocks",
+            "    update; HELD_HISTORY records what they held from then on.",
+            '    """',
+            "    t_grid = np.arange(0.0, t_end + dt, dt)",
+            "    t_grid = t_grid[t_grid <= t_end + 1e-12]",
+            "    t_grid[-1] = min(t_grid[-1], t_end)",
+            "    tol = 1e-9 * (abs(t_end) or 1.0)",
+            "    instants = sample_instants(t_end, t_grid)",
+            "    reset_sampled()",
+            "    x = X0.copy()",
+            "    sample_hook(0.0, x, tol)",
+            "    x_hist = np.zeros((X0.size, len(t_grid)))",
+            "    if X0.size == 0:",
+            "        for t_hit in instants:",
+            "            sample_hook(t_hit, x, tol)",
+            "        return t_grid, x_hist",
+            "    n = len(t_grid)",
+            "    idx, t_start = 0, 0.0",
+        ]
+        if self.solver in _FIXED_STEP_METHODS:
+            src += [
+                "    # Fixed step on the output grid plus every instant (METHOD = {}).".format(
+                    self.solver
+                ),
+                "    x_hist[:, 0] = x",
+                "    idx = 1",
+                "    for t_hit in list(instants) + [None]:",
+                "        while idx < n and t_grid[idx] < t_start:",
+                "            x_hist[:, idx] = x",
+                "            idx += 1",
+                "        if t_hit is None or t_hit > t_grid[-1]:",
+                "            end, hi = t_grid[-1], n",
+                "        else:",
+                "            end = float(t_hit)",
+                '            hi = int(np.searchsorted(t_grid, end, side="right"))',
+                "        grid = np.concatenate(([t_start], t_grid[idx:hi]))",
+                "        if grid[-1] < end:",
+                "            grid = np.append(grid, end)",
+                "        if grid.size > 1:",
+                "            history = _fixed_step(grid, x)",
+                "            x_hist[:, idx:hi] = history[:, 1 : 1 + (hi - idx)]",
+                "            x = history[:, -1].copy()",
+                "        idx, t_start = hi, end",
+                "        if t_hit is None or t_hit > t_grid[-1]:",
+                "            break",
+                "        sample_hook(end, x, tol)",
+                "    return t_grid, x_hist",
+                "",
+                "",
+                "def _fixed_step(grid, x0):",
+                '    """{} on ``grid`` from ``x0``; returns the state at every grid point."""'.format(
+                    self.solver
+                ),
+                "    hist = np.zeros((x0.size, grid.size))",
+                "    xk = x0.copy()",
+                "    hist[:, 0] = xk",
+                "    for k in range(1, grid.size):",
+                "        tk = grid[k - 1]",
+                "        h = grid[k] - tk",
+            ]
+            if self.solver == "RK4":
+                src += [
+                    "        k1 = np.asarray(rhs(tk, xk), dtype=float)",
+                    "        k2 = np.asarray(rhs(tk + h / 2.0, xk + h / 2.0 * k1), dtype=float)",
+                    "        k3 = np.asarray(rhs(tk + h / 2.0, xk + h / 2.0 * k2), dtype=float)",
+                    "        k4 = np.asarray(rhs(tk + h, xk + h * k3), dtype=float)",
+                    "        xk = xk + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)",
+                ]
+            else:
+                src += ["        xk = xk + h * np.asarray(rhs(tk, xk), dtype=float)"]
+            src += ["        hist[:, k] = xk", "    return hist"]
+            return src
+        src += [
+            "    for t_hit in list(instants) + [None]:",
+            "        at_instant = t_hit is not None",
+            "        seg_end = min(t_end, t_hit) if at_instant else t_end",
+            '        hi = int(np.searchsorted(t_grid, seg_end, side="right"))',
+            "        seg_eval = t_grid[idx:hi]",
+            "        n_grid = seg_eval.size",
+            "        if at_instant and (n_grid == 0 or seg_eval[-1] < seg_end):",
+            "            seg_eval = np.append(seg_eval, seg_end)",
+            "        sol = solve_ivp(",
+            "            rhs, (t_start, seg_end), x, t_eval=seg_eval, method=METHOD, rtol=RTOL, atol=ATOL",
+            "        )",
+            "        if not sol.success:",
+            '            raise RuntimeError("solve_ivp failed: " + str(sol.message))',
+            "        produced = min(sol.t.size, n_grid)",
+            "        x_hist[:, idx : idx + produced] = sol.y[:, :produced]",
+            "        idx += produced",
+            "        if not at_instant:",
+            "            break",
+            "        x = sol.y[:, -1].copy()",
+            "        sample_hook(seg_end, x, tol)",
+            "        t_start = seg_end",
+            "        if seg_end >= t_end:",
+            "            break",
+            "    return t_grid, x_hist",
+        ]
+        return src
+
     def _simulate_source(self) -> List[str]:
+        if self._sampled:
+            return self._hybrid_simulate_source()
         src = [
             "def simulate(t_end=T_END, dt=DT):",
             '    """Integrate the diagram; returns (t, x_hist) with x_hist shape (n_states, n)."""',
@@ -1437,8 +2015,25 @@ class PythonCodeGenerator:
             '    ``"<scope>-<index>"`` exactly as DiaBloS names them.',
             '    """',
             "    buffers = [[] for _ in SCOPES]",
-            "    for i, ti in enumerate(t_grid):",
-            "        _, signals = evaluate(ti, x_hist[:, i])",
+        ]
+        if self._sampled:
+            src += [
+                "    held = -1",
+                "    for i, ti in enumerate(t_grid):",
+                "        # The values the sampled blocks held at ti (post-sample at an instant).",
+                "        while held + 1 < len(HELD_HISTORY) and HELD_HISTORY[held + 1][0] <= ti:",
+                "            held += 1",
+                "        if held >= 0:",
+                "            _HELD.clear()",
+                "            _HELD.update(HELD_HISTORY[held][1])",
+                "        _, signals = evaluate(ti, x_hist[:, i])",
+            ]
+        else:
+            src += [
+                "    for i, ti in enumerate(t_grid):",
+                "        _, signals = evaluate(ti, x_hist[:, i])",
+            ]
+        src += [
             "        for spec, buf in zip(SCOPES, buffers):",
             "            parts = [",
             "                np.atleast_1d(np.asarray(signals[key] if key else 0.0, dtype=float)).ravel()",

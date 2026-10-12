@@ -283,14 +283,19 @@ Python without changing the numerics:
 | Nonlinear | Saturation |
 | Routing | Mux, Demux |
 | State | Integrator, TranFn, StateSpace, PID |
+| Sampled | ZeroOrderHold, DiscreteTranFn, DiscreteStateSpace; TranFn, StateSpace, PID, Integrator, Deriv with a sample time |
 | Sinks | Scope, Display, Terminator |
+
+Sampled blocks run as on the fast solver: integration stops at each sample
+instant, they update there and hold their output in between. Algebraic loops
+are solved inside the script.
 
 Anything else — Noise, Hysteresis, MathFunction, RateLimiter, the PDE/Field
 families, the optimization primitives — makes the export stop with a dialog
 listing the offending blocks by name, rather than emitting a script that
-quietly computes something else. The same applies to a `Step` set to *impulse*,
-to blocks with a discrete sample time (both run on the interpreter, not the
-compiled path), and to diagrams with an algebraic loop.
+quietly computes something else. The same applies to a `Step` set to *impulse*
+(it runs on the interpreter, not the compiled path) and to a sample time on a
+block that cannot be sampled.
 
 ## Troubleshooting
 

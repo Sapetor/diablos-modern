@@ -436,6 +436,12 @@ literally:
 > Abs, Constant, Demux, Display, Gain, Integrator, Mux, PID, Product, Ramp,
 > Saturation, Scope, SgProd, Sine, StateSpace, Step, Sum, Terminator, TranFn
 
+plus the sampled-data blocks: ZeroOrderHold, DiscreteTranFn,
+DiscreteStateSpace, and TranFn / StateSpace / PID / Integrator / Deriv given a
+`sampling_time` (or inheriting one). The script runs them as the fast solver
+does: integration stops exactly at every sample instant, the blocks' difference
+equations update there (feeders first), and their outputs hold in between.
+
 Subsystems are flattened first, so a diagram built from these blocks inside
 subsystems still exports.
 
@@ -446,9 +452,13 @@ the offending blocks:
   and `Hysteresis` / `StateVariable` (path- or RNG-dependent), the PDE and
   Field families, `MathFunction` (arbitrary user expressions), and
   `RateLimiter`
-- any block with a discrete `sampling_time > 0` (the generated script has no
-  sample-instant scheduling, although the fast solver runs ZOH and discrete
-  TF/SS blocks since 2026-10-10)
+- a `sampling_time` on a block that cannot be sampled (a Gain, say), a
+  sampled block with no rate to run at, a sampled Integrator set to `RK4`, and
+  sampled blocks that feed each other through direct-feedthrough blocks with
+  no continuous state between them
+- zero-crossing events: the script does not locate switching instants, so on
+  a diagram with a Saturation or a Step inside a loop it agrees with the fast
+  solver to solver tolerance rather than exactly
 
 ### Export the linearized model
 See [Analysis](#analysis): the linearization result window exports A/B/C/D as

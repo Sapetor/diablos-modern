@@ -288,7 +288,7 @@ class TestLoopsOnTheCompiledPath:
         assert np.allclose(res["D"], [[0.5]], atol=1e-6)
         assert np.allclose(np.ravel(res["B"]) * np.ravel(res["C"]), [0.25], atol=1e-5)
 
-    @pytest.mark.parametrize("which", ["gain", "proper_tf"])
+    @pytest.mark.parametrize("which", ["gain", "proper_tf", "zoh_broken"])
     def test_python_export_matches_the_compiled_run(self, qapp, tmp_path, which):
         import subprocess
         import sys
@@ -309,6 +309,23 @@ class TestLoopsOnTheCompiledPath:
             b.connect(g, 0, s, 1)
             b.connect(s, 0, sc, 0)
             sim = (0.3, 0.1)
+        elif which == "zoh_broken":
+            # The ZOH holds between instants, so the loop is no algebraic loop:
+            # s[k] = 1 - 0.5 s[k-1], sampled every 0.1 s.
+            b = DiagramBuilder(sim_time=1.0, sim_dt=0.05)
+            c = b.add_block("Constant", 0, 0, name="u", params={"value": 1.0})
+            s = b.add_block("Sum", 0, 0, name="s", params={"sign": "+-"}, in_ports=2)
+            g = b.add_block("Gain", 0, 0, name="g", params={"gain": 0.5})
+            z = b.add_block("ZeroOrderHold", 0, 0, name="z", params={"sampling_time": 0.1})
+            sc = b.add_block(
+                "Scope", 0, 0, name="sc", params={"labels": "y"}, in_ports=1, out_ports=0
+            )
+            b.connect(c, 0, s, 0)
+            b.connect(s, 0, g, 0)
+            b.connect(g, 0, z, 0)
+            b.connect(z, 0, s, 1)
+            b.connect(s, 0, sc, 0)
+            sim = (1.0, 0.05)
         else:
             b = self._proper_tf_loop()
             sim = (3.0, 0.01)
