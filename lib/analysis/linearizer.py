@@ -98,8 +98,14 @@ class Linearizer:
         if engine is None:
             raise ValueError("DSim has no engine; cannot compile for linearization")
 
-        blocks = self.dsim.blocks_list
-        lines = getattr(self.dsim, "line_list", None)
+        # The whole diagram, even while the user is navigated inside a Subsystem
+        # (blocks_list is the current navigation scope).
+        get_root = getattr(self.dsim, "get_root_context", None)
+        if get_root is not None:
+            blocks, lines = get_root()
+        else:
+            blocks = self.dsim.blocks_list
+            lines = getattr(self.dsim, "line_list", None)
 
         # Flatten + resolve. Always flatten afresh: a previous run leaves its
         # flattened copies of Subsystem contents in active_blocks_list, taken

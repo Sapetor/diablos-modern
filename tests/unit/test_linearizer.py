@@ -204,3 +204,20 @@ class TestLinearizer:
         sub.params["b"] = 500.0  # masked plant 1/(m s + b), m = 1500, gain 800
         res = Linearizer(dsim).linearize_at_point()
         assert np.allclose(res["A"], [[-(500.0 + 800.0) / 1500.0]], rtol=1e-5)
+
+    def test_linearizes_whole_diagram_from_inside_a_subsystem(self, qapp):
+        """Navigated into a Subsystem, linearization still covers the whole diagram."""
+        import os
+
+        from lib import cli
+
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "examples", "library_block_demo.diablos"
+        )
+        dsim, _ = cli.load_diagram(path)
+        ok, err = dsim.run_tuning_simulation(5.0, 0.01)
+        assert ok, err
+        sub = next(b for b in dsim.blocks_list if b.block_fn == "Subsystem")
+        dsim.enter_subsystem(sub)
+        res = Linearizer(dsim).linearize_at_point()
+        assert np.allclose(res["A"], [[-(50.0 + 800.0) / 1500.0]], rtol=1e-5)
